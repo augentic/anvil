@@ -21,7 +21,7 @@ The two modes are mutually exclusive: `specify init` with both an adapter positi
 
 Re-running `specify init` in an already-initialized project changes nothing and exits `0` with a message routing to `specify init --upgrade`. `specify init --upgrade` is the re-entry path: it bumps the `project.yaml.specify` pin over an existing project (preserving every operator artifact) and re-runs hydration over the project's declared adapter.
 
-A pinned package reference (`specify:omnia@1.0.0` or the `omnia@1.0.0` shorthand) that misses the global adapter store is **hydrated**: init fetches the component from the registry configured in `.specify/wasm-pkg.toml` (default `augentic.io`), installs it as `<store-root>/<name>@<version>.wasm` with its digest `.meta` sidecar, and verifies the entry after the write. A fetch failure is the typed `adapter-hydrate-failed` (exit `1`); a verify failure is `adapter-digest-mismatch`. Bare names (dev builds) and local component paths never fetch.
+A pinned package reference (`specify:omnia@1.0.0` or the `omnia@1.0.0` shorthand) that misses the global adapter store is **hydrated**: init fetches the component from the registry configured in `.specify/wasm-pkg.toml` (default `augentic.io`), installs it as `<store-root>/<name>@<version>.wasm` with its digest `.meta` sidecar, and verifies the entry after the write. A fetch failure is the typed `adapter-hydrate-failed` (exit `1`); a verify failure is `adapter-digest-mismatch`. Bare names (resolved from the seeded project component cache — see [`specify adapter add`](adapter.md)) and local component paths never fetch.
 
 On success init prints a postflight report: what was scaffolded (or upgraded), the resolved adapter, the written config path, the pinned `specify` version, and any pinned identities hydrated this run (`<name>@<version>`).
 
@@ -35,7 +35,7 @@ This is the CLI command invoked by [`/spec:init`](../../../plugins/spec/skills/i
 
 | Option | Description |
 |--------|-------------|
-| `<adapter>` (positional) | Adapter identifier: a first-party shorthand (`omnia` for the dev build, `omnia@1.0.0` for a registry pin), a package reference (`specify:omnia@1.0.0`), or a local `.wasm` component path. GitHub URLs are refused (`adapter-github-uri-unsupported`). Required unless `--workspace` or `--upgrade` is set. |
+| `<adapter>` (positional) | Adapter identifier: a first-party shorthand (bare `omnia` for a seeded cache entry, `omnia@1.0.0` for a registry pin), a package reference (`specify:omnia@1.0.0`), or a local `.wasm` component path. GitHub URLs are refused (`adapter-github-uri-unsupported`). Required unless `--workspace` or `--upgrade` is set. |
 | `--name` | Project name (defaults to the project directory basename). For workspace mode, must be kebab-case (the CLI bakes it into `change.md`'s frontmatter). |
 | `--description` | Free-form project description (tech stack, architecture, testing) |
 | `--workspace` | Scaffold a registry-only workspace instead of a regular project. Refuses to run when `.specify/` already exists. Mutually exclusive with the `<adapter>` positional. |
@@ -50,7 +50,7 @@ When `--format json` is provided, returns:
 - `mode` -- what this run did: `scaffolded`, `already-initialized`, or `upgraded`
 - `config-path` -- path to the written `project.yaml`
 - `adapter-name` -- resolved adapter name (or the literal string `workspace` in workspace mode)
-- `cache-present` -- whether the adapter cache was found (always `false` in workspace mode)
+- `cache-present` -- whether the resolved adapter's component-cache provenance sidecar (`components/<name>.meta.yaml`) was found (always `false` in workspace mode)
 - `directories-created` -- list of directories created
 - `scaffolded-rule-keys` -- per-brief rule keys added to `project.yaml` (always empty in workspace mode)
 - `specify-version` -- version recorded in `project.yaml`

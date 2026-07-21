@@ -19,40 +19,9 @@ pub fn find<'d>(docs: &'d [Doc], path: &str) -> Option<&'d Doc> {
 }
 
 /// Body for `path`, or `None` when absent from `docs`.
-///
-/// With `SPECIFY_PROSE_OVERLAY=1`, an on-disk `.eval/prose/<path>` body
-/// wins; the doc *set* stays the embedded table's.
 #[must_use]
 pub fn resolve(docs: &[Doc], path: &str) -> Option<&'static str> {
-    let doc = find(docs, path)?;
-    if overlay_enabled()
-        && let Some(body) = overlay(path)
-    {
-        return Some(body);
-    }
-    Some(doc.body)
-}
-
-fn overlay_enabled() -> bool {
-    std::env::var("SPECIFY_PROSE_OVERLAY").is_ok_and(|value| value == "1")
-}
-
-// Overlay bodies are leaked to keep `&'static str`; fine for the
-// per-call-instantiated guest. First hit attests on stderr so an overlay
-// run cannot pass as embedded.
-fn overlay(path: &str) -> Option<&'static str> {
-    static ATTEST: std::sync::Once = std::sync::Once::new();
-    let file = std::path::Path::new(".eval/prose").join(path);
-    match std::fs::read_to_string(&file) {
-        Ok(body) => {
-            ATTEST.call_once(|| {
-                eprintln!("prose overlay active: .eval/prose/ overrides embedded bodies");
-            });
-            Some(body.leak())
-        }
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
-        Err(err) => panic!("prose overlay `{}` is unreadable: {err}", file.display()),
-    }
+    find(docs, path).map(|doc| doc.body)
 }
 
 /// Body the registry is guaranteed to embed.

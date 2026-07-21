@@ -1,4 +1,4 @@
-//! SDK-seam to workflow-seam DTO conversion — the one native copy of
+//! SDK-seam to engine-seam DTO conversion — the one native copy of
 //! the mapping the wasm guest shim applies at the WIT boundary.
 //!
 //! [`crate::catalog`] projects adapter metadata through it at
@@ -14,7 +14,7 @@ use project::adapter::{BuildInputDeclaration, PlatformsCapability};
 use project::seam::wire::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 use project::seam::{self, Evidence, Input, Lead};
 
-/// Widen an SDK operation error to the workflow seam error.
+/// Widen an SDK operation error to the engine seam error.
 #[must_use]
 pub fn error(error: aseam::Error) -> seam::Error {
     match error {
@@ -24,7 +24,7 @@ pub fn error(error: aseam::Error) -> seam::Error {
     }
 }
 
-/// Widen an SDK lead to the workflow lead.
+/// Widen an SDK lead to the engine lead.
 #[must_use]
 pub fn lead(lead: aseam::Lead) -> Lead {
     Lead {
@@ -44,7 +44,7 @@ pub fn narrow_lead(lead: Lead) -> aseam::Lead {
     }
 }
 
-/// Widen SDK evidence to the workflow evidence document.
+/// Widen SDK evidence to the engine evidence document.
 #[must_use]
 pub fn evidence(evidence: aseam::Evidence) -> Evidence {
     Evidence {
@@ -177,7 +177,7 @@ const fn severity(severity: aseam::Severity) -> Severity {
     }
 }
 
-/// Widen an SDK platform to the workflow platform enum.
+/// Widen an SDK platform to the engine platform enum.
 #[must_use]
 pub const fn platform(platform: aseam::Platform) -> project::platform::Platform {
     use project::platform::Platform;
@@ -190,7 +190,7 @@ pub const fn platform(platform: aseam::Platform) -> project::platform::Platform 
     }
 }
 
-/// Project SDK source metadata onto the workflow resolver metadata.
+/// Project SDK source metadata onto the engine resolver metadata.
 #[must_use]
 pub fn source_metadata(record: aseam::SourceMetadata) -> Metadata {
     Metadata {
@@ -200,7 +200,7 @@ pub fn source_metadata(record: aseam::SourceMetadata) -> Metadata {
     }
 }
 
-/// Project SDK target metadata onto the workflow resolver metadata.
+/// Project SDK target metadata onto the engine resolver metadata.
 #[must_use]
 pub fn target_metadata(record: aseam::TargetMetadata) -> Metadata {
     Metadata {

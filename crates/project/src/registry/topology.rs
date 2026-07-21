@@ -50,8 +50,9 @@ pub struct TopologyProject {
     /// Registry slot name — the `plan.yaml.slices[].project` binding
     /// key. Identity stays the registry name, not `project.yaml.name`.
     pub name: String,
-    /// Target adapter in `name@vN` form, resolved from the project's
-    /// `project.yaml.adapter`.
+    /// Target adapter resolved from the project's
+    /// `project.yaml.adapter`: `name@vN` for a pinned identity, bare
+    /// `name` for an unpinned cache resolve.
     pub target: String,
     /// Single-sentence domain characterisation from the project's
     /// `project.yaml`. Absent stays off the wire.
@@ -119,6 +120,16 @@ pub struct Surface {
     /// the domain fits within the cap.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub more: Option<u64>,
+}
+
+/// The topology target-reference grammar.
+///
+/// `name@version` for a pinned identity, bare `name` for an unpinned
+/// cache resolve. The single producer formula both topology writers
+/// share; the launcher's closure derivation parses the same grammar.
+#[must_use]
+pub fn target_ref(name: &str, version: Option<&semver::Version>) -> String {
+    version.map_or_else(|| name.to_string(), |version| format!("{name}@{version}"))
 }
 
 #[derive(Debug, Deserialize)]
@@ -209,7 +220,7 @@ impl TopologyProject {
         let target_adapter =
             resolver.resolve_target(&AdapterSelector::parse(adapter_value)?, slot_paths)?;
         let target =
-            format!("{}@{}", target_adapter.manifest.name, target_adapter.manifest.version);
+            target_ref(&target_adapter.manifest.name, target_adapter.manifest.version.as_ref());
 
         validate_topology_platforms(
             registry_name,

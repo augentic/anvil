@@ -4,7 +4,7 @@ This section is for developers working on the Specify framework itself — the R
 
 ## Repository map
 
-The workflow engine and operator plugins live in [`augentic/specify`](https://github.com/augentic/specify); source and target adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters):
+The engine and operator plugins live in [`augentic/specify`](https://github.com/augentic/specify); source and target adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters):
 
 | Path | Contents | Language |
 | ---- | -------- | -------- |

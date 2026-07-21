@@ -36,7 +36,7 @@ The runtime architecture — Specify as a family of Wasm guests on the Omnia run
 
 Realising the architecture spans four repositories, coordinated only through versioned WIT seams — never a shared build or a lockstep release.
 
-- **`augentic/specify`** (this repo) — owns the typed contract (the `specify:adapter` package), the Specify runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the workflow guest, and the operator CLI surface.
+- **`augentic/specify`** (this repo) — owns the typed contract (the `specify:adapter` package), the Specify runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the engine guest, and the operator CLI surface.
 - **`augentic/omnia`** — owns the generic runtime library (the Wasmtime interpreter, the pluggable host-service framework, multi-guest deployments, host-mediated linking) and the general-purpose host interfaces, including `wasi-model` (`omnia:model/completion.create`). It carries zero Specify domain knowledge and zero model knowledge.
 - **`augentic/backends`** — owns the model backends behind `wasi-model`: `omnia-cursor` (spawns `cursor-agent` against the mounted working tree with MCP grants) and `omnia-genai` (frontier / hosted APIs); Omnia's in-tree `ModelDefault` covers deterministic replay.
 - **`augentic/specify-adapters`** — consumes the `specify:adapter` package as a pinned dependency and ships a WASM component per adapter: its axis world plus the `wasi:http` MCP export serving its compiled-in references.
@@ -50,6 +50,8 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 ### Current priorities
 
 The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a known build of the operator-facing surfaces over the existing `journal` substrate — the substrate exists; the surfaces do not.
+
+In parallel, the operator-deployment and migration track is sketched in [RFC-70](rfc-70-deployment.md) through [RFC-74](rfc-74-program.md): a coordinated Omnia + Specify cut where RFC-70 lands Omnia's generic registry-miss guest resolver with the Specify launcher (direct `specify ...`, no authored `omnia.toml`), while RFCs 71–74 deliver an **in-house-usable** serial migration loop first — see [RFC-74 §First delivery](rfc-74-program.md#first-delivery) — and defer diagnostics polish, managed materialization, third-party registry discovery, parallelism, and forge/hosted integration until that loop is in daily use. Omnia stays free of Specify vocabulary throughout.
 
 #### Deferred until trigger conditions or prerequisites
 
@@ -116,7 +118,7 @@ specify registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
-**Substrate:** the deployment already serves MCP — every adapter guest exports `wasi:http/incoming-handler` over `omnia_guest::mcp`, and the runtime binary routes MCP prefixes. This item becomes another route on the existing deployment (plausibly an export of the workflow guest), not a standalone server.
+**Substrate:** the deployment already serves MCP — every adapter guest exports `wasi:http/incoming-handler` over `omnia_guest::mcp`, and the runtime binary routes MCP prefixes. This item becomes another route on the existing deployment (plausibly an export of the engine guest), not a standalone server.
 **Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
@@ -156,12 +158,14 @@ specify execute resume <run-id>
 #### RM-20: Catalog-backed initiatives across many repositories
 
 **Goal:** Drive multi-repo initiatives from live catalog-backed registry projections.
+**First profile:** the migration program ([RFC-74](rfc-74-program.md), over [RFC-71](rfc-71-discovery.md)–[RFC-73](rfc-73-materialization.md)) is the first concrete initiative shape; RM-20 generalises the noun only after the migration profile proves the coordination semantics.
 
 #### RM-21: Adapter ecosystem operating model
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
 **Frame:** an adapter is a wasm component implementing one axis of the versioned `specify:adapter` WIT contract, so compatibility is WIT-package versioning. Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
 **Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, references) beyond the first-party Omnia/Vectis/contracts set.
+**Discovery substrate:** [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) defines the descriptor schema, registry projection, and trust policy this ecosystem requires; its registry stages are gated on this item, not on the migration program.
 
 #### RM-22: Hosted observability dashboards
 
@@ -175,8 +179,8 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 
 - **Specialized SLM code generation.** Train a specialized Small Language Model to generate Omnia Rust crates from Specify artifacts (Vectis following once proven), making the model behind the Omnia `build/crate.md` prompt cheaper, faster, and more reproducible — without replacing the workflow. This slots cleanly behind the swappable `wasi-model` backend.
 - **CLI observability.** The runtime binary binds `WasiOtel`, so `tracing`-based diagnostics for guest execution already exist. What remains parked is the residue wasi:otel does not cover — host-side deployment diagnostics and any stdout-contract-preserving ephemeral views over them.
-- **Source catalogue and source-clone cache.** A durable platform-level catalogue of legacy source repositories (`sources.yaml`), a shared source-clone cache, and a `--source @<key>` selector so a platform repo declares dozens of legacy sources once and reuses them across changes.
-- **Migration ledger and slice mapping.** Cumulative cross-change state answering "is this source migrated yet?" and "what's the source-to-target pattern of this slice?" for migrations spanning many changes.
+- **Source catalogue and source-clone cache.** Graduated: owned by [Migration Intake and Source Selection](rfc-72-migration.md), which reconciles and supersedes the deferred [RFC-21](future/rfc-21-catalogue.md).
+- **Migration ledger and slice mapping.** Graduated: owned by [Migration Programs](rfc-74-program.md), which reconciles and supersedes the deferred [RFC-22](future/rfc-22-ledger.md).
 - **Omnia plan composition.** Teach `plan.yaml` to express the composition shape Omnia migrations produce — services composed of crates composed of handlers — without a parallel artifact or breaking existing plans.
 - **Standards baseline.** The cross-run lint lifecycle: acknowledging a body of legitimate findings as baseline debt, diffing scans against prior runs, and staging remediation across releases. Deferred — no consumers under fix-before-release on Specify-native codebases.
 - **Orchestration replay coverage.** Canonical scenarios separate hard assertions from semantic rubrics. `ModelDefault` provides deterministic request-key replay at the `wasi-model` boundary; native and composed profiles reuse that contract without capturing editor transcripts. Live profiles remain outside ordinary CI.

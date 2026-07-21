@@ -7,7 +7,9 @@ use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{Context as _, Result, bail, ensure};
-use native::{Catalog, DynModel, ExecutionPaths, Provider, ReferenceMode};
+use native::{
+    CachePlacement, Catalog, DynModel, ExecutionPaths, Locations, Provider, ReferenceMode,
+};
 use project::seam::wire::{BuildReport, BuildStatus};
 use project::seam::{Input, MergePhase, Target as _, WorkingTree};
 use serde::Deserialize;
@@ -84,7 +86,11 @@ pub async fn run(
     let instance = (factory)(&scratch)?;
     let telemetry = Telemetry::new(instance.model);
     let model = DynModel::new(telemetry.clone());
-    let paths = ExecutionPaths::isolated(&*scratch, scratch.join("project-cache"));
+    let locations = Locations::explicit(
+        scratch.join("adapter-store"),
+        CachePlacement::Parent(scratch.join("project-cache")),
+    );
+    let paths = ExecutionPaths::new(&*scratch, locations);
     let provider = Provider::new(paths, model, catalog.clone(), ReferenceMode::Online);
     let inputs = inputs(&dir.join("inputs"))?;
     let report = dispatch(&provider, &config, inputs).await;

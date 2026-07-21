@@ -40,7 +40,7 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 | [specify slice](slice.md) | Per-slice CRUD, synthesis, build, validation, merge, task tracking, and touched-spec tracking | Single-slice operations |
 | [specify plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
-| [specify source / target resolve](adapter.md) | Resolve source and target adapter manifests | Adapter infrastructure |
+| [specify adapter / source / target resolve](adapter.md) | Seed the project component cache and resolve adapters by axis | Adapter infrastructure |
 | [specify workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [Vectis in-guest tools](vectis.md) | In-guest `vectis` behaviours (`validate`, `scaffold`, `sync`) inside the adapter guest | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |

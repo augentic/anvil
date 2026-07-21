@@ -101,6 +101,7 @@ where
 
     Router::new(invoker)
         .route("/init", post!(project::init::handlers::Init))
+        .route("/adapter/add", post!(project::adapter::handlers::AdapterAdd))
         .route("/source/resolve", get!(project::adapter::handlers::SourceResolve))
         .route("/source/{source}/survey", post!(::change::source::Survey))
         .route("/source/{source}/extract", post!(::slice::source::Extract))

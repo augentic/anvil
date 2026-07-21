@@ -231,7 +231,7 @@ Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
 
 ```markdown
 \{{#template templates/platform-open.md}}
-\{{#template templates/platform-product-open.md name=Specify role=Workflow engine active=true}}
+\{{#template templates/platform-product-open.md name=Specify role=Engine active=true}}
 Enforces the spec-first rhythm documented in this guide.
 \{{#template templates/platform-product-close.md}}
 \{{#template templates/platform-close.md}}

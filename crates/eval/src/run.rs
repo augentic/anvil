@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, Result, ensure};
 use clap::{Parser, Subcommand};
-use native::{Catalog, DynModel, ExecutionPaths};
+use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use project::plan::Status;
 
 use crate::telemetry::{self, Telemetry};
@@ -177,7 +177,11 @@ impl Trial {
         eprintln!("==> specify {display}");
         let mut full = vec!["specify".to_string()];
         full.extend(argv.iter().map(ToString::to_string));
-        let paths = ExecutionPaths::isolated(root, root.join("project-cache"));
+        let locations = Locations::explicit(
+            root.join("adapter-store"),
+            CachePlacement::Parent(root.join("project-cache")),
+        );
+        let paths = ExecutionPaths::new(root, locations);
         let response =
             native::command::execute(paths, model.clone(), self.catalog.clone(), full).await?;
         io::stdout().write_all(&response.stdout)?;

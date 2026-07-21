@@ -76,7 +76,7 @@ impl Plan {
         check_coverage(&source_sets, &catalog)?;
         let bound = bind_projects(slices, topology)?;
         // Eagerly validate that every bound project's target parses as
-        // `name@vN` so a corrupt topology fails at propose time, even
+        // `name[@vN]` so a corrupt topology fails at propose time, even
         // though the resolved target is not written to disk.
         for project in &bound {
             parse_project_target(project)?;
@@ -301,7 +301,7 @@ fn bind_projects<'a>(
 /// Resolve a single slice [`Entry`]'s target adapter from the project
 /// topology.
 ///
-/// A slice binds only a `project`; the target adapter (`name@vN`) is
+/// A slice binds only a `project`; the target adapter (`name[@vN]`) is
 /// derived here from the bound project's [`ProjectRef::target`]. This is
 /// the single read-time resolver every consumer (`specify plan next`,
 /// slice `metadata.yaml` population, the build request) routes through,
@@ -318,14 +318,16 @@ fn bind_projects<'a>(
 /// - `plan-reconcile-project-binding-required` when `project` is omitted
 ///   but more than one project exists.
 /// - `plan-target-malformed` when the bound project's target does not
-///   parse as `name@<semver>` (an internal inconsistency — topology
+///   parse as `name[@<semver>]` (an internal inconsistency — topology
 ///   targets are pre-validated).
 pub fn resolve_target(entry: &Entry, topology: &[ProjectRef]) -> Result<TargetRef> {
     let project = resolve_project_binding(&entry.name, entry.project.as_deref(), topology)?;
     parse_project_target(project)
 }
 
-/// Parse a [`ProjectRef`]'s `name@<semver>` target into a [`TargetRef`].
+/// Parse a [`ProjectRef`]'s `name[@<semver>]` target into a
+/// [`TargetRef`] — the bare name is the unpinned cache resolve, the
+/// pinned form carries the exact semver.
 ///
 /// Topology targets are pre-validated, so a parse failure is an internal
 /// inconsistency surfaced as `plan-target-malformed`.
@@ -333,7 +335,7 @@ fn parse_project_target(project: &ProjectRef) -> Result<TargetRef> {
     TargetRef::parse(&project.target).map_err(|err| {
         Error::validation_failed(
             "plan-target-malformed",
-            "a project target must parse as name@<semver>",
+            "a project target must parse as name[@<semver>]",
             err.to_string(),
         )
     })

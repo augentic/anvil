@@ -3,7 +3,7 @@
 //! [`Source`] and [`Target`] mirror the WIT `source` / `target`
 //! interfaces. Their DTOs omit caller-owned fields, such as the source
 //! attribution added by the orchestrator. Keeping `wit-bindgen` providers
-//! outside this crate leaves workflow code wasm-free.
+//! outside this crate leaves engine code wasm-free.
 //!
 //! [`Capabilities`] is the borrowed capability bundle the guest
 //! orchestrations in the slice and change crates dispatch across.
@@ -231,12 +231,12 @@ pub fn seam_failure(operation: &'static str, id: &str, err: &Error) -> error::Er
 /// (`source:<adapter>`).
 #[must_use]
 pub fn source_id(adapter: &str) -> String {
-    format!("source:{adapter}")
+    format!("{}:{adapter}", crate::adapter::Axis::Source.prefix())
 }
 
 /// The plan-bound adapter id routing a target dispatch
 /// (`target:<name>`).
 #[must_use]
 pub fn target_id(name: &str) -> String {
-    format!("target:{name}")
+    format!("{}:{name}", crate::adapter::Axis::Target.prefix())
 }

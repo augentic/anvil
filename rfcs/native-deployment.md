@@ -6,12 +6,12 @@
 
 ## Abstract
 
-Specify is one workflow product with two ways to satisfy the same capability contracts:
+Specify is one product with two ways to satisfy the same capability contracts:
 
-- the existing **Wasm deployment** composes the workflow and adapters as components through Omnia;
-- the **native host** compiles the workflow core and selected Rust adapter libraries into one process.
+- the existing **Wasm deployment** composes the engine and adapters as components through Omnia;
+- the **native host** compiles the engine core and selected Rust adapter libraries into one process.
 
-The current `crates/harness` already approximates the native host for native workflow tests, development commands, and live-model eval, but its architecture is shaped by those first consumers. This RFC replaces it with:
+The current `crates/harness` already approximates the native host for native engine tests, development commands, and live-model eval, but its architecture is shaped by those first consumers. This RFC replaces it with:
 
 - `native` — the reusable in-process host library;
 - `eval` — the lab-only library for trials, scenarios, grading, and telemetry;
@@ -20,7 +20,7 @@ The current `crates/harness` already approximates the native host for native wor
 Composition is value-level. A lab or downstream binary supplies a validated `Catalog` and a model backend; `native` carries no repository binding trait, registration macro, Cursor dependency, or model type parameter. The first-party catalog is declared by the adapters repository's `lab` until a native operator distribution needs a shared library. Product distribution is follow-up work; this RFC does not invent a product binary or a `composition` package.
 
 ```text
-WORKFLOW CORE
+ENGINE CORE
   capability contracts only
         │
  ┌──────┴──────┐
@@ -30,7 +30,7 @@ WORKFLOW CORE
                │
         ┌──────┼──────┐
         │      │      │
-   workflow   lab   future product
+   engine     lab   future product
    tests            (distribution RFC)
    + mock
 ```
@@ -63,7 +63,7 @@ A third muddle is architectural. Adapter references are currently reduced too ea
 
 The native host makes those concerns visible:
 
-- deployment-neutral workflow behavior belongs in the workflow core;
+- deployment-neutral engine behavior belongs in the engine core;
 - adapter selector parsing belongs in shared contracts;
 - how a selector becomes a usable adapter is deployment policy (`ensure` on the existing resolver capability);
 - networking and cache isolation need explicit lifecycle ownership;
@@ -72,15 +72,15 @@ The native host makes those concerns visible:
 
 ## Goals
 
-1. Establish the native host as a first-class way to run the same workflow core and command contract as the Wasm flavor.
-2. Keep the native host out of the workflow core; workflow crates depend only on capability contracts and deployment-neutral adapter types.
+1. Establish the native host as a first-class way to run the same engine core and command contract as the Wasm flavor.
+2. Keep the native host out of the engine core; engine crates depend only on capability contracts and deployment-neutral adapter types.
 3. Preserve dependency inversion: `native` never depends on `eval`, `lab`, `mock`, Cursor crates, or `augentic/specify-adapters`.
 4. Compose with values: catalogs and model backends are supplied by composition roots; the host carries no binding trait, registration macro, or model type parameter.
 5. Make the native catalog a complete static declaration: each adapter's identity, operation axis, metadata, and embedded references.
 6. Let the native host satisfy an exact adapter pin when the compiled catalog contains that exact `(name, version)`; reject mismatches and local component selectors without silently substituting another implementation.
 7. Replace byte-oriented `Hydrator::fetch` with `Resolver::ensure` so initialization does not run component hydration before native catalog matching.
 8. Preserve workflow command I/O, exit codes, artifacts, lifecycle transitions, adapter operation order, and model request/answer shapes across providers; selector diagnostics and native provisioning remain the explicit divergences.
-9. Keep Specify's workflow integration tests self-contained over local mock adapters through `native`'s library API.
+9. Keep Specify's engine integration tests self-contained over local mock adapters through `native`'s library API.
 10. Separate command execution from live-model eval: command mode lives in `native`; `eval` is optional and lab-only.
 11. Make runtime values and resources explicit: project root, cache parent, model value, MCP listener ownership.
 12. Keep one native implementation of provider dispatch, catalog construction, and MCP reference serving, with adapter operations monomorphized at exactly one model type (`DynModel`).
@@ -94,8 +94,8 @@ The native host makes those concerns visible:
 - Making Specify depend on the sibling `specify-adapters` checkout.
 - Changing workflow semantics, artifact schemas, lifecycle transitions, or prompts.
 - Making `adapter::Source` / `adapter::Target` object-safe; their operation methods remain generic associated functions. This RFC only adds static identity to their contract and erases the host's model handle.
-- Guaranteeing a fully static executable. The native host statically composes the Rust workflow and adapters but may still use platform libraries and an external model backend.
-- Supporting two published adapters with the same name under different package namespaces. Adapter names remain globally unique across namespaces and axes for published adapters; namespace on a package selector is parse/display provenance, not a second workflow identity.
+- Guaranteeing a fully static executable. The native host statically composes the Rust engine and adapters but may still use platform libraries and an external model backend.
+- Supporting two published adapters with the same name under different package namespaces. Adapter names remain globally unique across namespaces and axes for published adapters; namespace on a package selector is parse/display provenance, not a second engine identity.
 - Defining a native operator distribution (package name, install identity, coexistence with Wasm `specify`, bundle version, release cadence). The adapters `lab` owns the first-party catalog until a distribution decision needs a shared library.
 - Adding a `composition` package in this RFC. Extract `catalog()` from the adapters lab when a second consumer (a product binary) appears.
 - Serving the HTTP transport from the native host. The reference router must remain mountable by a later HTTP host without a second implementation.
@@ -108,26 +108,26 @@ The native host makes those concerns visible:
 - Renaming `SPECIFY_EVAL_MODEL`, `mock::model::Harness`, or `DevModel` as part of the architectural cut. Optional later polish.
 - Renaming the default mock source or target identity. `mock` remains valid on both axes; catalog uniqueness is per-axis.
 - Adding compatibility aliases for removed internal crate names.
-- Widening public workflow APIs solely to support tests.
+- Widening public engine APIs solely to support tests.
 
 ## Terminology
 
 - **Workflow core** — the deployment-neutral engine crates: `project`, `slice`, `change`, and `transport`, plus their dependency leaves.
-- **Wasm deployment** — the existing Omnia-hosted flavor: native host process plus workflow and adapter Wasm guests. Authoritative for component loading, WIT, isolation, digests, and the adapter store.
+- **Wasm deployment** — the existing Omnia-hosted flavor: native host process plus engine and adapter Wasm guests. Authoritative for component loading, WIT, isolation, digests, and the adapter store.
 - **Native host (`native`)** — the reusable library: catalog, provider, erased model handle, reference host, and asynchronous command execution. Not a Cursor client and not a product installer.
 - **Adapter identity** — the immutable `(name, version)` a catalog entry provides. Distinct from resolve-time adapter metadata.
 - **Adapter selector** — the operator-supplied shape retained through `ensure`: bare name, exact package reference, or local component path.
 - **Erased model (`DynModel`)** — the native host's one concrete model type: a reference-counted object-safe wrapper that any `Model` backend converts into.
 - **Eval library (`eval`)** — lab-only trial, scenario, grading, telemetry, sandbox, and eval CLI logic.
 - **Lab (`lab`)** — an unpublished repository composition binary that dispatches between native command passthrough and eval. Specify's lab binds mock adapters; the adapter repository's lab declares the first-party catalog and depends on the concrete adapter crates.
-- **Fixture adapters** — deterministic local SDK-native adapters in `crates/mock`, not mocks of the workflow seam.
+- **Fixture adapters** — deterministic local SDK-native adapters in `crates/mock`, not mocks of the engine seam.
 
 ## Decision
 
 ### Mental model
 
 ```text
-                    workflow core + transport
+                    engine core + transport
                                ▲
                                │ capability contracts
               ┌────────────────┴────────────────┐
@@ -137,7 +137,7 @@ The native host makes those concerns visible:
      model host import                   DynModel value
      adapter HTTP refs                   ReferenceHost
               │                                 │
-              │                                 ├── workflow tests (+ mock)
+              │                                 ├── engine tests (+ mock)
               │                                 ├── repository labs
               │                                 └── (future product binary)
               │
@@ -147,7 +147,7 @@ eval ──► native
 lab  ──► eval + native + one repository-owned catalog
 ```
 
-One breath: workflow code talks to capabilities; Wasm satisfies them with components; native satisfies them with a validated catalog and an erased model; labs and tests are composition roots that pass those values in; eval is just another client of the native command API.
+One breath: engine code talks to capabilities; Wasm satisfies them with components; native satisfies them with a validated catalog and an erased model; labs and tests are composition roots that pass those values in; eval is just another client of the native command API.
 
 Dependency direction in the Specify workspace:
 
@@ -163,8 +163,8 @@ native ──✗──► mock
 native ──✗──► specify-adapters
 native ──✗──► Cursor / omnia-cursor
 
-workflow-core production dependencies ──✗──► native / eval / mock / lab
-workflow-core dev-dependencies ────────────► native + mock where integration suites need them
+engine-core production dependencies ──✗──► native / eval / mock / lab
+engine-core dev-dependencies ────────────► native + mock where integration suites need them
 ```
 
 ### Crate names and ownership
@@ -207,7 +207,7 @@ mock catalog ─► Specify lab             concrete first-party adapters
 The Specify `checks` package enforces dependency direction by parsing Cargo manifests:
 
 - `error`, `diagnostics`, `artifacts`, `adapter`, `project`, `slice`, `change`, and `transport` reject `native`, `eval`, `mock`, `lab`, and the removed `harness` in production and build dependencies;
-- explicit dev-dependencies on `native` and `mock` remain legal for workflow integration suites;
+- explicit dev-dependencies on `native` and `mock` remain legal for engine integration suites;
 - `native` rejects `mock`, `eval`, `lab`, Cursor crates, and concrete adapter crates in production dependencies;
 - `eval` depends on `native` plus deployment-neutral artifact/project types needed for grading, and rejects `mock`, `lab`, `change`, Cursor integration, and concrete adapter crates.
 
@@ -230,7 +230,7 @@ Workflow semantics remain unchanged:
 - `transport` assembles typed command and HTTP routers;
 - the adapter SDK owns `adapter::Source` and `adapter::Target`.
 
-The workflow core does not know whether model, source-adapter, target-adapter, or ensure/resolution capabilities are satisfied by WIT imports, native Rust implementations, scripted doubles, or a live backend.
+The engine core does not know whether model, source-adapter, target-adapter, or ensure/resolution capabilities are satisfied by WIT imports, native Rust implementations, scripted doubles, or a live backend.
 
 ### Adapter identity
 
@@ -278,7 +278,7 @@ The selector preserves:
 
 Parsing is syntactic. Local-file existence, canonicalization, and component validation remain ensure concerns, so a persisted local selector can still resolve through its project cache after the operator's original input file is removed. GitHub source URLs remain unsupported and fail during selector parsing rather than falling through as component paths.
 
-`AdapterRef` is deleted rather than retained as a second lossy view. Persisted target values parse directly to `AdapterSelector`; successful ensure returns the existing `ResolvedSource` / `ResolvedTarget` shapes with the globally unique `(name, version)` workflow identity plus opaque origin/provenance.
+`AdapterRef` is deleted rather than retained as a second lossy view. Persisted target values parse directly to `AdapterSelector`; successful ensure returns the existing `ResolvedSource` / `ResolvedTarget` shapes with the globally unique `(name, version)` engine identity plus opaque origin/provenance.
 
 ### Ensure (on `Resolver`, replaces `Hydrator`)
 
@@ -308,7 +308,7 @@ Init, upgrade, and plan differences stay in handlers (`if upgrade { … }`); the
 - The **Wasm** `ensure_*` owns today's package fetch, store write, digest sidecar, verify-after-write, local component mirror, and development-probe policy. Deterministic fetch/store kernels remain in `project`; only the unconditional byte-oriented `Hydrator::fetch` entry path is removed.
 - The **native** `ensure_*` performs no component I/O:
   - bare selector: match by name on the requested axis; persist the bare name as typed;
-  - exact package selector: succeed only when `(name, version)` equals the compiled catalog entry (namespace may be checked against the expected first-party namespace, but is not part of workflow identity);
+  - exact package selector: succeed only when `(name, version)` equals the compiled catalog entry (namespace may be checked against the expected first-party namespace, but is not part of engine identity);
   - version mismatch or absent entry: `adapter-not-linked`, including requested and available identities;
   - component selector: `adapter-not-linked`, stating that native execution does not load the supplied component.
 
@@ -366,14 +366,14 @@ The type lives in `project::handler` beside `Anchor`, exposes read-only accessor
 
 ## The `native` package
 
-`native` is the reusable native host used by workflow tests, repository labs, and (later) any product binary that supplies its own catalog.
+`native` is the reusable native host used by engine tests, repository labs, and (later) any product binary that supplies its own catalog.
 
 It owns:
 
 - validated `Catalog` and typed source/target registration;
 - `DynModel`;
-- `Provider`, implementing project anchoring, ensure/resolve, model, workflow source, and workflow target capabilities;
-- adapter-SDK to workflow-seam conversion;
+- `Provider`, implementing project anchoring, ensure/resolve, model, engine source, and engine target capabilities;
+- adapter-SDK to engine-seam conversion;
 - asynchronous command-router execution over caller-supplied values;
 - native reference routing and listener lifecycle.
 
@@ -717,7 +717,7 @@ No native test claims Wasm coverage. Existing component gates remain:
 
 - adapter crate tests;
 - the Specify mock wasm example;
-- the first-party wasm example over the published core component.
+- the first-party wasm example over the published engine component.
 
 ## Module migration
 
@@ -725,7 +725,7 @@ No native test claims Wasm coverage. Existing component gates remain:
 | --- | --- | --- |
 | `catalog.rs` | `crates/native/src/catalog.rs` | identity-aware builder at `DynModel`; `Binding` and `adapters!` deleted |
 | — | `crates/native/src/model.rs` | `DynModel` and private erased-model trait |
-| `convert.rs` | `crates/native/src/convert.rs` | private SDK/workflow DTO mapping |
+| `convert.rs` | `crates/native/src/convert.rs` | private SDK/engine DTO mapping |
 | `provider.rs` | `crates/native/src/provider.rs` | non-generic provider; `ReferenceMode`; no model accessor |
 | `command.rs` | `crates/native/src/command.rs` | async `execute` / `run`; no runtime or lab argv parsing |
 | `mcp.rs` | `crates/native/src/references.rs` | router plus owned lazy `ReferenceHost` |
@@ -859,7 +859,7 @@ Depends on Stage 1's `AdapterSelector` and `ensure_*`. Does not block Stage 2.
 4. Implement native ensure over exact catalog identities; catalog validation is per-axis only; bare selectors persist as bare.
 5. Make command execution asynchronous and value-consuming; composition roots own Tokio.
 6. Add owned lazy reference hosting with `ReferenceMode`, explicit failure projection, and awaited shutdown.
-7. Retarget `mock` and workflow suites from `harness` to `native`.
+7. Retarget `mock` and engine suites from `harness` to `native`.
 8. Move native host tests and replace `Provider::model()` call sites with caller-held recording/telemetry handles.
 9. Leave Cursor bridge code in the temporary harness/lab path until Stage 3; do not import it into `native`.
 
@@ -886,7 +886,7 @@ Update both repositories' `AGENTS.md`, adapter `TESTING.md`, Specify testing/arc
 
 Document:
 
-- workflow core with Wasm provider and native host;
+- engine core with Wasm provider and native host;
 - native exact-pin matching and component-selector refusal;
 - native adapters as trusted in-process code;
 - lab/eval as unpublished tooling;
@@ -928,7 +928,7 @@ Live-model and composed wasm-run commands remain operator-invoked when credentia
 
 ## Acceptance criteria
 
-1. Documentation presents Specify's workflow core with a Wasm provider and a native host, without claiming native component/WIT/store properties.
+1. Documentation presents Specify's engine core with a Wasm provider and a native host, without claiming native component/WIT/store properties.
 2. `adapter::Source` and `adapter::Target` expose validated static `AdapterIdentity { name, version }` while retaining generic associated operation methods.
 3. `AdapterSelector` preserves bare, package, and component input kinds through ensure; the lossy `AdapterRef` no longer exists.
 4. `Hydrator` is gone; `Resolver::ensure_source` / `ensure_target` own deployment policy. There is no `AdapterDeployment` trait.
@@ -946,11 +946,11 @@ Live-model and composed wasm-run commands remain operator-invoked when credentia
 16. Online providers fail loudly when reference documents cannot be served, no-op for no-doc catalogs, share one listener across clones, and expose an awaited shutdown path used by command execution.
 17. `eval` receives workspace root, catalog, and model factory values, constructs neither concrete adapters nor Cursor backends, and creates no runtime.
 18. Scenario reports derive the effective model from observed requests plus the factory-supplied default.
-19. Specify workflow integration tests use offline `native` plus mock adapters and caller-held recording-model handles.
+19. Specify engine integration tests use offline `native` plus mock adapters and caller-held recording-model handles.
 20. The adapter repository's lab owns first-party `catalog()`; this RFC adds no `composition` package.
 21. Both labs remain unpublished and are never documented as install paths.
 22. `cargo make specify`, `cargo make eval`, and prompt scenarios preserve their lab behavior.
-23. The Wasm workflow guest, component manifests, shipped Wasm runtime behavior, and current Wasm release surface remain intact.
+23. The Wasm engine guest, component manifests, shipped Wasm runtime behavior, and current Wasm release surface remain intact.
 24. Native tests explicitly avoid claiming component ABI, WIT, isolation, digest, or adapter-store coverage.
 25. The native command path is documented as single-flight; eval guards its persistent sandbox against concurrent writers.
 26. Specify and adapter-repository checks enforce their respective dependency and catalog boundaries.
@@ -1123,7 +1123,7 @@ Rejected. It evolves atomically with workflow, transport, and adapter SDK contra
 
 ## Consequences
 
-- Specify has one workflow core with a Wasm provider and a native host.
+- Specify has one engine core with a Wasm provider and a native host.
 - `native` is a reusable host library; `eval` and `lab` are lab-only; Cursor stays at composition roots.
 - Composition is value-level end to end: catalog, model, execution paths, and argv.
 - Adapter selectors retain their input kind; `Resolver::ensure_*` is the deployment policy entry.

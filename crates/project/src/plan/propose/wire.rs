@@ -60,10 +60,13 @@ pub struct ProjectRef {
     /// Project name — the value the kernel writes to
     /// `plan.yaml.slices[].project`.
     pub name: String,
-    /// The project's target adapter in `name@vN` form (e.g.
-    /// `omnia@1.0.0`). Resolved on demand by [`super::resolve_target`] for a
-    /// slice bound to this project; it is not written to
-    /// `plan.yaml` (a slice stores only its `project`).
+    /// The project's target adapter ref in the
+    /// `registry::topology::target_ref` grammar: `name@vN` for a
+    /// pinned identity (e.g. `omnia@1.0.0`), bare `name` for an
+    /// unpinned cache resolve. Resolved on demand by
+    /// [`super::resolve_target`] for a slice bound to this project; it
+    /// is not written to `plan.yaml` (a slice stores only its
+    /// `project`).
     pub target: String,
     /// Single-sentence domain characterisation used by the agent when
     /// more than one project shares a target. Absent stays off the wire.

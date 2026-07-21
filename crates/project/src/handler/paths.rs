@@ -1,43 +1,51 @@
-//! [`ExecutionPaths`] — the provider-carried project root and cache
-//! placement.
+//! [`ExecutionPaths`] — the provider-carried project root plus
+//! artifact [`Locations`].
 //!
-//! Cache placement is deployment configuration, not process state:
-//! rather than mutating `SPECIFY_PROJECT_CACHE` at runtime, a
-//! composition root constructs the paths value once and the provider
-//! carries it. [`ExecutionPaths::operator`] inherits the process-start
-//! cache configuration (the environment lookup happens at cache
-//! resolution); [`ExecutionPaths::isolated`] pins an explicit cache
-//! parent for sandboxed sessions.
+//! Layout is deployment configuration, not process state: a
+//! composition root constructs the paths value once — capturing any
+//! `SPECIFY_HOME` relocation at that single point — and the provider
+//! carries it. Kernels, resolvers, and handlers read the carried value
+//! and never consult the environment themselves.
 
 use std::path::{Path, PathBuf};
 
-/// Project root plus optional explicit cache parent.
+use super::locations::Locations;
+
+/// Project root plus the carried artifact locations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExecutionPaths {
     project_root: PathBuf,
-    cache_parent: Option<PathBuf>,
+    locations: Locations,
 }
 
 impl ExecutionPaths {
-    /// Operator paths: anchor at `project_root` and inherit the
-    /// process-start cache configuration (`SPECIFY_PROJECT_CACHE`,
-    /// XDG/HOME fallbacks) at cache-resolution time.
+    /// The explicit core constructor: anchor at `project_root` with
+    /// the given artifact locations. Sandboxed sessions and tests pass
+    /// [`Locations::explicit`]; the launcher passes the one
+    /// [`Locations`] its invocation captured.
     #[must_use]
-    pub fn operator(project_root: impl Into<PathBuf>) -> Self {
+    pub fn new(project_root: impl Into<PathBuf>, locations: Locations) -> Self {
         Self {
             project_root: project_root.into(),
-            cache_parent: None,
+            locations,
         }
     }
 
-    /// Isolated paths: anchor at `project_root` with per-project cache
-    /// directories created beneath the explicit `cache_parent`.
+    /// Operator paths: anchor at `project_root` and capture the
+    /// process environment's layout ([`Locations::from_env`]) once,
+    /// here. Composition-root only.
+    #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
-    pub fn isolated(project_root: impl Into<PathBuf>, cache_parent: impl Into<PathBuf>) -> Self {
-        Self {
-            project_root: project_root.into(),
-            cache_parent: Some(cache_parent.into()),
-        }
+    pub fn operator(project_root: impl Into<PathBuf>) -> Self {
+        Self::new(project_root, Locations::from_env())
+    }
+
+    /// The engine guest's paths: the project-root mount preopen at
+    /// `.` with the guest's store and cache preopens as the carried
+    /// locations ([`Locations::guest`]).
+    #[must_use]
+    pub fn guest() -> Self {
+        Self::new(".", Locations::guest())
     }
 
     /// Directory the project-root walk starts from.
@@ -46,27 +54,29 @@ impl ExecutionPaths {
         &self.project_root
     }
 
-    /// Explicit cache parent, when isolated.
+    /// The carried artifact locations.
     #[must_use]
-    pub fn cache_parent(&self) -> Option<&Path> {
-        self.cache_parent.as_deref()
+    pub const fn locations(&self) -> &Locations {
+        &self.locations
     }
 
-    /// The same cache placement re-anchored at `project_root` — for
-    /// call sites that resolve a different project directory (the
+    /// The same locations re-anchored at `project_root` — for call
+    /// sites that resolve a different project directory (the
     /// discovered `.specify/` root, a workspace slot) under the
-    /// provider's cache configuration.
+    /// provider's layout. A host cache parent derives the new
+    /// project's digest-keyed directory; a guest per-project cache
+    /// root stays the one mounted preopen.
     #[must_use]
     pub fn with_root(&self, project_root: impl Into<PathBuf>) -> Self {
         Self {
             project_root: project_root.into(),
-            cache_parent: self.cache_parent.clone(),
+            locations: self.locations.clone(),
         }
     }
 
     /// The per-project derived cache directory for this value's root.
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
-        diagnostics::cache::project_cache_dir_under(self.cache_parent(), &self.project_root)
+        self.locations.project_cache_dir(&self.project_root)
     }
 }

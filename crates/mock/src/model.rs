@@ -1,5 +1,5 @@
 //! Request-recording [`Harness`] model double and [`mcp_grants`],
-//! shared by the adapter SDK and workflow suites — local copies
+//! shared by the adapter SDK and engine suites — local copies
 //! pending their move upstream to `omnia_testkit::model`.
 
 use std::sync::{Arc, Mutex, MutexGuard};

@@ -6,7 +6,7 @@ argument-hint: "[slice-name]"
 
 # Refine Skill
 
-The workflow guest owns the whole refine flow — slice create (re-entry safe), the serial per-binding extract fan-out, the synthesis judgment leg, the persist tail, validation, and the `refined` transition. This skill only resolves the slice name, invokes the verb, and relays its output.
+The engine guest owns the whole refine flow — slice create (re-entry safe), the serial per-binding extract fan-out, the synthesis judgment leg, the persist tail, validation, and the `refined` transition. This skill only resolves the slice name, invokes the verb, and relays its output.
 
 ## Invocation
 

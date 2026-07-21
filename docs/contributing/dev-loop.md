@@ -9,7 +9,7 @@ cargo make eval                              # run the live prompt-evaluation ru
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest --workspace` over the workspace crates (including `mock`, `native`, and `checks`). The workflow suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `native` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest --workspace` over the workspace crates (including `mock`, `native`, and `checks`). The engine suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `native` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
@@ -23,7 +23,7 @@ Live runs are always explicit, never a side effect. The documented cadence: befo
 
 ## The WASM seam
 
-There is no automated WASM boundary rung. The component seam — the per-axis mock components loading through the checked-in `omnia.toml`, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/wasm/README.md`](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
+There is no automated WASM boundary rung. The component seam — the per-axis mock components enumerated by the launcher's derived deployment, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/wasm/README.md`](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## What CI runs
 

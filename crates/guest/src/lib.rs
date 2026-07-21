@@ -1,4 +1,4 @@
-//! The specify workflow guest, as a library.
+//! The specify engine guest, as a library.
 //!
 //! One `wit_bindgen::generate!` over the `workflow` world (the
 //! `source` / `target` imports Omnia satisfies by host-mediated
@@ -30,7 +30,7 @@ pub use provider::Provider;
 /// Re-exported for the [`export!`] macro expansion.
 pub use {omnia_guest, transport, wasip3};
 
-/// Export the workflow guest from the invoking cdylib.
+/// Export the engine guest from the invoking cdylib.
 ///
 /// Expands the deployment's only `wasi:cli/run` exporter plus the
 /// `wasi:http/incoming-handler` service, both routing through the

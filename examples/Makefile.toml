@@ -1,30 +1,44 @@
-
 [tasks.wasm-clean]
 script = "rm -rf sandbox/wasm"
 
+# Build the engine guest, the example adapter components, and the
+# native binary. Local iteration seeds the guest into the sandboxed
+# store (see wasm-run) — the same shape registry hydration leaves.
 [tasks.wasm-build]
 script = '''
 cargo build -p specify --lib --examples --target wasm32-wasip2
+cargo build -p specify --bin specify
 '''
 
 [tasks.wasm-run]
 dependencies = ["wasm-clean", "wasm-build"]
 env_files = [".env"]
+script_runner = "bash"
 script = '''
+set -eo pipefail
 export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
+export SPECIFY_HOME="$PWD/sandbox/wasm"
 
-mkdir -p sandbox/wasm/{workspace,cache,store}
-cp target/wasm32-wasip2/debug/examples/mock_target.wasm sandbox/wasm/workspace/mock.wasm
+# Execute commands in the project directory, not the repository root.
+TARGET="$PWD/target"
+run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
 
-run() {
-  cargo run -p specify -- run --config examples/wasm/omnia.toml -- "$@"
-}
+mkdir -p "$SPECIFY_HOME/project" "$SPECIFY_HOME/store"
 
-# Initialize workspace
-run init ./mock.wasm --name change
+# Seed the locally-built engine into the store (entry + digest sidecar).
+ENGINE="$TARGET/wasm32-wasip2/debug/specify.wasm"
+VERSION=$(cargo pkgid -p specify | sed 's/.*#//')
+
+cp "$ENGINE" "$SPECIFY_HOME/store/engine@${VERSION}.wasm"
+HEX=$(openssl dgst -sha256 -r "$ENGINE" | awk '{print $1}')
+printf 'tree_digest: sha256:%s\n' "$HEX" > "$SPECIFY_HOME/store/engine@${VERSION}.meta"
+
+# Initialise with the mock target; seed the source into the project cache.
+run init "$TARGET/wasm32-wasip2/debug/examples/mock.wasm" --name change
+run adapter add "$TARGET/wasm32-wasip2/debug/examples/mock_source.wasm"
 
 # Author, transition, and execute a plan
-run plan author change --source main="mock:value:The greeting service."
+run plan author change --source main="mock-source:value:The greeting service."
 run plan transition change approved
 run plan execute
 '''

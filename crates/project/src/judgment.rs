@@ -1,4 +1,4 @@
-//! The workflow guests' judgment kernel.
+//! The engine guests' judgment kernel.
 //!
 //! Each leg is one schema-gated [`Model::create`] bracketed by
 //! deterministic tails (typed serde parse, projection kernel) inside a
@@ -84,7 +84,7 @@ async fn create<P: Model>(
         .map_err(|err| model_error(schema_name, &err))
 }
 
-/// Map a typed model failure onto the workflow error currency. One code
+/// Map a typed model failure onto the engine error currency. One code
 /// covers every variant — the variant detail rides in the message and
 /// no caller recovers differently per variant.
 fn model_error(schema_name: &str, err: &omnia_guest::model::Error) -> Error {
@@ -95,7 +95,7 @@ fn model_error(schema_name: &str, err: &omnia_guest::model::Error) -> Error {
 }
 
 /// Serialise a prompt payload as pretty JSON, mapping the (practically
-/// impossible) serialisation failure onto the workflow error currency.
+/// impossible) serialisation failure onto the engine error currency.
 ///
 /// # Errors
 ///

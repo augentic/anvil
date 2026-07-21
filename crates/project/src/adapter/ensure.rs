@@ -10,7 +10,7 @@
 //! the project component cache
 //! (`<project-cache>/components/<name>.wasm`) with provenance stamped
 //! in [`ComponentMeta`]. A bare selector provisions nothing — the
-//! resolver locates the development artifact live.
+//! resolver locates the already-seeded cache entry live.
 //!
 //! Everything here is deterministic; only the byte transport is
 //! deployment-specific, so the kernels take `fetch` as a caller
@@ -27,10 +27,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 
 use artifacts::atomic::bytes_write;
-use diagnostics::cache::{
-    adapter_store_entry, adapter_store_root, file_content_digest, verify_store_entry,
-    write_store_meta,
-};
+use diagnostics::cache::{file_content_digest, verify_store_entry, write_store_meta};
 use error::Error;
 use serde::{Deserialize, Serialize};
 
@@ -84,7 +81,17 @@ where
 /// Make one selector resolvable: install a missing package pin into
 /// the global store, mirror a local component into the project cache,
 /// or nothing for a bare development name.
-async fn provision<F, Fut>(
+///
+/// The resolve-free provisioning kernel shared by the guest provider's
+/// `ensure_*` legs (via [`source`] / [`target`]) and the deployment
+/// launcher's pre-run closure hydration, which locates paths itself
+/// instead of resolving metadata.
+///
+/// # Errors
+///
+/// `adapter-hydrate-failed`, `adapter-digest-mismatch`,
+/// `adapter-component-missing`, or `adapter-canonicalize-failed`.
+pub async fn provision<F, Fut>(
     selector: &AdapterSelector, paths: &ExecutionPaths, now: jiff::Timestamp, fetch: F,
 ) -> Result<(), Error>
 where
@@ -97,8 +104,8 @@ where
             namespace,
             name,
             version,
-        } => hydrate(paths.project_root(), namespace, name, version, fetch).await,
-        AdapterSelector::Component { path } => mirror(selector, path, paths, now),
+        } => hydrate(paths, namespace, name, version, fetch).await,
+        AdapterSelector::Component { path } => mirror(path, paths, now),
     }
 }
 
@@ -106,36 +113,35 @@ where
 /// is missing: fetch, write the entry, write the digest sidecar, then
 /// verify-after-write. A present entry is a no-op.
 async fn hydrate<F, Fut>(
-    project_dir: &Path, namespace: &str, name: &str, version: &semver::Version, fetch: F,
+    paths: &ExecutionPaths, namespace: &str, name: &str, version: &semver::Version, fetch: F,
 ) -> Result<(), Error>
 where
     F: Fn(String) -> Fut,
     Fut: Future<Output = Result<Vec<u8>, Error>>,
 {
     let version = version.to_string();
-    let entry = adapter_store_entry(name, &version);
+    let entry = paths.locations().store_entry(name, &version);
     if entry.is_file() {
         return Ok(());
     }
 
-    let url = package_url(project_dir, namespace, name, &version);
+    let url = package_url(paths.project_root(), namespace, name, &version);
     let bytes = fetch(url.clone()).await.map_err(|err| Error::Diag {
         code: "adapter-hydrate-failed",
         detail: format!("failed to hydrate `{namespace}:{name}@{version}` from {url}: {err}"),
     })?;
 
-    fs::create_dir_all(adapter_store_root())?;
+    fs::create_dir_all(paths.locations().store_root())?;
     bytes_write(&entry, &bytes)?;
     let digest = file_content_digest(&entry);
-    write_store_meta(name, &version, &digest, None)?;
-    verify_store_entry(name, &version).map_err(|mismatch| Error::Diag {
-        code: "adapter-digest-mismatch",
-        detail: format!(
-            "store entry {} failed verify-after-write: recorded {} but read back {}",
-            entry.display(),
-            mismatch.recorded,
-            mismatch.actual
-        ),
+    let meta = paths.locations().store_meta(name, &version);
+    write_store_meta(&meta, &digest, None)?;
+    verify_store_entry(&entry, &meta).map_err(|mismatch| {
+        super::resolver::digest_mismatch(
+            &format!("store entry {}", entry.display()),
+            "verify-after-write",
+            &mismatch,
+        )
     })?;
     Ok(())
 }
@@ -143,21 +149,64 @@ where
 /// Mirror an operator-supplied local component into the project
 /// component cache — the project-local leg the bare/component resolver
 /// probes first — stamping provenance in [`ComponentMeta`].
-fn mirror(
-    selector: &AdapterSelector, path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp,
-) -> Result<(), Error> {
+///
+/// Carries the persisted-mirror fallback: a component selector stays
+/// resolvable after the operator's original file is removed, because
+/// the earlier mirror in the project component cache satisfies
+/// re-ensure. The explicit [`seed`] verb has no such fallback — a
+/// missing path there is an operator mistake to surface, not a
+/// re-ensure to satisfy.
+fn mirror(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<(), Error> {
     let absolute =
         if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
-    // A persisted component selector stays resolvable after the
-    // operator's original file is removed: the earlier mirror in the
-    // project component cache satisfies re-ensure.
     if !absolute.is_file()
-        && selector::name_from_component(path)
-            .is_ok_and(|name| component_cache_entry(paths, &name).is_file())
+        && let Ok(name) = selector::name_from_component(path)
+        && component_cache_entry(paths, &name).is_file()
     {
         return Ok(());
     }
-    ensure_component_file(&absolute, &selector.wire_value())?;
+    seed(path, paths, now).map(drop)
+}
+
+/// The seeded identity one [`seed`] produced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Seeded {
+    /// Kebab-case adapter name derived from the component filename.
+    pub name: String,
+    /// The mirrored project component cache entry.
+    pub entry: PathBuf,
+    /// The canonical operator-supplied component the entry mirrors.
+    pub source: PathBuf,
+}
+
+/// Seed one operator-supplied `.wasm` component into the project
+/// component cache.
+///
+/// Canonicalizes, derives the kebab name from the filename, copies to
+/// `<project-cache>/components/<name>.wasm`, and stamps per-component
+/// provenance ([`ComponentMeta`]). Re-seeding the same name replaces
+/// the entry and its sidecar — the explicit operator command is the
+/// approval act.
+///
+/// Axis-neutral by design: adapter names are unique across axes, so
+/// the binding that later resolves the bare name supplies the expected
+/// axis; a wrong-world component fails at the dispatch/metadata gate,
+/// not during seeding. Relative `path`s anchor at the carried project
+/// root. The shared mirror kernel behind the component-selector ensure
+/// leg (`mirror`, which adds the persisted-mirror fallback) and
+/// `specify adapter add` (strict: a missing path fails even when the
+/// derived name is already cached — a stale entry must not mask a
+/// typo).
+///
+/// # Errors
+///
+/// `adapter-component-missing` when `path` is not a `.wasm` file,
+/// `adapter-canonicalize-failed` when it cannot be canonicalized, and
+/// I/O failures from the copy or provenance write.
+pub fn seed(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<Seeded, Error> {
+    let absolute =
+        if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
+    ensure_component_file(&absolute, &path.display().to_string())?;
     let canonical = canonicalize_component(path, paths.project_root())?;
     let name = selector::name_from_component(&canonical)?;
 
@@ -172,8 +221,12 @@ fn mirror(
         fetched_at: now.strftime("%Y-%m-%dT%H:%M:%SZ").to_string(),
     };
     let serialised = serde_saphyr::to_string(&meta)?;
-    fs::write(ComponentMeta::path(paths), serialised)?;
-    Ok(())
+    fs::write(ComponentMeta::path(paths, &name), serialised)?;
+    Ok(Seeded {
+        name,
+        entry,
+        source: canonical,
+    })
 }
 
 fn ensure_component_file(path: &Path, original: &str) -> Result<(), Error> {
@@ -190,9 +243,12 @@ fn ensure_component_file(path: &Path, original: &str) -> Result<(), Error> {
     })
 }
 
-/// Provenance for the mirrored component under
-/// `<project-cache>/components/`: the cache tenant carries its own
-/// metadata inside its own tree.
+/// Per-component provenance for a mirrored entry under
+/// `<project-cache>/components/`.
+///
+/// The cache tenant carries its own metadata inside its own tree, one
+/// sidecar per component so two seeded adapters never clobber each
+/// other's provenance.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ComponentMeta {
     /// The adapter source value (a `file://` component URI) the
@@ -203,11 +259,25 @@ pub struct ComponentMeta {
 }
 
 impl ComponentMeta {
-    /// Absolute path to `component-meta.yaml` inside the out-of-tree
+    /// Absolute path to the `<name>.meta.yaml` provenance sidecar
+    /// beside the mirrored `<name>.wasm` entry inside the out-of-tree
     /// `<project-cache>/components/` tenant.
     #[must_use]
-    pub fn path(paths: &ExecutionPaths) -> PathBuf {
-        paths.cache_dir().join("components").join("component-meta.yaml")
+    pub fn path(paths: &ExecutionPaths, name: &str) -> PathBuf {
+        paths.cache_dir().join("components").join(format!("{name}.meta.yaml"))
+    }
+
+    /// Load the provenance sidecar for `name`, when present and
+    /// parseable. The recorded `source` is the canonical `file://`
+    /// URI of the component the mirror was seeded from — the value
+    /// init persists on `project.yaml.adapter` for a component
+    /// selector, so a guest that cannot see the operator's host path
+    /// (the launcher mirrored it before the runtime started) still
+    /// records the host-canonical binding.
+    #[must_use]
+    pub fn load(paths: &ExecutionPaths, name: &str) -> Option<Self> {
+        let raw = fs::read_to_string(Self::path(paths, name)).ok()?;
+        serde_saphyr::from_str(&raw).ok()
     }
 }
 

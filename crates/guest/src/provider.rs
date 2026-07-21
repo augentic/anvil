@@ -1,6 +1,6 @@
 //! WIT-backed capabilities used by workflow orchestrators.
 //!
-//! Mappings live here so workflow code remains wasm-free. Claims map
+//! Mappings live here so engine code remains wasm-free. Claims map
 //! onto the typed [`artifacts::evidence::Claim`], whose flattened
 //! extras preserve open per-kind fields. Compact build reports are
 //! widened with caller-owned envelope fields before validation.
@@ -27,10 +27,11 @@ use crate::bindings::specify::adapter::{source, target, types};
 #[derive(Clone, Copy, Debug)]
 pub struct Provider;
 
-/// The guest's execution paths: the project-root mount preopen, with
-/// cache placement resolved by the wasm32 [`diagnostics::cache`]
-/// mounts (no explicit cache parent).
-static PATHS: LazyLock<ExecutionPaths> = LazyLock::new(|| ExecutionPaths::operator("."));
+/// The guest's execution paths: the project-root mount preopen at
+/// `.` with the store and cache preopens the deployment manifest
+/// grants as the carried locations — no environment reads and no
+/// project-id keying in-guest.
+static PATHS: LazyLock<ExecutionPaths> = LazyLock::new(ExecutionPaths::guest);
 
 impl omnia_guest::Model for Provider {}
 

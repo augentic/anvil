@@ -5,7 +5,7 @@ name: Release binaries
 # the GitHub Release (curated notes) and this workflow attaches the
 # built binary archives to it. The Cargo workspace lives at the repo root.
 #
-# The wasm-shaped artifacts (the core guest `specify:core@<version>` and
+# The wasm-shaped artifacts (the engine guest `specify:engine@<version>` and
 # the WIT contract `specify:adapter@<wit version>`) are published
 # manually with `wkg publish` — see docs/release.md and wit/README.md.
 

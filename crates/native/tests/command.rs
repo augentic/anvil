@@ -3,9 +3,17 @@
 use std::fs;
 use std::path::PathBuf;
 
-use native::{Catalog, DynModel, ExecutionPaths};
+use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use omnia_testkit::model::Scripted;
 use tempfile::TempDir;
+
+// Explicit tempdir-rooted layout: hermetic carried locations, no
+// environment reads.
+fn paths(root: &std::path::Path) -> ExecutionPaths {
+    let locations =
+        Locations::explicit(root.join("store"), CachePlacement::Parent(root.join("project-cache")));
+    ExecutionPaths::new(root, locations)
+}
 
 fn catalog() -> Catalog {
     Catalog::builder().build().expect("empty catalog")
@@ -35,7 +43,7 @@ fn argv(args: &[&str]) -> Vec<String> {
 #[tokio::test]
 async fn executes_a_verb() {
     let (_tmp, root) = project();
-    let paths = ExecutionPaths::operator(&root);
+    let paths = paths(&root);
     let response = native::command::execute(
         paths,
         model(),
@@ -51,7 +59,7 @@ async fn executes_a_verb() {
 #[tokio::test]
 async fn failure_is_a_typed_response() {
     let (_tmp, root) = project();
-    let paths = ExecutionPaths::operator(&root);
+    let paths = paths(&root);
     // An unknown verb is a buffered response, not a library error.
     let response = native::command::execute(paths, model(), catalog(), argv(&["no-such-verb"]))
         .await

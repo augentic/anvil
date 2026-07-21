@@ -13,14 +13,16 @@ use project::handler::{Anchor, Render};
 use project::seam::{Source, Target};
 use serde::Serialize;
 
-pub use self::output::Format;
 use self::output::{ErrorBody, Exit, emit, write_error_text};
+pub use self::output::{Format, render_failure, render_success};
 
+mod adapter;
 mod archive;
 mod journal;
 mod output;
 mod plan;
 mod registry;
+pub mod selectors;
 mod slice;
 mod source;
 mod target;
@@ -76,12 +78,16 @@ impl NamespaceHelp {
 
 const NAMESPACE_HELP: &[NamespaceHelp] = &[
     NamespaceHelp::new(
+        &["adapter"],
+        "Adapter component cache operations. `add` seeds a local `.wasm` component into the project component cache — pre-init, axis-neutral — so bare bindings (project target, plan sources) resolve it",
+    ),
+    NamespaceHelp::new(
         &["source"],
-        "Source adapter operations (workflow contract) — debug/breakout surface; `plan author` and `slice refine` run these steps themselves. Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the development release build for bare names",
+        "Source adapter operations (workflow contract) — debug/breakout surface; `plan author` and `slice refine` run these steps themselves. Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
     ),
     NamespaceHelp::new(
         &["target"],
-        "Target adapter operations (workflow contract) — debug/breakout surface; the build and merge orchestrations resolve targets themselves. Target adapters provide `guidance` + `build` + `merge` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the development release build for bare names",
+        "Target adapter operations (workflow contract) — debug/breakout surface; the build and merge orchestrations resolve targets themselves. Target adapters provide `guidance` + `build` + `merge` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
     ),
     NamespaceHelp::new(
         &["slice"],
@@ -145,12 +151,11 @@ fn error_response(format: Format, error: &error::Error) -> Result<CommandRespons
     Ok(CommandResponse::failure(stderr, Exit::from(error).code()))
 }
 
-/// [`error_response`] with rendering failures collapsed onto a plain
-/// exit-1 line — the terminal fallback when the envelope itself cannot
-/// be produced.
+/// [`render_failure`] mapped onto a `CommandResponse` — the terminal
+/// fallback (a plain exit-1 line) lives in one place.
 fn failure_response(format: Format, error: &error::Error) -> CommandResponse {
-    error_response(format, error)
-        .unwrap_or_else(|fallback| CommandResponse::failure(format!("error: {fallback}\n"), 1))
+    let (stderr, code) = render_failure(format, error);
+    CommandResponse::failure(stderr, code)
 }
 
 fn operation_response(
@@ -214,25 +219,32 @@ where
         "Initialize .specify/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path) for a regular project, or `--workspace` for a registry-only workspace. The two are mutually exclusive — clap enforces the conflict and exits `2` with its standard parse-error diagnostic. A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `specify init --upgrade`."
     );
     route!(
+        ["adapter", "add"],
+        adapter::AddArgs,
+        project::adapter::handlers::AdapterAdd,
+        "Seed a local `.wasm` component into the project component cache",
+        "Seed a local `.wasm` component into the project component cache.\n\nMirrors the component to `<project-cache>/components/<name>.wasm` (the kebab name derives from the filename) and stamps a per-component provenance sidecar. Pre-init and axis-neutral: `.specify/` need not exist and the component's exports are not inspected — the bare binding that later resolves the name (project target or plan source) supplies the expected axis. Re-seeding the same name replaces the entry; the explicit command is the approval act."
+    );
+    route!(
         ["source", "resolve"],
         source::ResolveArgs,
         project::adapter::handlers::SourceResolve,
         "Resolve a source adapter by kebab name",
-        "Resolve a source adapter by kebab name.\n\nResolves the single `.wasm` component: the global store entry for a pinned identity, else the project component cache / development release build for a bare name. Emits the resolved component path plus the axis's closed operation set."
+        "Resolve a source adapter by kebab name.\n\nResolves the single `.wasm` component: the global store entry for a pinned identity, else the seeded project component cache for a bare name. Emits the resolved component path plus the axis's closed operation set."
     );
     route!(
         ["source", "survey"],
         source::SurveyArgs,
         ::change::source::Survey,
         "Run a source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md`",
-        "Run a source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the workflow guest — one call covering the source dispatch, `leads.md` validation, and the `discovery.md` merge."
+        "Run a source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, `leads.md` validation, and the `discovery.md` merge."
     );
     route!(
         ["source", "extract"],
         source::ExtractArgs,
         ::slice::source::Extract,
         "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.specify/slices/<slice>/evidence/<source>.yaml`",
-        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.specify/slices/<slice>/evidence/<source>.yaml`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the workflow guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
+        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.specify/slices/<slice>/evidence/<source>.yaml`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
     );
     route!(
         ["target", "resolve"],
@@ -268,15 +280,15 @@ where
         ["slice", "refine"],
         slice::RefineArgs,
         ::slice::handlers::Refine,
-        "Refine one named plan entry's slice to `refined` in the workflow guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop",
-        "Refine one named plan entry's slice to `refined` in the workflow guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop.\n\nActs on the named slice directly against a `pending` or `in-progress` plan entry (the standalone `slice build <name>` posture); never advances per-entry status, and refuses a `done` entry.\n\nGuest-only. The native binary refuses this verb — natively the phase is driven by the `/spec:refine` skill."
+        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop",
+        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop.\n\nActs on the named slice directly against a `pending` or `in-progress` plan entry (the standalone `slice build <name>` posture); never advances per-entry status, and refuses a `done` entry.\n\nGuest-only. The native binary refuses this verb — natively the phase is driven by the `/spec:refine` skill."
     );
     route!(
         ["slice", "build"],
         slice::BuildArgs,
         ::slice::handlers::Build,
         "Build a slice through its bound target adapter's `build` operation and gate the `built` transition",
-        "Build a slice through its bound target adapter's `build` operation and gate the `built` transition.\n\nResolves the target from the slice's `metadata.yaml`, then drives the collapsed build orchestration in the workflow guest: request assembly and schema gate, the target-seam dispatch, the report gates (`target-build-*` aborts), the `slice.build.*` events, and the `Refined → Built` transition. The target guest owns only code generation."
+        "Build a slice through its bound target adapter's `build` operation and gate the `built` transition.\n\nResolves the target from the slice's `metadata.yaml`, then drives the collapsed build orchestration in the engine guest: request assembly and schema gate, the target-seam dispatch, the report gates (`target-build-*` aborts), the `slice.build.*` events, and the `Refined → Built` transition. The target guest owns only code generation."
     );
     route!(
         ["slice", "merge", "run"],
@@ -359,15 +371,15 @@ where
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
-        "Author a plan end-to-end in the workflow guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint",
-        "Author a plan end-to-end in the workflow guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint.\n\nGuest-only through the composed-deployment leg: the `/spec:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint",
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint.\n\nGuest-only through the composed-deployment leg: the `/spec:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Run the drained execute loop in the workflow guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`)",
-        "Run the drained execute loop in the workflow guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nGuest-only through the composed-deployment leg: the loop holds the create-exclusive `.specify/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop in the engine guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`)",
+        "Run the drained execute loop in the engine guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nGuest-only through the composed-deployment leg: the loop holds the create-exclusive `.specify/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
@@ -440,6 +452,7 @@ macro_rules! convert {
     };
 }
 
+convert!(adapter::AddArgs => project::adapter::handlers::AddInput { component, project_dir });
 convert!(source::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(target::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan });

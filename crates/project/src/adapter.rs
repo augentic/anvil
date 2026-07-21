@@ -11,11 +11,10 @@
 //! reference (`specify:<name>@<semver>`) resolves the single-file
 //! global store entry at `<store-root>/<name>@<version>.wasm`
 //! (verify-on-read included); a bare name or a persisted local
-//! component resolves the project component cache
-//! (`<project-cache>/components/<name>.wasm`) then the in-repo
-//! development release build at
-//! `target/wasm32-wasip2/release/<name>.wasm` under the project.
-//! Resolution never probes outside the project tree, cache, or store.
+//! component resolves the seeded project component cache
+//! (`<project-cache>/components/<name>.wasm`) populated by
+//! `specify adapter add` or a local component at init.
+//! Resolution never probes outside the cache or store.
 //! Deployment provisioning (package hydration, local-component
 //! mirroring, catalog matching) is the [`Resolver::ensure_source`] /
 //! [`Resolver::ensure_target`] leg; the component kernels live in

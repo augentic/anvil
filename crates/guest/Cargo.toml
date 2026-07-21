@@ -1,6 +1,6 @@
 [package]
 name = "guest"
-description = "The specify workflow guest: WIT bindings, the seam provider, and the wasm exports"
+description = "The specify engine guest: WIT bindings, the seam provider, and the wasm exports"
 publish = false
 version.workspace = true
 edition.workspace = true

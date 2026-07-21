@@ -53,7 +53,7 @@ treat the project as an adapter source or as a registry root, and
 different verbs would disagree. Supplying both is a clap conflict
 (exit 2); supplying neither fails typed with `init-adapter-required`
 (exit 2) — with the `init-requires-adapter-or-workspace` discriminant
-as the workflow layer's defence-in-depth check.
+as the engine layer's defence-in-depth check.
 
 ## Re-entry
 

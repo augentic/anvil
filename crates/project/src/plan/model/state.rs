@@ -125,7 +125,7 @@ pub struct Entry {
     /// plans need not repeat the project name; multi-project workspace
     /// registries require an explicit value.
     ///
-    /// The target adapter (`name@vN`) is **not** stored on the slice —
+    /// The target adapter (`name[@vN]`) is **not** stored on the slice —
     /// it is resolved on demand from this project via the topology
     /// (the committed `.specify/topology.lock` for a workspace, `project.yaml.adapter` for a single
     /// regular project) by the internal target-resolution kernel.

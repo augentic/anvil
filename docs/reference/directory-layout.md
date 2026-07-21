@@ -2,7 +2,7 @@
 
 Specify draws a clear boundary between **operator-facing platform artifacts**, generated repo context, and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, the change-level `change.md` / `plan.yaml` / `discovery.md`, and `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. `AGENTS.md` also lives at the root; Specify owns only its fenced generated block.
 
-`.specify/` is **Specify's directory: committed configuration plus the system-of-record** — project config, every active slice, the baseline specs, the archive, and the journal. Its lone gitignored in-tree tenant is `.specify/scratch/`. Everything regenerable and machine-owned lives *outside* the working tree: the adapter/codex **cache** in a per-project OS cache directory, and materialised **workspace slots** at the top-level `workspace/`.
+`.specify/` is **Specify's directory: committed configuration plus the system-of-record** — project config, every active slice, the baseline specs, the archive, and the journal. Its lone gitignored in-tree tenant is `.specify/scratch/`. Everything regenerable and machine-owned lives *outside* the working tree: the adapter/codex **cache** in a per-project directory under the Specify home (`$SPECIFY_HOME`, default `~/.specify`), and materialised **workspace slots** at the top-level `workspace/`.
 
 ## Tree overview
 
@@ -72,14 +72,14 @@ workspace/                                  # Workspace slots (workspace mode on
             └── ...
 ```
 
-The regenerable **cache** lives outside the working tree, in a per-project directory inside your OS cache (keyed by a digest of the project path):
+The regenerable **cache** lives outside the working tree, in a per-project directory under the Specify home (keyed by a digest of the project path):
 
 ```text
-$XDG_CACHE_HOME/specify/projects/<project-id>/   # (or $SPECIFY_PROJECT_CACHE)
+$SPECIFY_HOME/cache/<project-id>/                 # (default home: ~/.specify)
 └── components/                                   # Project component cache
-    ├── <name>.wasm                               # Local adapter component mirrored at init
+    ├── <name>.wasm                               # Seeded adapter component (adapter add / local init)
     ├── <name>.wasm.metadata.json                 # Digest-keyed describe answer sidecar
-    └── component-meta.yaml                       # Component mirror provenance stamp
+    └── <name>.meta.yaml                          # Per-component mirror provenance sidecar
 ```
 
 ## Key directories
@@ -102,7 +102,7 @@ The baseline. When a slice is merged, its spec deltas are applied here. Baseline
 
 ### Cache (out-of-tree)
 
-The memoization root lives outside the working tree, in a per-project directory inside your OS cache — `$SPECIFY_PROJECT_CACHE`, else `$XDG_CACHE_HOME/specify/projects/<project-id>/`, else `~/.cache/...` — keyed by a stable digest of the canonicalised project path. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `components/` is the project component cache — an operator-supplied local adapter component mirrored at `specify init` (`<name>.wasm`, with provenance stamped at `components/component-meta.yaml`); pinned identities resolve from the global store and development builds resolve live, so neither is mirrored here. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
+The memoization root lives outside the working tree, in a per-project directory under the Specify home — `$SPECIFY_HOME/cache/<project-id>/`, defaulting to `~/.specify/cache/<project-id>/` (`<temp>/specify/cache/...` when no home is available) — keyed by a stable digest of the canonicalised project path. The same home carries the global adapter store at `$SPECIFY_HOME/store/`; `SPECIFY_HOME` is the single relocation override for both. Every subtree is keyed by content or version, so deleting it costs recomputation only, and because it is out-of-tree it survives `git clean` and never pollutes the working tree (each checkout, including each workspace slot, gets its own collision-free cache). `components/` is the project component cache — the single probe for bare (unpinned) adapter names, seeded by `specify adapter add <path.wasm>` or an operator-supplied local component at `specify init` (`<name>.wasm`, with per-component provenance stamped at `components/<name>.meta.yaml`); pinned identities resolve from the global store, so they are not mirrored here. There is no extraction-result cache: `survey` / `extract` are agent-run and re-execute the prompt every time, with the journal's completion events as the audit trail.
 
 ### `scratch/`
 

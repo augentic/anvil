@@ -1,7 +1,7 @@
 //! The native seam provider: project anchoring, ensure/resolve over
 //! the compiled catalog, model access, and adapter dispatch.
 //!
-//! Maps adapter seam DTOs onto workflow seam DTOs like the wasm guest
+//! Maps adapter seam DTOs onto engine seam DTOs like the wasm guest
 //! shim. Native ensure is a static package match, not a component
 //! store lookup: bare selectors resolve to the catalog entry's actual
 //! version, exact pins succeed only on the exact compiled `(name,
@@ -201,7 +201,7 @@ impl Resolver for Provider {
         let entry = self.matched(Axis::Source, selector)?;
         project::adapter::resolver::source(
             entry.name(),
-            entry_version(&entry)?,
+            Some(entry_version(&entry)?),
             entry.metadata(),
             origin(&entry),
         )
@@ -213,7 +213,7 @@ impl Resolver for Provider {
         let entry = self.matched(Axis::Target, selector)?;
         project::adapter::resolver::target(
             entry.name(),
-            entry_version(&entry)?,
+            Some(entry_version(&entry)?),
             entry.metadata(),
             origin(&entry),
         )

@@ -157,10 +157,10 @@ fn render_input(
 
 /// Record the adapter component bytes under a machine-independent
 /// logical id. The resolved component lives at a machine-specific
-/// absolute path (the global store or a dev build tree), so the
-/// fingerprint keys on `<origin-label>:<identity>` while the physical
-/// bytes still drive the digest. A non-file origin (the native test
-/// resolver) contributes no input.
+/// absolute path (the global store or the project component cache),
+/// so the fingerprint keys on `<origin-label>:<identity>` while the
+/// physical bytes still drive the digest. A non-file origin (the
+/// native test resolver) contributes no input.
 fn collect_adapter_input(
     collector: &mut fingerprint::InputCollector, selector: &AdapterSelector,
     resolved: &ResolvedTarget,

@@ -196,18 +196,6 @@ impl<'a> Layout<'a> {
         self.specify_dir().join("topology.lock")
     }
 
-    /// Absolute path to this project's out-of-tree memoization root
-    /// (manifest mirror, component mirror, …), resolved from the OS cache via
-    /// [`diagnostics::cache::project_cache_dir`]. Lives outside the
-    /// working tree, keyed by a digest of the project path, so deleting
-    /// it costs recomputation only and it never pollutes git. Transient
-    /// per-run working state lives in-tree under `.specify/scratch/`
-    /// (gitignored at init).
-    #[must_use]
-    pub fn cache_dir(&self) -> PathBuf {
-        diagnostics::cache::project_cache_dir(self.project_dir)
-    }
-
     /// Absolute path to `<project_dir>/.specify/decisions/` — the
     /// append-only Decision Record catalogue promoted by
     /// `specify slice merge`. One flat, project-global tree of
@@ -241,7 +229,7 @@ impl<'a> Layout<'a> {
 
     /// Absolute path to `<project_dir>/.specify/guest.lock` — the
     /// guest execute loop's create-exclusive advisory marker
-    /// (the workflow guest marker), the guest-vs-guest
+    /// (the engine guest marker), the guest-vs-guest
     /// breakout refusal fence.
     #[must_use]
     pub fn guest_lock_path(&self) -> PathBuf {
