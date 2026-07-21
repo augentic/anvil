@@ -113,13 +113,15 @@ where
     // pass here: sidecar presence, then verify-on-read.
     require_sidecar(paths, ENGINE_NAME, &engine_version)?;
     let engine_meta = paths.locations().store_meta(ENGINE_NAME, &engine_version);
-    diagnostics::cache::verify_store_entry(&engine_component, &engine_meta).map_err(|mismatch| {
-        resolver::digest_mismatch(
-            &format!("store entry {}", engine_component.display()),
-            "verify-on-read",
-            &mismatch,
-        )
-    })?;
+    diagnostics::cache::verify_store_entry(&engine_component, &engine_meta).map_err(
+        |mismatch| {
+            resolver::digest_mismatch(
+                &format!("store entry {}", engine_component.display()),
+                "verify-on-read",
+                &mismatch,
+            )
+        },
+    )?;
 
     let mut adapters: Vec<ResolvedAdapter> = Vec::new();
     for requirement in closure.adapters {

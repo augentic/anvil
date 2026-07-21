@@ -195,7 +195,10 @@ pub fn locate(
         let meta = paths.locations().store_meta(name, &version);
         if let Err(mismatch) = diagnostics::cache::verify_store_entry(&entry, &meta) {
             return Err(digest_mismatch(
-                &format!("adapter `{name}@{version}` (axis `{axis}`) store entry at {}", entry.display()),
+                &format!(
+                    "adapter `{name}@{version}` (axis `{axis}`) store entry at {}",
+                    entry.display()
+                ),
                 "verify-on-read",
                 &mismatch,
             ));

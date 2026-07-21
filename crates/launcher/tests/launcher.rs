@@ -177,9 +177,7 @@ fn deployment(outcome: Outcome) -> Deployment {
 
 fn exit(outcome: Outcome) -> (String, u8) {
     match outcome {
-        Outcome::Done { stderr, code, .. } => {
-            (String::from_utf8_lossy(&stderr).into_owned(), code)
-        }
+        Outcome::Done { stderr, code, .. } => (String::from_utf8_lossy(&stderr).into_owned(), code),
         Outcome::Run(deployment) => panic!("expected Done, got Run: {deployment:?}"),
     }
 }
