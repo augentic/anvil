@@ -290,7 +290,7 @@ The engine guest reaches the store the same way every adapter does: on first lau
 
 The release archive is the **primary** distribution: it ships the engine and first-party adapter components *beside* the binary, and first launch installs them into the store through the same verify-on-write path, recorded as `origin: release-archive`. Registry hydration covers everything else — a bare binary install, a pin the archive does not carry, a third-party component. Pre-project hydration resolves its registry from the user-level `~/.specify/wasm-pkg.toml` when present, else the compiled default; a project's `.specify/wasm-pkg.toml` overrides both once it exists (precedence: project → user → compiled default — mirrored/enterprise installs set the user file). The store entry is canonical in every case.
 
-`--version` is the launcher's one native fast path — answered from the binary version, which *is* the engine version. Every other invocation, including `--help`, forwards to the engine guest, which stays the sole owner of command semantics.
+Help and version displays are answered host-side by the shared clap grammar — byte-identical to what the guest would print, so no deployment is assembled just to print usage. `adapter add` likewise completes host-side (the operator's component path may live outside any guest mount). Every other invocation forwards to the engine guest, which stays the sole owner of command semantics.
 
 After first launch and one `init` plus `plan author` on the `payments` project, the global store carries the same entry-plus-sidecar pairs the existing hydration path writes today:
 
@@ -503,7 +503,7 @@ Specify:
 2. ~~Split the native binary~~ **Landed**: `runtime!` nests in `mod host` in `src/omnia.rs`; the crate-root launcher `main` owns closure + assemble + `host::run(…)`, projecting selectors through the shared `crates/transport` grammar.
 3. ~~Compute the closure and hydrate missing components before `run`~~ **Landed** (registry hydration; the release-archive probe stays deferred): fail-closed preflight sidecar verify — `adapter-sidecar-missing` / `adapter-digest-mismatch` (closure digests recorded in `resolution.json` wait for Stage 2).
 4. ~~Assemble the typed deployment value in memory~~ **Landed**: engine guest with the adapter link allow-list, one derived guest per closure adapter, the three well-known mounts; no authored table, no `omnia.toml`.
-5. ~~Forward all workflow arguments and exits unchanged~~ **Landed**: `--version` is the launcher's only native fast path.
+5. ~~Forward all workflow arguments and exits unchanged~~ **Landed**: only help/version displays and the deterministic `adapter add` seed complete host-side; everything else forwards byte-for-byte.
 6. ~~Change the composed example to invoke `specify ...` directly~~ **Landed**: `cargo make wasm-run` seeds the sandboxed store and invokes the shipped binary bare.
 7. ~~Assert the closure-superset invariant end to end~~ **Landed**: the example's `plan author --source …` dispatches the source the launcher hydrated and enumerated pre-run; the grammar-coverage guard in `crates/transport/tests/selectors.rs` keeps new selector-bearing verbs classified.
 
