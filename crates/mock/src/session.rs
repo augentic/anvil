@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::Scripted as ScriptedModel;
-use project::handler::ExecutionPaths;
+use project::handler::{CachePlacement, ExecutionPaths, Locations};
 
 use crate::model::Harness;
 
@@ -22,10 +22,10 @@ pub type Scripted = Harness<ScriptedModel>;
 
 /// A throw-away project tree plus the scripted mock provider.
 ///
-/// The tempdir and the session's isolated project-cache parent live
-/// exactly as long as the session, so adapter cache writes stay
-/// hermetic — the provider carries the cache placement as
-/// [`ExecutionPaths`]; no process environment is mutated.
+/// The tempdir and the session's isolated store and cache roots live
+/// exactly as long as the session, so adapter writes stay hermetic —
+/// the provider carries the explicit layout as [`ExecutionPaths`]; no
+/// process environment is read or mutated.
 #[derive(Debug)]
 pub struct Session {
     root: PathBuf,
@@ -44,7 +44,11 @@ impl Session {
     #[must_use]
     pub fn bare(answers: Vec<String>) -> Self {
         let (tmp, root) = owned_tree();
-        let paths = ExecutionPaths::isolated(&root, root.join("project-cache"));
+        let locations = Locations::explicit(
+            root.join("adapter-store"),
+            CachePlacement::Parent(root.join("project-cache")),
+        );
+        let paths = ExecutionPaths::new(&root, locations);
         let model = Harness::answering(answers);
         let provider = Provider::new(
             paths,

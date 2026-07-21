@@ -12,9 +12,17 @@ mod support;
 use native::{Catalog, DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::Scripted;
 use project::adapter::{AdapterSelector, Resolver as _};
-use project::handler::ExecutionPaths;
+use project::handler::{CachePlacement, ExecutionPaths, Locations};
 use project::seam::{self, Source as _, Target as _};
 use support::{FailGuidance, Floored, Pinned, Probe};
+
+// Explicit tempdir-rooted layout: native ensure performs no component
+// I/O, but the carried locations stay hermetic regardless.
+fn paths(root: &std::path::Path) -> ExecutionPaths {
+    let locations =
+        Locations::explicit(root.join("store"), CachePlacement::Parent(root.join("project-cache")));
+    ExecutionPaths::new(root, locations)
+}
 
 fn provider(root: &std::path::Path, answers: &[&str]) -> Provider {
     let catalog = Catalog::builder()
@@ -26,7 +34,7 @@ fn provider(root: &std::path::Path, answers: &[&str]) -> Provider {
         .build()
         .expect("valid catalog");
     Provider::new(
-        ExecutionPaths::operator(root),
+        paths(root),
         DynModel::new(Scripted::answers(answers.iter().copied())),
         catalog,
         ReferenceMode::Offline,
@@ -43,10 +51,10 @@ fn bare(name: &str) -> AdapterSelector {
 fn bare_resolution() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
-    let paths = ExecutionPaths::operator(tmp.path());
+    let paths = paths(tmp.path());
 
     let source = provider.resolve_source(&bare("mock"), &paths).expect("native source resolves");
-    assert_eq!(source.manifest.version.to_string(), "0.0.0");
+    assert_eq!(source.manifest.version.as_ref().map(ToString::to_string).as_deref(), Some("0.0.0"));
     assert_eq!(source.origin.label, "native");
     assert_eq!(source.origin.reference, "rust:source:mock");
 
@@ -64,13 +72,16 @@ fn bare_resolution() {
 async fn exact_pin_matching() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
-    let paths = ExecutionPaths::operator(tmp.path());
+    let paths = paths(tmp.path());
 
     let exact = AdapterSelector::parse("specify:pinned@1.2.3").expect("package selector");
     let resolved =
         provider.ensure_target(&exact, &paths).await.expect("the exact compiled pin ensures");
     assert_eq!(resolved.manifest.name, "pinned");
-    assert_eq!(resolved.manifest.version.to_string(), "1.2.3");
+    assert_eq!(
+        resolved.manifest.version.as_ref().map(ToString::to_string).as_deref(),
+        Some("1.2.3")
+    );
 
     let mismatch = AdapterSelector::parse("specify:pinned@1.0.0").expect("package selector");
     let err = provider
@@ -97,7 +108,7 @@ async fn exact_pin_matching() {
 async fn component_selector_refused() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
-    let paths = ExecutionPaths::operator(tmp.path());
+    let paths = paths(tmp.path());
 
     let component = AdapterSelector::parse("./mock.wasm").expect("component selector");
     let err = provider
@@ -114,7 +125,7 @@ async fn component_selector_refused() {
 fn floor_enforced_at_resolve() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
-    let paths = ExecutionPaths::operator(tmp.path());
+    let paths = paths(tmp.path());
 
     let err = provider
         .resolve_target(&bare("floored"), &paths)

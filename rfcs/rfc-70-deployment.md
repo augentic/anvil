@@ -1,6 +1,6 @@
 # Self-Assembling Wasm Deployment
 
-> Status: Draft
+> Status: Stage 1 landed (launcher and pre-run enumeration); Stages 2–3 remain draft
 >
 > Owns: the operator-facing `specify` executable, deployment assembly, and Specify's derived enumeration of the adapter store into Omnia's typed deployment value.
 >
@@ -27,13 +27,13 @@ Adapters stay separate Wasm components selected by identity. The launcher **deri
 
 ## Motivation
 
-The composed Wasm example currently requires three separate concerns in one operator-maintained file:
+Before Stage 1 landed, the composed Wasm example required three separate concerns in one operator-maintained file:
 
 - the Specify engine component;
 - one guest entry per source adapter and target adapter;
 - runtime routes and mounts required by those guests.
 
-The example then wraps Omnia's generic invocation:
+The example then wrapped Omnia's generic invocation:
 
 ```bash
 run() {
@@ -41,7 +41,7 @@ run() {
 }
 ```
 
-The wrapper has the desired command shape, but it does not own deployment closure. Adding a new adapter still requires changing the Omnia configuration before the engine can dispatch to it.
+The wrapper had the desired command shape, but it did not own deployment closure. Adding a new adapter still required changing the Omnia configuration before the engine could dispatch to it.
 
 The repository already has most of the required substrate:
 
@@ -147,16 +147,16 @@ For the `payments` project from the abstract — target `specify:omnia@0.5.0`, o
 
 [[guest]]
 id = "specify"
-source.path = "/home/op/.specify/adapters/engine@0.28.0.wasm"
+source.path = "/home/op/.specify/store/engine@0.28.0.wasm"
 link = ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"]
 
 [[guest]]
 id = "target:omnia"
-source.path = "/home/op/.specify/adapters/omnia@0.5.0.wasm"
+source.path = "/home/op/.specify/store/omnia@0.5.0.wasm"
 
 [[guest]]
 id = "source:typescript"
-source.path = "/home/op/.specify/adapters/typescript@0.5.0.wasm"
+source.path = "/home/op/.specify/store/typescript@0.5.0.wasm"
 
 [[mount]]
 name = "."
@@ -165,12 +165,12 @@ writable = true
 
 [[mount]]
 name = "/specify-cache"
-path = "/home/op/.cache/specify/projects/6b1f…"
+path = "/home/op/.specify/cache/6b1f…"
 writable = true
 
 [[mount]]
 name = "/specify-store"
-path = "/home/op/.specify/adapters"
+path = "/home/op/.specify/store"
 writable = true
 ```
 
@@ -189,7 +189,7 @@ The formula is `/mcp/<name>`: the store already keys components by name with no 
 
 Doctor treats a prefix collision under the ordinary rule as a deployment error.
 
-The hand-authored `examples/wasm/omnia.toml` may still enumerate guests and routes as a development stand-in for the composed example; it must follow the same identity formula (including the dual-axis fallback for `mock`).
+The composed example carries no hand-authored `omnia.toml`: the launcher derives its deployment per invocation. Derived MCP route rows land in Stage 2; until then the example's adapters are reached over the CLI seam only.
 
 The matching `resolution.json` carries the provenance the deployment value flattens away:
 
@@ -198,7 +198,7 @@ The matching `resolution.json` carries the provenance the deployment value flatt
   "specify": "0.28.0",
   "engine": {
     "package": "specify:engine@0.28.0",
-    "component": "/home/op/.specify/adapters/engine@0.28.0.wasm",
+    "component": "/home/op/.specify/store/engine@0.28.0.wasm",
     "origin": "registry",
     "digest": "sha256:9c41…"
   },
@@ -207,7 +207,7 @@ The matching `resolution.json` carries the provenance the deployment value flatt
       "axis": "source",
       "selector": "specify:typescript@0.5.0",
       "resolved": "typescript@0.5.0",
-      "component": "/home/op/.specify/adapters/typescript@0.5.0.wasm",
+      "component": "/home/op/.specify/store/typescript@0.5.0.wasm",
       "origin": "store",
       "digest": "sha256:5b0e…"
     },
@@ -215,22 +215,22 @@ The matching `resolution.json` carries the provenance the deployment value flatt
       "axis": "target",
       "selector": "specify:omnia@0.5.0",
       "resolved": "omnia@0.5.0",
-      "component": "/home/op/.specify/adapters/omnia@0.5.0.wasm",
+      "component": "/home/op/.specify/store/omnia@0.5.0.wasm",
       "origin": "store",
       "digest": "sha256:1d9c…"
     }
   ],
   "store": {
     "roots": [
-      "/home/op/.specify/adapters",
-      "/home/op/.cache/specify/projects/6b1f…/components"
+      "/home/op/.specify/store",
+      "/home/op/.specify/cache/6b1f…/components"
     ],
     "verify": "digest"
   },
   "project": {
     "root": "/work/payments",
-    "cache": "/home/op/.cache/specify/projects/6b1f…",
-    "store": "/home/op/.specify/adapters"
+    "cache": "/home/op/.specify/cache/6b1f…",
+    "store": "/home/op/.specify/store"
   },
   "fingerprint": "sha256:d81f…"
 }
@@ -295,7 +295,7 @@ The release archive is the **primary** distribution: it ships the engine and fir
 After first launch and one `init` plus `plan author` on the `payments` project, the global store carries the same entry-plus-sidecar pairs the existing hydration path writes today:
 
 ```text
-~/.specify/adapters/
+~/.specify/store/
 ├── engine@0.28.0.wasm          # installed on first launch (origin: release-archive | registry)
 ├── engine@0.28.0.meta          # tree-digest: sha256:9c41…
 ├── omnia@0.5.0.wasm          # hydrated by `specify init omnia@0.5.0` (origin: registry)
@@ -492,18 +492,20 @@ Land [Dynamic Guest Registration](https://github.com/augentic/omnia/blob/main/rf
 
 ### Stage 1 — Launcher and pre-run enumeration (first delivery)
 
+**Landed.** The `crates/launcher` crate owns the pipeline (anchor → closure → hydrate → preflight → assemble); `transport::command::selectors` owns argv selector projection over the shared grammar.
+
 Omnia:
 
 1. ~~Change `run` to take a typed deployment value~~ **Landed**: `run` takes a `DeploymentBuilder` carrying a programmatic `Manifest`; the file/flag path remains on the generated `main` for plain Omnia apps ([Typed deployment value](#typed-deployment-value)).
 
 Specify:
 
-2. Split the native binary: nest `runtime!` in a host submodule; crate-root launcher `main` owns closure + assemble + `host::run(…)`, projecting selectors through the shared `crates/transport` grammar.
-3. Compute the closure and hydrate missing components before `run` (release archive when present, else registry); fail-closed preflight sidecar verify (closure digests recorded in `resolution.json` wait for Stage 2).
-4. Assemble the typed deployment value in memory — engine guest with the adapter link allow-list, one derived `GuestEntry` per closure adapter, mounts; no authored table, no `omnia.toml`.
-5. Forward all workflow arguments and exits unchanged; `--version` is the launcher's only native fast path.
-6. Change the composed example to invoke `specify ...` directly.
-7. Assert the closure-superset invariant end to end: a command whose guest orchestration ensures a source (`plan author --source …`) dispatches that adapter in the same invocation, with the launcher having hydrated and enumerated it pre-run.
+2. ~~Split the native binary~~ **Landed**: `runtime!` nests in `mod host` in `src/omnia.rs`; the crate-root launcher `main` owns closure + assemble + `host::run(…)`, projecting selectors through the shared `crates/transport` grammar.
+3. ~~Compute the closure and hydrate missing components before `run`~~ **Landed** (registry hydration; the release-archive probe stays deferred): fail-closed preflight sidecar verify — `adapter-sidecar-missing` / `adapter-digest-mismatch` (closure digests recorded in `resolution.json` wait for Stage 2).
+4. ~~Assemble the typed deployment value in memory~~ **Landed**: engine guest with the adapter link allow-list, one derived guest per closure adapter, the three well-known mounts; no authored table, no `omnia.toml`.
+5. ~~Forward all workflow arguments and exits unchanged~~ **Landed**: `--version` is the launcher's only native fast path.
+6. ~~Change the composed example to invoke `specify ...` directly~~ **Landed**: `cargo make wasm-run` seeds the sandboxed store and invokes the shipped binary bare.
+7. ~~Assert the closure-superset invariant end to end~~ **Landed**: the example's `plan author --source …` dispatches the source the launcher hydrated and enumerated pre-run; the grammar-coverage guard in `crates/transport/tests/selectors.rs` keeps new selector-bearing verbs classified.
 
 ### Stage 2 — Diagnostics and hardened verify
 

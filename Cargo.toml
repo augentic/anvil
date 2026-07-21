@@ -22,6 +22,7 @@ path = "src/omnia.rs"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true
+launcher.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-wasi-http.workspace = true
@@ -54,6 +55,8 @@ path = "examples/native/main.rs"
 native = { workspace = true, features = ["cli"] }
 mock.workspace = true
 omnia-guest.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
 
 [lints]
 workspace = true
@@ -157,11 +160,13 @@ base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
 clap = { version = "4.6.2", features = ["derive", "env"] }
 clap_complete = "4.6.7"
+fromenv = "0.1.0"
 glob = "0.3.3"
 jiff = { version = "0.2.32", default-features = false, features = ["serde", "std"] }
 petgraph = "0.8.3"
 proptest = "1.11.0"
 regex = "1.13.1"
+reqwest = "0.13.4"
 schemars = "1.2.1"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -184,6 +189,7 @@ diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
 eval = { path = "crates/eval" }
 guest = { path = "crates/guest" }
+launcher = { path = "crates/launcher" }
 native = { path = "crates/native" }
 mock = { path = "crates/mock" }
 project = { path = "crates/project" }
@@ -204,23 +210,23 @@ omnia-wasi-otel = "0.35.0"
 [patch.crates-io]
 omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 
-# omnia = { git = "https://github.com/augentic/omnia.git" }
-# omnia-guest = { git = "https://github.com/augentic/omnia.git" }
-# omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
-# omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
-# omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
-# omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
-# omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
-# omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
+omnia = { git = "https://github.com/augentic/omnia.git" }
+omnia-guest = { git = "https://github.com/augentic/omnia.git" }
+omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
+omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
+omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 
-omnia = { path = "../omnia/crates/omnia" }
-omnia-guest = { path = "../omnia/crates/omnia-guest" }
-omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
-omnia-host-macros = { path = "../omnia/crates/host-macros" }
-omnia-testkit = { path = "../omnia/crates/testkit" }
-omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
-omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
-omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
+# omnia = { path = "../omnia/crates/omnia" }
+# omnia-guest = { path = "../omnia/crates/omnia-guest" }
+# omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+# omnia-host-macros = { path = "../omnia/crates/host-macros" }
+# omnia-testkit = { path = "../omnia/crates/testkit" }
+# omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
+# omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
+# omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }

@@ -3,7 +3,7 @@
 mod support;
 
 use mock::invoke::run;
-use support::{Provider, stage_dev_component};
+use support::{Provider, stage_cached_component};
 
 #[tokio::test]
 async fn vectis_platform_requirements() {
@@ -15,7 +15,7 @@ async fn vectis_platform_requirements() {
 
     for (platforms, expected) in cases {
         let project = Provider::bare();
-        stage_dev_component(&project.root, "vectis");
+        stage_cached_component(&project, "vectis");
         let err = run::<project::init::handlers::Init, _, _>(
             &project,
             project::init::handlers::InitInput {

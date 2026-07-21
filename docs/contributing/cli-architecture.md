@@ -2,15 +2,17 @@
 
 The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a Rust workspace producing a single binary that skills invoke as a subprocess. Adapter-specific deterministic helpers run as in-guest adapter library code inside each adapter's published WebAssembly component.
 
-## One binary, one guest
+## One binary: launcher + runtime
 
-The shipped binary is a single, domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/omnia.rs`): it parses no commands itself. Every supported command — `--help` / `--version` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
+The shipped binary is a self-assembling deployment launcher (RFC-70 Stage 1) in front of a domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/omnia.rs`). For each invocation, `main` runs the `launcher` crate's prepare pipeline — anchor the project root, derive the component closure (engine guest + every adapter the command could dispatch), hydrate store misses from the configured registry with fail-closed digest verification (one pass per store component), and assemble a typed in-memory deployment — then hands the deployment to the generated `host::run`. There is no `omnia.toml` and no `run --config` surface.
 
-The engine guest identity is versioned by the binary (`specify:engine@<binary version>`).
+The launcher owns exactly two fast paths: `--version` (printed natively) and pre-run rejection (a grammar failure or verification failure exits with the standard failure envelope before anything starts). Every other command — `--help` included — runs in the specify (core) guest through the shared typed command router; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
+
+The engine guest identity is versioned by the binary (`specify:engine@<binary version>`) and resolves from the global adapter store (`~/.specify/store/engine@<version>.wasm`), hydrated from the registry on first miss. Adapter closure entries resolve through the same probes the in-guest resolver uses: the global store for package pins, the seeded project component cache for bare names. `SPECIFY_HOME` is the single relocation override — store and cache derive together beneath it (the Cargo model) — captured once per invocation into a carried `Locations` value; nothing below the composition root reads the environment.
 
 ## Core crate dependency graph
 
-The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; the three engine crates own the domain and every command operation (`project` the foundation + init, `slice` the refine-build-merge loop, `change` the plan loop; `Operation<P>` impls in each crate's `<domain>::handlers`, shared plumbing in `project::handler`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; the root binary is a single `omnia::runtime!` invocation and depends on no `specify-*` crate natively.
+The authoritative crate graph (leaf → root, with per-crate roles) lives in [AGENTS.md §"Crate graph"](https://github.com/augentic/specify/blob/main/AGENTS.md#the-rust-workspace-specify-cli) and [docs/standards/architecture.md §"Workspace layout"](../standards/architecture.md#workspace-layout). The headline shape: `error` is the leaf; the three engine crates own the domain and every command operation (`project` the foundation + init, `slice` the refine-build-merge loop, `change` the plan loop; `Operation<P>` impls in each crate's `<domain>::handlers`, shared plumbing in `project::handler`); `transport` owns the typed command/HTTP route inventories, clap args, explicit conversions, projectors, and exit contract; `launcher` owns the native-only pre-run pipeline (closure derivation, hydration + verification, deployment assembly); the root binary nests `omnia::runtime!` in `mod host` and its native `main` composes `launcher::prepare` with the generated `host::run`.
 
 Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) as in-guest library code compiled into each adapter's published component.
 
@@ -21,8 +23,11 @@ Vectis does not link an adapter-specific crate into the root `specify` binary. I
 The binary entry point is thin:
 
 ```text
-src/omnia.rs    →  omnia::runtime! (command mode)  →  specify guest  →  typed command router
+src/omnia.rs  →  launcher::prepare (anchor → closure → hydrate + verify → assemble)
+              →  host::run / omnia::runtime! (command mode)  →  specify guest  →  typed command router
 ```
+
+The launcher sees adapter selectors in argv through `transport::command::selectors::from_argv`, which parses argv against the *same* assembled clap grammar the guest router executes (a grammar-only provider that never dispatches). The selector-bearing routes are pinned by `SELECTOR_ROUTES` and guarded by the grammar-coverage test in `crates/transport/tests/selectors.rs` — a new selector-bearing verb cannot land without being classified there.
 
 The full operator grammar — unsupported provisioning commands included — is assembled in `crates/transport/src/command.rs` from concrete leaf `Args` and transport-neutral workflow `Operation` types. Explicit `TryFrom<Args>` implementations make conversion drift a compile-time concern; `omnia_guest::api::command` owns clap behavior, completions, inventory, and invocation. `crates/transport/src/http.rs` assembles the matching typed HTTP routes. WASI and native shims only construct providers/invokers and adapt transport output. The operation contract is documented in [docs/standards/handler-shape.md](../standards/handler-shape.md).
 

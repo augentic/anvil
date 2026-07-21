@@ -8,7 +8,6 @@ use std::path::PathBuf;
 
 use error::Error;
 
-use crate::adapter::ComponentMeta;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::{
     InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
@@ -105,12 +104,12 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
 
     upsert_gitignore(opts.project_dir)?;
 
-    let cache_present = ComponentMeta::path(opts.paths).exists();
-
     Ok(InitResult {
         config_path,
         adapter_name: "workspace".to_string(),
-        cache_present,
+        // A workspace binds no adapter, so no component sidecar to
+        // inspect.
+        cache_present: false,
         directories_created,
         scaffolded_rule_keys: Vec::new(),
         specify_version,

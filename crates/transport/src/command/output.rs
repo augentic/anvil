@@ -13,9 +13,10 @@ use error::Error;
 use serde::Serialize;
 
 /// Structured (`json`) or human (`text`) CLI output.
-#[derive(Copy, Clone, Debug, ValueEnum, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, ValueEnum, PartialEq, Eq)]
 pub enum Format {
     /// Human-readable lines on stdout/stderr.
+    #[default]
     Text,
     /// Pretty-printed JSON envelopes for skill/CI consumption.
     Json,
@@ -130,6 +131,22 @@ impl From<&Error> for ErrorBody {
             exit_code: Exit::from(err).code(),
             hint: err.hint(),
         }
+    }
+}
+
+/// Render `error` as the stderr bytes and exit code the command
+/// projector would emit — the failure envelope for callers outside a
+/// router dispatch (the deployment launcher's pre-run rejections).
+///
+/// Rendering failures collapse onto a plain exit-1 line, mirroring the
+/// projector's terminal fallback.
+#[must_use]
+pub fn render_failure(format: Format, error: &Error) -> (Vec<u8>, u8) {
+    let body = ErrorBody::from(error);
+    let mut stderr = Vec::new();
+    match emit(&mut stderr, format, &body, write_error_text) {
+        Ok(()) => (stderr, Exit::from(error).code()),
+        Err(fallback) => (format!("error: {fallback}\n").into_bytes(), 1),
     }
 }
 

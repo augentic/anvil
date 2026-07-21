@@ -32,5 +32,5 @@ pub use model::DynModel;
 // Execution paths are deployment configuration shared with the
 // engine core; re-exported so composition roots need no direct
 // `project` import.
-pub use project::handler::ExecutionPaths;
+pub use project::handler::{CachePlacement, ExecutionPaths, Locations};
 pub use provider::{Provider, ReferenceMode};

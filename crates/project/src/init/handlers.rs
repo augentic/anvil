@@ -149,14 +149,14 @@ async fn ensure(
     let pin = match &selector {
         AdapterSelector::Package { name, version, .. } => {
             let version = version.to_string();
-            let installed = diagnostics::cache::adapter_store_entry(name, &version).is_file();
+            let installed = paths.locations().store_entry(name, &version).is_file();
             (!installed).then(|| (name.clone(), version))
         }
         AdapterSelector::Bare { .. } | AdapterSelector::Component { .. } => None,
     };
     let resolved = provider.ensure_target(&selector, paths).await?;
     if let Some((name, version)) = pin
-        && diagnostics::cache::adapter_store_entry(&name, &version).is_file()
+        && paths.locations().store_entry(&name, &version).is_file()
     {
         hydrated.push(format!("{name}@{version}"));
     }
@@ -254,8 +254,8 @@ impl InitBody {
         Ok(Self {
             mode: InitMode::AlreadyInitialized,
             config_path: canonical(&Layout::new(project_dir).config_path()),
+            cache_present: !cfg.workspace && ComponentMeta::path(paths, &adapter_name).exists(),
             adapter_name,
-            cache_present: ComponentMeta::path(paths).exists(),
             directories_created: Vec::new(),
             scaffolded_rule_keys: Vec::new(),
             specify_version: cfg.specify_version.unwrap_or_default(),

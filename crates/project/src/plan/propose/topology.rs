@@ -174,7 +174,10 @@ fn regular_topology(
         )
     })?;
     let adapter = resolver.resolve_target(&AdapterSelector::parse(adapter_value)?, paths)?;
-    let target = format!("{}@{}", adapter.manifest.name, adapter.manifest.version);
+    let target = crate::registry::topology::target_ref(
+        &adapter.manifest.name,
+        adapter.manifest.version.as_ref(),
+    );
     let projection = crate::registry::identity::project_baseline(paths.project_root())?;
     Ok(ProjectRef {
         name: config.name.clone(),

@@ -11,10 +11,16 @@ use omnia_guest::api::invoke::Invoker;
 use tempfile::TempDir;
 
 // Grammar and parity coverage only: no test dispatches judgment or an
-// adapter seam, so the scripted provider's empty script never runs.
+// adapter seam, so the scripted provider's empty script never runs and
+// the explicit inert locations are never resolved.
 fn provider(root: impl Into<PathBuf>) -> Provider {
+    let root = root.into();
+    let locations = project::handler::Locations::explicit(
+        root.join("store"),
+        project::handler::CachePlacement::Parent(root.join("project-cache")),
+    );
     Provider::new(
-        project::handler::ExecutionPaths::operator(root.into()),
+        project::handler::ExecutionPaths::new(root, locations),
         DynModel::new(Harness::answering(Vec::<String>::new())),
         mock::catalog(),
         ReferenceMode::Offline,
@@ -56,7 +62,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 31);
+    assert_eq!(http_types.len(), 32);
 }
 
 #[tokio::test]

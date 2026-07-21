@@ -1,13 +1,13 @@
 //! Deployment-neutral adapter resolution and component implementation.
 
 use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use error::Error;
 
 use super::core::{
     AdapterLocation, Axis, Origin, ResolvedSource, ResolvedTarget, SourceAdapter, TargetAdapter,
-    check_requires_specify, dev_version, parse_floor,
+    check_requires_specify, parse_floor,
 };
 use super::metadata::{self, Metadata};
 use super::selector::AdapterSelector;
@@ -88,7 +88,7 @@ impl Resolver for Component {
         let name = selector.name()?;
         let location = locate(Axis::Source, selector, &name, paths)?;
         let metadata = metadata::load(self.metadata, &location, Axis::Source, &name)?;
-        source(&name, resolved_version(selector), metadata, location.origin())
+        source(&name, selector.version().cloned(), metadata, location.origin())
     }
 
     fn resolve_target(
@@ -97,14 +97,8 @@ impl Resolver for Component {
         let name = selector.name()?;
         let location = locate(Axis::Target, selector, &name, paths)?;
         let metadata = metadata::load(self.metadata, &location, Axis::Target, &name)?;
-        target(&name, resolved_version(selector), metadata, location.origin())
+        target(&name, selector.version().cloned(), metadata, location.origin())
     }
-}
-
-/// The version a component selector resolves as: the exact package pin
-/// when present, else the `0.0.0` development placeholder.
-fn resolved_version(selector: &AdapterSelector) -> semver::Version {
-    selector.version().cloned().unwrap_or_else(dev_version)
 }
 
 /// Build a resolved source from provider metadata, enforcing its CLI floor.
@@ -113,7 +107,7 @@ fn resolved_version(selector: &AdapterSelector) -> semver::Version {
 ///
 /// Returns metadata, version-floor, or resolution errors.
 pub fn source(
-    name: &str, version: semver::Version, metadata: Metadata, origin: Origin,
+    name: &str, version: Option<semver::Version>, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedSource, Error> {
     let Metadata { specify_floor, .. } = metadata;
     let floor = parse_floor(specify_floor.as_deref(), name, &origin)?;
@@ -134,7 +128,7 @@ pub fn source(
 ///
 /// Returns metadata, version-floor, or resolution errors.
 pub fn target(
-    name: &str, version: semver::Version, metadata: Metadata, origin: Origin,
+    name: &str, version: Option<semver::Version>, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedTarget, Error> {
     let floor = parse_floor(metadata.specify_floor.as_deref(), name, &origin)?;
     check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
@@ -163,32 +157,30 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
     component_cache_dir(paths).join(format!("{name}.wasm"))
 }
 
-/// The in-repo development release-build candidate for a bare-name
-/// identity. Resolution is project-contained: there is no sibling
-/// checkout probe — an adapter built elsewhere reaches the project as
-/// an explicitly supplied component path at init (mirrored into the
-/// project component cache) or a pinned store install.
-#[must_use]
-pub(crate) fn dev_component_path(project_dir: &Path, name: &str) -> PathBuf {
-    project_dir
-        .join("target")
-        .join("wasm32-wasip2")
-        .join("release")
-        .join(dev_component_filename(name))
-}
-
-/// Cargo artifact filename for an adapter guest crate.
-#[must_use]
-pub(crate) fn dev_component_filename(name: &str) -> String {
-    format!("{}.wasm", name.replace('-', "_"))
-}
-
-fn locate(
+/// Locate the single component file for one selector without
+/// dispatching metadata.
+///
+/// Probes the verified global store entry for a package pin, else the
+/// project component cache for a bare or local-component selector.
+/// Resolution is project-contained: there is no sibling-checkout or
+/// build-tree probe — an adapter built elsewhere reaches the project
+/// through `specify adapter add` (or a local component at init) or a
+/// pinned store install.
+///
+/// The metadata-free half of [`Component`] resolution — the deployment
+/// launcher derives closure component paths through it before the
+/// runtime (and any metadata dispatch) exists.
+///
+/// # Errors
+///
+/// `adapter-not-found` when no probe hits; `adapter-digest-mismatch`
+/// when a store entry fails verify-on-read.
+pub fn locate(
     axis: Axis, selector: &AdapterSelector, name: &str, paths: &ExecutionPaths,
 ) -> Result<AdapterLocation, Error> {
     if let AdapterSelector::Package { version, .. } = selector {
         let version = version.to_string();
-        let entry = diagnostics::cache::adapter_store_entry(name, &version);
+        let entry = paths.locations().store_entry(name, &version);
         if !entry.is_file() {
             return Err(Error::Diag {
                 code: "adapter-not-found",
@@ -200,7 +192,8 @@ fn locate(
                 ),
             });
         }
-        if let Err(mismatch) = diagnostics::cache::verify_store_entry(name, &version) {
+        let meta = paths.locations().store_meta(name, &version);
+        if let Err(mismatch) = diagnostics::cache::verify_store_entry(&entry, &meta) {
             return Err(Error::Diag {
                 code: "adapter-digest-mismatch",
                 detail: format!(
@@ -215,25 +208,22 @@ fn locate(
         return Ok(AdapterLocation::Store(entry));
     }
 
-    // Bare development shorthand and persisted local-component
-    // selectors share the project-contained probe set: the mirrored
-    // project component cache, then the in-repo release build. A
-    // component selector resolves through its cache mirror, so it
-    // keeps working after the operator's original file is removed.
-    let candidates =
-        [component_cache_entry(paths, name), dev_component_path(paths.project_root(), name)];
-    if let Some(hit) = candidates.iter().find(|path| path.is_file()) {
-        return Ok(AdapterLocation::Dev(hit.clone()));
+    // Bare shorthand and persisted local-component selectors share
+    // the single project-contained probe: the seeded project
+    // component cache. A component selector resolves through its
+    // cache mirror, so it keeps working after the operator's original
+    // file is removed.
+    let entry = component_cache_entry(paths, name);
+    if entry.is_file() {
+        return Ok(AdapterLocation::Cache(entry));
     }
-    let probed =
-        candidates.iter().map(|path| path.display().to_string()).collect::<Vec<_>>().join(", ");
     Err(Error::Diag {
         code: "adapter-not-found",
         detail: format!(
-            "adapter `{name}` (axis `{axis}`) has no development artifact at {probed}; supply a \
-             local `.wasm` component at init, build the in-repo release artifact (`cargo build \
-             --release --target wasm32-wasip2`), or pin a published version \
+            "adapter `{name}` (axis `{axis}`) is not in the project component cache at {}; seed \
+             it with `specify adapter add <path/to/{name}.wasm>` or pin a published version \
              (`specify:{name}@<semver>`)",
+            entry.display(),
         ),
     })
 }

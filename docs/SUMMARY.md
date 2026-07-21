@@ -60,7 +60,7 @@
   - [specify init](reference/cli/init.md)
   - [specify slice](reference/cli/slice.md)
   - [specify plan](reference/cli/plan.md)
-  - [specify source and target resolve](reference/cli/adapter.md)
+  - [specify adapter, source and target resolve](reference/cli/adapter.md)
   - [specify registry](reference/cli/registry.md)
   - [specify workspace](reference/cli/workspace.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)

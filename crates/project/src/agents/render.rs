@@ -33,8 +33,8 @@ pub struct Input {
 pub struct Adapter {
     /// Adapter kebab name.
     pub name: String,
-    /// Pinned adapter version.
-    pub version: semver::Version,
+    /// Pinned adapter version; `None` for an unpinned cache resolve.
+    pub version: Option<semver::Version>,
 }
 
 /// One `project.yaml.rules` override.
@@ -144,7 +144,11 @@ fn conventions_bullets(input: &Input) -> Vec<String> {
         bullets.push(format!("project description: {description}."));
     }
     if let Some(adapter) = &input.adapter {
-        bullets.push(format!("adapter `{}` {}.", one_line(&adapter.name), adapter.version));
+        let name = one_line(&adapter.name);
+        bullets.push(adapter.version.as_ref().map_or_else(
+            || format!("adapter `{name}`."),
+            |version| format!("adapter `{name}` {version}."),
+        ));
     }
     for rule in &input.rule_overrides {
         bullets.push(format!(
@@ -163,7 +167,7 @@ fn boundaries_bullets(input: &Input) -> Vec<String> {
     let mut bullets = vec![
         "During execute/build/merge, agents consume Specify and adapters — they do not maintain them."
             .to_string(),
-        "On scaffold, verify, finalize, or toolchain failure: stop, print CLI `stop:` / `hint:` / `resume:` output, and exit; never patch `specify`, `specify-adapters`, templates, `adapter.wasm`, or `~/.cache/specify/**` in-band."
+        "On scaffold, verify, finalize, or toolchain failure: stop, print CLI `stop:` / `hint:` / `resume:` output, and exit; never patch `specify`, `specify-adapters`, templates, `adapter.wasm`, or `~/.specify/{store,cache}/**` in-band."
             .to_string(),
         "`metadata.yaml` files are framework-managed; update them through `specify slice` commands."
             .to_string(),

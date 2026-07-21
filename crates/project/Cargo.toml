@@ -29,6 +29,9 @@ strum.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+fromenv.workspace = true
+
 [dev-dependencies]
 mock.workspace = true
 serde_json.workspace = true

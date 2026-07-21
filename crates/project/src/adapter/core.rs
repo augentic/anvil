@@ -243,47 +243,35 @@ impl PlatformsCapability {
 pub enum AdapterLocation {
     /// Resolved from the global content-addressed adapter store entry
     /// at `<store-root>/<name>@<version>.wasm` — the immutable,
-    /// version-keyed install target resolved by
-    /// `diagnostics::cache::adapter_store_entry` and populated by
-    /// the wasm-pkg transport. Probed whenever the selector carries a
-    /// pinned version.
+    /// version-keyed install target resolved through the carried
+    /// `Locations` and populated by the wasm-pkg transport. Probed
+    /// whenever the selector carries a pinned version.
     Store(PathBuf),
     /// Resolved from the project component cache
-    /// (`<project-cache>/components/<name>.wasm`) or the project's own
-    /// development release build at
-    /// `target/wasm32-wasip2/release/<name>.wasm` (`cargo make
-    /// release`). Probed for bare-name (unpinned) references; never
-    /// outside the project tree.
-    Dev(PathBuf),
+    /// (`<project-cache>/components/<name>.wasm`) — the seeded mirror
+    /// `specify adapter add` (or a local-component init) populated.
+    /// Probed for bare-name (unpinned) references and persisted
+    /// component selectors; never outside the carried cache placement.
+    Cache(PathBuf),
 }
 
 impl AdapterLocation {
-    /// Kebab-case label for JSON envelopes (`"store"` / `"dev"`).
+    /// Kebab-case label for JSON envelopes (`"store"` / `"cache"`).
     #[must_use]
     pub(crate) const fn label(&self) -> &'static str {
         match self {
             Self::Store(_) => "store",
-            Self::Dev(_) => "dev",
+            Self::Cache(_) => "cache",
         }
     }
 
     /// The component file path.
     #[must_use]
-    pub(crate) const fn path(&self) -> &PathBuf {
+    pub const fn path(&self) -> &PathBuf {
         match self {
-            Self::Store(path) | Self::Dev(path) => path,
+            Self::Store(path) | Self::Cache(path) => path,
         }
     }
-}
-
-/// The placeholder version a development (unpinned) adapter resolves as.
-///
-/// Development components carry no package identity, so `0.0.0` is the
-/// honest "not a published release" marker in topology projections and
-/// envelopes.
-#[must_use]
-pub(super) const fn dev_version() -> semver::Version {
-    semver::Version::new(0, 0, 0)
 }
 
 /// Deployment-neutral description of where an adapter resolved.
@@ -309,9 +297,10 @@ impl AdapterLocation {
 pub struct SourceAdapter {
     /// Kebab-case adapter name from the resolved identity.
     pub name: String,
-    /// Semver adapter version: the pin for store-resolved identities,
-    /// `0.0.0` for development artifacts.
-    pub version: semver::Version,
+    /// Semver adapter version: the pin for store-resolved (and
+    /// native-catalog) identities; `None` for an unpinned cache
+    /// resolve — a seeded component carries no package identity.
+    pub version: Option<semver::Version>,
     /// Optional host-CLI compatibility floor from the metadata
     /// answer's `specify-floor`. The resolver compares it against the
     /// running binary (`check_requires_specify`) and aborts with
@@ -327,9 +316,10 @@ pub struct SourceAdapter {
 pub struct TargetAdapter {
     /// Kebab-case adapter name from the resolved identity.
     pub name: String,
-    /// Semver adapter version: the pin for store-resolved identities,
-    /// `0.0.0` for development artifacts.
-    pub version: semver::Version,
+    /// Semver adapter version: the pin for store-resolved (and
+    /// native-catalog) identities; `None` for an unpinned cache
+    /// resolve — a seeded component carries no package identity.
+    pub version: Option<semver::Version>,
     /// Optional host-CLI compatibility floor from the metadata
     /// answer's `specify-floor`. The resolver compares it against the
     /// running binary (`check_requires_specify`) and aborts with

@@ -23,7 +23,7 @@ Live runs are always explicit, never a side effect. The documented cadence: befo
 
 ## The WASM seam
 
-There is no automated WASM boundary rung. The component seam — the per-axis mock components loading through the checked-in `omnia.toml`, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/wasm/README.md`](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
+There is no automated WASM boundary rung. The component seam — the per-axis mock components enumerated by the launcher's derived deployment, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/wasm/README.md`](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## What CI runs
 

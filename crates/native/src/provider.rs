@@ -201,7 +201,7 @@ impl Resolver for Provider {
         let entry = self.matched(Axis::Source, selector)?;
         project::adapter::resolver::source(
             entry.name(),
-            entry_version(&entry)?,
+            Some(entry_version(&entry)?),
             entry.metadata(),
             origin(&entry),
         )
@@ -213,7 +213,7 @@ impl Resolver for Provider {
         let entry = self.matched(Axis::Target, selector)?;
         project::adapter::resolver::target(
             entry.name(),
-            entry_version(&entry)?,
+            Some(entry_version(&entry)?),
             entry.metadata(),
             origin(&entry),
         )

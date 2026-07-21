@@ -6,9 +6,17 @@ mod support;
 
 use native::{Catalog, DynModel, Provider, ReferenceMode, references};
 use omnia_testkit::model::Scripted;
-use project::handler::ExecutionPaths;
+use project::handler::{CachePlacement, ExecutionPaths, Locations};
 use project::seam::Source as _;
 use support::{Probe, Reflect};
+
+// Explicit tempdir-rooted layout: hermetic carried locations, no
+// environment reads.
+fn paths(root: &std::path::Path) -> ExecutionPaths {
+    let locations =
+        Locations::explicit(root.join("store"), CachePlacement::Parent(root.join("project-cache")));
+    ExecutionPaths::new(root, locations)
+}
 
 fn model() -> DynModel {
     DynModel::new(Scripted::answers::<&str>([]))
@@ -39,12 +47,7 @@ fn dual_axis_shelf_mounts_once() {
 async fn online_grant_routing_and_shutdown() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let catalog = Catalog::builder().source::<Reflect>().build().expect("valid catalog");
-    let provider = Provider::new(
-        ExecutionPaths::operator(tmp.path()),
-        model(),
-        catalog,
-        ReferenceMode::Online,
-    );
+    let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Online);
 
     let leads = provider.survey("source:reflect".to_string()).await.expect("survey dispatches");
     let url = &leads[0].lead;
@@ -68,12 +71,7 @@ async fn online_grant_routing_and_shutdown() {
 async fn offline_never_serves() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let catalog = Catalog::builder().source::<Reflect>().build().expect("valid catalog");
-    let provider = Provider::new(
-        ExecutionPaths::operator(tmp.path()),
-        model(),
-        catalog,
-        ReferenceMode::Offline,
-    );
+    let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Offline);
 
     let leads = provider.survey("source:reflect".to_string()).await.expect("survey dispatches");
     assert_eq!(leads[0].lead, "none");

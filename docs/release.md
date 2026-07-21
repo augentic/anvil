@@ -13,7 +13,15 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 ## Jobs that run
 
-1. **`build` (matrix).** Compiles `--release --locked --bin specify` for each supported target:
+1. **`build` (matrix).** Each job builds the engine guest first, then the platform binary with the guest embedded — the build ordering matters:
+
+```bash
+cargo build --lib -p specify --release --target wasm32-wasip2
+SPECIFY_ENGINE_WASM=target/wasm32-wasip2/release/specify.wasm \
+  cargo build --release --locked --bin specify
+```
+
+   `SPECIFY_ENGINE_WASM` makes the root-crate `build.rs` embed the engine component in the binary (`src/omnia.rs` passes it to `launcher::prepare`); the first launch seeds `engine@<version>.wasm` plus its digest sidecar into the global store from the embedded bytes, removing the first-launch network dependency. A build without the variable compiles the same binary minus the embed and hydrates the engine from the registry instead. Supported targets:
    - `x86_64-unknown-linux-gnu` on `ubuntu-latest` (native `cargo build`).
    - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
    - `x86_64-apple-darwin` on `macos-13` (native).
@@ -24,13 +32,13 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
 
-The shipped surface is the `specify` binary alone: the binary is a single macro-generated command-mode runtime (`omnia::runtime!` in `src/omnia.rs`), so there is no second binary to build or package.
+The shipped surface is the `specify` binary alone: the binary is the deployment launcher plus the macro-generated command-mode runtime (`launcher::prepare` and the nested `omnia::runtime!` host in `src/omnia.rs`), so there is no second binary to build or package.
 
 ## Publishing the wasm-pkg packages
 
 Both wasm-pkg packages are published manually with `wkg publish` by a maintainer whose wkg config maps the `specify:` namespace to `augentic.io` with a GitHub token carrying `packages: write` (see [`wit/README.md`](../wit/README.md) for the config shape). Registry identities are immutable — never re-publish an existing version; bump the version first.
 
-- **Engine guest.** After tagging, publish the release-built engine component as `specify:engine@<version>`, where `<version>` is the `VERSION` file — the published engine identity must equal the binary version: a released binary consumes exactly `specify:engine@<its own version>` and carries no embedded guest.
+- **Engine guest.** After tagging, publish the release-built engine component as `specify:engine@<version>`, where `<version>` is the `VERSION` file — the published engine identity must equal the binary version: a released binary consumes exactly `specify:engine@<its own version>`. The release binary already embeds the same component (seeded into the store on first launch), so the registry identity serves builds without the embed (`cargo install --git`, dev builds) and any operator who clears the store.
 
 ```bash
 cargo build --lib -p specify --release --target wasm32-wasip2

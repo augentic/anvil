@@ -4,8 +4,8 @@ mod support;
 
 use mock::invoke::run;
 use project::adapter::{AdapterSelector, Resolver};
-use project::handler::{Anchor as _, ExecutionPaths};
-use support::{Provider, stage_dev_component};
+use project::handler::{Anchor as _, CachePlacement, ExecutionPaths, Locations};
+use support::{Provider, stage_cached_component};
 
 mod resolve {
     use super::*;
@@ -16,7 +16,7 @@ mod resolve {
             [("demo-target", "adapter-cli-too-old"), ("bad-floor", "adapter-floor-malformed")]
         {
             let project = Provider::bare();
-            stage_dev_component(&project.root, name);
+            stage_cached_component(&project, name);
             let err = run::<project::adapter::handlers::TargetResolve, _, _>(
                 &project,
                 project::adapter::handlers::ResolveInput {
@@ -31,9 +31,12 @@ mod resolve {
     }
 
     #[tokio::test]
-    async fn bare_development_identity() {
+    async fn bare_cache_identity() {
+        // A bare name resolves the seeded project component cache and
+        // carries no package identity: the envelope omits `version`
+        // and labels the origin `cache`.
         let project = Provider::bare();
-        stage_dev_component(&project.root, "demo");
+        stage_cached_component(&project, "demo");
 
         let body = run::<project::adapter::handlers::TargetResolve, _, _>(
             &project,
@@ -43,33 +46,32 @@ mod resolve {
             },
         )
         .await
-        .expect("bare development adapter resolves");
+        .expect("bare cached adapter resolves");
 
         assert_eq!(body.name, "demo");
-        assert_eq!(body.version, "0.0.0");
+        assert_eq!(body.version, None, "an unpinned cache resolve has no version");
+        assert_eq!(body.location, "cache");
         assert_eq!(body.axis, "targets");
     }
 
-    #[tokio::test]
-    async fn bare_from_project_cache() {
-        // The other bare-name probe: a component mirrored into the
-        // project component cache (init's local-file path) resolves
-        // without any in-repo release build.
+    #[test]
+    fn dev_build_never_probed() {
+        // The retired Cargo probe: an in-repo release artifact at
+        // `target/wasm32-wasip2/release/<name>.wasm` must not satisfy
+        // production resolution — only the seeded cache or a pin does.
         let project = Provider::bare();
-        let components = support::expected_cache_dir(&project).join("components");
-        std::fs::create_dir_all(&components).expect("mkdir component cache");
-        std::fs::write(components.join("demo.wasm"), "{}").expect("stage cached component");
+        let dev_dir = project.root.join("target/wasm32-wasip2/release");
+        std::fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
+        std::fs::write(dev_dir.join("demo.wasm"), "{}").expect("stage dev artifact");
 
-        let body = run::<project::adapter::handlers::TargetResolve, _, _>(
-            &project,
-            project::adapter::handlers::ResolveInput {
-                value: "demo".to_string(),
-                project_dir: None,
-            },
-        )
-        .await
-        .expect("cached component resolves");
-        assert_eq!(body.name, "demo");
+        let err = support::resolver()
+            .resolve_target(
+                &AdapterSelector::parse("demo").expect("bare selector"),
+                project.paths(),
+            )
+            .expect_err("a release-build artifact must not resolve");
+        assert!(err.to_string().contains("adapter-not-found"), "{err}");
+        assert!(err.to_string().contains("adapter add"), "the miss suggests seeding: {err}");
     }
 
     #[test]
@@ -85,7 +87,11 @@ mod resolve {
         std::fs::create_dir_all(&sibling).expect("mkdir sibling layout");
         std::fs::write(sibling.join("demo.wasm"), "{}").expect("stage sibling component");
 
-        let paths = ExecutionPaths::isolated(&project_dir, outer.join("project-cache"));
+        let locations = Locations::explicit(
+            outer.join("store"),
+            CachePlacement::Parent(outer.join("project-cache")),
+        );
+        let paths = ExecutionPaths::new(&project_dir, locations);
         let err = support::resolver()
             .resolve_target(&AdapterSelector::parse("demo").expect("bare selector"), &paths)
             .expect_err("sibling artifact must not resolve");
@@ -96,7 +102,7 @@ mod resolve {
 #[test]
 fn platforms_metadata_preserved() {
     let project = Provider::bare();
-    stage_dev_component(&project.root, "vectis");
+    stage_cached_component(&project, "vectis");
 
     let resolved = support::resolver()
         .resolve_target(&AdapterSelector::parse("vectis").expect("bare selector"), project.paths())

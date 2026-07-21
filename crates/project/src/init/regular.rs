@@ -86,7 +86,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
 
     upsert_gitignore(opts.project_dir)?;
 
-    let cache_present = ComponentMeta::path(opts.paths).exists();
+    let cache_present = ComponentMeta::path(opts.paths, &adapter_name).exists();
 
     Ok(InitResult {
         config_path,

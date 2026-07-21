@@ -5,7 +5,7 @@ use std::fs;
 mod support;
 
 use mock::invoke::run;
-use support::{Provider, scoped_store, stage_dev_component};
+use support::{Provider, stage_cached_component};
 
 fn input(adapter: &str) -> project::init::handlers::InitInput {
     project::init::handlers::InitInput {
@@ -39,8 +39,6 @@ mod package {
         // The store misses the pin and the registry has no staged
         // response: init fails typed on the hydration leg.
         let project = Provider::bare();
-        let store = tempfile::tempdir().expect("store");
-        let _guard = scoped_store(store.path());
 
         let err = run::<project::init::handlers::Init, _, _>(
             &project,
@@ -58,8 +56,6 @@ mod package {
         // fetched, installed with its digest sidecar, verified, and
         // resolution proceeds against the fresh entry.
         let project = Provider::bare();
-        let store = tempfile::tempdir().expect("store");
-        let _guard = scoped_store(store.path());
         let staged = project.root.join("hydrator/demo@1.2.0.wasm");
         fs::create_dir_all(staged.parent().expect("parent")).expect("mkdir hydrator");
         fs::write(&staged, b"\0asm-component").expect("stage registry response");
@@ -70,7 +66,7 @@ mod package {
                 .expect("hydrated package scaffolds");
         assert_eq!(body.hydrated, vec!["demo@1.2.0".to_string()]);
 
-        let entry = diagnostics::cache::adapter_store_entry("demo", "1.2.0");
+        let entry = project.store_entry("demo", "1.2.0");
         assert_eq!(
             fs::read(&entry).expect("installed store entry"),
             b"\0asm-component",
@@ -81,22 +77,19 @@ mod package {
             "the digest sidecar lands beside the entry"
         );
 
-        // A second init over a fresh project reuses the installed
-        // entry without fetching.
-        let project = Provider::bare();
-        let body =
-            run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
-                .await
-                .expect("installed package scaffolds without fetching");
+        // A second init over a fresh project sharing the same store
+        // reuses the installed entry without fetching.
+        let second = Provider::with_store(project.store_root().to_path_buf());
+        let body = run::<project::init::handlers::Init, _, _>(&second, input("specify:demo@1.2.0"))
+            .await
+            .expect("installed package scaffolds without fetching");
         assert!(body.hydrated.is_empty(), "an installed pin fetches nothing");
     }
 
     #[tokio::test]
     async fn installed_resolves() {
         let project = Provider::bare();
-        let store = tempfile::tempdir().expect("store");
-        let _guard = scoped_store(store.path());
-        let entry = diagnostics::cache::adapter_store_entry("demo", "1.2.0");
+        let entry = project.store_entry("demo", "1.2.0");
         fs::write(&entry, b"\0asm-component").expect("stage installed component");
 
         run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
@@ -120,7 +113,7 @@ mod package {
         .await
         .expect("recorded package reference resolves");
         assert_eq!(body.name, "demo");
-        assert_eq!(body.version, "1.2.0");
+        assert_eq!(body.version.as_deref(), Some("1.2.0"));
         assert_eq!(body.location, "store");
     }
 }
@@ -131,19 +124,17 @@ mod shorthand {
     #[tokio::test]
     async fn canonicalised() {
         let project = Provider::bare();
-        stage_dev_component(&project.root, "demo");
+        stage_cached_component(&project, "demo");
 
         run::<project::init::handlers::Init, _, _>(&project, input("demo"))
             .await
-            .expect("bare development shorthand scaffolds");
+            .expect("bare cached shorthand scaffolds");
         let project_yaml =
             fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
         assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
 
         let project = Provider::bare();
-        let store = tempfile::tempdir().expect("store");
-        let _guard = scoped_store(store.path());
-        fs::write(diagnostics::cache::adapter_store_entry("demo", "1.2.0"), b"\0asm-component")
+        fs::write(project.store_entry("demo", "1.2.0"), b"\0asm-component")
             .expect("stage installed component");
 
         run::<project::init::handlers::Init, _, _>(&project, input("demo@1.2.0"))

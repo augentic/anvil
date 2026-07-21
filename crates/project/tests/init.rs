@@ -1,5 +1,5 @@
 //! Init-time component resolution through the public `Init`
-//! operation: the dev-probe path, the native (component-free)
+//! operation: the seeded-cache path, the native (component-free)
 //! resolver shape, and local-component mirroring into the project
 //! cache. The component-free workspace/journal init coverage lives
 //! with the slice handler suite.
@@ -17,17 +17,17 @@ use support::Provider;
 async fn regular_mode() {
     let project = Provider::bare();
 
-    // Stage a fake `demo` component at the resolver's in-repo dev
-    // probe path with a digest-valid metadata sidecar beside it:
-    // the resolver probes file presence and the sidecar supplies
-    // the answer, so no metadata dispatch runs.
-    let dev_dir = project.root.join("target/wasm32-wasip2/release");
-    fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-    let component = dev_dir.join("demo.wasm");
+    // Stage a fake `demo` component in the project component cache
+    // with a digest-valid metadata sidecar beside it: the resolver
+    // probes file presence and the sidecar supplies the answer, so no
+    // metadata dispatch runs.
+    let components = support::expected_cache_dir(&project).join("components");
+    fs::create_dir_all(&components).expect("mkdir component cache");
+    let component = components.join("demo.wasm");
     fs::write(&component, b"\0asm-component").expect("stage component");
     let digest = diagnostics::cache::file_content_digest(&component);
     fs::write(
-        dev_dir.join("demo.wasm.metadata.json"),
+        components.join("demo.wasm.metadata.json"),
         format!("{{ \"digest\": \"{digest}\", \"metadata\": {{}} }}"),
     )
     .expect("stage metadata sidecar");
@@ -84,7 +84,7 @@ impl project::adapter::Resolver for Linked {
     ) -> Result<project::adapter::ResolvedSource, error::Error> {
         project::adapter::resolver::source(
             &selector.name()?,
-            native_version(),
+            Some(native_version()),
             project::adapter::metadata::Metadata::default(),
             native_origin(),
         )
@@ -95,7 +95,7 @@ impl project::adapter::Resolver for Linked {
     ) -> Result<project::adapter::ResolvedTarget, error::Error> {
         project::adapter::resolver::target(
             &selector.name()?,
-            native_version(),
+            Some(native_version()),
             project::adapter::metadata::Metadata::default(),
             native_origin(),
         )
@@ -172,8 +172,7 @@ async fn local_component_mirrored() {
         b"\0asm-component",
         "the mirror is a byte-copy of the supplied file"
     );
-    let meta =
-        fs::read_to_string(components.join("component-meta.yaml")).expect("provenance stamp");
+    let meta = fs::read_to_string(components.join("demo.meta.yaml")).expect("provenance stamp");
     assert!(meta.contains("file://"), "provenance records the local source:\n{meta}");
     let config =
         fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");

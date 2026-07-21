@@ -1,8 +1,9 @@
 //! Suite-local provider and helpers for the resolver / install /
 //! store suites: the shipped `resolver::Component` behind a
-//! deterministic metadata runner, a file-backed ensure fetch, and the
-//! env guard pinning the store root into a tempdir (the project cache
-//! is isolated through the provider's [`ExecutionPaths`]).
+//! deterministic metadata runner and a file-backed ensure fetch. The
+//! store root and project cache are isolated inside the provider's
+//! tempdir through carried explicit [`Locations`] — no process
+//! environment is read or mutated.
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
@@ -12,7 +13,7 @@ use std::sync::Arc;
 use error::Error;
 use project::adapter::metadata::Metadata;
 use project::adapter::{AdapterSelector, ResolvedSource, ResolvedTarget, Resolver};
-use project::handler::ExecutionPaths;
+use project::handler::{CachePlacement, ExecutionPaths, Locations};
 use serde_json::json;
 
 /// The concrete provider the resolver-flavoured suites run against:
@@ -33,7 +34,8 @@ pub struct Provider {
 
 impl Provider {
     /// A bare directory — nothing scaffolded: owned tempdir with the
-    /// out-of-tree project cache isolated inside it.
+    /// adapter store and the out-of-tree project cache isolated
+    /// inside it.
     ///
     /// # Panics
     ///
@@ -42,12 +44,52 @@ impl Provider {
     pub fn bare() -> Self {
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let root = tmp.path().canonicalize().expect("canonical tempdir");
-        let paths = ExecutionPaths::isolated(&root, root.join("project-cache"));
+        Self::anchored(root, tmp)
+    }
+
+    /// A bare directory sharing an existing store root — for tests
+    /// that assert a second project reuses installed store entries.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the tempdir cannot be created.
+    #[must_use]
+    pub fn with_store(store: PathBuf) -> Self {
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let root = tmp.path().canonicalize().expect("canonical tempdir");
+        let locations =
+            Locations::explicit(store, CachePlacement::Parent(root.join("project-cache")));
+        let paths = ExecutionPaths::new(&root, locations);
         Self {
             root,
             paths,
             _owned: Arc::new(tmp),
         }
+    }
+
+    fn anchored(root: PathBuf, tmp: tempfile::TempDir) -> Self {
+        let store = root.join("store");
+        std::fs::create_dir_all(&store).expect("mkdir store");
+        let locations =
+            Locations::explicit(store, CachePlacement::Parent(root.join("project-cache")));
+        let paths = ExecutionPaths::new(&root, locations);
+        Self {
+            root,
+            paths,
+            _owned: Arc::new(tmp),
+        }
+    }
+
+    /// The provider's isolated global store root.
+    #[must_use]
+    pub fn store_root(&self) -> &Path {
+        self.paths.locations().store_root()
+    }
+
+    /// The provider's isolated store entry for `(name, version)`.
+    #[must_use]
+    pub fn store_entry(&self, name: &str, version: &str) -> PathBuf {
+        self.paths.locations().store_entry(name, version)
     }
 }
 
@@ -165,54 +207,20 @@ pub fn expected_cache_dir(provider: &Provider) -> PathBuf {
     provider.paths.cache_dir()
 }
 
-const STORE_ENV: &str = "SPECIFY_ADAPTER_STORE";
-
-/// Restores the previous `SPECIFY_ADAPTER_STORE` value on drop.
-#[derive(Debug)]
-pub struct StoreGuard(Option<std::ffi::OsString>);
-
-impl Drop for StoreGuard {
-    #[expect(unsafe_code, reason = "restore the store-root env var pinned for the test")]
-    fn drop(&mut self) {
-        // SAFETY: nextest runs each test in its own process, so no other
-        // thread observes the env mutation for the guard's lifetime.
-        unsafe {
-            match self.0.take() {
-                Some(prev) => std::env::set_var(STORE_ENV, prev),
-                None => std::env::remove_var(STORE_ENV),
-            }
-        }
-    }
-}
-
-/// Pin the global content-addressed adapter store root
-/// directly at `dir` so install / resolve probes are hermetic and
-/// auto-cleaned with the tempdir.
-#[must_use]
-#[expect(unsafe_code, reason = "pin the store-root env var into the test tempdir")]
-pub fn scoped_store(dir: &Path) -> StoreGuard {
-    let prev = std::env::var_os(STORE_ENV);
-    // SAFETY: see `StoreGuard::drop` — single-process test isolation.
-    unsafe { std::env::set_var(STORE_ENV, dir) };
-    StoreGuard(prev)
-}
-
-/// Stage a stub adapter component for `name` at the resolver's in-repo
-/// development probe.
+/// Stage a stub adapter component for `name` in the provider's project
+/// component cache — the single bare-name probe.
 ///
-/// The stub lands at `<root>/target/wasm32-wasip2/release/<name>.wasm`,
-/// so a bare-name resolve inside `root` can dispatch the test metadata
-/// runner.
+/// The stub lands at `<project-cache>/components/<name>.wasm`, so a
+/// bare-name resolve against the provider's paths can dispatch the
+/// test metadata runner.
 ///
 /// # Panics
 ///
-/// Panics when the dev release directory or the stub file cannot be
-/// written.
-pub fn stage_dev_component(root: &Path, name: &str) {
-    let dev_dir = root.join("target/wasm32-wasip2/release");
-    std::fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
-    std::fs::write(dev_dir.join(format!("{}.wasm", name.replace('-', "_"))), "{}")
-        .expect("write stub component");
+/// Panics when the cache directory or the stub file cannot be written.
+pub fn stage_cached_component(provider: &Provider, name: &str) {
+    let components = provider.paths.cache_dir().join("components");
+    std::fs::create_dir_all(&components).expect("mkdir component cache");
+    std::fs::write(components.join(format!("{name}.wasm")), "{}").expect("write stub component");
 }
 
 /// Recursively copy `src` into `dst`, creating directories as needed.

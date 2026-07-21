@@ -13,14 +13,16 @@ use project::handler::{Anchor, Render};
 use project::seam::{Source, Target};
 use serde::Serialize;
 
-pub use self::output::Format;
 use self::output::{ErrorBody, Exit, emit, write_error_text};
+pub use self::output::{Format, render_failure};
 
+mod adapter;
 mod archive;
 mod journal;
 mod output;
 mod plan;
 mod registry;
+pub mod selectors;
 mod slice;
 mod source;
 mod target;
@@ -76,12 +78,16 @@ impl NamespaceHelp {
 
 const NAMESPACE_HELP: &[NamespaceHelp] = &[
     NamespaceHelp::new(
+        &["adapter"],
+        "Adapter component cache operations. `add` seeds a local `.wasm` component into the project component cache — pre-init, axis-neutral — so bare bindings (project target, plan sources) resolve it",
+    ),
+    NamespaceHelp::new(
         &["source"],
-        "Source adapter operations (workflow contract) — debug/breakout surface; `plan author` and `slice refine` run these steps themselves. Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the development release build for bare names",
+        "Source adapter operations (workflow contract) — debug/breakout surface; `plan author` and `slice refine` run these steps themselves. Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
     ),
     NamespaceHelp::new(
         &["target"],
-        "Target adapter operations (workflow contract) — debug/breakout surface; the build and merge orchestrations resolve targets themselves. Target adapters provide `guidance` + `build` + `merge` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the development release build for bare names",
+        "Target adapter operations (workflow contract) — debug/breakout surface; the build and merge orchestrations resolve targets themselves. Target adapters provide `guidance` + `build` + `merge` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
     ),
     NamespaceHelp::new(
         &["slice"],
@@ -214,11 +220,18 @@ where
         "Initialize .specify/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path) for a regular project, or `--workspace` for a registry-only workspace. The two are mutually exclusive — clap enforces the conflict and exits `2` with its standard parse-error diagnostic. A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `specify init --upgrade`."
     );
     route!(
+        ["adapter", "add"],
+        adapter::AddArgs,
+        project::adapter::handlers::AdapterAdd,
+        "Seed a local `.wasm` component into the project component cache",
+        "Seed a local `.wasm` component into the project component cache.\n\nMirrors the component to `<project-cache>/components/<name>.wasm` (the kebab name derives from the filename) and stamps a per-component provenance sidecar. Pre-init and axis-neutral: `.specify/` need not exist and the component's exports are not inspected — the bare binding that later resolves the name (project target or plan source) supplies the expected axis. Re-seeding the same name replaces the entry; the explicit command is the approval act."
+    );
+    route!(
         ["source", "resolve"],
         source::ResolveArgs,
         project::adapter::handlers::SourceResolve,
         "Resolve a source adapter by kebab name",
-        "Resolve a source adapter by kebab name.\n\nResolves the single `.wasm` component: the global store entry for a pinned identity, else the project component cache / development release build for a bare name. Emits the resolved component path plus the axis's closed operation set."
+        "Resolve a source adapter by kebab name.\n\nResolves the single `.wasm` component: the global store entry for a pinned identity, else the seeded project component cache for a bare name. Emits the resolved component path plus the axis's closed operation set."
     );
     route!(
         ["source", "survey"],
@@ -440,6 +453,7 @@ macro_rules! convert {
     };
 }
 
+convert!(adapter::AddArgs => project::adapter::handlers::AddInput { component, project_dir });
 convert!(source::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(target::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan });

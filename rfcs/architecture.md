@@ -121,7 +121,7 @@ GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
   (miss)                 -> GuestResolver  (deployment-supplied; Specify plugs store probe +
                                            path-glob policy — Omnia sees opaque guest ids only)
   "source:typescript"    -> InstancePre    ┐  cached after first resolve from
-  "source:documentation" -> InstancePre    │  $HOME/.specify/adapters (or project component cache)
+  "source:documentation" -> InstancePre    │  $SPECIFY_HOME/store (or project component cache)
   "target:omnia"         -> InstancePre    ┘
 ```
 
@@ -201,10 +201,10 @@ Because "Specify is Omnia compiled with Specify-specific backends," there is no 
 - **A narrow initialization surface** carrying project scaffolding through `init`; removed provisioning, workspace, self-update, and plugin-cache verbs are not retained as unsupported placeholders. Other argv forwards **unparsed** to the engine guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim.
 - **A generic, Specify-agnostic host layer** — the macro-generated command-mode runtime nested in a host submodule, mounted **in-process** via `run`. Specify's launcher owns crate-root `main` and calls `run` with the typed deployment value it assembles; plain Omnia apps keep the macro at crate root and use the generated `main`. No subprocess, no second binary: the host layer carries no Specify vocabulary and reads only the derived deployment (engine guest, mounts, resolver policy). See [RFC-70 §Omnia `runtime!` composition](rfc-70-deployment.md#omnia-runtime-composition).
 
-The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/adapters` (relocatable via `$SPECIFY_ADAPTER_STORE`), with dispatch through Omnia's registry-miss guest resolver:
+The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/store` (the whole layout relocatable via `$SPECIFY_HOME`), with dispatch through Omnia's registry-miss guest resolver:
 
 - **Adapter resolution at init**: `specify init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command or engine module advertised by the CLI.
-- **Engine versioned by the binary**: the engine guest resolves as `specify:engine@<the binary's own version>` from the same store — the binary version *is* the engine version, one knob, no committed guest artifact and no `include_bytes!` payload. A `SPECIFY_ENGINE_PATH` env override (or the in-repo `target/wasm32-wasip2/` dev build) serves engine-guest iteration; it is a development affordance, never a release mode.
+- **Engine versioned by the binary**: the engine guest resolves as `specify:engine@<the binary's own version>` from the same store — the binary version *is* the engine version, one knob, no committed guest artifact and no `include_bytes!` payload. There is no engine-path override: local engine iteration seeds `engine@<version>.wasm` plus its `.meta` digest sidecar into a relocated store (`SPECIFY_HOME`), as the wasm example does ([RFC-75](rfc-75-artifact-locations.md)).
 - **Derived deployment**: the launcher assembles a typed deployment value in memory — the engine guest, writable project / cache / store mounts, the engine's link allow-list, and resolver policy (filesystem path globs plus fail-closed digest verification) — and persists only the `resolution.json` diagnostics record into the per-project cache ([RFC-70](rfc-70-deployment.md)). The miss-hook loads adapter guests by identity. Derived and safe to delete; the host layer reads the typed value.
 
 ## Deferred relatives

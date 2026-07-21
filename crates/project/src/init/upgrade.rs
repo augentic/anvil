@@ -75,8 +75,8 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
 
     Ok(InitResult {
         config_path,
+        cache_present: !cfg.workspace && ComponentMeta::path(opts.paths, &adapter_name).exists(),
         adapter_name,
-        cache_present: ComponentMeta::path(opts.paths).exists(),
         directories_created: Vec::new(),
         scaffolded_rule_keys: Vec::new(),
         specify_version: target,

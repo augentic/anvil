@@ -20,8 +20,8 @@ use error::Error;
 
 /// The operator-supplied adapter reference, preserving its input kind.
 ///
-/// - [`Self::Bare`] — development shorthand; resolution defers to the
-///   deployment (project component cache / dev build for components,
+/// - [`Self::Bare`] — unpinned shorthand; resolution defers to the
+///   deployment (the seeded project component cache for components,
 ///   catalog match for a native host).
 /// - [`Self::Package`] — an immutable registry locator with a
 ///   mandatory exact-SemVer pin. `namespace` is parse/display
@@ -31,7 +31,7 @@ use error::Error;
 ///   narrowing to a same-named compiled adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterSelector {
-    /// Bare development shorthand (`omnia`).
+    /// Bare unpinned shorthand (`omnia`).
     Bare {
         /// Kebab-case adapter name.
         name: String,
@@ -87,8 +87,8 @@ impl AdapterSelector {
                     "GitHub adapter URIs are not supported (`{value}`): a source checkout \
                      does not yield a usable adapter artifact. Pin a published component \
                      (`specify:<name>@<semver>`), point at a local `.wasm` component file, or \
-                     build the in-repo development artifact (`cargo build --release --target \
-                     wasm32-wasip2`)"
+                     seed one into the project component cache (`specify adapter add \
+                     <path/to/component.wasm>`)"
                 ),
             });
         }
@@ -263,7 +263,7 @@ fn parse_validated_package(
 
 /// Recognise a first-party adapter shorthand and split it into
 /// `(name, version)`. A bare `name` carries no pin (`None`) and
-/// resolves the development artifact; a `name@<semver>` carries the
+/// resolves the seeded cache entry; a `name@<semver>` carries the
 /// parsed [`semver::Version`] and is sugar for the
 /// `specify:<name>@<semver>` package reference. Returns `None` for
 /// paths (`./foo`, `/abs`, `file://…`) and URLs (anything carrying `:`
