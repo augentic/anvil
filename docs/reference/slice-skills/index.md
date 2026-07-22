@@ -1,6 +1,6 @@
 # Slice skills
 
-Slice skills operate on a single slice inside `.specify/slices/<name>/`. They cover one-time project setup and the per-slice refine → build → merge loop. The change level ([/spec:plan](../change-skills/plan.md), [specify plan execute](../cli/plan.md#specify-plan-execute), [/spec:finalize](../change-skills/finalize.md)) sequences the same orchestrations inside `specify plan execute`; every step is also reachable as a manual breakout when execute parks.
+Slice skills operate on a single slice inside `.specify/slices/<name>/`. They cover one-time project setup and the per-slice refine → build → merge loop. The change level ([Change skills](../change-skills/index.md), [specify plan execute](../cli/plan.md#specify-plan-execute)) sequences the same orchestrations inside `specify plan execute`; every step is also reachable as a manual breakout when execute parks.
 
 ## The per-slice loop
 

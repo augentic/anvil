@@ -55,7 +55,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.target }},wasm32-wasip2
 
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
@@ -65,6 +65,17 @@ jobs:
       - name: Install cross
         if: matrix.use_cross
         run: cargo install cross --locked --git https://github.com/cross-rs/cross
+
+      # The engine guest is embedded into the binary: build.rs probes
+      # target/wasm32-wasip2/release/specify.wasm (a workspace-relative
+      # path, visible inside the cross container too) and include_bytes!
+      # embeds it. Build the wasm32 engine first, then guard against the
+      # compile-passing empty placeholder ever reaching a release.
+      - name: Build engine guest (wasm32)
+        shell: bash
+        run: |
+          cargo build --release --locked --lib -p specify --target wasm32-wasip2
+          test -s target/wasm32-wasip2/release/specify.wasm
 
       - name: Build (cargo)
         if: ${{ !matrix.use_cross }}

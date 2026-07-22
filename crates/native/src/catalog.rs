@@ -110,10 +110,11 @@ impl Entry {
         self.server_name
     }
 
-    /// Routed adapter id (`<axis>:<name>`).
+    /// Exact routed adapter id (`<axis>:<name>@<version>`) — the
+    /// identity a resolved native adapter dispatches by.
     #[must_use]
     pub fn id(&self) -> String {
-        format!("{}:{}", self.axis, self.name)
+        format!("{}:{}@{}", self.axis, self.name, self.version)
     }
 
     /// Adapter metadata projected onto the engine shape.
@@ -188,8 +189,20 @@ impl Catalog {
         names.join(", ")
     }
 
+    /// Resolve a routed adapter id against the compiled entries: axis
+    /// and name must match, and a versioned id
+    /// (`<axis>:<name>@<version>`) additionally requires the exact
+    /// compiled version. An unversioned id matches the sole compiled
+    /// identity for that `(axis, name)`.
     pub(crate) fn find(&self, id: &str) -> Option<&Entry> {
-        self.entries.iter().find(|entry| entry.id() == id)
+        let routed = project::adapter::RoutedId::parse(id).ok()?;
+        self.entries.iter().find(|entry| {
+            entry.axis == routed.axis
+                && entry.name == routed.name
+                && routed.version.as_ref().is_none_or(|version| {
+                    semver::Version::parse(entry.version).is_ok_and(|linked| linked == *version)
+                })
+        })
     }
 
     /// Dispatch `guidance` to the linked target adapter behind `id`.

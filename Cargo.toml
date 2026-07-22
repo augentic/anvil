@@ -28,7 +28,6 @@ omnia-cursor.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 guest.workspace = true
@@ -51,12 +50,17 @@ crate-type = ["cdylib"]
 name = "native"
 path = "examples/native/main.rs"
 
+[[example]]
+name = "host"
+path = "examples/wasm/host.rs"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 native = { workspace = true, features = ["cli"] }
 mock.workspace = true
 omnia-guest.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]
 workspace = true
@@ -186,7 +190,6 @@ artifacts = { path = "crates/artifacts" }
 change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
-eval = { path = "crates/eval" }
 guest = { path = "crates/guest" }
 launcher = { path = "crates/launcher" }
 native = { path = "crates/native" }

@@ -1,12 +1,12 @@
 //! Specify's unpublished composition binary: native command
 //! passthrough over the mock catalog by default, the live eval
-//! client under `eval`.
+//! client under this crate's library API.
 //!
-//! The composition root owns what `native` and `eval` refuse to: the
-//! Tokio runtime, `std::env::args`, the lab-only `--project-dir`
-//! convenience, Cursor backend construction, and the catalog
-//! declaration. It is a development tool, never an install or release
-//! artifact.
+//! The composition root owns what `native` and the eval library refuse
+//! to: the Tokio runtime, `std::env::args`, the lab-only
+//! `--project-dir` convenience, Cursor backend construction, and the
+//! catalog declaration. It is a development tool, never an install or
+//! release artifact. Enabled with `--features cli`.
 
 mod model;
 mod native;

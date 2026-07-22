@@ -1,6 +1,6 @@
 [package]
 name = "launcher"
-description = "Self-assembling deployment launcher for the shipped specify binary: per-invocation closure derivation, store hydration with fail-closed verification, and typed deployment assembly"
+description = "Deployment policy for the shipped specify binary: the macro-facing mount and resolver expressions behind a dynamic Omnia deployment"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -9,17 +9,14 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 diagnostics.workspace = true
 error.workspace = true
-jiff.workspace = true
+omnia.workspace = true
 project.workspace = true
-reqwest.workspace = true
-semver.workspace = true
-tokio = { workspace = true }
 transport.workspace = true
 
 [dev-dependencies]
-serde_json.workspace = true
 tempfile.workspace = true
 
 [lints]

@@ -6,8 +6,7 @@
 //! the [`Pinned`] target with a published identity version, and the
 //! [`BadVersion`] target with a non-SemVer identity — enough surface
 //! for the catalog, provider, references, and command suites without a
-//! dependency on any concrete adapter crate (the checks package pins
-//! that invariant).
+//! dependency on any concrete adapter crate.
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 

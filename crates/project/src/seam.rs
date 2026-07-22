@@ -227,16 +227,28 @@ pub fn seam_failure(operation: &'static str, id: &str, err: &Error) -> error::Er
     }
 }
 
-/// The plan-bound adapter id routing a source dispatch
-/// (`source:<adapter>`).
+/// The exact routed adapter id for a source dispatch
+/// (`source:<name>[@<version>]`) — versioned for a package-resolved
+/// identity, unversioned for a cache-backed one.
 #[must_use]
-pub fn source_id(adapter: &str) -> String {
-    format!("{}:{adapter}", crate::adapter::Axis::Source.prefix())
+pub fn source_id(adapter: &crate::adapter::SourceAdapter) -> String {
+    crate::adapter::RoutedId::new(
+        crate::adapter::Axis::Source,
+        adapter.name.clone(),
+        adapter.version.clone(),
+    )
+    .to_string()
 }
 
-/// The plan-bound adapter id routing a target dispatch
-/// (`target:<name>`).
+/// The exact routed adapter id for a target dispatch
+/// (`target:<name>[@<version>]`) — versioned for a package-resolved
+/// identity, unversioned for a cache-backed one.
 #[must_use]
-pub fn target_id(name: &str) -> String {
-    format!("{}:{name}", crate::adapter::Axis::Target.prefix())
+pub fn target_id(adapter: &crate::adapter::TargetAdapter) -> String {
+    crate::adapter::RoutedId::new(
+        crate::adapter::Axis::Target,
+        adapter.name.clone(),
+        adapter.version.clone(),
+    )
+    .to_string()
 }

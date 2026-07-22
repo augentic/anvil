@@ -1,6 +1,6 @@
 # RFC-18: Specialized SLM Code Generation
 
-> Status: Draft - Depends: the durable enforcement decisions in [`DECISIONS.md`](../../DECISIONS.md) - Architecture: an SLM model backend behind the `wasi-model` boundary — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
+> Status: Draft - Depends: [Workflow, standards, and artifacts](../../docs/explanation/standards-layer.md) - Architecture: an SLM model backend behind the `wasi-model` boundary — enabled by the swappable backend set, gating nothing (a ratchet rung, not a stage)
 
 ## Abstract
 
@@ -177,6 +177,6 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- [DECISIONS.md §Diagnostic substrate](../../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)
-- [DECISIONS.md §Standards chain moved to the adapters](../../DECISIONS.md#standards-chain-moved-to-the-adapters-diagnostics-merged-into-schema)
+- [`crates/diagnostics`](../../crates/diagnostics/) — shared `Diagnostic` substrate
+- [Workflow, standards, and artifacts](../../docs/explanation/standards-layer.md) — standards live in adapters
 - [`targets/omnia/prose/prompts/build/crate.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/crate.md)

@@ -11,11 +11,6 @@
   },
   "plugins": [
     {
-      "name": "capture",
-      "source": "capture",
-      "description": "Skills to capture runtime fixtures from legacy TypeScript services for Specify migration workflows."
-    },
-    {
       "name": "spec",
       "source": "spec",
       "description": "Skills for the Specify workflow: `/spec:init` scaffolds a project, `/spec:plan` authors the change-level plan, the per-slice breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) drive one slice at a time, and `/spec:finalize` closes the change; the drained execute loop is the guest-routed `specify plan execute` verb."

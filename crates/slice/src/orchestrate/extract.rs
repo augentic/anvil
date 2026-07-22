@@ -55,15 +55,15 @@ pub async fn extract(
 
     // Ensure/resolve before dispatch: the binding's pin and the
     // adapter's `specify_floor` are enforced by the deployment's
-    // resolver, and dispatch routes by the resolved name only.
-    let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest.name;
+    // resolver, and dispatch routes by the exact resolved identity.
+    let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest;
 
     emit(
         layout,
         now,
         EventKind::SourceExecutionAgent {
             source: source.to_string(),
-            adapter: adapter.clone(),
+            adapter: adapter.name.clone(),
             operation: SourceOperation::Extract,
         },
     )?;
@@ -97,7 +97,7 @@ pub async fn extract(
     )?;
     Ok(ExtractOutcome {
         source: source.to_string(),
-        adapter,
+        adapter: adapter.name,
         evidence: path,
     })
 }

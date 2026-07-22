@@ -26,6 +26,7 @@ pub mod handlers;
 pub mod metadata;
 pub(crate) mod operation;
 pub mod resolver;
+mod routed;
 mod selector;
 
 pub(crate) use core::PlatformsSurface;
@@ -37,4 +38,5 @@ pub use core::{
 pub use ensure::ComponentMeta;
 pub use operation::{SourceOperation, TargetOperation};
 pub use resolver::Resolver;
+pub use routed::RoutedId;
 pub use selector::{AdapterSelector, FIRST_PARTY_NAMESPACE};

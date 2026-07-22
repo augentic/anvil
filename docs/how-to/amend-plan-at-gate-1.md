@@ -76,6 +76,6 @@ When Gate 1 review shows a slice should split, add a second row with `specify pl
 
 ## See also
 
-- [/spec:plan](../reference/change-skills/plan.md) — plan skill reference
+- [`/spec:plan` skill body](../../plugins/spec/skills/plan/SKILL.md) — plan skill reference
 - [Lifecycle](../reference/lifecycle.md) — plan lifecycle states
 - [Your first multi-slice change](../tutorials/first-change.md) — multi-slice Gate 1 inspection

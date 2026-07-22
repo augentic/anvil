@@ -286,7 +286,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 ## References
 
-- [`engine/docs/standards/workflow.md`](../../docs/standards/workflow.md) and [`engine/DECISIONS.md`](../../DECISIONS.md) — the source-adapter flow and merge/archive writers this RFC's ledger annotates.
+- [`docs/standards/workflow.md`](../../docs/standards/workflow.md) — the source-adapter flow and merge/archive writers this RFC's ledger annotates.
 - [`engine/crates/project/src/journal/event.rs`](../../crates/project/src/journal/event.rs) — the `slice.archive.created` outcome-ledger event a rewrite should project the migration ledger over.
 - [RFC-21: Source Catalogue and Source-Clone Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache the ledger annotates.
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.

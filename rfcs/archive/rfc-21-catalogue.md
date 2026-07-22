@@ -255,7 +255,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 ## References
 
-- [`engine/docs/standards/workflow.md`](../../docs/standards/workflow.md) and [`engine/DECISIONS.md`](../../DECISIONS.md) — the source-adapter flow (`survey` / `extract`) and the `--source` binding grammar this RFC extends.
+- [`docs/standards/workflow.md`](../../docs/standards/workflow.md) — the source-adapter flow (`survey` / `extract`) and the `--source` binding grammar this RFC extends.
 - [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
 - [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) — the source/target axis split the source-clone cache refines.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.

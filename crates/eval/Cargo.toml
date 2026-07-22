@@ -1,15 +1,34 @@
+# Lab-only live-model evaluation: library (trial/scenario runners) plus
+# the unpublished composition binary (native command passthrough and
+# `eval` mode over the mock catalog). The binary is gated on the `cli`
+# feature so library consumers (specify-adapters) do not pull Cursor or
+# mock. Never an install or release artifact.
 [package]
 name = "eval"
-description = "Lab-only live-model evaluation library over the native host"
+description = "Lab-only live-model evaluation library and composition binary over the native host"
 publish = false
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+autobins = false
 
 [lints]
 workspace = true
+
+[features]
+default = []
+# Composition binary: Tokio, Cursor backend, mock catalog binding.
+cli = ["dep:mock", "dep:omnia", "dep:omnia-cursor", "dep:omnia-wasi-model", "dep:tokio"]
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "eval"
+path = "src/main.rs"
+required-features = ["cli"]
 
 [dependencies]
 anyhow.workspace = true
@@ -18,9 +37,16 @@ clap.workspace = true
 native = { workspace = true, features = ["cli"] }
 omnia-guest.workspace = true
 project.workspace = true
+semver.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true
+# Binary-only (feature = "cli").
+mock = { workspace = true, optional = true }
+omnia = { workspace = true, optional = true }
+omnia-cursor = { workspace = true, optional = true }
+omnia-wasi-model = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
 mock.workspace = true

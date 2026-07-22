@@ -20,7 +20,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 - [CLI Reference](cli/index.md) — all `specify` subcommands grouped by family.
 ### Plugins
 
-- [Plugins](plugins/index.md) — Cursor operator plugins (Specify, Capture) and their `/spec:*` / `/capture:*` skill wrappers.
+- [Plugins](plugins/index.md) — Cursor operator plugin (Specify) and its `/spec:*` skill wrappers.
 
 ### Adapters
 

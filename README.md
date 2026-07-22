@@ -52,7 +52,7 @@ Full walkthrough: [quick start tutorial](docs/tutorials/quick-start.md). Command
 
 ### 1. Cursor skills
 
-In Cursor: Settings → Plugins → search **Augentic** → install the marketplace → restart Cursor. That adds the Specify (`/spec:`*) and Capture (*`/capture:`) plugins.
+In Cursor: Settings → Plugins → search **Augentic** → install the marketplace → restart Cursor. That adds the Specify (`/spec:*`) plugin.
 
 ### 2. CLI
 

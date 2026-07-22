@@ -19,14 +19,9 @@ The source adapter's `survey` operation scans the bound tree and emits slice-siz
 
 Multi-slice migrations look like any other multi-slice plan: one operator review step (Gate 1), then `specify plan execute` drives each slice through refine → build → merge.
 
-## Capture and replay
+## Runtime captures
 
-For regression-ready migrations, use the Capture plugin to wiretap a legacy service and record fixtures:
-
-- **`wiretapper`** — add capture code to a legacy TypeScript repo
-- **`replay-writer`** — fold captured fixtures into tests on the generated Omnia crate
-
-See the RT plugin skills and [Anatomy of an adapter](../explanation/adapter-anatomy.md) for the source/target contract.
+Runtime capture trees are consumed by the [`captures` source adapter](https://github.com/augentic/specify-adapters/tree/main/sources/captures) (default `authority: behaviour`). Operators produce those trees outside Specify; bind them at plan time like any other source. See [Anatomy of an adapter](../explanation/adapter-anatomy.md) for the source/target contract.
 
 ## Recommended reading order
 

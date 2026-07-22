@@ -56,10 +56,10 @@ fn bare_resolution() {
     let source = provider.resolve_source(&bare("mock"), &paths).expect("native source resolves");
     assert_eq!(source.manifest.version.as_ref().map(ToString::to_string).as_deref(), Some("0.0.0"));
     assert_eq!(source.origin.label, "native");
-    assert_eq!(source.origin.reference, "rust:source:mock");
+    assert_eq!(source.origin.reference, "rust:source:mock@0.0.0");
 
     let target = provider.resolve_target(&bare("mock"), &paths).expect("native target resolves");
-    assert_eq!(target.origin.reference, "rust:target:mock");
+    assert_eq!(target.origin.reference, "rust:target:mock@0.0.0");
 
     let unknown =
         provider.resolve_target(&bare("unknown"), &paths).expect_err("unlinked adapter refuses");

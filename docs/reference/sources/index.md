@@ -21,7 +21,7 @@ You bind sources per change at plan time (`/spec:plan <name> source docs=./desig
 | `documentation` | A read-only directory of written docs | `documentation` | Design notes, specs, and operator-authored intent. |
 | `typescript` | A read-only TypeScript/JavaScript source tree | `behaviour` | Reconstructing behaviour from a legacy service. |
 | `screenshots` | A directory of screen images | `documentation` | Vision-assisted layout inference for UI targets (Vectis). |
-| `captures` | A runtime capture tree (from `/capture:wiretapper`) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
+| `captures` | A runtime capture tree (operator-produced) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
 
 Authority is set on the **Evidence document** during `extract`; the table above lists the default each adapter's extract prompt emits. Operators can override authority per slice at Gate 1 with `specify plan amend <entry> --authority-override`.
 

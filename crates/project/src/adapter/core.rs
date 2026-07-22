@@ -26,7 +26,18 @@ use crate::adapter::operation::{SourceOperation, TargetOperation};
 /// metadata dispatch; the in-memory adapters themselves are axis-typed
 /// ([`SourceAdapter`] / [`TargetAdapter`]) so internal call sites no
 /// longer carry the `axis` argument forward past the resolver boundary.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
+)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Axis {

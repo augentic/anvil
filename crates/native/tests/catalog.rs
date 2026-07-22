@@ -44,7 +44,7 @@ fn entries_and_metadata() {
         .build()
         .expect("valid catalog");
     let ids: Vec<String> = linked.entries().iter().map(native::Entry::id).collect();
-    assert_eq!(ids, ["source:mock", "target:mock", "target:floored"]);
+    assert_eq!(ids, ["source:mock@0.0.0", "target:mock@0.0.0", "target:floored@0.0.0"]);
 
     let entry = linked.get(Axis::Target, "mock").expect("target entry");
     assert_eq!(entry.version(), "0.0.0");

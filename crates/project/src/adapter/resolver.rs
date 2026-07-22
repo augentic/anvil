@@ -87,7 +87,8 @@ impl Resolver for Component {
     ) -> Result<ResolvedSource, Error> {
         let name = selector.name()?;
         let location = locate(Axis::Source, selector, &name, paths)?;
-        let metadata = metadata::load(self.metadata, &location, Axis::Source, &name)?;
+        let metadata =
+            metadata::load(self.metadata, &location, Axis::Source, &name, selector.version())?;
         source(&name, selector.version().cloned(), metadata, location.origin())
     }
 
@@ -96,7 +97,8 @@ impl Resolver for Component {
     ) -> Result<ResolvedTarget, Error> {
         let name = selector.name()?;
         let location = locate(Axis::Target, selector, &name, paths)?;
-        let metadata = metadata::load(self.metadata, &location, Axis::Target, &name)?;
+        let metadata =
+            metadata::load(self.metadata, &location, Axis::Target, &name, selector.version())?;
         target(&name, selector.version().cloned(), metadata, location.origin())
     }
 }

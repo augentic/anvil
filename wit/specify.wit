@@ -21,9 +21,11 @@ interface types {
     internal(string),
   }
 
-  /// A plan-bound adapter identity, e.g. "source:typescript" or "target:omnia".
+  /// An exact routed adapter identity: "<axis>:<name>@<version>" for a
+  /// pinned package identity (e.g. "target:omnia@1.0.0"), "<axis>:<name>"
+  /// for an unpinned cache-backed component (e.g. "source:typescript").
   /// Host-mediated dispatch routes each call to the exporting guest by this
-  /// first argument.
+  /// first argument; the wire type stays an opaque string.
   type adapter-id = string;
 
   /// A content-addressed snapshot identity (a git commit oid in the git

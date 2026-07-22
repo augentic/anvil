@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs the Specify and Capture plugins (the `/spec:*` and `/capture:*` skill wrappers). Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](https://github.com/augentic/specify-adapters/tree/main/targets/), not in Cursor skills.
+This installs the Specify plugin (the `/spec:*` skill wrappers). Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](https://github.com/augentic/specify-adapters/tree/main/targets/), not in Cursor skills.
 
 ## The `specify` CLI
 
@@ -66,15 +66,15 @@ cargo install --git https://github.com/augentic/specify   # source install
 
 ### Contributing to the repo
 
-The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI (the Cargo workspace at the repo root) — needs only a Rust toolchain, not a separately installed `specify`. Repo checks are cargo tests inside the same workspace:
+The above covers installing `specify` to *use* Specify in your own project. Contributing to the [`augentic/specify`](https://github.com/augentic/specify) repo itself — editing skills, adapters, references, docs, or the CLI (the Cargo workspace at the repo root) — needs only a Rust toolchain, not a separately installed `specify`:
 
 ```bash
-cargo test -p checks  # adapter boundary + plugin authoring shape
+cargo make links # Developer Guide link integrity
 make ci          # the full Rust workspace gate (cargo make ci)
 cargo install --path . --locked # install the working-tree CLI into ~/.cargo/bin
 ```
 
-No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Consistency Checks](../contributing/checks.md).
+No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Quality gates](../contributing/quality-gates.md#consistency-links).
 
 ## Adapter-specific prerequisites
 

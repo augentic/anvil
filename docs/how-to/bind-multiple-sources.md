@@ -44,6 +44,6 @@ Coverage is at-least-once: a lead may be bound into more than one slice. When a 
 
 ## See also
 
-- [/spec:plan](../reference/change-skills/plan.md) — source binding grammar
+- [`/spec:plan` skill body](../../plugins/spec/skills/plan/SKILL.md) — source binding grammar
 - [Legacy migration at scale](../tutorials/legacy-migration-at-scale.md) — typescript orientation
 - [Resolve spec conflicts](resolve-spec-conflicts.md) — after refine surfaces tags

@@ -10,6 +10,7 @@ use error::Error;
 use serde::{Deserialize, Serialize};
 
 use super::core::{AdapterLocation, Axis, BuildInputDeclaration, PlatformsCapability};
+use super::routed::RoutedId;
 
 /// Unified metadata answer across both adapter axes.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -31,7 +32,9 @@ pub struct Metadata {
 pub struct Request<'a> {
     /// The axis interface to invoke `metadata` on.
     pub axis: Axis,
-    /// Routed adapter id (`<axis>:<name>`).
+    /// Exact routed adapter id (`<axis>:<name>[@<version>]`) — the id
+    /// implied by the resolved selector: versioned for a package pin,
+    /// unversioned for a cache-backed selector.
     pub adapter_id: &'a str,
 }
 
@@ -53,8 +56,13 @@ pub(crate) fn metadata_cache_path(component: &Path) -> PathBuf {
 }
 
 /// Load component metadata through `runner`, honoring the digest cache.
+///
+/// The dispatch id is the identity the selector implies: exact
+/// (`<axis>:<name>@<version>`) for a package pin, unversioned
+/// (`<axis>:<name>`) for a cache-backed resolve.
 pub(super) fn load(
     runner: Runner, location: &AdapterLocation, axis: Axis, name: &str,
+    version: Option<&semver::Version>,
 ) -> Result<Metadata, Error> {
     let component = location.path();
     let digest = diagnostics::cache::file_content_digest(component);
@@ -63,7 +71,7 @@ pub(super) fn load(
         return Ok(answer);
     }
 
-    let adapter_id = format!("{}:{name}", axis.prefix());
+    let adapter_id = RoutedId::new(axis, name, version.cloned()).to_string();
     let answer = runner(&Request {
         axis,
         adapter_id: &adapter_id,

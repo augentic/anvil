@@ -1,181 +1,189 @@
-//! The self-assembling deployment launcher inside the shipped
-//! `specify` binary (RFC-70 Stage 1).
+//! Deployment policy for the shipped `specify` binary: the macro-facing
+//! mount and resolver expressions behind a dynamic Omnia deployment
+//! (RFC-70 Stage 3).
 //!
-//! For each invocation the launcher derives the component closure —
-//! the engine guest plus every adapter the command could dispatch —
-//! from the anchored project's `project.yaml`, the active `plan.yaml`,
-//! and each materialised workspace slot's own `project.yaml` (each leg
-//! joined only when the routed verb's `ClosureScope` can reach it, so
-//! read-only verbs deploy the engine alone), plus the adapter
-//! selectors argv itself
-//! carries (projected through the shared transport grammar). Closure
-//! misses are hydrated into the well-known locations (the global
-//! adapter store for package pins, the per-project cache for local
-//! components — both derived from one carried `Locations` value),
-//! every store-resolved entry is digest-verified fail closed as it
-//! resolves (one digest pass per component, inside hydration), and
-//! the result is a typed [`Deployment`] the binary maps onto an Omnia
-//! manifest and runs. Nothing starts when verification fails.
+//! There is no host front door. The `omnia::runtime!` invocation in
+//! `src/omnia.rs` embeds the engine guest as static component bytes
+//! and evaluates this crate's expressions for everything the
+//! deployment needs before boot: the well-known mounts (anchored from
+//! argv and the working directory) and the fail-closed guest
+//! [`Resolver`]. Every invocation then runs in the guest — help,
+//! version, grammar rejections, and `adapter add` included; argv and
+//! the engine guest's exit code pass through byte-for-byte.
 //!
-//! Two argv shapes never assemble a deployment: help and version
-//! displays render host-side from the shared grammar (byte-identical
-//! to the guest's), and `adapter add` — a deterministic cache copy
-//! whose input may live outside any guest mount — seeds and reports
-//! host-side.
+//! Every adapter identity is verify-and-load only: pinned routed ids
+//! resolve the immutable global store, unpinned ids the anchored
+//! project's seeded component cache — both populated exclusively by
+//! the engine guest's own ensure legs through the writable mounts
+//! before any dispatch can miss. Store resolves stay digest-gated
+//! fail closed at load time. The embedded engine never touches the
+//! resolver: it is registered statically at boot.
 //!
 //! `SPECIFY_HOME` remains a relocation override only — the Cargo
 //! model: everything anchors at the user home or the project root by
 //! default, and one invocation captures the layout exactly once
-//! ([`prepare`] → `Locations::from_env`).
+//! ([`Policy::new`] over `Locations::from_env`).
 
-use std::future::Future;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
-use error::Error;
-use project::handler::{ExecutionPaths, Locations};
-use transport::command::Format;
-use transport::command::selectors::{CommandSelectors, Projection, SeedRequest, from_argv};
+use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_STORE_MOUNT, Locations};
+use transport::command::selectors::{SeedRequest, seed_request};
 
 mod anchor;
-mod closure;
-mod deployment;
-mod hydrate;
+mod resolver;
 
-pub use deployment::{Deployment, Guest, Mount};
+pub use resolver::Resolver;
 
-/// The engine identity the composition root supplies.
+/// Guest-visible preopen name of the per-project derived cache.
+pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
+
+/// Guest-visible preopen name of the global adapter store.
+pub const STORE_MOUNT: &str = GUEST_STORE_MOUNT;
+
+/// One invocation's deployment policy: the anchored layout plus the
+/// optional `adapter add` seed preopen.
 ///
-/// The engine guest is versioned by the binary, so the binary's own
-/// `CARGO_PKG_VERSION` is the pin — injected here rather than read
-/// from the launcher crate's, which is a different package. The
-/// launcher hydrates `specify:engine@<version>` from the registry on
-/// a store miss (the same path as every other package pin).
-#[derive(Debug, Clone, Copy)]
-pub struct Engine {
-    /// Exact semver of the engine guest — the binary's own version.
-    pub version: &'static str,
-}
-
-/// What the binary should do with one argv.
+/// [`Policy::new`] is the pure assembly over explicit inputs (the
+/// integration seam); the module-level accessors evaluate it exactly
+/// once per process over argv, the working directory, and
+/// `Locations::from_env`.
 #[derive(Debug)]
-pub enum Outcome {
-    /// The closure resolved and verified: start the runtime over this
-    /// deployment.
-    Run(Deployment),
-    /// The invocation completed (or failed) host-side, no runtime
-    /// needed: write both channels and exit with `code`. Help and
-    /// version displays and the `adapter add` report land on `stdout`;
-    /// grammar rejections render clap's own diagnostic and failures
-    /// render the standard envelope in the invocation's `--format`,
-    /// both on `stderr`.
-    Done {
-        /// Rendered success output for the stdout channel.
-        stdout: Vec<u8>,
-        /// Rendered diagnostic for the stderr channel.
-        stderr: Vec<u8>,
-        /// Process exit code.
-        code: u8,
-    },
+pub struct Policy {
+    paths: ExecutionPaths,
+    /// Read-only preopen of the `adapter add` component's parent
+    /// directory, named by its absolute host path so the guest opens
+    /// the argv path unchanged. `None` when argv carries no seed (or
+    /// the directory does not exist — the guest then renders
+    /// `adapter-component-missing` itself).
+    seed_dir: Option<PathBuf>,
 }
 
-impl Outcome {
-    fn failure(format: Format, error: &Error) -> Self {
-        let (stderr, code) = transport::command::render_failure(format, error);
-        Self::Done {
-            stdout: Vec::new(),
-            stderr,
-            code,
+impl Policy {
+    /// Assemble the policy for one invocation: anchor the project
+    /// root, capture the layout, create the writable mount
+    /// directories, and derive the seed preopen.
+    ///
+    /// Total by design — the runtime must always boot so the guest
+    /// renders every diagnostic: argv the grammar refuses anchors at
+    /// the walked working directory, and mount-directory creation
+    /// failures are left for the runtime's own preopen error.
+    #[must_use]
+    pub fn new(invoked_dir: &Path, argv: &[String], locations: Locations) -> Self {
+        let seed = seed_request(argv);
+        let root = anchor::project_root(invoked_dir, seed.as_ref());
+        let paths = ExecutionPaths::new(root, locations);
+        let store_root = paths.locations().store_root().to_path_buf();
+        for dir in [paths.project_root().to_path_buf(), paths.cache_dir(), store_root] {
+            drop(std::fs::create_dir_all(dir));
         }
+        let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
+        Self { paths, seed_dir }
+    }
+
+    /// Host directory of the writable project mount, named `.`.
+    #[must_use]
+    pub fn project_root(&self) -> &Path {
+        self.paths.project_root()
+    }
+
+    /// Host directory of the writable cache mount, named
+    /// [`CACHE_MOUNT`].
+    #[must_use]
+    pub fn cache_dir(&self) -> PathBuf {
+        self.paths.cache_dir()
+    }
+
+    /// Host directory of the writable store mount, named
+    /// [`STORE_MOUNT`].
+    #[must_use]
+    pub fn store_dir(&self) -> PathBuf {
+        self.paths.locations().store_root().to_path_buf()
+    }
+
+    /// The read-only self-named preopen: the `adapter add` component's
+    /// parent directory when argv carries a seed whose directory
+    /// exists, else the project root — a harmless duplicate of the `.`
+    /// mount that also serves absolute in-project paths.
+    #[must_use]
+    pub fn seed_dir(&self) -> &Path {
+        self.seed_dir.as_deref().unwrap_or_else(|| self.paths.project_root())
+    }
+
+    /// Guest-visible name of the seed preopen: its own absolute host
+    /// path, so the guest opens the operator's argv path unchanged.
+    #[must_use]
+    pub fn seed_mount_name(&self) -> String {
+        self.seed_dir().display().to_string()
+    }
+
+    /// The fail-closed adapters-only guest resolver over this
+    /// invocation's captured layout.
+    #[must_use]
+    pub fn resolver(&self) -> Resolver {
+        Resolver::new(self.paths.clone())
     }
 }
 
-/// Prepare the deployment for one invocation.
-///
-/// Captures the artifact layout (`Locations::from_env`) exactly once,
-/// projects selectors from argv, derives the closure, hydrates store
-/// misses from the registry over HTTPS, verifies, and assembles. Help
-/// and version displays and the deterministic `adapter add` seed
-/// complete host-side without a deployment.
-#[must_use]
-pub fn prepare(invoked_dir: &Path, argv: &[String], engine: Engine) -> Outcome {
-    prepare_with(invoked_dir, argv, engine, Locations::from_env(), hydrate::http_fetch)
-}
-
-/// [`prepare`] with caller-supplied artifact locations and registry
-/// byte transport.
-///
-/// The same explicit-layout and fetch-closure seams the ensure kernels
-/// use, so deployments and tests bind their own layout and transport
-/// without touching the environment.
-pub fn prepare_with<F, Fut>(
-    invoked_dir: &Path, argv: &[String], engine: Engine, locations: Locations, fetch: F,
-) -> Outcome
-where
-    F: Fn(String) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<Vec<u8>, Error>> + Send,
-{
-    let selectors = match from_argv(argv) {
-        Projection::Display { rendered } => {
-            return Outcome::Done {
-                stdout: rendered.into_bytes(),
-                stderr: Vec::new(),
-                code: 0,
-            };
-        }
-        Projection::Rejected { rendered } => {
-            return Outcome::Done {
-                stdout: Vec::new(),
-                stderr: rendered.into_bytes(),
-                code: 2,
-            };
-        }
-        Projection::Forward(selectors) => selectors,
+/// The absolute parent directory of the seed component, resolved the
+/// way the in-guest kernel resolves it (relative paths anchor at the
+/// project root); `None` when it does not exist.
+fn seed_dir(request: &SeedRequest, project_root: &Path) -> Option<PathBuf> {
+    let component = if request.component.is_absolute() {
+        request.component.clone()
+    } else {
+        project_root.join(&request.component)
     };
-    let format = selectors.format;
-    let root = anchor::project_root(invoked_dir, &selectors);
-    let paths = ExecutionPaths::new(root, locations);
-    if let Some(request) = &selectors.seed {
-        return seed(request, &paths, format);
-    }
-    match assemble(&paths, &selectors, engine, fetch) {
-        Ok(deployment) => Outcome::Run(deployment),
-        Err(error) => Outcome::failure(format, &error),
-    }
+    let parent = component.parent()?;
+    parent.is_dir().then(|| parent.to_path_buf())
 }
 
-fn assemble<F, Fut>(
-    paths: &ExecutionPaths, selectors: &CommandSelectors, engine: Engine, fetch: F,
-) -> Result<Deployment, Error>
-where
-    F: Fn(String) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<Vec<u8>, Error>> + Send,
-{
-    let closure = closure::compute(paths.project_root(), selectors, engine);
-    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
-    let resolved = runtime.block_on(hydrate::resolve(paths, closure, fetch))?;
-    deployment::assemble(paths, resolved)
+/// The process-wide policy, evaluated once across the macro's mount
+/// and resolver expressions.
+fn current() -> &'static Policy {
+    static POLICY: OnceLock<Policy> = OnceLock::new();
+    POLICY.get_or_init(|| {
+        let invoked_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        // Lossy is safe here: non-UTF-8 argv fails the grammar (no
+        // seed) and the runtime itself refuses it with a typed error.
+        let argv: Vec<String> =
+            std::env::args_os().skip(1).map(|arg| arg.to_string_lossy().into_owned()).collect();
+        Policy::new(&invoked_dir, &argv, Locations::from_env())
+    })
 }
 
-/// Run `adapter add` host-side, end to end: the operator's component
-/// path may live anywhere on the host, while the engine guest sees
-/// only its mounts — and the copy is deterministic engine-free work,
-/// so no runtime is started. Renders the same success envelope the
-/// guest verb produces on a native host.
-fn seed(request: &SeedRequest, paths: &ExecutionPaths, format: Format) -> Outcome {
-    // Relative component paths anchor at the selected project
-    // directory — the kernel's own contract.
-    match project::adapter::ensure::seed(&request.component, paths, jiff::Timestamp::now()) {
-        Ok(seeded) => {
-            let body = project::adapter::handlers::AddBody::from(seeded);
-            match transport::command::render_success(format, &body) {
-                Ok(stdout) => Outcome::Done {
-                    stdout,
-                    stderr: Vec::new(),
-                    code: 0,
-                },
-                Err(error) => Outcome::failure(format, &error),
-            }
-        }
-        Err(error) => Outcome::failure(format, &error),
-    }
+/// Macro expression: host directory of the writable `.` project mount.
+#[must_use]
+pub fn project_root() -> PathBuf {
+    current().project_root().to_path_buf()
+}
+
+/// Macro expression: host directory of the writable cache mount.
+#[must_use]
+pub fn cache_dir() -> PathBuf {
+    current().cache_dir()
+}
+
+/// Macro expression: host directory of the writable store mount.
+#[must_use]
+pub fn store_dir() -> PathBuf {
+    current().store_dir()
+}
+
+/// Macro expression: guest-visible name of the read-only seed preopen.
+#[must_use]
+pub fn seed_mount_name() -> String {
+    current().seed_mount_name()
+}
+
+/// Macro expression: host directory of the read-only seed preopen.
+#[must_use]
+pub fn seed_mount_path() -> PathBuf {
+    current().seed_dir().to_path_buf()
+}
+
+/// Macro expression: the fail-closed adapters-only guest resolver.
+#[must_use]
+pub fn resolver() -> Resolver {
+    current().resolver()
 }

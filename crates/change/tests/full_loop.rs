@@ -135,7 +135,7 @@ async fn author_approve_execute_drains() {
         requests
             .iter()
             .flat_map(|request| request.messages.iter())
-            .any(|message| message.content.contains("Fixture guidance (target:mock)")),
+            .any(|message| message.content.contains("Fixture guidance (target:mock@0.0.0)")),
         "the mock guidance brief appears in a recorded judgment request"
     );
 
