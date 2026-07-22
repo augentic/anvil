@@ -1,7 +1,7 @@
 //! Resolves the wasm32 engine component the shipped binary embeds.
 //!
-//! Emits `SPECIFY_ENGINE_WASM` for the `include_bytes!` in
-//! `src/omnia.rs`. Resolution order: an explicit `SPECIFY_ENGINE_WASM`
+//! Emits `SPECIFY_WASM` for the `include_bytes!` in
+//! `src/omnia.rs`. Resolution order: an explicit `SPECIFY_WASM`
 //! environment override (the release pipeline), else the sibling
 //! `target/wasm32-wasip2/<profile>/specify.wasm` build product (local
 //! iteration — `cargo make wasm-build` orders the wasm32 build first),
@@ -12,16 +12,16 @@
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-env-changed=SPECIFY_ENGINE_WASM");
+    println!("cargo:rerun-if-env-changed=SPECIFY_WASM");
 
-    let engine = std::env::var_os("SPECIFY_ENGINE_WASM").map_or_else(probe, |explicit| {
+    let engine = std::env::var_os("SPECIFY_WASM").map_or_else(probe, |explicit| {
         let path = PathBuf::from(explicit);
-        assert!(path.is_file(), "SPECIFY_ENGINE_WASM is set but {} is not a file", path.display());
+        assert!(path.is_file(), "SPECIFY_WASM is set but {} is not a file", path.display());
         path
     });
 
     println!("cargo:rerun-if-changed={}", engine.display());
-    println!("cargo:rustc-env=SPECIFY_ENGINE_WASM={}", engine.display());
+    println!("cargo:rustc-env=SPECIFY_WASM={}", engine.display());
 }
 
 /// The local wasm32 build product, else a generated empty placeholder.

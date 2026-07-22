@@ -16,9 +16,9 @@ Do not confuse that noun with **Cursor plugins** under `plugins/` (e.g. `plugins
 
 ### Engine vs workflow
 
-| Term | Use for |
-| ---- | ------- |
-| **engine** | This product / repository: the engine guest (`specify:engine`), engine crates (`project` / `slice` / `change` / `transport`), lifecycle ownership, and the seam opposite adapters |
+| Term         | Use for                                                                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **engine**   | This product / repository: the engine guest (`specify:engine`), engine crates (`project` / `slice` / `change` / `transport`), lifecycle ownership, and the seam opposite adapters                            |
 | **workflow** | The operator loop `plan → execute → finalize` (and the per-slice `refine → build → merge` rhythm inside execute), plus the behavioral contract in [`docs/standards/workflow.md`](docs/standards/workflow.md) |
 
 The WIT world remains named `workflow` (wire identity); prose calls the guest the **engine guest**.
@@ -192,7 +192,7 @@ native                   # the native host — the validated adapter Catalog ove
 guest                    # the engine guest as a library (wasm32-only) — the `workflow`-world WIT bindings, the WIT-backed seam Provider (Anchor/Resolver/Model/Source/Target over the world's imports), and the guest::export! macro wiring the shared typed transport routers onto wasi:cli/run + wasi:http/incoming-handler; depends on {project,slice,transport,…}; invoked by the root specify cdylib and by the wasm example guest in augentic/specify-adapters
 mock                     # dev-only mock crate (publish = false) — the canonical SDK-native mock adapter core (mock::behaviour over the seam DTOs), the typed operations-trait implementors and exhaustive catalog registry (mock::registry + mock::catalog()), the scripted answer corpus, the request-recording model Harness, the host-only Session helpers over the native provider, and the mock::invoke test-suite entry; dev-dep'd (legally cyclically) by the engine/transport suites and the example adapter components, and by eval's cli binary
 eval                     # lab-only lib+bin (publish = false) — library: multi-step live trial, prompt scenarios, grading, telemetry, sandbox (no runtime/catalog/Cursor); cli binary (feature = "cli"): Tokio, Cursor backend, mock catalog binding, dispatches command mode vs eval::run; target of `cargo make specify` and `cargo make eval`
-specify (root crate) # Omnia deployment unit under src/: guest cdylib (wasm32, one guest::export!() over the guest crate, versioned with the binary) + the shipped runtime (one omnia::runtime! invocation embedding the engine bytes via build.rs's SPECIFY_ENGINE_WASM, mounts/resolver as launcher expressions) + the examples/wasm adapter components (adapter::source!/target! over mock::Adapter) and the macro-static example host (examples/wasm/host.rs)
+specify (root crate) # Omnia deployment unit under src/: guest cdylib (wasm32, one guest::export!() over the guest crate, versioned with the binary) + the shipped runtime (one omnia::runtime! invocation embedding the engine bytes via build.rs's SPECIFY_WASM, mounts/resolver as launcher expressions) + the examples/wasm adapter components (adapter::source!/target! over mock::Adapter)
 ```
 
 The artifact validation rule registry lives in `artifacts::validate`: `artifacts` depends on none of the engine crates, so a rule cannot transition a slice or stamp a plan. `artifacts` is the lifecycle-free leaf holding the artifact types and parsers the engine layer reads. The neutral `Diagnostic` / `DiagnosticReport` substrate lives in the `diagnostics` crate alongside the shared `diagnostics::digest` SHA-256 helpers, so every check producer — validate and review alike — emits the same finding currency without importing the other surface's code. Engineering-standards rules ship inside the target adapters in `augentic/specify-adapters`; there is no engine-side rules crate.
@@ -232,7 +232,7 @@ crates/change/           the change loop — plan author/execute orchestration, 
 crates/mock/             dev-only mock crate — SDK-native mock adapter core, catalog registry, answer corpus, session helpers
 crates/native/           the native host — validated adapter catalog, DynModel, seam provider, reference hosting, cli-gated command execution
 crates/eval/             lab-only lib+bin — trial/scenario library plus cli composition binary (cargo make specify / eval)
-examples/                wasm (Omnia-hosted component seam: mock adapter components, embedded engine + resolver-dynamic adapters, plus the macro-static host — no omnia.toml) and static (in-process native host over the same mock adapters)
+examples/                wasm (Omnia-hosted component seam: mock adapter components + embedded engine, resolver-dynamic adapters — no omnia.toml) and native (in-process host over the same mock adapters)
 ```
 
 | Code | Name                     | When                                                                  |

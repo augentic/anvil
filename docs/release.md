@@ -20,7 +20,7 @@ cargo build --release --locked --lib -p specify --target wasm32-wasip2
 cargo build --release --locked --bin specify
 ```
 
-   The root `build.rs` resolves `SPECIFY_ENGINE_WASM` — an explicit environment override wins, else it probes `target/wasm32-wasip2/release/specify.wasm` — and `src/omnia.rs` embeds the bytes with `include_bytes!`, so the shipped binary carries its own engine (no first-launch hydration, no network). The workflow guards against the compile-passing empty placeholder with a `test -s` on the wasm build product. Supported targets:
+   The root `build.rs` resolves `SPECIFY_WASM` — an explicit environment override wins, else it probes `target/wasm32-wasip2/release/specify.wasm` — and `src/omnia.rs` embeds the bytes with `include_bytes!`, so the shipped binary carries its own engine (no first-launch hydration, no network). The workflow guards against the compile-passing empty placeholder with a `test -s` on the wasm build product. Supported targets:
    - `x86_64-unknown-linux-gnu` on `ubuntu-latest` (native `cargo build`).
    - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
    - `x86_64-apple-darwin` on `macos-13` (native).
