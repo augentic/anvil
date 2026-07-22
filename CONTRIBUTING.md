@@ -34,7 +34,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 ### Docs and skill wrappers
 
 - Keep `/spec:*` skill bodies ultrathin invoke-and-relay — body style is guidance in [`docs/standards/cli-contract.md`](docs/standards/cli-contract.md)
-- `cargo test -p checks` must pass before submitting a pull request. It needs only a Rust toolchain. See [Consistency Checks](docs/contributing/checks.md).
+- `cargo make links` must pass before submitting a pull request that touches docs. See [Quality gates](docs/contributing/quality-gates.md#consistency-links).
 - Use kebab-case for file names, change names, and adapter identifiers
 - Generation behavior belongs in guest orchestrations or adapter prompts, not in skill bodies
 
@@ -95,12 +95,12 @@ Pull requests should be targeted at the `main` branch. Before creating a pull re
 
 1. Create a feature branch off of `main`.
 2. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against `main`.
-3. Run checks: `cargo test -p checks` for boundary/authoring; `cargo make links` for the Developer Guide; `make ci` (`cargo make ci`) for the full gate.
+3. Run checks: `cargo make links` for the Developer Guide; `make ci` (`cargo make ci`) for the full gate.
 4. Accept the Developer's Certificate of Origin on all commits (see above).
 
 All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).
 
-Normally, all pull requests must include tests that cover your change. For skill-wrapper or docs changes, this means `cargo test -p checks` passes (and, for wrapper changes, you have manually verified the skill in a target project). For CLI changes, add or update integration tests under `crates/*/tests/`.
+Normally, all pull requests must include tests that cover your change. For skill-wrapper or docs changes, run `cargo make links` (and, for wrapper changes, manually verify the skill in a target project). For CLI changes, add or update integration tests under `crates/*/tests/`.
 
 ## Conduct
 

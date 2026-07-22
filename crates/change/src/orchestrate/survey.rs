@@ -97,15 +97,15 @@ async fn survey_one(
 
     // Ensure/resolve before dispatch: the binding's pin and the
     // adapter's `specify_floor` are enforced by the deployment's
-    // resolver, and dispatch routes by the resolved name only.
-    let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest.name;
+    // resolver, and dispatch routes by the exact resolved identity.
+    let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest;
 
     emit(
         layout,
         now,
         EventKind::SourceExecutionAgent {
             source: source.to_string(),
-            adapter: adapter.clone(),
+            adapter: adapter.name.clone(),
             operation: SourceOperation::Survey,
         },
     )?;
@@ -137,12 +137,12 @@ async fn survey_one(
         now,
         EventKind::SourceSurveyCompleted {
             source: source.to_string(),
-            adapter: adapter.clone(),
+            adapter: adapter.name.clone(),
         },
     )?;
     Ok(SurveyedSource {
         source: source.to_string(),
-        adapter,
+        adapter: adapter.name,
         leads: lead_ids,
     })
 }

@@ -53,8 +53,6 @@
 - [Lifecycle](reference/lifecycle.md)
 - [Directory layout](reference/directory-layout.md)
 - [Change skills](reference/change-skills/index.md)
-  - [/spec:plan](reference/change-skills/plan.md)
-  - [/spec:finalize](reference/change-skills/finalize.md)
 - [Slice skills](reference/slice-skills/index.md)
 - [CLI reference](reference/cli/index.md)
   - [specify init](reference/cli/init.md)
@@ -100,4 +98,3 @@
 - [Quality gates](contributing/quality-gates.md)
 - [Cursor operator plugins](contributing/operator-plugins.md)
 - [CLI architecture](contributing/cli-architecture.md)
-- [Consistency checks](contributing/checks.md)

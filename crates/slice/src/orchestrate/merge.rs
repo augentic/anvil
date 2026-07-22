@@ -11,7 +11,7 @@ use project::journal::{self, EventKind};
 use project::plan::{Plan, Status};
 use project::seam::{MergePhase, Target, WorkingTree};
 
-use super::{seam_failure, target_id};
+use super::seam_failure;
 use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, slice as slice_merge};
 use crate::{BuildReport, BuildStatus};
 
@@ -47,8 +47,12 @@ pub async fn merge<T: Target>(
 ) -> Result<MergeOutcome, Error> {
     preflight_completion(layout, slice)?;
     let slice_dir = layout.slice_dir(slice);
+    // The recorded slice target keeps its `name@version` pin: the
+    // routed id dispatches the exact identity, never a reduced bare
+    // name.
     let target = project::target_policy::resumed(layout, slice)?;
-    let id = target_id(&project::adapter::AdapterSelector::recorded_name(&target));
+    let id =
+        project::adapter::RoutedId::recorded(project::adapter::Axis::Target, &target).to_string();
 
     journal::emit_best_effort(
         layout,

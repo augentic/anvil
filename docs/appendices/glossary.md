@@ -194,7 +194,7 @@ An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chose
 A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **specify**
-The single CLI binary produced by the Rust workspace at the repo root that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, and plan and slice management. Repo **checks** for contributors to the `augentic/specify` repo run as plain cargo tests (`crates/checks` / `-p checks`), not as a CLI verb. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
+The single CLI binary produced by the Rust workspace at the repo root that backs every `/spec:*` skill: validation, lifecycle transitions, spec merging, and plan and slice management. Contributor consistency for this repo is the mdBook links gate (`cargo make links`), not a CLI verb. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
 
 **Survey**
 The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/spec:plan`.

@@ -2,10 +2,11 @@
 
 use error::Error;
 use omnia_guest::Model;
+use project::adapter::{Axis, RoutedId};
 use project::registry::topology::{Decision, Surface};
 use project::seam::Target;
 
-use super::{seam_failure, target_id};
+use super::seam_failure;
 use crate::judgment::synthesize::{Kernel, Synthesized};
 use crate::{DomainDetail, SourceInput, inputs, judgment};
 
@@ -16,7 +17,8 @@ use crate::{DomainDetail, SourceInput, inputs, judgment};
 pub struct SynthesizeRequest<'a> {
     /// Slice name the leg synthesises.
     pub slice: &'a str,
-    /// Bound target adapter name (bare, e.g. `omnia`).
+    /// The slice's recorded target value (e.g. `omnia@1.0.0`); the
+    /// guidance dispatch routes the exact recorded identity.
     pub target: &'a str,
     /// One entry per bound source, carrying its inline `lead` and
     /// `claims`.
@@ -45,7 +47,7 @@ pub struct SynthesizeRequest<'a> {
 pub async fn synthesize<P: Model, T: Target>(
     model: &P, seam: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>,
 ) -> Result<Synthesized, Error> {
-    let id = target_id(request.target);
+    let id = RoutedId::recorded(Axis::Target, request.target).to_string();
     let guidance =
         seam.guidance(id.clone()).await.map_err(|err| seam_failure("guidance", &id, &err))?;
     let synthesis_inputs = inputs(

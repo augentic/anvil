@@ -193,20 +193,29 @@ impl std::fmt::Display for AdapterSelector {
 /// Anchor a component path at `project_dir` when relative, then
 /// canonicalize it.
 ///
+/// Inside the engine guest's WASI sandbox `realpath` cannot walk
+/// ancestor directories outside the preopens, so a component that
+/// exists but fails to canonicalize keeps its anchored path
+/// unresolved rather than failing the seed.
+///
 /// # Errors
 ///
 /// `adapter-canonicalize-failed` when the path cannot be canonicalized
-/// (e.g. the file does not exist).
+/// and the file does not exist.
 pub fn canonicalize_component(path: &Path, project_dir: &Path) -> Result<PathBuf, Error> {
     let absolute = if path.is_absolute() { path.to_path_buf() } else { project_dir.join(path) };
-    std::fs::canonicalize(&absolute).map_err(|err| Error::Diag {
-        code: "adapter-canonicalize-failed",
-        detail: format!(
-            "failed to canonicalize local adapter `{}` at {}: {err}",
-            path.display(),
-            absolute.display()
-        ),
-    })
+    match std::fs::canonicalize(&absolute) {
+        Ok(canonical) => Ok(canonical),
+        Err(_) if absolute.is_file() => Ok(absolute),
+        Err(err) => Err(Error::Diag {
+            code: "adapter-canonicalize-failed",
+            detail: format!(
+                "failed to canonicalize local adapter `{}` at {}: {err}",
+                path.display(),
+                absolute.display()
+            ),
+        }),
+    }
 }
 
 fn is_github_url(value: &str) -> bool {

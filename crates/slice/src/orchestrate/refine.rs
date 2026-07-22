@@ -11,7 +11,7 @@ use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use project::adapter::{AdapterSelector, Resolver};
+use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::journal::{self, EventKind};
@@ -131,7 +131,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     };
     let request = SynthesizeRequest {
         slice,
-        target: &target_name(target_value),
+        target: target_value,
         sources: &source_inputs,
         baseline: &baseline,
         baseline_detail: &baseline_detail,
@@ -338,12 +338,6 @@ fn baseline_identity(
         None => None,
     };
     Ok(bound.map(|p| (p.surface.clone(), p.decisions.clone())).unwrap_or_default())
-}
-
-/// Bare adapter name from a recorded target value (`omnia@1.0.0` →
-/// `omnia`) — the seam routes by the plan-bound name.
-fn target_name(target_value: &str) -> String {
-    AdapterSelector::recorded_name(target_value)
 }
 
 /// Warning scope for the best-effort `slice.synthesize.*` brackets.

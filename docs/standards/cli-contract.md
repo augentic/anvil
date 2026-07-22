@@ -125,6 +125,5 @@ Skills should branch on the exit code first (success vs failure class) and on th
 
 ## Cross-references
 
-- [`crates/checks/authoring.rs`](../../crates/checks/authoring.rs) — the typed skill-frontmatter shape plus its description and argument-hint grammars (enforced by the `checks` package). Ultrathin-wrapper body style is guidance here, not a CI predicate.
 - [docs/reference/cli-output-shapes.md](../reference/cli-output-shapes.md) — canonical envelope shapes per verb.
 - [`AGENTS.md`](../../AGENTS.md#the-rust-workspace-specify-cli) — authoritative source for exit codes, error variants, and CLI architecture.

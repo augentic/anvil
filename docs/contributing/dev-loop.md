@@ -4,12 +4,12 @@ Specify's developer loop is self-contained: every rung runs from this checkout a
 
 ```bash
 cargo make test                              # fast native integration tests; model-free and no Wasmtime
-cargo make eval                              # run the live prompt-evaluation rung (the lab binary's eval mode)
+cargo make eval                              # run the live prompt-evaluation rung (eval cli binary's eval mode)
 ```
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest --workspace` over the workspace crates (including `mock`, `native`, and `checks`). The engine suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `native` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest --workspace` over the workspace crates (including `mock` and `native`). The engine suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `native` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
@@ -17,13 +17,13 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 ## 2. `cargo make eval` — prompt evaluation
 
-Runs the live trial (the `crates/eval` library through the `crates/lab` binary): plan → execute (refine → build → merge per slice) → finalize over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
+Runs the live trial (the `crates/eval` lib+bin): plan → execute (refine → build → merge per slice) → finalize over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns.
 
-Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). See [`crates/lab/README.md`](../../crates/lab/README.md).
+Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). See [`crates/eval/README.md`](../../crates/eval/README.md).
 
 ## The WASM seam
 
-There is no automated WASM boundary rung. The component seam — the per-axis mock components enumerated by the launcher's derived deployment, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/wasm/README.md`](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
+There is no automated WASM boundary rung. The component seam — the embedded engine guest, the per-axis mock components faulting in through the fail-closed resolver, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [`examples/wasm/README.md`](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## What CI runs
 

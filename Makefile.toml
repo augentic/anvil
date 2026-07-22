@@ -17,7 +17,7 @@ skip_rust_env_info = true
 # CI Checks
 # -------------------------------------
 [tasks.check]
-dependencies = ["fmt", "lint", "test", "test-docs", "doc", "links"]
+dependencies = ["fmt", "lint", "test", "test-docs", "doc"]
 
 [tasks.ci]
 dependencies = ["check", "vet", "deny"]
@@ -26,97 +26,57 @@ dependencies = ["check", "vet", "deny"]
 # Actions
 # -------------------------------------
 
-# Audit
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
 [tasks.audit]
 command = "cargo"
 args = ["audit"]
 
-# Deny
 [tasks.deny]
 command = "cargo"
 args = ["deny", "check"]
 install_crate = "cargo-deny"
 
-# Deps
 [tasks.deps]
 command = "rustup"
 args = ["run", "nightly", "cargo", "udeps", "--workspace", "--all-targets"]
 install_crate = "cargo-udeps"
 
-# Fmt — mutates; the gates use fmt
 [tasks.fmt]
-command = "rustup"
-args = ["run", "nightly", "cargo", "fmt", "--all"]
+script = "cargo +nightly fmt --all"
 
-# Links — Developer Guide relative-link integrity (mdbook-linkcheck2 via docs/book.toml)
-[tasks.links]
-dependencies = ["install-mdbook", "install-mdbook-linkcheck2"]
-command = "mdbook"
-args = ["build", "docs"]
-
-[tasks.install-mdbook]
-command = "mdbook"
-args = ["--version"]
-install_crate = { crate_name = "mdbook", binary = "mdbook", test_arg = "--version" }
-
-[tasks.install-mdbook-linkcheck2]
-command = "mdbook-linkcheck2"
-args = ["--version"]
-install_crate = { crate_name = "mdbook-linkcheck2", binary = "mdbook-linkcheck2", test_arg = "--version" }
-
-# Lint
 [tasks.lint]
 command = "cargo"
-args = [
-  "clippy",
-  "--locked",
-  "--workspace",
-  "--all-targets",
-  "--all-features",
-  "--",
-  "-D",
-  "warnings",
-]
+args = ["clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"]
 install_crate = { rustup_component_name = "clippy" }
 
-# Outdated
 [tasks.outdated]
 command = "cargo"
 args = ["outdated", "--depth", "1"]
 install_crate = "cargo-outdated"
 
-# Test
 [tasks.test]
 command = "cargo"
-args = [
-  "nextest",
-  "run",
-  "--locked",
-  "--workspace",
-  "--all-features",
-  "--no-tests=pass",
-]
+args = ["nextest", "run", "--workspace", "--all-features", "--no-tests=pass"]
 env = { RUSTFLAGS = "-Dwarnings" }
 
-# Test Doc
 [tasks.test-docs]
 command = "cargo"
 args = ["test", "--doc", "--workspace", "--all-features"]
 
-# Docs
 [tasks.doc]
 command = "cargo"
 args = ["doc", "--no-deps", "--workspace", "--all-features", "--locked"]
 env = { RUSTDOCFLAGS = "-Dwarnings" }
 
-# Miri
 [tasks.miri]
 script = '''
 cargo +nightly miri setup
 cargo +nightly miri nextest run --workspace --no-tests=pass
 '''
 
-# Vet
 [tasks.vet]
 script = '''
 cargo vet regenerate imports
@@ -126,16 +86,18 @@ cargo vet --locked
 '''
 install_crate = "cargo-vet"
 
-# Any `specify` command through crates/lab.
+# -------------------------------------
+# Specify
+# -------------------------------------
+
 [tasks.specify]
 command = "cargo"
-args = ["run", "-q", "-p", "lab", "--", "${@}"]
+args = ["run", "-q", "-p", "eval", "--features", "cli", "--", "${@}"]
 
-# Live-model prompt evaluation over the crates/lab.
 [tasks.eval]
 env_files = [".env"]
 script = '''
-  cargo run -p lab -- eval \
+  cargo run -p eval --features cli -- eval \
   --change "auth" \
   --source "docs=mock-docs:value:The docs source." \
   --source "code=mock-code:value:The code source." \

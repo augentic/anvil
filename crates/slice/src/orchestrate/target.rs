@@ -92,7 +92,7 @@ pub async fn build(
         EventKind::SliceBuildStarted {
             slice_name: slice.into(),
         },
-        finalize(seam, layout, now, slice, &slice_dir, &target_name, &request, tree),
+        finalize(seam, layout, now, slice, &slice_dir, adapter, &request, tree),
         |_| EventKind::SliceBuildSucceeded {
             slice_name: slice.into(),
         },
@@ -110,10 +110,10 @@ pub async fn build(
 #[expect(clippy::too_many_arguments, reason = "internal seam-dispatch kernel; callers use `build`")]
 async fn finalize(
     seam: &impl Target, layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
-    target_name: &str, request: &BuildRequest, tree: WorkingTree,
+    adapter: &TargetAdapter, request: &BuildRequest, tree: WorkingTree,
 ) -> Result<BuildOutcome, Error> {
     let inputs = read_inputs(request)?;
-    let id = target_id(target_name);
+    let id = target_id(adapter);
     let report = seam
         .build(id.clone(), slice.to_string(), inputs, tree)
         .await

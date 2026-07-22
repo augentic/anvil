@@ -126,7 +126,7 @@ pub struct Surface {
 ///
 /// `name@version` for a pinned identity, bare `name` for an unpinned
 /// cache resolve. The single producer formula both topology writers
-/// share; the launcher's closure derivation parses the same grammar.
+/// share; `plan::TargetRef` parses the same grammar back.
 #[must_use]
 pub fn target_ref(name: &str, version: Option<&semver::Version>) -> String {
     version.map_or_else(|| name.to_string(), |version| format!("{name}@{version}"))
@@ -301,9 +301,19 @@ pub fn cache_staleness(
             continue;
         }
         let slot_paths = paths.with_root(&slot_project_dir);
-        let fresh = match ProjectConfig::load(&slot_project_dir)
-            .and_then(|cfg| TopologyProject::resolve(resolver, &rp.name, &cfg, &slot_paths))
-        {
+        let config = match ProjectConfig::load(&slot_project_dir) {
+            Ok(config) => config,
+            Err(err) => {
+                results.push(finding(
+                    "workspace-slot-config-unreadable",
+                    Severity::Important,
+                    format!("workspace slot '{}' topology could not be derived: {err}", rp.name),
+                    None,
+                ));
+                continue;
+            }
+        };
+        let fresh = match TopologyProject::resolve(resolver, &rp.name, &config, &slot_paths) {
             Ok(fresh) => fresh,
             Err(err) => {
                 results.push(finding(
@@ -315,6 +325,9 @@ pub fn cache_staleness(
                 continue;
             }
         };
+        if let Some(unresolvable) = slot_binding_unresolvable(resolver, &rp.name, &config, paths) {
+            results.push(unresolvable);
+        }
         let stale = cached.get(rp.name.as_str()).is_none_or(|cached| **cached != fresh);
         if stale {
             results.push(finding(
@@ -330,6 +343,43 @@ pub fn cache_staleness(
         }
     }
     results
+}
+
+/// The slot-binding reach check under ID-only guest resolution: the
+/// routed adapter id carries no slot, so a slot target dispatches only
+/// through an exact store pin or an identity resolvable at the
+/// deployment project's root (its seeded component cache, or a
+/// natively linked adapter). A binding that resolves slot-locally but
+/// not at the deployment root would pass topology derivation and then
+/// fail at dispatch — surface it here instead.
+///
+/// Package pins are exempt: the engine's ensure legs hydrate a store
+/// miss before dispatch, so a pin is always reachable by id.
+fn slot_binding_unresolvable(
+    resolver: &impl Resolver, registry_name: &str, config: &ProjectConfig, paths: &ExecutionPaths,
+) -> Option<Diagnostic> {
+    let value = config.adapter.as_deref()?;
+    let selector = match AdapterSelector::parse(value) {
+        // An exact pin is hydratable by id; an unparseable value has
+        // already failed topology derivation.
+        Ok(AdapterSelector::Package { .. }) | Err(_) => return None,
+        Ok(selector) => selector,
+    };
+    if resolver.resolve_target(&selector, paths).is_ok() {
+        return None;
+    }
+    let name = selector.name().ok()?;
+    Some(finding(
+        "workspace-slot-binding-unresolvable",
+        Severity::Important,
+        format!(
+            "workspace slot '{registry_name}' binds target `{value}`, which is not resolvable by \
+             routed adapter id (the id carries no slot): pin an exact published version \
+             (`specify:{name}@<semver>`) or seed the component into the deployment project's \
+             cache (`specify adapter add <path/to/{name}.wasm>` at the deployment root)"
+        ),
+        None,
+    ))
 }
 
 fn malformed(detail: String) -> Error {

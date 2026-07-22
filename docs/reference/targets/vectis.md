@@ -1,95 +1,22 @@
 # Vectis Adapter
 
-- **Identifier:** `vectis` (bundled, first-party)
-- **URL:** `https://github.com/augentic/specify/adapters/targets/vectis`
-- **Purpose:** Cross-platform Crux application development
-- **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
+- **Identifier:** `vectis`
+- **Package:** `specify:vectis@<semver>` in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis)
+- **Purpose:** Cross-platform Crux application development (Rust core, Swift iOS shell, Kotlin Android shell)
 
 ## Operations
 
-The Vectis target implements exactly three operations — `guidance`, `build`, `merge` — the closed WIT target contract implemented by its [guest crate](https://github.com/augentic/specify-adapters/tree/main/targets/vectis). Core `/spec:refine` synthesises the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`); the target adapter never writes them. The Vectis target adds no fourth slot — composition regeneration is part of `build`, not a synthesis step.
+Closed WIT target contract: `guidance`, `build`, `merge`. Core `/spec:refine` synthesises canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
 
-### guidance
+| Operation | Owns |
+| --------- | ---- |
+| `guidance` | Idiom guidance for synthesis — [`prose/prompts/guidance.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/guidance.md) |
+| `build` | Composition regeneration, core/shell writers, verify-repair — [`prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build.md) |
+| `merge` | Adoption gates after `specify slice merge` — [`prose/prompts/merge.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/merge.md) |
 
-`guidance` is idiom guidance read into context when core synthesis writes `spec.md` and `design.md` for a `target: vectis` slice — see [`adapters/targets/vectis/prose/prompts/guidance.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/guidance.md). The prompt is input to synthesis: it does not read sources, write artifacts, or transition lifecycle. It tells the synthesiser how Crux idioms organise canonical artifact content — the flat `REQ-###` namespace, the platform-neutral core body plus optional `## iOS Shell Requirements` / `## Android Shell Requirements` sections in `spec.md`, and the `design.md` domain model (`Model` / `Event` / `ViewModel` / `Route` / per-page view structs, capability matrix) that `build` later turns into code and `composition.yaml`.
+In-guest helpers: [Vectis in-guest tools](../cli/vectis.md). Component catalog: [Component factoring](../../explanation/components.md).
 
-`composition.yaml` is **not** a Specify artifact and is **never** synthesised — `guidance` only ensures `spec.md` + `design.md` describe screen structure precisely enough for `build` to regenerate it deterministically. Operator-curated `tokens.yaml` / `assets.yaml` / `components.yaml` are build-time inputs, never synthesis inputs; `guidance` forbids restating their contents in `spec.md` / `design.md`.
+## See also
 
-The synthesis prompts treat baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@1.0.0` change before implementation depends on them. The contracts target adapter owns author/import/verify behavior through the format sub-flows in [`adapters/targets/contracts/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/contracts/prose/prompts/build.md).
-
-### build
-
-The build prompt drives implementation work directly through phase sub-prompts — there are no separate slash-command skills. The build orchestrator is [`adapters/targets/vectis/prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build.md); the per-phase sub-prompts live under [`adapters/targets/vectis/prose/prompts/build/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/prompts/build/):
-
-| Sub-prompt | Purpose |
-|-----------|---------|
-| [`build/composition.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/composition.md) | Regenerate `composition.yaml` from `spec.md` + `design.md` and run the deterministic validator gate. |
-| [`build/core/write.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/core/write.md) | Generate / update the Crux shared core. |
-| [`build/core/review.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/core/review.md) | Agent-team review of the Rust `shared` crate. |
-| [`build/test.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/test.md) | Generate / update Crux tests; run the core verify-repair loop. |
-| [`build/ios/write.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/ios/write.md) | Generate / update the SwiftUI iOS shell + verify. |
-| [`build/ios/review.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/ios/review.md) | Agent-team review of the iOS shell. |
-| [`build/android/write.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/android/write.md) | Generate / update the Compose Android shell + verify. |
-| [`build/android/review.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build/android/review.md) | Agent-team review of the Android shell. |
-
-`build` regenerates `composition.yaml` from `spec.md` + `design.md` first, runs the deterministic composition validator gate (field coverage, event coverage, ViewModel mapping), then writes code in dependency order: core first, shells second. Shell writers use the regenerated `composition.yaml` as the primary layout guide. `build` writes the per-slice `composition.yaml` and the implementation code, then records the result in `build/report.yaml`; the build orchestration's finalize tail owns the `built` transition.
-
-### merge
-
-The merge prompt lands the built slice through `specify slice merge` (`preview`, `conflict-check`, `run`) per the shared [`/spec:merge`](../../../plugins/spec/skills/merge/SKILL.md) skill body, then runs the Vectis-specific adoption gates — see [`adapters/targets/vectis/prose/prompts/merge.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/merge.md). Two gates are adapter-owned:
-
-- **Composition validation** — the vectis core's in-guest composition validation runs against the staged slice before merge and again against the merged baseline after, blocking on errors. This is the [`vectis validate`](../cli/vectis.md#vectis-validate) surface.
-- **Host cap-matrix re-verification** — after `specify slice merge` lands the deltas, the prompt re-runs `cargo` / `make build` / `gradlew` against the merged tree to catch cross-slice regressions. Host toolchain and cap-matrix checks are not part of the WASI tools; the merge prompt owns those platform workflow steps.
-
-`specify slice merge` is the writer of the `merged` lifecycle transition and the archive move; the prompt adds no merge report of its own.
-
-## Reference material
-
-The Crux core, iOS shell, Android shell, design-system, review check libraries, and the legacy layout-inferer contract live under [`adapters/targets/vectis/prose/references/`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis/prose/references/) — see the [`README`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/references/README.md) for the full index.
-
-## Feature-centric specs
-
-The Vectis adapter organises specs by **feature** (what the app does), not by software component. A single feature spec at `specs/<feature>/spec.md` contains:
-
-- **Core requirements** (main body) -- platform-neutral behavioral requirements that drive the Crux shared crate.
-- **Platform sections** (optional) -- `## iOS Shell Requirements`, `## Android Shell Requirements`, etc.
-- **Design system requirements** (optional) -- `## Design System Requirements`.
-
-All requirement IDs share one flat `REQ-###` namespace. Platform sections continue sequential numbering from the last core requirement.
-
-## Platforms
-
-Platforms are an app-level fact declared in `project.yaml` via `specify init vectis --platforms core,ios,android` and carried to every slice. The proposal's `## Platforms` section is stamped verbatim from `project.yaml.platforms` (not per-slice opt-in).
-
-| Platform | Build sub-prompt | Description |
-|----------|-----------------|-------------|
-| `core` | `build/core/write.md` | Rust Crux shared crate (always required) |
-| `ios` | `build/ios/write.md` | SwiftUI iOS shell |
-| `android` | `build/android/write.md` | Kotlin/Jetpack Compose Android shell |
-| `web` | -- | Web shell (future) |
-
-## Domain context
-
-The Vectis adapter's prompts and references carry domain context about:
-
-- Crux application architecture (Model, Event, ViewModel, Effect, `update()`, `view()`).
-- Crux adapters (Render, HTTP, Key-Value, Time, Platform).
-- UniFFI FFI scaffolding for cross-platform bridging.
-- SwiftUI and Jetpack Compose patterns for shell implementation.
-- Shell-local theme code emitted from `tokens.yaml` by each shell writer.
-
-## Project configuration
-
-After `specify init vectis --platforms core,ios,android`, `project.yaml` carries:
-
-```yaml
-target: https://github.com/augentic/specify/adapters/targets/vectis
-platforms:
-  - core
-  - ios
-  - android
-rules:
-  - "Project-specific constraints go here"
-```
-
-The `platforms` field is required for vectis and must include `core`. To change platforms after init, re-run `specify init --upgrade --platforms <csv>`.
+- [Target adapters index](index.md)
+- [Anatomy of an adapter](../../explanation/adapter-anatomy.md)

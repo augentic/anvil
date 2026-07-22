@@ -27,7 +27,7 @@ workspace/                                  # Workspace slots (workspace mode on
 
 .specify/
 ├── project.yaml                            # Project configuration (target, sources, workspace, specify-version)
-├── context.lock                            # Fingerprint sidecar for init-time AGENTS.md generation
+├── context.lock                            # Sidecar for init-time AGENTS.md scaffold
 ├── topology.lock                           # Committed projection of member project.yaml topology (workspace mode)
 ├── guest.lock                              # Create-exclusive marker held by guest orchestrations
 │

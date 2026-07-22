@@ -7,7 +7,7 @@
 
 Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, and layered skills are all in place. The **enforcement** and **reconciliation** pillars are in place too — `validate` and framework checks share one `Diagnostic` substrate (the `diagnostics` crate) while keeping distinct gate authority, and core owns how sources reconcile into slices. Durable specs live in [docs/standards/workflow.md](../docs/standards/workflow.md), [DECISIONS.md](../DECISIONS.md), and [From sources to slices](../docs/explanation/reconciliation.md). The next phase makes the loop observable and portable across teams, forges, agents, and catalogs.
+The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, and layered skills are all in place. The **enforcement** and **reconciliation** pillars are in place too — `validate` uses the `diagnostics` crate while keeping distinct gate authority from consumer-project engineering standards, and core owns how sources reconcile into slices. Durable specs live in [docs/standards/workflow.md](../docs/standards/workflow.md), [Workflow, standards, and artifacts](../docs/explanation/standards-layer.md), and [From sources to slices](../docs/explanation/reconciliation.md). The next phase makes the loop observable and portable across teams, forges, agents, and catalogs.
 
 At scale, Specify spans three connected layers:
 
@@ -25,8 +25,8 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `specify plan execute` remains the proving ground, but guest locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Eval coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** Framework-repo **checks** (the `checks` package at `crates/checks`) and consumer-project **engineering standards** (embedded in each target adapter and applied by its build review prompts) never share gate authority: `validate` gates lifecycle transitions and is non-silenceable, while standards review is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
-- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. This does not move *any grouping judgment* off the agent: the agent owns "are these two leads the same work?" and expresses it in `slices[]`; the CLI computes no groupings. What core owns is the typed schema those judgments are recorded in, the coverage guarantee over the result, and the audit trail around that judgment. The lead-side fields are agent-authored typed facts a deterministic layer *checks and surfaces*, never a deterministic replacement for the agent's grouping. See [From sources to slices](../docs/explanation/reconciliation.md) and [DECISIONS.md](../DECISIONS.md).
+- **Keep enforcement surfaces distinct.** Framework-repo consistency (the mdBook links gate) and consumer-project **engineering standards** (embedded in each target adapter and applied by its build review prompts) never share gate authority: `validate` gates lifecycle transitions and is non-silenceable, while standards review is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
+- **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. This does not move *any grouping judgment* off the agent: the agent owns "are these two leads the same work?" and expresses it in `slices[]`; the CLI computes no groupings. What core owns is the typed schema those judgments are recorded in, the coverage guarantee over the result, and the audit trail around that judgment. The lead-side fields are agent-authored typed facts a deterministic layer *checks and surfaces*, never a deterministic replacement for the agent's grouping. See [From sources to slices](../docs/explanation/reconciliation.md).
 
 ## Effect-oriented architecture
 
@@ -51,7 +51,7 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a known build of the operator-facing surfaces over the existing `journal` substrate — the substrate exists; the surfaces do not.
 
-In parallel, the operator-deployment and migration track is sketched in [RFC-70](rfc-70-deployment.md) through [RFC-74](rfc-74-program.md): a coordinated Omnia + Specify cut where RFC-70 lands Omnia's generic registry-miss guest resolver with the Specify launcher (direct `specify ...`, no authored `omnia.toml`), while RFCs 71–74 deliver an **in-house-usable** serial migration loop first — see [RFC-74 §First delivery](rfc-74-program.md#first-delivery) — and defer diagnostics polish, managed materialization, third-party registry discovery, parallelism, and forge/hosted integration until that loop is in daily use. Omnia stays free of Specify vocabulary throughout.
+In parallel, the operator-deployment and migration track is sketched in [RFC-70](rfc-70-deployment.md) through [RFC-74](rfc-74-program.md): a coordinated Omnia + Specify cut. RFC-70 Stages 1 and 3 have landed (launcher policy + the fail-closed guest resolver, resolver-backed dynamic deployment, direct `specify …`, no authored `omnia.toml`, no pre-run guest enumeration); Stage 2 remains (diagnostics / `resolution.json` / MCP route projection). RFCs 71–74 deliver an **in-house-usable** serial migration loop first — see [RFC-74 §First delivery](rfc-74-program.md#first-delivery) — and defer diagnostics polish, managed materialization, third-party registry discovery, parallelism, and forge/hosted integration until that loop is in daily use. Omnia stays free of Specify vocabulary throughout.
 
 #### Deferred until trigger conditions or prerequisites
 
@@ -92,7 +92,7 @@ specify journal export          # or: specify events export
 #### RM-11: Dependency-aware compatibility gates
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
-**Depends:** [From sources to slices](../docs/explanation/reconciliation.md) (typed slice model, per-slice fan-out via `depends-on`); the diagnostic substrate for `IFACE-`* contract findings ([DECISIONS.md §Diagnostic substrate](../DECISIONS.md#drained-errorvalidation-and-the-diagnostic-substrate)).
+**Depends:** [From sources to slices](../docs/explanation/reconciliation.md) (typed slice model, per-slice fan-out via `depends-on`); the [`diagnostics`](../crates/diagnostics/) substrate for `IFACE-`* contract findings.
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
 **Consumes:** the neutral `Diagnostic` envelope. RM-11 owns the structured-evidence shape for `IFACE-`* contract findings via `schemas/review/finding/contracts-evidence.schema.json`; the `Diagnostic` evidence union reserves the `evidence.kind: structured` branch but leaves the inner `data` shape to this item, so contracts-specific decisions land with the gate that needs them.
 **Target surface:**
@@ -118,7 +118,7 @@ specify registry diff <source>
 #### RM-13: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
-**Substrate:** the deployment already serves MCP — every adapter guest exports `wasi:http/incoming-handler` over `omnia_guest::mcp`, and the runtime binary routes MCP prefixes. This item becomes another route on the existing deployment (plausibly an export of the engine guest), not a standalone server.
+**Substrate:** every adapter guest can export `wasi:http/incoming-handler` over `omnia_guest::mcp`. Ordinary-path derived MCP route projection (`/mcp/<name>`) is [RFC-70](rfc-70-deployment.md) Stage 2; until then adapters are reached over the CLI seam. This item becomes another route on that deployment (plausibly an export of the engine guest), not a standalone server.
 **Initial tools:** direct readers for `plan.yaml`, `registry.yaml`, workspace slots, slice metadata, plus wrappers around `specify plan next` and `specify slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
@@ -179,8 +179,8 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 
 - **Specialized SLM code generation.** Train a specialized Small Language Model to generate Omnia Rust crates from Specify artifacts (Vectis following once proven), making the model behind the Omnia `build/crate.md` prompt cheaper, faster, and more reproducible — without replacing the workflow. This slots cleanly behind the swappable `wasi-model` backend.
 - **CLI observability.** The runtime binary binds `WasiOtel`, so `tracing`-based diagnostics for guest execution already exist. What remains parked is the residue wasi:otel does not cover — host-side deployment diagnostics and any stdout-contract-preserving ephemeral views over them.
-- **Source catalogue and source-clone cache.** Graduated: owned by [Migration Intake and Source Selection](rfc-72-migration.md), which reconciles and supersedes the deferred [RFC-21](future/rfc-21-catalogue.md).
-- **Migration ledger and slice mapping.** Graduated: owned by [Migration Programs](rfc-74-program.md), which reconciles and supersedes the deferred [RFC-22](future/rfc-22-ledger.md).
+- **Source catalogue and source-clone cache.** Graduated: owned by [Migration Intake and Source Selection](rfc-72-migration.md), which supersedes the archived [RFC-21](archive/rfc-21-catalogue.md).
+- **Migration ledger and slice mapping.** Graduated: owned by [Migration Programs](rfc-74-program.md), which supersedes the archived [RFC-22](archive/rfc-22-ledger.md).
 - **Omnia plan composition.** Teach `plan.yaml` to express the composition shape Omnia migrations produce — services composed of crates composed of handlers — without a parallel artifact or breaking existing plans.
 - **Standards baseline.** The cross-run lint lifecycle: acknowledging a body of legitimate findings as baseline debt, diffing scans against prior runs, and staging remediation across releases. Deferred — no consumers under fix-before-release on Specify-native codebases.
 - **Orchestration replay coverage.** Canonical scenarios separate hard assertions from semantic rubrics. `ModelDefault` provides deterministic request-key replay at the `wasi-model` boundary; native and composed profiles reuse that contract without capturing editor transcripts. Live profiles remain outside ordinary CI.

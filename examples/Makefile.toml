@@ -2,12 +2,12 @@
 script = "rm -rf sandbox/wasm"
 
 # Build the engine guest, the example adapter components, and the
-# native binary. Local iteration seeds the guest into the sandboxed
-# store (see wasm-run) — the same shape registry hydration leaves.
+# native binary — wasm32 first, so the native build embeds the
+# freshly-built engine bytes (build.rs resolves SPECIFY_ENGINE_WASM).
 [tasks.wasm-build]
 script = '''
 cargo build -p specify --lib --examples --target wasm32-wasip2
-cargo build -p specify --bin specify
+cargo build -p specify --bin specify --example host
 '''
 
 [tasks.wasm-run]
@@ -18,26 +18,56 @@ script = '''
 set -eo pipefail
 export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 export SPECIFY_HOME="$PWD/sandbox/wasm"
+# Live model calls comfortably exceed the runtime's 30s default.
+export GUEST_TIMEOUT_MS="${GUEST_TIMEOUT_MS:-3600000}"
 
 # Execute commands in the project directory, not the repository root.
 TARGET="$PWD/target"
 run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
 
-mkdir -p "$SPECIFY_HOME/project" "$SPECIFY_HOME/store"
+mkdir -p "$SPECIFY_HOME/project"
 
-# Seed the locally-built engine into the store (entry + digest sidecar).
-ENGINE="$TARGET/wasm32-wasip2/debug/specify.wasm"
-VERSION=$(cargo pkgid -p specify | sed 's/.*#//')
-
-cp "$ENGINE" "$SPECIFY_HOME/store/engine@${VERSION}.wasm"
-HEX=$(openssl dgst -sha256 -r "$ENGINE" | awk '{print $1}')
-printf 'tree_digest: sha256:%s\n' "$HEX" > "$SPECIFY_HOME/store/engine@${VERSION}.meta"
-
-# Initialise with the mock target; seed the source into the project cache.
-run init "$TARGET/wasm32-wasip2/debug/examples/mock.wasm" --name change
+# The engine guest is embedded in the binary — nothing is seeded into
+# the store. Seed both mock components into the project cache through
+# the in-guest `adapter add` (the component directory reaches the
+# guest as a read-only self-named preopen), then initialise with the
+# bare target name resolving from that cache.
+run adapter add "$TARGET/wasm32-wasip2/debug/examples/mock.wasm"
 run adapter add "$TARGET/wasm32-wasip2/debug/examples/mock_source.wasm"
+run init mock --name change
 
 # Author, transition, and execute a plan
+run plan author change --source main="mock-source:value:The greeting service."
+run plan transition change approved
+run plan execute
+'''
+
+# The macro-static example host (examples/wasm/host.rs): the same run
+# as wasm-run, but through a host that embeds the engine bytes AND
+# registers the mock target as a static guest — its dispatch never
+# consults the resolver — while the mock source still faults in
+# dynamically from the project cache.
+[tasks.wasm-static-run]
+dependencies = ["wasm-clean", "wasm-build"]
+env_files = [".env"]
+script_runner = "bash"
+script = '''
+set -eo pipefail
+export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
+export SPECIFY_HOME="$PWD/sandbox/wasm"
+export GUEST_TIMEOUT_MS="${GUEST_TIMEOUT_MS:-3600000}"
+
+TARGET="$PWD/target"
+run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/examples/host" "$@"); }
+
+mkdir -p "$SPECIFY_HOME/project"
+
+# The target's cache entry still backs the engine's resolve/metadata
+# legs; its *dispatch* is served by the static guest entry.
+run adapter add "$TARGET/wasm32-wasip2/debug/examples/mock.wasm"
+run adapter add "$TARGET/wasm32-wasip2/debug/examples/mock_source.wasm"
+run init mock --name change
+
 run plan author change --source main="mock-source:value:The greeting service."
 run plan transition change approved
 run plan execute

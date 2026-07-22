@@ -121,8 +121,16 @@ pub fn load(root: &Path, dir: &Path, catalog: &Catalog) -> Result<Config> {
 }
 
 fn validate(config: &Config, catalog: &Catalog) -> Result<()> {
+    let routed = project::adapter::RoutedId::parse(&config.adapter)
+        .map_err(|err| anyhow::anyhow!("adapter `{}`: {err}", config.adapter))?;
     ensure!(
-        catalog.entries().iter().any(|entry| entry.id() == config.adapter),
+        catalog.entries().iter().any(|entry| {
+            entry.axis() == routed.axis
+                && entry.name() == routed.name
+                && routed.version.as_ref().is_none_or(|version| {
+                    semver::Version::parse(entry.version()).is_ok_and(|linked| linked == *version)
+                })
+        }),
         "adapter `{}` is not linked into this host",
         config.adapter
     );

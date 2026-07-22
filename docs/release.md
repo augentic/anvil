@@ -13,13 +13,14 @@ Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR
 
 ## Jobs that run
 
-1. **`build` (matrix).** Each job builds the platform binary:
+1. **`build` (matrix).** Each job builds the wasm32 engine guest first, then the platform binary that embeds it:
 
 ```bash
+cargo build --release --locked --lib -p specify --target wasm32-wasip2
 cargo build --release --locked --bin specify
 ```
 
-   The binary's launcher hydrates `specify:engine@<binary version>` from the registry on a store miss — the same path as every other package pin. Supported targets:
+   The root `build.rs` resolves `SPECIFY_ENGINE_WASM` — an explicit environment override wins, else it probes `target/wasm32-wasip2/release/specify.wasm` — and `src/omnia.rs` embeds the bytes with `include_bytes!`, so the shipped binary carries its own engine (no first-launch hydration, no network). The workflow guards against the compile-passing empty placeholder with a `test -s` on the wasm build product. Supported targets:
    - `x86_64-unknown-linux-gnu` on `ubuntu-latest` (native `cargo build`).
    - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
    - `x86_64-apple-darwin` on `macos-13` (native).
@@ -30,13 +31,13 @@ cargo build --release --locked --bin specify
 
 2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
 
-The shipped surface is the `specify` binary alone: the binary is the deployment launcher plus the macro-generated command-mode runtime (`launcher::prepare` and the nested `omnia::runtime!` host in `src/omnia.rs`), so there is no second binary to build or package.
+The shipped surface is the `specify` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/omnia.rs`) embedding the engine guest as static component bytes, with mounts and the adapters-only guest resolver contributed by the `launcher` crate's expressions — so there is no second binary or component to package.
 
 ## Publishing the wasm-pkg packages
 
 Both wasm-pkg packages are published manually with `wkg publish` by a maintainer whose wkg config maps the `specify:` namespace to `augentic.io` with a GitHub token carrying `packages: write` (see [`wit/README.md`](../wit/README.md) for the config shape). Registry identities are immutable — never re-publish an existing version; bump the version first.
 
-- **Engine guest.** After tagging, publish the release-built engine component as `specify:engine@<version>`, where `<version>` is the workspace package version — the published engine identity must equal the binary version: a released binary consumes exactly `specify:engine@<its own version>`. First launch (and any cleared store) hydrates that identity from the registry.
+- **Engine guest.** After tagging, publish the release-built engine component as `specify:engine@<version>`, where `<version>` is the workspace package version. The shipped binary does **not** consume the published package — it embeds the identical bytes at build time — but the registry identity remains the canonical distribution for other Omnia hosts composing the engine guest (and keeps the published identity equal to the binary version).
 
 ```bash
 cargo build --lib -p specify --release --target wasm32-wasip2
@@ -55,11 +56,17 @@ First-party adapter components are **not** built or published by this repo. They
 Two supported install paths:
 
 - **GitHub Release archives.** Download the archive for your platform from the GitHub Release page, verify it against the companion `.sha256` file, and place the `specify` binary on your `PATH`.
-- **`cargo install --git`** for Rust-native developers, building the binary from the tagged source.
+- **Source builds** for Rust-native developers: build the embedded engine first, then install the binary from the same checkout — `cargo install` alone would embed the compile-passing empty placeholder, because the wasm32 engine is a separate build product.
+
+```bash
+git clone --branch <tag> https://github.com/augentic/specify && cd specify
+cargo build --release --locked --lib -p specify --target wasm32-wasip2
+cargo install --locked --path .
+```
 
 A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.
 
-Subsequent updates use the same installation channel: rerun `cargo install`, upgrade through the package manager, or replace the downloaded binary. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest resolves by the binary's own version, `specify:engine@<binary version>`.
+Subsequent updates use the same installation channel: rerun `cargo install`, upgrade through the package manager, or replace the downloaded binary. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest ships inside the binary, so replacing the binary replaces the engine with it.
 
 ## Adding a new target triple
 

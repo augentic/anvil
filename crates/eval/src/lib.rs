@@ -1,13 +1,14 @@
 //! Lab-only live-model evaluation over the native host.
 //!
-//! `eval` owns the multi-step live workflow trial, single-operation
+//! The library owns the multi-step live workflow trial, single-operation
 //! adapter prompt scenarios, deterministic grading, model-request
 //! telemetry, sandbox seeding and cleanup, and the eval CLI parsing.
 //! It constructs no concrete adapter catalog, no Cursor backend, and
 //! no Tokio runtime: the process-facing client ([`run`]) receives a
 //! workspace root, a validated [`native::Catalog`], and a
-//! [`ModelFactory`] from its composition root (a repository `lab`
-//! binary), and drives workflow phases through the native command API.
+//! [`ModelFactory`] from its composition root (this crate's `cli`
+//! binary, or the `lab` binary in `augentic/specify-adapters`), and
+//! drives workflow phases through the native command API.
 
 mod fs;
 pub mod grade;
