@@ -37,22 +37,18 @@ adapter.workspace = true
 mock.workspace = true
 
 [[example]]
-name = "mock-source"
+name = "source"
 path = "examples/wasm/source.rs"
 crate-type = ["cdylib"]
 
 [[example]]
-name = "mock"
+name = "target"
 path = "examples/wasm/target.rs"
 crate-type = ["cdylib"]
 
 [[example]]
 name = "native"
 path = "examples/native/main.rs"
-
-[[example]]
-name = "host"
-path = "examples/wasm/host.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 native = { workspace = true, features = ["cli"] }

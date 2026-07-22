@@ -2,7 +2,7 @@
 //! (RFC-70 Stage 3).
 //!
 //! The engine guest is embedded as static component bytes (`build.rs`
-//! resolves `SPECIFY_ENGINE_WASM`) and routed as the sole static
+//! resolves `SPECIFY_WASM`) and routed as the sole static
 //! `wasi:cli/run` exporter; every adapter guest is faulted in mid-run
 //! by exact routed id through the fail-closed launcher resolver,
 //! after the engine's own ensure legs have hydrated it through the
@@ -27,7 +27,7 @@ cfg_if::cfg_if! {
             program: "specify",
             guests: [{
                 id: "specify",
-                source: include_bytes!(env!("SPECIFY_ENGINE_WASM")),
+                source: include_bytes!(env!("SPECIFY_WASM")),
             }],
             mounts: [
                 { name: ".", path: launcher::project_root(), writable: true },

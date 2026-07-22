@@ -4,7 +4,7 @@ The `specify` CLI lives in the in-tree Cargo workspace at the repo root. It is a
 
 ## One binary: the runtime invocation
 
-The shipped binary is a resolver-backed dynamic deployment (RFC-70 Stage 3) expressed as one domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/omnia.rs`) — no handwritten `main`. The engine guest is embedded as static component bytes (`include_bytes!(env!("SPECIFY_ENGINE_WASM"))`, resolved by the root `build.rs`) and registered at boot as the sole `wasi:cli/run` exporter; the `launcher` crate contributes the mount and resolver expressions the macro's `mounts:` / `resolver:` keys evaluate — one per-process anchoring (project-root walk, `--project-dir` override, `Locations::from_env` captured once, writable mount directories created pre-run, the optional read-only `adapter add` seed preopen) and the fail-closed adapters-only `GuestResolver`. Adapters are admitted lazily by exact routed id on first dispatch, verify-and-load only — the engine guest's own `ensure_source` / `ensure_target` legs are the sole adapter hydrator, and no download path exists in the launcher. There is no pre-run closure, no guest enumeration, no `omnia.toml`, and no `run --config` surface.
+The shipped binary is a resolver-backed dynamic deployment (RFC-70 Stage 3) expressed as one domain-free `omnia::runtime!` command-mode invocation over the cursor-bound backends (`src/omnia.rs`) — no handwritten `main`. The engine guest is embedded as static component bytes (`include_bytes!(env!("SPECIFY_WASM"))`, resolved by the root `build.rs`) and registered at boot as the sole `wasi:cli/run` exporter; the `launcher` crate contributes the mount and resolver expressions the macro's `mounts:` / `resolver:` keys evaluate — one per-process anchoring (project-root walk, `--project-dir` override, `Locations::from_env` captured once, writable mount directories created pre-run, the optional read-only `adapter add` seed preopen) and the fail-closed adapters-only `GuestResolver`. Adapters are admitted lazily by exact routed id on first dispatch, verify-and-load only — the engine guest's own `ensure_source` / `ensure_target` legs are the sole adapter hydrator, and no download path exists in the launcher. There is no pre-run closure, no guest enumeration, no `omnia.toml`, and no `run --config` surface.
 
 Every invocation runs in the specify (engine) guest through the shared typed command router — help and version displays, grammar rejections (the shared clap grammar compiles into the engine, so its renderings are the product's by construction), and `adapter add` (the operator's component directory reaches the guest as a read-only preopen named by its own absolute host path) included; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
 
@@ -47,12 +47,12 @@ The `--format text|json` flag controls output shape; `SPECIFY_FORMAT=json` is th
 
 The exit-code contract is part of the public interface for operators and skill wrappers; `Exit::from(&Error)` in `crates/transport/src/command/output.rs` is the single source of truth:
 
-| Code | Constant | Meaning |
-|------|----------|---------|
-| `0` | `EXIT_SUCCESS` | Operation completed successfully |
-| `1` | `EXIT_GENERIC_FAILURE` | I/O error, parse error, or any unclassified failure |
-| `2` | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors |
-| `3` | `EXIT_VERSION_TOO_OLD` | Binary version is below the `specify` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
+| Code | Constant                 | Meaning                                                                                                                              |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | `EXIT_SUCCESS`           | Operation completed successfully                                                                                                     |
+| `1`  | `EXIT_GENERIC_FAILURE`   | I/O error, parse error, or any unclassified failure                                                                                  |
+| `2`  | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors                                                    |
+| `3`  | `EXIT_VERSION_TOO_OLD`   | Binary version is below the `specify` floor in `.specify/project.yaml`, or below an adapter's declared `specify` compatibility floor |
 
 Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI seam forwards its exit and the binary passes it through verbatim.
 

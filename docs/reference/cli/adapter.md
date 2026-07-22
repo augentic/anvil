@@ -10,7 +10,7 @@ Seed a local `.wasm` component into the project component cache so a bare (unpin
 specify adapter add <path.wasm> [--project-dir <dir>]
 ```
 
-Mirrors the component to `<project-cache>/components/<name>.wasm` — the kebab-case name derives from the component filename (`mock_source.wasm` → `mock-source`, a `specify_` prefix is stripped) — and stamps a per-component provenance sidecar at `components/<name>.meta.yaml`.
+Mirrors the component to `<project-cache>/components/<name>.wasm` — the kebab-case name derives from the component filename (`source.wasm` → `source`, underscores fold to dashes, a `specify_` prefix is stripped) — and stamps a per-component provenance sidecar at `components/<name>.meta.yaml`.
 
 The command is **pre-init** and **axis-neutral**: `.specify/` need not exist (seed first, then `specify init <name>` with the bare name), and the component's exports are not inspected — the binding that later resolves the name (the project target in `project.yaml`, a plan source in `plan.yaml`) supplies the expected axis, and a wrong-world component fails at the dispatch/metadata gate. Re-seeding the same name replaces the entry and its sidecar; the explicit command is the approval act.
 
