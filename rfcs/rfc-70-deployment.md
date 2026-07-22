@@ -4,7 +4,7 @@
 >
 > Owns: the operator-facing `specify` executable, deployment assembly, and Specify's derived enumeration of the adapter store into Omnia's typed deployment value.
 >
-> Builds on: [Specify on Omnia](architecture.md) and [Native Specify](native-deployment.md).
+> Builds on: [Specify on Omnia](architecture.md) and [Native Specify](archive/native-deployment.md) (archived — implemented).
 >
 > Program: RFCs 70–74 are a coordinated Omnia + Specify change set. Omnia remains a generic WebAssembly runtime with no Specify domain vocabulary; Specify owns closure, store policy, and launcher composition.
 
@@ -52,7 +52,7 @@ The repository already has most of the required substrate:
 - the global adapter store and per-project cache have stable locations;
 - the architecture defines the generated deployment manifest as derived state.
 
-The missing layer is deployment assembly around those pieces. With Omnia's typed deployment value landed, no new Omnia capability is required for first delivery: the launcher derives and enumerates the guest set itself (see [Pre-run guest enumeration](#pre-run-guest-enumeration)). The lazy layer — resolve a guest on registry miss — remains specified as a **generic** Omnia seam ([Dynamic Guest Registration](https://github.com/augentic/omnia/blob/main/rfcs/guest-resolution.md)), deferred until a command can dispatch an identity the launcher cannot derive pre-run.
+Stage 1 closed that gap: the launcher derives and enumerates the guest set itself (see [Pre-run guest enumeration](#pre-run-guest-enumeration)) and hands a typed deployment value to `run`. The lazy layer — resolve a guest on registry miss — remains specified as a **generic** Omnia seam ([Dynamic Guest Registration](https://github.com/augentic/omnia/blob/main/rfcs/guest-resolution.md)), deferred to Stage 3 until a command can dispatch an identity the launcher cannot derive pre-run.
 
 ## Goals
 
@@ -113,7 +113,7 @@ The guest set is *static per invocation, derived per invocation*. `specify` is a
 
 **The deferred lazy layer.** Omnia's [Dynamic Guest Registration](https://github.com/augentic/omnia/blob/main/rfcs/guest-resolution.md) note owns the runtime mechanism for growing the guest set after boot: an explicit `Runtime::register` primitive (§§4.1–4.4) with resolve-on-miss and trigger projection layered on top (§4.5). Specify's eventual consumer is §4.5 specifically — the mid-run installer here is the *engine guest* (the WASI provider's `ensure_*` runs guest-side over the store mount), which cannot call a host registration API, and the launcher is blocked inside `run`; only a dispatch-triggered resolve serves that scenario. When it lands, Specify supplies the resolver implementor (store probe, fail-closed sidecar verify, filename mapping — the same policy the launcher's preflight applies today) registered programmatically on the `DeploymentBuilder`. None of it is on the first-delivery critical path.
 
-After first delivery:
+After Stage 1 (today):
 
 - the derived deployment value names the engine guest, adapter guest entries, effects, and mounts;
 - engine→adapter calls resolve the same axis-qualified guest ids the launcher enumerated;
@@ -122,14 +122,14 @@ After first delivery:
 
 ### Derived deployment state
 
-The launcher writes deployment diagnostics beneath the out-of-tree per-project cache:
+The deployment itself is a **typed value** handed to `run` in memory (see [Typed deployment value](#typed-deployment-value)); the ordinary path writes no `omnia.toml`. Stage 1 does not persist diagnostics. **Stage 2** writes deployment diagnostics beneath the out-of-tree per-project cache:
 
 ```text
 <project-cache>/deployment/
-└── resolution.json     # Specify diagnostics
+└── resolution.json     # Specify diagnostics (Stage 2)
 ```
 
-The deployment itself is a **typed value** handed to `run` in memory (see [Typed deployment value](#typed-deployment-value)); the ordinary path writes no `omnia.toml`. `resolution.json` records enough information for diagnostics:
+When Stage 2 lands, `resolution.json` records enough information for diagnostics:
 
 - Specify binary and engine component versions;
 - each adapter's axis, selector, resolved identity, component path, origin, and digest;
@@ -191,7 +191,7 @@ Doctor treats a prefix collision under the ordinary rule as a deployment error.
 
 The composed example carries no hand-authored `omnia.toml`: the launcher derives its deployment per invocation. Derived MCP route rows land in Stage 2; until then the example's adapters are reached over the CLI seam only.
 
-The matching `resolution.json` carries the provenance the deployment value flattens away:
+Stage 2's matching `resolution.json` carries the provenance the deployment value flattens away:
 
 ```json
 {
@@ -236,7 +236,7 @@ The matching `resolution.json` carries the provenance the deployment value flatt
 }
 ```
 
-`resolution.json` is safe to delete. The authored selectors remain in `project.yaml`, `plan.yaml`, and command inputs. Beyond diagnostics, the recorded digests double as the launcher's host-held expectation for closure identities at preflight (see [Supply-chain posture](#supply-chain-posture)).
+`resolution.json` is safe to delete. The authored selectors remain in `project.yaml`, `plan.yaml`, and command inputs. Beyond diagnostics, Stage 2 uses the recorded digests as the launcher's host-held expectation for closure identities at preflight (see [Supply-chain posture](#supply-chain-posture)). Stage 1 preflight verifies against store sidecars only.
 
 ### Required component closure
 
@@ -427,9 +427,9 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-Specify's launcher assembles the same shape from the closure — the engine `GuestEntry` with the adapter-interface link allow-list, one derived `GuestEntry` per closure adapter, the project/cache/store `Mount`s — and forwards argv through `DeploymentBuilder::args`; the nested `runtime!` expansion stamps command mode onto the builder inside the generated `run`. The ordinary Specify path writes no `omnia.toml`; the derived-state directory carries only `resolution.json` from day one, and the fingerprint guards reuse of the persisted *resolution*.
+Specify's launcher assembles the same shape from the closure — the engine `GuestEntry` with the adapter-interface link allow-list, one derived `GuestEntry` per closure adapter, the project/cache/store `Mount`s — and forwards argv through `DeploymentBuilder::args`; the nested `runtime!` expansion stamps command mode onto the builder inside the generated `run`. The ordinary Specify path writes no `omnia.toml`. Stage 2 persists `resolution.json` under the per-project cache and uses its fingerprint to guard reuse of the recorded *resolution*.
 
-The generated Omnia `main` keeps loading a file/flag deployment for plain Omnia apps and examples (when no manifest is supplied, `DeploymentBuilder::build` falls back to the `OMNIA_CONFIG` path). The file format remains available for hand-authored deployments such as the composed example.
+The generated Omnia `main` keeps loading a file/flag deployment for plain Omnia apps and examples (when no manifest is supplied, `DeploymentBuilder::build` falls back to the `OMNIA_CONFIG` path). The file format remains available for hand-authored Omnia deployments; Specify's composed wasm example invokes bare `specify …` with a launcher-derived deployment.
 
 This also serves the dual deployment posture directly: steps 1–4 of the launcher are deployment-neutral, and a hosted runner composing the same closure can start the runtime in process from the typed value alone.
 
@@ -453,17 +453,17 @@ Deployment assembly must not turn model output into executable trust.
 - A component cannot gain a filesystem or network capability merely by declaring one; Omnia's configured host links remain authoritative.
 - Store roots bound where the launcher may read component bytes; they do not grant network fetch or widen trust policy.
 
-The digest sidecar is written through the same writable store mount every guest in the deployment shares, so sidecar verification proves **integrity, not trust**: a guest could install an entry and a self-consistent sidecar. Pre-run enumeration bounds this well: nothing outside the launcher-enumerated closure is dispatchable in the current process, and the launcher verifies every closure entry at preflight against the digest it recorded in `resolution.json` — a host-held expectation no guest can rewrite. A store entry a guest writes mid-run becomes loadable only in a *later* invocation, whose preflight verifies it in turn (and, for hydrated identities, against registry-recorded digests). Per-guest mount scoping in Omnia (the store writable only to the engine guest) remains the hardening path and is tracked as an [open question](#open-questions); until it lands, `deployment doctor` flags store entries beneath the store roots but absent from every recorded closure.
+The digest sidecar is written through the same writable store mount every guest in the deployment shares, so sidecar verification proves **integrity, not trust**: a guest could install an entry and a self-consistent sidecar. Pre-run enumeration bounds this well: nothing outside the launcher-enumerated closure is dispatchable in the current process, and Stage 1 preflight verifies every closure entry against its store sidecar. Stage 2 strengthens that with digests recorded in `resolution.json` — a host-held expectation no guest can rewrite. A store entry a guest writes mid-run becomes loadable only in a *later* invocation, whose preflight verifies it in turn (and, for hydrated identities, against registry-recorded digests). Per-guest mount scoping in Omnia (the store writable only to the engine guest) remains the hardening path and is tracked as an [open question](#open-questions); until it lands, Stage 2's `deployment doctor` flags store entries beneath the store roots but absent from every recorded closure.
 
-Local component selectors that resolve outside the project root require no additional trust flag: the operator typing an explicit component path is the approval act, consistent with how local components mirror today. The canonical origin path is recorded in `resolution.json`, and `doctor` surfaces out-of-root origins as informational findings. Revisit only if the trust policy in [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) gives a flag something real to gate on.
+Local component selectors that resolve outside the project root require no additional trust flag: the operator typing an explicit component path is the approval act, consistent with how local components mirror today. Stage 2 records the canonical origin path in `resolution.json`, and `doctor` surfaces out-of-root origins as informational findings. Revisit only if the trust policy in [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) gives a flag something real to gate on.
 
 
 
 ## First delivery
 
-The first cut must be something an in-house team can run daily: `specify …` with no authored Omnia config, first-party adapters hydrating into the store, and clear resolve failures. It does not need a polished diagnostics product or third-party trust theatre.
+The first cut is something an in-house team can run daily: `specify …` with no authored Omnia config, first-party adapters hydrating into the store, and clear resolve failures. It does not need a polished diagnostics product or third-party trust theatre — Stages 0–1 are landed; Stages 2–3 remain.
 
-**In first delivery**
+**In first delivery (landed)**
 
 - Stages 0–1 below (typed `run` — already landed in Omnia, nested launcher, closure hydrate + pre-run guest enumeration, fail-closed preflight verify). No Omnia implementation work is on the critical path.
 - Release archive *or* registry hydrate for the engine and first-party pins the team actually uses.
@@ -527,20 +527,20 @@ Triggered by the first command that can dispatch an identity the launcher cannot
 
 ## Acceptance criteria
 
-**First delivery (Stages 0–1)**
+**First delivery (Stages 0–1) — met**
 
-1. A Wasm installation runs `specify --help` and workflow commands without `run --config`.
-2. The ordinary operator path involves no `omnia.toml` — authored or generated; the launcher passes a typed deployment value to `run`.
-3. Adding a supported first-party source binding does not require editing runtime configuration; the next invocation's closure picks it up.
-4. Project and plan selectors remain the authoritative adapter bindings.
-5. The engine guest remains the sole owner of command semantics and lifecycle transitions.
-6. The derived enumeration carries no Specify vocabulary into Omnia: opaque guest ids, local component paths, and mounts only.
-7. Specify nests `omnia::runtime!` in a host submodule and calls `run` from crate-root launcher `main` with the assembled typed deployment value.
-8. A missing, incompatible, wrong-axis, sidecar-less, or digest-mismatched closure component fails at launcher preflight — before the runtime starts.
-9. The native host remains a separate deployment and does not become a fallback for missing Wasm components.
-10. The composed Wasm example exercises the same operator invocation as the product binary.
-11. The closure-superset invariant holds: every identity the engine guest ensures or dispatches during a command was hydrated and enumerated by the launcher pre-run, so an in-command `ensure_*` install is dispatchable by the same command.
-12. The guest list is derived per invocation from closure inputs; no authored or persisted guest table exists.
+1. ~~A Wasm installation runs `specify --help` and workflow commands without `run --config`.~~
+2. ~~The ordinary operator path involves no `omnia.toml` — authored or generated; the launcher passes a typed deployment value to `run`.~~
+3. ~~Adding a supported first-party source binding does not require editing runtime configuration; the next invocation's closure picks it up.~~
+4. ~~Project and plan selectors remain the authoritative adapter bindings.~~
+5. ~~The engine guest remains the sole owner of command semantics and lifecycle transitions.~~
+6. ~~The derived enumeration carries no Specify vocabulary into Omnia: opaque guest ids, local component paths, and mounts only.~~
+7. ~~Specify nests `omnia::runtime!` in a host submodule and calls `run` from crate-root launcher `main` with the assembled typed deployment value.~~
+8. ~~A missing, incompatible, wrong-axis, sidecar-less, or digest-mismatched closure component fails at launcher preflight — before the runtime starts.~~
+9. ~~The native host remains a separate deployment and does not become a fallback for missing Wasm components.~~
+10. ~~The composed Wasm example exercises the same operator invocation as the product binary.~~
+11. ~~The closure-superset invariant holds: every identity the engine guest ensures or dispatches during a command was hydrated and enumerated by the launcher pre-run, so an in-command `ensure_*` install is dispatchable by the same command.~~
+12. ~~The guest list is derived per invocation from closure inputs; no authored or persisted guest table exists.~~
 
 **Later (Stage 2)**
 
@@ -571,4 +571,4 @@ Triggered by the first command that can dispatch an identity the launcher cannot
 ## Open questions
 
 1. Per-guest mount scoping in Omnia: should the writable store mount be grantable to the engine guest alone, closing the guest-writable-store residue in [Supply-chain posture](#supply-chain-posture)? Until it lands, `deployment doctor`'s closure-orphan finding is the compensating control.
-2. Pre-compiled store artifacts ([Per-invocation compile cost](#per-invocation-compile-cost)): first delivery or deferred until command latency hurts? Measurement on the composed example with the real engine + two adapters should decide.
+2. Pre-compiled store artifacts ([Per-invocation compile cost](#per-invocation-compile-cost)): Stage 2 item 6 — when does command latency warrant them? Measurement on the composed example with the real engine + two adapters should decide.

@@ -6,7 +6,7 @@
 >
 > Depends on: [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) (Stage 1) and [Migration Intake and Source Selection](rfc-72-migration.md). [Managed Workspace Materialization](rfc-73-materialization.md) is optional for the walking skeleton — see [Sequencing](#sequencing).
 >
-> Supersedes after reconciliation: [Migration Ledger and Slice Mapping](future/rfc-22-ledger.md).
+> Supersedes: [Migration Ledger and Slice Mapping](archive/rfc-22-ledger.md) (archived).
 
 ## Abstract
 
@@ -586,7 +586,7 @@ The program track delivers a **usable in-house migration loop**, not a finished 
 
 | RFC | In first delivery | Deferred |
 | --- | ----------------- | -------- |
-| [RFC-70](rfc-70-deployment.md#first-delivery) | Typed `run`, miss-hook, closure hydrate, fail-closed verify | `resolution.json` / doctor, MCP projection, host-held digest pins |
+| [RFC-70](rfc-70-deployment.md#first-delivery) | Typed `run`, pre-run guest enumeration, closure hydrate, fail-closed verify (**Stage 1 landed**) | `resolution.json` / doctor, MCP projection, host-held digest pins; Stage 3 miss-hook when mid-run selection needs it |
 | [RFC-71](rfc-71-discovery.md#first-delivery) | Static first-party index, filter, persisted reports | Model adjudication, registry / `describe` (Stage 3) |
 | [RFC-72](rfc-72-migration.md#first-delivery) | Catalogue, Git+docs snapshots, profile, approve, serial `@key` lowering | Multi-binding, auto-approve, `--jobs`, portal import, prune |
 | [RFC-73](rfc-73-materialization.md#first-delivery) | Operator-prepared slots | `workspace sync`, leases, hosted |
@@ -594,7 +594,7 @@ The program track delivers a **usable in-house migration loop**, not a finished 
 
 ### Exit checklist (in-house usable)
 
-1. `specify …` runs workflow commands with no authored Omnia guest table; first-party adapters hydrate and dispatch via the miss-hook.
+1. `specify …` runs workflow commands with no authored Omnia guest table; first-party adapters hydrate and dispatch via launcher pre-run guest enumeration (RFC-70 Stage 1 — landed).
 2. Recommend from the static index without engine adapter-name switches; multi-candidate → operator / M1.
 3. Import → snapshot → profile → approve (or M1) → `@key` plan author → survey.
 4. Migration program: M1 → one ordinary change → Gate 1 → execute → publication stop → next item.
@@ -608,13 +608,13 @@ Throughout, the coordinator consumes only deployment-neutral capabilities — th
 
 The header dependency chain describes ownership, not build order. First delivery follows the [exit checklist](#exit-checklist-in-house-usable) over:
 
-- [RFC-70](rfc-70-deployment.md) Stages 0–1;
+- [RFC-70](rfc-70-deployment.md) Stages 0–1 (**landed** — launcher, pre-run enumeration, fail-closed verify);
 - [RFC-71](rfc-71-discovery.md) Stage 1 + report persistence;
 - [RFC-72](rfc-72-migration.md) Stages 1–3 (serial);
 - operator-prepared slots ([RFC-73](rfc-73-materialization.md) skipped until cloning friction dominates);
 - this RFC Stages 1–2 (serial coordinator).
 
-Pull in RFC-73 Stage 1 (`workspace sync`), RFC-70 Stage 2 (doctor), RFC-71 adjudication, and this RFC's Stage 3 progress projection only when the checklist is green and the team feels the specific pain.
+Pull in RFC-73 Stage 1 (`workspace sync`), RFC-70 Stage 2 (doctor / `resolution.json` / derived MCP), RFC-71 adjudication, and this RFC's Stage 3 progress projection only when the checklist is green and the team feels the specific pain.
 
 ## Implementation stages
 

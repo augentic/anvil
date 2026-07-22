@@ -1,10 +1,10 @@
 # Artifact Locations — Production Layout vs Co-dev Binding
 
-> Status: **Draft** (rev 5 — review feedback incorporated: `Locations` is a value, not a trait; `SPECIFY_HOME` defaults to `$HOME/.specify` and relocates store + cache together; host-parent vs guest-project cache placement is explicit; co-dev is seed-only; unpinned identity moves into Stage 1 with a bare-string topology shape; a pre-init cache-seeding verb preserves the source-adapter dev loop)
+> Status: Implemented (archived). Stage 1 complete; optional Stage 2 (bare-at-init materialization) deferred.
 >
 > Owns: on-disk location policy for resolvable artifacts (adapter store entries, digest sidecars, project component cache); the composition-root capture of the relocation environment overrides; removal of Cargo-layout and other co-dev probes from shipped crates.
 >
-> Builds on: [Specify on Omnia](architecture.md), [RFC-70 Self-Assembling Wasm Deployment](rfc-70-deployment.md), [Native Specify](native-deployment.md). Prior art for the configuration shape: the Omnia backends' `ConnectOptions` pattern (`backends/crates/kafka` — `#[derive(FromEnv)]`, production defaults in code, env vars the only override, resolved once at the composition root).
+> Builds on: [Specify on Omnia](../architecture.md), [RFC-70 Self-Assembling Wasm Deployment](../rfc-70-deployment.md), [Native Specify](native-deployment.md) (archived — implemented). Prior art for the configuration shape: the Omnia backends' `ConnectOptions` pattern (`backends/crates/kafka` — `#[derive(FromEnv)]`, production defaults in code, env vars the only override, resolved once at the composition root).
 >
 > Does not own: adapter identity grammar (`AdapterSelector`), registry discovery (RFC-71), native catalog composition, or Omnia guest linking.
 
@@ -60,7 +60,7 @@ The Omnia backends already solve this class of problem: a typed options struct (
 
 The previous draft proposed `Locations` as a trait with production default methods and composition-root overrides. Review rejected that framing:
 
-- by the draft's own preference (seed the cache, don't bind a Cargo layout), `Production` would be the trait's only implementor — exactly the `trait Foo` + sole `RealFoo` shape [style.md](../docs/standards/style.md) forbids;
+- by the draft's own preference (seed the cache, don't bind a Cargo layout), `Production` would be the trait's only implementor — exactly the `trait Foo` + sole `RealFoo` shape [style.md](../../docs/standards/style.md) forbids;
 - the variation the trait was defending already exists twice: env relocation for the store, `ExecutionPaths` for the cache parent — a trait override of `store_entry` and setting the deployment's `SPECIFY_HOME` would be two ways to say the same thing;
 - the wasm32 engine guest does not need layout polymorphism: it sees the `GUEST_STORE_MOUNT` / `GUEST_CACHE_MOUNT` preopens and binds them directly.
 
@@ -283,7 +283,7 @@ Do not implement `SPECIFY_ENGINE_PATH` (or an in-repo engine `target/` probe) in
 
 Kernels and `locate` take the value from `ExecutionPaths`. They do not call free-function layout helpers that read env — today's `component_cache_entry` / store-root resolvers fold into `Locations`; `diagnostics::cache` keeps only the pure math (`project-id` digesting, digest verify, sidecar shapes).
 
-This deliberately does **not** introduce a trait ([style.md](../docs/standards/style.md) — no traits for testability alone, and no second layout binding exists). Should a real second layout materialize, wrapping the value's formulas behind a trait is a mechanical, additive change.
+This deliberately does **not** introduce a trait ([style.md](../../docs/standards/style.md) — no traits for testability alone, and no second layout binding exists). Should a real second layout materialize, wrapping the value's formulas behind a trait is a mechanical, additive change.
 
 ## Design sketch
 
@@ -451,17 +451,17 @@ Duplicates the store-seed path already used by the wasm example; adds another co
 
 Stage 1 is done when:
 
-- [ ] `Locations::from_env` / `Locations::explicit` are the only layout constructions; no kernel, handler, or `locate` path reads `std::env` for layout, and the launcher carries one captured value through hydration and deployment.
-- [ ] `SPECIFY_HOME` is the only layout environment variable; it defaults to `$HOME/.specify` (then `<temp>/specify` without `$HOME`), and every effective home derives `<home>/store` and `<home>/cache` while the retired per-location variables have no compatibility path.
-- [ ] No shipped crate contains `target/wasm32-wasip2` as a resolve probe (grep-clean except docs history / this RFC / Make-lab scripts / the documented `name_from_component` exemption).
-- [ ] Bare resolve succeeds only from the project component cache (or store for pins).
-- [ ] `specify adapter add` seeds the cache for either axis; a bare plan-source binding resolves a seeded component.
-- [ ] Resolve envelopes no longer emit `"dev"` and omit the version for cache-backed resolves; topology writes a bare target name for the same unpinned identity (no `0.0.0`).
-- [ ] `examples/Makefile.toml` does not stage adapters under sandbox `target/`.
-- [ ] Published adapter components carry no `SPECIFY_PROSE_OVERLAY` branch.
-- [ ] The `unsafe` env-mutation test guards are deleted; env-capture behavior has direct coverage.
-- [ ] Workflow / AGENTS / architecture docs describe store + cache only.
-- [ ] `cargo make ci` passes.
+- [x] `Locations::from_env` / `Locations::explicit` are the only layout constructions; no kernel, handler, or `locate` path reads `std::env` for layout, and the launcher carries one captured value through hydration and deployment.
+- [x] `SPECIFY_HOME` is the only layout environment variable; it defaults to `$HOME/.specify` (then `<temp>/specify` without `$HOME`), and every effective home derives `<home>/store` and `<home>/cache` while the retired per-location variables have no compatibility path.
+- [x] No shipped crate contains `target/wasm32-wasip2` as a resolve probe (grep-clean except docs history / this RFC / Make-lab scripts / the documented `name_from_component` exemption).
+- [x] Bare resolve succeeds only from the project component cache (or store for pins).
+- [x] `specify adapter add` seeds the cache for either axis; a bare plan-source binding resolves a seeded component.
+- [x] Resolve envelopes no longer emit `"dev"` and omit the version for cache-backed resolves; topology writes a bare target name for the same unpinned identity (no `0.0.0`).
+- [x] `examples/Makefile.toml` does not stage adapters under sandbox `target/`.
+- [x] Published adapter components carry no `SPECIFY_PROSE_OVERLAY` branch.
+- [x] The `unsafe` env-mutation test guards are deleted; env-capture behavior has direct coverage.
+- [x] Workflow / AGENTS / architecture docs describe store + cache only.
+- [x] `cargo make ci` passes.
 
 ## Suggested PR sequence
 

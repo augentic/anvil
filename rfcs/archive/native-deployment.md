@@ -1,6 +1,6 @@
 # Native Specify — Native Host, Eval, and Lab Composition
 
-> Status: Draft
+> Status: Implemented (archived). Stages 1–5 complete; optional Stage 5 polish (`--version` flavor labels / help neutralization) deferred. Native operator distribution and shared catalog library remain follow-up (out of scope).
 >
 > Owns: the Wasm-free, statically composed host for the Specify engine; the small shared seams it needs; and its separation from live-model eval and in-repo lab composition.
 

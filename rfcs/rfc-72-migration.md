@@ -6,7 +6,7 @@
 >
 > Depends on: [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) — Stage 1 (the static first-party index) suffices for the migration walking skeleton.
 >
-> Supersedes after reconciliation: [Source Catalogue and Source-Clone Cache](future/rfc-21-catalogue.md).
+> Supersedes: [Source Catalogue and Source-Clone Cache](archive/rfc-21-catalogue.md) (archived).
 
 ## Abstract
 

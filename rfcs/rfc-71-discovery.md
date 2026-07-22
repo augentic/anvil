@@ -317,7 +317,7 @@ The consuming surface (`specify source approve` here, Program Gate M1 for target
 
 The report is immutable once approved. A changed profile, policy, descriptor, or component digest invalidates the report and any approval derived from it; re-running discovery creates a replacement report.
 
-The report **writers** are the consuming surfaces: source recommendations and approvals belong to [Migration Intake and Source Selection](rfc-72-migration.md); target recommendations and Program Gate M1 belong to [Migration Programs](rfc-74-program.md). In every case approval lowers into the existing single writers — source bindings into `plan.yaml.sources` or the source catalogue, target bindings through `specify init` — and package identities are hydrated through `Resolver::ensure_*`. Hydration and dispatch are one path: once `ensure_*` writes verified bytes into the store (or project component cache), Omnia's registry-miss guest resolver ([Self-Assembling Wasm Deployment](rfc-70-deployment.md)) loads them on first call — no regenerated static guest list, and no Specify vocabulary inside Omnia.
+The report **writers** are the consuming surfaces: source recommendations and approvals belong to [Migration Intake and Source Selection](rfc-72-migration.md); target recommendations and Program Gate M1 belong to [Migration Programs](rfc-74-program.md). In every case approval lowers into the existing single writers — source bindings into `plan.yaml.sources` or the source catalogue, target bindings through `specify init` — and package identities are hydrated through `Resolver::ensure_*`. Hydration and dispatch share one store: once `ensure_*` writes verified bytes into the store (or project component cache), the next (or same) invocation's launcher pre-enumerates those identities as derived `GuestEntry`s ([Self-Assembling Wasm Deployment](rfc-70-deployment.md) Stage 1). A mid-run `ensure_*` is dispatchable in the same command only because of the closure-superset invariant. RFC-70 Stage 3's registry-miss resolver lands only when a command can dispatch an identity outside that pre-run set — and still carries no Specify vocabulary into Omnia.
 
 ### CLI surface
 
@@ -392,7 +392,7 @@ Program sequencing: [RFC-74 §First delivery](rfc-74-program.md#first-delivery).
 4. Add configured-registry search.
 5. Enforce publisher and namespace trust policy.
 6. Support offline index snapshots.
-7. Hydrate only after approval — dispatch then follows the RFC-70 miss-hook.
+7. Hydrate only after approval — the next invocation's launcher pre-enumerates the approved identity (RFC-70 Stage 1); pull in the Stage 3 miss-hook only if mid-run selection can dispatch outside that set.
 
 ## Acceptance criteria
 

@@ -112,28 +112,28 @@ The seam is a contract, not a wire protocol: every selected call rides [wRPC](ht
 
 ### Many guests, selected by identity
 
-The binary holds every guest on **one runtime** and picks among them in native code:
+The binary holds every guest on **one runtime** and picks among them in native code. Today the Specify launcher **enumerates** the guest set before `run` ([RFC-70 §Pre-run guest enumeration](rfc-70-deployment.md#pre-run-guest-enumeration)); a registry-miss resolver is deferred to RFC-70 Stage 3:
 
 ```text
 GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
   "workflow" / "specify" -> InstancePre   (the engine guest, resolved from the global store
                                            by the binary's own version: specify:engine@<version>)
-  (miss)                 -> GuestResolver  (deployment-supplied; Specify plugs store probe +
-                                           path-glob policy — Omnia sees opaque guest ids only)
-  "source:typescript"    -> InstancePre    ┐  cached after first resolve from
-  "source:documentation" -> InstancePre    │  $SPECIFY_HOME/store (or project component cache)
-  "target:omnia"         -> InstancePre    ┘
+  "source:typescript"    -> InstancePre    ┐  derived GuestEntry per closure adapter —
+  "source:documentation" -> InstancePre    │  hydrated and enumerated by the launcher
+  "target:omnia"         -> InstancePre    ┘  before run (RFC-70 Stage 1)
+  (Stage 3 miss)         -> GuestResolver  (deferred: only when a command can dispatch
+                                           an identity outside the pre-run closure)
 ```
 
-Each call selects an `InstancePre` by identity — from the static engine entry or from a prior miss-hook resolve — instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
+Each call selects an `InstancePre` by identity from the launcher-enumerated registry, instantiates a fresh instance on a new `Store`, calls the typed export, and discards it. **Identity is data, resolved by the host — not topology**: it arrives as an `adapter-id` call argument on the host-satisfied `source` / `target` imports, so one caller instance can drive many same-axis adapters in a loop. Two same-world adapters (two sources, two targets) are distinct registry entries, so there is no collision and no ahead-of-time composition. Which adapter a call targets comes from the operation's context:
 
 - the `wasi-model` callback resolves against the adapter whose brief is being evaluated — its identity is fixed for the duration of that `eval`;
 - an engine→target call (`build`, `merge`, `guidance`) targets the slice's bound target; an engine→source call (`survey`, `extract`) targets a bound source. Both bindings come from the plan.
 
 The same select-by-identity resolves an **inbound trigger**, not only a guest-to-guest call:
 
-- A CLI command names its guest directly (`omnia <guest>.wasm`)
-- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above (including the miss-hook). Specify's ordinary deployment uses one fixed projection (`/mcp/<name>` → guest id; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) computed from the request path — no authored `[[route.http]]` table. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. A static prefix table remains available for hand-authored deployments (the composed example); programmatic path→identity routing is the ordinary product path. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
+- A CLI command names its guest directly (`omnia <guest>.wasm`), or — on the Specify product path — the launcher forwards workflow argv to the enumerated engine guest
+- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. Specify's ordinary deployment will use one fixed projection (`/mcp/<name>` → guest id; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) computed from the request path — no authored `[[route.http]]` table. Derived MCP route rows are RFC-70 Stage 2; until then adapters are reached over the CLI seam. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. A static prefix table remains available for hand-authored Omnia deployments (plain Omnia apps / optional file-flag manifests); programmatic path→identity routing is the ordinary product path once Stage 2 lands. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
 
 ## Lifecycle of an operation
 
@@ -198,14 +198,14 @@ This enables progressive optimisation: as a transformation becomes well-understo
 
 Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `specify` binary is two strictly separated layers:
 
-- **A narrow initialization surface** carrying project scaffolding through `init`; removed provisioning, workspace, self-update, and plugin-cache verbs are not retained as unsupported placeholders. Other argv forwards **unparsed** to the engine guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim.
+- **A narrow host-side surface** — help/version displays and the deterministic `adapter add` cache seed complete inside the launcher without assembling a deployment. Every other verb is routed through the shared clap grammar for selector projection, then forwarded to the engine guest's `wasi:cli/run`, with envelopes and exit codes passing through verbatim. Removed provisioning, workspace, self-update, and plugin-cache verbs are not retained as unsupported placeholders.
 - **A generic, Specify-agnostic host layer** — the macro-generated command-mode runtime nested in a host submodule, mounted **in-process** via `run`. Specify's launcher owns crate-root `main` and calls `run` with the typed deployment value it assembles; plain Omnia apps keep the macro at crate root and use the generated `main`. No subprocess, no second binary: the host layer carries no Specify vocabulary and reads only the derived deployment (engine guest, mounts, resolver policy). See [RFC-70 §Omnia `runtime!` composition](rfc-70-deployment.md#omnia-runtime-composition).
 
-The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/store` (the whole layout relocatable via `$SPECIFY_HOME`), with dispatch through Omnia's registry-miss guest resolver:
+The runtime acquires its guests one way — hydration into the **global single-file store** at `$HOME/.specify/store` (the whole layout relocatable via `$SPECIFY_HOME`), with **pre-run guest enumeration** into the typed deployment value ([RFC-70 Stage 1](rfc-70-deployment.md#stage-1--launcher-and-pre-run-enumeration-first-delivery)). A registry-miss guest resolver remains deferred to RFC-70 Stage 3:
 
 - **Adapter resolution at init**: `specify init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command or engine module advertised by the CLI.
-- **Engine versioned by the binary**: the engine guest resolves as `specify:engine@<the binary's own version>` from the same store — the binary version *is* the engine version, one knob, no committed guest artifact and no `include_bytes!` payload. There is no engine-path override: local engine iteration seeds `engine@<version>.wasm` plus its `.meta` digest sidecar into a relocated store (`SPECIFY_HOME`), as the wasm example does ([RFC-75](rfc-75-artifact-locations.md)).
-- **Derived deployment**: the launcher assembles a typed deployment value in memory — the engine guest, writable project / cache / store mounts, the engine's link allow-list, and resolver policy (filesystem path globs plus fail-closed digest verification) — and persists only the `resolution.json` diagnostics record into the per-project cache ([RFC-70](rfc-70-deployment.md)). The miss-hook loads adapter guests by identity. Derived and safe to delete; the host layer reads the typed value.
+- **Engine versioned by the binary**: the engine guest resolves as `specify:engine@<the binary's own version>` from the same store — the binary version *is* the engine version, one knob, no committed guest artifact and no `include_bytes!` payload. There is no engine-path override: local engine iteration seeds `engine@<version>.wasm` plus its `.meta` digest sidecar into a relocated store (`SPECIFY_HOME`), as the wasm example does ([RFC-75](archive/rfc-75-artifact-locations.md) — archived, implemented).
+- **Derived deployment**: the launcher assembles a typed deployment value in memory — the engine guest, one derived `GuestEntry` per closure adapter, writable project / cache / store mounts, the engine's link allow-list, and fail-closed digest verification — and hands it to `run` ([RFC-70](rfc-70-deployment.md)). Persisted `resolution.json` diagnostics and fingerprint reuse are RFC-70 Stage 2; until then the deployment value is in-memory only and safe to drop after the invocation. The host layer reads the typed value.
 
 ## Deferred relatives
 
