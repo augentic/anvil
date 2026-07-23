@@ -57,6 +57,18 @@ fn good_links_pass() {
 }
 
 #[test]
+fn fenced_code_casts_are_not_links() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let tree = tmp.path().join("prompts");
+    write(&tree, "a.md", "see [b](b.md)\n\n```swift\nprocessEffects([UInt8](effects))\n```\n");
+    write(&tree, "b.md", "# B\n");
+    let out = tmp.path().join("out");
+    fs::create_dir_all(&out).expect("mkdir out");
+
+    prose::emit_from(&tree, &out).expect("emit succeeds");
+}
+
+#[test]
 fn empty_tree_fails() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let out = tmp.path().join("out");

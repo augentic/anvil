@@ -109,10 +109,12 @@ fn walk(dir: &Path, rel: &str, docs: &mut Vec<(String, PathBuf)>) -> Result<(), 
 
 /// Fail when a relative markdown link in `body` does not resolve to a
 /// file on disk. Scheme-carrying URLs and same-document anchors are
-/// out of scope for the embed check.
+/// out of scope for the embed check. Fenced code blocks are ignored so
+/// language casts such as Swift `[UInt8](data)` are not treated as links.
 fn check_links(source: &Path, body: &str) -> Result<(), String> {
     let dir = source.parent().ok_or_else(|| format!("{} has no parent", source.display()))?;
-    for target in link_targets(body) {
+    let prose = strip_fenced_code(body);
+    for target in link_targets(&prose) {
         let path = target.split('#').next().unwrap_or_default();
         if path.is_empty() || target.contains("://") || target.starts_with("mailto:") {
             continue;
@@ -127,6 +129,24 @@ fn check_links(source: &Path, body: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Drop fenced code blocks (` ``` ` … ` ``` `) so link extraction only
+/// sees prose. Fence marker lines themselves are discarded.
+fn strip_fenced_code(body: &str) -> String {
+    let mut out = String::with_capacity(body.len());
+    let mut in_fence = false;
+    for line in body.lines() {
+        if line.trim_start().starts_with("```") {
+            in_fence = !in_fence;
+            continue;
+        }
+        if !in_fence {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
 }
 
 /// Every inline markdown link destination (`](…)`) in `body`, in order.
