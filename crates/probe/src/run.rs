@@ -25,7 +25,7 @@ pub struct ModelInstance {
     /// The erased live backend rooted at the phase's project tree.
     pub model: DynModel,
     /// The configured default model id, when the composition root
-    /// carries one (e.g. `SPECIFY_EVAL_MODEL`).
+    /// carries one (e.g. `EVAL_MODEL`).
     pub default_model: Option<String>,
 }
 

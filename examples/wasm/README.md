@@ -2,7 +2,7 @@
 
 End-to-end run of the Specify change workflow over the real WASM component seam: the shipped `specify` binary (embedded engine guest) plus the mock source and target adapter components.
 
-The two adapter components ([source.rs](source.rs), [target.rs](target.rs)) are each one SDK export-macro invocation over the canonical `mock::Adapter` implementor — the same anatomy as a production adapter in `augentic/specify-adapters`. There is no `omnia.toml`: the example invokes the built binary directly. The run script sandboxes the layout with `SPECIFY_HOME` and seeds both mocks into the project component cache via `specify adapter add`.
+The two adapter components ([source.rs](source.rs), [target.rs](target.rs)) are each one SDK export-macro invocation over the canonical `mock::Adapter` implementor — the same anatomy as a production adapter in `augentic/specify-adapters`. There is no `omnia.toml`: the example invokes the built binary directly. The run script sandboxes the layout with `SPECIFY_HOME`, seeds the source via `specify adapter add` (plan `--source` accepts bare names only), and admits the target as a local `.wasm` at `specify init`.
 
 ## Quick start
 
@@ -20,7 +20,7 @@ Run the example:
 cargo make wasm-run
 ```
 
-Clean up afterwards:
+Each run wipes `sandbox/wasm/` then rebuilds only when Cargo says so. To remove leftover artifacts without re-running:
 
 ```bash
 cargo make wasm-clean
@@ -28,7 +28,7 @@ cargo make wasm-clean
 
 Artifacts land under the gitignored `sandbox/wasm/` — the project tree at `sandbox/wasm/project/`, with the store and cache beside it.
 
-`GUEST_TIMEOUT_MS` defaults to one hour (Omnia's per-invocation wall-clock cap; default is 30s). The runtime may log a non-fatal `no guest exports the http handler; http trigger inert` line per invocation — command mode proceeds without it.
+`GUEST_TIMEOUT_MS` defaults to one hour (Omnia's per-invocation wall-clock cap; default is 30s). Set `RUST_LOG` yourself when debugging the seam. The runtime may log a non-fatal `no guest exports the http handler; http trigger inert` line per invocation — command mode proceeds without it.
 
 ## What it demonstrates
 

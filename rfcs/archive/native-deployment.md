@@ -105,7 +105,7 @@ The native host makes those concerns visible:
 - Closing the existing gap where `SourceBinding.version` is persisted but survey/extract ignore it. That correctness fix is Stage 1b and is not required to extract the native host.
 - Rewriting bare native init selectors into exact package pins. Persist what the operator typed; resolve reports the catalog version.
 - Changing `--version` flavor labels or neutralizing shared help text in Stage 1. Those are Stage 5 documentation polish.
-- Renaming `SPECIFY_EVAL_MODEL`, `mock::model::Harness`, or `DevModel` as part of the architectural cut. Optional later polish.
+- Renaming `EVAL_MODEL`, `mock::model::Harness`, or `DevModel` as part of the architectural cut. Optional later polish.
 - Renaming the default mock source or target identity. `mock` remains valid on both axes; catalog uniqueness is per-axis.
 - Adding compatibility aliases for removed internal crate names.
 - Widening public engine APIs solely to support tests.
@@ -169,12 +169,12 @@ engine-core dev-dependencies ────────────► native + mo
 
 ### Crate names and ownership
 
-| Target crate | Kind | Responsibility | Source of current code |
-| --- | --- | --- | --- |
-| `native` | library | Native host: catalog, provider, erased model, references, command execution | Native execution modules from `harness` (not Cursor, not eval) |
-| `eval` | library (`publish = false`) | Lab-only workflow trial, adapter scenarios, grading, telemetry, sandbox, eval CLI | Eval modules from `harness` |
-| `lab` | binary (`publish = false`) | In-repo composition and argv dispatch | Current `eval` binary, renamed |
-| `mock` | library (`publish = false`) | Deterministic adapters, answer corpus, recording model, sessions | Existing `mock`, retargeted to `native` |
+| Target crate | Kind                        | Responsibility                                                                    | Source of current code                                         |
+| ------------ | --------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `native`     | library                     | Native host: catalog, provider, erased model, references, command execution       | Native execution modules from `harness` (not Cursor, not eval) |
+| `eval`       | library (`publish = false`) | Lab-only workflow trial, adapter scenarios, grading, telemetry, sandbox, eval CLI | Eval modules from `harness`                                    |
+| `lab`        | binary (`publish = false`)  | In-repo composition and argv dispatch                                             | Current `eval` binary, renamed                                 |
+| `mock`       | library (`publish = false`) | Deterministic adapters, answer corpus, recording model, sessions                  | Existing `mock`, retargeted to `native`                        |
 
 After migration there is no `harness` package. The current `eval` binary package moves to `lab`, and a new library package takes the freed `eval` name. This reuse is deliberate: `eval` is the established project term and `cargo make eval` remains the task surface.
 
@@ -602,7 +602,7 @@ pub async fn run(
 
 `workspace_root` anchors the persistent `sandbox/` tree and relative scenario roots; eval does not consult process current-directory state after entry. The library wraps `ModelInstance.model` in `Telemetry`, gives telemetry the configured default for effective-model reporting, keeps its own clone for read-back, and drives workflow phases through `native::command::execute`. It uses public project/artifact types only where deterministic grading needs structured state.
 
-Scenario reports derive the effective model from each observed request (`request.model` when present, otherwise `ModelInstance.default_model`), not by rereading environment variables. `SPECIFY_EVAL_MODEL` remains the composition-root env var until an optional later rename.
+Scenario reports derive the effective model from each observed request (`request.model` when present, otherwise `ModelInstance.default_model`), not by rereading environment variables. `EVAL_MODEL` remains the composition-root env var until an optional later rename.
 
 Eval scratch state receives an explicit sandbox-local cache parent. The persistent full-trial sandbox is single-writer and guarded against a second concurrent eval in the same checkout; per-scenario run directories remain unique.
 
@@ -625,30 +625,30 @@ Integration tests assemble an offline `native::Provider` directly and never requ
 
 `augentic/specify-adapters` consumes Specify's `adapter`, `native`, and lab-only `eval` crates one-way.
 
-| Target | Role | Entry | Catalog |
-| --- | --- | --- | --- |
-| `lab` | Dev command + eval + first-party catalog | `catalog()` + inline dispatch | owns the first-party catalog |
+| Target | Role                                     | Entry                         | Catalog                      |
+| ------ | ---------------------------------------- | ----------------------------- | ---------------------------- |
+| `lab`  | Dev command + eval + first-party catalog | `catalog()` + inline dispatch | owns the first-party catalog |
 
 The wasm example remains a separate Wasm gate. A future native product binary would extract the catalog into a shared library; that extraction is out of scope here.
 
 ## Wasm and native correspondence
 
-| Concern | Wasm deployment | Native host |
-| --- | --- | --- |
-| Specify product | Existing released `specify` distribution | Follow-up distribution; lab owns catalog until then |
-| Workflow composition | `src/lib.rs` + WIT-backed provider | `native::Provider` + async command assembly |
-| Adapter declaration | component deployment configuration | validated `Catalog` value |
-| Adapter identity | package/store identity | compile-time SDK `(name, version)` |
-| Adapter selection | `Resolver::ensure_*` (component policy) | `Resolver::ensure_*` (catalog match) |
-| Engine invocation | `Invoker` + shared transport router | same |
-| Model access | `omnia:model/completion` host import | composition-root `DynModel` |
-| Adapter dispatch | WIT source/target imports | function-pointer table at `DynModel` |
-| References | adapter HTTP guest routed by Omnia | owned loopback `ReferenceHost` |
-| Execution paths | shared Wasm project/cache preopens | canonical project root + explicit/inherited cache parent |
-| Isolation | component instance per call | trusted code in one native process |
-| Exact adapter pin | store entry + digest verification | succeeds only on exact compiled identity |
-| Local `.wasm` selector | supported by component ensure | rejected before cache mutation |
-| Lab composition | none | unpublished `lab` + `eval` |
+| Concern                | Wasm deployment                          | Native host                                              |
+| ---------------------- | ---------------------------------------- | -------------------------------------------------------- |
+| Specify product        | Existing released `specify` distribution | Follow-up distribution; lab owns catalog until then      |
+| Workflow composition   | `src/lib.rs` + WIT-backed provider       | `native::Provider` + async command assembly              |
+| Adapter declaration    | component deployment configuration       | validated `Catalog` value                                |
+| Adapter identity       | package/store identity                   | compile-time SDK `(name, version)`                       |
+| Adapter selection      | `Resolver::ensure_*` (component policy)  | `Resolver::ensure_*` (catalog match)                     |
+| Engine invocation      | `Invoker` + shared transport router      | same                                                     |
+| Model access           | `omnia:model/completion` host import     | composition-root `DynModel`                              |
+| Adapter dispatch       | WIT source/target imports                | function-pointer table at `DynModel`                     |
+| References             | adapter HTTP guest routed by Omnia       | owned loopback `ReferenceHost`                           |
+| Execution paths        | shared Wasm project/cache preopens       | canonical project root + explicit/inherited cache parent |
+| Isolation              | component instance per call              | trusted code in one native process                       |
+| Exact adapter pin      | store entry + digest verification        | succeeds only on exact compiled identity                 |
+| Local `.wasm` selector | supported by component ensure            | rejected before cache mutation                           |
+| Lab composition        | none                                     | unpublished `lab` + `eval`                               |
 
 Observable behavior shared across providers:
 
@@ -721,24 +721,24 @@ No native test claims Wasm coverage. Existing component gates remain:
 
 ## Module migration
 
-| Current module | Target | Notes |
-| --- | --- | --- |
-| `catalog.rs` | `crates/native/src/catalog.rs` | identity-aware builder at `DynModel`; `Binding` and `adapters!` deleted |
-| — | `crates/native/src/model.rs` | `DynModel` and private erased-model trait |
-| `convert.rs` | `crates/native/src/convert.rs` | private SDK/engine DTO mapping |
-| `provider.rs` | `crates/native/src/provider.rs` | non-generic provider; `ReferenceMode`; no model accessor |
-| `command.rs` | `crates/native/src/command.rs` | async `execute` / `run`; no runtime or lab argv parsing |
-| `mcp.rs` | `crates/native/src/references.rs` | router plus owned lazy `ReferenceHost` |
-| `model.rs` / `native.rs` | private lab modules | Cursor bridge leaves `native` |
-| `invoke.rs` | — | public duplication removed; call Omnia `Invoker` or command API directly |
-| `env.rs` | — | process mutation removed; cache parent enters execution context explicitly |
-| `entry.rs` | — | runtime and dispatch move to lab binaries |
-| `fs.rs` | `crates/eval/src/fs.rs` | eval tree copy |
-| `grade.rs` | `crates/eval/src/grade.rs` | deterministic grading |
-| `sandbox.rs` | `crates/eval/src/sandbox.rs` | sandbox and single-writer guard |
-| `scenario.rs` | `crates/eval/src/scenario.rs` | prompt scenarios over supplied catalog/model factory |
-| `telemetry.rs` | `crates/eval/src/telemetry.rs` | caller-held model request counts |
-| `trial.rs` | `crates/eval/src/run.rs` | full eval workflow |
+| Current module           | Target                            | Notes                                                                      |
+| ------------------------ | --------------------------------- | -------------------------------------------------------------------------- |
+| `catalog.rs`             | `crates/native/src/catalog.rs`    | identity-aware builder at `DynModel`; `Binding` and `adapters!` deleted    |
+| —                        | `crates/native/src/model.rs`      | `DynModel` and private erased-model trait                                  |
+| `convert.rs`             | `crates/native/src/convert.rs`    | private SDK/engine DTO mapping                                             |
+| `provider.rs`            | `crates/native/src/provider.rs`   | non-generic provider; `ReferenceMode`; no model accessor                   |
+| `command.rs`             | `crates/native/src/command.rs`    | async `execute` / `run`; no runtime or lab argv parsing                    |
+| `mcp.rs`                 | `crates/native/src/references.rs` | router plus owned lazy `ReferenceHost`                                     |
+| `model.rs` / `native.rs` | private lab modules               | Cursor bridge leaves `native`                                              |
+| `invoke.rs`              | —                                 | public duplication removed; call Omnia `Invoker` or command API directly   |
+| `env.rs`                 | —                                 | process mutation removed; cache parent enters execution context explicitly |
+| `entry.rs`               | —                                 | runtime and dispatch move to lab binaries                                  |
+| `fs.rs`                  | `crates/eval/src/fs.rs`           | eval tree copy                                                             |
+| `grade.rs`               | `crates/eval/src/grade.rs`        | deterministic grading                                                      |
+| `sandbox.rs`             | `crates/eval/src/sandbox.rs`      | sandbox and single-writer guard                                            |
+| `scenario.rs`            | `crates/eval/src/scenario.rs`     | prompt scenarios over supplied catalog/model factory                       |
+| `telemetry.rs`           | `crates/eval/src/telemetry.rs`    | caller-held model request counts                                           |
+| `trial.rs`               | `crates/eval/src/run.rs`          | full eval workflow                                                         |
 
 Move the current `crates/eval` binary to `crates/lab`, then create the new `crates/eval` library. User-facing strings naming the native harness or shim become native-host language.
 
@@ -798,10 +798,10 @@ eval = { git = "https://github.com/augentic/specify.git" }
 
 These are root `[workspace.dependencies]` declarations, not dependencies of every member:
 
-| Adapter-repository member | Specify dependencies |
-| --- | --- |
-| source/target adapter crates | `adapter` |
-| `lab` | `eval`, `native/cli`, Cursor crates, and concrete first-party adapters |
+| Adapter-repository member    | Specify dependencies                                                   |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| source/target adapter crates | `adapter`                                                              |
+| `lab`                        | `eval`, `native/cli`, Cursor crates, and concrete first-party adapters |
 
 - Rename current `crates/eval` to `crates/lab`, moving scenarios with it.
 - Put first-party `catalog()` in the lab and add a CI inventory check.
@@ -840,7 +840,7 @@ Deferred from this stage (follow-ups, not blockers):
 - package-namespace recording in component store sidecars;
 - multi-namespace store collision policy;
 - any native operator product binary or shared catalog library;
-- cosmetic renames (`SPECIFY_EVAL_MODEL`, `Harness`, `DevModel`).
+- cosmetic renames (`EVAL_MODEL`, `Harness`, `DevModel`).
 
 ### Stage 1b — Source binding pin enforcement
 

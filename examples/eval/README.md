@@ -25,8 +25,8 @@ cargo make eval init      # one phase: init | plan | execute | finalize | clean
 ```
 
 A passing full run cleans `sandbox/`; a failing phase retains it for in-place
-review or per-phase re-runs. `SPECIFY_EVAL_MODEL` and
-`SPECIFY_EVAL_TIMEOUT_SECS` are documented in
+review or per-phase re-runs. `EVAL_MODEL` and
+`EVAL_TIMEOUT_SECS` are documented in
 [`crates/probe/README.md`](../../crates/probe/README.md); `cargo make eval`
 defaults the timeout to 300s.
 

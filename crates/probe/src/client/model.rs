@@ -10,10 +10,10 @@
 //! at most once (the trial constructs one per phase).
 //!
 //! Driver-side env (read once at construction / first connect):
-//! - `SPECIFY_EVAL_MODEL=<model-id>` — fills `Request.model` only when the
+//! - `EVAL_MODEL=<model-id>` — fills `Request.model` only when the
 //!   caller left it `None`, so a guest-supplied id always wins. Unset or
 //!   blank means no override.
-//! - `SPECIFY_EVAL_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound passed
+//! - `EVAL_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound passed
 //!   to `omnia_cursor::ConnectOptions.timeout`. Unset → backend default
 //!   (120s). `cargo make eval` sets this to 300.
 
@@ -33,9 +33,9 @@ use super::native::Native;
 pub struct DevModel {
     /// The project root workspace lends resolve to.
     root: PathBuf,
-    /// Driver-side model-id override from `SPECIFY_EVAL_MODEL`.
+    /// Driver-side model-id override from `EVAL_MODEL`.
     model: Option<String>,
-    /// Per-spawn timeout from `SPECIFY_EVAL_TIMEOUT_SECS` (`None` → backend default).
+    /// Per-spawn timeout from `EVAL_TIMEOUT_SECS` (`None` → backend default).
     timeout: Option<Duration>,
     /// The shared connection, established by the first judgment leg.
     cell: Arc<tokio::sync::OnceCell<Native<omnia_cursor::Client>>>,
@@ -43,14 +43,14 @@ pub struct DevModel {
 
 impl DevModel {
     /// A lazily connected cursor backend rooted at `project_dir`,
-    /// reading the optional `SPECIFY_EVAL_MODEL` and
-    /// `SPECIFY_EVAL_TIMEOUT_SECS` overrides once.
+    /// reading the optional `EVAL_MODEL` and
+    /// `EVAL_TIMEOUT_SECS` overrides once.
     #[must_use]
     pub fn new(project_dir: &Path) -> Self {
         Self {
             root: project_dir.to_path_buf(),
-            model: std::env::var("SPECIFY_EVAL_MODEL").ok().filter(|id| !id.trim().is_empty()),
-            timeout: std::env::var("SPECIFY_EVAL_TIMEOUT_SECS")
+            model: std::env::var("EVAL_MODEL").ok().filter(|id| !id.trim().is_empty()),
+            timeout: std::env::var("EVAL_TIMEOUT_SECS")
                 .ok()
                 .filter(|raw| !raw.trim().is_empty())
                 .and_then(|raw| raw.trim().parse::<u64>().ok())

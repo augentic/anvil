@@ -17,7 +17,7 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 ## 2. `cargo make eval` — prompt evaluation
 
-Runs the live trial (the `crates/probe` library composed by the root `eval` example): plan → execute (refine → build → merge per slice) → finalize over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. The hard synthesis case is authority divergence (`session-timeout` / `session-policy`), not evidence volume. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns. `SPECIFY_EVAL_MODEL` and `SPECIFY_EVAL_TIMEOUT_SECS` are documented in [`crates/probe/README.md`](../../crates/probe/README.md).
+Runs the live trial (the `crates/probe` library composed by the root `eval` example): plan → execute (refine → build → merge per slice) → finalize over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. The hard synthesis case is authority divergence (`session-timeout` / `session-policy`), not evidence volume. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns. `EVAL_MODEL` and `EVAL_TIMEOUT_SECS` are documented in [`crates/probe/README.md`](../../crates/probe/README.md).
 
 If you want to set environment variables in a file, see `.env.example`. Copy to `.env` and set variables then run
 

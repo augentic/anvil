@@ -24,10 +24,10 @@ This runs the entire workflow in `sandbox/`. A passing run will remove the proje
 
 Driver-side knobs (read by `probe::client`):
 
-| Env | Effect |
-| --- | --- |
-| `SPECIFY_EVAL_MODEL=<model-id>` | Override the model for a run; unset means the cursor backend's default. |
-| `SPECIFY_EVAL_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds). Unset → backend default 120. `cargo make eval` sets `300`. |
+| Env                       | Effect                                                                                                          |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `EVAL_MODEL=<model-id>`   | Override the model for a run; unset means the cursor backend's default.                                         |
+| `EVAL_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds). Unset → backend default 120. `cargo make eval` sets `300`. |
 
 The auth trial's hard synthesis case is **authority divergence** — the `session-timeout` lead (scripted goldens name the slice `session-policy`), not evidence volume. Docs claim a 30-minute idle timeout; code claims 15; documentation authority should win. Grading still only asserts lifecycle + provenance; it does not require a `[divergence]` tag.
 
