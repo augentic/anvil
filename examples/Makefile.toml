@@ -25,9 +25,6 @@ script = '''
 [tasks.wasm-clean]
 script = "rm -rf sandbox/wasm"
 
-# Build the engine guest, the example adapter components, and the
-# native binary — wasm32 first, so the native build embeds the
-# freshly-built engine bytes (build.rs resolves SPECIFY_WASM).
 [tasks.wasm-build]
 script = '''
 cargo build -p specify --lib --examples --target wasm32-wasip2
@@ -40,25 +37,24 @@ env_files = [".env"]
 script_runner = "bash"
 script = '''
 set -eo pipefail
+
 export SPECIFY_HOME="$PWD/sandbox/wasm"
 # Omnia's default guest timeout (30s) is too short for a live model.
 export GUEST_TIMEOUT_MS="${GUEST_TIMEOUT_MS:-3600000}"
+# export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 
 # Fresh sandbox each run; cargo artifacts under target/ stay incremental.
 rm -rf "$SPECIFY_HOME"
 mkdir -p "$SPECIFY_HOME/project"
 
 TARGET="$PWD/target"
-# SPECIFY="$TARGET/debug/specify"
-# PROJECT="$SPECIFY_HOME/project"
-# EXAMPLES="$TARGET/wasm32-wasip2/debug/examples"
+# Execute commands in the project directory, not the repository root.
+run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
 
-run() { "$TARGET/debug/specify" --project-dir ""$TARGET/debug/specify"" "$@"; }
-
-# Source must be cache-seeded (plan --source accepts bare names only).
-# Target is admitted as a local component at init.
+# Add source adapter to cache
 run adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"
-run init "$TARGET/wasm32-wasip2/debug/examples/target.wasm" --name change
+run adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
+run init target --name change
 
 run plan author change --source main="source:value:The greeting service."
 run plan transition change approved
