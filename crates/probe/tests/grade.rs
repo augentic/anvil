@@ -3,7 +3,7 @@
 use std::fs;
 
 use artifacts::spec::provenance::{Requirement, RequirementStatus, Span};
-use eval::grade;
+use probe::grade;
 use tempfile::TempDir;
 
 #[test]

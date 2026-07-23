@@ -10,7 +10,7 @@ This gate is model-free and self-contained: no sibling checkout, no adapter comp
 
 ## Gate 2 — prompt evaluation (operator-invoked)
 
-`cargo make eval` from the repository root runs the native prompt-evaluation rung (the `eval` cli binary over the eval library) over the mock adapters and a real configured model. It drives the production operator rhythm and requires a non-empty authored plan, a drained execution with every entry done, and valid requirement provenance. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
+`cargo make eval` from the repository root runs the native prompt-evaluation rung (the root `eval` example over the probe library) over the mock adapters and a real configured model. It drives the production operator rhythm and requires a non-empty authored plan, a drained execution with every entry done, and valid requirement provenance. Per-leg repair counts are reported (not asserted) as the early warning that a prompt or schema change degraded the model's first answer.
 
 Cadence is documented convention, not automation: before a release tag, and after judgment-prompt or answer-schema changes. Ordinary CI never calls a live model.
 

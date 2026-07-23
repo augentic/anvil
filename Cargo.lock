@@ -1146,29 +1146,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eval"
-version = "0.28.0"
-dependencies = [
- "anyhow",
- "artifacts",
- "clap",
- "mock",
- "native",
- "omnia",
- "omnia-cursor",
- "omnia-guest",
- "omnia-testkit",
- "omnia-wasi-model",
- "project",
- "semver",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "toml",
-]
-
-[[package]]
 name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2964,6 +2941,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "probe"
+version = "0.28.0"
+dependencies = [
+ "anyhow",
+ "artifacts",
+ "clap",
+ "mock",
+ "native",
+ "omnia",
+ "omnia-cursor",
+ "omnia-guest",
+ "omnia-testkit",
+ "omnia-wasi-model",
+ "project",
+ "semver",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3960,6 +3960,7 @@ dependencies = [
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
+ "probe",
  "serde_json",
  "tempfile",
  "tokio",

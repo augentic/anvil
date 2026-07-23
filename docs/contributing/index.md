@@ -8,7 +8,7 @@ The engine and operator plugins live in [`augentic/specify`](https://github.com/
 
 | Path | Contents | Language |
 | ---- | -------- | -------- |
-| `src/`, `crates/`, `examples/` | The runtime, workspace crates (including the `native` host and the `eval` live rung), and the wasm example | Rust |
+| `src/`, `crates/`, `examples/` | The runtime, workspace crates (including the `native` host and the `probe` live-rung library), and the wasm / eval examples | Rust |
 | `plugins/`, `docs/`, `.cursor-plugin/`, `rfcs/` | Ultrathin Cursor skill wrappers, documentation, and the marketplace manifest | Markdown, YAML |
 | `specify-adapters/{sources,targets}/` | Source and target adapter crates plus embedded prose | Rust, Markdown |
 

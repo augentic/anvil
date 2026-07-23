@@ -92,12 +92,12 @@ install_crate = "cargo-vet"
 
 [tasks.specify]
 command = "cargo"
-args = ["run", "-q", "-p", "eval", "--features", "cli", "--", "${@}"]
+args = ["run", "-q", "-p", "specify", "--example", "eval", "--", "${@}"]
 
 [tasks.eval]
 env_files = [".env"]
 script = '''
-  cargo run -p eval --features cli -- eval \
+  cargo run -p specify --example eval -- eval \
   --change "auth" \
   --source "docs=mock-docs:value:The docs source." \
   --source "code=mock-code:value:The code source." \

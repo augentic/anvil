@@ -50,7 +50,12 @@ crate-type = ["cdylib"]
 name = "native"
 path = "examples/native/main.rs"
 
+[[example]]
+name = "eval"
+path = "examples/eval/main.rs"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+probe = { workspace = true, features = ["client"] }
 native = { workspace = true, features = ["cli"] }
 mock.workspace = true
 omnia-guest.workspace = true
@@ -186,6 +191,7 @@ artifacts = { path = "crates/artifacts" }
 change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
+probe = { path = "crates/probe" }
 guest = { path = "crates/guest" }
 launcher = { path = "crates/launcher" }
 native = { path = "crates/native" }
