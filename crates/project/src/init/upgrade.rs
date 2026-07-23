@@ -80,7 +80,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         directories_created: Vec::new(),
         scaffolded_rule_keys: Vec::new(),
         specify_version: target,
-        wasm_pkg_config_written: false,
         context_skip_reason: None,
     })
 }

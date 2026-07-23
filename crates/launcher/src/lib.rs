@@ -11,13 +11,14 @@
 //! version, grammar rejections, and `adapter add` included; argv and
 //! the engine guest's exit code pass through byte-for-byte.
 //!
-//! Every adapter identity is verify-and-load only: pinned routed ids
-//! resolve the immutable global store, unpinned ids the anchored
-//! project's seeded component cache — both populated exclusively by
-//! the engine guest's own ensure legs through the writable mounts
-//! before any dispatch can miss. Store resolves stay digest-gated
-//! fail closed at load time. The embedded engine never touches the
-//! resolver: it is registered statically at boot.
+//! Pinned routed ids resolve the immutable global store and install a
+//! missing entry from the compiled first-party OCI registry
+//! (pull-on-miss — the launcher is the only downloader in the
+//! deployment); unpinned ids resolve the anchored project's seeded
+//! component cache, verify-and-load only. Store resolves stay
+//! digest-gated fail closed at load time, and the store itself is
+//! host-owned — the guest gets no store mount. The embedded engine
+//! never touches the resolver: it is registered statically at boot.
 //!
 //! `SPECIFY_HOME` remains a relocation override only — the Cargo
 //! model: everything anchors at the user home or the project root by
@@ -27,19 +28,18 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_STORE_MOUNT, Locations};
+use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, Locations};
 use transport::command::selectors::{SeedRequest, seed_request};
 
 mod anchor;
+mod install;
 mod resolver;
 
+pub use install::Registry;
 pub use resolver::Resolver;
 
 /// Guest-visible preopen name of the per-project derived cache.
 pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
-
-/// Guest-visible preopen name of the global adapter store.
-pub const STORE_MOUNT: &str = GUEST_STORE_MOUNT;
 
 /// One invocation's deployment policy: the anchored layout plus the
 /// optional `adapter add` seed preopen.
@@ -73,8 +73,9 @@ impl Policy {
         let seed = seed_request(argv);
         let root = anchor::project_root(invoked_dir, seed.as_ref());
         let paths = ExecutionPaths::new(root, locations);
-        let store_root = paths.locations().store_root().to_path_buf();
-        for dir in [paths.project_root().to_path_buf(), paths.cache_dir(), store_root] {
+        // The global store is host-owned (no guest mount); the install
+        // leg creates it on demand.
+        for dir in [paths.project_root().to_path_buf(), paths.cache_dir()] {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
@@ -92,13 +93,6 @@ impl Policy {
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
         self.paths.cache_dir()
-    }
-
-    /// Host directory of the writable store mount, named
-    /// [`STORE_MOUNT`].
-    #[must_use]
-    pub fn store_dir(&self) -> PathBuf {
-        self.paths.locations().store_root().to_path_buf()
     }
 
     /// The read-only self-named preopen: the `adapter add` component's
@@ -162,12 +156,6 @@ pub fn project_root() -> PathBuf {
 #[must_use]
 pub fn cache_dir() -> PathBuf {
     current().cache_dir()
-}
-
-/// Macro expression: host directory of the writable store mount.
-#[must_use]
-pub fn store_dir() -> PathBuf {
-    current().store_dir()
 }
 
 /// Macro expression: guest-visible name of the read-only seed preopen.

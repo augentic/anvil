@@ -10,14 +10,20 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+artifacts.workspace = true
 diagnostics.workspace = true
 error.workspace = true
+oci-client.workspace = true
+oci-wasm.workspace = true
 omnia.workspace = true
 project.workspace = true
 transport.workspace = true
 
 [dev-dependencies]
+axum.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]
 workspace = true

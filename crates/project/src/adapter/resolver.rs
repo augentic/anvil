@@ -17,9 +17,11 @@ use crate::handler::ExecutionPaths;
 ///
 /// `resolve_*` is read-only re-resolution of an already-provisioned
 /// selector. `ensure_*` owns deployment policy for making a selector
-/// usable — the component deployment's package hydration, digest
-/// sidecar, and local-component mirror; a native host's static catalog
-/// match — before resolving it. The defaults make `ensure_*` a
+/// usable — the component deployment's local-component mirror; a
+/// native host's static catalog match — before resolving it. Package
+/// installation is host-owned (the launcher installs a missing pin
+/// during metadata dispatch), so a package pin ensures without
+/// guest-side provisioning. The defaults make `ensure_*` a
 /// side-effect-free resolve for deployments with nothing to provision.
 pub trait Resolver: Send + Sync {
     /// Resolve one source adapter selector.
@@ -44,8 +46,8 @@ pub trait Resolver: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Deployment provisioning failures (hydration, digest, mirror,
-    /// catalog mismatch) ahead of the resolve failures.
+    /// Deployment provisioning failures (mirror, digest, catalog
+    /// mismatch) ahead of the resolve failures.
     fn ensure_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> impl Future<Output = Result<ResolvedSource, Error>> + Send {
@@ -57,8 +59,8 @@ pub trait Resolver: Send + Sync {
     ///
     /// # Errors
     ///
-    /// Deployment provisioning failures (hydration, digest, mirror,
-    /// catalog mismatch) ahead of the resolve failures.
+    /// Deployment provisioning failures (mirror, digest, catalog
+    /// mismatch) ahead of the resolve failures.
     fn ensure_target(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> impl Future<Output = Result<ResolvedTarget, Error>> + Send {
@@ -86,6 +88,15 @@ impl Resolver for Component {
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
         let name = selector.name()?;
+        if let AdapterSelector::Package { version, .. } = selector {
+            let metadata = metadata::dispatch(self.metadata, Axis::Source, &name, version)?;
+            return source(
+                &name,
+                Some(version.clone()),
+                metadata,
+                store_origin(&name, version, paths),
+            );
+        }
         let location = locate(Axis::Source, selector, &name, paths)?;
         let metadata =
             metadata::load(self.metadata, &location, Axis::Source, &name, selector.version())?;
@@ -96,10 +107,34 @@ impl Resolver for Component {
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
         let name = selector.name()?;
+        if let AdapterSelector::Package { version, .. } = selector {
+            let metadata = metadata::dispatch(self.metadata, Axis::Target, &name, version)?;
+            return target(
+                &name,
+                Some(version.clone()),
+                metadata,
+                store_origin(&name, version, paths),
+            );
+        }
         let location = locate(Axis::Target, selector, &name, paths)?;
         let metadata =
             metadata::load(self.metadata, &location, Axis::Target, &name, selector.version())?;
         target(&name, selector.version().cloned(), metadata, location.origin())
+    }
+}
+
+/// The deployment-neutral origin of a package-pin resolve: the global
+/// store identity the pin maps to.
+///
+/// Built from the carried layout rather than a probed file — package
+/// metadata dispatches by routed id before any store file is visible
+/// to the caller (the host resolver installs a missing pin during that
+/// dispatch), so the origin names where the deployment keeps the pin,
+/// not a file the caller read.
+fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -> Origin {
+    Origin {
+        label: "store".to_string(),
+        reference: paths.locations().store_entry(name, &version.to_string()).display().to_string(),
     }
 }
 
@@ -195,15 +230,28 @@ pub fn locate(
             });
         }
         let meta = paths.locations().store_meta(name, &version);
-        if let Err(mismatch) = diagnostics::cache::verify_store_entry(&entry, &meta) {
-            return Err(digest_mismatch(
-                &format!(
-                    "adapter `{name}@{version}` (axis `{axis}`) store entry at {}",
-                    entry.display()
-                ),
-                "verify-on-read",
-                &mismatch,
-            ));
+        match diagnostics::cache::verify_store_entry(&entry, &meta) {
+            Ok(()) => {}
+            Err(diagnostics::cache::StoreVerifyError::MissingSidecar) => {
+                return Err(Error::Diag {
+                    code: "adapter-sidecar-missing",
+                    detail: format!(
+                        "store entry {} has no digest sidecar; unverifiable components are \
+                         refused — reinstall `specify:{name}@{version}` to record one",
+                        entry.display(),
+                    ),
+                });
+            }
+            Err(diagnostics::cache::StoreVerifyError::Mismatch(mismatch)) => {
+                return Err(digest_mismatch(
+                    &format!(
+                        "adapter `{name}@{version}` (axis `{axis}`) store entry at {}",
+                        entry.display()
+                    ),
+                    "verify-on-read",
+                    &mismatch,
+                ));
+            }
         }
         return Ok(AdapterLocation::Store(entry));
     }
@@ -233,8 +281,8 @@ pub fn locate(
 ///
 /// `subject` names what the caller was resolving; `phase` is the
 /// verification leg (`verify-on-read` / `verify-after-write`). One
-/// constructor keeps the wording identical across [`locate`], the
-/// hydration kernel, and the deployment launcher.
+/// constructor keeps the wording identical across [`locate`] and the
+/// deployment launcher's install leg.
 #[must_use]
 pub fn digest_mismatch(
     subject: &str, phase: &str, mismatch: &diagnostics::cache::DigestMismatch,

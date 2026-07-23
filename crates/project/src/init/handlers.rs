@@ -110,14 +110,13 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
         // Ensure the adapter binding ahead of the scaffold: fresh init
         // ensures the requested `<adapter>` argument; `--upgrade`
         // re-ensures the project's recorded binding (without rewriting
-        // it). Package hydration into the global store, digest
-        // verification, and local-component mirroring are the
-        // provider's ensure policy.
+        // it). Local-component mirroring is the provider's ensure
+        // policy; package installation is host-owned (the deployment
+        // resolver pulls a missing pin during metadata dispatch).
         let binding =
             if upgrade { ProjectConfig::load(project_dir)?.adapter } else { adapter.clone() };
-        let mut hydrated = Vec::new();
         let ensured = match binding.as_deref() {
-            Some(value) => Some(ensure(context.provider, value, paths, &mut hydrated).await?),
+            Some(value) => Some(ensure(context.provider, value, paths).await?),
             None => None,
         };
 
@@ -133,33 +132,18 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
         };
         let result = init(context.provider, opts)?;
         let mode = if upgrade { InitMode::Upgraded } else { InitMode::Scaffolded };
-        Ok(InitBody::from_result(&result, mode, hydrated))
+        Ok(InitBody::from_result(&result, mode))
     }
 }
 
-/// Parse and ensure one adapter binding, recording any package pin
-/// this run installed into the global store on `hydrated` (the store
-/// state is observed on both sides of the ensure so the envelope
-/// reports only actual fetches — a native ensure writes no store entry
-/// and reports nothing).
+/// Parse and ensure one adapter binding through the provider's ensure
+/// policy (local-component mirroring; a package pin is installed
+/// host-side during the resolve dispatch).
 async fn ensure(
-    provider: &impl Resolver, value: &str, paths: &ExecutionPaths, hydrated: &mut Vec<String>,
+    provider: &impl Resolver, value: &str, paths: &ExecutionPaths,
 ) -> Result<EnsuredAdapter, Error> {
     let selector = AdapterSelector::parse(value)?;
-    let pin = match &selector {
-        AdapterSelector::Package { name, version, .. } => {
-            let version = version.to_string();
-            let installed = paths.locations().store_entry(name, &version).is_file();
-            (!installed).then(|| (name.clone(), version))
-        }
-        AdapterSelector::Bare { .. } | AdapterSelector::Component { .. } => None,
-    };
     let resolved = provider.ensure_target(&selector, paths).await?;
-    if let Some((name, version)) = pin
-        && paths.locations().store_entry(&name, &version).is_file()
-    {
-        hydrated.push(format!("{name}@{version}"));
-    }
     Ok(EnsuredAdapter { selector, resolved })
 }
 
@@ -190,10 +174,6 @@ pub enum InitMode {
 /// Success envelope for `specify init`.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "wire DTO — each flag is a documented JSON field on the init envelope"
-)]
 pub struct InitBody {
     /// What this run did.
     pub mode: InitMode,
@@ -209,11 +189,6 @@ pub struct InitBody {
     pub scaffolded_rule_keys: Vec<String>,
     /// The `specify` version pinned on `project.yaml`.
     pub specify_version: String,
-    /// Pinned identities (`<name>@<version>`) this run fetched into
-    /// the global adapter store.
-    pub hydrated: Vec<String>,
-    /// Whether a wasm-pkg config was written.
-    pub wasm_pkg_config_written: bool,
     /// `true` when this run generated root `AGENTS.md` and
     /// `.specify/context.lock`.
     pub context_generated: bool,
@@ -226,7 +201,7 @@ pub struct InitBody {
 }
 
 impl InitBody {
-    fn from_result(result: &InitResult, mode: InitMode, hydrated: Vec<String>) -> Self {
+    fn from_result(result: &InitResult, mode: InitMode) -> Self {
         Self {
             mode,
             config_path: canonical(&result.config_path),
@@ -235,8 +210,6 @@ impl InitBody {
             directories_created: result.directories_created.iter().map(|p| canonical(p)).collect(),
             scaffolded_rule_keys: result.scaffolded_rule_keys.clone(),
             specify_version: result.specify_version.clone(),
-            hydrated,
-            wasm_pkg_config_written: result.wasm_pkg_config_written,
             context_generated: result.context_skip_reason.is_none(),
             context_skipped: result.context_skip_reason.is_some(),
             context_skip_reason: result.context_skip_reason.map(super::Skip::as_str),
@@ -259,8 +232,6 @@ impl InitBody {
             directories_created: Vec::new(),
             scaffolded_rule_keys: Vec::new(),
             specify_version: cfg.specify_version.unwrap_or_default(),
-            hydrated: Vec::new(),
-            wasm_pkg_config_written: false,
             context_generated: false,
             context_skipped: false,
             context_skip_reason: None,
@@ -289,9 +260,6 @@ impl Render for InitBody {
         writeln!(w, "  adapter: {}", self.adapter_name)?;
         writeln!(w, "  config: {}", self.config_path)?;
         writeln!(w, "  specify: {}", self.specify_version)?;
-        for identity in &self.hydrated {
-            writeln!(w, "  hydrated: {identity}")?;
-        }
         if self.context_skip_reason == Some("existing-agents-md") {
             writeln!(w, "AGENTS.md already present; skipping context generate")?;
         }

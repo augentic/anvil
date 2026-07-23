@@ -42,7 +42,7 @@ The `source resolve` / `target resolve` JSON envelope carries `axis`, `name`, `v
 
 ## Adapter name uniqueness
 
-Adapter names remain unique across axes — one component exports exactly one axis interface, and a name identifies one published package. A component bound on the wrong axis fails resolve with the typed `adapter-axis-mismatch` (the metadata dispatch verifies the expected axis export before the call).
+Adapter names remain unique across axes — one component exports exactly one axis interface, and a name identifies one published package. A component bound on the wrong axis fails at the dispatch seam: no deployed guest exports the requested `<axis>:<name>` id, so the metadata dispatch (and any operation call) cannot reach it.
 
 ## Discovery handshake
 

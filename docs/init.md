@@ -21,11 +21,13 @@ the project will use. The CLI writes:
 - `project.yaml` (adapter identifier, `specify` floor, and
   `platforms` when the target declares a platform capability).
 - `.specify/` (slices, archive, scratch, journal, guest.lock marker).
-- `.specify/wasm-pkg.toml` — project-local wasm-pkg registry config,
-  prefilled with the canonical `specify -> augentic.io` namespace
-  mapping. Edit it to point first-party tool fetches at an internal
-  mirror or to register additional namespaces. The file is checked
-  in; re-running `init` never overwrites operator edits.
+
+A pinned first-party adapter (`specify:omnia@1.0.0` or the
+`omnia@1.0.0` shorthand) installs automatically on first use: the
+runtime pulls it from the fixed registry mapping
+(`ghcr.io/augentic/specify-adapters/<name>:<version>`) into the
+global adapter store. The mapping is compiled in — there is no
+project-local registry configuration.
 
 ## Workspace — `specify init --workspace`
 
@@ -39,10 +41,7 @@ Use this for the platform repo that orchestrates a fleet of adapter
 projects. Workspace init writes `workspace: true` in `project.yaml`,
 seeds an empty `registry.yaml`; workspace slot materialization remains operator-owned
 before returning (no-op when `projects: []`, but still upserts
-`.gitignore` and canonicalises an empty `topology.lock`). Workspace init
-also writes `.specify/wasm-pkg.toml` so workspace operators can publish or
-pull packages with `wkg --config .specify/wasm-pkg.toml` against the same
-registry config the runtime honours.
+`.gitignore` and canonicalises an empty `topology.lock`).
 
 ## Why the two shapes are exclusive
 
@@ -60,5 +59,5 @@ as the engine layer's defence-in-depth check.
 Running `specify init` in an already-initialized project (one whose
 `.specify/project.yaml` exists) changes nothing and exits 0 with a
 message routing to `specify init --upgrade` — the re-entry flag that
-bumps the `specify` pin, re-runs hydration over the declared set, and
+bumps the `specify` pin, re-resolves the declared adapter, and
 preserves every operator artifact.

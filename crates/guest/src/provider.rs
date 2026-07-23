@@ -19,7 +19,6 @@ use project::adapter::{
 use project::handler::{Anchor, ExecutionPaths};
 use project::seam::{self, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree};
 use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
-use wasip3::http_compat::IncomingMessage as _;
 
 use crate::bindings::specify::adapter::{source, target, types};
 
@@ -57,46 +56,14 @@ impl Resolver for Provider {
     async fn ensure_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        project::adapter::ensure::source(metadata, selector, paths, jiff::Timestamp::now(), fetch)
-            .await
+        project::adapter::ensure::source(metadata, selector, paths, jiff::Timestamp::now())
     }
 
     async fn ensure_target(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
-        project::adapter::ensure::target(metadata, selector, paths, jiff::Timestamp::now(), fetch)
-            .await
+        project::adapter::ensure::target(metadata, selector, paths, jiff::Timestamp::now())
     }
-}
-
-// Straight `wasi:http/client` send — deliberately not
-// `omnia_wasi_http::handle`, whose keyvalue-backed cache would add
-// a `wasi:keyvalue` import no specify deployment links.
-async fn fetch(url: String) -> Result<Vec<u8>, Error> {
-    let diag = |detail: String| Error::Diag {
-        code: "http-fetch",
-        detail,
-    };
-    let request = omnia_guest::http::Request::get(&url)
-        .body(omnia_guest::axum::body::Body::empty())
-        .map_err(|err| diag(format!("building the request for {url}: {err}")))?;
-    let request = wasip3::http_compat::http_into_wasi_request(request)
-        .map_err(|err| diag(format!("converting the request for {url}: {err}")))?;
-    let response = wasip3::http::client::send(request)
-        .await
-        .map_err(|err| diag(format!("fetching {url}: {err}")))?;
-    let response = wasip3::http_compat::http_from_wasi_response(response)
-        .map_err(|err| diag(format!("reading the response from {url}: {err}")))?;
-    if !response.status().is_success() {
-        return Err(diag(format!("fetching {url}: HTTP {}", response.status())));
-    }
-    let (_, mut body) = response.into_parts();
-    let Some(wasi_response) = body.take_unstarted() else {
-        return Ok(Vec::new());
-    };
-    let (_, body_rx) = wasip3::wit_future::new(|| Ok(()));
-    let (stream, _trailers) = wasi_response.consume_body(body_rx);
-    Ok(stream.collect().await)
 }
 
 impl Source for Provider {

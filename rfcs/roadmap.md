@@ -164,6 +164,7 @@ specify execute resume <run-id>
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
 **Frame:** an adapter is a wasm component implementing one axis of the versioned `specify:adapter` WIT contract, so compatibility is WIT-package versioning. Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
+**First-party seam (draft):** [RFC-76 Adapter Publish and Install](rfc-76-adapter-publish-install.md) closes the build → publish → hydrate → resolve loop and embeds it in the `specify-adapters` workflow (restore publish automation, transport parity, lockstep release policy). Consumer install/resolve from [RFC-70](rfc-70-deployment.md) is already landed.
 **Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, references) beyond the first-party Omnia/Vectis/contracts set.
 **Discovery substrate:** [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) defines the descriptor schema, registry projection, and trust policy this ecosystem requires; its registry stages are gated on this item, not on the migration program.
 

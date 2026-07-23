@@ -2,148 +2,72 @@
 //! behind the shipped provider's [`super::Resolver::ensure_source`] /
 //! [`super::Resolver::ensure_target`].
 //!
-//! A package selector that misses the global single-file store is
-//! fetched from the registry configured in `.specify/wasm-pkg.toml`
-//! and installed as `<store-root>/<name>@<version>.wasm` plus its
-//! digest `.meta` sidecar, then verified after write. A local
-//! component selector is validated, canonicalized, and mirrored into
-//! the project component cache
+//! A local component selector is validated, canonicalized, and
+//! mirrored into the project component cache
 //! (`<project-cache>/components/<name>.wasm`) with provenance stamped
 //! in [`ComponentMeta`]. A bare selector provisions nothing — the
-//! resolver locates the already-seeded cache entry live.
-//!
-//! Everything here is deterministic; only the byte transport is
-//! deployment-specific, so the kernels take `fetch` as a caller
-//! closure (the shipped WASI provider sends `wasi:http`, test
-//! providers script or refuse).
-//!
-//! The v1 wire protocol is a plain HTTP GET against a documented
-//! registry layout: `<base>/adapters/<namespace>/<name>@<version>.wasm`,
-//! where `<base>` is `https://<registry>` unless the configured
-//! registry value already carries a scheme.
+//! resolver locates the already-seeded cache entry live. A package
+//! selector also provisions nothing here: package installation is
+//! host-owned (the deployment launcher pulls a missing pin from the
+//! first-party OCI registry during metadata dispatch), so the ensure
+//! leg reduces to the dispatch-first resolve.
 
 use std::fs;
-use std::future::Future;
 use std::path::{Path, PathBuf};
 
-use artifacts::atomic::bytes_write;
-use diagnostics::cache::{file_content_digest, verify_store_entry, write_store_meta};
 use error::Error;
 use serde::{Deserialize, Serialize};
 
 use super::core::{ResolvedSource, ResolvedTarget};
 use super::resolver::{Component, Resolver as _, component_cache_entry};
-use super::selector::{AdapterSelector, canonicalize_component};
-use super::{metadata, selector};
-use crate::config::Layout;
+use super::selector::canonicalize_component;
+use super::{AdapterSelector, metadata, selector};
 use crate::handler::ExecutionPaths;
 
 /// Ensure a source selector for the component deployment: provision
-/// (hydrate / mirror), then resolve through the component resolver.
+/// (mirror), then resolve through the component resolver.
 ///
 /// # Errors
 ///
-/// Provisioning failures (`adapter-hydrate-failed`,
-/// `adapter-digest-mismatch`, `adapter-component-missing`,
+/// Provisioning failures (`adapter-component-missing`,
 /// `adapter-canonicalize-failed`) ahead of resolve failures.
-pub async fn source<F, Fut>(
+pub fn source(
     runner: metadata::Runner, selector: &AdapterSelector, paths: &ExecutionPaths,
-    now: jiff::Timestamp, fetch: F,
-) -> Result<ResolvedSource, Error>
-where
-    F: Fn(String) -> Fut,
-    Fut: Future<Output = Result<Vec<u8>, Error>>,
-{
-    provision(selector, paths, now, fetch).await?;
+    now: jiff::Timestamp,
+) -> Result<ResolvedSource, Error> {
+    provision(selector, paths, now)?;
     Component::new(runner).resolve_source(selector, paths)
 }
 
 /// Ensure a target selector for the component deployment: provision
-/// (hydrate / mirror), then resolve through the component resolver.
+/// (mirror), then resolve through the component resolver.
 ///
 /// # Errors
 ///
-/// Provisioning failures (`adapter-hydrate-failed`,
-/// `adapter-digest-mismatch`, `adapter-component-missing`,
+/// Provisioning failures (`adapter-component-missing`,
 /// `adapter-canonicalize-failed`) ahead of resolve failures.
-pub async fn target<F, Fut>(
+pub fn target(
     runner: metadata::Runner, selector: &AdapterSelector, paths: &ExecutionPaths,
-    now: jiff::Timestamp, fetch: F,
-) -> Result<ResolvedTarget, Error>
-where
-    F: Fn(String) -> Fut,
-    Fut: Future<Output = Result<Vec<u8>, Error>>,
-{
-    provision(selector, paths, now, fetch).await?;
+    now: jiff::Timestamp,
+) -> Result<ResolvedTarget, Error> {
+    provision(selector, paths, now)?;
     Component::new(runner).resolve_target(selector, paths)
 }
 
-/// Make one selector resolvable: install a missing package pin into
-/// the global store, mirror a local component into the project cache,
-/// or nothing for a bare development name.
-///
-/// The resolve-free provisioning kernel shared by the guest provider's
-/// `ensure_*` legs (via [`source`] / [`target`]) and the deployment
-/// launcher's pre-run closure hydration, which locates paths itself
-/// instead of resolving metadata.
+/// Make one selector resolvable on the guest side of the seam: mirror
+/// a local component into the project cache, or nothing for a bare
+/// development name or a package pin (host-installed on dispatch).
 ///
 /// # Errors
 ///
-/// `adapter-hydrate-failed`, `adapter-digest-mismatch`,
-/// `adapter-component-missing`, or `adapter-canonicalize-failed`.
-pub async fn provision<F, Fut>(
-    selector: &AdapterSelector, paths: &ExecutionPaths, now: jiff::Timestamp, fetch: F,
-) -> Result<(), Error>
-where
-    F: Fn(String) -> Fut,
-    Fut: Future<Output = Result<Vec<u8>, Error>>,
-{
+/// `adapter-component-missing` or `adapter-canonicalize-failed`.
+pub fn provision(
+    selector: &AdapterSelector, paths: &ExecutionPaths, now: jiff::Timestamp,
+) -> Result<(), Error> {
     match selector {
-        AdapterSelector::Bare { .. } => Ok(()),
-        AdapterSelector::Package {
-            namespace,
-            name,
-            version,
-        } => hydrate(paths, namespace, name, version, fetch).await,
+        AdapterSelector::Bare { .. } | AdapterSelector::Package { .. } => Ok(()),
         AdapterSelector::Component { path } => mirror(path, paths, now),
     }
-}
-
-/// Install a pinned package into the global single-file store when it
-/// is missing: fetch, write the entry, write the digest sidecar, then
-/// verify-after-write. A present entry is a no-op.
-async fn hydrate<F, Fut>(
-    paths: &ExecutionPaths, namespace: &str, name: &str, version: &semver::Version, fetch: F,
-) -> Result<(), Error>
-where
-    F: Fn(String) -> Fut,
-    Fut: Future<Output = Result<Vec<u8>, Error>>,
-{
-    let version = version.to_string();
-    let entry = paths.locations().store_entry(name, &version);
-    if entry.is_file() {
-        return Ok(());
-    }
-
-    let url = package_url(paths.project_root(), namespace, name, &version);
-    let bytes = fetch(url.clone()).await.map_err(|err| Error::Diag {
-        code: "adapter-hydrate-failed",
-        detail: format!("failed to hydrate `{namespace}:{name}@{version}` from {url}: {err}"),
-    })?;
-
-    fs::create_dir_all(paths.locations().store_root())?;
-    bytes_write(&entry, &bytes)?;
-    let digest = file_content_digest(&entry);
-    let meta = paths.locations().store_meta(name, &version);
-    write_store_meta(&meta, &digest, None)?;
-    verify_store_entry(&entry, &meta).map_err(|mismatch| {
-        super::resolver::digest_mismatch(
-            &format!("store entry {}", entry.display()),
-            "verify-after-write",
-            &mismatch,
-        )
-    })?;
-    Ok(())
 }
 
 /// Mirror an operator-supplied local component into the project
@@ -279,44 +203,4 @@ impl ComponentMeta {
         let raw = fs::read_to_string(Self::path(paths, name)).ok()?;
         serde_saphyr::from_str(&raw).ok()
     }
-}
-
-/// The registry fetch URL for one pinned package, from the project's
-/// wasm-pkg configuration.
-fn package_url(project_dir: &Path, namespace: &str, name: &str, version: &str) -> String {
-    let registry = registry_for(project_dir, namespace);
-    let base = if registry.contains("://") { registry } else { format!("https://{registry}") };
-    format!("{}/adapters/{namespace}/{name}@{version}.wasm", base.trim_end_matches('/'))
-}
-
-/// Registry authority the compiled default and a fresh scaffold agree
-/// on; `.specify/wasm-pkg.toml` overrides it per project.
-const DEFAULT_REGISTRY: &str = "augentic.io";
-
-/// The subset of `.specify/wasm-pkg.toml` hydration reads. Mirrors the
-/// wasm-pkg config shape so `wkg --config .specify/wasm-pkg.toml` and
-/// the fetch leg agree on namespace routing.
-#[derive(Debug, Default, Deserialize)]
-struct WasmPkgConfig {
-    #[serde(default)]
-    default_registry: Option<String>,
-    #[serde(default)]
-    namespace_registries: std::collections::BTreeMap<String, String>,
-}
-
-/// Resolve the registry for `namespace`: the project's
-/// `namespace_registries.<namespace>`, then its `default_registry`,
-/// then the compiled default. A missing or unparseable config file
-/// falls through to the default rather than failing — a fresh init
-/// has not written the file yet.
-fn registry_for(project_dir: &Path, namespace: &str) -> String {
-    let path = Layout::new(project_dir).specify_dir().join(crate::init::WASM_PKG_CONFIG_FILENAME);
-    let config: WasmPkgConfig =
-        fs::read_to_string(path).ok().and_then(|raw| toml::from_str(&raw).ok()).unwrap_or_default();
-    config
-        .namespace_registries
-        .get(namespace)
-        .cloned()
-        .or(config.default_registry)
-        .unwrap_or_else(|| DEFAULT_REGISTRY.to_string())
 }

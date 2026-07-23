@@ -59,7 +59,7 @@ In Cursor: Settings → Plugins → search **Augentic** → install the marketpl
 The binary backs every workflow skill. `/spec:init` can bootstrap a missing CLI after confirmation. For manual setup:
 
 ```bash
-cargo install --git https://github.com/augentic/specify
+cargo install --git https://github.com/augentic/specify --locked
 ```
 
 Or download the platform archive from [GitHub Releases](https://github.com/augentic/specify/releases) and verify it against its `.sha256` companion.

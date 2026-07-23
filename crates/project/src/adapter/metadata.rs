@@ -55,11 +55,30 @@ pub(crate) fn metadata_cache_path(component: &Path) -> PathBuf {
     component.with_file_name(file_name)
 }
 
+/// Dispatch metadata for a pinned package by exact routed id, with no
+/// component file access and no sidecar cache.
+///
+/// The package-pin resolve leg: dispatch happens *before* any store
+/// file exists on the caller's side of the seam — under the shipped
+/// deployment the host resolver installs a missing pin during this
+/// dispatch (pull-on-miss), so a cold store resolves without a
+/// guest-visible store entry. Pins are immutable, and the dispatch is
+/// one deterministic component call, so no digest-keyed cache applies.
+pub(super) fn dispatch(
+    runner: Runner, axis: Axis, name: &str, version: &semver::Version,
+) -> Result<Metadata, Error> {
+    let adapter_id = RoutedId::new(axis, name, Some(version.clone())).to_string();
+    runner(&Request {
+        axis,
+        adapter_id: &adapter_id,
+    })
+}
+
 /// Load component metadata through `runner`, honoring the digest cache.
 ///
-/// The dispatch id is the identity the selector implies: exact
-/// (`<axis>:<name>@<version>`) for a package pin, unversioned
-/// (`<axis>:<name>`) for a cache-backed resolve.
+/// The dispatch id is the identity the selector implies: unversioned
+/// (`<axis>:<name>`) for the cache-backed resolves this leg serves
+/// (package pins dispatch through [`dispatch`] instead).
 pub(super) fn load(
     runner: Runner, location: &AdapterLocation, axis: Axis, name: &str,
     version: Option<&semver::Version>,

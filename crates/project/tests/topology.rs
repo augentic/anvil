@@ -2,8 +2,8 @@
 //! routed adapter id carries no slot, so `cache_staleness` flags a
 //! slot binding that resolves slot-locally but not at the deployment
 //! root (`workspace-slot-binding-unresolvable`). Exact package pins
-//! are exempt — the engine's ensure legs hydrate a store miss before
-//! dispatch.
+//! are exempt — the host resolver installs a store miss during
+//! dispatch (pull-on-miss).
 
 use std::path::PathBuf;
 
@@ -174,8 +174,8 @@ fn deployment_cache_binding_is_resolvable() {
     assert!(!codes(&diagnostics).contains(&UNRESOLVABLE), "{diagnostics:?}");
 }
 
-// An exact package pin is hydratable by id (the engine's ensure legs
-// install a store miss before dispatch) — exempt.
+// An exact package pin installs by id (the host resolver pulls a
+// store miss during dispatch) — exempt.
 #[test]
 fn package_pin_binding_is_exempt() {
     let workspace = Workspace::new("specify:mock@1.0.0");

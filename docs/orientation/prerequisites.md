@@ -21,7 +21,7 @@ This installs the Specify plugin (the `/spec:*` skill wrappers). Domain code gen
 The `specify` binary backs every skill in the Specify plugin. If you are setting up a project through Cursor, run `/spec:init`; when the CLI is missing, the skill can install it for you with:
 
 ```bash
-cargo install --git https://github.com/augentic/specify
+cargo install --git https://github.com/augentic/specify --locked
 ```
 
 <details>
@@ -58,7 +58,7 @@ specify --version
 Update the CLI through the same channel used to install it:
 
 ```bash
-cargo install --git https://github.com/augentic/specify   # source install
+cargo install --git https://github.com/augentic/specify --locked   # source install
 # or upgrade with your package manager / replace the release binary
 ```
 

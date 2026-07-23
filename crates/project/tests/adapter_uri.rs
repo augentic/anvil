@@ -35,66 +35,22 @@ mod package {
     use super::*;
 
     #[tokio::test]
-    async fn unhydratable_refused() {
-        // The store misses the pin and the registry has no staged
-        // response: init fails typed on the hydration leg.
+    async fn cold_pin_resolves_without_store() {
+        // Package metadata dispatches by routed id before any store
+        // read — under the shipped deployment the host resolver
+        // installs a missing pin during that dispatch, so a cold
+        // store neither blocks init nor leaves a guest-written entry.
         let project = Provider::bare();
-
-        let err = run::<project::init::handlers::Init, _, _>(
-            &project,
-            input("specify:demo-target@1.2.0"),
-        )
-        .await
-        .expect_err("an unhydratable package must be refused");
-
-        assert_eq!(err.core().variant_str(), "adapter-hydrate-failed");
-    }
-
-    #[tokio::test]
-    async fn hydrated_from_registry() {
-        // The store misses the pin; the staged registry response is
-        // fetched, installed with its digest sidecar, verified, and
-        // resolution proceeds against the fresh entry.
-        let project = Provider::bare();
-        let staged = project.root.join("hydrator/demo@1.2.0.wasm");
-        fs::create_dir_all(staged.parent().expect("parent")).expect("mkdir hydrator");
-        fs::write(&staged, b"\0asm-component").expect("stage registry response");
 
         let body =
             run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
                 .await
-                .expect("hydrated package scaffolds");
-        assert_eq!(body.hydrated, vec!["demo@1.2.0".to_string()]);
-
-        let entry = project.store_entry("demo", "1.2.0");
-        assert_eq!(
-            fs::read(&entry).expect("installed store entry"),
-            b"\0asm-component",
-            "the store entry is the fetched bytes"
-        );
+                .expect("a cold package pin scaffolds");
+        assert_eq!(body.adapter_name, "demo");
         assert!(
-            entry.with_extension("meta").is_file(),
-            "the digest sidecar lands beside the entry"
+            !project.store_entry("demo", "1.2.0").exists(),
+            "the guest writes no store entry — package install is host-owned"
         );
-
-        // A second init over a fresh project sharing the same store
-        // reuses the installed entry without fetching.
-        let second = Provider::with_store(project.store_root().to_path_buf());
-        let body = run::<project::init::handlers::Init, _, _>(&second, input("specify:demo@1.2.0"))
-            .await
-            .expect("installed package scaffolds without fetching");
-        assert!(body.hydrated.is_empty(), "an installed pin fetches nothing");
-    }
-
-    #[tokio::test]
-    async fn installed_resolves() {
-        let project = Provider::bare();
-        let entry = project.store_entry("demo", "1.2.0");
-        fs::write(&entry, b"\0asm-component").expect("stage installed component");
-
-        run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
-            .await
-            .expect("installed package scaffolds");
 
         let project_yaml =
             fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
@@ -102,6 +58,15 @@ mod package {
             project_yaml.contains("adapter: specify:demo@1.2.0"),
             "package reference is canonical:\n{project_yaml}"
         );
+    }
+
+    #[tokio::test]
+    async fn pin_resolves_as_store_identity() {
+        let project = Provider::bare();
+
+        run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
+            .await
+            .expect("package pin scaffolds");
 
         let body = run::<project::adapter::handlers::TargetResolve, _, _>(
             &project,
@@ -134,9 +99,6 @@ mod shorthand {
         assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
 
         let project = Provider::bare();
-        fs::write(project.store_entry("demo", "1.2.0"), b"\0asm-component")
-            .expect("stage installed component");
-
         run::<project::init::handlers::Init, _, _>(&project, input("demo@1.2.0"))
             .await
             .expect("versioned shorthand scaffolds");

@@ -5,8 +5,9 @@
 //! resolves `SPECIFY_WASM`) and routed as the sole static
 //! `wasi:cli/run` exporter; every adapter guest is faulted in mid-run
 //! by exact routed id through the fail-closed launcher resolver,
-//! after the engine's own ensure legs have hydrated it through the
-//! writable mounts. The launcher's mount expressions anchor the
+//! which installs a missing package pin from the first-party OCI
+//! registry (pull-on-miss) and verify-and-loads everything else.
+//! The launcher's mount expressions anchor the
 //! project root from argv and the working directory, and grant the
 //! `adapter add` component directory as a read-only self-named
 //! preopen. Every invocation runs in the guest — help, version,
@@ -32,7 +33,6 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: launcher::project_root(), writable: true },
                 { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
-                { name: launcher::STORE_MOUNT, path: launcher::store_dir(), writable: true },
                 { name: launcher::seed_mount_name(), path: launcher::seed_mount_path() },
             ],
             link: ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"],
