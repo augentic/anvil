@@ -232,7 +232,7 @@ crates/change/           the change loop — plan author/execute orchestration, 
 crates/mock/             dev-only mock crate — SDK-native mock adapter core, catalog registry, answer corpus, session helpers
 crates/native/           the native host — validated adapter catalog, DynModel, seam provider, reference hosting, cli-gated command execution
 crates/probe/            lab-only library — trial/scenario runners plus the shared cursor client (feature = "client")
-examples/                wasm (Omnia-hosted component seam: mock adapter components + embedded engine, resolver-dynamic adapters — no omnia.toml), native (in-process host over the same mock adapters), and eval (the composition example behind cargo make specify / eval)
+examples/                wasm (Omnia-hosted component seam: mock adapter components + embedded engine, resolver-dynamic adapters — no omnia.toml) and eval (native mock-catalog composition behind cargo make specify / eval)
 ```
 
 | Code | Name                     | When                                                                  |

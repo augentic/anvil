@@ -47,10 +47,6 @@ path = "examples/wasm/target.rs"
 crate-type = ["cdylib"]
 
 [[example]]
-name = "native"
-path = "examples/native/main.rs"
-
-[[example]]
 name = "eval"
 path = "examples/eval/main.rs"
 
@@ -58,7 +54,6 @@ path = "examples/eval/main.rs"
 probe = { workspace = true, features = ["client"] }
 native = { workspace = true, features = ["cli"] }
 mock.workspace = true
-omnia-guest.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

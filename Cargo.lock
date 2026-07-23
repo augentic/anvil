@@ -3956,7 +3956,6 @@ dependencies = [
  "native",
  "omnia",
  "omnia-cursor",
- "omnia-guest",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
