@@ -7,7 +7,7 @@ use adapter::seam::{
     WorkingTree,
 };
 use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
-use mock::model::Harness;
+use omnia_testkit::model::Harness;
 
 const DOCS: &[Doc] = &[Doc {
     path: "prompts/survey.md",

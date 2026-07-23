@@ -18,8 +18,10 @@
 //!   inspect an operation's typed output.
 //! - [`answers`] (host) — the scripted judgment-answer corpus behind
 //!   `omnia-testkit`'s FIFO `Scripted` model double.
-//! - [`model`] (host) — the request-recording `Harness` model double
-//!   and `mcp_grants`, pending their move upstream to `omnia-testkit`.
+//!
+//! Suites that need request recording import
+//! `omnia_testkit::model::Harness` directly; [`session`] binds that
+//! harness behind the offline native provider.
 //!
 //! The crate speaks the SDK seam DTOs end to end: only the workflow
 //! providers (the native host's conversion layer) widen values onto
@@ -34,8 +36,6 @@ pub mod ops;
 pub mod answers;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod invoke;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod model;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod registry;
 #[cfg(not(target_arch = "wasm32"))]

@@ -6,7 +6,7 @@ use std::path::Path;
 
 use adapter::seam::{Context, Error, WorkingTree};
 use adapter::{Error as ModelError, Format, judgment};
-use mock::model::{Harness, mcp_grants};
+use omnia_testkit::model::{Harness, mcp_grants};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
