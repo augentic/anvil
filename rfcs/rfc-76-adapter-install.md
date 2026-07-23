@@ -6,7 +6,7 @@
 >
 > Builds on: [RFC-70](rfc-70-deployment.md) Stages 1+3 (landed). First-party slice of [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model).
 >
-> Defers: production supply-chain hardening, third-party registries and trust, discovery ([RFC-71](rfc-71-discovery.md)), private-registry credentials, semver ranges, and polished public installers.
+> Defers: GitHub Actions publish automation (attestation, CI no-repush), production supply-chain hardening, third-party registries and trust, discovery ([RFC-71](rfc-71-discovery.md)), private-registry credentials, semver ranges, and polished public installers.
 
 ## Intent
 
@@ -22,6 +22,8 @@ cargo install Specify
 
 The initial users are Augentic developers, the publisher and registry are controlled by Augentic, and exact package versions are chosen explicitly. This cut should establish the right transport and ownership boundaries without building the eventual public ecosystem in advance.
 
+Prove that loop with **operator-driven** publication (`cargo make adapter` / `cargo make publish`) and **automatic** install. Do not automate releases in GitHub Actions until the manual publish path and pull-on-miss install are satisfactory — that automation is the next cut, not this one.
+
 The sharpest day-to-day payoff is universal pull-on-miss: today a changed target pin fails at build or merge until the operator re-runs init; after this cut every routed package resolution can install.
 
 Local adapter development remains `build → adapter add → bare-name resolve` and does not require publication.
@@ -33,7 +35,7 @@ The design below is the internal cut. Scope exclusions, trust assumptions, and f
 The existing implementation is close but does not form one dependable loop:
 
 - `build.rs` embeds an empty engine placeholder when the wasm32 engine was not built first, so plain `cargo install --git …` produces a binary that cannot boot;
-- adapter release CI and docs reference `cargo make adapter` and `cargo make publish`, but those tasks are absent in the current adapters checkout;
+- adapter release CI and docs reference `cargo make adapter` and `cargo make publish`, but those tasks are absent in the current adapters checkout (this cut restores the Make tasks for local use; repairing and running the Actions publish workflow is next);
 - publication is described through wasm-pkg/OCI while hydration uses a custom guest-side HTTP path;
 - the engine guest owns download and global-store writes while the native launcher only verifies and loads;
 - target adapters hydrate during init, but later build/execute paths resolve only, so a changed pin can fail until re-init;
@@ -48,10 +50,10 @@ The existing implementation is close but does not form one dependable loop:
 | D3 | Pull missing package adapters in the native launcher resolver. | OCI and global-store mutation leave the engine guest; every routed package resolution can install. |
 | D4 | Retain the current identity-named global store and digest sidecar; record the OCI repository and manifest digest on every install. | No CAS migration in the initial cut; the sidecar's existing optional digest slot carries the registry provenance. |
 | D5 | Hard-code the first-party `specify:` mapping to Augentic GHCR. | A project cannot redirect trusted first-party executable bytes. |
-| D6 | Keep exact SemVer selectors and current workspace versioning. | No ranges, channels, independent-release redesign, or solver. |
-| D7 | Repair and restore thin `cargo make adapter` and `cargo make publish` tasks in `specify-adapters`. | Publication stays close to adapter source; no engine publish verbs. This is a repair, not only a restore: the release workflow currently invokes a `cargo make publish` task that does not exist. |
+| D6 | Keep exact SemVer selectors and lockstep `specify-adapters` `[workspace.package]` versioning. | Every first-party adapter publishes under that shared Cargo SemVer. No ranges, channels, independent-release redesign, or solver. That package version is independent of the WIT `specify:adapter@…` contract version and of the host `specify` binary / project pin. |
+| D7 | Restore thin `cargo make adapter` and `cargo make publish` tasks in `specify-adapters` for **local** operator use. | Publication stays close to adapter source; no engine publish verbs. The dangling Actions workflow that invokes a missing `publish` task is left alone until the automate-releases follow-on. |
 | D8 | Keep `adapter add` and component selectors unchanged. | The no-registry development loop and wasm example continue to work. |
-| D9 | Generate a build-provenance attestation at publish time; defer all verification. | Every published version carries provenance from day one — generation cannot be backfilled, checking can wait for the third-party hardening pass. |
+| D9 | Defer GitHub Actions publish automation (workflow repair, CI no-repush, publish-time attestation generation). | Refine manual publish + automatic install first; automate releases only after that loop is satisfactory. Attestation generation cannot be backfilled, so it lands with the Actions cut — not later than that — but it is not a gate on proving install. |
 
 ## Binary bootstrap
 
@@ -114,26 +116,31 @@ Use `wkg oci push` for publication and Bytecode Alliance `oci-wasm`/`oci-client`
 
 `wasm-pkg-client` — the library `wkg` itself is built on — was considered for the pull side: it would make the `wkg oci pull` parity criterion true by construction. It loses to `oci-wasm` because it carries the config-file and well-known-URI registry-discovery machinery that D5 exists to exclude; the round-trip acceptance test carries the parity guarantee instead. Revisit if third-party namespaces ever need configurable registry mapping.
 
-### Minimal publish workflow
+### Manual publish (this cut)
 
-Restore these surfaces in `augentic/specify-adapters`:
+Restore these **local** surfaces in `augentic/specify-adapters`:
 
 | Surface | Role |
 | ------- | ---- |
 | `cargo make adapter <name>` | Build one release component. |
 | `cargo make release` | Build the current release set and run existing checks. |
-| `cargo make publish <name>` | Push one built component to its exact GHCR SemVer tag. |
-| Manual workflow dispatch | Run the same build and publish commands with `GITHUB_TOKEN`. |
+| `cargo make publish <name>` | Push one built component to its exact GHCR SemVer tag (operator machine, after `gh auth` / `docker login` to GHCR as documented). |
 
-The helper derives the name and version from the adapter crate, logs into GHCR, and invokes `wkg oci push`. It refuses to replace an existing version tag. If idempotent same-byte detection is cheap with the selected OCI client, a rerun may skip; otherwise “tag already exists” is an acceptable initial failure.
+The helper derives the name and version from the adapter crate (`CARGO_PKG_VERSION`, which is the shared `[workspace.package]` SemVer), logs into GHCR, and invokes `wkg oci push`. It refuses to replace an existing version tag. If idempotent same-byte detection is cheap with the selected OCI client, a rerun may skip; otherwise “tag already exists” is an acceptable initial failure.
 
-The workflow — not only the helper — enforces no-repush: a manifest-existence check against GHCR runs before push, because CI is where the credentials live and team policy alone is not an enforcement point. (wasmCloud applies the same policy to its first-party GHCR packages: stable version tags are immutable by workflow, and re-pushing is a no-op.)
+Three version axes stay distinct (D6):
 
-After a successful push, the workflow generates a SLSA build-provenance attestation for the pushed manifest digest with `actions/attest-build-provenance` (D9). This is one workflow step, free for public repositories, and verifiable later with `gh attestation verify oci://…`. Generation is in scope now precisely because it cannot be backfilled; nothing in the runtime verifies attestations in this cut.
+| Axis | Example role | Used for |
+| ---- | ------------ | -------- |
+| Adapters workspace Cargo SemVer | `specify-adapters` `[workspace.package]` (lockstep across all first-party adapters) | Package selector, OCI tag, store identity (`specify:<name>@…`) |
+| WIT contract | `package specify:adapter@…` in `specify.wit` | SDK / WIT package pin consumed by adapter crates |
+| Host CLI | `specify` binary / `project.yaml` pin | Operator runtime; optional `specify-floor` in adapter WIT metadata is the only link to a minimum host version |
 
-Keep the existing lockstep workspace version for now. Independently versioned release automation is useful later but unnecessary for proving install.
+Independently versioned per-adapter releases are useful later but unnecessary for proving install.
 
-No SBOM, signature scheme, or runtime attestation verification is required in the internal cut. Publication credentials remain CI/operator concerns and are never committed.
+Document the operator steps (auth, build, publish, `wkg oci pull` round-trip). Do not repair or rely on the GitHub Actions publish workflow in this cut — leave the dangling `cargo make publish` invocation alone until [Phase E](#phase-e--automate-releases-next).
+
+No SBOM, signature scheme, publish-time attestation, or runtime attestation verification is required in this cut. Publication credentials remain operator concerns for the manual path and are never committed.
 
 ## Automatic install
 
@@ -188,6 +195,8 @@ specify init <name>
 
 Bare names and local component selectors resolve only through the project component cache. Package selectors resolve only through the global store/OCI path. No sibling checkout, Cargo `target/`, or fallback probe is added.
 
+Native eval (`cargo make eval` / `cargo make specify`) stays on the static catalog and performs no OCI or store install; release publish and launcher pull-on-miss must not become a prerequisite of that loop. The operator-invoked wasm example continues to load locally built components the same way.
+
 ## Update model
 
 This cut has no updater. Operators move forward with the install and pin surfaces already defined.
@@ -222,14 +231,14 @@ Workspace `registry.yaml` remains membership/topology only. It never indexes or 
 
 Exit: the installed binary boots and reports its version without a separately installed engine.
 
-### Phase B — Publish one adapter
+### Phase B — Manual publish one adapter
 
-- Repair the release workflow's dangling `cargo make publish` invocation; restore `cargo make adapter <name>` and `cargo make publish <name>`.
-- Add the CI no-repush check and the publish-time attestation step (D9).
+- Restore `cargo make adapter <name>` and `cargo make publish <name>` for local operator use.
+- Document GHCR login and the publish steps in adapters `README` / `AGENTS.md`.
 - Publish one adapter manually to public GHCR using the Wasm OCI layout.
-- Confirm `wkg oci pull` round-trips the component bytes and `gh attestation verify` accepts the published version.
+- Confirm `wkg oci pull` round-trips the component bytes.
 
-Exit: one exact package version is retrievable anonymously through standard OCI tooling, with verifiable provenance.
+Exit: one exact package version is retrievable anonymously through standard OCI tooling. No Actions workflow required.
 
 ### Phase C — Automatic host install
 
@@ -242,11 +251,22 @@ Exit: a clean store installs the Phase B adapter through a normal Specify comman
 
 ### Phase D — Apply to the first-party set
 
-- Publish the remaining adapters.
+- Publish the remaining adapters with the same manual Make path.
 - Align engine and adapters docs with the implemented commands.
 - Add integration coverage for source and target cold misses, local corruption, wrong-axis components, and offline reuse.
 
-Exit: every documented first-party exact pin follows the same automatic path.
+Exit: every documented first-party exact pin follows the same automatic install path. Stop here until the manual publish + pull-on-miss loop is satisfactory.
+
+### Phase E — Automate releases (next)
+
+Out of this cut's exit criteria; start only after Phases A–D are proven in daily use:
+
+- Repair the release workflow's dangling `cargo make publish` invocation; wire manual workflow dispatch to the same Make tasks.
+- Enforce no-repush in CI (manifest-existence check before push), not only in the local helper.
+- Generate SLSA build-provenance with `actions/attest-build-provenance` on each successful push (cannot be backfilled; lands here, not later).
+- Confirm `gh attestation verify` accepts published versions.
+
+Exit: an internal developer can publish via Actions with immutable tags and attestations, using the same Make tasks refined in Phase B.
 
 ## Acceptance criteria
 
@@ -260,11 +280,13 @@ Exit: every documented first-party exact pin follows the same automatic path.
 | Integrity | OCI digest mismatch, local store modification, malformed Wasm, and wrong-axis components fail closed. |
 | Offline reuse | A valid installed package resolves with the registry unavailable. |
 | Local loop | `cargo make adapter <name> && specify adapter add …` continues to support bare-name development. |
+| Native eval | `cargo make eval` / `cargo make specify` still resolve through the static catalog with no registry or store warm-up required. |
 | Fixed first-party route | Project configuration cannot redirect the `specify:` namespace, and init no longer scaffolds `.specify/wasm-pkg.toml`. |
 | One resolver | No raw-file, sibling-checkout, build-tree, or alternate download fallback remains. |
 | Digest record | Every installed store entry's sidecar records the OCI repository and resolved manifest digest. |
-| Provenance | Each published version passes `gh attestation verify` against `augentic/specify-adapters`. |
-| No-repush | A second publish of an existing version tag fails (or no-ops on identical bytes) in CI. |
+| Helper no-repush | A second local `cargo make publish` of an existing version tag fails (or no-ops on identical bytes). |
+
+Phase E (next cut) adds: CI no-repush, publish-time attestation generation, and `gh attestation verify` on published versions.
 
 ## Expected touch points
 
@@ -279,9 +301,9 @@ Exit: every documented first-party exact pin follows the same automatic path.
 
 ### `augentic/specify-adapters`
 
-- `Makefile.toml` and a small helper — restore one-adapter build/publish;
-- release workflow — repair the dangling `cargo make publish` call; manual OCI publication using `GITHUB_TOKEN`; the pre-push manifest-existence check; the attestation step (needs `id-token: write` and `attestations: write` permissions);
-- README and `AGENTS.md` — document the internal publish and local seed loops.
+- `Makefile.toml` and a small helper — restore one-adapter build/publish for local operator use;
+- README and `AGENTS.md` — document the manual GHCR publish path and the local seed loop;
+- release workflow — **Phase E only**: repair the dangling `cargo make publish` call, CI no-repush, attestation step (`id-token: write`, `attestations: write`).
 
 ## Scope boundaries
 
@@ -292,7 +314,7 @@ This RFC deliberately does **not** solve the complete public distribution proble
 - one first-party namespace;
 - one public OCI registry;
 - anonymous reads;
-- manual publication;
+- **manual** publication via local Make tasks;
 - exact SemVer pins;
 - SHA-256 integrity;
 - automatic install on a cold miss;
@@ -301,7 +323,8 @@ This RFC deliberately does **not** solve the complete public distribution proble
 
 ### Not in this cut
 
-- Sigstore/TUF infrastructure of its own, attestation **verification**, or key rotation (publish-time attestation **generation** is in — see D9 — because it cannot be backfilled);
+- GitHub Actions publish automation (workflow repair, CI no-repush, publish-time attestation generation) — [Phase E](#phase-e--automate-releases-next);
+- Sigstore/TUF infrastructure of its own, attestation **verification**, or key rotation;
 - content-addressed blob/reference storage;
 - mirrors, private registries, or registry credentials;
 - third-party namespace delegation;
@@ -321,14 +344,15 @@ This RFC deliberately does **not** solve the complete public distribution proble
 
 The internal trust assumption must be explicit: the runtime trusts that Augentic controls the configured GHCR repositories and does not overwrite released version tags. Local digest verification protects against corruption and post-install modification; it does not authenticate the publisher. Publisher authentication is required before opening the registry to third parties or treating adapters as a public execution surface.
 
-GHCR offers no registry-native tag immutability (unlike ECR or Quay), so two cheap compensating controls are in scope rather than deferred: the publish workflow refuses to re-push an existing version tag (enforced in CI, where the credentials live, not only in the local helper), and every install records the resolved OCI manifest digest in the store sidecar — the only durable link between local bytes and what the registry served, and the prerequisite for any later tag-drift detection or per-project digest pinning.
+GHCR offers no registry-native tag immutability (unlike ECR or Quay). In this cut the compensating controls are the local publish helper's refuse-to-repush check and every install recording the resolved OCI manifest digest in the store sidecar — the only durable link between local bytes and what the registry served, and the prerequisite for any later tag-drift detection or per-project digest pinning. CI-enforced no-repush and publish-time attestations land in Phase E once the manual path is proven (wasmCloud applies the same immutable-tag + attestation pattern to its first-party GHCR packages).
 
 ### Explicitly deferred hardening
 
 Before external publishers or a broad public audience, revisit:
 
-- attestation and publisher identity **verification** (generation lands with D9; only checking is deferred);
-- registry-native immutable-tag enforcement (GHCR has none; the CI no-repush check and recorded manifest digests are the compensating controls);
+- GitHub Actions publish automation — Phase E (workflow, CI no-repush, attestation **generation**; generation cannot be backfilled, so do not slip it past the first automated publish);
+- attestation and publisher identity **verification** (generation lands with Phase E; only checking waits for third-party hardening);
+- registry-native immutable-tag enforcement (GHCR has none; helper no-repush now, CI no-repush in Phase E, plus recorded manifest digests);
 - per-project digest pinning — trust-on-first-use over the manifest digests the sidecar now records;
 - content-addressed blob storage and package receipts;
 - concurrent-install locking and crash recovery beyond the existing atomic writer;
@@ -354,6 +378,6 @@ These are expected follow-ons, not hidden requirements for the internal cut.
 
 ## Review ask
 
-Confirm the deliberately narrow D1–D9 cut: internal source install, one public first-party GHCR mapping, manual publication with CI-enforced no-repush and publish-time attestations, exact pins, launcher pull-on-miss with mandatory manifest-digest recording, and the existing store. Attestation verification, digest pinning, CAS, public installers, third-party trust, and independent release sophistication should remain follow-up work until the internal loop produces evidence that they are needed.
+Confirm the deliberately narrow D1–D9 cut: internal source install, one public first-party GHCR mapping, **manual** publication via Make tasks, exact pins, launcher pull-on-miss with mandatory manifest-digest recording, and the existing store. GitHub Actions publish automation (CI no-repush, attestations) is Phase E — start only after Phases A–D are satisfactory. Attestation verification, digest pinning, CAS, public installers, third-party trust, and independent release sophistication remain later still.
 
 Related: [RFC-70](rfc-70-deployment.md) · [RFC-71](rfc-71-discovery.md) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [RFC-75](archive/rfc-75-artifact-locations.md) (archive, locations).
