@@ -132,7 +132,7 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
 ## Install
 
 ```bash
-cargo install --git https://github.com/augentic/specify
+cargo install --git https://github.com/augentic/specify --locked
 ```
 
 Or download a platform archive (verify against its `.sha256` companion) from the GitHub Releases page.

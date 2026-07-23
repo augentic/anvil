@@ -31,6 +31,25 @@ mod resolve {
     }
 
     #[tokio::test]
+    async fn wrong_axis_fails_at_dispatch() {
+        // The store carries no axis segment, so a component bound on
+        // the wrong axis fails at the dispatch seam: no deployed
+        // guest exports the requested `<axis>:<name>` id, the
+        // metadata dispatch errors, and the resolve aborts.
+        let project = Provider::bare();
+        let err = run::<project::adapter::handlers::SourceResolve, _, _>(
+            &project,
+            project::adapter::handlers::ResolveInput {
+                value: "specify:demo-target@1.2.0".to_string(),
+                project_dir: None,
+            },
+        )
+        .await
+        .expect_err("wrong-axis dispatch must fail");
+        assert_eq!(err.core().variant_str(), "adapter-metadata-failed");
+    }
+
+    #[tokio::test]
     async fn bare_cache_identity() {
         // A bare name resolves the seeded project component cache and
         // carries no package identity: the envelope omits `version`

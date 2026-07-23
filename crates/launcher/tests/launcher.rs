@@ -1,19 +1,25 @@
 //! Launcher integration coverage over the public [`launcher::Policy`]
 //! assembly and the guest resolver's typed kernel: argv-anchored
 //! mounts (including the `adapter add` seed preopen), adapter
-//! verify-and-load, and fail-closed store verification.
+//! resolution with the package-pin pull-on-miss install leg, and
+//! fail-closed store verification.
 //!
-//! No download path exists anywhere in this crate: the engine guest is
-//! embedded in the binary and every adapter identity is hydrated by
-//! the engine guest's own ensure legs — the resolver only verifies and
-//! loads. Every test injects explicit [`Locations`] rooted in a
-//! tempdir through `Policy::new` — the same explicit-layout seam
-//! sandboxes use — so no process environment is read or mutated.
+//! The launcher is the only downloader in the deployment: a pinned
+//! store miss installs from an OCI registry (tests compose an
+//! in-process read-only registry through `Registry::insecure`; the
+//! shipped binary hard-codes the first-party GHCR base), while
+//! unpinned ids stay verify-and-load over the seeded project cache.
+//! Every test injects explicit [`Locations`] rooted in a tempdir
+//! through `Policy::new` — the same explicit-layout seam sandboxes
+//! use — so no process environment is read or mutated.
+
+mod registry;
 
 use std::path::PathBuf;
 
-use launcher::{Policy, Resolver};
-use project::handler::{CachePlacement, Locations};
+use launcher::{Policy, Registry, Resolver};
+use project::handler::{CachePlacement, ExecutionPaths, Locations};
+use registry::TestRegistry;
 
 /// One sandboxed invocation context: a project directory plus explicit
 /// store and cache roots, all inside one tempdir.
@@ -47,9 +53,8 @@ impl Sandbox {
     /// single bare-name probe under the carried cache placement (what
     /// `specify adapter add` leaves behind).
     fn seed_cached_component(&self, name: &str) -> PathBuf {
-        let components = project::handler::ExecutionPaths::new(&self.root, self.locations.clone())
-            .cache_dir()
-            .join("components");
+        let components =
+            ExecutionPaths::new(&self.root, self.locations.clone()).cache_dir().join("components");
         std::fs::create_dir_all(&components).expect("mkdir component cache");
         let path = components.join(format!("{name}.wasm"));
         std::fs::write(&path, format!("{name} cached component")).expect("write cached component");
@@ -57,7 +62,7 @@ impl Sandbox {
     }
 
     /// Install a pinned adapter into the sandbox store with a valid
-    /// digest sidecar — the state the engine guest's ensure legs leave
+    /// digest sidecar — the state a prior pull-on-miss install leaves
     /// behind.
     fn seed_store_adapter(&self, name: &str, version: &str) -> Vec<u8> {
         let bytes = format!("{name} {version} store bytes").into_bytes();
@@ -74,9 +79,22 @@ impl Sandbox {
     }
 
     /// The deployment's resolver, assembled the way the binary does
-    /// it.
+    /// it (first-party registry base — safe for tests that never hit
+    /// a pinned store miss).
     fn resolver(&self) -> Resolver {
         self.policy(&["plan", "status"]).resolver()
+    }
+
+    /// A resolver over an explicit registry base — the pull-on-miss
+    /// integration seam.
+    fn resolver_over(&self, registry: Registry) -> Resolver {
+        Resolver::with_registry(ExecutionPaths::new(&self.root, self.locations.clone()), registry)
+    }
+
+    /// A resolver whose registry base refuses connections — the
+    /// deterministic offline stand-in.
+    fn offline_resolver(&self) -> Resolver {
+        self.resolver_over(Registry::insecure("127.0.0.1:1/adapters"))
     }
 }
 
@@ -101,11 +119,10 @@ fn mounts_are_the_well_known_locations() {
     let policy = sandbox.policy(&["registry", "validate"]);
 
     assert_eq!(policy.project_root(), sandbox.root);
-    assert_eq!(policy.store_dir(), sandbox.store);
     // The writable mount directories are created pre-run so the
-    // guest's preopens exist.
+    // guest's preopens exist. The global store gets no guest mount —
+    // it is host-owned (the install leg creates it on demand).
     assert!(policy.cache_dir().is_dir());
-    assert!(policy.store_dir().is_dir());
     // No seed in argv: the seed preopen degenerates to a harmless
     // read-only duplicate of the project mount.
     assert_eq!(policy.seed_dir(), sandbox.root);
@@ -201,75 +218,83 @@ fn missing_seed_directory_degenerates_to_the_project_root() {
 }
 
 // ---------------------------------------------------------------------------
-// Adapter legs: verify-and-load only — no download path exists.
+// Adapter legs: store hits and cache-backed ids are verify-and-load;
+// pinned store misses go through the pull-on-miss install leg.
 
-#[test]
-fn store_adapter_verify_and_load() {
+#[tokio::test]
+async fn store_adapter_verify_and_load() {
     let sandbox = Sandbox::new();
     let expected = sandbox.seed_store_adapter("mock", "1.0.0");
 
     let bytes = sandbox
         .resolver()
         .resolve_component("target:mock@1.0.0")
+        .await
         .expect("store adapter resolves offline");
     assert_eq!(bytes, expected);
 }
 
-#[test]
-fn adapter_store_miss_is_a_hard_failure() {
-    // The adapters are hydrated by the engine guest's ensure legs
-    // before any dispatch can miss; a resolve-time miss is the
-    // fail-closed backstop, never a second download path — even for a
-    // pinned identity a registry could serve.
+#[tokio::test]
+async fn cold_pinned_miss_offline_is_a_hard_failure() {
+    // A pinned store miss triggers the install leg; without a
+    // reachable registry it fails deterministically, naming the
+    // package identity and the OCI reference.
     let sandbox = Sandbox::new();
     let err = sandbox
-        .resolver()
+        .offline_resolver()
         .resolve_component("target:mock@9.9.9")
-        .expect_err("unprovisioned pin fails deterministically");
-    assert_eq!(code(&err), "adapter-not-found");
+        .await
+        .expect_err("an offline cold miss fails deterministically");
+    assert_eq!(code(&err), "adapter-install-failed");
+    let detail = err.to_string();
+    assert!(detail.contains("specify:mock@9.9.9"), "{detail}");
+    assert!(detail.contains("mock:9.9.9"), "names the OCI reference: {detail}");
 }
 
-#[test]
-fn simultaneous_versions_resolve_distinctly() {
+#[tokio::test]
+async fn simultaneous_versions_resolve_distinctly() {
     let sandbox = Sandbox::new();
     let one = sandbox.seed_store_adapter("mock", "1.0.0");
     let two = sandbox.seed_store_adapter("mock", "2.0.0");
     assert_ne!(one, two);
 
     let resolver = sandbox.resolver();
-    assert_eq!(resolver.resolve_component("target:mock@1.0.0").expect("v1"), one);
-    assert_eq!(resolver.resolve_component("target:mock@2.0.0").expect("v2"), two);
+    assert_eq!(resolver.resolve_component("target:mock@1.0.0").await.expect("v1"), one);
+    assert_eq!(resolver.resolve_component("target:mock@2.0.0").await.expect("v2"), two);
 }
 
-#[test]
-fn cache_backed_ids_resolve_the_project_cache() {
+#[tokio::test]
+async fn cache_backed_ids_resolve_the_project_cache() {
     let sandbox = Sandbox::new();
     let target = sandbox.seed_cached_component("mock");
     let source = sandbox.seed_cached_component("mock-source");
 
     let resolver = sandbox.resolver();
     assert_eq!(
-        resolver.resolve_component("target:mock").expect("cached target"),
+        resolver.resolve_component("target:mock").await.expect("cached target"),
         std::fs::read(&target).expect("read cached target")
     );
     assert_eq!(
-        resolver.resolve_component("source:mock-source").expect("cached source"),
+        resolver.resolve_component("source:mock-source").await.expect("cached source"),
         std::fs::read(&source).expect("read cached source")
     );
 }
 
-#[test]
-fn cache_miss_is_a_hard_failure() {
+#[tokio::test]
+async fn cache_miss_is_a_hard_failure() {
+    // Unpinned ids stay verify-and-load: no install leg exists for
+    // the project component cache.
     let sandbox = Sandbox::new();
     let err = sandbox
         .resolver()
         .resolve_component("target:mock")
+        .await
         .expect_err("empty cache fails deterministically");
     assert_eq!(code(&err), "adapter-not-found");
 }
 
-#[test]
-fn adapter_missing_sidecar_is_refused() {
+#[tokio::test]
+async fn adapter_missing_sidecar_is_refused() {
     let sandbox = Sandbox::new();
     std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"mock without provenance")
         .expect("write unverifiable adapter entry");
@@ -277,12 +302,13 @@ fn adapter_missing_sidecar_is_refused() {
     let err = sandbox
         .resolver()
         .resolve_component("target:mock@1.0.0")
+        .await
         .expect_err("sidecar-less store entry");
     assert_eq!(code(&err), "adapter-sidecar-missing");
 }
 
-#[test]
-fn adapter_digest_drift_is_refused() {
+#[tokio::test]
+async fn adapter_digest_drift_is_refused() {
     let sandbox = Sandbox::new();
     sandbox.seed_store_adapter("mock", "1.0.0");
     std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"tampered adapter bytes")
@@ -291,31 +317,138 @@ fn adapter_digest_drift_is_refused() {
     let err = sandbox
         .resolver()
         .resolve_component("target:mock@1.0.0")
+        .await
         .expect_err("tampered store entry");
     assert_eq!(code(&err), "adapter-digest-mismatch");
 }
 
-#[test]
-fn engine_identities_are_not_resolvable() {
+#[tokio::test]
+async fn engine_identities_are_not_resolvable() {
     // The engine guest is embedded and registered statically at boot;
     // its package identity never reaches the resolver, and asking for
-    // it fails like any other unprovisioned identity.
+    // it fails like any other identity outside the routed grammar.
     let sandbox = Sandbox::new();
     let err = sandbox
         .resolver()
         .resolve_component(&format!("specify:engine@{}", env!("CARGO_PKG_VERSION")))
+        .await
         .expect_err("no engine leg exists");
     assert_eq!(code(&err), "adapter-routed-id-malformed");
 }
 
-#[test]
-fn malformed_ids_fail_deterministically() {
+#[tokio::test]
+async fn malformed_ids_fail_deterministically() {
     let sandbox = Sandbox::new();
     sandbox.seed_cached_component("mock");
     let resolver = sandbox.resolver();
 
     for malformed in ["mock", "widget:mock", "target:", "target:mock@not-semver"] {
-        let err = resolver.resolve_component(malformed).expect_err("outside the routed grammar");
+        let err =
+            resolver.resolve_component(malformed).await.expect_err("outside the routed grammar");
         assert_eq!(code(&err), "adapter-routed-id-malformed", "{malformed}");
     }
+}
+
+// ---------------------------------------------------------------------------
+// Pull-on-miss install over the in-process OCI registry: cold misses
+// on both axes, provenance recording, offline reuse, and artifact
+// validation.
+
+/// A syntactically valid component payload (wasm magic + filler).
+fn component_bytes(tag: &str) -> Vec<u8> {
+    let mut bytes = b"\0asm".to_vec();
+    bytes.extend_from_slice(tag.as_bytes());
+    bytes
+}
+
+#[tokio::test]
+async fn cold_miss_installs_and_records_provenance() {
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    let expected = component_bytes("mock 1.0.0");
+    let manifest_digest = server.publish("mock", "1.0.0", expected.clone());
+
+    let resolver = sandbox.resolver_over(server.registry());
+    let bytes = resolver
+        .resolve_component("target:mock@1.0.0")
+        .await
+        .expect("cold pinned miss installs from the registry");
+    assert_eq!(bytes, expected);
+
+    // The install lands as the immutable store entry plus a sidecar
+    // recording the tree digest and the OCI provenance.
+    let entry = sandbox.store.join("mock@1.0.0.wasm");
+    assert_eq!(std::fs::read(&entry).expect("installed entry"), expected);
+    let meta = sandbox.store.join("mock@1.0.0.meta");
+    assert_eq!(
+        diagnostics::cache::read_store_meta(&meta).as_deref(),
+        Some(diagnostics::cache::file_content_digest(&entry).as_str()),
+    );
+    let provenance =
+        diagnostics::cache::read_store_provenance(&meta).expect("recorded OCI provenance");
+    assert_eq!(provenance.repository, format!("{}/mock", server.prefix()));
+    assert_eq!(provenance.manifest_digest, manifest_digest);
+    assert_eq!(
+        provenance.layer_digest,
+        format!("sha256:{}", diagnostics::digest::sha256_hex(&expected)),
+    );
+}
+
+#[tokio::test]
+async fn both_axes_install_from_one_store() {
+    // The store carries no axis segment: a source pin and a target
+    // pin install through the identical leg.
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    let source = component_bytes("intent source");
+    let target = component_bytes("omnia target");
+    server.publish("intent", "0.5.0", source.clone());
+    server.publish("omnia", "0.5.0", target.clone());
+
+    let resolver = sandbox.resolver_over(server.registry());
+    assert_eq!(
+        resolver.resolve_component("source:intent@0.5.0").await.expect("source cold miss"),
+        source
+    );
+    assert_eq!(
+        resolver.resolve_component("target:omnia@0.5.0").await.expect("target cold miss"),
+        target
+    );
+}
+
+#[tokio::test]
+async fn installed_pin_reuses_offline() {
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    let expected = component_bytes("mock 1.0.0");
+    server.publish("mock", "1.0.0", expected.clone());
+
+    let resolver = sandbox.resolver_over(server.registry());
+    resolver.resolve_component("target:mock@1.0.0").await.expect("cold miss installs");
+
+    // Registry gone: the installed entry keeps resolving offline.
+    drop(server);
+    let bytes = resolver
+        .resolve_component("target:mock@1.0.0")
+        .await
+        .expect("second resolve is a store hit, no network");
+    assert_eq!(bytes, expected);
+}
+
+#[tokio::test]
+async fn non_wasm_artifact_is_refused() {
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    server.publish("mock", "1.0.0", b"#!/bin/sh\necho gotcha".to_vec());
+
+    let err = sandbox
+        .resolver_over(server.registry())
+        .resolve_component("target:mock@1.0.0")
+        .await
+        .expect_err("a non-wasm layer is refused");
+    assert_eq!(code(&err), "adapter-install-invalid");
+    assert!(
+        !sandbox.store.join("mock@1.0.0.wasm").exists(),
+        "nothing lands in the store on a refused install"
+    );
 }

@@ -10,19 +10,18 @@ mod workspace;
 
 use std::path::{Path, PathBuf};
 
-use artifacts::atomic::bytes_write;
 use context::Skip;
 use error::Error;
 
 use crate::adapter::{AdapterSelector, PlatformsSurface, ResolvedTarget};
-use crate::config::Layout;
 use crate::handler::ExecutionPaths;
 use crate::platform::Platform;
 
 /// The adapter binding an init run ensured ahead of the scaffold: the
 /// operator's selector as typed plus the deployment's resolved
-/// identity. Provisioning (hydration, mirroring) already happened
-/// through [`crate::adapter::Resolver::ensure_target`].
+/// identity. Provisioning (mirroring; host-owned package install)
+/// already happened through
+/// [`crate::adapter::Resolver::ensure_target`].
 #[derive(Debug, Clone)]
 pub(crate) struct EnsuredAdapter {
     /// The selector as parsed from the `<adapter>` argument (fresh
@@ -85,11 +84,6 @@ pub(crate) struct InitResult {
     pub directories_created: Vec<PathBuf>,
     pub scaffolded_rule_keys: Vec<String>,
     pub specify_version: String,
-    /// `true` when this run wrote `.specify/wasm-pkg.toml` for the
-    /// first time; `false` when an operator-edited file was preserved.
-    /// Lets the JSON envelope distinguish a fresh scaffold from a
-    /// re-init that left registry config intact.
-    pub wasm_pkg_config_written: bool,
     /// Why init-time context generation was skipped; `None` when this
     /// run generated root `AGENTS.md` and `.specify/context.lock`.
     pub context_skip_reason: Option<Skip>,
@@ -152,43 +146,6 @@ pub(crate) fn resolve_version() -> String {
 
 pub(crate) fn upsert_gitignore(project_dir: &Path) -> Result<(), Error> {
     crate::registry::ensure_gitignore(project_dir)
-}
-
-/// Filename of the project-local wasm-pkg config inside `.specify/`.
-pub(crate) const WASM_PKG_CONFIG_FILENAME: &str = "wasm-pkg.toml";
-
-/// Canonical contents `specify init` writes for a fresh project.
-///
-/// Mirrors the wasm-pkg distribution model so `wkg --config
-/// .specify/wasm-pkg.toml` and any future in-guest fetch leg agree on
-/// namespace routing.
-const DEFAULT_WASM_PKG_CONFIG: &str = "default_registry = \"augentic.io\"\n\
-                                       \n\
-                                       [namespace_registries]\n\
-                                       specify = \"augentic.io\"\n";
-
-/// Scaffold the project-local wasm-pkg config when absent, preserving
-/// any operator-edited file byte-for-byte on re-init.
-///
-/// The contents are the canonical wasm-pkg namespace mapping
-/// (`specify -> augentic.io`). Operators are expected
-/// to edit this file to add private mirrors or other namespace
-/// mappings, so a re-init must never clobber their changes.
-///
-/// Returns `Ok(true)` when this call wrote the file, `Ok(false)` when
-/// it already existed.
-///
-/// # Errors
-///
-/// Propagates filesystem errors from creating `.specify/` or writing
-/// the file.
-pub(crate) fn scaffold_wasm_pkg_config(layout: &Layout<'_>) -> Result<bool, Error> {
-    let path = layout.specify_dir().join(WASM_PKG_CONFIG_FILENAME);
-    if path.exists() {
-        return Ok(false);
-    }
-    bytes_write(&path, DEFAULT_WASM_PKG_CONFIG.as_bytes())?;
-    Ok(true)
 }
 
 /// Validate the operator's `--platforms` set against the target's

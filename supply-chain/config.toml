@@ -166,6 +166,14 @@ criteria = "safe-to-deploy"
 version = "0.10.2"
 criteria = "safe-to-deploy"
 
+[[exemptions.const_format]]
+version = "0.2.36"
+criteria = "safe-to-deploy"
+
+[[exemptions.const_format_proc_macros]]
+version = "0.2.34"
+criteria = "safe-to-deploy"
+
 [[exemptions.core-foundation]]
 version = "0.10.1"
 criteria = "safe-to-deploy"
@@ -211,11 +219,19 @@ version = "0.13.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.darling]]
+version = "0.20.11"
+criteria = "safe-to-deploy"
+
+[[exemptions.darling]]
 version = "0.23.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.darling_core]]
 version = "0.13.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.darling_core]]
+version = "0.20.11"
 criteria = "safe-to-deploy"
 
 [[exemptions.darling_core]]
@@ -248,6 +264,18 @@ criteria = "safe-to-deploy"
 
 [[exemptions.defmt-parser]]
 version = "1.0.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.derive_builder]]
+version = "0.20.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.derive_builder_core]]
+version = "0.20.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.derive_builder_macro]]
+version = "0.20.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.digest]]
@@ -362,6 +390,10 @@ criteria = "safe-to-deploy"
 version = "0.4.3"
 criteria = "safe-to-deploy"
 
+[[exemptions.getset]]
+version = "0.1.7"
+criteria = "safe-to-deploy"
+
 [[exemptions.gimli]]
 version = "0.33.0"
 criteria = "safe-to-deploy"
@@ -384,6 +416,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.hashlink]]
 version = "0.12.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.http-auth]]
+version = "0.1.10"
 criteria = "safe-to-deploy"
 
 [[exemptions.http-body]]
@@ -526,6 +562,18 @@ criteria = "safe-to-deploy"
 version = "0.48.5"
 criteria = "safe-to-deploy"
 
+[[exemptions.jsonwebtoken]]
+version = "10.4.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.konst]]
+version = "0.2.20"
+criteria = "safe-to-deploy"
+
+[[exemptions.konst_macro_rules]]
+version = "0.2.19"
+criteria = "safe-to-deploy"
+
 [[exemptions.leb128]]
 version = "0.2.7"
 criteria = "safe-to-deploy"
@@ -608,6 +656,22 @@ criteria = "safe-to-deploy"
 
 [[exemptions.object]]
 version = "0.39.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.oci-client]]
+version = "0.17.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.oci-spec]]
+version = "0.9.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.oci-wasm]]
+version = "0.6.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.olpc-cjson]]
+version = "0.1.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.once_cell]]
@@ -1034,6 +1098,10 @@ criteria = "safe-to-deploy"
 version = "1.20.1"
 criteria = "safe-to-deploy"
 
+[[exemptions.unicase]]
+version = "2.9.0"
+criteria = "safe-to-deploy"
+
 [[exemptions.unicode-general-category]]
 version = "1.1.0"
 criteria = "safe-to-deploy"
@@ -1094,6 +1162,10 @@ criteria = "safe-to-deploy"
 version = "0.2.126"
 criteria = "safe-to-deploy"
 
+[[exemptions.wasm-streams]]
+version = "0.5.0"
+criteria = "safe-to-deploy"
+
 [[exemptions.wasm-tokio]]
 version = "0.6.1"
 criteria = "safe-to-deploy"
@@ -1152,6 +1224,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.zeroize]]
 version = "1.9.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.zeroize_derive]]
+version = "1.5.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.zerotrie]]

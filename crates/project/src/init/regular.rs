@@ -10,8 +10,7 @@ use error::Error;
 use crate::adapter::{AdapterSelector, ComponentMeta};
 use crate::config::{Layout, ProjectConfig};
 use crate::init::{
-    InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
-    upsert_gitignore, validate_platforms,
+    InitOptions, InitResult, resolve_version, resolved_name, upsert_gitignore, validate_platforms,
 };
 
 /// canonical refine-time artifact set. Hardcoded — refine synthesises
@@ -93,8 +92,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let serialised = serde_saphyr::to_string(&cfg)?;
     fs::write(&config_path, serialised)?;
 
-    let wasm_pkg_config_written = scaffold_wasm_pkg_config(&layout)?;
-
     upsert_gitignore(opts.project_dir)?;
 
     let cache_present = ComponentMeta::path(opts.paths, &adapter_name).exists();
@@ -106,7 +103,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         directories_created,
         scaffolded_rule_keys,
         specify_version,
-        wasm_pkg_config_written,
         context_skip_reason: None,
     })
 }

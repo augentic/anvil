@@ -20,7 +20,7 @@ cargo build --release --locked --lib -p specify --target wasm32-wasip2
 cargo build --release --locked --bin specify
 ```
 
-   The root `build.rs` resolves `SPECIFY_WASM` — an explicit environment override wins, else it probes `target/wasm32-wasip2/release/specify.wasm` — and `src/omnia.rs` embeds the bytes with `include_bytes!`, so the shipped binary carries its own engine (no first-launch hydration, no network). The workflow guards against the compile-passing empty placeholder with a `test -s` on the wasm build product. Supported targets:
+   The root `build.rs` resolves `SPECIFY_WASM` — an explicit environment override wins (the workflow points it at the prebuilt engine; a relative value anchors at the workspace root, so it resolves inside the `cross` container too), else `build.rs` spawns its own child `cargo build --lib --target wasm32-wasip2` into an isolated target directory — and `src/omnia.rs` embeds the bytes with `include_bytes!`, so the shipped binary carries its own engine (no first-launch download, no network). There is no placeholder fallback: an empty or missing component fails the build. The workflow additionally guards the wasm build product with `test -s`. Supported targets:
    - `x86_64-unknown-linux-gnu` on `ubuntu-latest` (native `cargo build`).
    - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
    - `x86_64-apple-darwin` on `macos-13` (native).
@@ -49,19 +49,17 @@ wkg publish target/wasm32-wasip2/release/specify.wasm \
 
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/specify-adapters` and are published as immutable registry artifacts (`specify:<name>@<version>`) over the same wasm-pkg transport. The `specify` binary resolves them from the global adapter store; operators only need the runtime binary.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/specify-adapters` and are published manually as standard Wasm OCI artifacts to GHCR (`ghcr.io/augentic/specify-adapters/<name>:<version>`, via that repo's `cargo make publish <name>`). The `specify` binary resolves a pin (`specify:<name>@<version>`) from the global adapter store and installs a miss automatically from that fixed GHCR mapping (pull-on-miss); operators only need the runtime binary.
 
 ## Installing a release
 
 Two supported install paths:
 
 - **GitHub Release archives.** Download the archive for your platform from the GitHub Release page, verify it against the companion `.sha256` file, and place the `specify` binary on your `PATH`.
-- **Source builds** for Rust-native developers: build the embedded engine first, then install the binary from the same checkout — `cargo install` alone would embed the compile-passing empty placeholder, because the wasm32 engine is a separate build product.
+- **Source builds** for Rust-native developers: one command — `build.rs` builds and embeds the wasm32 engine itself (requires the `wasm32-wasip2` target; the build fails with the `rustup target add wasm32-wasip2` instruction when it is missing).
 
 ```bash
-git clone --branch <tag> https://github.com/augentic/specify && cd specify
-cargo build --release --locked --lib -p specify --target wasm32-wasip2
-cargo install --locked --path .
+cargo install --git https://github.com/augentic/specify --tag <tag> --locked
 ```
 
 A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.

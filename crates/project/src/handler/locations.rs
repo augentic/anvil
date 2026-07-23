@@ -24,18 +24,14 @@ use std::path::{Path, PathBuf};
 /// in-guest.
 pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
 
-/// Guest-visible preopen name of the global adapter store inside the
-/// engine guest's WASI sandbox.
+/// Nominal store root inside the engine guest's layout.
 ///
-/// The generated deployment manifest mounts the host's
-/// [`Locations::store_root`] under this name **writable**: forwarded
-/// workflow verbs resolve pinned identities in-guest (store probe,
-/// verify-on-read against the `.meta` sidecar), and `specify init`
-/// hydration installs a missing pin through the same mount (fetch over
-/// the provider's `Resolver::ensure_*` leg, write entry + digest
-/// sidecar, verify-after-write). Installed entries themselves remain
-/// immutable — hydration only ever creates absent `(name, version)`
-/// files.
+/// The global adapter store is host-owned and gets **no** guest
+/// mount: package pins dispatch by routed id, the host resolver
+/// installs a missing pin during that dispatch (pull-on-miss), and
+/// the guest never opens a store file. The constant survives as the
+/// guest's nominal [`Locations::store_root`] — pure path math feeding
+/// origin display, never I/O.
 pub const GUEST_STORE_MOUNT: &str = "/specify-store";
 
 /// How the cache root carried by [`Locations`] is interpreted.
@@ -91,9 +87,10 @@ impl Locations {
         Self { store_root, cache }
     }
 
-    /// The engine guest's layout: the two writable preopens the
-    /// deployment manifest grants — no environment, no project-id
-    /// suffix below the cache mount.
+    /// The engine guest's layout: the writable cache preopen the
+    /// deployment manifest grants plus the nominal (never-opened)
+    /// store root — no environment, no project-id suffix below the
+    /// cache mount.
     #[must_use]
     pub fn guest() -> Self {
         Self::explicit(
@@ -102,7 +99,8 @@ impl Locations {
         )
     }
 
-    /// Global store root used for hydration and the launcher mount.
+    /// Global store root — host-side installs and verify-and-load;
+    /// origin display in-guest.
     #[must_use]
     pub fn store_root(&self) -> &Path {
         &self.store_root

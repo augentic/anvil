@@ -353,15 +353,15 @@ pub fn cache_staleness(
 /// not at the deployment root would pass topology derivation and then
 /// fail at dispatch — surface it here instead.
 ///
-/// Package pins are exempt: the engine's ensure legs hydrate a store
-/// miss before dispatch, so a pin is always reachable by id.
+/// Package pins are exempt: the host resolver installs a store miss
+/// during dispatch (pull-on-miss), so a pin is always reachable by id.
 fn slot_binding_unresolvable(
     resolver: &impl Resolver, registry_name: &str, config: &ProjectConfig, paths: &ExecutionPaths,
 ) -> Option<Diagnostic> {
     let value = config.adapter.as_deref()?;
     let selector = match AdapterSelector::parse(value) {
-        // An exact pin is hydratable by id; an unparseable value has
-        // already failed topology derivation.
+        // An exact pin installs by id at dispatch; an unparseable
+        // value has already failed topology derivation.
         Ok(AdapterSelector::Package { .. }) | Err(_) => return None,
         Ok(selector) => selector,
     };

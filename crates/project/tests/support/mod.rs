@@ -1,9 +1,9 @@
 //! Suite-local provider and helpers for the resolver / install /
 //! store suites: the shipped `resolver::Component` behind a
-//! deterministic metadata runner and a file-backed ensure fetch. The
-//! store root and project cache are isolated inside the provider's
-//! tempdir through carried explicit [`Locations`] — no process
-//! environment is read or mutated.
+//! deterministic metadata runner. The store root and project cache
+//! are isolated inside the provider's tempdir through carried
+//! explicit [`Locations`] — no process environment is read or
+//! mutated.
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
@@ -112,28 +112,19 @@ impl Resolver for Provider {
         Resolver::resolve_target(&resolver(), selector, paths)
     }
 
-    // The component-deployment ensure kernels over a file-backed
-    // registry: a test stages the expected component bytes at
-    // `<root>/hydrator/<name>@<version>.wasm` and the fetch serves
-    // them; an unstaged URL refuses, standing in for a fetch failure.
+    // The component-deployment ensure kernels: local-component
+    // mirroring only — package installation is host-owned and out of
+    // reach here, so a package pin ensures without any store write.
     async fn ensure_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
-        project::adapter::ensure::source(stub_metadata, selector, paths, test_now(), |url| {
-            let response = staged_fetch(&self.root, &url);
-            async move { response }
-        })
-        .await
+        project::adapter::ensure::source(stub_metadata, selector, paths, test_now())
     }
 
     async fn ensure_target(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
-        project::adapter::ensure::target(stub_metadata, selector, paths, test_now(), |url| {
-            let response = staged_fetch(&self.root, &url);
-            async move { response }
-        })
-        .await
+        project::adapter::ensure::target(stub_metadata, selector, paths, test_now())
     }
 }
 
@@ -142,19 +133,18 @@ const fn test_now() -> jiff::Timestamp {
     jiff::Timestamp::UNIX_EPOCH
 }
 
-/// Serve staged registry bytes from `<root>/hydrator/<entry>`.
-fn staged_fetch(root: &Path, url: &str) -> Result<Vec<u8>, Error> {
-    let entry = url.rsplit('/').next().unwrap_or_default();
-    let staged = root.join("hydrator").join(entry);
-    std::fs::read(&staged).map_err(|err| Error::Diag {
-        code: "http-fetch",
-        detail: format!("no staged registry response for {url}: {err}"),
-    })
-}
-
 /// The deterministic metadata runner behind [`resolver`], as a plain
 /// `fn` for the ensure kernels.
 fn stub_metadata(request: &project::adapter::metadata::Request<'_>) -> Result<Metadata, Error> {
+    // The target-only fixture exports no source world: dispatching it
+    // on the source axis reproduces the dispatch-seam failure a
+    // wrong-axis binding hits (no deployed guest answers the id).
+    if request.adapter_id.starts_with("source:demo-target") {
+        return Err(Error::Diag {
+            code: "adapter-metadata-failed",
+            detail: format!("no deployed guest exports `{}`", request.adapter_id),
+        });
+    }
     serde_json::from_str(&metadata_json(request.adapter_id)).map_err(|err| Error::Diag {
         code: "adapter-metadata-failed",
         detail: format!("mock metadata parse {}: {err}", request.adapter_id),

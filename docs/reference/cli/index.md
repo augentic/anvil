@@ -7,7 +7,7 @@ The `specify` CLI is the foundation every skill builds on. It owns all determini
 When setting up a project through the Specify plugin, `/spec:init` can bootstrap a missing CLI after confirmation. For manual setup:
 
 ```bash
-cargo install --git https://github.com/augentic/specify
+cargo install --git https://github.com/augentic/specify --locked
 ```
 
 or download a platform archive (with `.sha256` verification) from the GitHub Releases page. See [Prerequisites](../../orientation/prerequisites.md) for all install paths and adapter-specific tooling.

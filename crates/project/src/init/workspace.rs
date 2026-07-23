@@ -9,10 +9,7 @@ use std::path::PathBuf;
 use error::Error;
 
 use crate::config::{Layout, ProjectConfig};
-use crate::init::{
-    InitOptions, InitResult, resolve_version, resolved_name, scaffold_wasm_pkg_config,
-    upsert_gitignore,
-};
+use crate::init::{InitOptions, InitResult, resolve_version, resolved_name, upsert_gitignore};
 use crate::name::is_kebab;
 use crate::registry::Registry;
 
@@ -92,8 +89,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let serialised = serde_saphyr::to_string(&cfg)?;
     fs::write(&config_path, serialised)?;
 
-    let wasm_pkg_config_written = scaffold_wasm_pkg_config(&layout)?;
-
     let registry = Registry {
         version: 1,
         projects: Vec::new(),
@@ -113,7 +108,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         directories_created,
         scaffolded_rule_keys: Vec::new(),
         specify_version,
-        wasm_pkg_config_written,
         context_skip_reason: None,
     })
 }
