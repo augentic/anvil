@@ -197,7 +197,7 @@ slice = { path = "crates/slice" }
 transport = { path = "crates/transport" }
 
 omnia = "0.35.0"
-omnia-cursor = "0.28.0"
+omnia-cursor = "0.29.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
@@ -207,9 +207,8 @@ omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
-omnia-cursor = { git = "https://github.com/augentic/backends.git" }
-
 omnia = { git = "https://github.com/augentic/omnia.git" }
+omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { git = "https://github.com/augentic/omnia.git" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
@@ -228,8 +227,9 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
-wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
-wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc" }
+# Last wrpc rev on wasmtime 46 (omnia is still on 46.0.1).
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc", rev = "5a92c5c29e47d918ff15fb76455427fbcbddd423" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc", rev = "5a92c5c29e47d918ff15fb76455427fbcbddd423" }
 
 [profile.release]
 lto = true

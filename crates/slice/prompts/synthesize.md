@@ -6,10 +6,69 @@ You are the Specify slice-time synthesis step. The user message carries a `kind:
 
 ## Response contract
 
-- For each requirement: the contributing `(source, id, kind)` claims, an `agreement` verdict when more than one claim contributes, and prose (`title`, `statement`, `scenarios`, `notes`, `domain`). Set `baseline-id` when refining an existing baseline requirement in a modified domain; omit it for net-new behaviour.
+- For each requirement: the contributing `(source, id, kind)` claims, an `agreement` verdict when more than one claim contributes, and prose (`title`, `statement`, `scenarios`, `notes`, `domain`). Every requirement **must** include ≥1 non-empty `scenarios[]` entry — including evidence-gap / `[unknown]` requirements. Set `baseline-id` when refining an existing baseline requirement in a modified domain; omit it for net-new behaviour.
 - Read `baseline[]` and synthesise against existing requirements — extend or refine them rather than re-deriving overlapping behaviour from scratch.
 - Author the prose-only `proposal.md` / `design.md` / `tasks.md` bodies and per-`domain` spec bodies **without** `ID:` / `Sources:` / `Status:` lines — the kernel injects those on projection.
 - Optionally author structured `decisions[]` entries when the slice sets a durable design decision — see the Decision Records reference below for the high bar, the entry shape, and the supersession rules against `baseline-decisions[]`. Most slices author none.
 - Do **not** author `REQ`/`TASK` ids, `status`, `winner` markers, `Sources:` lists, or Decision Record `DEC-NNNN` ids — the kernel owns those (it normalises, never rejects, anything you supply). Every claim you cite must reference an actual `(source, id)` from the Evidence in the inputs.
 - Keep specs behavioural and platform-neutral; target-specific technical detail belongs in `design.md`, folded from the guidance body's idiom guidance.
 - Mark uncertain behaviour `[unknown]`; never guess past the Evidence.
+
+## Response sketch — authority divergence
+
+When `documentation` and `behaviour` disagree (e.g. docs say 30 minutes, code says 15), emit `agreement: "disagreed"`, both claims, the docs-winning `statement`, and the loser in `notes`. Omit `decisions[]` unless the durable bar is met. Shape (keys required; prose abbreviated):
+
+```json
+{
+  "version": 1,
+  "kind": "response",
+  "slice": "<slice>",
+  "model": {
+    "requirements": [{
+      "title": "Session timeout",
+      "domain": "session-policy",
+      "statement": "The system expires idle sessions after 30 minutes.",
+      "agreement": "disagreed",
+      "claims": [
+        { "source": "docs", "id": "session.timeout", "kind": "requirement" },
+        { "source": "code", "id": "session.timeout", "kind": "requirement" }
+      ],
+      "notes": "code observed 15-minute expiry; documentation authority overrides.",
+      "scenarios": ["An idle session expires after 30 minutes"]
+    }]
+  },
+  "artifacts": {
+    "proposal": "## Why\n…\n## Domains\n- session-policy — …\n## Non-goals\n…",
+    "specs": { "session-policy": "## Overview\n…\n### Requirement: Session timeout\n…" },
+    "design": "## Technical logic\n…",
+    "tasks": "## 1. …\n- [ ] 1.1 …"
+  }
+}
+```
+
+## Response sketch — evidence gap
+
+When a lead is mentioned but no contributing claim defines behaviour, emit empty `claims`, an unknown statement, and still ≥1 scenario (do not invent behaviour):
+
+```json
+{
+  "version": 1,
+  "kind": "response",
+  "slice": "password-reset",
+  "model": {
+    "requirements": [{
+      "title": "password reset behaviour",
+      "domain": "password-reset",
+      "claims": [],
+      "statement": "A password reset flow exists; its behaviour is not evidenced.",
+      "scenarios": ["A user requests a password reset (behaviour unspecified)"]
+    }]
+  },
+  "artifacts": {
+    "proposal": "## Why\n…\n## Domains\n- password-reset — …\n## Non-goals\n…",
+    "specs": { "password-reset": "## Overview\n…\n### Requirement: password reset behaviour\n…" },
+    "design": "## Technical logic\n…",
+    "tasks": "## 1. …\n- [ ] 1.1 …"
+  }
+}
+```
