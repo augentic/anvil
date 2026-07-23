@@ -25,7 +25,7 @@ The provenance parser refuses output where the headline tag and `Status:` disagr
 
 Agent authors `statement` and `notes` (`Note:` lines); kernel renders the tag from `status`.
 
-- **`[unknown]`** — single gap line (`No contributing source supplied a claim…`). `Sources: []` only.
+- **`[unknown]`** — gap statement (what exists / is mentioned, that behaviour is not evidenced) plus ≥1 WHEN/THEN scenario that does not invent behaviour. `Sources: []` only.
 - **`[conflict]`** — only `Note:` lines (one per source value) plus `Operator reconciliation required before /spec:build.` No operative body sentence. `Sources:` lists every contributing key.
 - **`[divergence]`** — winning value as operative body; one `Note:` per loser. `Sources:` winner first.
 
