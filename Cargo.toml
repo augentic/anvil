@@ -226,10 +226,9 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
-# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
-# Last wrpc rev on wasmtime 46 (omnia is still on 46.0.1).
-wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc", rev = "5a92c5c29e47d918ff15fb76455427fbcbddd423" }
-wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc", rev = "5a92c5c29e47d918ff15fb76455427fbcbddd423" }
+# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io.
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc" }
 
 [profile.release]
 lto = true
