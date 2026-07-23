@@ -1,6 +1,10 @@
 # Prompt evaluation
 
-A live-model harness for use in testing specify core prompts used in core model judgement steps. Outputs are graded by deterministic validators — not a model.
+The lab-only `probe` library: trial/scenario runners, deterministic grading,
+and telemetry over the native host. The composition example that drives it
+is [`examples/eval/`](../../examples/eval/README.md) (`cargo make eval` /
+`cargo make specify`). Outputs are graded by deterministic validators — not
+a model.
 
 ## Quick start
 
@@ -13,12 +17,12 @@ Login to the Cursor agent:
 or set `CURSOR_API_KEY` in `.env` at the repository root.
 
 ```bash
-make eval
+cargo make eval
 ```
 
 This runs the entire workflow in `sandbox/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
 
-Driver-side knobs (read by `crates/eval`):
+Driver-side knobs (read by `probe::client`):
 
 | Env | Effect |
 | --- | --- |

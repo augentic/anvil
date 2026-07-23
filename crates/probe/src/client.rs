@@ -1,47 +1,48 @@
-//! Specify's unpublished composition binary: native command
-//! passthrough over the mock catalog by default, the live eval
-//! client under this crate's library API.
+//! The shared live composition client (`feature = "client"`).
 //!
-//! The composition root owns what `native` and the eval library refuse
-//! to: the Tokio runtime, `std::env::args`, the lab-only
-//! `--project-dir` convenience, Cursor backend construction, and the
-//! catalog declaration. It is a development tool, never an install or
-//! release artifact. Enabled with `--features cli`.
+//! One argv dispatch serving both composition examples — the `eval`
+//! example in this repository over the mock catalog and the one in
+//! `augentic/specify-adapters` over the first-party catalog: native
+//! command passthrough by default, the live trial under the `eval`
+//! subcommand. The client owns the lazily connected cursor backend
+//! ([`DevModel`]) and the `--project-dir` convenience; the
+//! composition root keeps what the client refuses to own — the Tokio
+//! runtime, `std::env::args` collection, and the catalog and
+//! prompt-scenario declarations.
 
 mod model;
 mod native;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use ::native::{DynModel, ExecutionPaths};
-use eval::{ModelFactory, ModelInstance};
+use ::native::{Catalog, DynModel, ExecutionPaths};
+pub use model::DevModel;
 
-use crate::model::DevModel;
+use crate::{ModelFactory, ModelInstance};
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    match entry().await {
-        Ok(code) => code,
-        Err(error) => {
-            eprintln!("error: {error:#}");
-            ExitCode::FAILURE
-        }
-    }
-}
-
-async fn entry() -> anyhow::Result<ExitCode> {
-    let mut argv: Vec<String> = std::env::args().collect();
+/// Dispatch one composition-binary invocation over `catalog`.
+///
+/// The `eval` subcommand routes through [`crate::run`] (with
+/// `scenarios` as the prompt-scenario root, when the composition
+/// carries one); anything else runs through the native command API.
+///
+/// # Errors
+///
+/// Returns `--project-dir` resolution failures and every [`crate::run`]
+/// failure.
+pub async fn run(
+    mut argv: Vec<String>, catalog: Catalog, scenarios: Option<&Path>,
+) -> anyhow::Result<ExitCode> {
     // `cargo make specify -- ARGS` forwards the literal `--` separator.
     if argv.get(1).is_some_and(|arg| arg == "--") {
         argv.remove(1);
     }
     let root = project_root(&mut argv)?;
-    let catalog = mock::catalog();
 
     if argv.get(1).is_some_and(|arg| arg == "eval") {
-        return eval::run(root, catalog, cursor_factory(), &argv[1..], None).await;
+        return crate::run(root, catalog, cursor_factory(), &argv[1..], scenarios).await;
     }
 
     let paths = ExecutionPaths::operator(root.clone());
@@ -51,7 +52,8 @@ async fn entry() -> anyhow::Result<ExitCode> {
 
 /// A lazily connected cursor-agent backend per phase root, carrying
 /// the `SPECIFY_EVAL_MODEL` default read once at composition.
-fn cursor_factory() -> ModelFactory {
+#[must_use]
+pub fn cursor_factory() -> ModelFactory {
     let default = std::env::var("SPECIFY_EVAL_MODEL").ok().filter(|id| !id.trim().is_empty());
     Arc::new(move |root| {
         Ok(ModelInstance {

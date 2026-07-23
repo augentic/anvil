@@ -47,13 +47,13 @@ path = "examples/wasm/target.rs"
 crate-type = ["cdylib"]
 
 [[example]]
-name = "native"
-path = "examples/native/main.rs"
+name = "eval"
+path = "examples/eval/main.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+probe = { workspace = true, features = ["client"] }
 native = { workspace = true, features = ["cli"] }
 mock.workspace = true
-omnia-guest.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
@@ -154,38 +154,39 @@ verbose_file_reads = "warn"
 # - `field_scoped_visibility_modifiers`
 
 [workspace.dependencies]
-anyhow = "1.0.103"
+anyhow = "1.0.104"
 axum = "0.8.9"
 base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
-clap = { version = "4.6.2", features = ["derive", "env"] }
+clap = { version = "4.6.4", features = ["derive", "env"] }
 clap_complete = "4.6.7"
-glob = "0.3.3"
-jiff = { version = "0.2.32", default-features = false, features = ["serde", "std"] }
+glob = "0.3.4"
+jiff = { version = "0.2.34", default-features = false, features = ["serde", "std"] }
 petgraph = "0.8.3"
 proptest = "1.11.0"
 regex = "1.13.1"
 reqwest = "0.13.4"
 schemars = "1.2.1"
 semver = { version = "1.0.28", features = ["serde"] }
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { version = "1.0.229", features = ["derive"] }
 serde-saphyr = "0.0.29"
-serde_json = "1.0.150"
+serde_json = "1.0.151"
 sha2 = "0.11"
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3.27.0"
-thiserror = "2.0.18"
-tokio = { version = "1.52.3", features = ["fs", "io-util", "rt"] }
+thiserror = "2.0.19"
+tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
 toml = "1.1.3"
 tower = "0.5.3"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
-wit-bindgen = { version = "0.59.0", features = ["async-spawn"] }
+wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
 adapter = { path = "crates/adapter" }
 artifacts = { path = "crates/artifacts" }
 change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
+probe = { path = "crates/probe" }
 guest = { path = "crates/guest" }
 launcher = { path = "crates/launcher" }
 native = { path = "crates/native" }
@@ -225,10 +226,9 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
-# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io
-# Last wrpc rev on wasmtime 46 (omnia is still on 46.0.1).
-wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc", rev = "5a92c5c29e47d918ff15fb76455427fbcbddd423" }
-wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc", rev = "5a92c5c29e47d918ff15fb76455427fbcbddd423" }
+# `wrpc-wasmtime` 0.1.0 is unpublished on crates.io.
+wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
+wrpc-wasmtime = { git = "https://github.com/bytecodealliance/wrpc" }
 
 [profile.release]
 lto = true

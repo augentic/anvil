@@ -92,7 +92,7 @@ install_crate = "cargo-vet"
 
 [tasks.specify]
 command = "cargo"
-args = ["run", "-q", "-p", "eval", "--features", "cli", "--", "${@}"]
+args = ["run", "-q", "-p", "specify", "--example", "eval", "--", "${@}"]
 
 [tasks.eval]
 env_files = [".env"]
@@ -100,7 +100,7 @@ script = '''
   # Mid-tier models often need more than the cursor backend's 120s default.
   # `.env` / the ambient environment win when already set.
   export SPECIFY_EVAL_TIMEOUT_SECS="${SPECIFY_EVAL_TIMEOUT_SECS:-300}"
-  cargo run -p eval --features cli -- eval \
+  cargo run -p specify --example eval -- eval \
   --change "auth" \
   --source "docs=mock-docs:value:The docs source." \
   --source "code=mock-code:value:The code source." \

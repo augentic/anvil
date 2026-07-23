@@ -26,7 +26,7 @@ use omnia_cursor::ConnectOptions;
 use omnia_guest::Model;
 use omnia_guest::model::{Error, Reply, Request};
 
-use crate::native::Native;
+use super::native::Native;
 
 /// The trial's model backend: lazily connected live completions.
 #[derive(Clone, Debug)]

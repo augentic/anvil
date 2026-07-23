@@ -5,9 +5,9 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::PathBuf;
 
-use mock::model::Harness;
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
+use omnia_testkit::model::Harness;
 use tempfile::TempDir;
 
 // Grammar and parity coverage only: no test dispatches judgment or an

@@ -1,7 +1,7 @@
 //! Persistent-sandbox gates: the single-writer lock and lifecycle
 //! helpers.
 
-use eval::sandbox;
+use probe::sandbox;
 use tempfile::TempDir;
 
 #[test]

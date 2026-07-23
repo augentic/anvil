@@ -4,8 +4,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use eval::scenario;
 use native::Catalog;
+use probe::scenario;
 use project::seam::wire::{BUILD_VERSION, BuildReport, BuildStatus};
 use tempfile::TempDir;
 

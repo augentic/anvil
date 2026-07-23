@@ -10,14 +10,12 @@
 use std::path::{Path, PathBuf};
 
 use native::{DynModel, Provider, ReferenceMode};
-use omnia_testkit::model::Scripted as ScriptedModel;
+use omnia_testkit::model::{Harness, Scripted as ScriptedModel};
 use project::handler::{CachePlacement, ExecutionPaths, Locations};
 
-use crate::model::Harness;
-
 /// The recording model shape the scripted suites hold beside the
-/// provider: a request-recording [`Harness`] over `omnia-testkit`'s
-/// FIFO script behind the judgment legs.
+/// provider: a request-recording [`Harness`] over FIFO `Scripted`
+/// behind the judgment legs.
 pub type Scripted = Harness<ScriptedModel>;
 
 /// A throw-away project tree plus the scripted mock provider.

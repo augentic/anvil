@@ -47,7 +47,7 @@ macro_rules! registry {
     () => {
         pub use $crate::registry::Doc;
 
-        include!(concat!(env!("OUT_DIR"), "/registry_docs.rs"));
+        include!(concat!(env!("OUT_DIR"), "/prose_docs.rs"));
 
         /// Every embedded document, sorted by adapter-relative path.
         #[must_use]
