@@ -1,3 +1,27 @@
+# -------------------------------------
+# Native examples
+# -------------------------------------
+
+[tasks.specify]
+command = "cargo"
+args = ["run", "-q", "-p", "specify", "--example", "eval", "--", "${@}"]
+
+[tasks.eval]
+env_files = [".env"]
+script = '''
+  export EVAL_TIMEOUT_SECS="${EVAL_TIMEOUT_SECS:-300}"
+  cargo run -p specify --example eval -- eval \
+  --change "auth" \
+  --source "docs=mock-docs:value:The docs source." \
+  --source "code=mock-code:value:The code source." \
+  --target "mock" \
+  "$@"
+'''
+
+# -------------------------------------
+# Wasm example
+# -------------------------------------
+
 [tasks.wasm-clean]
 script = "rm -rf sandbox/wasm"
 
@@ -11,29 +35,31 @@ cargo build -p specify --bin specify
 '''
 
 [tasks.wasm-run]
-dependencies = ["wasm-clean", "wasm-build"]
+dependencies = ["wasm-build"]
 env_files = [".env"]
 script_runner = "bash"
 script = '''
 set -eo pipefail
-export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 export SPECIFY_HOME="$PWD/sandbox/wasm"
-
-# Extend the Omnia runtime's default guest timeout to 1 hour.
+# Omnia's default guest timeout (30s) is too short for a live model.
 export GUEST_TIMEOUT_MS="${GUEST_TIMEOUT_MS:-3600000}"
 
+# Fresh sandbox each run; cargo artifacts under target/ stay incremental.
+rm -rf "$SPECIFY_HOME"
 mkdir -p "$SPECIFY_HOME/project"
 
-# Execute commands in the project directory, not the repository root.
 TARGET="$PWD/target"
-run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
+# SPECIFY="$TARGET/debug/specify"
+# PROJECT="$SPECIFY_HOME/project"
+# EXAMPLES="$TARGET/wasm32-wasip2/debug/examples"
 
-# Dynamically add adapters and initialize
-run adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
+run() { "$TARGET/debug/specify" --project-dir ""$TARGET/debug/specify"" "$@"; }
+
+# Source must be cache-seeded (plan --source accepts bare names only).
+# Target is admitted as a local component at init.
 run adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"
-run init target --name change
+run init "$TARGET/wasm32-wasip2/debug/examples/target.wasm" --name change
 
-# Author, transition, and execute a plan
 run plan author change --source main="source:value:The greeting service."
 run plan transition change approved
 run plan execute

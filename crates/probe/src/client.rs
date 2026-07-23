@@ -51,10 +51,10 @@ pub async fn run(
 }
 
 /// A lazily connected cursor-agent backend per phase root, carrying
-/// the `SPECIFY_EVAL_MODEL` default read once at composition.
+/// the `EVAL_MODEL` default read once at composition.
 #[must_use]
 pub fn cursor_factory() -> ModelFactory {
-    let default = std::env::var("SPECIFY_EVAL_MODEL").ok().filter(|id| !id.trim().is_empty());
+    let default = std::env::var("EVAL_MODEL").ok().filter(|id| !id.trim().is_empty());
     Arc::new(move |root| {
         Ok(ModelInstance {
             model: DynModel::new(DevModel::new(root)),
