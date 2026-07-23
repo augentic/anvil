@@ -9,15 +9,20 @@
 //! connection cell, so each constructed backend connects cursor-agent
 //! at most once (the trial constructs one per phase).
 //!
-//! `SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: the
-//! id fills `Request.model` only when the caller left it `None`, so a
-//! guest-supplied id always wins. Read once at construction; unset or
-//! blank means no override.
+//! Driver-side env (read once at construction / first connect):
+//! - `SPECIFY_EVAL_MODEL=<model-id>` — fills `Request.model` only when the
+//!   caller left it `None`, so a guest-supplied id always wins. Unset or
+//!   blank means no override.
+//! - `SPECIFY_EVAL_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound passed
+//!   to `omnia_cursor::ConnectOptions.timeout`. Unset → backend default
+//!   (120s). `cargo make eval` sets this to 300.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Duration;
 
 use omnia::Backend as _;
+use omnia_cursor::ConnectOptions;
 use omnia_guest::Model;
 use omnia_guest::model::{Error, Reply, Request};
 
@@ -30,18 +35,26 @@ pub struct DevModel {
     root: PathBuf,
     /// Driver-side model-id override from `SPECIFY_EVAL_MODEL`.
     model: Option<String>,
+    /// Per-spawn timeout from `SPECIFY_EVAL_TIMEOUT_SECS` (`None` → backend default).
+    timeout: Option<Duration>,
     /// The shared connection, established by the first judgment leg.
     cell: Arc<tokio::sync::OnceCell<Native<omnia_cursor::Client>>>,
 }
 
 impl DevModel {
     /// A lazily connected cursor backend rooted at `project_dir`,
-    /// reading the optional `SPECIFY_EVAL_MODEL` override once.
+    /// reading the optional `SPECIFY_EVAL_MODEL` and
+    /// `SPECIFY_EVAL_TIMEOUT_SECS` overrides once.
     #[must_use]
     pub fn new(project_dir: &Path) -> Self {
         Self {
             root: project_dir.to_path_buf(),
             model: std::env::var("SPECIFY_EVAL_MODEL").ok().filter(|id| !id.trim().is_empty()),
+            timeout: std::env::var("SPECIFY_EVAL_TIMEOUT_SECS")
+                .ok()
+                .filter(|raw| !raw.trim().is_empty())
+                .and_then(|raw| raw.trim().parse::<u64>().ok())
+                .map(Duration::from_secs),
             cell: Arc::new(tokio::sync::OnceCell::new()),
         }
     }
@@ -52,7 +65,10 @@ impl Model for DevModel {
         let native = self
             .cell
             .get_or_try_init(|| async {
-                let client = omnia_cursor::Client::connect().await?;
+                let options = self
+                    .timeout
+                    .map_or_else(ConnectOptions::default, |timeout| ConnectOptions { timeout });
+                let client = omnia_cursor::Client::connect_with(options).await?;
                 Ok::<_, anyhow::Error>(Native::new(client, self.root.clone()))
             })
             .await

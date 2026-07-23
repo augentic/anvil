@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use omnia::Backend as _;
+use omnia_cursor::ConnectOptions;
 use omnia_guest::model::{
     Effort, Error, Format, Message, Model, Reply, Request, Role, Tool, Usage,
 };
@@ -29,7 +30,7 @@ impl Model for DevModel {
         let native = self
             .client
             .get_or_try_init(|| async {
-                let client = omnia_cursor::Client::connect().await?;
+                let client = omnia_cursor::Client::connect_with(ConnectOptions::default()).await?;
                 Ok::<_, anyhow::Error>(Native {
                     backend: client,
                     workspace: self.root.clone(),

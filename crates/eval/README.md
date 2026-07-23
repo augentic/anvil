@@ -18,7 +18,16 @@ make eval
 
 This runs the entire workflow in `sandbox/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
 
-`SPECIFY_EVAL_MODEL=<model-id>` overrides the model for a run: unset means the cursor backend's default.
+Driver-side knobs (read by `crates/eval`):
+
+| Env | Effect |
+| --- | --- |
+| `SPECIFY_EVAL_MODEL=<model-id>` | Override the model for a run; unset means the cursor backend's default. |
+| `SPECIFY_EVAL_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds). Unset → backend default 120. `cargo make eval` sets `300`. |
+
+The auth trial's hard synthesis case is **authority divergence** — the `session-timeout` lead (scripted goldens name the slice `session-policy`), not evidence volume. Docs claim a 30-minute idle timeout; code claims 15; documentation authority should win. Grading still only asserts lifecycle + provenance; it does not require a `[divergence]` tag.
+
+`judgment-model-failed` on refine usually means the cursor layer timed out or returned unparseable JSON — the engine `MAX_REPAIRS` loop never sees that failure.
 
 ### Manual workflow
 
