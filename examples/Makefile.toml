@@ -22,11 +22,11 @@ export SPECIFY_HOME="$PWD/sandbox/wasm"
 # Extend the Omnia runtime's default guest timeout to 1 hour.
 export GUEST_TIMEOUT_MS="${GUEST_TIMEOUT_MS:-3600000}"
 
+mkdir -p "$SPECIFY_HOME/project"
+
 # Execute commands in the project directory, not the repository root.
 TARGET="$PWD/target"
 run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
-
-mkdir -p "$SPECIFY_HOME/project"
 
 # Dynamically add adapters and initialize
 run adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
