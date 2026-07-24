@@ -2,9 +2,17 @@
 
 Released 2026-07-24
 
+### Compatibility
+
+```text
+engine 0.28.x  ↔  adapters 0.5.x  (WIT specify:adapter@0.1.0, floor ≥ 0.28.0)
+```
+
 ### Added
 
 ### Changed
+
+* Windows (`x86_64-pc-windows-msvc`) archives are temporarily not shipped: upstream `omnia-wasi-model` 0.35.0 fails to compile on Windows (`cap-std` `dev()`/`ino()` are unix-only). The target returns to the release matrix once the upstream fix lands.
 
 <!-- Release notes generated using configuration in .github/release.yaml at main -->
 
