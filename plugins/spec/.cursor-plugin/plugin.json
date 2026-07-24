@@ -2,7 +2,7 @@
   "name": "spec",
   "displayName": "Specify Workflow",
   "description": "Specify workflow skills: init, plan, refine, build, merge, finalize, drop.",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
