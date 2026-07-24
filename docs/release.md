@@ -1,15 +1,49 @@
 # Release process
 
-A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **engine guest** published as the wasm-pkg package `specify:engine@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>`. CI builds and attaches the binaries; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML.
+A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **engine guest** published as the wasm-pkg package `specify:engine@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>`. CI builds the binaries and creates the release; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML. The design home is [RFC-77](../rfcs/rfc-77-release-process.md).
 
-## Before tagging
+## Three version axes
 
-- **Check the omnia pins.** Release builds run `cargo build --locked`, so the `[patch.crates-io]` entries in `Cargo.toml` must resolve on a clean runner: git-rev pins build anywhere, sibling *path* pins only build where the sibling checkout exists. Re-pin any local-path patch to a pushed rev before tagging.
-- **Run the operator rungs.** `cargo make wasm-run` (the end-to-end wasm example over the WASM seam; needs `CURSOR_API_KEY` in `examples/.env`) and `cargo make eval` from the repository root (needs command-mode model credentials; see [the developer loop](contributing/dev-loop.md)). Read rising per-leg repair counts as prompt drift even when the run passes.
+Three surfaces version independently — never force them to share a number:
 
-## Triggering a release
+| Axis | Identity | Where it lives |
+| ---- | -------- | -------------- |
+| **Host** | `specify` binary / `specify:engine@<version>` | `[workspace.package].version` in `Cargo.toml`, the `v*` tag, `RELEASES.md` |
+| **WIT contract** | `specify:adapter@<wit version>` | the `package` declaration in `wit/specify.wit`; versions independently of the binary |
+| **Adapter train** | `specify:<name>@<semver>` → `ghcr.io/augentic/specify-adapters/<name>:<version>` | the adapters repo's shared `[workspace.package]` SemVer |
 
-Releases are PR-driven: `release.yaml` (manual dispatch) opens a `release/v*` PR; merging it triggers `publish.yaml`, which pushes the annotated `v*.*.*` tag and creates the GitHub Release with curated notes. The tag push then fires `.github/workflows/release-binaries.yaml`, which builds and attaches the platform archives.
+Compatibility between host and adapters is declared — exact pins plus each adapter's `specify-floor` (minimum host) — not implied by equal numbers. The Cursor `/spec:*` plugin manifests co-version with the host release; the release workflows sync them automatically.
+
+## Release lines
+
+Releases live on durable `release-X.Y.Z` branches, the same shape as Omnia's shared `augentic/.github` workflows. `main` always carries the *next unreleased* version (Cargo version plus the `Unreleased` heading in `RELEASES.md`). The four verbs:
+
+1. **Cut** — dispatch **Create Release** on `main`. It pushes `release-X.Y.Z` at the current tip and opens a PR that bumps `main` to the next unreleased version, resets `RELEASES.md`, and syncs the plugin manifests. Merge that PR; edit release notes on the release branch, not on `main`.
+2. **Stabilize** — on the release branch only: check the omnia pins (`cargo build --locked` must resolve on a clean runner — re-pin any local-path `[patch.crates-io]` entry to a pushed rev), run the operator rungs when the change warrants them (`cargo make wasm-run`, needs `CURSOR_API_KEY` in `examples/.env`; `cargo make eval`, needs command-mode model credentials — see [the developer loop](contributing/dev-loop.md)), and backport fixes from `main` (fixes land on `main` first when applicable).
+3. **Publish** — dispatch **Publish Release** on the release branch. It gates on CI plus the Developer Guide links check, dates `RELEASES.md`, and pushes the `vX.Y.Z` tag. The tag fires `release-binaries.yaml`, which builds the platform archives and creates the GitHub Release with them attached (releases are immutable once published, so the assets must land at creation). Then publish the wasm-pkg packages manually (below).
+4. **Patch** — bugfix and security only, on the same `release-X.Y.Z` branch: land the fix on `main` when applicable, backport, dispatch **Create Patch** on the branch (bumps `X.Y.Z → X.Y.Z+1` and preps `RELEASES.md`), then dispatch **Publish Release** on the same branch. Never invent a new line from a floating tag; never merge to `main` as the publish trigger.
+
+Pre-1.0 SemVer follows Omnia's convention: **minor may be breaking**; patches remain compatible within the line. The hard major-cut / re-init product policy is called out in release notes, never smuggled into a patch.
+
+## Three release shapes
+
+Every release chooses exactly one shape; the order prevents adapters shipping against unpublished seam changes:
+
+| Shape | Trigger | Order |
+| ----- | ------- | ----- |
+| **WIT-breaking** | `package specify:adapter@…` moves | 1) engine release branch + publish WIT 2) engine publish 3) adapters bump pin + train release 4) announce hard-cut / re-init when product policy requires it |
+| **Host-only** | CLI / lifecycle / engine guest; WIT unchanged | engine cut → publish; adapters unchanged unless the floor must rise |
+| **Adapter-only** | prompts, rules, target behavior; seam unchanged | adapters cut → publish; engine unchanged |
+
+Never release adapters against an unpublished WIT or an unreleased engine commit that changed the seam.
+
+Each release's notes entry in `RELEASES.md` includes a short compatibility row:
+
+```text
+engine 0.28.x  ↔  adapters 0.5.x  (WIT specify:adapter@0.1.0, floor ≥ 0.28.0)
+```
+
+Keep the table short — it is a statement of what was tested together, not a version solver.
 
 ## Jobs that run
 
@@ -29,7 +63,7 @@ cargo build --release --locked --bin specify
 
    Each job produces a versioned archive (`specify-${TAG}-${TARGET}.tar.gz` on unix, `.zip` on Windows) plus a companion `.sha256` file, uploaded via `actions/upload-artifact@v4`.
 
-2. **`release`.** Waits for the matrix legs, downloads all artifacts, and attaches them to the already-created GitHub Release with `softprops/action-gh-release@v2` (notes are owned by `publish.yaml`).
+2. **`release`.** Waits for the matrix legs, downloads all artifacts, and creates the GitHub Release with the archives attached and the notes taken from the tag's `RELEASES.md` (releases are immutable once published, so assets and notes must land at creation).
 
 The shipped surface is the `specify` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/omnia.rs`) embedding the engine guest as static component bytes, with mounts and the adapters-only guest resolver contributed by the `launcher` crate's expressions — so there is no second binary or component to package.
 
@@ -45,11 +79,11 @@ wkg publish target/wasm32-wasip2/release/specify.wasm \
   --package "specify:engine@$(cargo pkgid -p specify | sed 's/.*#//')"
 ```
 
-- **Adapter contract.** When a contract change bumps the `package specify:adapter@<ver>;` declaration in `wit/specify.wit`, publish it as `specify:adapter@<ver>` — the WIT versions independently of the binary. See [`wit/README.md`](../wit/README.md) for the exact commands. `specify-adapters` consumes the published package as its vendored pin.
+- **Adapter contract.** When a contract change bumps the `package specify:adapter@<ver>;` declaration in `wit/specify.wit`, publish it as `specify:adapter@<ver>` — the WIT versions independently of the binary. See [`wit/README.md`](../wit/README.md) for the exact commands. `specify-adapters` consumes the published package as its vendored pin. On a WIT-breaking line, publish the WIT before or with the engine publish — never after adapters that need it have already shipped.
 
 ## Adapter components
 
-First-party adapter components are **not** built or published by this repo. They live in `augentic/specify-adapters` and are published manually as standard Wasm OCI artifacts to GHCR (`ghcr.io/augentic/specify-adapters/<name>:<version>`, via that repo's `cargo make publish <name>`). The `specify` binary resolves a pin (`specify:<name>@<version>`) from the global adapter store and installs a miss automatically from that fixed GHCR mapping (pull-on-miss); operators only need the runtime binary.
+First-party adapter components are **not** built or published by this repo. They live in `augentic/specify-adapters`, ride the same release-branch verbs on their own lockstep train SemVer, and are published manually as standard Wasm OCI artifacts to GHCR (`ghcr.io/augentic/specify-adapters/<name>:<version>`, via that repo's `cargo make publish <name>`). Before an adapter train publishes, its tree must build against a **published** `specify:adapter` WIT pin, its engine git dependencies must be pinned to a **released** engine tag (`tag = "vX.Y.Z"`, no active sibling `[patch]` block), and each adapter's `specify-floor` must name the minimum host that can run the train. The `specify` binary resolves a pin (`specify:<name>@<version>`) from the global adapter store and installs a miss automatically from that fixed GHCR mapping (pull-on-miss); operators only need the runtime binary.
 
 ## Installing a release
 
@@ -76,4 +110,5 @@ Subsequent updates use the same installation channel: rerun `cargo install`, upg
 
 - **`cross` installation fails.** Pin to a known-good commit in the `Install cross` step.
 - **Archive SHA256 drift.** Always regenerate after tagging — never hand-edit. The `.sha256` companion files uploaded by `release-binaries.yaml` are authoritative.
-- **`wkg publish` rejects or the identity already exists.** Registry identities are immutable — never re-push different bytes into an existing version. Bump the version (the `VERSION` file for the engine, the WIT `package` declaration for the contract) and publish the new identity instead.
+- **`wkg publish` rejects or the identity already exists.** Registry identities are immutable — never re-push different bytes into an existing version. Bump the version (the workspace version for the engine, the WIT `package` declaration for the contract) and publish the new identity instead.
+- **Publish Release refuses the tag.** The tag for the branch's Cargo version already exists — releases are immutable; dispatch **Create Patch** on the line to bump, then publish again.

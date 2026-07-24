@@ -1,65 +1,119 @@
 name: Publish Release
 
+# Publish a durable release-X.Y.Z line: dispatch from the release branch.
+# Gates on the shared CI workflow plus the local Developer Guide links check,
+# dates RELEASES.md, then pushes the vX.Y.Z tag.
+#
+# Two deliberate departures from the shared augentic/.github publish.yaml:
+# - The tag is pushed with an App token, not GITHUB_TOKEN — tags pushed by
+#   GITHUB_TOKEN do not trigger workflows, and the tag push is what fires
+#   release-binaries.yaml.
+# - The GitHub Release is created by release-binaries.yaml with the platform
+#   archives attached at creation. Releases are immutable once published, so
+#   creating the release before the binaries exist (the shared workflow's
+#   shape) would ship an empty, unfixable release.
+#
+# The wasm-shaped artifacts (the engine guest `specify:engine@<version>` and
+# the WIT contract `specify:adapter@<wit version>`) remain published manually
+# with `wkg publish` — see docs/release.md and wit/README.md.
+
 on:
-  pull_request:
-    types: [closed]
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: publish
 
 jobs:
-  publish:
-    name: Publish
-    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+  skip:
+    name: Skipped
+    if: ${{ !startsWith(github.ref_name, 'release-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "This workflow only runs on the 'release-*' branches"
+          exit 1
+
+  ci:
+    name: CI
+    if: ${{ startsWith(github.ref_name, 'release-') }}
+    uses: augentic/.github/.github/workflows/ci.yaml@main
+    secrets: inherit
+
+  links:
+    name: Links
+    if: ${{ startsWith(github.ref_name, 'release-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Install mdbook toolchain
+        uses: taiki-e/install-action@v2
+        with:
+          # mdbook-linkcheck2 is not in the install-action manifest; falls back to cargo-binstall.
+          tool: mdbook,mdbook-linkcheck2
+
+      - name: Check Developer Guide links
+        run: mdbook build docs
+
+  tag:
+    name: Tag release
+    needs: [ci, links]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
-      - name: Extract version from branch name
-        id: version
+      - name: GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Cargo version
+        id: cargo
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          VERSION="${BRANCH#release/v}"
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Branch $BRANCH does not contain a valid semver version"
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[0].version')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse existing tag
+        env:
+          VERSION: ${{ steps.cargo.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
+            echo "::error::Tag v$VERSION already exists — bump the version first (releases are immutable)"
             exit 1
           fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Verify version matches
+      - name: Date release notes
+        env:
+          VERSION: ${{ steps.cargo.outputs.version }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          if [ ! -f VERSION ]; then
-            echo "::error::VERSION file not found"
-            exit 1
-          fi
-          FILE_VERSION=$(cat VERSION | tr -d '[:space:]')
-          if [ "$FILE_VERSION" != "$VERSION" ]; then
-            echo "::error::VERSION file ($FILE_VERSION) does not match release ($VERSION)"
-            exit 1
-          fi
-
-      - name: Create tag
-        run: |
-          TAG="${{ steps.version.outputs.tag }}"
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
+          sed -i "s/^Unreleased/Released $(date +'%Y-%m-%d')/" RELEASES.md
+          if ! git diff --quiet; then
+            git commit -am "Release $VERSION"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
 
-      - name: Create GitHub Release
+      - name: Push tag
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.cargo.outputs.version }}
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          gh release create "$TAG" \
-            --title "Release $TAG" \
-            --generate-notes \
-            --notes-start-tag "$(git tag --list 'v*' --sort=-v:refname | sed -n '2p')" \
-            --latest
+          set -euo pipefail
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"

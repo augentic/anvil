@@ -1,9 +1,11 @@
 name: Release binaries
 
-# Cross-platform `specify` binary build. Triggered by the `v*.*.*` tag
-# that publish.yaml pushes on a merged release PR; publish.yaml creates
-# the GitHub Release (curated notes) and this workflow attaches the
-# built binary archives to it. The Cargo workspace lives at the repo root.
+# Cross-platform `specify` binary build. Triggered by the `v*.*.*` tag that
+# publish.yaml pushes from a release-X.Y.Z branch. This workflow builds the
+# platform archives and creates the GitHub Release with them attached —
+# releases are immutable once published, so the assets must land at creation
+# (notes come from the release line's RELEASES.md). The Cargo workspace lives
+# at the repo root.
 #
 # The wasm-shaped artifacts (the engine guest `specify:engine@<version>` and
 # the WIT contract `specify:adapter@<wit version>`) are published
@@ -130,13 +132,19 @@ jobs:
           retention-days: 7
 
   release:
-    name: Attach binaries to release
+    name: Create GitHub release
     needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
     steps:
+      # The tag's RELEASES.md carries the curated notes for this line
+      # (dated by publish.yaml before the tag was pushed).
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -149,15 +157,18 @@ jobs:
 
       # The binary archives are the only release artifacts. The workspace
       # crates are not published to crates.io — there are no external crate
-      # consumers, and the path-only workspace deps are deliberate. Notes
-      # are owned by publish.yaml; this step only attaches files to the
-      # already-created release for the tag.
-      - name: Attach binaries to GitHub Release
+      # consumers, and the path-only workspace deps are deliberate. The
+      # release must be created here, with the assets, because releases are
+      # immutable once published.
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body_path: RELEASES.md
           files: artifacts/**/*
           fail_on_unmatched_files: true
           generate_release_notes: false
           draft: false
           prerelease: false
+          make_latest: true

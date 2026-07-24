@@ -1,5 +1,13 @@
 name: Create Patch
 
+# Bump the patch version on a durable release-X.Y.Z line via the shared
+# workflow (Cargo version + RELEASES.md), then sync the Cursor plugin
+# manifests on the same branch — they co-version with the host release
+# (RFC-77 D7) and the shared cargo-version action does not know about them.
+#
+# Dispatch from the release-* branch carrying the fix; publish.yaml
+# (dispatched from the same branch) tags and releases it.
+
 on:
   workflow_dispatch:
 
@@ -7,80 +15,47 @@ concurrency:
   group: release
 
 jobs:
-  skip:
-    name: Skipped
-    if: startsWith(github.ref_name, 'release/') == false
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          echo "This workflow only runs on 'release/*' branches"
-          exit 1
-
   patch:
-    name: Patch
-    if: startsWith(github.ref_name, 'release/') == true
+    uses: augentic/.github/.github/workflows/patch.yaml@main
+    secrets: inherit
+
+  sync-plugins:
+    name: Sync plugin versions
+    needs: patch
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     permissions:
       contents: write
-      pull-requests: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - name: GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
         with:
-          fetch-depth: 0
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Determine patch version
-        id: version
+      # Ref by name, not the dispatch SHA: the shared patch job pushed the
+      # version-bump commit to the branch after this run started.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Sync plugin manifests
         run: |
-          LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1)
-          if [ -z "$LATEST_TAG" ]; then
-            echo "::error::No existing tags found. Use the Create Release workflow first."
-            exit 1
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[0].version')
+
+          jq --arg v "$version" '.metadata.version = $v' \
+            .cursor-plugin/marketplace.json > tmp.json \
+            && mv tmp.json .cursor-plugin/marketplace.json
+          for f in plugins/*/.cursor-plugin/plugin.json; do
+            jq --arg v "$version" '.version = $v' "$f" > tmp.json && mv tmp.json "$f"
+          done
+
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -am "Sync plugin versions to $version"
+            git push origin "HEAD:${{ github.ref_name }}"
           fi
-
-          VERSION="${LATEST_TAG#v}"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          PATCH=$((PATCH + 1))
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-
-          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "base_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-          echo "## Patch" >> "$GITHUB_STEP_SUMMARY"
-          echo "**${LATEST_TAG}** → **v${NEW_VERSION}**" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Create patch branch from latest tag
-        run: |
-          git checkout "${{ steps.version.outputs.base_tag }}"
-          git checkout -b "release/v${{ steps.version.outputs.version }}"
-
-      - name: Update version
-        run: echo "${{ steps.version.outputs.version }}" > VERSION
-
-      - name: Commit and push
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "release: prepare v${VERSION}"
-          git push origin "release/v${VERSION}"
-
-      - name: Open PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          gh pr create \
-            --title "Patch v${VERSION}" \
-            --body "Patch release v${VERSION}. Cherry-pick fixes onto this branch before merging."
-
-      - name: Summary
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          echo "## Patch Branch Created" >> "$GITHUB_STEP_SUMMARY"
-          echo "Branch: \`release/v${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Next steps:" >> "$GITHUB_STEP_SUMMARY"
-          echo "1. Cherry-pick fixes onto \`release/v${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "2. Merge the PR to publish the release" >> "$GITHUB_STEP_SUMMARY"
