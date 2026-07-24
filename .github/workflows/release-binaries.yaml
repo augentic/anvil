@@ -41,8 +41,10 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             use_cross: true
+          # macos-13 was retired by GitHub in December 2025; macos-15-intel
+          # is the last hosted x86_64 macOS runner (until August 2027).
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-15-intel
             use_cross: false
           - target: aarch64-apple-darwin
             os: macos-14
