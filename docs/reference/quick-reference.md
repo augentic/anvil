@@ -23,7 +23,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
-| `specify plan execute`   | Drive the per-slice refine → build → merge loop (CLI verb, no skill wrapper)                   |
+| `/spec:execute`          | Confirm Gate 1, then drive the per-slice refine → build → merge loop (`specify plan execute`) |
 | `/spec:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
 | `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |

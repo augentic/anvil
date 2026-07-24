@@ -139,6 +139,8 @@ Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is t
 specify plan transition fix-typo approved
 ```
 
+Alternatively, run `/spec:execute`: it asks for this confirmation explicitly, stamps Gate 1 on your behalf, then continues straight into the execute loop below.
+
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 </div>
 
@@ -152,6 +154,8 @@ Drive the per-slice loop:
 ```text
 specify plan execute
 ```
+
+(`/spec:execute` runs this same loop, adding the Gate 1 confirmation when the plan is still `pending`.)
 
 Inside execute, each slice runs **refine → build → merge**:
 
@@ -228,6 +232,6 @@ Before finalizing, publish the completed repository changes through your normal 
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
 - [Your first multi-slice change](first-change.md) — three slices from documentation
 - [Quick reference card](../reference/quick-reference.md) — command cheat sheet
-- [Change skills](../reference/change-skills/index.md) — `/spec:plan`, `specify plan execute`, `/spec:finalize` reference
+- [Change skills](../reference/change-skills/index.md) — `/spec:plan`, `/spec:execute`, `/spec:finalize` reference
 </div>
 

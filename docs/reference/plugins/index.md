@@ -20,7 +20,7 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 
 | Plugin | Prefix | Purpose | Reference |
 | ------ | ------ | ------- | --------- |
-| **Specify** | `/spec:` | Workflow wrappers: `init`, `plan`, `refine`, `build`, `merge`, `finalize`, `drop` | [Slice Skills](../slice-skills/index.md), [Change Skills](../change-skills/index.md) |
+| **Specify** | `/spec:` | Workflow wrappers: `init`, `plan`, `execute`, `refine`, `build`, `merge`, `finalize`, `drop` | [Slice Skills](../slice-skills/index.md), [Change Skills](../change-skills/index.md) |
 
 The Omnia and Vectis target adapters are not Cursor plugins — they live under [`adapters/targets/`](../targets/index.md) and contribute their `guidance`, `build`, and `merge` operations to the workflow. See [Omnia target](../targets/omnia.md) and [Vectis target](../targets/vectis.md).
 

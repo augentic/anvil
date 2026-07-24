@@ -10,7 +10,7 @@ argument-hint: <adapter|workspace>
 
 ## Invocation
 
-1. **Install the CLI** — after explicit operator confirmation, reinstall from source (overwrites any existing binary; needs a Rust toolchain with the `wasm32-wasip2` target):
+1. **Install or refresh the CLI** — invoking this skill is consent to install. Reinstall from source (overwrites any existing binary; needs a Rust toolchain with the `wasm32-wasip2` target):
 
 ```bash
 cargo install --git https://github.com/augentic/specify --locked --force

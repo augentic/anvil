@@ -90,12 +90,12 @@ The headline rules:
 
 ## Workflow overview
 
-The default rhythm is `/spec:plan` → operator stamps `approved` → `specify plan execute` → `/spec:finalize`. The operator surface, in the order it appears in a project's life:
+The default rhythm is `/spec:plan` → operator stamps `approved` → `specify plan execute` → `/spec:finalize`; `/spec:execute` carries the two middle steps (an explicit Gate 1 confirmation, then the drained loop). The operator surface, in the order it appears in a project's life:
 
 - `/spec:init` — scaffold `.specify/`, run once per project.
 - `/spec:plan` — wrap the guest-routed `specify plan author`: survey each bound source, reconcile leads into `slices[]`, author the Gate 1 prose, validate. Exits at `plan.lifecycle: pending` and prints the literal `specify plan transition <name> approved` command.
-- `specify plan transition <name> approved` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `approved` itself.
-- `specify plan execute` — the guest-routed drained loop; refuses unless the plan is `approved`, then runs refine → build → merge per entry until every per-entry `status` is `done` or a stop condition halts it.
+- `specify plan transition <name> approved` — **Gate 1.** Operator-only stamp; `/spec:plan` never writes `approved` itself, and `/spec:execute` runs it only behind an explicit operator confirmation (`--actor` stays `operator`).
+- `specify plan execute` — the guest-routed drained loop; refuses unless the plan is `approved`, then runs refine → build → merge per entry until every per-entry `status` is `done` or a stop condition halts it. `/spec:execute` wraps the Gate 1 confirmation plus this verb.
 - `/spec:refine` — breakout: wrap `specify slice refine` for one slice (extract per bound source, synthesis, validation, the `refined` transition).
 - `/spec:build` — breakout: wrap `specify slice build` for one slice.
 - `/spec:merge` — breakout: wrap `specify slice merge run` for one slice; the only writer of per-entry `done`.
@@ -131,7 +131,7 @@ Vectis-bound projects commit per-platform exports under `design-system/assets/ex
 
 ## Plan-driven loop
 
-`/spec:plan` authors the plan and exits at Gate 1; the operator stamps `approved`; `specify plan execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *lifecycle* is only ever written via `specify plan transition`; per-entry `in-progress` is only ever written by `specify plan next`; per-entry `done` is only ever written by `specify slice merge`. Per-entry status walks backwards only via `specify plan transition <entry> --undo`, which refuses to skip rungs (`done → in-progress`, then a second call for `in-progress → pending`) and fires one `plan.transition.undone` journal event per rung. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
+`/spec:plan` authors the plan and exits at Gate 1; the operator stamps `approved` (directly or through `/spec:execute`'s confirmation gate); `specify plan execute` drives the loop; `/spec:finalize` closes it. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *lifecycle* is only ever written via `specify plan transition`; per-entry `in-progress` is only ever written by `specify plan next`; per-entry `done` is only ever written by `specify slice merge`. Per-entry status walks backwards only via `specify plan transition <entry> --undo`, which refuses to skip rungs (`done → in-progress`, then a second call for `in-progress → pending`) and fires one `plan.transition.undone` journal event per rung. The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Hand-driven fallback: `specify plan next` → `/spec:refine` → `/spec:build` → `/spec:merge`, repeat until drained.
 
 ## Testing Philosophy
 
@@ -153,7 +153,7 @@ All commands are run from the repository root:
 
 Per-push CI is the shared org workflow (nextest, clippy, doc, doctest, vet, and deny over the whole workspace); no sibling checkout is required — the engine embeds no adapter-authored prose. There is no per-push WASM gate; the wasm32 guests compile-check locally with `cargo check --lib -p specify --examples --target wasm32-wasip2`, and boundary execution is the operator-invoked wasm example. See [docs/contributing/quality-gates.md](docs/contributing/quality-gates.md) for the gate model.
 
-The seven `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Skill-wrapper body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
+The eight `/spec:*` skills are ultrathin invoke-and-relay wrappers (see [Skill / CLI responsibility split](#skill--cli-responsibility-split)). Skill-wrapper body style is guidance in [docs/standards/cli-contract.md](docs/standards/cli-contract.md). Local Cursor preview: `cursor-agent --plugin-dir plugins/<name>` (see [docs/contributing/operator-plugins.md](docs/contributing/operator-plugins.md)).
 
 ## Gotchas
 

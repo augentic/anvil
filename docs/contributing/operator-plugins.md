@@ -8,7 +8,7 @@ Do not put orchestration, synthesis, validation, or code-generation prose in ski
 
 | Plugin | Directory | Prefix | Role |
 | ------ | --------- | ------ | ---- |
-| Specify | `plugins/spec/` | `/spec:` | Workflow wrappers: `init`, `plan`, `refine`, `build`, `merge`, `drop`, `finalize` |
+| Specify | `plugins/spec/` | `/spec:` | Workflow wrappers: `init`, `plan`, `execute`, `refine`, `build`, `merge`, `drop`, `finalize` |
 
 Layout:
 

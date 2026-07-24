@@ -22,7 +22,7 @@ Canonical skill bodies live under [`plugins/spec/skills/`](../../../plugins/spec
 | Skill | Purpose | Canonical body | CLI |
 | ----- | ------- | -------------- | --- |
 | `/spec:plan` | Survey sources, propose slices, exit at `pending` | [`plan/SKILL.md`](../../../plugins/spec/skills/plan/SKILL.md) | [specify plan](../cli/plan.md) |
-| `specify plan execute` | Drive approved plan through refine → build → merge | — (CLI verb, no skill wrapper) | [plan execute](../cli/plan.md#specify-plan-execute) |
+| `/spec:execute` | Confirm Gate 1, then drive the plan through refine → build → merge | [`execute/SKILL.md`](../../../plugins/spec/skills/execute/SKILL.md) | [plan execute](../cli/plan.md#specify-plan-execute) |
 | `/spec:finalize` | Push branches, archive plan | [`finalize/SKILL.md`](../../../plugins/spec/skills/finalize/SKILL.md) | [specify plan](../cli/plan.md) |
 
 ## How skills delegate

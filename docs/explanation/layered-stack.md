@@ -58,7 +58,7 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 | Skill            | Role                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
 | `/spec:plan`     | Wrap `specify plan author`: survey each bound source, reconcile `slices[]`, validate; exit at `pending` |
-| `specify plan execute` | Drive the plan through the Layer 1 loop (guest-routed verb, no skill wrapper); refuses unless plan is `approved` |
+| `specify plan execute` | Drive the plan through the Layer 1 loop (guest-routed verb, wrapped by `/spec:execute`); refuses unless plan is `approved` |
 | `/spec:finalize` | Confirm operator-owned publication is complete, then archive the plan                                |
 
 The plan is the change's table of contents. `/spec:plan` produces it by invoking `specify plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.

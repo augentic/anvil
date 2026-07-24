@@ -125,7 +125,7 @@ Plan artifacts (`plan.yaml` / `change.md` / `discovery.md`) resolve at the invok
 
 ## Writer ownership
 
-Per-entry status writes route to exactly one CLI verb each — `plan add` / `plan amend` write `pending`, `plan next` writes `in-progress`, `slice merge` (via `plan transition <entry> done`) writes `done`. Plan-level `approved` is operator-only.
+Per-entry status writes route to exactly one CLI verb each — `plan add` / `plan amend` write `pending`, `plan next` writes `in-progress`, `slice merge` (via `plan transition <entry> done`) writes `done`. Plan-level `approved` is operator-only: the operator runs `plan transition <name> approved` directly, or `/spec:execute` runs it on the operator's explicit confirmation (`--actor` stays `operator`).
 
 Driver mutual exclusion is guest-owned: the `plan execute` orchestrator holds the `.specify/guest.lock` marker for the loop's lifetime and refuses a concurrent driver with `guest-marker-held`. It is the only concurrency fence — there is no native lock wrapper.
 
