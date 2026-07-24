@@ -71,7 +71,7 @@ homepage = "https://augentic.io"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/augentic/specify"
 rust-version = "1.97"
-version = "0.28.0"
+version = "0.29.0"
 
 [workspace.lints.rust]
 elided_lifetimes_in_paths = "warn"
