@@ -2,6 +2,7 @@
 
 mod add;
 mod amend;
+mod approve;
 mod archive;
 mod author;
 mod entry;
@@ -22,6 +23,7 @@ use serde::Serialize;
 
 pub use self::add::{Add, AddInput};
 pub use self::amend::{Amend, AmendInput};
+pub use self::approve::{Approve, ApproveBody, ApproveInput};
 pub use self::archive::{Archive, ArchiveBody, ArchiveInput, ArchivedPlan};
 pub use self::author::{Author, AuthorBody, AuthorInput, AuthorSurvey};
 pub use self::entry::EntryBody;

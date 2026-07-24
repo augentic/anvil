@@ -56,7 +56,7 @@ pub enum Status {
 ///
 /// Two stored states only — `pending` (default after `plan author`
 /// scaffolds the plan) and `approved` (operator-stamped at Gate 1 via
-/// `specify plan transition <plan-name> approved`). "Currently
+/// `specify plan approve`). "Currently
 /// executing" and "drained" are computed from per-entry [`Status`] at
 /// read time via the plan's internal execution-state predicates.
 #[derive(

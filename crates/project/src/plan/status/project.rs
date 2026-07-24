@@ -113,9 +113,7 @@ fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
         NextActionKind::Merge => slice.map(|s| format!("/spec:merge {s}")),
         NextActionKind::Drained => Some(format!("/spec:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::PlanNotApproved => {
-                Some(format!("specify plan transition {} approved", plan.name))
-            }
+            StopReason::PlanNotApproved => Some("specify plan approve".to_string()),
             StopReason::RefineFailed => slice.map(|s| format!("/spec:refine {s}")),
             StopReason::BuildFailed => slice.map(|s| format!("/spec:build {s}")),
             StopReason::MergeConflict => slice.map(|s| format!("/spec:merge {s}")),

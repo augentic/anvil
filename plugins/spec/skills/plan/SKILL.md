@@ -20,7 +20,7 @@ specify plan author <name> --source <key>=<adapter>:<binding>
 
 ## Relay
 
-- Surface the CLI output verbatim, including the closing Gate 1 hint (the literal `specify plan transition <name> approved` command). Never run that transition yourself — Gate 1 is operator-only; the operator stamps it directly or through `/spec:execute`'s explicit approval gate.
+- Surface the CLI output verbatim, including the closing Gate 1 hint (the literal `specify plan approve` command). Never run that stamp yourself — Gate 1 is operator-only; the operator stamps it directly or through `/spec:execute`'s explicit approval gate.
 - On non-zero exit, surface the structured error verbatim and stop. Never hand-edit `plan.yaml`, `change.md`, or `discovery.md` — the CLI is the single writer for lifecycle state.
 - Headless Gate 1 curation stays on the CLI: `specify plan add`, `specify plan amend`, `specify plan remove`.
 - Workspace plans cannot run under `specify plan execute` (`plan-execute-workspace-unsupported`); drive them hand-driven instead — `specify plan next`, then the `/spec:refine` → `/spec:build` → `/spec:merge` breakouts per slice.

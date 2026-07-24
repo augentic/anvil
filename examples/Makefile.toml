@@ -57,6 +57,6 @@ run adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
 run init target --name change
 
 run plan author change --source main="source:value:The greeting service."
-run plan transition change approved
+run plan approve
 run plan execute
 '''

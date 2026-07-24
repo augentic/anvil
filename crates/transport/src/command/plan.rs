@@ -133,14 +133,25 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
+/// Arguments for `plan approve`.
+#[derive(Debug, Args)]
+pub struct ApproveArgs {
+    /// Who is driving this invocation — `operator` (default) or
+    /// `agent`. Recorded on the `plan.transition.approved`
+    /// journal event so eval probes can grade
+    /// `gate-1-not-auto-stamped` mechanically; self-reported
+    /// evidence, not an enforcement gate.
+    #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
+    pub actor: String,
+}
+
 /// Arguments for `plan transition`.
 #[derive(Debug, Args)]
 pub struct TransitionArgs {
-    /// Plan name (for plan-level `approved`) or kebab-case entry
-    /// name (for per-entry `done` / `--undo`).
+    /// Kebab-case plan-entry name.
     pub name: String,
-    /// Transition target — `approved` (plan-level) or `done`
-    /// (per-entry). Omit when `--undo` is set.
+    /// Transition target — `done` is the only forward target. Omit
+    /// when `--undo` is set.
     #[arg(required_unless_present = "undo")]
     pub target: Option<String>,
     /// Walk one rung backwards on per-entry status. Legal rungs:
@@ -148,18 +159,9 @@ pub struct TransitionArgs {
     /// refuses to skip rungs — undoing a `done` entry to
     /// `pending` MUST run twice so the journal records each step
     /// independently. Fires one `plan.transition.undone` event
-    /// per call. Plan-level `approved` cannot be undone; un-stamp
-    /// by editing `plan.yaml` directly (out of scope for v1).
+    /// per call.
     #[arg(long = "undo", action = ArgAction::SetTrue, conflicts_with = "target")]
     pub undo: bool,
-    /// Who is driving this invocation — `operator` (default) or
-    /// `agent`. Recorded on the `plan.transition.approved`
-    /// journal event so eval probes can grade
-    /// `gate-1-not-auto-stamped` mechanically; self-reported
-    /// evidence, not an enforcement gate. Ignored on per-entry
-    /// and `--undo` transitions.
-    #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
-    pub actor: String,
 }
 
 /// Arguments for `plan author`.

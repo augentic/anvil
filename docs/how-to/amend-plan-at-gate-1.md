@@ -65,7 +65,7 @@ Surface Error-level findings before stamping approved.
 ## Step 4 — Stamp approved
 
 ```bash
-specify plan transition <plan-name> approved
+specify plan approve
 ```
 
 Only after this transition will `specify plan execute` start.

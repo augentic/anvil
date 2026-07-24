@@ -146,7 +146,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
 /// The literal Gate 1 closing hint the `/spec:plan` skill prints.
 fn gate_hint(name: &str) -> String {
     format!(
-        "Plan `{name}` is at `pending`. Run `specify plan transition {name} approved` to stamp \
+        "Plan `{name}` is at `pending`. Run `specify plan approve` to stamp \
          Gate 1, then `specify plan execute` to drive the slices."
     )
 }

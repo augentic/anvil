@@ -41,7 +41,7 @@ Specify does not clone, refresh, or prepare workspace slots. Plan artifacts stay
 ## Step 4 — Execute with workspace routing
 
 ```bash
-specify plan transition <name> approved
+specify plan approve
 specify plan execute
 ```
 

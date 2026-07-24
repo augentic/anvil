@@ -52,14 +52,11 @@ async fn scaffold_author_approve(session: &Session) {
     assert_eq!(authored.slices, ["greeting"]);
     assert_eq!(authored.surveyed.len(), 1);
     assert_eq!(authored.surveyed[0].leads, ["greeting"]);
-    assert!(authored.hint.contains("specify plan transition demo approved"), "{}", authored.hint);
+    assert!(authored.hint.contains("specify plan approve"), "{}", authored.hint);
 
-    run::<plan::handlers::Transition, _, _>(
+    run::<plan::handlers::Approve, _, _>(
         session.provider(),
-        plan::handlers::TransitionInput {
-            name: "demo".to_string(),
-            target: Some("approved".to_string()),
-            undo: false,
+        plan::handlers::ApproveInput {
             actor: "operator".to_string(),
         },
     )

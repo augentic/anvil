@@ -128,7 +128,7 @@ Sources: 1. Leads: 1.
 The skill exits at `plan.lifecycle: pending` and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo approved` to stamp Gate 1, then `specify plan execute` to drive the slices.
+Plan `fix-typo` is at `pending`. Run `specify plan approve` to stamp Gate 1, then `specify plan execute` to drive the slices.
 ```
 
 #### Operator review step (Gate 1)
@@ -136,7 +136,7 @@ Plan `fix-typo` is at `pending`. Run `specify plan transition fix-typo approved`
 Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Specify calls it **Gate 1**. `/spec:plan` never stamps `approved` itself; you do:
 
 ```bash
-specify plan transition fix-typo approved
+specify plan approve
 ```
 
 Alternatively, run `/spec:execute`: it asks for this confirmation explicitly, stamps Gate 1 on your behalf, then continues straight into the execute loop below.

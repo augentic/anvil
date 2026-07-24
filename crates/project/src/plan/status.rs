@@ -83,9 +83,7 @@ impl StopReason {
     #[must_use]
     pub const fn hint(self) -> &'static str {
         match self {
-            Self::PlanNotApproved => {
-                "Stamp Gate 1 first: specify plan transition <plan-name> approved."
-            }
+            Self::PlanNotApproved => "Stamp Gate 1 first: specify plan approve.",
             Self::RefineFailed => {
                 "Fix the failure, then retry /spec:refine for the slice. The plan entry stays \
                  in-progress."

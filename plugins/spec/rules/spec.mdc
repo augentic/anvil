@@ -47,7 +47,7 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata
 
 /spec:execute                     (Gate 1 on explicit operator confirmation, then the guest-routed
                                    refine -> build -> merge loop; CLI equivalent:
-                                   specify plan transition <name> approved + specify plan execute)
+                                   specify plan approve + specify plan execute)
 
 /spec:finalize <name>             (confirm publication, archive plan)
 ```

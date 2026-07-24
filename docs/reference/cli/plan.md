@@ -12,7 +12,8 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#specify-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
 | [reconciliation](#lead-reconciliation-inside-specify-plan-author) | The reconcile leg inside `specify plan author`: validates the agent grouping and replaces `slices[]` on a replaceable plan. |
-| [`transition`](#specify-plan-transition) | Stamp Gate 1 (`specify plan transition <plan-name> approved`) or close a merged entry (`specify plan transition <entry-name> done`). Per-entry status is `pending | in-progress | done` only. |
+| [`approve`](#specify-plan-approve) | Stamp Gate 1 on the single active plan (`pending → approved`). Nameless and operator-only; idempotent on an already-approved plan. |
+| [`transition`](#specify-plan-transition) | Close a merged entry (`specify plan transition <entry-name> done`) or walk one rung backwards (`--undo`). Per-entry status is `pending | in-progress | done` only. |
 | [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `specify plan execute` reports `stuck`. |
 | [`next`](#specify-plan-next) | Report the next eligible entry (used by the execute loop and ad-hoc operators). |
 | [`status`](#specify-plan-status) | Read-only projection of the plan's execution state into a deterministic `next-action` (`refine|build|merge <slice>` / `stop <reason>` / `drained`). |
@@ -93,7 +94,7 @@ The projection reads three surfaces: `plan.yaml` entries, the candidate slice's 
 
 Stop reasons are a closed set: `plan-not-approved` (Gate 1 not stamped), `refine-failed` / `build-failed` / `merge-conflict` (the awaited phase's most recent journal terminal — `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` — is a failure, scoped to the active entry's claim window), `slice-dropped`, `merge-incomplete` (the merge landed but the entry's `done` stamp is missing), and `stuck` (pending entries blocked on unmet dependencies).
 
-With `--format json` the body carries `plan`, `lifecycle`, `counts` (`pending` / `in-progress` / `done`), `active`, `next-action` (the rendered string), `action` (the closed verb), `slice`, `project`, the optional `stop` sub-body, and the re-entry fields: `current-step` / `last-completed` (the candidate slice's position in the `refine → build → merge` loop, `null` outside a dispatchable slice) and `resume` — the literal command or skill invocation that makes progress (`/spec:build a`, `specify plan transition demo approved`, …), `null` when no single command does (`stuck`, `slice-dropped`). Text mode renders `resume:` as the final line.
+With `--format json` the body carries `plan`, `lifecycle`, `counts` (`pending` / `in-progress` / `done`), `active`, `next-action` (the rendered string), `action` (the closed verb), `slice`, `project`, the optional `stop` sub-body, and the re-entry fields: `current-step` / `last-completed` (the candidate slice's position in the `refine → build → merge` loop, `null` outside a dispatchable slice) and `resume` — the literal command or skill invocation that makes progress (`/spec:build a`, `specify plan approve`, …), `null` when no single command does (`stuck`, `slice-dropped`). Text mode renders `resume:` as the final line.
 
 ### specify plan add
 
@@ -158,18 +159,26 @@ Validation codes (all exit 2):
 
 Both envelopes are owned by the typed wire DTOs in [`crates/project/src/plan/propose.rs`](../../../crates/project/src/plan/propose.rs) (closed `kind: request | response`); the response's judgment-answer schema is generated from them by `project::answers::proposal`. See [CLI output shapes](../cli-output-shapes.md) for the envelope bodies.
 
-### specify plan transition
+### specify plan approve
 
-Stamp Gate 1 or close a merged plan entry.
+Stamp Gate 1 on the single active plan.
 
 ```bash
-specify plan transition <name> <target> [--reason "<text>"]
+specify plan approve
 ```
 
-| Target | Applies to | Meaning |
-|--------|------------|---------|
-| `approved` | `<plan-name>` (matches `plan.yaml` `name`) | Gate 1 — operator-only stamp after `/spec:plan`. |
-| `done` | `<entry-name>` (a `slices[]` row) | Close the entry after `/spec:merge` folded the slice. |
+Nameless — there is exactly one active `plan.yaml`, so no selector is needed. Operator-only: `/spec:plan` never runs it, and `/spec:execute` runs it only behind an explicit operator confirmation. Approving an already-approved plan is an idempotent no-op (no disk write, no journal event); a fresh stamp records the closed `actor` enum (`--actor`, default `operator`) on the `plan.transition.approved` journal event.
+
+### specify plan transition
+
+Close a merged plan entry, or walk its status one rung backwards.
+
+```bash
+specify plan transition <entry> done
+specify plan transition <entry> --undo
+```
+
+`done` closes the entry after `/spec:merge` folded the slice; `--undo` walks one rung backwards (`done → in-progress`, then `in-progress → pending` on a second call), firing one `plan.transition.undone` event per rung.
 
 Per-entry `pending` is written by `specify plan add` / `plan amend`; `in-progress` is written only by `specify plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 

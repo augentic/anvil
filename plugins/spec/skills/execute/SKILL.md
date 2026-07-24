@@ -17,10 +17,10 @@ The engine guest owns the whole drained loop — the approved-plan gate, the gue
 2. **Gate 1 (approval gate)** — ask the operator to confirm they have reviewed `change.md`, `discovery.md`, and `plan.yaml` and approve the plan. Without an explicit affirmative, stop without writing anything — never infer approval from context. On confirmation, run:
 
 ```bash
-specify plan transition <plan-name> approved
+specify plan approve
 ```
 
-`<plan-name>` is the `plan` field from the status body. Leave `--actor` at its default (`operator`): the stamp relays the operator's explicit confirmation, not the agent's judgment.
+Leave `--actor` at its default (`operator`): the stamp relays the operator's explicit confirmation, not the agent's judgment.
 
 3. **Execute**:
 

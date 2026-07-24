@@ -23,7 +23,7 @@ Specify organises work in three layers above the CLI substrate. See [The layered
 Drive one slice without the execute loop — the breakout verbs need no driver lock (mutual exclusion is guest-owned by the `plan execute` marker; the lifecycle gates fence breakouts). The Gate 1 stamp comes first:
 
 ```bash
-specify plan transition <name> approved   # exempt from the lock
+specify plan approve                      # exempt from the lock
 # hold .specify/plan.lock for the driver's lifetime
 bash -c '
   specify plan next

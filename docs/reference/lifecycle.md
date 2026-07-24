@@ -47,7 +47,7 @@ Each slice's `metadata.yaml` tracks an independent lifecycle:
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
 | `/spec:plan` exits at validate                   | plan: `pending` (initial)         | `specify plan author` (scaffold leg)             |
-| Operator stamps Gate 1                            | plan: `pending → approved`        | `specify plan transition <name> approved`        |
+| Operator stamps Gate 1                            | plan: `pending → approved`        | `specify plan approve`                           |
 | `specify plan next` picks next pending row       | per-entry: `pending → in-progress` | `specify plan next`                              |
 | `/spec:refine` creates slice                      | slice: (none) → `refining`         | the `specify slice refine` orchestration          |
 | `/spec:refine` completes synthesis                | slice: `refining → refined`        | the `specify slice refine` orchestration          |

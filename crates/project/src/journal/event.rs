@@ -45,7 +45,7 @@ impl Event {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "event", content = "payload")]
 pub enum EventKind {
-    /// Gate 1 cleared — `specify plan transition <plan-name> approved`.
+    /// Gate 1 cleared — `specify plan approve`.
     #[serde(rename = "plan.transition.approved", rename_all = "kebab-case")]
     PlanTransitionApproved {
         /// Governing plan.
@@ -386,7 +386,7 @@ pub enum EventKind {
 /// Closed `actor` enum on [`EventKind::PlanTransitionApproved`] —
 /// who drove the Gate-1 stamp.
 ///
-/// Self-reported through `specify plan transition --actor` (default
+/// Self-reported through `specify plan approve --actor` (default
 /// `operator`), so the value is grading evidence for eval probes
 /// (`gate-1-not-auto-stamped`), not an enforcement surface. Defaults
 /// to [`Actor::Operator`] both at the flag and at deserialisation so

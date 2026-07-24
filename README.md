@@ -6,15 +6,9 @@ This repository contains the `specify` CLI and the Cursor `/spec:*` skill wrappe
 
 ## Using Specify (operators)
 
-### Install
+### Prerequisites
 
-In Cursor, open Settings → Plugins, search for **Augentic**, install the marketplace, and restart Cursor. This provides the `/spec:`* skills.
-
-The skills shell out to the `specify` CLI; `/spec:init` installs or refreshes it for you. Or install it yourself:
-
-```bash
-cargo install --git https://github.com/augentic/specify --locked
-```
+In Cursor, open Settings → Plugins, search for **Augentic**, install the marketplace, and restart Cursor. This provides the `/spec:`* skills. The skills are ultra thin wrapper around the `specify` CLI.
 
 No Rust toolchain? Use a platform archive from [GitHub Releases](https://github.com/augentic/specify/releases). All install routes and adapter tooling: [Prerequisites](docs/orientation/prerequisites.md).
 
@@ -22,13 +16,14 @@ No Rust toolchain? Use a platform archive from [GitHub Releases](https://github.
 
 Each step below shows the skill first, then the CLI command it wraps — every skill is a thin wrapper over one `specify` verb, so the CLI form is always available as a fallback.
 
-**1. Initialize the project.** In Cursor Agent chat, in a fresh or disposable repository:
+**1. Initialize the project (and framework).** In Cursor Agent chat, in a fresh or disposable repository:
 
 ```text
 /spec:init contracts@0.5.0
 ```
 
 ```bash
+cargo install --git https://github.com/augentic/specify --locked
 specify init contracts@0.5.0
 ```
 
@@ -53,8 +48,8 @@ Specify surveys the source, writes `change.md`, `discovery.md`, and `plan.yaml`,
 ```
 
 ```bash
-specify plan transition first-contract approved   # Gate 1: operator approval
-specify plan execute                              # refine → build → merge per slice
+specify plan approve         # Gate 1: operator approval
+specify plan execute         # refine → build → merge per slice
 ```
 
 Execution refines the slice into durable artifacts, asks the Contracts adapter to build the contract files, validates them, and merges the resulting specs. Inspect `contracts/` and `.specify/specs/`.
@@ -67,7 +62,7 @@ Execution refines the slice into durable artifacts, asks the Contracts adapter t
 
 ```bash
 specify plan status     # must be`drained`
-specify plan archive
+specify plan archive    # Gate 2
 ```
 
 Guided walkthrough of every artifact and transition: [quick-start tutorial](docs/tutorials/quick-start.md). Command lookup: [Quick Reference](docs/reference/quick-reference.md).
