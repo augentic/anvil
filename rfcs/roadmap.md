@@ -164,7 +164,7 @@ specify execute resume <run-id>
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
 **Frame:** an adapter is a wasm component implementing one axis of the versioned `specify:adapter` WIT contract, so compatibility is WIT-package versioning. Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
-**First-party seam (draft):** [RFC-76 Adapter Publish and Install](rfc-76-adapter-publish-install.md) closes the build → publish → hydrate → resolve loop and embeds it in the `specify-adapters` workflow (restore publish automation, transport parity, lockstep release policy). Consumer install/resolve from [RFC-70](rfc-70-deployment.md) is already landed.
+**First-party seam (draft):** [RFC-76 Adapter Publish and Install](rfc-76-adapter-install.md) closes the build → publish → hydrate → resolve loop and embeds it in the `specify-adapters` workflow (restore publish automation, transport parity, lockstep release policy). Consumer install/resolve from [RFC-70](rfc-70-deployment.md) is already landed. Release lines and host↔adapter coordination are owned by [RFC-77 Release Process](rfc-77-release-process.md).
 **Remaining:** third-party namespacing beyond the `specify:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, references) beyond the first-party Omnia/Vectis/contracts set.
 **Discovery substrate:** [Adapter Descriptors and Registry Trust](rfc-71-discovery.md) defines the descriptor schema, registry projection, and trust policy this ecosystem requires; its registry stages are gated on this item, not on the migration program.
 
@@ -204,7 +204,7 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact (RM-11)?
 - What is the smallest forge adapter contract for push, PR/MR handoff, CI state, and finalize?
 - How should orchestration ownership and handoff work across multiple operators or agents?
-- What cross-version compatibility matrix and semver-range host-CLI floor policy should adapter authors provide across adapter versions (RM-21)?
+- What cross-version compatibility matrix and semver-range host-CLI floor policy should adapter authors provide across adapter versions (RM-21)? Draft process answer: [RFC-77](rfc-77-release-process.md) (exact pins + `specify-floor` + short compatibility rows; ranges still open).
 - How much telemetry should emit by default, and what requires explicit opt-in?
 - What approval model is required before hosted execution can push branches or open pull requests?
 
