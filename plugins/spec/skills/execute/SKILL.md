@@ -9,10 +9,10 @@ The engine guest owns the whole drained loop — the approved-plan gate, the gue
 
 ## Invocation
 
-1. **Status probe** — run `specify plan status` (read-only — never substitute `specify plan next`, a plan-state writer). Branch on the projection:
+1. **Status probe** — run `specify plan status` (read-only — never substitute `specify plan next`, a plan-state writer). Branch on the `next-action` projection — not the plan header's `(pending|approved)` lifecycle label (text mode never emits a `lifecycle: approved` token):
    - `stop plan-not-approved` (plan still `pending`) — continue to step 2.
-   - `lifecycle: approved` — skip to step 3.
    - `drained` — surface the output, point at `/spec:finalize`, and stop.
+   - `refine|build|merge <slice>` — skip to step 3.
    - any other `stop <reason>` — surface the output verbatim and stop.
 2. **Gate 1 (approval gate)** — ask the operator to confirm they have reviewed `change.md`, `discovery.md`, and `plan.yaml` and approve the plan. Without an explicit affirmative, stop without writing anything — never infer approval from context. On confirmation, run:
 

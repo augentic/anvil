@@ -380,4 +380,4 @@ These are expected follow-ons, not hidden requirements for the internal cut.
 
 Confirm the deliberately narrow D1–D9 cut: internal source install, one public first-party GHCR mapping, **manual** publication via Make tasks, exact pins, launcher pull-on-miss with mandatory manifest-digest recording, and the existing store. GitHub Actions publish automation (CI no-repush, attestations) is Phase E — start only after Phases A–D are satisfactory. Attestation verification, digest pinning, CAS, public installers, third-party trust, and independent release sophistication remain later still.
 
-Related: [RFC-70](rfc-70-deployment.md) · [RFC-71](rfc-71-discovery.md) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [RFC-75](archive/rfc-75-artifact-locations.md) (archive, locations).
+Related: [RFC-70](rfc-70-deployment.md) · [RFC-71](rfc-71-discovery.md) · [RFC-77](rfc-77-release-process.md) (host/adapter release lines and coordination) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [RFC-75](archive/rfc-75-artifact-locations.md) (archive, locations).
