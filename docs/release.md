@@ -59,7 +59,7 @@ cargo build --release --locked --bin specify
    - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
    - `x86_64-apple-darwin` on `macos-13` (native).
    - `aarch64-apple-darwin` on `macos-14` (native).
-   - `x86_64-pc-windows-msvc` on `windows-latest` (native).
+   - `x86_64-pc-windows-msvc` on `windows-latest` (native) — temporarily out of the matrix until upstream `omnia-wasi-model` compiles on Windows again.
 
    Each job produces a versioned archive (`specify-${TAG}-${TARGET}.tar.gz` on unix, `.zip` on Windows) plus a companion `.sha256` file, uploaded via `actions/upload-artifact@v4`.
 
