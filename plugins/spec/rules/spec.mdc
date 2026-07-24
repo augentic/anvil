@@ -1,5 +1,5 @@
 ---
-description: Specify plugin context -- Specify workflow orchestration for planning, refining, building, merging, and dropping slices
+description: Specify plugin context -- Specify workflow orchestration for planning, executing, refining, building, merging, and dropping slices
 alwaysApply: true
 ---
 
@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: initialize a project, plan a change, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `specify` CLI verb and relays its output; the drained execute loop is the guest-routed `specify plan execute` verb, with no skill wrapper.
+This plugin provides the core Specify workflow skills: initialize a project, plan a change, approve and execute the plan, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `specify` CLI verb and relays its output; `/spec:execute` wraps the guest-routed `specify plan execute` loop behind an explicit Gate 1 confirmation.
 
 **Purpose**: Drive the `plan -> execute` rhythm (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 
@@ -45,9 +45,9 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata
 
 /spec:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
 
-specify plan transition <name> approved   (Gate 1; operator-only)
-
-specify plan execute              (guest-routed loop: refine -> build -> merge per slice)
+/spec:execute                     (Gate 1 on explicit operator confirmation, then the guest-routed
+                                   refine -> build -> merge loop; CLI equivalent:
+                                   specify plan approve + specify plan execute)
 
 /spec:finalize <name>             (confirm publication, archive plan)
 ```
@@ -82,6 +82,7 @@ Breakouts invoke the same guest orchestrations one slice at a time, when the exe
 - See the project root `AGENTS.md` for overall project context
 - [Init SKILL.md](skills/init/SKILL.md) — Initialize Specify
 - [Plan SKILL.md](skills/plan/SKILL.md) — Author `change.md` + `plan.yaml`
+- [Execute SKILL.md](skills/execute/SKILL.md) — Confirm Gate 1, then drive the drained per-slice loop
 - [Refine SKILL.md](skills/refine/SKILL.md) — Synthesize artifacts for one slice
 - [Build SKILL.md](skills/build/SKILL.md) — Validate artifacts and implement tasks
 - [Merge SKILL.md](skills/merge/SKILL.md) — Finalize completed slices

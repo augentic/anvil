@@ -343,7 +343,7 @@ mod re_entry {
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
-        assert_eq!(body.resume.as_deref(), Some("specify plan transition test approved"));
+        assert_eq!(body.resume.as_deref(), Some("specify plan approve"));
     }
 
     #[tokio::test]

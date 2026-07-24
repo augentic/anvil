@@ -23,7 +23,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
 | `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
-| `specify plan execute`   | Drive the per-slice refine → build → merge loop (CLI verb, no skill wrapper)                   |
+| `/spec:execute`          | Confirm Gate 1, then drive the per-slice refine → build → merge loop (`specify plan execute`) |
 | `/spec:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
 | `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
@@ -79,7 +79,7 @@ specify plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + 
 specify plan add <entry> --sources <key>=<lead> --project <name>
 specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
-specify plan transition <plan-name> approved                 # Gate 1; operator-only (lock-exempt)
+specify plan approve                                     # Gate 1; operator-only (lock-exempt)
 specify plan status                                      # read-only next-action projection
 specify plan next                                        # active in-progress, or pick next pending
 specify plan archive

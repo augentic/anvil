@@ -60,7 +60,7 @@ Amend if needed:
 
 ```bash
 specify plan amend <entry> --add-source <key>=<lead>
-specify plan transition account-revamp approved
+specify plan approve
 ```
 
 See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).

@@ -361,11 +361,18 @@ where
         "Remove a pending plan entry while the plan is still replaceable (`lifecycle: pending` and every entry `pending`). Gate 1 curation only — defers a lead without re-surveying `discovery.md`"
     );
     route!(
+        ["plan", "approve"],
+        plan::ApproveArgs,
+        ::change::plan::handlers::Approve,
+        "Stamp Gate 1 — transition the active plan's lifecycle `pending → approved`",
+        "Stamp Gate 1 — transition the active plan's lifecycle `pending → approved`.\n\nNameless: there is exactly one active `plan.yaml`, so no selector is needed. Operator-only — `/spec:plan` MUST NOT call this verb; skill bodies stop at `pending` and print the literal `specify plan approve` command in their closing hint for the operator to run. Approving an already-approved plan is an idempotent no-op (no disk write, no journal event)."
+    );
+    route!(
         ["plan", "transition"],
         plan::TransitionArgs,
         ::change::plan::handlers::Transition,
-        "Apply a validated status transition",
-        "Apply a validated status transition.\n\nTwo transition shapes share this verb (workflow §CLI surface):\n\n- Plan-level Gate 1 stamp — `<name>` is the plan name and `<target>` is `approved`. Operator-only — `/spec:plan` MUST NOT call this verb; skill bodies stop at `pending` and print the literal `specify plan transition <name> approved` command in their closing hint for the operator to run.\n- Per-entry close — `<name>` is a plan-entry name and `<target>` is `done`. The `/spec:merge` skill is the canonical caller.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
+        "Apply a validated per-entry status transition",
+        "Apply a validated per-entry status transition.\n\n`<name>` is a plan-entry name and `<target>` is `done` — the per-entry close; the `/spec:merge` skill is the canonical caller. `--undo` walks one rung backwards instead. Plan-level Gate 1 is `specify plan approve`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
     );
     route!(
         ["plan", "author"],
@@ -475,7 +482,8 @@ convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
-convert!(plan::TransitionArgs => ::change::plan::handlers::TransitionInput { name, target, undo, actor });
+convert!(plan::ApproveArgs => ::change::plan::handlers::ApproveInput { actor });
+convert!(plan::TransitionArgs => ::change::plan::handlers::TransitionInput { name, target, undo });
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::EmitArgs => project::journal::handlers::EmitInput { event, payload });

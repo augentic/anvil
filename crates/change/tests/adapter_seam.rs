@@ -24,12 +24,9 @@ async fn author(
 }
 
 async fn approve(session: &Session) {
-    run::<plan::handlers::Transition, _, _>(
+    run::<plan::handlers::Approve, _, _>(
         session.provider(),
-        plan::handlers::TransitionInput {
-            name: "demo".to_string(),
-            target: Some("approved".to_string()),
-            undo: false,
+        plan::handlers::ApproveInput {
             actor: "operator".to_string(),
         },
     )

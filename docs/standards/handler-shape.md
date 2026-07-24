@@ -90,7 +90,7 @@ Never put domain logic in `transport` or a shim's route match. Manual `Input { â
 
 `plan amend` extends the canonical `with_state::<Plan, _, _>(...)` operation shape with the three `--sources` flag families: `--sources <binding>...` (wholesale replace), `--add-source <binding>` (repeatable), `--remove-source <key>` (repeatable). The operation applies `--add-source` / `--remove-source` *after* the wholesale `Plan::amend(name, patch)` call so wholesale replacement plus targeted edits compose cleanly in a single invocation. The `--divergence` flag accepts only `likely | accepted | rejected` from the wire and emits a `plan.amend.divergence` journal event when (and only when) the field flips.
 
-`plan transition <name> <target>` is one operation that dispatches on the operands: `<plan-name> approved` is the Gate 1 stamp and emits a `plan.transition.approved` journal event; `<entry-name> done` is the per-entry close (`/spec:merge` is the canonical caller). Anything else is an `Error::Argument` (exit 2). The journal append runs *after* `with_state` returns so the plan write and the journal append cannot interleave on failure.
+`plan approve` is the nameless Gate 1 stamp over the single active plan and emits a `plan.transition.approved` journal event; `plan transition <entry> done` is the per-entry close (`/spec:merge` is the canonical caller), with `--undo` as the one-rung reverse walk. Any other target is an `Error::Argument` (exit 2). In both operations the journal append runs *after* `with_state` returns so the plan write and the journal append cannot interleave on failure.
 
 ## Gotcha â€” `specify init` and the version floor
 

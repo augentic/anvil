@@ -6,11 +6,18 @@ argument-hint: <adapter|workspace>
 
 # Init Skill
 
-`specify init` owns every filesystem write — `.specify/`, `project.yaml`, the project component cache, root `AGENTS.md`, and `.specify/context.lock`. Workspace slot materialization remains operator-owned. This skill only verifies the binary, elicits arguments, invokes the verb, and relays its output.
+`specify init` owns every filesystem write — `.specify/`, `project.yaml`, the project component cache, root `AGENTS.md`, and `.specify/context.lock`. Workspace slot materialization remains operator-owned. This skill installs or refreshes the CLI, elicits arguments, invokes the verb, and relays its output.
 
 ## Invocation
 
-1. **Verify the CLI** — run `specify --version`; install or update with `cargo install --git https://github.com/augentic/specify --locked` only after explicit operator confirmation.
+1. **Install or refresh the CLI** — invoking this skill is consent to install. Reinstall from source (overwrites any existing binary; needs a Rust toolchain with the `wasm32-wasip2` target):
+
+```bash
+cargo install --git https://github.com/augentic/specify --locked --force
+```
+
+Then run `specify --version` and stop on failure.
+
 2. **Route re-entry** — when `.specify/project.yaml` already exists, `specify init` changes nothing: it exits 0 and prints the literal `specify init --upgrade` re-entry command. Confirm with the operator, then run `specify init --upgrade`.
 3. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: a missing input fails typed (`init-adapter-required` for the adapter; `project-platforms-required` when the target demands `--platforms`, naming the allowed and default sets — `core` is mandatory). Gather conversationally: the adapter (`<adapter>` and `--workspace` are mutually exclusive; the literal argument `workspace` means workspace init), `--platforms <platforms>` when the target adapter declares `platforms.required` (e.g. vectis), and optionally `--name <name>` / `--description "<description>"`.
 4. **Invoke**:

@@ -112,7 +112,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
 /spec:plan fix-typo source intent="fix typo in user.rs"
   --> writes change.md + plan.yaml + discovery.md, exits at pending
 
-specify plan transition fix-typo approved
+specify plan approve
   --> operator review step (Gate 1)
 
 specify plan execute

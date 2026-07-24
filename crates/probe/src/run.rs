@@ -79,7 +79,6 @@ struct Trial {
     fixture: Option<PathBuf>,
     init: Vec<String>,
     author: Vec<String>,
-    change: String,
     catalog: Catalog,
     factory: ModelFactory,
 }
@@ -159,7 +158,6 @@ impl Trial {
             fixture: args.fixture.as_deref().map(|fixture| anchored(workspace_root, fixture)),
             init,
             author,
-            change: change.to_string(),
             catalog,
             factory,
         })
@@ -211,7 +209,7 @@ impl Trial {
         let authored = sandbox::read_plan(&root)?;
         ensure!(!authored.entries.is_empty(), "plan author produced no entries");
 
-        self.invoke(&root, &model, &["plan", "transition", &self.change, "approved"]).await?;
+        self.invoke(&root, &model, &["plan", "approve"]).await?;
         telemetry::report(&telemetry.counts(), authored.entries.len());
         Ok(())
     }

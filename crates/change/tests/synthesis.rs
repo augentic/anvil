@@ -89,12 +89,9 @@ async fn author_and_approve(session: &Session) {
     )
     .await
     .expect("author walks to pending");
-    run::<plan::handlers::Transition, _, _>(
+    run::<plan::handlers::Approve, _, _>(
         session.provider(),
-        plan::handlers::TransitionInput {
-            name: "auth".to_string(),
-            target: Some("approved".to_string()),
-            undo: false,
+        plan::handlers::ApproveInput {
             actor: "operator".to_string(),
         },
     )

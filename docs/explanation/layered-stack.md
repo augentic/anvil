@@ -58,10 +58,10 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 | Skill            | Role                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
 | `/spec:plan`     | Wrap `specify plan author`: survey each bound source, reconcile `slices[]`, validate; exit at `pending` |
-| `specify plan execute` | Drive the plan through the Layer 1 loop (guest-routed verb, no skill wrapper); refuses unless plan is `approved` |
+| `specify plan execute` | Drive the plan through the Layer 1 loop (guest-routed verb, wrapped by `/spec:execute`); refuses unless plan is `approved` |
 | `/spec:finalize` | Confirm operator-owned publication is complete, then archive the plan                                |
 
-The plan is the change's table of contents. `/spec:plan` produces it by invoking `specify plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `specify plan transition <name> approved` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
+The plan is the change's table of contents. `/spec:plan` produces it by invoking `specify plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `specify plan approve` command in its closing hint. The operator stamps Gate 1 explicitly — `/spec:plan` never writes `approved` itself.
 
 `specify plan execute` consumes the approved plan by claiming the next eligible entry, running the Layer 1 loop, and updating per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/spec:finalize` then archives `plan.yaml`.
 
@@ -71,7 +71,7 @@ The matching CLI surface is **`specify plan {create, author, execute, add, amend
 
 The pause between `/spec:plan` and `specify plan execute` is the only review seam Specify ships. `/spec:plan` writes `pending`; the operator writes `approved`. `specify plan execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `specify plan add`, `specify plan remove`, or `specify plan amend <entry>` (or re-run `specify plan author` to re-reconcile wholesale) before any per-slice work runs.
 
-The framework does not ship a single "do everything" command. Teams that want one-command flow compose plan, transition, and execute in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
+The framework does not ship a single "do everything" command. Teams that want one-command flow compose plan, approve, and execute in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
 
 ## The layers compose
 

@@ -1,12 +1,12 @@
-//! Regression coverage for the `plan transition` no-op contract:
-//! stamping `approved` on an already-approved plan must neither
-//! rewrite `plan.yaml` nor append a journal event (the idempotent
-//! Gate-1 contract — `Mutation::unchanged` skips both effects).
+//! Regression coverage for the `plan approve` no-op contract:
+//! stamping an already-approved plan must neither rewrite `plan.yaml`
+//! nor append a journal event (the idempotent Gate-1 contract —
+//! `Mutation::unchanged` skips both effects).
 
 use std::fs;
 use std::os::unix::fs::MetadataExt;
 
-use change::plan::handlers::{Transition, TransitionInput};
+use change::plan::handlers::{Approve, ApproveInput};
 use mock::invoke::run;
 use mock::session::Session;
 
@@ -18,12 +18,8 @@ slices:
     status: pending
 ";
 
-fn approve_input() -> TransitionInput {
-    serde_json::from_value(serde_json::json!({
-        "name": "demo",
-        "target": "approved",
-    }))
-    .expect("input deserialises")
+fn approve_input() -> ApproveInput {
+    serde_json::from_value(serde_json::json!({})).expect("input deserialises")
 }
 
 fn journal_lines(project: &Session) -> Vec<String> {
@@ -46,7 +42,7 @@ async fn repeated_approve_noop() {
     fs::write(&plan_path, PENDING_PLAN).expect("stage plan.yaml");
 
     let body =
-        run::<Transition, _, _>(project.provider(), approve_input()).await.expect("Gate 1 stamps");
+        run::<Approve, _, _>(project.provider(), approve_input()).await.expect("Gate 1 stamps");
     assert_eq!(body.previous, "pending");
     assert_eq!(body.current, "approved");
     let events = journal_lines(&project);
@@ -59,7 +55,7 @@ async fn repeated_approve_noop() {
     let stamped_bytes = fs::read(&plan_path).expect("plan bytes");
 
     // Idempotent approval preserves both the inode and journal.
-    let body = run::<Transition, _, _>(project.provider(), approve_input())
+    let body = run::<Approve, _, _>(project.provider(), approve_input())
         .await
         .expect("re-stamp is a no-op");
     assert_eq!(body.previous, "approved");
@@ -69,7 +65,7 @@ async fn repeated_approve_noop() {
     assert_eq!(
         (stamped.dev(), stamped.ino()),
         (after.dev(), after.ino()),
-        "an already-approved transition must not rewrite plan.yaml"
+        "an already-approved approve must not rewrite plan.yaml"
     );
     assert_eq!(fs::read(&plan_path).expect("plan bytes"), stamped_bytes);
     assert_eq!(journal_lines(&project).len(), 1, "no second plan.transition.approved event");

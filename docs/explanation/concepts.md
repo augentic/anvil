@@ -94,7 +94,7 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 </div>
 
 
-`/spec:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specify plan transition <name> approved` (Gate 1). The guest-routed `specify plan execute` then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Specify; `/spec:finalize` archives only after that publication is complete.
+`/spec:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specify plan approve` (Gate 1). The guest-routed `specify plan execute` then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Specify; `/spec:finalize` archives only after that publication is complete.
 
 A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `specify plan execute` runs the same single-slice rhythm.
 
@@ -171,7 +171,7 @@ A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how
 The default rhythm:
 
 > [!NOTE]
-> **Commands.** `/spec:init <target>` → `/spec:plan <name> source …` → `specify plan transition <name> approved` (Gate 1) → `specify plan execute` → `/spec:finalize <name>`
+> **Commands.** `/spec:init <target>` → `/spec:plan <name> source …` → `specify plan approve` (Gate 1) → `specify plan execute` → `/spec:finalize <name>`
 
 Breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) run one phase by hand when execute parks or you want manual control.
 

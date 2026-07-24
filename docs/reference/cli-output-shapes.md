@@ -109,20 +109,35 @@ Success summary after the reconcile kernel projects the agent **response** onto 
 }
 ```
 
-### `specify plan transition`
+### `specify plan approve`
 
-Used for both entry transitions (`kind: "entry"`) and the plan-level review stamp (`kind: "plan"`). The `previous` / `current` pair pins the legal transition rung that fired.
+The nameless Gate 1 stamp. The `previous` / `current` pair pins the lifecycle move; an already-approved plan echoes `approved → approved` (the idempotent no-op).
 
 ```json
 {
   "current": "approved",
-  "kind": "plan",
-  "name": "demo",
   "plan": {
     "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
   },
   "previous": "pending"
+}
+```
+
+### `specify plan transition`
+
+Per-entry transitions only (`kind: "entry"`, or `kind: "undo"` with the `undo: { from, to }` pair). The `previous` / `current` pair pins the legal transition rung that fired.
+
+```json
+{
+  "current": "done",
+  "kind": "entry",
+  "name": "identity-service",
+  "plan": {
+    "name": "demo",
+    "path": "<TEMPDIR>/plan.yaml"
+  },
+  "previous": "in-progress"
 }
 ```
 

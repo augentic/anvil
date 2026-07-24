@@ -36,7 +36,7 @@ Enforcement splits by audience, not by rule id:
 
 There is no lint verb on the CLI: repo consistency here is the mdBook links gate, and there is no deterministic consumer-project scanner — if one earns its way in, it lands as developer tooling. The rules themselves reach consumer projects inside the target adapter components: each target embeds the universal pack plus its own overlays and its build review prompts apply them. Standards enforcement is **not** a workflow phase either way: findings may block a pipeline but never transition a slice or write lifecycle fields. Phase skills already use deterministic CLI gates where lifecycle depends on them (`specify slice validate` during refine; verify-repair during build).
 
-Plan **Gate 1** (`specify plan transition <name> approved`) is operator approval of a *plan*, not engineering-standards enforcement. Reserve **review** for build-time judgment (`REVIEW.md`, `build/review.md` briefs).
+Plan **Gate 1** (`specify plan approve`) is operator approval of a *plan*, not engineering-standards enforcement. Reserve **review** for build-time judgment (`REVIEW.md`, `build/review.md` briefs).
 
 ## Structural enforcement of the standards boundary
 
