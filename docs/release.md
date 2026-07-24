@@ -57,9 +57,9 @@ cargo build --release --locked --bin specify
    The root `build.rs` resolves `SPECIFY_WASM` — an explicit environment override wins (the workflow points it at the prebuilt engine; a relative value anchors at the workspace root, so it resolves inside the `cross` container too), else `build.rs` spawns its own child `cargo build --lib --target wasm32-wasip2` into an isolated target directory — and `src/omnia.rs` embeds the bytes with `include_bytes!`, so the shipped binary carries its own engine (no first-launch download, no network). There is no placeholder fallback: an empty or missing component fails the build. The workflow additionally guards the wasm build product with `test -s`. Supported targets:
    - `x86_64-unknown-linux-gnu` on `ubuntu-latest` (native `cargo build`).
    - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
-   - `x86_64-apple-darwin` on `macos-13` (native).
+   - `x86_64-apple-darwin` on `macos-15-intel` (native; the last hosted x86_64 macOS runner, retired August 2027).
    - `aarch64-apple-darwin` on `macos-14` (native).
-   - `x86_64-pc-windows-msvc` on `windows-latest` (native).
+   - `x86_64-pc-windows-msvc` on `windows-latest` (native) — temporarily out of the matrix until upstream `omnia-wasi-model` compiles on Windows again.
 
    Each job produces a versioned archive (`specify-${TAG}-${TARGET}.tar.gz` on unix, `.zip` on Windows) plus a companion `.sha256` file, uploaded via `actions/upload-artifact@v4`.
 

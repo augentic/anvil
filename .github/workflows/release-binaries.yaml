@@ -41,15 +41,21 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             use_cross: true
+          # macos-13 was retired by GitHub in December 2025; macos-15-intel
+          # is the last hosted x86_64 macOS runner (until August 2027).
           - target: x86_64-apple-darwin
-            os: macos-13
+            os: macos-15-intel
             use_cross: false
           - target: aarch64-apple-darwin
             os: macos-14
             use_cross: false
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            use_cross: false
+          # x86_64-pc-windows-msvc is temporarily out of the matrix:
+          # omnia-wasi-model 0.35.0 does not compile on Windows (cap-std
+          # Metadata dev()/ino() are unix-only). Re-add once the upstream
+          # fix lands in the pinned omnia rev.
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          #   use_cross: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
