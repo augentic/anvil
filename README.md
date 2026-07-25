@@ -1,25 +1,29 @@
 # Specify
 
-[![CI](https://github.com/augentic/specify/actions/workflows/ci.yaml/badge.svg)](https://github.com/augentic/specify/actions/workflows/ci.yaml)
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
-[![Docs](https://img.shields.io/badge/docs-specify.augentic.io-0A7EA4)](https://specify.augentic.io/)
+[CI](https://github.com/augentic/specify/actions/workflows/ci.yaml)
+[License: MIT OR Apache-2.0](#license)
+[Docs](https://specify.augentic.io/)
 
 Spec-driven development in [Cursor](https://cursor.com): plan a change, approve it, then `refine → build → merge` each slice from durable artifacts — not chat history.
 
 **Operators:** install the Augentic Cursor plugin and the `specify` CLI, then run `/spec:init` → `/spec:plan` → `/spec:execute` → `/spec:finalize`.
 
-**Contributors:** this repository is the Rust workspace that builds the `specify` binary and the ultrathin `/spec:*` skill wrappers. Source and target adapters live in [augentic/specify-adapters](https://github.com/augentic/specify-adapters).
+**Contributors:** this repository is the Rust workspace that builds the `specify` binary and the ultrathin `/spec:`* skill wrappers. Source and target adapters live in [augentic/specify-adapters](https://github.com/augentic/specify-adapters).
 
 ## Choose your path
 
-| I want to… | Go to |
-| --- | --- |
-| Run my first change | [Install](#install) → [First change](#first-change) |
-| Understand the model | [What is Specify?](https://specify.augentic.io/orientation/index.html) · [in-tree](docs/orientation/index.md) |
-| Look up a command | [Quick reference](https://specify.augentic.io/reference/quick-reference.html) · [in-tree](docs/reference/quick-reference.md) |
-| Recover when execute parks | [Breakout skills](#breakout-skills) · [Drive a slice manually](docs/how-to/drive-slice-manually.md) |
-| Contribute to the CLI / engine | [Developing Specify](#developing-specify-contributors) |
-| Author or debug an adapter | [augentic/specify-adapters](https://github.com/augentic/specify-adapters) |
+
+| I want to…                     | Go to                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Run my first change            | [Install](#install) → [First change](#first-change)                                                                          |
+| Understand the model           | [What is Specify?](https://specify.augentic.io/orientation/index.html) · [in-tree](docs/orientation/index.md)                |
+| Look up a command              | [Quick reference](https://specify.augentic.io/reference/quick-reference.html) · [in-tree](docs/reference/quick-reference.md) |
+| Recover when execute parks     | [Breakout skills](#breakout-skills) · [Drive a slice manually](docs/how-to/drive-slice-manually.md)                          |
+| Contribute to the CLI / engine | [Developing Specify](#developing-specify-contributors)                                                                       |
+| Author or debug an adapter     | [augentic/specify-adapters](https://github.com/augentic/specify-adapters)                                                    |
+
+
+
 
 ## The rhythm
 
@@ -29,12 +33,11 @@ Spec-driven development in [Cursor](https://cursor.com): plan a change, approve 
                                          └─ per slice: refine → build → merge
 ```
 
-![Default workflow: init → plan → Gate 1 → execute → finalize](docs/assets/diagrams/quick-reference/workflow-poster.svg)
+Default workflow: init → plan → Gate 1 → execute → finalize
 
 Gate 1 is the operator review step: nothing runs until you stamp the plan `approved`. A one-slice change uses the same steps as a twelve-slice migration.
 
-<details>
-<summary>Example session (contracts target)</summary>
+Example session (contracts target)
 
 ```text
 $ specify --version
@@ -58,28 +61,30 @@ $ /spec:finalize first-contract
 # → archives the plan after you publish via git
 ```
 
-</details>
+
 
 ## Install
 
+
+
 ### 1. Cursor plugin
 
-In Cursor: **Settings → Plugins**, search for **Augentic**, install the marketplace, and restart Cursor. That installs the Specify plugin (`/spec:*` skills). Every skill is an ultrathin wrapper around one `specify` CLI verb.
+In Cursor: **Settings → Plugins**, search for **Augentic**, install the marketplace, and restart Cursor. That installs the Specify plugin (`/spec:`* skills). Every skill is an ultrathin wrapper around one `specify` CLI verb.
 
-### 2. `specify` CLI
+### 2. `specify` CLI (optional)
 
-Pick one route, then verify:
+While the plugin will install the `specify` binary on `/spec:init`, it can be manually installed using:
 
 ```bash
-# Homebrew (macOS / Linuxbrew; private repo needs a GitHub token)
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"
-brew tap augentic/tap && brew install specify
-
 # Or cargo-binstall (prebuilt; no local compile)
-cargo binstall --git https://github.com/augentic/specify
+cargo binstall --git https://github.com/augentic/specify specify@0.29.0
 
 # Or from source (needs a Rust toolchain + wasm32-wasip2)
 cargo install --git https://github.com/augentic/specify --locked
+
+# Homebrew
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"
+brew tap augentic/tap && brew install specify
 ```
 
 ```bash
@@ -152,24 +157,28 @@ Guided walkthrough of every artifact and transition: [quick-start tutorial](docs
 
 When the execute loop parks, or you want to drive one slice by hand:
 
-| Skill | CLI equivalent |
-| --- | --- |
-| `/spec:refine` | `specify slice refine` |
-| `/spec:build` | `specify slice build` |
-| `/spec:merge` | `specify slice merge run` |
-| `/spec:drop` | `specify slice drop` |
+
+| Skill          | CLI equivalent            |
+| -------------- | ------------------------- |
+| `/spec:refine` | `specify slice refine`    |
+| `/spec:build`  | `specify slice build`     |
+| `/spec:merge`  | `specify slice merge run` |
+| `/spec:drop`   | `specify slice drop`      |
+
 
 Code generation lives in target adapters, not in Cursor skills. Vocabulary: [AGENTS.md § Workflow nouns](AGENTS.md#workflow-nouns); longer read: [Core concepts](docs/explanation/concepts.md).
 
 ## Stuck?
 
-| Symptom | What to check |
-| --- | --- |
-| `/spec:*` skills missing | Augentic marketplace installed? Restart Cursor after install. |
-| `specify: command not found` | CLI on `PATH`? Re-run [Install](#install) and `specify --version`. |
-| `plan execute` refuses | Plan still `pending`? Run `specify plan approve` (or confirm Gate 1 in `/spec:execute`). |
-| Adapter / pin errors | Use a pinned id (`contracts@0.5.0`) so the runtime can pull from GHCR; see [Prerequisites](docs/orientation/prerequisites.md). |
-| Execute parked mid-slice | Run the matching [breakout](#breakout-skills); see [Drive a slice manually](docs/how-to/drive-slice-manually.md). |
+
+| Symptom                      | What to check                                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `/spec:*` skills missing     | Augentic marketplace installed? Restart Cursor after install.                                                                  |
+| `specify: command not found` | CLI on `PATH`? Re-run [Install](#install) and `specify --version`.                                                             |
+| `plan execute` refuses       | Plan still `pending`? Run `specify plan approve` (or confirm Gate 1 in `/spec:execute`).                                       |
+| Adapter / pin errors         | Use a pinned id (`contracts@0.5.0`) so the runtime can pull from GHCR; see [Prerequisites](docs/orientation/prerequisites.md). |
+| Execute parked mid-slice     | Run the matching [breakout](#breakout-skills); see [Drive a slice manually](docs/how-to/drive-slice-manually.md).              |
+
 
 Questions and bugs: [GitHub Issues](https://github.com/augentic/specify/issues).
 
@@ -177,11 +186,13 @@ Questions and bugs: [GitHub Issues](https://github.com/augentic/specify/issues).
 
 You consume adapters as Wasm packages (for example `contracts@0.5.0`). Clone [specify-adapters](https://github.com/augentic/specify-adapters) only when authoring or debugging an adapter.
 
-| Target | Use case |
-| --- | --- |
-| `omnia` | [Omnia](https://omnia.host) Rust WASM services |
-| `vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
-| `contracts` | API/interface contract work |
+
+| Target      | Use case                                                      |
+| ----------- | ------------------------------------------------------------- |
+| `omnia`     | [Omnia](https://omnia.host) Rust WASM services                |
+| `vectis`    | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
+| `contracts` | API/interface contract work                                   |
+
 
 Source adapters turn intent, documentation, legacy TypeScript, screenshots, or runtime captures into Evidence. Target adapters consume the resulting specs and build implementation outputs.
 
@@ -209,15 +220,19 @@ Start with the [developer loop](docs/contributing/dev-loop.md), then [Cursor ope
 
 ## Documentation
 
-| Resource | Link |
-| --- | --- |
-| Hosted Developer Guide | [specify.augentic.io](https://specify.augentic.io/) |
-| In-tree book source | [docs/SUMMARY.md](docs/SUMMARY.md) |
-| Quick-start tutorial | [docs/tutorials/quick-start.md](docs/tutorials/quick-start.md) |
-| Quick reference | [docs/reference/quick-reference.md](docs/reference/quick-reference.md) |
-| Orientation | [docs/orientation/index.md](docs/orientation/index.md) |
-| Agent instructions | [AGENTS.md](AGENTS.md) |
+
+| Resource                  | Link                                                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Hosted Developer Guide    | [specify.augentic.io](https://specify.augentic.io/)                                                         |
+| In-tree book source       | [docs/SUMMARY.md](docs/SUMMARY.md)                                                                          |
+| Quick-start tutorial      | [docs/tutorials/quick-start.md](docs/tutorials/quick-start.md)                                              |
+| Quick reference           | [docs/reference/quick-reference.md](docs/reference/quick-reference.md)                                      |
+| Orientation               | [docs/orientation/index.md](docs/orientation/index.md)                                                      |
+| Agent instructions        | [AGENTS.md](AGENTS.md)                                                                                      |
 | Contributing / governance | [CONTRIBUTING.md](CONTRIBUTING.md) · [GOVERNANCE.md](GOVERNANCE.md) · [Code of Conduct](CODE-OF-CONDUCT.md) |
+
+
+
 
 ## License
 

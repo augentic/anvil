@@ -10,10 +10,10 @@ argument-hint: <adapter|workspace>
 
 ## Invocation
 
-1. **Install or refresh the CLI** — invoking this skill is consent to install. Reinstall from source (overwrites any existing binary; needs a Rust toolchain with the `wasm32-wasip2` target):
+1. **Install or refresh the CLI** — invoking this skill is consent to install. Install the prebuilt release via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (overwrites any existing binary; no local compile):
 
 ```bash
-cargo install --git https://github.com/augentic/specify --locked --force
+cargo binstall --git https://github.com/augentic/specify specify@0.29.0 --force -y
 ```
 
 Then run `specify --version` and stop on failure.

@@ -3,7 +3,7 @@
 //! (RFC-70 Stage 3).
 //!
 //! There is no host front door. The `omnia::runtime!` invocation in
-//! `src/omnia.rs` embeds the engine guest as static component bytes
+//! `src/main.rs` embeds the engine guest as static component bytes
 //! and evaluates this crate's expressions for everything the
 //! deployment needs before boot: the well-known mounts (anchored from
 //! argv and the working directory) and the fail-closed guest

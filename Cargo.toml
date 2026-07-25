@@ -11,23 +11,8 @@ repository.workspace = true
 version.workspace = true
 
 [lib]
-name = "specify"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
-
-[[bin]]
-name = "specify"
-path = "src/omnia.rs"
-
-# Prebuilt archives from binaries.yaml (root package is publish = false, so
-# operators install via `cargo binstall --git …`, not crates.io).
-[package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
-bin-dir = "{ bin }{ binary-ext }"
-pkg-fmt = "tgz"
-
-[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
-pkg-fmt = "zip"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
@@ -70,6 +55,11 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [lints]
 workspace = true
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
+bin-dir = "{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
 
 [workspace]
 members = ["crates/*"]
@@ -198,11 +188,11 @@ artifacts = { path = "crates/artifacts" }
 change = { path = "crates/change" }
 diagnostics = { path = "crates/diagnostics" }
 error = { path = "crates/error" }
-probe = { path = "crates/probe" }
 guest = { path = "crates/guest" }
 launcher = { path = "crates/launcher" }
-native = { path = "crates/native" }
 mock = { path = "crates/mock" }
+native = { path = "crates/native" }
+probe = { path = "crates/probe" }
 project = { path = "crates/project" }
 prose = { path = "crates/prose" }
 slice = { path = "crates/slice" }

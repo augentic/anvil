@@ -220,7 +220,7 @@ Part of the CLI wire contract. `Exit::from(&Error)` in [`crates/transport/src/co
 ### Repository map
 
 ```text
-src/omnia.rs             shipped binary — one omnia::runtime! invocation: embedded engine bytes, launcher mount/resolver expressions, cursor backends
+src/main.rs              shipped binary — one omnia::runtime! invocation: embedded engine bytes, launcher mount/resolver expressions, cursor backends
 src/lib.rs               wasm32 engine guest cdylib — one guest::export!() over crates/guest
 crates/guest/            the engine guest library — workflow-world WIT bindings, the WIT-backed Provider, and the guest::export! macro
 crates/launcher/         native-only deployment policy (RFC-70 Stage 3) — anchoring, mount + resolver macro expressions, fail-closed adapters-only GuestResolver (verify-and-load)

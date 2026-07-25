@@ -8,11 +8,11 @@ The `specify` CLI is the foundation every skill builds on. It owns all determini
 export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while specify is private
 brew tap augentic/tap && brew install specify
 
-# or: cargo binstall --git https://github.com/augentic/specify
+# or: cargo binstall --git https://github.com/augentic/specify specify@0.29.0
 # or: cargo install --git https://github.com/augentic/specify --locked
 ```
 
-`/spec:init` refreshes from source when it installs the CLI. See [Prerequisites](../../orientation/prerequisites.md) for every install path and adapter-specific tooling.
+`/spec:init` installs or refreshes the CLI via `cargo binstall` (prebuilt). See [Prerequisites](../../orientation/prerequisites.md) for every install path and adapter-specific tooling.
 
 ## Conventions
 

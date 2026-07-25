@@ -62,7 +62,7 @@ Each leg runs native `cargo build --release --locked --target <triple> --bin spe
 
 Each leg produces `specify-v${VERSION}-${TARGET}.tar.gz` (unix) or `.zip` (Windows) plus a companion `.sha256`, and uploads both to the existing GitHub Release. Root `Cargo.toml` carries `[package.metadata.binstall]` pointing at those archive names.
 
-The shipped surface is the `specify` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/omnia.rs`) embedding the engine guest as static component bytes, with mounts and the adapters-only guest resolver contributed by the `launcher` crate's expressions — so there is no second binary or component to package.
+The shipped surface is the `specify` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/main.rs`) embedding the engine guest as static component bytes, with mounts and the adapters-only guest resolver contributed by the `launcher` crate's expressions — so there is no second binary or component to package.
 
 ## Publishing the wasm-pkg packages
 
@@ -94,17 +94,17 @@ brew tap augentic/tap
 brew install specify
 ```
 
-- **`cargo binstall`** (prebuilt; no local compile). The root package is `publish = false`, so install from git:
+- **`cargo binstall`** (prebuilt; no local compile). The root package is `publish = false`, so install from git with a package version pin:
 
 ```bash
-cargo binstall --git https://github.com/augentic/specify --tag <tag>
+cargo binstall --git https://github.com/augentic/specify specify@<version>
 ```
 
 - **GitHub Release archives.** Download the archive for your platform from the GitHub Release page, verify it against the companion `.sha256` file, and place the `specify` binary on your `PATH`.
 - **Source builds** — `build.rs` embeds the wasm32 engine (requires the `wasm32-wasip2` target):
 
 ```bash
-cargo install --git https://github.com/augentic/specify --tag <tag> --locked
+cargo install --git https://github.com/augentic/specify --locked
 ```
 
 Bump the Homebrew formula `version` and `sha256` values in `augentic/homebrew-tap` when publishing a new host release. Subsequent updates use the same installation channel. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest ships inside the binary, so replacing the binary replaces the engine with it.
