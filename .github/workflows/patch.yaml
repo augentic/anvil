@@ -1,9 +1,7 @@
 name: Create Patch
 
 # Bump the patch version on a durable release-X.Y.Z line via the shared
-# workflow (Cargo version + RELEASES.md), then sync the Cursor plugin
-# manifests on the same branch — they co-version with the host release
-# (RFC-77 D7) and the shared cargo-version action does not know about them.
+# workflow (Cargo version + RELEASES.md).
 #
 # Dispatch from the release-* branch carrying the fix; publish.yaml
 # (dispatched from the same branch) tags and releases it.
@@ -18,44 +16,3 @@ jobs:
   patch:
     uses: augentic/.github/.github/workflows/patch.yaml@main
     secrets: inherit
-
-  sync-plugins:
-    name: Sync plugin versions
-    needs: patch
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      # Ref by name, not the dispatch SHA: the shared patch job pushed the
-      # version-bump commit to the branch after this run started.
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.ref_name }}
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Sync plugin manifests
-        run: |
-          set -euo pipefail
-          version=$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[0].version')
-
-          jq --arg v "$version" '.metadata.version = $v' \
-            .cursor-plugin/marketplace.json > tmp.json \
-            && mv tmp.json .cursor-plugin/marketplace.json
-          for f in plugins/*/.cursor-plugin/plugin.json; do
-            jq --arg v "$version" '.version = $v' "$f" > tmp.json && mv tmp.json "$f"
-          done
-
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -am "Sync plugin versions to $version"
-            git push origin "HEAD:${{ github.ref_name }}"
-          fi

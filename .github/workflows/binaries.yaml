@@ -17,7 +17,7 @@ on:
       - "v*.*.*"
 
 concurrency:
-  group: release-binaries-${{ github.ref }}
+  group: binaries-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -32,24 +32,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            use_cross: false
-          # aarch64 Linux uses `cross` for its portable glibc toolchain.
-          # Rationale: avoids hand-rolling apt-installed gcc-aarch64-linux-gnu
-          # env wiring in every step, and matches rustup's own release workflow.
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            use_cross: true
-          - target: x86_64-apple-darwin
-            os: macos-13
-            use_cross: false
           - target: aarch64-apple-darwin
             os: macos-14
-            use_cross: false
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            use_cross: false
+            # cross: false
+          # - target: x86_64-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   cross: false
+          # - target: aarch64-unknown-linux-gnu
+          #   os: ubuntu-latest
+          #   cross: true
+          # - target: x86_64-apple-darwin
+          #   os: macos-13
+          #   cross: false
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          #   cross: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -65,7 +62,7 @@ jobs:
           key: release-${{ matrix.target }}
 
       - name: Install cross
-        if: matrix.use_cross
+        if: matrix.cross
         run: cargo install cross --locked --git https://github.com/cross-rs/cross
 
       # The engine guest is embedded into the binary: build.rs receives
@@ -83,14 +80,14 @@ jobs:
           test -s target/wasm32-wasip2/release/specify.wasm
 
       - name: Build (cargo)
-        if: ${{ !matrix.use_cross }}
+        if: ${{ !matrix.cross }}
         shell: bash
         env:
           SPECIFY_WASM: target/wasm32-wasip2/release/specify.wasm
         run: cargo build --release --locked --target ${{ matrix.target }} --bin specify
 
       - name: Build (cross)
-        if: matrix.use_cross
+        if: matrix.cross
         shell: bash
         env:
           SPECIFY_WASM: target/wasm32-wasip2/release/specify.wasm
