@@ -37,7 +37,7 @@ Upgrade later with `brew upgrade specify`.
 Prebuilt archives, no local compile (install [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) first). The root package is `publish = false`, so install from git:
 
 ```bash
-cargo binstall --git https://github.com/augentic/specify specify@0.29.0
+cargo binstall --git https://github.com/augentic/specify specify@0.28.0
 ```
 
 `/spec:init` uses this path when it refreshes the CLI (`--force -y`).
@@ -75,7 +75,7 @@ Update through the same channel used to install:
 
 ```bash
 brew upgrade specify                                                              # Homebrew
-cargo binstall --git https://github.com/augentic/specify specify@0.29.0 --force   # prebuilt
+cargo binstall --git https://github.com/augentic/specify specify@0.28.0 --force   # prebuilt
 cargo install --git https://github.com/augentic/specify --locked --force          # source
 ```
 

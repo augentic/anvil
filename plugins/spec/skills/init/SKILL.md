@@ -13,7 +13,7 @@ argument-hint: <adapter|workspace>
 1. **Install or refresh the CLI** — invoking this skill is consent to install. Install the prebuilt release via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (overwrites any existing binary; no local compile):
 
 ```bash
-cargo binstall --git https://github.com/augentic/specify specify@0.29.0 --force -y
+cargo binstall --git https://github.com/augentic/specify specify@0.28.0 --force -y
 ```
 
 Then run `specify --version` and stop on failure.
