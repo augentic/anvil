@@ -4,13 +4,15 @@ The `specify` CLI is the foundation every skill builds on. It owns all determini
 
 ## Installation
 
-When setting up a project through the Specify plugin, `/spec:init` installs or refreshes the CLI from source. For manual setup:
-
 ```bash
-cargo install --git https://github.com/augentic/specify --locked
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while specify is private
+brew tap augentic/tap && brew install specify
+
+# or: cargo binstall --git https://github.com/augentic/specify
+# or: cargo install --git https://github.com/augentic/specify --locked
 ```
 
-or download a platform archive (with `.sha256` verification) from the GitHub Releases page. See [Prerequisites](../../orientation/prerequisites.md) for all install paths and adapter-specific tooling.
+`/spec:init` refreshes from source when it installs the CLI. See [Prerequisites](../../orientation/prerequisites.md) for every install path and adapter-specific tooling.
 
 ## Conventions
 

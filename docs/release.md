@@ -84,24 +84,30 @@ First-party adapter components are **not** built or published by this repo. They
 
 ## Installing a release
 
-Supported install paths:
+Supported install paths (see [Prerequisites](orientation/prerequisites.md) for detail):
 
-- **`cargo binstall`** (prebuilt archives; no local compile). The root package is `publish = false`, so install from git:
+- **Homebrew** — [`augentic/homebrew-tap`](https://github.com/augentic/homebrew-tap) formula over these Release archives:
+
+```bash
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while specify is private
+brew tap augentic/tap
+brew install specify
+```
+
+- **`cargo binstall`** (prebuilt; no local compile). The root package is `publish = false`, so install from git:
 
 ```bash
 cargo binstall --git https://github.com/augentic/specify --tag <tag>
 ```
 
 - **GitHub Release archives.** Download the archive for your platform from the GitHub Release page, verify it against the companion `.sha256` file, and place the `specify` binary on your `PATH`.
-- **Source builds** for Rust-native developers — `build.rs` builds and embeds the wasm32 engine (requires the `wasm32-wasip2` target):
+- **Source builds** — `build.rs` embeds the wasm32 engine (requires the `wasm32-wasip2` target):
 
 ```bash
 cargo install --git https://github.com/augentic/specify --tag <tag> --locked
 ```
 
-A Homebrew tap (`brew install augentic/tap/specify`) is deferred — the darwin archives this workflow publishes are the inputs; the formula and tap bump are separate follow-on work.
-
-Subsequent updates use the same installation channel. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest ships inside the binary, so replacing the binary replaces the engine with it.
+Bump the Homebrew formula `version` and `sha256` values in `augentic/homebrew-tap` when publishing a new host release. Subsequent updates use the same installation channel. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest ships inside the binary, so replacing the binary replaces the engine with it.
 
 ## Adding a new target triple
 

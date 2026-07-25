@@ -1,6 +1,6 @@
 # CLI Naming Brief
 
-Companion to [registry-and-open-source-strategy.md](./registry-and-open-source-strategy.md) · shorter / likeable internal names · Jul 25, 2026
+Companion to [strategy.md](./strategy.md) · shorter / likeable internal names · Jul 25, 2026
 
 > **Posture for this exercise:** the CLI is Propellerhead's delivery force multiplier. Clients buy Propellerhead; engineers run the tool. Trademark for the CLI is **not required** unless (or until) the binary becomes a marketed open-source platform brand.
 >
@@ -98,7 +98,74 @@ If the engine is later opened and a third-party adapter ecosystem is encouraged,
 
 The registry strategy’s Crossholt / Sureholt / Gateholt / Scarpmere shortlist remains the right list when binary = marketed platform brand. This brief is the alternate track when Propellerhead stays the only client-facing name.
 
+## Kitchen inventory (Jul 25, 2026)
+
+Working lean from the kitchen runs (not clearance, not locked):
+
+| Layer | Lean | Notes |
+| --- | --- | --- |
+| Firm | Propellerhead | Unchanged |
+| Umbrella / org (replaces `augentic`) | **Scarpmere** | Geology cut + clear water; hallway tax on “scarp” |
+| CLI / binary (replaces `specify`) | **emery** leading among short words | Abrasive that trues a rough edge; crates.io bare name looked free at last check |
+
+### Alive — react 👍 / 👎
+
+Coined / platform-capable (also fine if binary = crate prefix = org):
+
+Crossholt · Sureholt · Gateholt · Scarpmere · Crossmere · Ridgemere · Spurholt · Braeholt · Colmere · Cutmere · Foldholt · Grainholt · Layerholt · Proofholt · Markholt · Trailholt · Claimholt · Surebeck · Gatebeck · Truebeck · Clearbeck · Scarpgate · Meregate · Holtgate · Witnessmere · Assayholt
+
+Short / distinctive (smoke crates.io + PATH before locking):
+
+emery · wootz · damask · traverse · terrier · greywacke · careen · hardstand · plimsoll · loadline · arete · twill · weft · scree · billet · assay · hone · strop · faircopy · marquetry · engraft · scion
+
+Longer compounds (terraform length):
+
+evidencegate · claimtrail · legacybridge · systemrefit · patternweld · governpath · proofstack · authorityline · loadbearing · productiongate · surveytrail · baselinemark · foldwork · proofgrain · grainline
+
+Maritime / fit-to-sail:
+
+plimsoll · loadline · freeboard · hardstand · slipway · haulout · careen · stringer · keelson · seaworthy
+
+Survey / register:
+
+traverse · terrier · cadastre · backsight · foresight · resection · metes · gazetteer · chartwork · basemark · controlmark
+
+Pattern-weld / blade (without dead short metallurgy):
+
+wootz · damask · sanmai · foldwork · patternweld · grainline · proofgrain · emery · hone · strop · whetstone
+
+NZ / landscape:
+
+greywacke · scree · talus · arete · cirque · moraine · tussock · bushline · saddleback · schist
+
+### Parked / killed (do not re-lead without a new angle)
+
+| Name | Why |
+| --- | --- |
+| specify / augentic | spec-kit PATH twin; Augentic GmbH EU mark |
+| darktarn / tarnholm | dark vs audit; Darktrace; tarn.au (AU) |
+| anneal | getanneal.com + PyPI/Rust `anneal` CLIs with `anneal init` |
+| adze | crates.io `adze` / `adze-*` grammar toolchain (+ npm logger) |
+| stemma | Adafruit STEMMA; Teradata/Stemma data-catalog mark; `stemmata` CLI |
+| kiln | kiln.fi + Kiln AI trademark + kiln.sh `kiln init` + `kiln-cli` |
+| sinter | Stim/PyPI `sinter` CLI + Scala `sinter init` + getsinter.dev |
+| quench | quench.ai + Culligan Quench + quench-lang / router binaries |
+| damascene | crates.io `damascene-*` GPU UI lib (+ Damascene Labs) |
+| temper | Temper lang binary + Cursor `/temper:*` plugin |
+| plumb | Rust design-system linter: `plumb init`, brew/npm/cargo, agent MCP |
+| hamon | crates.io `hamon` pipeline lib |
+| forge / flux / helm / smithy / provenance / trailhead / notary / vault | Famous-tool neighbourhood |
+| excava / emend | Already eliminated in strategy §3 |
+| warp | Warp.dev |
+
+### Lessons for the next pass
+
+- Short dictionary metallurgy dies often on **crates.io + PATH + adjacent AI brands**.
+- Prefer **coined compounds** when binary = crate prefix = org must stay aligned.
+- Dual track stays valid: Scarpmere (org/crates) + a cleared short binary — only if the binary never needs that crates.io prefix.
+- Score `<name> init` naturalness and PATH twins as hard gates even for internal CLIs.
+
 ## Related
 
-- [Registry & open-source strategy](./registry-and-open-source-strategy.md) — §3 brand architecture (trademark-first platform shortlist)
+- [Registry & open-source strategy](./strategy.md) — §3 brand architecture (trademark-first platform shortlist)
 - RFC-77 — release process; rename before tags and the launcher’s compiled GHCR constant bake names in
