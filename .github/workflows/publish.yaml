@@ -13,11 +13,14 @@ permissions:
 concurrency:
   group: publish
 
+permissions: {}
+
 jobs:
   skip:
     name: Skipped
     if: ${{ !startsWith(github.ref_name, 'release-') }}
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - run: |
           echo "This workflow only runs on the 'release-*' branches"
@@ -26,17 +29,23 @@ jobs:
   ci:
     name: CI
     if: ${{ startsWith(github.ref_name, 'release-') }}
+    permissions:
+      contents: read
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
   publish:
     name: Publish
     needs: ci
+    permissions:
+      contents: write
     uses: augentic/.github/.github/workflows/publish.yaml@main
 
   binaries:
     name: Release binaries
     needs: publish
+    permissions:
+      contents: write
     uses: ./.github/workflows/binaries.yaml
     with:
       version: ${{ needs.publish.outputs.version }}

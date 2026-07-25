@@ -56,9 +56,9 @@ Publish composes three jobs (plus the release-branch skip gate):
 Each leg runs native `cargo build --release --locked --target <triple> --bin specify`. `build.rs` embeds the engine via a child `wasm32-wasip2` build when `SPECIFY_WASM` is unset (same path as `cargo install --git`). Supported targets (Homebrew + `cargo-binstall`; no `cross`):
 
 - `x86_64-unknown-linux-gnu` on `ubuntu-latest`
-- `x86_64-apple-darwin` on `macos-13`
+- `x86_64-apple-darwin` on `macos-15-intel` (last hosted x86_64 macOS runner; retired August 2027)
 - `aarch64-apple-darwin` on `macos-14`
-- `x86_64-pc-windows-msvc` on `windows-latest`
+- `x86_64-pc-windows-msvc` on `windows-latest` — temporarily out of the matrix until upstream `omnia-wasi-model` compiles on Windows again
 
 Each leg produces `specify-v${VERSION}-${TARGET}.tar.gz` (unix) or `.zip` (Windows) plus a companion `.sha256`, and uploads both to the existing GitHub Release. Root `Cargo.toml` carries `[package.metadata.binstall]` pointing at those archive names.
 

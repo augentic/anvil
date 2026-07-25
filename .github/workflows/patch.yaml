@@ -12,6 +12,9 @@ on:
 concurrency:
   group: release
 
+permissions:
+  contents: write
+
 jobs:
   patch:
     uses: augentic/.github/.github/workflows/patch.yaml@main
