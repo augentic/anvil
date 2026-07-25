@@ -7,6 +7,9 @@ name: Publish Release
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: publish
 
