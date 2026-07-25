@@ -14,10 +14,6 @@ version.workspace = true
 path = "src/lib.rs"
 crate-type = ["cdylib"]
 
-[[bin]]
-name = "specify"
-path = "src/main.rs"
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true
@@ -64,9 +60,6 @@ workspace = true
 pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
 bin-dir = "{ bin }{ binary-ext }"
 pkg-fmt = "tgz"
-
-[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
-pkg-fmt = "zip"
 
 [workspace]
 members = ["crates/*"]
