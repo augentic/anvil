@@ -8,7 +8,7 @@ Spec-driven development in [Cursor](https://cursor.com): plan a change, approve 
 
 **Operators:** install the Augentic Cursor plugin and the `specify` CLI, then run `/spec:init` → `/spec:plan` → `/spec:execute` → `/spec:finalize`.
 
-**Contributors:** this repository is the Rust workspace that builds the `specify` binary and the ultrathin `/spec:*` skill wrappers. Source and target adapters live in [augentic/specify-adapters](https://github.com/augentic/specify-adapters).
+**Contributors:** this repository is the Rust workspace that builds the `specify` binary and the ultrathin `/spec:`* skill wrappers. Source and target adapters live in [augentic/specify-adapters](https://github.com/augentic/specify-adapters).
 
 ## Choose your path
 
@@ -69,11 +69,11 @@ $ /spec:finalize first-contract
 
 ### 1. Cursor plugin
 
-In Cursor: **Settings → Plugins**, search for **Augentic**, install the marketplace, and restart Cursor. That installs the Specify plugin (`/spec:*` skills). Every skill is an ultrathin wrapper around one `specify` CLI verb.
+In Cursor: **Settings → Plugins**, search for **Augentic**, install the marketplace, and restart Cursor. That installs the Specify plugin (`/spec:`* skills). Every skill is an ultrathin wrapper around one `specify` CLI verb.
 
-### 2. `specify` CLI
+### 2. `specify` CLI (optional)
 
-Pick one route, then verify:
+While the plugin will install the `specify` binary on `/spec:init`, it can be manually installed using:
 
 ```bash
 # Or cargo-binstall (prebuilt; no local compile)
