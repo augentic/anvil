@@ -295,7 +295,7 @@ Phase E (next cut) adds: CI no-repush, publish-time attestation generation, and 
 - `build.rs` — build the wasm32 engine for native source installs;
 - `crates/launcher/` — OCI pull-on-miss and existing-store installation;
 - `crates/project/src/adapter/` — remove package hydration and dispatch before guest store lookup;
-- `src/omnia.rs` — remove the writable global-store guest mount;
+- `src/main.rs` — remove the writable global-store guest mount;
 - init scaffold/docs — delete the scaffolded `.specify/wasm-pkg.toml` (`DEFAULT_WASM_PKG_CONFIG`) rather than leaving dead config that looks authoritative;
 - integration tests — source and target cold-miss behavior.
 
@@ -338,7 +338,7 @@ This RFC deliberately does **not** solve the complete public distribution proble
 
 **Embed first-party adapters in the binary (rejected).** With lockstep versioning (D6) and a first-party-only set it would close the internal loop with no registry at all, but it couples every adapter fix to an engine release, inflates each platform binary, and — decisively — proves nothing about the transport and ownership seam this cut exists to establish for [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model).
 
-**Cursor Teams as full bootstrap (closed).** Distribute `/spec:*` via Cursor Teams or the marketplace, and have `/spec:init` download the Specify binary and the adapters it needs when missing. Closed for this cut: skill distribution is orthogonal and already exists (`plugins/spec/`); adapter install is host pull-on-miss once the binary exists; binary install from a skill would either violate the ultrathin skill contract or duplicate the deferred public-installer channel (GitHub Release archives → curl / `cargo-binstall` / Homebrew). Revisit only as a Cursor-side *caller* of that shared installer, not as a second distribution root for adapters or engine bytes. Today's init skill may confirm `cargo install --git …` when `specify` is missing; that soft bootstrap stays — it does not grow into a release fetcher.
+**Cursor Teams as full bootstrap (closed).** Distribute `/spec:*` via Cursor Teams or the marketplace, and have `/spec:init` download the Specify binary and the adapters it needs when missing. Closed for this cut: skill distribution is orthogonal and already exists (`plugins/spec/`); adapter install is host pull-on-miss once the binary exists; binary install from a skill would either violate the ultrathin skill contract or duplicate the deferred public-installer channel (GitHub Release archives → curl / `cargo-binstall` / Homebrew). Revisit only as a Cursor-side *caller* of that shared installer, not as a second distribution root for adapters or engine bytes. Today's init skill may confirm `cargo binstall --git … specify@<version>` when `specify` is missing; that soft bootstrap stays — it does not grow into a release fetcher.
 
 ### Trust assumption
 

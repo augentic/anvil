@@ -1,7 +1,7 @@
 //! Builds and embeds the wasm32 engine component the shipped binary
 //! boots.
 //!
-//! Emits `SPECIFY_WASM` for the `include_bytes!` in `src/omnia.rs`.
+//! Emits `SPECIFY_WASM` for the `include_bytes!` in `src/main.rs`.
 //! Resolution order: an explicit `SPECIFY_WASM` environment override
 //! (the release pipeline), else a child `cargo build --lib --target
 //! wasm32-wasip2` into an isolated target directory under `OUT_DIR`

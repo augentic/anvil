@@ -37,9 +37,10 @@ Upgrade later with `brew upgrade specify`.
 Prebuilt archives, no local compile (install [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) first). The root package is `publish = false`, so install from git:
 
 ```bash
-cargo binstall --git https://github.com/augentic/specify
-# pin: cargo binstall --git https://github.com/augentic/specify --tag v0.28.0
+cargo binstall --git https://github.com/augentic/specify specify@0.29.0
 ```
+
+`/spec:init` uses this path when it refreshes the CLI (`--force -y`).
 
 ### From source
 
@@ -48,8 +49,6 @@ Needs a Rust toolchain with the `wasm32-wasip2` target (`rustup target add wasm3
 ```bash
 cargo install --git https://github.com/augentic/specify --locked
 ```
-
-`/spec:init` uses this path when it refreshes the CLI (`--force`).
 
 ### Manual archive
 
@@ -75,9 +74,9 @@ specify --version
 Update through the same channel used to install:
 
 ```bash
-brew upgrade specify                                           # Homebrew
-cargo binstall --git https://github.com/augentic/specify       # prebuilt
-cargo install --git https://github.com/augentic/specify --locked --force  # source
+brew upgrade specify                                                              # Homebrew
+cargo binstall --git https://github.com/augentic/specify specify@0.29.0 --force   # prebuilt
+cargo install --git https://github.com/augentic/specify --locked --force          # source
 ```
 
 `specify init --upgrade` is a separate project re-entry command: it updates the project's Specify pin and preservation-safe scaffold while retaining operator-authored artifacts. It does not update the installed CLI.
