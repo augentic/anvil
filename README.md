@@ -77,7 +77,7 @@ Pick one route, then verify:
 
 ```bash
 # Or cargo-binstall (prebuilt; no local compile)
-cargo binstall --git https://github.com/augentic/specify specify@0.28.0
+cargo binstall --git https://github.com/augentic/specify specify@0.29.0
 
 # Or from source (needs a Rust toolchain + wasm32-wasip2)
 cargo install --git https://github.com/augentic/specify --locked
