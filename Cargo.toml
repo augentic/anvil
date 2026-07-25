@@ -19,6 +19,16 @@ crate-type = ["cdylib"]
 name = "specify"
 path = "src/omnia.rs"
 
+# Prebuilt archives from binaries.yaml (root package is publish = false, so
+# operators install via `cargo binstall --git …`, not crates.io).
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }{ archive-suffix }"
+bin-dir = "{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true

@@ -71,13 +71,13 @@ In Cursor: **Settings → Plugins**, search for **Augentic**, install the market
 Pick one route, then verify:
 
 ```bash
-# Pre-built binary (any POSIX shell)
-curl -sSfL https://specify.sh/install.sh | sh
+# Prebuilt from GitHub Releases (needs cargo-binstall)
+cargo binstall --git https://github.com/augentic/specify
 
 # Or a platform archive from GitHub Releases
 # https://github.com/augentic/specify/releases
 
-# Or from source (needs a Rust toolchain)
+# Or from source (needs a Rust toolchain + wasm32-wasip2)
 cargo install --git https://github.com/augentic/specify --locked
 ```
 

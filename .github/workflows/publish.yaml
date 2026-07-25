@@ -1,21 +1,8 @@
 name: Publish Release
 
-# Publish a durable release-X.Y.Z line: dispatch from the release branch.
-# Gates on the shared CI workflow plus the local Developer Guide links check,
-# dates RELEASES.md, then pushes the vX.Y.Z tag.
-#
-# Two deliberate departures from the shared augentic/.github publish.yaml:
-# - The tag is pushed with an App token, not GITHUB_TOKEN — tags pushed by
-#   GITHUB_TOKEN do not trigger workflows, and the tag push is what fires
-#   release-binaries.yaml.
-# - The GitHub Release is created by release-binaries.yaml with the platform
-#   archives attached at creation. Releases are immutable once published, so
-#   creating the release before the binaries exist (the shared workflow's
-#   shape) would ship an empty, unfixable release.
-#
-# The wasm-shaped artifacts (the engine guest `specify:engine@<version>` and
-# the WIT contract `specify:adapter@<wit version>`) remain published manually
-# with `wkg publish` — see docs/release.md and wit/README.md.
+# Publish a durable release-X.Y.Z line — Omnia shape: shared CI, shared
+# publish (date RELEASES.md, tag, create GitHub Release), then attach
+# platform binaries. Wasm-pkg packages stay manual — see docs/release.md.
 
 on:
   workflow_dispatch:
@@ -39,62 +26,14 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  tag:
-    name: Tag release
-    needs: [ci]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - name: GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+  publish:
+    name: Publish
+    needs: ci
+    uses: augentic/.github/.github/workflows/publish.yaml@main
 
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ github.ref_name }}
-          fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
-
-      - name: Cargo version
-        id: cargo
-        run: |
-          set -euo pipefail
-          version=$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[0].version')
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Refuse existing tag
-        env:
-          VERSION: ${{ steps.cargo.outputs.version }}
-        run: |
-          set -euo pipefail
-          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
-            echo "::error::Tag v$VERSION already exists — bump the version first (releases are immutable)"
-            exit 1
-          fi
-
-      - name: Date release notes
-        env:
-          VERSION: ${{ steps.cargo.outputs.version }}
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          sed -i "s/^Unreleased/Released $(date +'%Y-%m-%d')/" RELEASES.md
-          if ! git diff --quiet; then
-            git commit -am "Release $VERSION"
-            git push origin "HEAD:${{ github.ref_name }}"
-          fi
-
-      - name: Push tag
-        env:
-          VERSION: ${{ steps.cargo.outputs.version }}
-        run: |
-          set -euo pipefail
-          git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push origin "v$VERSION"
+  binaries:
+    name: Release binaries
+    needs: publish
+    uses: ./.github/workflows/binaries.yaml
+    with:
+      version: ${{ needs.publish.outputs.version }}

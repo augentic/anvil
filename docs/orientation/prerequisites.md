@@ -30,18 +30,21 @@ cargo install --git https://github.com/augentic/specify --locked --force
 For manual setup, install via one of the following methods:
 
 ```bash
+# Prebuilt from GitHub Releases (no local compile; needs cargo-binstall)
+cargo binstall --git https://github.com/augentic/specify
+
 # GitHub Release archive: download for your platform, verify against the
 # companion .sha256 file, and place `specify` on PATH
 # https://github.com/augentic/specify/releases
 
-# Pre-built binary, any POSIX shell
+# Pre-built binary, any POSIX shell (installer deferred; archives already ship)
 curl -sSfL https://specify.sh/install.sh | sh
 
 # Local checkout of this repo
 cargo install --path . --locked
 ```
 
-A Homebrew tap (`brew install augentic/tap/specify`) is planned but not yet published.
+A Homebrew tap (`brew install augentic/tap/specify`) is planned but not yet published — darwin archives on each GitHub Release are the inputs.
 
 Pin a specific version with `SPECIFY_VERSION=v0.1.0` in front of the `curl` command, or override the install location with `SPECIFY_INSTALL_DIR=/usr/local/bin`.
 
@@ -58,7 +61,8 @@ specify --version
 Update the CLI through the same channel used to install it:
 
 ```bash
-cargo install --git https://github.com/augentic/specify --locked   # source install
+cargo binstall --git https://github.com/augentic/specify            # prebuilt
+cargo install --git https://github.com/augentic/specify --locked    # source
 # or upgrade with your package manager / replace the release binary
 ```
 
