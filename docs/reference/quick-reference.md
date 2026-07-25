@@ -135,7 +135,7 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
 export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while specify is private
 brew tap augentic/tap && brew install specify
 
-# or: cargo binstall --git https://github.com/augentic/specify specify@0.29.0
+# or: cargo binstall --git https://github.com/augentic/specify specify@0.28.0
 # or: cargo install --git https://github.com/augentic/specify --locked
 ```
 

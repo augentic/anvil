@@ -77,7 +77,7 @@ While the plugin will install the `specify` binary on `/spec:init`, it can be ma
 
 ```bash
 # Or cargo-binstall (prebuilt; no local compile)
-cargo binstall --git https://github.com/augentic/specify specify@0.29.0
+cargo binstall --git https://github.com/augentic/specify specify@0.28.0
 
 # Or from source (needs a Rust toolchain + wasm32-wasip2)
 cargo install --git https://github.com/augentic/specify --locked
