@@ -6,7 +6,7 @@
 >
 > Builds on: [RFC-76](rfc-76-adapter-install.md) (publish/install loop, exact pins, lockstep first-party adapter SemVer, deferred Actions automation). Complements [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (ecosystem operating model) and the dual-repo seam note in [roadmap.md](roadmap.md#cross-repo-coordination).
 >
-> Defers: Wasmtime-style calendar trains and LTS windows; multi-line long-term support; per-adapter independent SemVer inside the first-party set; SDK crate publication to crates.io (until third-party SDK consumers exist — RM-21); third-party registry release policy; Homebrew / curl installer polish; attestation and publisher-identity verification (RFC-76 Phase E and later).
+> Defers: Wasmtime-style calendar trains and LTS windows; multi-line long-term support; per-adapter independent SemVer inside the first-party set; SDK crate publication to crates.io (until third-party SDK consumers exist — RM-21); third-party registry release policy; curl installer / automated Homebrew formula bump; attestation and publisher-identity verification (RFC-76 Phase E and later).
 
 ## Intent
 

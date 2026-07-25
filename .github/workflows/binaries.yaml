@@ -1,0 +1,91 @@
+name: Release binaries
+
+# Platform archives for Homebrew / cargo-binstall. Called from publish.yaml
+# after the shared publish workflow has tagged and created the GitHub
+# Release; each matrix leg attaches its archive to that release.
+# Wasm-pkg publish stays manual — see docs/release.md.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Cargo / release version without a leading v
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Homebrew + cargo-binstall (native runners only — no cross).
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          # macos-13 was retired by GitHub in December 2025; macos-15-intel
+          # is the last hosted x86_64 macOS runner (until August 2027).
+          - target: x86_64-apple-darwin
+            os: macos-15-intel
+          - target: aarch64-apple-darwin
+            os: macos-14
+          # x86_64-pc-windows-msvc is temporarily out of the matrix:
+          # omnia-wasi-model 0.35.0 does not compile on Windows (cap-std
+          # Metadata dev()/ino() are unix-only). Re-add once the upstream
+          # fix lands in the pinned omnia rev.
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }},wasm32-wasip2
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
+      # build.rs embeds the engine via a child wasm32 build when SPECIFY_WASM
+      # is unset (same path as `cargo install --git`).
+      - name: Build
+        shell: bash
+        run: cargo build --release --locked --target ${{ matrix.target }} --bin specify
+
+      - name: Package
+        id: pkg
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          release_dir="target/${TARGET}/release"
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            archive="specify-v${VERSION}-${TARGET}.zip"
+            tar -a -cf "${archive}" -C "${release_dir}" specify.exe
+          else
+            archive="specify-v${VERSION}-${TARGET}.tar.gz"
+            tar -czf "${archive}" -C "${release_dir}" specify
+          fi
+          if command -v sha256sum >/dev/null; then
+            sha256sum "${archive}" > "${archive}.sha256"
+          else
+            shasum -a 256 "${archive}" > "${archive}.sha256"
+          fi
+          echo "archive=${archive}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          files: |
+            ${{ steps.pkg.outputs.archive }}
+            ${{ steps.pkg.outputs.archive }}.sha256
+          fail_on_unmatched_files: true
+          overwrite_files: true

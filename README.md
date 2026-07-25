@@ -71,13 +71,14 @@ In Cursor: **Settings → Plugins**, search for **Augentic**, install the market
 Pick one route, then verify:
 
 ```bash
-# Pre-built binary (any POSIX shell)
-curl -sSfL https://specify.sh/install.sh | sh
+# Homebrew (macOS / Linuxbrew; private repo needs a GitHub token)
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"
+brew tap augentic/tap && brew install specify
 
-# Or a platform archive from GitHub Releases
-# https://github.com/augentic/specify/releases
+# Or cargo-binstall (prebuilt; no local compile)
+cargo binstall --git https://github.com/augentic/specify
 
-# Or from source (needs a Rust toolchain)
+# Or from source (needs a Rust toolchain + wasm32-wasip2)
 cargo install --git https://github.com/augentic/specify --locked
 ```
 

@@ -3,13 +3,6 @@ name: Create Release
 # Cut a durable release-X.Y.Z line from main via the shared Omnia-shaped
 # workflow: push release-<version> at the current tip, then open a PR that
 # bumps main to the next unreleased version and resets RELEASES.md.
-#
-# The sync-plugins job is Specify-local: the Cursor plugin manifests
-# (.cursor-plugin/marketplace.json, plugins/*/.cursor-plugin/plugin.json)
-# co-version with the host release (RFC-77 D7), and the shared cargo-version
-# action only touches Cargo.toml and RELEASES.md. The release branch tip
-# equals pre-cut main, where the manifests already match the workspace
-# version; only the bump-main branch needs the follow-up sync.
 
 on:
   workflow_dispatch:
@@ -17,65 +10,11 @@ on:
 concurrency:
   group: release
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   release:
     uses: augentic/.github/.github/workflows/release.yaml@main
     secrets: inherit
-
-  sync-plugins:
-    name: Sync plugin versions
-    needs: release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      # Pushing with the App token (not GITHUB_TOKEN) keeps CI firing on the
-      # bump-main PR branch after the sync commit lands.
-      - name: GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
-
-      # The shared workflow does not export the new version to callers, so
-      # locate the bump-main branch it just pushed.
-      - name: Resolve bump branch
-        id: bump
-        run: |
-          set -euo pipefail
-          branch=$(git for-each-ref --sort=-creatordate \
-            --format='%(refname:short)' 'refs/remotes/origin/ci/next-*' | head -n1)
-          if [ -z "$branch" ]; then
-            echo "::error::No ci/next-* bump branch found"
-            exit 1
-          fi
-          echo "branch=${branch#origin/}" >> "$GITHUB_OUTPUT"
-
-      - name: Sync plugin manifests
-        env:
-          BRANCH: ${{ steps.bump.outputs.branch }}
-        run: |
-          set -euo pipefail
-          git checkout "$BRANCH"
-          version=$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[0].version')
-
-          jq --arg v "$version" '.metadata.version = $v' \
-            .cursor-plugin/marketplace.json > tmp.json \
-            && mv tmp.json .cursor-plugin/marketplace.json
-          for f in plugins/*/.cursor-plugin/plugin.json; do
-            jq --arg v "$version" '.version = $v' "$f" > tmp.json && mv tmp.json "$f"
-          done
-
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git commit -am "Sync plugin versions to $version"
-            git push origin "HEAD:$BRANCH"
-          fi

@@ -18,32 +18,49 @@ This installs the Specify plugin (the `/spec:*` skill wrappers). Domain code gen
 
 ## The `specify` CLI
 
-The `specify` binary backs every skill in the Specify plugin. `/spec:init` installs or refreshes it from source with:
+The `specify` binary backs every skill in the Specify plugin. Pick one install route, then verify with `specify --version`.
+
+### Homebrew (recommended on macOS / Linuxbrew)
+
+The [augentic/homebrew-tap](https://github.com/augentic/homebrew-tap) formula installs prebuilt Release archives. While `augentic/specify` is private, export a token that can read that repo:
 
 ```bash
-cargo install --git https://github.com/augentic/specify --locked --force
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # or a PAT with repo scope
+brew tap augentic/tap
+brew install specify
 ```
+
+Upgrade later with `brew upgrade specify`.
+
+### cargo-binstall
+
+Prebuilt archives, no local compile (install [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) first). The root package is `publish = false`, so install from git:
+
+```bash
+cargo binstall --git https://github.com/augentic/specify
+# pin: cargo binstall --git https://github.com/augentic/specify --tag v0.28.0
+```
+
+### From source
+
+Needs a Rust toolchain with the `wasm32-wasip2` target (`rustup target add wasm32-wasip2`). `build.rs` builds and embeds the engine guest:
+
+```bash
+cargo install --git https://github.com/augentic/specify --locked
+```
+
+`/spec:init` uses this path when it refreshes the CLI (`--force`).
+
+### Manual archive
+
+Download the archive for your platform from the [GitHub Releases](https://github.com/augentic/specify/releases) page, verify it against the companion `.sha256` file, and place `specify` on your `PATH`.
 
 <details>
-<summary>Manual install (alternative)</summary>
-
-For manual setup, install via one of the following methods:
+<summary>Local checkout (contributors)</summary>
 
 ```bash
-# GitHub Release archive: download for your platform, verify against the
-# companion .sha256 file, and place `specify` on PATH
-# https://github.com/augentic/specify/releases
-
-# Pre-built binary, any POSIX shell
-curl -sSfL https://specify.sh/install.sh | sh
-
-# Local checkout of this repo
 cargo install --path . --locked
 ```
-
-A Homebrew tap (`brew install augentic/tap/specify`) is planned but not yet published.
-
-Pin a specific version with `SPECIFY_VERSION=v0.1.0` in front of the `curl` command, or override the install location with `SPECIFY_INSTALL_DIR=/usr/local/bin`.
 
 </details>
 
@@ -55,11 +72,12 @@ specify --version
 
 ### Keeping the CLI current
 
-Update the CLI through the same channel used to install it:
+Update through the same channel used to install:
 
 ```bash
-cargo install --git https://github.com/augentic/specify --locked   # source install
-# or upgrade with your package manager / replace the release binary
+brew upgrade specify                                           # Homebrew
+cargo binstall --git https://github.com/augentic/specify       # prebuilt
+cargo install --git https://github.com/augentic/specify --locked --force  # source
 ```
 
 `specify init --upgrade` is a separate project re-entry command: it updates the project's Specify pin and preservation-safe scaffold while retaining operator-authored artifacts. It does not update the installed CLI.
@@ -74,7 +92,7 @@ make ci          # the full Rust workspace gate (cargo make ci)
 cargo install --path . --locked # install the working-tree CLI into ~/.cargo/bin
 ```
 
-No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt. (This is unrelated to the `SPECIFY_VERSION=vX.Y.Z` prefix accepted by the `curl` installer above, which pins the version to *install* for operators.) See [Quality gates](../contributing/quality-gates.md#consistency-links).
+No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/specify/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt. See [Quality gates](../contributing/quality-gates.md#consistency-links).
 
 ## Adapter-specific prerequisites
 

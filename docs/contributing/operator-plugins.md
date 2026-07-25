@@ -55,9 +55,10 @@ For a dry run without Cursor, call the same verbs the skills wrap (`specify init
 ## Publishing a new Cursor plugin
 
 1. Add the plugin under `plugins/<name>/` and list it in `marketplace.json`.
-2. Merge to `main`.
-3. In the Cursor plugin marketplace dashboard: refresh, set the new plugin to **Required**, save.
-4. Restart Cursor locally.
+2. When `plugins/` or marketplace content changes, bump `.cursor-plugin/marketplace.json` `metadata.version` and each `plugins/*/.cursor-plugin/plugin.json` `version` in the same PR (plugin SemVer is independent of the host CLI).
+3. Merge to `main`.
+4. In the Cursor plugin marketplace dashboard: refresh, set the new plugin to **Required**, save.
+5. Restart Cursor locally.
 
 ## Related
 

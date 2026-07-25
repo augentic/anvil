@@ -1,6 +1,6 @@
 # Release process
 
-A Specify release ships three artifacts: the **platform binaries** (the archives `release-binaries.yaml` builds and attaches to the GitHub release on the `v*` tag), the **engine guest** published as the wasm-pkg package `specify:engine@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>`. CI builds the binaries and creates the release; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML. The design home is [RFC-77](../rfcs/rfc-77-release-process.md).
+A Specify release ships three artifacts: the **platform binaries** (the archives `binaries.yaml` builds and attaches to the GitHub Release), the **engine guest** published as the wasm-pkg package `specify:engine@<version>`, and — when the WIT `package` declaration moved — the **adapter contract** published as `specify:adapter@<wit version>`. Publish uses the shared Omnia-shaped workflow (tag + Release notes), then attaches the platform archives; the two wasm-pkg packages are **published manually** with `wkg publish` (see [Publishing the wasm-pkg packages](#publishing-the-wasm-pkg-packages)). The workspace crates are never published to crates.io: the root package is `publish = false` because the omnia runtime stack rides `[patch.crates-io]` path/git pins (Cargo patches do not propagate to dependents, so a published crate would be unbuildable), and there are no external crate consumers anyway. Adapter components ship from the adapters repo, not here. This page describes the end-to-end flow so a maintainer can cut a release without reading workflow YAML. The design home is [RFC-77](../rfcs/rfc-77-release-process.md).
 
 ## Three version axes
 
@@ -12,15 +12,15 @@ Three surfaces version independently — never force them to share a number:
 | **WIT contract** | `specify:adapter@<wit version>` | the `package` declaration in `wit/specify.wit`; versions independently of the binary |
 | **Adapter train** | `specify:<name>@<semver>` → `ghcr.io/augentic/specify-adapters/<name>:<version>` | the adapters repo's shared `[workspace.package]` SemVer |
 
-Compatibility between host and adapters is declared — exact pins plus each adapter's `specify-floor` (minimum host) — not implied by equal numbers. The Cursor `/spec:*` plugin manifests co-version with the host release; the release workflows sync them automatically.
+Compatibility between host and adapters is declared — exact pins plus each adapter's `specify-floor` (minimum host) — not implied by equal numbers. The Cursor `/spec:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
 ## Release lines
 
 Releases live on durable `release-X.Y.Z` branches, the same shape as Omnia's shared `augentic/.github` workflows. `main` always carries the *next unreleased* version (Cargo version plus the `Unreleased` heading in `RELEASES.md`). The four verbs:
 
-1. **Cut** — dispatch **Create Release** on `main`. It pushes `release-X.Y.Z` at the current tip and opens a PR that bumps `main` to the next unreleased version, resets `RELEASES.md`, and syncs the plugin manifests. Merge that PR; edit release notes on the release branch, not on `main`.
+1. **Cut** — dispatch **Create Release** on `main`. It pushes `release-X.Y.Z` at the current tip and opens a PR that bumps `main` to the next unreleased version and resets `RELEASES.md`. Merge that PR; edit release notes on the release branch, not on `main`.
 2. **Stabilize** — on the release branch only: check the omnia pins (`cargo build --locked` must resolve on a clean runner — re-pin any local-path `[patch.crates-io]` entry to a pushed rev), run the operator rungs when the change warrants them (`cargo make wasm-run`, needs `CURSOR_API_KEY` in `examples/.env`; `cargo make eval`, needs command-mode model credentials — see [the developer loop](contributing/dev-loop.md)), and backport fixes from `main` (fixes land on `main` first when applicable).
-3. **Publish** — dispatch **Publish Release** on the release branch. It gates on CI plus the Developer Guide links check, dates `RELEASES.md`, and pushes the `vX.Y.Z` tag. The tag fires `release-binaries.yaml`, which builds the platform archives and creates the GitHub Release with them attached (releases are immutable once published, so the assets must land at creation). Then publish the wasm-pkg packages manually (below).
+3. **Publish** — dispatch **Publish Release** on the release branch. Omnia shape: shared CI, then the shared publish workflow (dates `RELEASES.md`, pushes `vX.Y.Z`, creates the GitHub Release with notes), then `binaries.yaml` builds the platform archives and attaches them to that release. Then publish the wasm-pkg packages manually (below).
 4. **Patch** — bugfix and security only, on the same `release-X.Y.Z` branch: land the fix on `main` when applicable, backport, dispatch **Create Patch** on the branch (bumps `X.Y.Z → X.Y.Z+1` and preps `RELEASES.md`), then dispatch **Publish Release** on the same branch. Never invent a new line from a floating tag; never merge to `main` as the publish trigger.
 
 Pre-1.0 SemVer follows Omnia's convention: **minor may be breaking**; patches remain compatible within the line. The hard major-cut / re-init product policy is called out in release notes, never smuggled into a patch.
@@ -47,23 +47,20 @@ Keep the table short — it is a statement of what was tested together, not a ve
 
 ## Jobs that run
 
-1. **`build` (matrix).** Each job builds the wasm32 engine guest first, then the platform binary that embeds it:
+Publish composes three jobs (plus the release-branch skip gate):
 
-```bash
-cargo build --release --locked --lib -p specify --target wasm32-wasip2
-cargo build --release --locked --bin specify
-```
+1. **`ci`.** Shared `augentic/.github` CI over the release branch.
+2. **`publish`.** Shared `augentic/.github` publish: date `RELEASES.md`, push `vX.Y.Z`, create the GitHub Release with notes.
+3. **`binaries`.** Local `binaries.yaml` (`workflow_call`): each matrix leg builds, packages, and attaches its archive to the release the shared publish step just created.
 
-   The root `build.rs` resolves `SPECIFY_WASM` — an explicit environment override wins (the workflow points it at the prebuilt engine; a relative value anchors at the workspace root, so it resolves inside the `cross` container too), else `build.rs` spawns its own child `cargo build --lib --target wasm32-wasip2` into an isolated target directory — and `src/omnia.rs` embeds the bytes with `include_bytes!`, so the shipped binary carries its own engine (no first-launch download, no network). There is no placeholder fallback: an empty or missing component fails the build. The workflow additionally guards the wasm build product with `test -s`. Supported targets:
-   - `x86_64-unknown-linux-gnu` on `ubuntu-latest` (native `cargo build`).
-   - `aarch64-unknown-linux-gnu` on `ubuntu-latest` via [`cross`](https://github.com/cross-rs/cross) (portable glibc toolchain, mirrors rustup's own release workflow — avoids hand-wiring `gcc-aarch64-linux-gnu` env vars per step).
-   - `x86_64-apple-darwin` on `macos-15-intel` (native; the last hosted x86_64 macOS runner, retired August 2027).
-   - `aarch64-apple-darwin` on `macos-14` (native).
-   - `x86_64-pc-windows-msvc` on `windows-latest` (native) — temporarily out of the matrix until upstream `omnia-wasi-model` compiles on Windows again.
+Each leg runs native `cargo build --release --locked --target <triple> --bin specify`. `build.rs` embeds the engine via a child `wasm32-wasip2` build when `SPECIFY_WASM` is unset (same path as `cargo install --git`). Supported targets (Homebrew + `cargo-binstall`; no `cross`):
 
-   Each job produces a versioned archive (`specify-${TAG}-${TARGET}.tar.gz` on unix, `.zip` on Windows) plus a companion `.sha256` file, uploaded via `actions/upload-artifact@v4`.
+- `x86_64-unknown-linux-gnu` on `ubuntu-latest`
+- `x86_64-apple-darwin` on `macos-15-intel` (last hosted x86_64 macOS runner; retired August 2027)
+- `aarch64-apple-darwin` on `macos-14`
+- `x86_64-pc-windows-msvc` on `windows-latest` — temporarily out of the matrix until upstream `omnia-wasi-model` compiles on Windows again
 
-2. **`release`.** Waits for the matrix legs, downloads all artifacts, and creates the GitHub Release with the archives attached and the notes taken from the tag's `RELEASES.md` (releases are immutable once published, so assets and notes must land at creation).
+Each leg produces `specify-v${VERSION}-${TARGET}.tar.gz` (unix) or `.zip` (Windows) plus a companion `.sha256`, and uploads both to the existing GitHub Release. Root `Cargo.toml` carries `[package.metadata.binstall]` pointing at those archive names.
 
 The shipped surface is the `specify` binary alone: the binary is one `omnia::runtime!` command-mode invocation (`src/omnia.rs`) embedding the engine guest as static component bytes, with mounts and the adapters-only guest resolver contributed by the `launcher` crate's expressions — so there is no second binary or component to package.
 
@@ -87,28 +84,40 @@ First-party adapter components are **not** built or published by this repo. They
 
 ## Installing a release
 
-Two supported install paths:
+Supported install paths (see [Prerequisites](orientation/prerequisites.md) for detail):
+
+- **Homebrew** — [`augentic/homebrew-tap`](https://github.com/augentic/homebrew-tap) formula over these Release archives:
+
+```bash
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while specify is private
+brew tap augentic/tap
+brew install specify
+```
+
+- **`cargo binstall`** (prebuilt; no local compile). The root package is `publish = false`, so install from git:
+
+```bash
+cargo binstall --git https://github.com/augentic/specify --tag <tag>
+```
 
 - **GitHub Release archives.** Download the archive for your platform from the GitHub Release page, verify it against the companion `.sha256` file, and place the `specify` binary on your `PATH`.
-- **Source builds** for Rust-native developers: one command — `build.rs` builds and embeds the wasm32 engine itself (requires the `wasm32-wasip2` target; the build fails with the `rustup target add wasm32-wasip2` instruction when it is missing).
+- **Source builds** — `build.rs` embeds the wasm32 engine (requires the `wasm32-wasip2` target):
 
 ```bash
 cargo install --git https://github.com/augentic/specify --tag <tag> --locked
 ```
 
-A Homebrew tap (`brew install augentic/tap/specify`) is deferred future work — the formula and automated tap bump land with the publishing roadmap's tap-automation item.
-
-Subsequent updates use the same installation channel: rerun `cargo install`, upgrade through the package manager, or replace the downloaded binary. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest ships inside the binary, so replacing the binary replaces the engine with it.
+Bump the Homebrew formula `version` and `sha256` values in `augentic/homebrew-tap` when publishing a new host release. Subsequent updates use the same installation channel. Guest-owned verbs additionally need `cursor-agent` on `PATH` (logged in) at run time — the model backend spawns it; the engine guest ships inside the binary, so replacing the binary replaces the engine with it.
 
 ## Adding a new target triple
 
-1. Add a new entry to the `matrix.include` list in `.github/workflows/release-binaries.yaml`, choosing the `runs-on` runner and whether `use_cross: true` is needed.
+1. Add a native `matrix.include` entry in `.github/workflows/binaries.yaml` (`runs-on` must provide that triple without `cross`).
 2. If the target needs system packages (e.g. `musl-tools` for `*-musl`), add an `apt-get install` step gated on `matrix.target == '<new triple>'`.
-3. Document the new target in this file.
+3. Update `[package.metadata.binstall]` overrides if the archive format differs from `tgz`.
+4. Document the new target in this file.
 
 ## Troubleshooting
 
-- **`cross` installation fails.** Pin to a known-good commit in the `Install cross` step.
-- **Archive SHA256 drift.** Always regenerate after tagging — never hand-edit. The `.sha256` companion files uploaded by `release-binaries.yaml` are authoritative.
+- **Archive SHA256 drift.** Always regenerate after tagging — never hand-edit. The `.sha256` companion files uploaded by `binaries.yaml` are authoritative.
 - **`wkg publish` rejects or the identity already exists.** Registry identities are immutable — never re-push different bytes into an existing version. Bump the version (the workspace version for the engine, the WIT `package` declaration for the contract) and publish the new identity instead.
 - **Publish Release refuses the tag.** The tag for the branch's Cargo version already exists — releases are immutable; dispatch **Create Patch** on the line to bump, then publish again.
