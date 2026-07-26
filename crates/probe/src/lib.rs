@@ -27,4 +27,5 @@ mod run;
 pub mod sandbox;
 pub mod telemetry;
 
-pub use run::{ModelFactory, ModelInstance, run};
+pub use case::ModelFactory;
+pub use run::run;

@@ -73,10 +73,7 @@ fn build_engine() -> PathBuf {
     let release = std::env::var("PROFILE").as_deref() == Ok("release");
 
     let mut child = Command::new(cargo);
-    child
-        .current_dir(&manifest_dir)
-        .args(["build", "--lib", "--target", WASM_TARGET])
-        .env("CARGO_TARGET_DIR", &target_dir);
+    child.current_dir(&manifest_dir).args(["build", "--lib", "--target", WASM_TARGET]);
     if release {
         child.arg("--release");
     }
@@ -86,7 +83,11 @@ fn build_engine() -> PathBuf {
     if manifest_dir.join("Cargo.lock").is_file() {
         child.arg("--locked");
     }
+    // Sanitize before pinning the child's target directory: an ambient
+    // CARGO_TARGET_DIR would otherwise be removed *after* the explicit
+    // `env` call, clobbering it.
     sanitize(&mut child);
+    child.env("CARGO_TARGET_DIR", &target_dir);
 
     let status = child
         .status()

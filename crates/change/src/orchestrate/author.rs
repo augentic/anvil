@@ -66,6 +66,7 @@ pub struct AuthorOutcome {
 ///   once the repair budget is exhausted.
 /// - `plan-structural-errors` when the doctor sweep finds blocking
 ///   findings after the write.
+#[tracing::instrument(name = "plan.author", skip_all, fields(plan = %name))]
 pub async fn author<P: Model, S: Source, R: Resolver>(
     caps: super::Capabilities<'_, P, S, (), R>, paths: &ExecutionPaths, now: Timestamp, name: &str,
     bindings: BTreeMap<String, SourceBinding>,

@@ -20,6 +20,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context as _, Result, bail, ensure};
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
@@ -29,9 +30,12 @@ use project::slice::{LifecycleStatus, SliceMetadata};
 use serde::Deserialize;
 use tracing::Instrument as _;
 
-use crate::run::ModelFactory;
 use crate::telemetry::{self, Telemetry};
 use crate::{fs as evalfs, grade, sandbox};
+
+/// Builds one live model backend per case run, rooted at that run's
+/// sandbox tree.
+pub type ModelFactory = Arc<dyn Fn(&Path) -> Result<DynModel> + Send + Sync>;
 
 /// One eval case, parsed from `case.toml` by its `kind` tag.
 #[derive(Debug)]
@@ -182,8 +186,7 @@ async fn execute(
             .with_context(|| format!("materializing the fixture {}", fixture.display()))?;
     }
 
-    let instance = (factory)(&scratch)?;
-    let telemetry = Telemetry::new(instance.model);
+    let telemetry = Telemetry::new(factory(&scratch)?);
     let model = DynModel::new(telemetry.clone());
 
     match case {
@@ -208,7 +211,7 @@ async fn run_workflow(
     id: &str, case: &Workflow, until: WorkflowUntil, root: &Path, model: &DynModel,
     catalog: &Catalog, telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
-    invoke(root, model, catalog, &["init".to_string(), case.target.clone()]).await?;
+    invoke(root, model, catalog, &["init", &case.target]).await?;
 
     let mut author = vec!["plan".to_string(), "author".to_string(), case.change.clone()];
     if let Some(intent) = &case.intent {
@@ -217,6 +220,7 @@ async fn run_workflow(
     for (key, binding) in &case.sources {
         author.extend(["--source".to_string(), format!("{key}={binding}")]);
     }
+    let author: Vec<&str> = author.iter().map(String::as_str).collect();
     invoke(root, model, catalog, &author).await?;
 
     let plan = sandbox::read_plan(root)?;
@@ -237,8 +241,8 @@ async fn run_workflow(
         return Ok(());
     }
 
-    invoke(root, model, catalog, &["plan".to_string(), "approve".to_string()]).await?;
-    invoke(root, model, catalog, &["plan".to_string(), "execute".to_string()]).await?;
+    invoke(root, model, catalog, &["plan", "approve"]).await?;
+    invoke(root, model, catalog, &["plan", "execute"]).await?;
 
     let plan = sandbox::read_plan(root)?;
     ensure!(
@@ -250,7 +254,7 @@ async fn run_workflow(
     telemetry::report(&telemetry.counts(), plan.entries.len());
 
     if until == WorkflowUntil::Finalize {
-        invoke(root, model, catalog, &["plan".to_string(), "archive".to_string()]).await?;
+        invoke(root, model, catalog, &["plan", "archive"]).await?;
     }
     println!("eval case {id}: pass (sandbox retained at {})", root.display());
     Ok(())
@@ -260,8 +264,7 @@ async fn run_build(
     id: &str, case: &Build, root: &Path, model: &DynModel, catalog: &Catalog,
     telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
-    invoke(root, model, catalog, &["slice".to_string(), "build".to_string(), case.slice.clone()])
-        .await?;
+    invoke(root, model, catalog, &["slice", "build", &case.slice]).await?;
 
     let slice_dir = Layout::new(root).slice_dir(&case.slice);
     let metadata =
@@ -281,43 +284,23 @@ async fn run_build(
     Ok(())
 }
 
-// One `specify` verb through the native command surface, under a
-// `specify.command` span carrying only a bounded label and exit code.
-async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[String]) -> Result<()> {
+// One `specify` verb through the native command surface, which owns
+// the `specify.command` span.
+async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str]) -> Result<()> {
     let display = argv.join(" ");
     eprintln!("==> specify {display}");
-    let span = tracing::info_span!(
-        "specify.command",
-        command = %command_label(argv),
-        exit = tracing::field::Empty,
+    let mut full = vec!["specify".to_string()];
+    full.extend(argv.iter().map(ToString::to_string));
+    let locations = Locations::explicit(
+        root.join("adapter-store"),
+        CachePlacement::Parent(root.join("project-cache")),
     );
-    async {
-        let mut full = vec!["specify".to_string()];
-        full.extend_from_slice(argv);
-        let locations = Locations::explicit(
-            root.join("adapter-store"),
-            CachePlacement::Parent(root.join("project-cache")),
-        );
-        let paths = ExecutionPaths::new(root, locations);
-        let response =
-            native::command::execute(paths, model.clone(), catalog.clone(), full).await?;
-        tracing::Span::current().record("exit", response.exit);
-        io::stdout().write_all(&response.stdout)?;
-        io::stderr().write_all(&response.stderr)?;
-        ensure!(response.exit == 0, "`specify {display}` exited {}", response.exit);
-        Ok(())
-    }
-    .instrument(span)
-    .await
-}
-
-/// The bounded span label for one command: its first two non-flag
-/// tokens (`plan author`, `slice build`) — never the full argv.
-#[must_use]
-pub fn command_label(argv: &[String]) -> String {
-    let words: Vec<&str> =
-        argv.iter().filter(|arg| !arg.starts_with('-')).take(2).map(String::as_str).collect();
-    words.join(" ")
+    let paths = ExecutionPaths::new(root, locations);
+    let response = native::command::execute(paths, model.clone(), catalog.clone(), full).await?;
+    io::stdout().write_all(&response.stdout)?;
+    io::stderr().write_all(&response.stderr)?;
+    ensure!(response.exit == 0, "`specify {display}` exited {}", response.exit);
+    Ok(())
 }
 
 /// Parse and validate one `case.toml` body.
@@ -349,13 +332,10 @@ pub fn parse(body: &str) -> Result<Case> {
 /// Returns a malformed id, a missing `case.toml` (naming the known
 /// cases), and every [`parse`] failure.
 pub fn load(root: &Path, id: &str) -> Result<Case> {
+    let mut components = Path::new(id).components();
     ensure!(
-        !id.is_empty()
-            && Path::new(id)
-                .components()
-                .all(|component| matches!(component, Component::Normal(_)))
-            && !id.contains(['/', '\\']),
-        "case ids are flat kebab-case names"
+        matches!((components.next(), components.next()), (Some(Component::Normal(_)), None)),
+        "case ids are flat directory names"
     );
     let path = root.join(id).join("case.toml");
     if !path.is_file() {
@@ -471,8 +451,7 @@ fn holds_a_file(root: &Path, dir: &Path, visited: &mut HashSet<PathBuf>) -> bool
 }
 
 fn list(root: &Path) -> Result<()> {
-    let mut ids = ids(root)?;
-    ids.sort();
+    let ids = ids(root)?;
     ensure!(!ids.is_empty(), "no cases under {}", root.display());
     println!("cases (run with `eval <id>`):");
     for id in ids {
@@ -483,10 +462,12 @@ fn list(root: &Path) -> Result<()> {
 
 fn ids(root: &Path) -> Result<Vec<String>> {
     let entries = fs::read_dir(root).with_context(|| format!("reading {}", root.display()))?;
-    Ok(entries
+    let mut ids: Vec<String> = entries
         .filter_map(std::result::Result::ok)
         .map(|entry| entry.path())
         .filter(|path| path.join("case.toml").is_file())
         .filter_map(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
-        .collect())
+        .collect();
+    ids.sort();
+    Ok(ids)
 }

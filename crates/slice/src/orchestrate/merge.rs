@@ -42,6 +42,11 @@ pub struct MergeOutcome {
 /// `target-merge-preflight-failed`), the terminal
 /// `target-merge-postflight-failed`, plus commit, plan-stamp, and
 /// archive I/O failures.
+#[tracing::instrument(
+    name = "slice.merge",
+    skip_all,
+    fields(slice = %slice, target = tracing::field::Empty)
+)]
 pub async fn merge<T: Target>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
@@ -51,6 +56,7 @@ pub async fn merge<T: Target>(
     // routed id dispatches the exact identity, never a reduced bare
     // name.
     let target = project::target_policy::resumed(layout, slice)?;
+    tracing::Span::current().record("target", target.as_str());
     let id =
         project::adapter::RoutedId::recorded(project::adapter::Axis::Target, &target).to_string();
 
@@ -140,6 +146,7 @@ fn journal_on_failure<V>(
 
 /// Dispatch one target merge gate and gate its report: slice-name
 /// match, blocking findings, and status.
+#[tracing::instrument(name = "slice.merge.gate", skip_all, fields(phase = %phase, target = %id))]
 async fn run_gate<T: Target>(
     targets: &T, id: &str, slice: &str, phase: MergePhase,
 ) -> Result<BuildReport, Error> {

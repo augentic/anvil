@@ -38,6 +38,11 @@ pub struct ExtractOutcome {
 /// failures (missing pin, `specify_floor`), seam and
 /// `evidence-schema` validation failures from the adapter's extract
 /// leg, plus plan-load and persistence I/O failures.
+#[tracing::instrument(
+    name = "source.extract",
+    skip_all,
+    fields(source = %source, slice = %slice, adapter = tracing::field::Empty)
+)]
 pub async fn extract(
     seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
     source: &str, lead: &str, slice: &str,
@@ -57,6 +62,7 @@ pub async fn extract(
     // adapter's `specify_floor` are enforced by the deployment's
     // resolver, and dispatch routes by the exact resolved identity.
     let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest;
+    tracing::Span::current().record("adapter", adapter.name.as_str());
 
     emit(
         layout,

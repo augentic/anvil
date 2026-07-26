@@ -1,13 +1,13 @@
-//! [`DevModel`] — the trial's live [`Model`] backend.
+//! [`DevModel`] — the case runner's live [`Model`] backend.
 //!
 //! A lazily connected cursor backend (`omnia_cursor::Client`, the
 //! host-side `WasiModelCtx` backend) behind the shared [`Native`]
 //! bridge, which performs the guest-request mapping, the host request
 //! gate, the `lend_workspace` → project-root tool host, and the answer
 //! projection. The connection happens on first use so deterministic
-//! phases never require cursor-agent on `PATH`; clones share the
+//! commands never require cursor-agent on `PATH`; clones share the
 //! connection cell, so each constructed backend connects cursor-agent
-//! at most once (the trial constructs one per phase).
+//! at most once (the case runner constructs one per run).
 //!
 //! Driver-side env (read once at construction / first connect):
 //! - `EVAL_MODEL=<model-id>` — fills `Request.model` only when the
@@ -15,7 +15,7 @@
 //!   blank means no override.
 //! - `EVAL_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound passed
 //!   to `omnia_cursor::ConnectOptions.timeout`. Unset → backend default
-//!   (120s). `cargo make eval` sets this to 300.
+//!   (120s); the `cargo make eval` tasks raise it for live cases.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -24,12 +24,13 @@ use std::time::Duration;
 use omnia::Backend as _;
 use omnia_cursor::ConnectOptions;
 use omnia_guest::Model;
-use omnia_guest::model::{Error, Format, Reply, Request};
+use omnia_guest::model::{Error, Reply, Request};
 use tracing::Instrument as _;
 
 use super::native::Native;
+use crate::telemetry;
 
-/// The trial's model backend: lazily connected live completions.
+/// The case runner's model backend: lazily connected live completions.
 #[derive(Clone, Debug)]
 pub struct DevModel {
     /// The project root workspace lends resolve to.
@@ -59,31 +60,7 @@ impl DevModel {
             cell: Arc::new(tokio::sync::OnceCell::new()),
         }
     }
-}
 
-impl Model for DevModel {
-    async fn create(&self, mut request: Request) -> Result<Reply, Error> {
-        // A guest-supplied model id always wins over the driver override.
-        if request.model.is_none() {
-            request.model = self.model.clone();
-        }
-        // The `model.request` span records only the bounded leg and
-        // effective model id — never request bodies or project paths.
-        let leg = match &request.format {
-            Format::Schema(schema) => schema.name.clone(),
-            Format::Json => "json".to_string(),
-            Format::Text => "text".to_string(),
-        };
-        let span = tracing::info_span!(
-            "model.request",
-            leg = %leg,
-            model = %request.model.as_deref().unwrap_or("backend-default"),
-        );
-        self.request(request).instrument(span).await
-    }
-}
-
-impl DevModel {
     async fn request(&self, request: Request) -> Result<Reply, Error> {
         let native = self
             .cell
@@ -103,5 +80,22 @@ impl DevModel {
                 ))
             })?;
         native.create(request).await
+    }
+}
+
+impl Model for DevModel {
+    async fn create(&self, mut request: Request) -> Result<Reply, Error> {
+        // A guest-supplied model id always wins over the driver override.
+        if request.model.is_none() {
+            request.model = self.model.clone();
+        }
+        // The `model.request` span records only the bounded leg and
+        // effective model id — never request bodies or project paths.
+        let span = tracing::info_span!(
+            "model.request",
+            leg = %telemetry::leg(&request),
+            model = %request.model.as_deref().unwrap_or("backend-default"),
+        );
+        self.request(request).instrument(span).await
     }
 }

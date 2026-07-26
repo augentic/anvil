@@ -1,4 +1,4 @@
-//! Shared trial grading helpers: provenance gate and baseline walk.
+//! Shared case grading helpers: provenance gate and baseline walk.
 
 use std::fs;
 

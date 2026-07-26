@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use omnia_testkit::model::Harness;
+use probe::ModelFactory;
 use probe::case::{self, Case, WorkflowUntil};
-use probe::{ModelFactory, ModelInstance};
 use project::plan::{Lifecycle, Status};
 use project::slice::{LifecycleStatus, SliceMetadata};
 use tempfile::TempDir;
@@ -21,12 +21,7 @@ fn catalog() -> Catalog {
 // A FIFO scripted model factory; every case run shares the answers.
 fn scripted(answers: Vec<String>) -> ModelFactory {
     let model = Harness::answering(answers);
-    Arc::new(move |_root| {
-        Ok(ModelInstance {
-            model: DynModel::new(model.clone()),
-            default_model: None,
-        })
-    })
+    Arc::new(move |_root| Ok(DynModel::new(model.clone())))
 }
 
 mod config {
@@ -108,7 +103,7 @@ mod config {
     fn nested_id_refused() {
         let tmp = TempDir::new().expect("tempdir");
         let err = case::load(tmp.path(), "mock/one").expect_err("nested ids refuse");
-        assert!(format!("{err:#}").contains("flat kebab-case"), "{err:#}");
+        assert!(format!("{err:#}").contains("flat directory names"), "{err:#}");
     }
 }
 

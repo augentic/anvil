@@ -1,4 +1,4 @@
-# The engine's live judgment-prompt trial: two adversarial mock
+# The engine's live judgment-prompt case: two adversarial mock
 # sources through the full workflow against the mock target. The hard
 # synthesis case is authority divergence (docs claim a 30-minute idle
 # timeout, code claims 15; documentation authority wins).

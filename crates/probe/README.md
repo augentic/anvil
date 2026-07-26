@@ -43,13 +43,16 @@ Driver-side knobs (read by `probe::client`):
 | `RUST_LOG=<filter>`       | `tracing` filter for the native composition (`probe::client` initializes `omnia::Telemetry`). Example: `info,opentelemetry_sdk=off`. |
 | `OTEL_GRPC_URL=<url>`     | Optional OTLP gRPC endpoint; unset uses OpenTelemetry defaults (`http://localhost:4317`).                       |
 
-With `OTEL_GRPC_URL` set, the composition emits `eval.case`,
-`specify.command`, and `model.request` spans carrying only bounded labels
-(case id/kind, command label, judgment leg, effective model id, exit code)
-— never raw argv, intent/source values, or project paths. The client
-initializes `omnia::Telemetry` once and calls `omnia::telemetry::flush`
-before exit, so even a fast `cargo make specify -- slice list` flushes
-its span.
+With `OTEL_GRPC_URL` set, a run emits `eval.case` (this crate),
+`specify.command` (the transport router), the engine orchestration spans
+(`plan.author`, `plan.execute.entry`, `slice.refine` / `slice.build` /
+`slice.merge`, `source.survey` / `source.extract`, `judgment.leg`), and
+`model.request` (the cursor backend) — every span carries only bounded
+labels (case id/kind, command label, slice/adapter ids, judgment leg,
+repair count, effective model id, exit code), never raw argv,
+intent/source values, prompts, or project paths. The client initializes
+`omnia::Telemetry` once and calls `omnia::telemetry::flush` before exit,
+so even a fast `cargo make specify -- slice list` flushes its span.
 
 ## Cases
 

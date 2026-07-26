@@ -20,7 +20,6 @@
 mod model;
 mod native;
 
-use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
@@ -28,9 +27,8 @@ use std::sync::Arc;
 use ::native::{Catalog, DynModel, ExecutionPaths};
 use anyhow::Context as _;
 pub use model::DevModel;
-use tracing::Instrument as _;
 
-use crate::{ModelFactory, ModelInstance, case};
+use crate::ModelFactory;
 
 /// Dispatch one composition-binary invocation over `catalog`.
 ///
@@ -64,59 +62,36 @@ async fn dispatch(
     let root = project_root(&mut argv)?;
 
     if argv.get(1).is_some_and(|arg| arg == "eval") {
-        return crate::run(root, catalog, cursor_factory(), &argv[1..], cases).await;
+        return crate::run(root, catalog, cursor_factory(), &argv[1..], cases)
+            .await
+            .map(|()| ExitCode::SUCCESS);
     }
 
-    let span = tracing::info_span!(
-        "specify.command",
-        command = %case::command_label(argv.get(1..).unwrap_or_default()),
-        exit = tracing::field::Empty,
-    );
     let paths = ExecutionPaths::operator(root.clone());
     let model = DynModel::new(DevModel::new(&root));
-    let code = async {
-        match ::native::command::execute(paths, model, catalog, argv).await {
-            Ok(response) => {
-                tracing::Span::current().record("exit", response.exit);
-                response
-                    .write_to(&mut io::stdout().lock(), &mut io::stderr().lock())
-                    .unwrap_or(ExitCode::FAILURE)
-            }
-            Err(error) => {
-                eprintln!("error: {error}");
-                ExitCode::FAILURE
-            }
-        }
-    }
-    .instrument(span)
-    .await;
-    Ok(code)
+    Ok(::native::command::run(paths, model, catalog, argv).await)
 }
 
 /// Process tracing / OTLP init (mirrors Omnia `init_env`). Idempotence
 /// lives in `omnia::Telemetry` — later builds in the same process
 /// share the first initialization's providers.
 fn init_telemetry() -> anyhow::Result<()> {
+    let endpoint = std::env::var("OTEL_GRPC_URL").ok();
     let mut builder = omnia::Telemetry::new("specify-eval");
-    if let Ok(endpoint) = std::env::var("OTEL_GRPC_URL") {
+    if let Some(endpoint) = endpoint.clone() {
         builder = builder.endpoint(endpoint);
-    } else {
+    }
+    builder.build().context("initializing telemetry")?;
+    if endpoint.is_none() {
         tracing::debug!("OTEL_GRPC_URL unset; using OpenTelemetry defaults");
     }
-    builder.build().context("initializing telemetry")
+    Ok(())
 }
 
-/// A lazily connected cursor-agent backend per case root, carrying
-/// the `EVAL_MODEL` default read once at composition.
+/// A lazily connected cursor-agent backend per case root.
 #[must_use]
 pub fn cursor_factory() -> ModelFactory {
-    let default = std::env::var("EVAL_MODEL").ok().filter(|id| !id.trim().is_empty());
-    Arc::new(move |root| {
-        Ok(ModelInstance {
-            model: DynModel::new(DevModel::new(root)),
-            default_model: default.clone(),
-        })
-    })
+    Arc::new(|root| Ok(DynModel::new(DevModel::new(root))))
 }
 
 /// Resolve the lab's canonical anchor: the `--project-dir` option when

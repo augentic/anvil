@@ -2,33 +2,16 @@
 //! and delegate to [`crate::case::run`].
 
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
-use std::sync::Arc;
 
 use anyhow::{Context as _, Result};
 use clap::Parser;
-use native::{Catalog, DynModel};
+use native::Catalog;
 
-use crate::case::{self, WorkflowUntil};
+use crate::case::{self, ModelFactory, WorkflowUntil};
 
 /// The retained per-case sandbox root, a sibling of the composition
 /// root's `cases/` directory.
 const SANDBOX: &str = "sandbox";
-
-/// One run's erased model backend plus the composition root's
-/// configured default model id, for effective-model reporting.
-#[derive(Clone, Debug)]
-pub struct ModelInstance {
-    /// The erased live backend rooted at the run's project tree.
-    pub model: DynModel,
-    /// The configured default model id, when the composition root
-    /// carries one (e.g. `EVAL_MODEL`).
-    pub default_model: Option<String>,
-}
-
-/// Builds one live model backend per case run, rooted at that run's
-/// sandbox tree.
-pub type ModelFactory = Arc<dyn Fn(&Path) -> Result<ModelInstance> + Send + Sync>;
 
 #[derive(Debug, Parser)]
 #[command(name = "eval", about = "Run one live eval case over native adapters")]
@@ -57,14 +40,13 @@ struct Args {
 pub async fn run(
     workspace_root: PathBuf, catalog: Catalog, model: ModelFactory, args: &[String],
     cases: Option<&Path>,
-) -> Result<ExitCode> {
+) -> Result<()> {
     let args = Args::parse_from(args);
     let cases = cases.context("this eval composition has no cases")?;
     let cases = anchored(&workspace_root, cases);
     let sandbox = cases.parent().unwrap_or(&workspace_root).join(SANDBOX);
     case::run(&cases, &sandbox, args.case.as_deref(), args.until, args.restart, &catalog, &model)
-        .await?;
-    Ok(ExitCode::SUCCESS)
+        .await
 }
 
 fn anchored(workspace_root: &Path, path: &Path) -> PathBuf {

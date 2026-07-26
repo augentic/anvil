@@ -18,6 +18,7 @@ use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::plan::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
 use project::seam::{Source, Target, WorkingTree};
+use tracing::Instrument as _;
 
 /// One phase the loop completed, in run order.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -138,6 +139,7 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
         };
         let slice = claim.slice.clone();
 
+        let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
         let result: Result<(), Error> = match step {
             LoopStep::Refine => {
                 let target = claim.target.clone().ok_or_else(|| Error::Diag {
@@ -147,7 +149,10 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                          (or fix the bound project's topology) before executing"
                     ),
                 })?;
-                slice::orchestrate::refine(caps, paths, now, &slice, &target).await.map(drop)
+                slice::orchestrate::refine(caps, paths, now, &slice, &target)
+                    .instrument(span)
+                    .await
+                    .map(drop)
             }
             LoopStep::Build => slice::orchestrate::build(
                 caps.targets,
@@ -157,11 +162,13 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                 &adapter.manifest,
                 tree.clone(),
             )
+            .instrument(span)
             .await
             .map(drop),
-            LoopStep::Merge => {
-                slice::orchestrate::merge(caps.targets, layout, now, &slice, false).await.map(drop)
-            }
+            LoopStep::Merge => slice::orchestrate::merge(caps.targets, layout, now, &slice, false)
+                .instrument(span)
+                .await
+                .map(drop),
         };
 
         match result {

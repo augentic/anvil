@@ -50,6 +50,7 @@ pub struct BuildOutcome {
 ///   names a different adapter than `adapter`.
 /// Dispatch and finalize failures retain their seam, report, output, or
 /// lifecycle diagnostics.
+#[tracing::instrument(name = "slice.build", skip_all, fields(slice = %slice, target = %adapter.name))]
 pub async fn build(
     seam: &impl Target, layout: Layout<'_>, now: Timestamp, slice: &str, adapter: &TargetAdapter,
     tree: WorkingTree,
