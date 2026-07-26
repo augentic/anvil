@@ -9,10 +9,6 @@ use native::Catalog;
 
 use crate::case::{self, ModelFactory, WorkflowUntil};
 
-/// The retained per-case sandbox root, a sibling of the composition
-/// root's `cases/` directory.
-const SANDBOX: &str = "sandbox";
-
 #[derive(Debug, Parser)]
 #[command(name = "eval", about = "Run one live eval case over native adapters")]
 struct Args {
@@ -29,22 +25,24 @@ struct Args {
 
 /// Run one eval case (or list them all when no case id is given).
 ///
-/// `workspace_root` anchors a relative `cases` root; the retained
-/// `sandbox/` tree lives beside the cases directory. Eval does not
-/// consult process current-directory state after entry.
+/// `workspace_root` anchors relative `cases` / `sandbox` paths. Both
+/// roots are composition-owned — the shim does not derive one from the
+/// other. Eval does not consult process current-directory state after
+/// entry.
 ///
 /// # Errors
 ///
-/// Returns argument failures, a composition without cases, and every
-/// [`case::run`] failure.
+/// Returns argument failures, a composition missing `cases` or
+/// `sandbox`, and every [`case::run`] failure.
 pub async fn run(
     workspace_root: PathBuf, catalog: Catalog, model: ModelFactory, args: &[String],
-    cases: Option<&Path>,
+    cases: Option<&Path>, sandbox: Option<&Path>,
 ) -> Result<()> {
     let args = Args::parse_from(args);
     let cases = cases.context("this eval composition has no cases")?;
+    let sandbox = sandbox.context("this eval composition has no sandbox")?;
     let cases = anchored(&workspace_root, cases);
-    let sandbox = cases.parent().unwrap_or(&workspace_root).join(SANDBOX);
+    let sandbox = anchored(&workspace_root, sandbox);
     case::run(&cases, &sandbox, args.case.as_deref(), args.until, args.restart, &catalog, &model)
         .await
 }

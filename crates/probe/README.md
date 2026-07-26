@@ -22,16 +22,17 @@ cargo make eval auth --restart        # run the engine's auth workflow case
 cargo make eval auth --restart --until plan   # stop at Gate 1
 ```
 
-Each case keeps one stable retained sandbox at
-`examples/eval/sandbox/<case>/`, on success and failure alike. `--restart`
-is the only runner-owned reset: it replaces that case's sandbox before
-running. An existing sandbox without `--restart` refuses before mutation —
-the runner never infers workflow progress from an existing tree. Continue
-or debug a retained sandbox explicitly through command passthrough:
+Each case keeps one stable retained sandbox at `sandbox/<case>/` (the
+composition-owned root beside the wasm example's `sandbox/wasm/`), on
+success and failure alike. `--restart` is the only runner-owned reset: it
+replaces that case's sandbox before running. An existing sandbox without
+`--restart` refuses before mutation — the runner never infers workflow
+progress from an existing tree. Continue or debug a retained sandbox
+explicitly through command passthrough:
 
 ```bash
-cargo make specify -- --project-dir examples/eval/sandbox/auth plan approve
-cargo make specify -- --project-dir examples/eval/sandbox/auth plan execute
+cargo make specify -- --project-dir sandbox/auth plan approve
+cargo make specify -- --project-dir sandbox/auth plan execute
 ```
 
 Driver-side knobs (read by `probe::client`):

@@ -10,7 +10,7 @@
 //! before exit so batched spans survive fast command exits), and the
 //! `--project-dir` convenience; the composition root keeps what the
 //! client refuses to own — the Tokio runtime, `std::env::args`
-//! collection, and the catalog and cases declarations.
+//! collection, and the catalog, cases, and sandbox declarations.
 //!
 //! Driver-side tracing knobs (same as the Omnia runtime binary):
 //! - `RUST_LOG` — `tracing` filter (e.g. `info,opentelemetry_sdk=off`)
@@ -32,28 +32,28 @@ use crate::ModelFactory;
 
 /// Dispatch one composition-binary invocation over `catalog`.
 ///
-/// The `eval` subcommand routes through [`crate::run`] (with `cases`
-/// as the case-directory root, when the composition carries one);
-/// anything else runs through the native command API under a
-/// `specify.command` span.
+/// The `eval` subcommand routes through [`crate::run`] (with the
+/// composition's `cases` and `sandbox` roots, when carried); anything
+/// else runs through the native command API under a `specify.command`
+/// span.
 ///
 /// # Errors
 ///
 /// Returns telemetry init failures, `--project-dir` resolution
 /// failures, and every [`crate::run`] failure.
 pub async fn run(
-    argv: Vec<String>, catalog: Catalog, cases: Option<&Path>,
+    argv: Vec<String>, catalog: Catalog, cases: Option<&Path>, sandbox: Option<&Path>,
 ) -> anyhow::Result<ExitCode> {
     // Mirrors Omnia `init_env`: install once, then flush before exit so
     // batched spans survive even a fast passthrough command.
     init_telemetry()?;
-    let code = dispatch(argv, catalog, cases).await;
+    let code = dispatch(argv, catalog, cases, sandbox).await;
     omnia::telemetry::flush();
     code
 }
 
 async fn dispatch(
-    mut argv: Vec<String>, catalog: Catalog, cases: Option<&Path>,
+    mut argv: Vec<String>, catalog: Catalog, cases: Option<&Path>, sandbox: Option<&Path>,
 ) -> anyhow::Result<ExitCode> {
     // `cargo make specify -- ARGS` forwards the literal `--` separator.
     if argv.get(1).is_some_and(|arg| arg == "--") {
@@ -62,7 +62,7 @@ async fn dispatch(
     let root = project_root(&mut argv)?;
 
     if argv.get(1).is_some_and(|arg| arg == "eval") {
-        return crate::run(root, catalog, cursor_factory(), &argv[1..], cases)
+        return crate::run(root, catalog, cursor_factory(), &argv[1..], cases, sandbox)
             .await
             .map(|()| ExitCode::SUCCESS);
     }

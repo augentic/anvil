@@ -27,7 +27,7 @@ set -a && source .env && set +a && cargo make eval auth --restart
 
 Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). Composition surface: [`examples/eval/README.md`](../../examples/eval/README.md); case/grading mechanics: [`crates/probe/README.md`](../../crates/probe/README.md).
 
-Each case keeps one stable retained sandbox at `examples/eval/sandbox/<case>/`, on success and failure alike. `--restart` is the only runner-owned reset; an existing sandbox without it refuses before mutation. Continue or debug a retained sandbox explicitly with `cargo make specify -- --project-dir examples/eval/sandbox/auth <verb…>` (e.g. `plan approve` after `--until plan`).
+Each case keeps one stable retained sandbox at `sandbox/<case>/` (composition-owned root beside the wasm example's `sandbox/wasm/`), on success and failure alike. `--restart` is the only runner-owned reset; an existing sandbox without `--restart` refuses before mutation. Continue or debug a retained sandbox explicitly with `cargo make specify -- --project-dir sandbox/auth <verb…>` (e.g. `plan approve` after `--until plan`).
 
 ## The WASM seam
 
