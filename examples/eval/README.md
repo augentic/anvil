@@ -26,13 +26,14 @@ cargo make eval auth --restart --until plan  # stop at Gate 1 to inspect the pla
 ```
 
 Case data lives in [`cases/`](cases/) (`cases/<id>/case.toml`). Each case
-keeps one stable retained sandbox at `sandbox/<id>/`, on success and
-failure alike; `--restart` is the only runner-owned reset, and an existing
-sandbox without it refuses before mutation. Continue or debug a retained
-sandbox explicitly:
+keeps one stable retained sandbox at the repository-root `sandbox/<id>/`
+(composition-owned; beside the wasm example's `sandbox/wasm/`), on
+success and failure alike; `--restart` is the only runner-owned reset,
+and an existing sandbox without it refuses before mutation. Continue or
+debug a retained sandbox explicitly:
 
 ```bash
-cargo make specify -- --project-dir examples/eval/sandbox/auth plan approve
+cargo make specify -- --project-dir sandbox/auth plan approve
 ```
 
 `EVAL_MODEL`, `EVAL_TIMEOUT_SECS`, `RUST_LOG`, and `OTEL_GRPC_URL` are

@@ -7,16 +7,16 @@
 //! Cursor backend, and no Tokio runtime: the process-facing entry
 //! ([`run`]) receives a workspace root, a validated
 //! [`native::Catalog`], a [`ModelFactory`], and the composition
-//! root's `cases/` directory (the `eval` example at `examples/eval/`
-//! here and in `augentic/specify-adapters`), and drives every case
-//! command through the native command API.
+//! root's `cases/` and `sandbox/` directories (the `eval` example at
+//! `examples/eval/` here and in `augentic/specify-adapters`), and
+//! drives every case command through the native command API.
 //!
 //! `feature = "client"` adds [`client`] — the shared cursor-backed
 //! composition (the lazily connected [`client::DevModel`],
 //! `omnia::Telemetry` init plus `omnia::telemetry::flush` before exit,
 //! and the argv dispatch) both composition examples delegate to,
 //! leaving each root only the runtime, args collection, and catalog +
-//! cases declaration.
+//! cases + sandbox declaration.
 
 pub mod case;
 #[cfg(feature = "client")]
