@@ -27,8 +27,13 @@ const SANDBOX: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/sandbox");
 async fn main() -> std::process::ExitCode {
     let cases = std::path::Path::new(CASES);
     let sandbox = std::path::Path::new(SANDBOX);
-    match probe::client::run(std::env::args().collect(), mock::catalog(), Some(cases), Some(sandbox))
-        .await
+    match probe::client::run(
+        std::env::args().collect(),
+        mock::catalog(),
+        Some(cases),
+        Some(sandbox),
+    )
+    .await
     {
         Ok(code) => code,
         Err(error) => {
