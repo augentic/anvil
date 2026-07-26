@@ -1,8 +1,9 @@
 //! Data-directory eval cases over real `specify` verbs.
 //!
 //! A case is a directory under the composition root's `cases/` tree
-//! holding one `case.toml` (and usually a sibling `fixture/`). Two
-//! shapes exist: a [`Workflow`] case drives the operator rhythm
+//! holding one `case.toml` (and usually a sibling `fixture/`; a
+//! workflow case may instead `clone` an upstream tree into a
+//! gitignored `fixture/` cache on first run). Two shapes exist: a [`Workflow`] case drives the operator rhythm
 //! (`init` → `plan author` [→ `plan approve` → `plan execute`
 //! [→ `plan archive`]]) and a [`Build`] case invokes
 //! `slice build <slice>` once against a committed refined fixture.
@@ -20,6 +21,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Component, Path, PathBuf};
+use std::process::Command;
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result, bail, ensure};
@@ -74,9 +76,30 @@ pub struct Workflow {
     /// absent means the sibling `fixture/` directory (when present).
     #[serde(default)]
     pub fixture: Option<PathBuf>,
+    /// Upstream tree shallow-cloned on miss into the sibling
+    /// `fixture/` cache; mutually exclusive with `fixture`.
+    #[serde(default)]
+    pub clone: Option<CloneSpec>,
     /// Default stop rung; `--until` overrides per run.
     #[serde(default)]
     pub until: WorkflowUntil,
+}
+
+/// One `git clone --depth 1` populating the sibling `fixture/` cache.
+///
+/// For source trees that cannot ship as committed fixtures (e.g. an
+/// `UNLICENSED` upstream): the case directory carries a `.gitignore`
+/// over `fixture/`, so the tree never enters the repository. The
+/// clone happens once, on miss, with `.git` stripped; every run then
+/// copies the cached tree into the sandbox like any other fixture.
+/// Refresh the snapshot by deleting the cached tree.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct CloneSpec {
+    /// Git URL passed verbatim to `git clone`.
+    pub url: String,
+    /// Sandbox-relative destination directory.
+    pub dest: PathBuf,
 }
 
 /// A build case: the fixture carries the exact refined state
@@ -164,7 +187,8 @@ pub async fn run(
 }
 
 // The dispatch behind [`run`]'s `eval.case` span: sandbox policy,
-// fixture materialization, then the case kind's driver.
+// clone-on-miss fixture population, fixture materialization, then
+// the case kind's driver.
 #[expect(clippy::too_many_arguments, reason = "internal dispatch kernel; callers use `run`")]
 async fn execute(
     root: &Path, sandbox: &Path, id: &str, case: &Case, until: Option<WorkflowUntil>,
@@ -179,6 +203,12 @@ async fn execute(
             dir.display(),
             dir.display()
         );
+    }
+    if let Case::Workflow(Workflow {
+        clone: Some(clone), ..
+    }) = case
+    {
+        clone_into(&root.join(id).join("fixture"), clone)?;
     }
     let scratch = sandbox::replace(&dir)?;
     if let Some(fixture) = fixture_dir(root, id, case)? {
@@ -357,6 +387,15 @@ fn validate(case: &Case) -> Result<()> {
                 workflow.intent.is_some() || !workflow.sources.is_empty(),
                 "a workflow case requires `intent` or at least one `[sources]` binding"
             );
+            if let Some(clone) = &workflow.clone {
+                ensure!(
+                    workflow.fixture.is_none(),
+                    "`fixture` and `clone` are mutually exclusive — `clone` populates \
+                     the sibling `fixture/` itself"
+                );
+                ensure!(!clone.url.trim().is_empty(), "empty clone url");
+                validate_entry(&clone.dest.to_string_lossy()).context("clone `dest`")?;
+            }
         }
         Case::Build(build) => {
             ensure!(!build.slice.trim().is_empty(), "empty slice name");
@@ -384,10 +423,31 @@ fn validate_entry(rel: &str) -> Result<()> {
     Ok(())
 }
 
+// Populate the case's gitignored `fixture/` cache on miss: one
+// shallow clone with `.git` stripped, reused by every later run.
+fn clone_into(cache: &Path, spec: &CloneSpec) -> Result<()> {
+    let dest = cache.join(&spec.dest);
+    if dest.is_dir() {
+        return Ok(());
+    }
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    eprintln!("==> git clone --depth 1 {} {}", spec.url, dest.display());
+    let status = Command::new("git")
+        .args(["clone", "--depth", "1", &spec.url])
+        .arg(&dest)
+        .status()
+        .context("spawning `git clone`")?;
+    ensure!(status.success(), "`git clone {}` failed with {status}", spec.url);
+    fs::remove_dir_all(dest.join(".git")).context("stripping the clone's `.git`")?;
+    Ok(())
+}
+
 // The case's fixture directory: the explicit `fixture` path resolved
 // against the case directory, else the sibling `fixture/` when it
 // exists. An explicit fixture that is absent fails with a focused
-// error (e.g. an unprepared `omnia-r9k` tree).
+// error (e.g. a shared tree that has moved).
 fn fixture_dir(root: &Path, id: &str, case: &Case) -> Result<Option<PathBuf>> {
     let dir = root.join(id);
     let explicit = match case {

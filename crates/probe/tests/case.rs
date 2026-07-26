@@ -100,6 +100,66 @@ mod config {
     }
 
     #[test]
+    fn workflow_clone_parses() {
+        let case = case::parse(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
+             clone = { url = \"https://example.com/tree.git\", dest = \"legacy/tree\" }\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+        )
+        .expect("a workflow case with a clone parses");
+        let Case::Workflow(workflow) = case else {
+            panic!("workflow kind parses to a workflow case");
+        };
+        let clone = workflow.clone.expect("the clone spec is carried");
+        assert_eq!(clone.url, "https://example.com/tree.git");
+        assert_eq!(clone.dest, Path::new("legacy/tree"));
+    }
+
+    #[test]
+    fn traversing_clone_dest_refused() {
+        let err = case::parse(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
+             clone = { url = \"https://example.com/tree.git\", dest = \"../outside\" }\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+        )
+        .expect_err("a parent-traversing clone dest refuses");
+        assert!(format!("{err:#}").contains("plain names"), "{err:#}");
+    }
+
+    #[test]
+    fn empty_clone_url_refused() {
+        let err = case::parse(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
+             clone = { url = \" \", dest = \"legacy/tree\" }\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+        )
+        .expect_err("a blank clone url refuses");
+        assert!(format!("{err:#}").contains("empty clone url"), "{err:#}");
+    }
+
+    #[test]
+    fn fixture_with_clone_refused() {
+        let err = case::parse(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
+             fixture = \"../shared\"\n\
+             clone = { url = \"https://example.com/tree.git\", dest = \"legacy/tree\" }\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+        )
+        .expect_err("fixture and clone together refuse");
+        assert!(format!("{err:#}").contains("mutually exclusive"), "{err:#}");
+    }
+
+    #[test]
+    fn clone_on_build_refused() {
+        let err = case::parse(
+            "kind = \"build\"\nslice = \"demo\"\nexpect = [\"out\"]\n\
+             clone = { url = \"https://example.com/tree.git\", dest = \"legacy/tree\" }\n",
+        )
+        .expect_err("build cases carry no clone");
+        assert!(format!("{err:#}").contains("clone"), "{err:#}");
+    }
+
+    #[test]
     fn nested_id_refused() {
         let tmp = TempDir::new().expect("tempdir");
         let err = case::load(tmp.path(), "mock/one").expect_err("nested ids refuse");
@@ -209,6 +269,34 @@ async fn stage_refined_fixture(root: &Path) {
     invoke(root, &model, &["slice", "refine", "greeting"]).await;
 }
 
+fn git(dir: &Path, args: &[&str]) {
+    let status =
+        std::process::Command::new("git").current_dir(dir).args(args).status().expect("git spawns");
+    assert!(status.success(), "git {args:?} failed");
+}
+
+// A one-commit local repo standing in for a case's upstream tree.
+fn stage_upstream_repo(dir: &Path) {
+    fs::create_dir_all(dir).expect("mkdir upstream");
+    git(dir, &["init", "-q"]);
+    fs::write(dir.join("README.md"), "upstream\n").expect("write README");
+    git(dir, &["add", "README.md"]);
+    git(
+        dir,
+        &[
+            "-c",
+            "user.name=probe",
+            "-c",
+            "user.email=probe@test",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "seed",
+        ],
+    );
+}
+
 fn stage_case(cases: &Path, id: &str, body: &str) {
     let dir = cases.join(id);
     fs::create_dir_all(&dir).expect("mkdir case");
@@ -295,6 +383,58 @@ async fn workflow_until_plan_leaves_gate_pending() {
         !journal(&root).contains("plan.transition.approved"),
         "no approval event was journaled"
     );
+}
+
+#[tokio::test]
+async fn clone_populates_the_fixture_cache_once() {
+    let tmp = TempDir::new().expect("tempdir");
+    let upstream = tmp.path().join("upstream");
+    stage_upstream_repo(&upstream);
+    let cases = tmp.path().join("cases");
+    stage_case(
+        &cases,
+        "cloned",
+        &format!(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
+             clone = {{ url = \"file://{}\", dest = \"legacy/upstream\" }}\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+            upstream.display()
+        ),
+    );
+
+    let sandbox = tmp.path().join("sandbox");
+    case::run(
+        &cases,
+        &sandbox,
+        Some("cloned"),
+        Some(WorkflowUntil::Plan),
+        false,
+        &catalog(),
+        &scripted(vec![mock::answers::greeting_grouping()]),
+    )
+    .await
+    .expect("the cloning workflow case passes");
+
+    let cache = cases.join("cloned/fixture/legacy/upstream");
+    assert!(cache.join("README.md").is_file(), "the clone lands in the fixture cache");
+    assert!(!cache.join(".git").exists(), "the cached clone's .git is stripped");
+    let dest = sandbox.join("cloned/legacy/upstream");
+    assert!(dest.join("README.md").is_file(), "the cached tree is copied into the sandbox");
+
+    // A restart with the upstream gone reuses the cache — no reclone.
+    fs::remove_dir_all(&upstream).expect("drop the upstream");
+    case::run(
+        &cases,
+        &sandbox,
+        Some("cloned"),
+        Some(WorkflowUntil::Plan),
+        true,
+        &catalog(),
+        &scripted(vec![mock::answers::greeting_grouping()]),
+    )
+    .await
+    .expect("a restart runs offline over the cached fixture");
+    assert!(dest.join("README.md").is_file(), "the restart re-materializes from the cache");
 }
 
 #[tokio::test]

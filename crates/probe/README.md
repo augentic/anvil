@@ -65,7 +65,12 @@ fresh sandbox. Two kinds exist:
   then (past `--until plan`) `plan approve` and the genuine drained
   `plan execute`, and (at `--until finalize`) `plan archive`. The default
   stop is `execute`; `case.toml`'s `until` sets a case default and
-  `--until` overrides per run.
+  `--until` overrides per run. An optional `clone = { url, dest }`
+  (mutually exclusive with `fixture`) shallow-clones an upstream tree
+  into the case's own `fixture/<dest>` on first run (stripping
+  `.git`) and reuses that gitignored cache afterwards — for source
+  trees that cannot ship as committed fixtures; delete the cached
+  tree to refresh the snapshot.
 - **`kind = "build"`** — one `specify slice build <slice>` against a
   committed refined fixture (valid project + slice metadata; the runner
   never stamps lifecycle state), then the built gates.
