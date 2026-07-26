@@ -19,13 +19,6 @@ fn single_writer_excludes_a_second_eval() {
 }
 
 #[test]
-fn require_refuses_uninitialised() {
-    let tmp = TempDir::new().expect("tempdir");
-    let err = sandbox::require(tmp.path()).expect_err("no project.yaml refuses");
-    assert!(format!("{err:#}").contains("not initialised"), "{err:#}");
-}
-
-#[test]
 fn replace_resets_the_tree() {
     let tmp = TempDir::new().expect("tempdir");
     let sandbox = tmp.path().join("sandbox");

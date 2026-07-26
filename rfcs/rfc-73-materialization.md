@@ -281,6 +281,8 @@ This preserves evidence integrity during in-place migration.
 
 A newly materialized target may lack `.specify/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [Migration Programs](rfc-74-program.md#applying-approved-topology). An existing configuration remains authoritative.
 
+One slot carries one target adapter. A repository holding two independent workloads is split into two registry projects — and therefore two slots — before the program schedules it; the materializer never sees a multi-target project.
+
 ### CLI surface
 
 Add explicit workspace operations:

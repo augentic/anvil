@@ -6,16 +6,16 @@
 command = "cargo"
 args = ["run", "-q", "-p", "specify", "--example", "eval", "--", "${@}"]
 
+# One live eval case (`cargo make eval auth --restart [--until plan]`);
+# bare `cargo make eval` lists the cases. Case data lives in
+# `eval/cases/<id>/case.toml`; the retained sandbox in
+# `eval/sandbox/<id>/`.
 [tasks.eval]
 env_files = [".env"]
 script = '''
   export EVAL_TIMEOUT_SECS="${EVAL_TIMEOUT_SECS:-300}"
-  cargo run -p specify --example eval -- eval \
-  --change "auth" \
-  --source "docs=mock-docs:value:The docs source." \
-  --source "code=mock-code:value:The code source." \
-  --target "mock" \
-  "$@"
+  export RUST_LOG="${RUST_LOG:-info,opentelemetry_sdk=off}"
+  cargo run -p specify --example eval -- eval "$@"
 '''
 
 # -------------------------------------

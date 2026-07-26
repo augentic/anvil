@@ -24,7 +24,8 @@ use std::time::Duration;
 use omnia::Backend as _;
 use omnia_cursor::ConnectOptions;
 use omnia_guest::Model;
-use omnia_guest::model::{Error, Reply, Request};
+use omnia_guest::model::{Error, Format, Reply, Request};
+use tracing::Instrument as _;
 
 use super::native::Native;
 
@@ -62,6 +63,28 @@ impl DevModel {
 
 impl Model for DevModel {
     async fn create(&self, mut request: Request) -> Result<Reply, Error> {
+        // A guest-supplied model id always wins over the driver override.
+        if request.model.is_none() {
+            request.model = self.model.clone();
+        }
+        // The `model.request` span records only the bounded leg and
+        // effective model id — never request bodies or project paths.
+        let leg = match &request.format {
+            Format::Schema(schema) => schema.name.clone(),
+            Format::Json => "json".to_string(),
+            Format::Text => "text".to_string(),
+        };
+        let span = tracing::info_span!(
+            "model.request",
+            leg = %leg,
+            model = %request.model.as_deref().unwrap_or("backend-default"),
+        );
+        self.request(request).instrument(span).await
+    }
+}
+
+impl DevModel {
+    async fn request(&self, request: Request) -> Result<Reply, Error> {
         let native = self
             .cell
             .get_or_try_init(|| async {
@@ -79,10 +102,6 @@ impl Model for DevModel {
                      credentials, not the IDE login `cursor-agent status` reports)"
                 ))
             })?;
-        // A guest-supplied model id always wins over the driver override.
-        if request.model.is_none() {
-            request.model = self.model.clone();
-        }
         native.create(request).await
     }
 }

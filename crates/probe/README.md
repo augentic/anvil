@@ -1,10 +1,10 @@
 # Prompt evaluation
 
-The lab-only `probe` library: trial/scenario runners, deterministic grading,
-and telemetry over the native host. The composition example that drives it
-is [`examples/eval/`](../../examples/eval/README.md) (`cargo make eval` /
-`cargo make specify`). Outputs are graded by deterministic validators — not
-a model.
+The lab-only `probe` library: the typed eval case runner, deterministic
+grading, and telemetry over the native host. The composition example that
+drives it is [`examples/eval/`](../../examples/eval/README.md)
+(`cargo make eval` / `cargo make specify`). Outputs are graded by
+deterministic validators — not a model.
 
 ## Quick start
 
@@ -17,10 +17,22 @@ Login to the Cursor agent:
 or set `CURSOR_API_KEY` in `.env` at the repository root.
 
 ```bash
-cargo make eval
+cargo make eval                       # list the cases
+cargo make eval auth --restart        # run the engine's auth workflow case
+cargo make eval auth --restart --until plan   # stop at Gate 1
 ```
 
-This runs the entire workflow in `sandbox/`. A passing run will remove the project, while a failing run will retain it for in-place review, or to re-run individual operations (using the manual workflow below).
+Each case keeps one stable retained sandbox at
+`examples/eval/sandbox/<case>/`, on success and failure alike. `--restart`
+is the only runner-owned reset: it replaces that case's sandbox before
+running. An existing sandbox without `--restart` refuses before mutation —
+the runner never infers workflow progress from an existing tree. Continue
+or debug a retained sandbox explicitly through command passthrough:
+
+```bash
+cargo make specify -- --project-dir examples/eval/sandbox/auth plan approve
+cargo make specify -- --project-dir examples/eval/sandbox/auth plan execute
+```
 
 Driver-side knobs (read by `probe::client`):
 
@@ -28,27 +40,42 @@ Driver-side knobs (read by `probe::client`):
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `EVAL_MODEL=<model-id>`   | Override the model for a run; unset means the cursor backend's default.                                         |
 | `EVAL_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds). Unset → backend default 120. `cargo make eval` sets `300`. |
+| `RUST_LOG=<filter>`       | `tracing` filter for the native composition (`probe::client` initializes `omnia::Telemetry`). Example: `info,opentelemetry_sdk=off`. |
+| `OTEL_GRPC_URL=<url>`     | Optional OTLP gRPC endpoint; unset uses OpenTelemetry defaults (`http://localhost:4317`).                       |
 
-The auth trial's hard synthesis case is **authority divergence** — the `session-timeout` lead (scripted goldens name the slice `session-policy`), not evidence volume. Docs claim a 30-minute idle timeout; code claims 15; documentation authority should win. Grading still only asserts lifecycle + provenance; it does not require a `[divergence]` tag.
+With `OTEL_GRPC_URL` set, the composition emits `eval.case`,
+`specify.command`, and `model.request` spans carrying only bounded labels
+(case id/kind, command label, judgment leg, effective model id, exit code)
+— never raw argv, intent/source values, or project paths. The client
+initializes `omnia::Telemetry` once and calls `omnia::telemetry::flush`
+before exit, so even a fast `cargo make specify -- slice list` flushes
+its span.
 
-`judgment-model-failed` on refine usually means the cursor layer timed out or returned unparseable JSON — the engine `MAX_REPAIRS` loop never sees that failure.
+## Cases
 
-### Manual workflow
+A case is a data directory under the composition root's `cases/` tree —
+`cases/<id>/case.toml` plus (usually) a sibling `fixture/` copied into the
+fresh sandbox. Two kinds exist:
 
-Run one operation at a time to inspect its artifacts:
+- **`kind = "workflow"`** — the operator rhythm over real verbs:
+  `init <target>`, `plan author <change> [--intent] [--source k=v …]`,
+  then (past `--until plan`) `plan approve` and the genuine drained
+  `plan execute`, and (at `--until finalize`) `plan archive`. The default
+  stop is `execute`; `case.toml`'s `until` sets a case default and
+  `--until` overrides per run.
+- **`kind = "build"`** — one `specify slice build <slice>` against a
+  committed refined fixture (valid project + slice metadata; the runner
+  never stamps lifecycle state), then the built gates.
 
-```bash
-make eval init
-make eval plan
-make eval execute
-make eval finalize
-```
+The auth case's hard synthesis case is **authority divergence** — the
+`session-timeout` lead (scripted goldens name the slice `session-policy`),
+not evidence volume. Docs claim a 30-minute idle timeout; code claims 15;
+documentation authority should win. Grading still only asserts lifecycle +
+provenance; it does not require a `[divergence]` tag.
 
-While `make eval init` will reinitialize a project, a project can also be removed using:
-
-```bash
-make eval clean
-```
+`judgment-model-failed` on refine usually means the cursor layer timed out
+or returned unparseable JSON — the engine `MAX_REPAIRS` loop never sees
+that failure.
 
 ## Model judgment
 
@@ -63,33 +90,32 @@ Specify core has two steps that require a model's judgement.
 
 The execution and repair loop lives in the `project` crate and are considered infrastructure, not judgment. Source `survey` / `extract` and target `guidance` / `build` / `merge` are adapter operations.
 
-The `plan` evaluation isolates the proposal leg. The `execute` evaluation runs synthesis as part of the complete `refine → build → merge` loop. The synthesis artifacts are fields of one model response, so the harness does not invoke `spec.md` or `design.md` generation as independent judgment legs.
+A workflow case stopped at `--until plan` isolates the proposal leg. A full
+workflow case runs synthesis as part of the complete `refine → build →
+merge` loop. The synthesis artifacts are fields of one model response, so
+the harness does not invoke `spec.md` or `design.md` generation as
+independent judgment legs.
 
-## Workflow
+## Gates
 
-The driver mirrors the operator rhythm:
-
-```text
-init        specify init mock
-plan        specify plan author → Gate 1 approved
-execute     specify plan execute  (refine → build → merge per slice, until drained)
-finalize    specify plan archive
-```
-
-Every step runs the production operation — `execute` is the real drained loop, not a hand-driven breakout sequence. Completed phases are echoed as the loop runs.
-
-## Grading
-
-Hard assertions only:
+Every command must exit successfully; the case kind adds only its
+observable gates:
 
 
-| Stage   | Check      | Pass condition                                               |
-| ------- | ---------- | ------------------------------------------------------------ |
-| plan    | Entries    | `plan author` produces at least one entry                    |
-| execute | Lifecycle  | Every plan entry is `done`                                   |
-| execute | Provenance | Every evidenced requirement carries sources; ids are present |
+| Case kind          | Check      | Pass condition                                                       |
+| ------------------ | ---------- | -------------------------------------------------------------------- |
+| workflow (plan)    | Entries    | `plan author` produces at least one entry; lifecycle stays `pending` |
+| workflow (execute) | Lifecycle  | Every plan entry is `done`                                           |
+| workflow (execute) | Provenance | Every evidenced requirement carries sources; ids are present         |
+| build              | Lifecycle  | Slice metadata is `built`                                            |
+| build              | Report     | The authoritative `build/report.yaml` exists under the slice         |
+| build              | Expect     | Every confined `expect` path holds a file                            |
 
 
-Per-leg request / repair counts are **reported, not asserted**. After grading, the trial prints one line per judgment leg (keyed by answer-schema name) with its request count and derived repairs — requests beyond one per leg invocation (one propose per trial, one synthesis per plan entry), e.g. `leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting from zero repairs toward the budget is the early signal that a prompt or answer-schema change degraded the model's first answer.
-
-In manual mode, repair counts cover only model requests made by that operation.
+Per-leg request / repair counts are **reported, not asserted**. After the
+gates, the runner prints one line per judgment leg (keyed by answer-schema
+name) with its request count and derived repairs — requests beyond one per
+leg invocation (one propose per case, one synthesis per plan entry), e.g.
+`leg synthesis: 4 request(s) over 3 slice(s), 1 repair(s)`. A leg drifting
+from zero repairs toward the budget is the early signal that a prompt or
+answer-schema change degraded the model's first answer.

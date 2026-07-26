@@ -159,6 +159,7 @@ Same verbs, independent cadence and SemVer.
 3. Engine git dependencies pinned by release tag (D13) — no floating-branch resolution at publish time, and no active sibling `[patch]` block.
 4. `specify-floor` set to the minimum host that can run this train.
 5. Existing no-repush probe: refuse to replace an existing GHCR version tag.
+6. Once adapter descriptors land ([RFC-71](rfc-71-discovery.md) D3): every published component has a descriptor in the projected index, and the restated fields agree with its `metadata` export.
 
 ### What stays independent
 

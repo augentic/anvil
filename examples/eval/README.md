@@ -1,34 +1,44 @@
 # Eval composition
 
 The native composition example over the mock catalog: command passthrough by
-default, and the live prompt-evaluation trial under the `eval` subcommand.
-Both modes share [`probe::client`](../../crates/probe/src/client.rs) — Tokio,
-argv, and `mock::catalog()` are all this example owns.
+default, and the live eval case runner under the `eval` subcommand. Both
+modes share [`probe::client`](../../crates/probe/src/client.rs) — Tokio,
+argv, `mock::catalog()`, and the `cases/` root are all this example owns.
 
 This is the operator surface for the judgment-prompt loop:
 
 ```text
-edit crates/{slice,change}/prompts/  →  cargo make eval  →  read grades / repairs  →  repeat
+edit crates/{slice,change}/prompts/  →  cargo make eval auth --restart  →  read grades / repairs  →  repeat
 ```
 
-Outputs are graded by deterministic validators, not a model. Trial mechanics
+Outputs are graded by deterministic validators, not a model. Case mechanics
 and grading posture live in [`crates/probe/README.md`](../../crates/probe/README.md).
 
-## Live trial (the prompt loop)
+## Live cases (the prompt loop)
 
 Requires authenticated `cursor-agent` on `PATH` (`cursor-agent login` or
 `CURSOR_API_KEY` in `.env` at the repository root).
 
 ```bash
-cargo make eval           # full trial over sandbox/
-cargo make eval init      # one phase: init | plan | execute | finalize | clean
+cargo make eval                              # list the cases
+cargo make eval auth --restart               # the auth workflow case, end to end
+cargo make eval auth --restart --until plan  # stop at Gate 1 to inspect the plan
 ```
 
-A passing full run cleans `sandbox/`; a failing phase retains it for in-place
-review or per-phase re-runs. `EVAL_MODEL` and
-`EVAL_TIMEOUT_SECS` are documented in
-[`crates/probe/README.md`](../../crates/probe/README.md); `cargo make eval`
-defaults the timeout to 300s.
+Case data lives in [`cases/`](cases/) (`cases/<id>/case.toml`). Each case
+keeps one stable retained sandbox at `sandbox/<id>/`, on success and
+failure alike; `--restart` is the only runner-owned reset, and an existing
+sandbox without it refuses before mutation. Continue or debug a retained
+sandbox explicitly:
+
+```bash
+cargo make specify -- --project-dir examples/eval/sandbox/auth plan approve
+```
+
+`EVAL_MODEL`, `EVAL_TIMEOUT_SECS`, `RUST_LOG`, and `OTEL_GRPC_URL` are
+documented in [`crates/probe/README.md`](../../crates/probe/README.md);
+`cargo make eval` defaults the timeout to 300s and `RUST_LOG` to
+`info,opentelemetry_sdk=off`.
 
 Cadence: before a release tag, and after any change to the judgment prompts
 (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer
