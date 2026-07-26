@@ -37,7 +37,7 @@ pub async fn execute(
                 detail: err.to_string(),
             }
         })?;
-    let response = router.execute(argv).await;
+    let response = transport::command::execute(&router, argv).await;
     provider.shutdown().await;
     Ok(response)
 }

@@ -28,7 +28,7 @@ mod provider;
 
 pub use provider::Provider;
 /// Re-exported for the [`export!`] macro expansion.
-pub use {omnia_guest, transport, wasip3};
+pub use {omnia_guest, omnia_wasi_otel, transport, wasip3};
 
 /// Export the engine guest from the invoking cdylib.
 ///
@@ -49,10 +49,28 @@ macro_rules! export {
 
         impl $crate::wasip3::exports::cli::run::Guest for CliGuest {
             async fn run() -> Result<(), ()> {
+                use std::io::Write as _;
+
+                // Guest OpenTelemetry over the host's wasi-otel provider;
+                // the guard exports buffered telemetry on drop.
+                let telemetry = $crate::omnia_wasi_otel::init();
                 let invoker =
                     $crate::omnia_guest::api::invoke::Invoker::new("specify", $crate::Provider);
                 let router = $crate::transport::command::router(invoker).map_err(|_e| ())?;
-                $crate::omnia_guest::api::command::execute_wasi(&router).await
+                let argv = $crate::wasip3::cli::environment::get_arguments();
+                let response = $crate::transport::command::execute(&router, argv).await;
+                if std::io::stdout().write_all(&response.stdout).is_err()
+                    || std::io::stderr().write_all(&response.stderr).is_err()
+                {
+                    return Err(());
+                }
+                if response.exit != 0 {
+                    // `exit-with-code` does not return, so export
+                    // telemetry before signalling the failure.
+                    drop(telemetry);
+                    $crate::wasip3::cli::exit::exit_with_code(response.exit);
+                }
+                Ok(())
             }
         }
 

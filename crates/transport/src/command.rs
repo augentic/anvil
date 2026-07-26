@@ -12,6 +12,7 @@ use project::adapter::Resolver;
 use project::handler::{Anchor, Render};
 use project::seam::{Source, Target};
 use serde::Serialize;
+use tracing::Instrument as _;
 
 use self::output::{ErrorBody, Exit, emit, write_error_text};
 pub use self::output::{Format, render_failure, render_success};
@@ -431,6 +432,45 @@ where
         router = router.namespace(help.path.iter().copied(), help.metadata);
     }
     router.build()
+}
+
+/// Run one routed invocation (`argv[0]` is the binary name) under the
+/// `specify.command` span.
+///
+/// The span carries only the bounded verb label and the response exit
+/// code — never the full argv, which may embed operator prose (e.g.
+/// `plan author --intent …`). Both deployments route through here: the
+/// native host's command entry and the engine guest's `wasi:cli/run`
+/// exporter.
+pub async fn execute<P>(router: &Router<P, Globals>, argv: Vec<String>) -> CommandResponse
+where
+    P: Provider + Anchor + Model + Resolver + Source + Target,
+{
+    let span = tracing::info_span!(
+        "specify.command",
+        command = %label(&argv),
+        exit = tracing::field::Empty,
+    );
+    async {
+        let response = router.execute(argv).await;
+        tracing::Span::current().record("exit", response.exit);
+        response
+    }
+    .instrument(span)
+    .await
+}
+
+/// The bounded span label: the first two non-flag tokens after the
+/// binary name (`plan author`, `slice build`).
+fn label(argv: &[String]) -> String {
+    let words: Vec<&str> = argv
+        .iter()
+        .skip(1)
+        .filter(|arg| !arg.starts_with('-'))
+        .take(2)
+        .map(String::as_str)
+        .collect();
+    words.join(" ")
 }
 
 macro_rules! convert {

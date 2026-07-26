@@ -1,4 +1,4 @@
-//! Filesystem helpers shared by the trial and scenario runners.
+//! Filesystem helpers for the case runner.
 
 use std::fs;
 use std::path::Path;

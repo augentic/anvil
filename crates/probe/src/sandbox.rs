@@ -1,14 +1,14 @@
-//! Persistent-sandbox lifecycle helpers shared by trial phases.
+//! Retained-sandbox lifecycle helpers shared by the case runner.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Context as _, Result};
 use project::config::Layout;
 use project::plan::Plan;
 
-/// Holds the sandbox's advisory single-writer lock for one trial
-/// phase; dropping releases it.
+/// Holds the sandbox's advisory single-writer lock for one case run;
+/// dropping releases it.
 #[derive(Debug)]
 pub struct Guard {
     _file: fs::File,
@@ -53,23 +53,10 @@ fn lock_path(sandbox: &Path) -> PathBuf {
 /// Returns removal and creation I/O failures.
 pub fn replace(root: &Path) -> Result<PathBuf> {
     if root.exists() {
-        fs::remove_dir_all(root).context("replacing the previous trial project")?;
+        fs::remove_dir_all(root).context("replacing the previous case sandbox")?;
     }
-    fs::create_dir_all(root).context("creating the trial project root")?;
-    root.canonicalize().context("canonical trial project root")
-}
-
-/// Require an initialised project at `root`.
-///
-/// # Errors
-///
-/// Returns a missing `.specify/project.yaml`.
-pub fn require(root: &Path) -> Result<PathBuf> {
-    ensure!(
-        root.join(".specify/project.yaml").is_file(),
-        "project is not initialised; run `cargo make eval init` first"
-    );
-    root.canonicalize().context("canonical trial project root")
+    fs::create_dir_all(root).context("creating the case sandbox root")?;
+    root.canonicalize().context("canonical case sandbox root")
 }
 
 /// Load the project's `plan.yaml`.

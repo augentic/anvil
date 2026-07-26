@@ -15,6 +15,7 @@
 use error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat};
+use tracing::Instrument as _;
 
 /// Maximum repair attempts after the first answer — a tail failure
 /// re-prompts with the findings inlined at most this many times before
@@ -45,20 +46,34 @@ where
     P: Model,
     F: FnMut(&str) -> Result<T, Error>,
 {
-    let mut prompt = user.clone();
-    let mut attempt = 0;
+    // The span carries only the bounded leg name and repair count —
+    // never prompts or answers.
+    let span =
+        tracing::info_span!("judgment.leg", leg = %schema_name, repairs = tracing::field::Empty);
+    async {
+        let mut prompt = user.clone();
+        let mut attempt = 0;
 
-    loop {
-        let reply = create(model, system, prompt, schema_name, schema).await?;
-        match tail(&reply.answer) {
-            Ok(value) => return Ok(value),
-            Err(err) if attempt < MAX_REPAIRS => {
-                attempt += 1;
-                prompt = repair_prompt(&user, &reply.answer, &err);
+        loop {
+            let reply = create(model, system, prompt, schema_name, schema).await?;
+            match tail(&reply.answer) {
+                Ok(value) => {
+                    tracing::Span::current().record("repairs", attempt);
+                    return Ok(value);
+                }
+                Err(err) if attempt < MAX_REPAIRS => {
+                    attempt += 1;
+                    prompt = repair_prompt(&user, &reply.answer, &err);
+                }
+                Err(err) => {
+                    tracing::Span::current().record("repairs", attempt);
+                    return Err(err);
+                }
             }
-            Err(err) => return Err(err),
         }
     }
+    .instrument(span)
+    .await
 }
 
 /// One `create` call: schema-constrained output, no MCP grants, the

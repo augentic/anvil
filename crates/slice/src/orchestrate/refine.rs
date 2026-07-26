@@ -87,6 +87,7 @@ impl TagCounts {
 /// - `slice-provenance-invalid` / `slice-pre-adapter-gate` /
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `lifecycle` gate error from the `refined` transition.
+#[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
 pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str,

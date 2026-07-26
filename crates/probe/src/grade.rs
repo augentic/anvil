@@ -1,6 +1,6 @@
-//! Shared deterministic grading helpers for live-model trial wrappers.
+//! Shared deterministic grading helpers for live-model eval cases.
 //!
-//! The trial's `execute` phase walks the baseline specs and runs the
+//! The case runner's gates walk the baseline specs and run the
 //! provenance gate directly; anything catalog-specific stays out of
 //! this shared library.
 

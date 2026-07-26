@@ -89,6 +89,11 @@ pub async fn survey(
 
 /// Survey one binding: ensure/resolve, dispatch, attribute, validate,
 /// merge, journal.
+#[tracing::instrument(
+    name = "source.survey",
+    skip_all,
+    fields(source = %source, adapter = tracing::field::Empty)
+)]
 async fn survey_one(
     seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
     source: &str, binding: &SourceBinding,
@@ -99,6 +104,7 @@ async fn survey_one(
     // adapter's `specify_floor` are enforced by the deployment's
     // resolver, and dispatch routes by the exact resolved identity.
     let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest;
+    tracing::Span::current().record("adapter", adapter.name.as_str());
 
     emit(
         layout,

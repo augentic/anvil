@@ -4,7 +4,7 @@ Specify's developer loop is self-contained: every rung runs from this checkout a
 
 ```bash
 cargo make test                              # fast native integration tests; model-free and no Wasmtime
-cargo make eval                              # run the live prompt-evaluation rung (the root eval example's eval mode)
+cargo make eval auth --restart               # run the live prompt-evaluation rung (one eval case; bare `cargo make eval` lists them)
 ```
 
 ## 1. `cargo make test` — the default edit loop
@@ -17,17 +17,17 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 ## 2. `cargo make eval` — prompt evaluation
 
-Runs the live trial (the `crates/probe` library composed by the root `eval` example): plan → execute (refine → build → merge per slice) → finalize over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning. The hard synthesis case is authority divergence (`session-timeout` / `session-policy`), not evidence volume. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns. `EVAL_MODEL` and `EVAL_TIMEOUT_SECS` are documented in [`crates/probe/README.md`](../../crates/probe/README.md).
+Runs one live eval case (the `crates/probe` case runner composed by the root `eval` example). The engine's `auth` workflow case drives plan → execute (refine → build → merge per slice) over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning; `--until plan` stops at Gate 1 to inspect the authored plan. The hard synthesis case is authority divergence (`session-timeout` / `session-policy`), not evidence volume. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns. `EVAL_MODEL` and `EVAL_TIMEOUT_SECS` are documented in [`crates/probe/README.md`](../../crates/probe/README.md).
 
 If you want to set environment variables in a file, see `.env.example`. Copy to `.env` and set variables then run
 
 ```
-set -a && source .env && set +a && cargo make eval
+set -a && source .env && set +a && cargo make eval auth --restart
 ```
 
-Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). Composition surface: [`examples/eval/README.md`](../../examples/eval/README.md); trial/grading mechanics: [`crates/probe/README.md`](../../crates/probe/README.md).
+Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). Composition surface: [`examples/eval/README.md`](../../examples/eval/README.md); case/grading mechanics: [`crates/probe/README.md`](../../crates/probe/README.md).
 
-To do subsequent runs of `eval`, run `cargo make eval clean` between runs to re-start the process.
+Each case keeps one stable retained sandbox at `examples/eval/sandbox/<case>/`, on success and failure alike. `--restart` is the only runner-owned reset; an existing sandbox without it refuses before mutation. Continue or debug a retained sandbox explicitly with `cargo make specify -- --project-dir examples/eval/sandbox/auth <verb…>` (e.g. `plan approve` after `--until plan`).
 
 ## The WASM seam
 

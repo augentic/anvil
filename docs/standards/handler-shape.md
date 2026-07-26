@@ -74,7 +74,7 @@ The four-slot CLI exit-code table is fixed:
 
 The reusable command route table lives in `crates/transport/src/command.rs`. Both WASI and native shims construct an `Invoker`, assemble the router, execute it, and adapt the buffered response to their process boundary. The shared HTTP table lives in `crates/transport/src/http.rs`; native adds its write lock and MCP merge after `into_axum()`.
 
-On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly and calls `omnia_guest::api::command::execute_wasi`. Native calls `Router::execute` and writes the returned channels. Both paths use the same assembly and the same `SpecifyProjector`.
+On wasm, the guest (`src/lib.rs`) exports `wasi:cli/run` explicitly, reads argv from the WASI environment, and writes the returned channels itself. Native writes the buffered response to the process streams. Both paths run the router through `transport::command::execute` — the shared wrapper that emits the `specify.command` span (bounded verb label plus exit code) — with the same assembly and the same `SpecifyProjector`.
 
 Target discipline per leaf arm:
 

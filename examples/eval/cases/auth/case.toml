@@ -1,0 +1,11 @@
+# The engine's live judgment-prompt case: two adversarial mock
+# sources through the full workflow against the mock target. The hard
+# synthesis case is authority divergence (docs claim a 30-minute idle
+# timeout, code claims 15; documentation authority wins).
+kind = "workflow"
+target = "mock"
+change = "auth"
+
+[sources]
+docs = "mock-docs:value:The docs source."
+code = "mock-code:value:The code source."
