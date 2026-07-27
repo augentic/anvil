@@ -4,6 +4,8 @@
 - **Package:** `emery:vectis@<semver>` in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters/tree/main/targets/vectis)
 - **Purpose:** Cross-platform Crux application development (Rust core, Swift iOS shell, Kotlin Android shell)
 
+**Prerequisite:** greenfield Vectis builds materialize from a local [`vectis-template`](https://github.com/augentic/vectis-template) checkout at `../vectis-template` (relative to the consumer project root) or `VECTIS_TEMPLATE_DIR`. Emery does not clone or refresh that tree.
+
 ## Operations
 
 Closed WIT target contract: `guidance`, `build`, `merge`. Core `/emery:refine` synthesises canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
