@@ -294,8 +294,9 @@ External references:
 All driven by `cargo make` (see [`Makefile.toml`](./Makefile.toml)). Run the full local CI suite before committing; do not rely on narrower substitutes such as `cargo test` or `cargo clippy`.
 
 ```bash
-cargo make ci             # fmt + lint + test + test-docs + doc + vet + deny
+cargo make ci             # fmt + lint + test + test-docs + doc + links + vet + deny
 cargo make check          # fmt + lint + test + test-docs + doc (the pre-commit subset; `cargo make fmt` fixes formatting)
+cargo make links          # Developer Guide link integrity (`mdbook build docs`)
 cargo make test           # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
 cargo make wasm-run     # the end-to-end wasm example over the WASM seam; operator-invoked, needs CURSOR_API_KEY in examples/.env
 cargo make eval <case>    # the live-model prompt-evaluation rung (one eval case; bare lists them); operator-invoked, needs cursor-agent credentials

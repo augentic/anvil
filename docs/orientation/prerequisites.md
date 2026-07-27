@@ -107,19 +107,18 @@ Depending on which adapter you use, you may need additional tooling.
 - [Rust toolchain](https://rust-lang.org/tools/install/)
 - [Rust Analyzer](https://open-vsx.org/extension/rust-lang/rust-analyzer) Cursor extension
 
+**Template checkout (required for greenfield):** clone [`augentic/vectis-template`](https://github.com/augentic/vectis-template) as a sibling of the consumer project (`../vectis-template`) or set `VECTIS_TEMPLATE_DIR`. Emery does not clone it. Install BoltFFI so shell Makefiles can pack native bindings: `cargo install boltffi_cli` (see the template README).
+
 **For iOS shells:**
 - Xcode command line tools
 - Build and formatting tools: `brew install xcode-build-server xcbeautify swiftformat xcodegen`
 - iOS simulator targets: `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`
-- Swift bindings: `cargo install cargo-swift`
 - Cursor extensions: [Swift Language Support](https://open-vsx.org/extension/chrisatwindsurf/swift-vscode), [SweetPad](https://marketplace.visualstudio.com/items?itemName=SweetPad.sweetpad)
 
 **For Android shells:**
 - Android SDK (via Android Studio or command-line tools)
-- Android NDK: `sdkmanager "ndk;29.0.14206865"`
-- Java 21 LTS JDK (not Java 25+ -- Gradle compatibility)
-- Gradle: `brew install gradle`
-- Python 3 (required by rust-android-gradle)
+- JDK compatible with the template's Android `compileOptions` (today: Java 17 for `:app`, JVM 11 for `:shared` — not a hard "Java 21 only" pin)
+- Confirm with `make -C Android doctor` after materialize
 - Android targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
 
 See the [Vectis target adapter reference](../reference/targets/vectis.md) for complete setup instructions.

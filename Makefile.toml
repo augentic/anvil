@@ -20,7 +20,7 @@ skip_rust_env_info = true
 dependencies = ["fmt", "lint", "test", "test-docs", "doc"]
 
 [tasks.ci]
-dependencies = ["check", "vet", "deny"]
+dependencies = ["check", "links", "vet", "deny"]
 
 # -------------------------------------
 # Actions
@@ -70,6 +70,12 @@ args = ["test", "--doc", "--workspace", "--all-features"]
 command = "cargo"
 args = ["doc", "--no-deps", "--workspace", "--all-features", "--locked"]
 env = { RUSTDOCFLAGS = "-Dwarnings" }
+
+# Developer Guide link integrity (`mdbook-linkcheck2` via docs/book.toml).
+# Part of `cargo make ci`; GitHub Actions also runs the same command in the `links` job.
+[tasks.links]
+command = "mdbook"
+args = ["build", "docs"]
 
 [tasks.miri]
 script = '''
