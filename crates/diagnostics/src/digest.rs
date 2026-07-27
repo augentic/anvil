@@ -33,8 +33,8 @@ fn sha256_output_hex(digest: impl AsRef<[u8]>) -> String {
 /// use diagnostics::digest::{Hasher, sha256_hex};
 ///
 /// let mut hasher = Hasher::new();
-/// hasher.update(b"spec");
-/// hasher.update(b"ify");
+/// hasher.update(b"em");
+/// hasher.update(b"ery");
 /// assert_eq!(hasher.finalize_hex(), sha256_hex(b"emery"));
 /// ```
 #[derive(Default)]
