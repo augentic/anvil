@@ -2,7 +2,8 @@ name: Publish Release
 
 # Publish a durable release-X.Y.Z line — Omnia shape: shared CI, shared
 # publish (date RELEASES.md, tag, create GitHub Release), then attach
-# platform binaries. Wasm-pkg packages stay manual — see docs/release.md.
+# platform binaries and publish the emery-* workspace crates to
+# crates.io. Wasm-pkg packages stay manual — see docs/release.md.
 
 on:
   workflow_dispatch:
@@ -38,8 +39,16 @@ jobs:
       contents: write
     uses: augentic/.github/.github/workflows/publish.yaml@main
 
+  crates:
+    name: Publish crates
+    needs: publish
+    permissions:
+      contents: read
+    uses: augentic/.github/.github/workflows/crates.yaml@main
+    secrets: inherit
+
   binaries:
-    name: Release binaries
+    name: Publish binaries
     needs: publish
     permissions:
       contents: write

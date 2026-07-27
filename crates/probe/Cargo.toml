@@ -4,7 +4,7 @@
 # composition example (`examples/eval/` here and in
 # `augentic/emery-adapters`). Never an install or release artifact.
 [package]
-name = "probe"
+name = "emery-probe"
 description = "Lab-only live-model probe library over the native host"
 publish = false
 version.workspace = true
@@ -27,7 +27,9 @@ client = [
     "dep:tracing-subscriber",
 ]
 
+# Workspace code imports the short crate name.
 [lib]
+name = "probe"
 path = "src/lib.rs"
 
 [dependencies]

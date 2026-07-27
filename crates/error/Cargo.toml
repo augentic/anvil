@@ -1,5 +1,5 @@
 [package]
-name = "error"
+name = "emery-error"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,10 @@ description = "Unified error types for the Emery CLI"
 categories = ["development-tools"]
 keywords = ["emery", "errors"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-error.
+[lib]
+name = "error"
 
 [lints]
 workspace = true

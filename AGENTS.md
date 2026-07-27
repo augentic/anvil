@@ -175,7 +175,7 @@ The repository root is a Rust workspace. It produces the `emery` runtime binary 
 
 ### Crate graph
 
-The workspace is leaf → root. `error` is the dependency leaf and depends on no other workspace crate.
+The workspace is leaf → root. `error` is the dependency leaf and depends on no other workspace crate. In-tree crate names (and `use` paths) are the short names below; each package publishes to crates.io as `emery-<crate>` via `package =` aliases in the root `[workspace.dependencies]` (the root binary and the `guest` / `launcher` / `mock` / `probe` crates stay `publish = false`).
 
 ```text
 error                    # leaf — thiserror + serde-saphyr only

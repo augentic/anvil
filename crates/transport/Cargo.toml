@@ -1,12 +1,18 @@
 [package]
-name = "transport"
+name = "emery-transport"
 description = "Wasm-clean command and HTTP transport for `emery`"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-publish = false
+categories = ["development-tools"]
+keywords = ["emery", "transport"]
+readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-transport.
+[lib]
+name = "transport"
 
 [dependencies]
 artifacts.workspace = true

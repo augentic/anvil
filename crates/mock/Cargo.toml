@@ -1,5 +1,5 @@
 [package]
-name = "mock"
+name = "emery-mock"
 description = "SDK-native mock adapter"
 publish = false
 version.workspace = true
@@ -7,6 +7,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+
+# Workspace code imports the short crate name.
+[lib]
+name = "mock"
 
 [lints]
 workspace = true

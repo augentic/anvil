@@ -1,5 +1,5 @@
 [package]
-name = "prose"
+name = "emery-prose"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,10 @@ description = "Build-time codegen for embedded prompt corpora: walk a markdown t
 categories = ["development-tools::build-utils"]
 keywords = ["emery", "prose", "codegen"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-prose.
+[lib]
+name = "prose"
 
 [lints]
 workspace = true

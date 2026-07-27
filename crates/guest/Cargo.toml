@@ -1,5 +1,5 @@
 [package]
-name = "guest"
+name = "emery-guest"
 description = "The emery engine guest: WIT bindings, the seam provider, and the wasm exports"
 publish = false
 version.workspace = true
@@ -7,6 +7,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+
+# Workspace code imports the short crate name.
+[lib]
+name = "guest"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 artifacts.workspace = true

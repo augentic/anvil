@@ -1,5 +1,5 @@
 [package]
-name = "diagnostics"
+name = "emery-diagnostics"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,10 @@ description = "Neutral diagnostic substrate, SHA-256 digest helpers, and digest-
 categories = ["development-tools"]
 keywords = ["emery", "diagnostics"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-diagnostics.
+[lib]
+name = "diagnostics"
 
 [lints]
 workspace = true

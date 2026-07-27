@@ -1,5 +1,5 @@
 [package]
-name = "native"
+name = "emery-native"
 description = "Emery native host: statically composed adapter catalog, provider, references, and command execution"
 version.workspace = true
 edition.workspace = true
@@ -9,6 +9,10 @@ rust-version.workspace = true
 categories = ["development-tools"]
 keywords = ["emery", "workflow", "native"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-native.
+[lib]
+name = "native"
 
 [lints]
 workspace = true

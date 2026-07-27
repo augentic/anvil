@@ -1,5 +1,5 @@
 [package]
-name = "adapter"
+name = "emery-adapter"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,10 @@ description = "Emery adapter SDK: the per-axis operations traits, seam DTOs, jud
 categories = ["development-tools"]
 keywords = ["emery", "adapter", "sdk"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-adapter.
+[lib]
+name = "adapter"
 
 [lints]
 workspace = true
