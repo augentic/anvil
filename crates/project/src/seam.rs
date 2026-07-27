@@ -1,4 +1,4 @@
-//! Capability traits over the `specify:adapter` guest-to-guest contract.
+//! Capability traits over the `emery:adapter` guest-to-guest contract.
 //!
 //! [`Source`] and [`Target`] mirror the WIT `source` / `target`
 //! interfaces. Their DTOs omit caller-owned fields, such as the source

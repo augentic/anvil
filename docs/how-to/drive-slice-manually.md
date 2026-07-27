@@ -2,13 +2,13 @@
 <div class="eyebrow">How-to</div>
 <h1 class="hero-title">Drive a slice manually</h1>
 
-Resume or run one slice phase when `specify plan execute` parks or when you want operator control.
+Resume or run one slice phase when `emery plan execute` parks or when you want operator control.
 
 <div class="meta-row">
 
 <span class="meta-chip"><strong>Assumes</strong> Reviewed plan</span>
 
-<span class="meta-chip"><strong>Skill</strong> specify plan execute breakout</span>
+<span class="meta-chip"><strong>Skill</strong> emery plan execute breakout</span>
 
 </div>
 
@@ -31,19 +31,19 @@ Use this guide when execute stops on build or merge failure, when you cancel a r
 3. Re-run build for the active slice:
 
 ```text
-/spec:build <slice-name>
+/emery:build <slice-name>
 ```
 
 4. If build succeeds, either merge by hand or resume execute:
 
 ```text
-/spec:merge <slice-name>
+/emery:merge <slice-name>
 ```
 
 —or—
 
 ```text
-specify plan execute
+emery plan execute
 ```
 
 Execute re-enters at the active `in-progress` entry and skips phases already complete.
@@ -59,7 +59,7 @@ Execute re-enters at the active `in-progress` entry and skips phases already com
 3. Retry merge:
 
 ```text
-/spec:merge <slice-name>
+/emery:merge <slice-name>
 ```
 </section>
 
@@ -68,12 +68,12 @@ Execute re-enters at the active `in-progress` entry and skips phases already com
 
 <h2><span class="num">3</span> Breakout mid-execute</h2>
 
-Cancel a running `specify plan execute` session and drive phases yourself:
+Cancel a running `emery plan execute` session and drive phases yourself:
 
 ```text
-/spec:build <slice-name>
-/spec:merge <slice-name>
-specify plan execute
+/emery:build <slice-name>
+/emery:merge <slice-name>
+emery plan execute
 ```
 
 The execute loop reads on-disk lifecycle state — no resume flags required.
@@ -84,17 +84,17 @@ The execute loop reads on-disk lifecycle state — no resume flags required.
 
 <h2><span class="num">4</span> Guest lock</h2>
 
-The `specify plan execute` loop holds the create-exclusive `.specify/guest.lock` marker for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts (`slice refine`, `slice build`, `slice merge run`) do not take the marker — the lifecycle gates (only `refined` builds, only `built` merges) are the correctness fence. If a dead holder left a stale marker, confirm the holder is gone and remove `.specify/guest.lock` by hand.
+The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts (`slice refine`, `slice build`, `slice merge run`) do not take the marker — the lifecycle gates (only `refined` builds, only `built` merges) are the correctness fence. If a dead holder left a stale marker, confirm the holder is gone and remove `.emery/guest.lock` by hand.
 </section>
 
 
 > [!IMPORTANT]
-> **Gate reminder.** Per-entry `done` is only written by `/spec:merge` (or execute after a successful merge). Build success alone does not close the slice.
+> **Gate reminder.** Per-entry `done` is only written by `/emery:merge` (or execute after a successful merge). Build success alone does not close the slice.
 
 <div class="see-also">
 <strong>See also</strong>
 
-- [specify plan execute](../reference/cli/plan.md#specify-plan-execute) — stop conditions and re-entry
+- [emery plan execute](../reference/cli/plan.md#emery-plan-execute) — stop conditions and re-entry
 - [Drop down a layer](drop-down-a-layer.md) — full manual Layer 2 control
 - [Slice skills](../reference/slice-skills/index.md) — refine, build, merge reference
 </div>

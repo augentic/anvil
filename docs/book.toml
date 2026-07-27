@@ -1,12 +1,12 @@
 [book]
-title = "Specify Developer Guide"
+title = "Emery Developer Guide"
 authors = ["Augentic"]
 language = "en"
 src = "."
 
 [output.html]
-git-repository-url = "https://github.com/augentic/specify"
-additional-css = ["assets/theme/specify-docs.css"]
+git-repository-url = "https://github.com/augentic/emery"
+additional-css = ["assets/theme/emery-docs.css"]
 additional-js = ["assets/theme/authority-widget.js"]
 default-theme = "light"
 preferred-dark-theme = "navy"

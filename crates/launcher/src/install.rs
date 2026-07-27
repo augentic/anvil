@@ -3,7 +3,7 @@
 //!
 //! The only download path in the deployment. A pinned routed id whose
 //! store entry is absent is pulled anonymously as a standard Wasm OCI
-//! artifact (`ghcr.io/augentic/specify-adapters/<name>:<version>`),
+//! artifact (`ghcr.io/augentic/emery-adapters/<name>:<version>`),
 //! validated (single layer, wasm magic, size, manifest layer digest),
 //! written atomically, and recorded in the digest sidecar with its
 //! OCI provenance (repository, manifest digest, layer digest). The
@@ -16,10 +16,10 @@ use oci_client::secrets::RegistryAuth;
 use oci_wasm::WasmClient;
 use project::handler::ExecutionPaths;
 
-/// Fixed first-party OCI repository prefix. The `specify:` namespace
+/// Fixed first-party OCI repository prefix. The `emery:` namespace
 /// maps to exactly one registry, compiled in — no configuration
 /// surface (project-local or otherwise) can redirect it.
-const FIRST_PARTY_REPOSITORY: &str = "ghcr.io/augentic/specify-adapters";
+const FIRST_PARTY_REPOSITORY: &str = "ghcr.io/augentic/emery-adapters";
 
 /// Upper bound on an installable component layer, in bytes.
 const MAX_COMPONENT_BYTES: usize = 256 * 1024 * 1024;
@@ -77,7 +77,7 @@ pub async fn install(
         format!("{repository}:{version}").parse().map_err(|err| Error::Diag {
             code: "adapter-install-invalid",
             detail: format!(
-                "`specify:{name}@{version}` does not form a valid OCI reference under \
+                "`emery:{name}@{version}` does not form a valid OCI reference under \
                  {repository}: {err}"
             ),
         })?;
@@ -89,14 +89,12 @@ pub async fn install(
     let image =
         client.pull(&reference, &RegistryAuth::Anonymous).await.map_err(|err| Error::Diag {
             code: "adapter-install-failed",
-            detail: format!(
-                "failed to install `specify:{name}@{version}` from {reference}: {err:#}"
-            ),
+            detail: format!("failed to install `emery:{name}@{version}` from {reference}: {err:#}"),
         })?;
 
     let invalid = |detail: String| Error::Diag {
         code: "adapter-install-invalid",
-        detail: format!("refusing `specify:{name}@{version}` from {reference}: {detail}"),
+        detail: format!("refusing `emery:{name}@{version}` from {reference}: {detail}"),
     };
 
     // `WasmClient::pull` already enforces one wasm layer and the wasm

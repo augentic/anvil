@@ -1,7 +1,7 @@
 //! Deterministic baseline identity projection.
 //!
 //! Projects a materialised project/slot directory into the
-//! `surface[]` / `recent[]` pair carried by `.specify/topology.lock`
+//! `surface[]` / `recent[]` pair carried by `.emery/topology.lock`
 //! and the reconciliation envelope. The projection is purely
 //! structural — domain slugs, requirement-block headings, and the
 //! journal's `slice.archive.created` outcome summaries — never an LLM
@@ -50,11 +50,11 @@ pub struct Projection {
 
 /// Project `project_dir`'s baseline into the `(surface, recent)` pair.
 ///
-/// `surface` enumerates every `.specify/specs/<domain>/spec.md`, sorted
+/// `surface` enumerates every `.emery/specs/<domain>/spec.md`, sorted
 /// by slug, each carrying up to [`SURFACE_TITLE_CAP`] requirement
 /// titles in `REQ-NNN` id order plus a `more` count when capped.
 /// `recent` is the last [`RECENT_TAIL`] `slice.archive.created`
-/// outcome summaries from `.specify/journal.jsonl`, in append order.
+/// outcome summaries from `.emery/journal.jsonl`, in append order.
 /// A project with no baseline yields two empty vectors — greenfield
 /// reconciliation degrades cleanly to `description` only.
 ///
@@ -74,7 +74,7 @@ pub fn project_baseline(project_dir: &Path) -> Result<Projection, Error> {
     })
 }
 
-/// Project `.specify/decisions/` into the bounded `decisions[]` axis.
+/// Project `.emery/decisions/` into the bounded `decisions[]` axis.
 /// Only `status: accepted` records contribute; superseded and rejected
 /// records describe past or
 /// not-taken posture and are excluded from *current* identity. The most
@@ -105,7 +105,7 @@ fn project_decisions(project_dir: &Path) -> Result<(Vec<Decision>, Option<u64>),
 }
 
 fn project_surface(project_dir: &Path) -> Result<Vec<Surface>, Error> {
-    let specs_dir = Layout::new(project_dir).specify_dir().join("specs");
+    let specs_dir = Layout::new(project_dir).emery_dir().join("specs");
     if !specs_dir.is_dir() {
         return Ok(Vec::new());
     }

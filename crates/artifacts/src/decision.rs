@@ -4,9 +4,9 @@
 //! [`DecisionRecord`]) plus a Markdown body carrying `## Context` /
 //! `## Decision` / `## Consequences`. The slice authors `slug` plus
 //! `status: accepted | rejected` (and optional `supersedes:` /
-//! `related:`); `specify slice merge` stamps the durable `id` / `slice`
+//! `related:`); `emery slice merge` stamps the durable `id` / `slice`
 //! / `date` and promotes the record into the append-only baseline
-//! catalogue at `.specify/decisions/DEC-NNNN-<slug>.md`.
+//! catalogue at `.emery/decisions/DEC-NNNN-<slug>.md`.
 //!
 //! This parser owns the *per-file* findings the refine gate raises
 //! (`decision-record-schema`, `decision-record-section-missing`,

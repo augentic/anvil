@@ -26,16 +26,16 @@ fn model() -> DynModel {
 fn project() -> (TempDir, PathBuf) {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path().canonicalize().expect("canonical tempdir");
-    for sub in [".specify/slices", ".specify/specs"] {
+    for sub in [".emery/slices", ".emery/specs"] {
         fs::create_dir_all(root.join(sub)).expect("mkdir");
     }
-    fs::write(root.join(".specify/project.yaml"), "name: demo\nadapter: mock\nrules: {}\n")
+    fs::write(root.join(".emery/project.yaml"), "name: demo\nadapter: mock\nrules: {}\n")
         .expect("write project.yaml");
     (tmp, root)
 }
 
 fn argv(args: &[&str]) -> Vec<String> {
-    let mut full = vec!["specify".to_string()];
+    let mut full = vec!["emery".to_string()];
     full.extend(args.iter().map(ToString::to_string));
     full
 }
@@ -53,7 +53,7 @@ async fn executes_a_verb() {
     .await
     .expect("the router assembles");
     assert_eq!(response.exit, 0, "{}", String::from_utf8_lossy(&response.stderr));
-    assert!(root.join(".specify/journal.jsonl").is_file());
+    assert!(root.join(".emery/journal.jsonl").is_file());
 }
 
 #[tokio::test]

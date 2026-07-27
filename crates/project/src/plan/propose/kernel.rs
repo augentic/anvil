@@ -303,7 +303,7 @@ fn bind_projects<'a>(
 ///
 /// A slice binds only a `project`; the target adapter (`name[@vN]`) is
 /// derived here from the bound project's [`ProjectRef::target`]. This is
-/// the single read-time resolver every consumer (`specify plan next`,
+/// the single read-time resolver every consumer (`emery plan next`,
 /// slice `metadata.yaml` population, the build request) routes through,
 /// so `plan.yaml` never needs to store the denormalised target.
 ///

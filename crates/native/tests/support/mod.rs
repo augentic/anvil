@@ -42,7 +42,7 @@ impl Source for Probe {
     };
 
     fn metadata() -> SourceMetadata {
-        SourceMetadata { specify_floor: None }
+        SourceMetadata { emery_floor: None }
     }
 
     fn docs() -> &'static [Doc] {
@@ -79,7 +79,7 @@ impl Target for Probe {
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
-            specify_floor: None,
+            emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
         }
@@ -123,7 +123,7 @@ impl Target for FailGuidance {
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
-            specify_floor: None,
+            emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
         }
@@ -150,7 +150,7 @@ impl Target for FailGuidance {
     }
 }
 
-/// A target declaring a `specify` compatibility floor, for
+/// A target declaring a `emery` compatibility floor, for
 /// metadata-projection asserts.
 #[derive(Clone, Copy, Debug)]
 pub struct Floored;
@@ -163,7 +163,7 @@ impl Target for Floored {
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
-            specify_floor: Some("9.9.9".to_string()),
+            emery_floor: Some("9.9.9".to_string()),
             inputs: Vec::new(),
             platforms: None,
         }
@@ -203,7 +203,7 @@ impl Source for Reflect {
     };
 
     fn metadata() -> SourceMetadata {
-        SourceMetadata { specify_floor: None }
+        SourceMetadata { emery_floor: None }
     }
 
     fn docs() -> &'static [Doc] {
@@ -238,7 +238,7 @@ impl Target for Pinned {
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
-            specify_floor: None,
+            emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
         }
@@ -278,7 +278,7 @@ impl Target for BadVersion {
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
-            specify_floor: None,
+            emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
         }
@@ -318,7 +318,7 @@ impl Target for ProbeV2 {
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
-            specify_floor: None,
+            emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
         }

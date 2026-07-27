@@ -1,4 +1,4 @@
-//! Orchestration for `specify init`. Scaffolds `.specify/`, resolves
+//! Orchestration for `emery init`. Scaffolds `.emery/`, resolves
 //! the requested adapter, writes `project.yaml`, and upserts
 //! `.gitignore` lines. Workspace mode additionally mints `registry.yaml`.
 
@@ -50,7 +50,7 @@ pub(crate) struct InitOptions<'a> {
     /// When `true`, scaffold a registry-only **workspace** instead
     /// of a regular project: writes `registry.yaml` at the repo root
     /// and `project.yaml { workspace: true }` (with `adapter:` omitted)
-    /// under `.specify/`. Workspace init refuses to run when `.specify/`
+    /// under `.emery/`. Workspace init refuses to run when `.emery/`
     /// already exists so it never clobbers a regular single-repo project.
     pub workspace: bool,
     /// Target platforms to declare in `project.yaml`. Parsed from the
@@ -59,11 +59,11 @@ pub(crate) struct InitOptions<'a> {
     /// adapter declares `platforms.required`, this must be `Some`.
     pub platforms: Option<&'a [Platform]>,
     /// When `true`, run the re-entry **upgrade** path instead of a
-    /// fresh scaffold: bump `project.yaml.specify` to the
-    /// running binary's version over an already-populated `.specify/`,
+    /// fresh scaffold: bump `project.yaml.emery` to the
+    /// running binary's version over an already-populated `.emery/`,
     /// preserving every other field (including `adapter:` / `workspace:`)
     /// and every operator artifact (`slices/`, `specs/`, `archive/`,
-    /// `registry.yaml`, `.specify/design-system/*`, the adapter cache).
+    /// `registry.yaml`, `.emery/design-system/*`, the adapter cache).
     /// `AGENTS.md` is regenerated only when absent (handled at the
     /// command layer). Mutually exclusive with the `<adapter>`
     /// positional, `--workspace`, `--name`, and `--description` at the
@@ -83,13 +83,13 @@ pub(crate) struct InitResult {
     pub cache_present: bool,
     pub directories_created: Vec<PathBuf>,
     pub scaffolded_rule_keys: Vec<String>,
-    pub specify_version: String,
+    pub emery_version: String,
     /// Why init-time context generation was skipped; `None` when this
-    /// run generated root `AGENTS.md` and `.specify/context.lock`.
+    /// run generated root `AGENTS.md` and `.emery/context.lock`.
     pub context_skip_reason: Option<Skip>,
 }
 
-/// Initialise `.specify/` inside `opts.project_dir`.
+/// Initialise `.emery/` inside `opts.project_dir`.
 ///
 /// Idempotent: a second call with identical options succeeds, creates no
 /// new directories, doesn't duplicate the `.gitignore` entry, and writes
@@ -99,7 +99,7 @@ pub(crate) struct InitResult {
 /// upgrade runner (the re-entry version bump) ahead of the workspace /
 /// regular branch — one runner serves both regular and workspace
 /// projects because the preservation logic is identical (preserve every
-/// field, touch only `specify`).
+/// field, touch only `emery`).
 ///
 /// When [`InitOptions::workspace`] is `true`, dispatches to the private
 /// workspace runner for the workspace on-disk shape.

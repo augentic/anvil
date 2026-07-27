@@ -3,7 +3,7 @@
 //!
 //! Layout is deployment configuration, not process state: a
 //! composition root constructs the paths value once — capturing any
-//! `SPECIFY_HOME` relocation at that single point — and the provider
+//! `EMERY_HOME` relocation at that single point — and the provider
 //! carries it. Kernels, resolvers, and handlers read the carried value
 //! and never consult the environment themselves.
 
@@ -62,7 +62,7 @@ impl ExecutionPaths {
 
     /// The same locations re-anchored at `project_root` — for call
     /// sites that resolve a different project directory (the
-    /// discovered `.specify/` root, a workspace slot) under the
+    /// discovered `.emery/` root, a workspace slot) under the
     /// provider's layout. A host cache parent derives the new
     /// project's digest-keyed directory; a guest per-project cache
     /// root stays the one mounted preopen.

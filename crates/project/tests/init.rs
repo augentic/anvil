@@ -47,14 +47,14 @@ async fn regular_mode() {
     .expect("scaffold succeeds");
     assert_eq!(body.adapter_name, "demo");
     let config =
-        fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+        fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
     assert!(config.contains("adapter: demo"), "the adapter is recorded:\n{config}");
-    assert!(project.root.join(".specify/slices").is_dir(), "the slice tree is scaffolded");
+    assert!(project.root.join(".emery/slices").is_dir(), "the slice tree is scaffolded");
 
     assert!(body.context_generated, "init generates AGENTS.md context when absent");
     let agents = fs::read_to_string(project.root.join("AGENTS.md")).expect("AGENTS.md");
     assert!(
-        agents.contains("<!-- specify:context begin"),
+        agents.contains("<!-- emery:context begin"),
         "the generated context is fenced:\n{agents}"
     );
     assert!(
@@ -62,7 +62,7 @@ async fn regular_mode() {
         "the resolved adapter surfaces in Conventions:\n{agents}"
     );
     assert!(
-        project.root.join(".specify/context.lock").is_file(),
+        project.root.join(".emery/context.lock").is_file(),
         "the fingerprint sidecar lands beside the generated context"
     );
 }
@@ -119,7 +119,7 @@ async fn regular_mode_component_free() {
     // component resolution to the injected resolver, so no `.wasm`
     // artifact is staged anywhere for this test.
     let project = Provider::bare();
-    let body = omnia_guest::api::invoke::Invoker::new("specify", Linked(project.clone()))
+    let body = omnia_guest::api::invoke::Invoker::new("emery", Linked(project.clone()))
         .invoke::<project::init::handlers::Init>(omnia_guest::api::invocation::Invocation::new(
             project::init::handlers::InitInput {
                 adapter: Some("demo".into()),
@@ -134,7 +134,7 @@ async fn regular_mode_component_free() {
         .expect("component-free scaffold succeeds");
     assert_eq!(body.adapter_name, "demo");
     let config =
-        fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+        fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
     assert!(config.contains("adapter: demo"), "the bare identity is recorded:\n{config}");
     assert!(!body.cache_present, "no component is mirrored into the project cache for a bare name");
 }

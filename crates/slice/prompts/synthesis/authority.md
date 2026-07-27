@@ -61,32 +61,32 @@ Document-level `authority:` is the default. One opt-in override sharpens it — 
 Each `plan.yaml.slices[]` entry MAY carry `authority-override: { <claim-kind>: <source> }`. Keys are the closed claim-kind enum; values MUST appear in that slice's `sources[]`.
 
 - Scoped to a single slice (no plan-/project-wide overrides).
-- Orphan source keys → `slice-authority-override-orphan-source` from `specify slice validate` before `/spec:refine`.
+- Orphan source keys → `slice-authority-override-orphan-source` from `emery slice validate` before `/emery:refine`.
 - Operators author via CLI; agents never hand-edit `plan.yaml`:
 
 ```bash
-specify plan amend <entry> --authority-override <entry> <claim-kind>=<source>
-specify plan amend <entry> --clear-authority-override <entry> <claim-kind>
-specify plan amend <entry> --clear-authority-overrides
-specify plan add   <entry> --authority-override <claim-kind>=<source>   # repeatable on create
+emery plan amend <entry> --authority-override <entry> <claim-kind>=<source>
+emery plan amend <entry> --clear-authority-override <entry> <claim-kind>
+emery plan amend <entry> --clear-authority-overrides
+emery plan add   <entry> --authority-override <claim-kind>=<source>   # repeatable on create
 ```
 
 Example: `authority-override: { criterion: runtime }`. Agent still records both claims with `agreement: disagreed`; kernel promotes `runtime`, loser as `Note:`. Audit: `resolution-trace.step: per-slice-authority-override` with `override: { criterion: runtime }` and `winner: runtime`.
 
 ### Resolution order
 
-When `agreement` is `disagreed`, the kernel walks these steps; the first winner stops the walk. The step name lands at `requirements[].resolution-trace.step` in `model.yaml` (surfaced by `specify slice provenance`).
+When `agreement` is `disagreed`, the kernel walks these steps; the first winner stops the walk. The step name lands at `requirements[].resolution-trace.step` in `model.yaml` (surfaced by `emery slice provenance`).
 
 1. **`per-slice-authority-override`** — `authority-override.<kind>` names a contributing source → that source wins; `status: divergence` (or `agreed` if values align); runner-up `winner: false`.
 2. **`document-authority-ordering`** — fall back to `intent > documentation > behaviour`. Highest class wins; top-class ties continue to step 3.
-3. **`tied-conflict`** — still tied → `status: conflict`, `[conflict]`, no winners. Operator re-runs `/spec:refine` after amending override or sources before `/spec:build`.
+3. **`tied-conflict`** — still tied → `status: conflict`, `[conflict]`, no winners. Operator re-runs `/emery:refine` after amending override or sources before `/emery:build`.
 
 Steps 1–2 yield `divergence` when the winner disagrees with another contributor and `agreed` when all values match the winner. Step names are byte-stable and match `resolution-trace.step` exactly. See [`claim-reconciliation.md`](./claim-reconciliation.md) for per-kind landing. (Deferred per-Evidence surface would insert `per-evidence-authority-override` between 1 and 2.)
 
 ## Notes
 
 - Authority is slice-time only (not plan-time `propose`).
-- Below per-slice granularity: re-run `/spec:refine` with a different verdict or amended `authority-override` — never hand-edit kernel-rendered provenance.
+- Below per-slice granularity: re-run `/emery:refine` with a different verdict or amended `authority-override` — never hand-edit kernel-rendered provenance.
 - `Sources:` lists every contributing key, highest authority first **after override resolution** (override-promoted behaviour keys sort first for that block).
 - Provenance parser cross-resolves `Sources:` and override values against slice bindings.
-- Every resolution (including step-2 fallbacks) lands in `model.yaml` `resolution-trace.step` and is projected by `specify slice provenance`; `spec.md` stays operator-facing prose.
+- Every resolution (including step-2 fallbacks) lands in `model.yaml` `resolution-trace.step` and is projected by `emery slice provenance`; `spec.md` stays operator-facing prose.

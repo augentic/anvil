@@ -42,7 +42,7 @@ impl SourceBinding {
     /// bare development name for an unpinned binding, or the
     /// first-party package pin when `version` is set (the binding
     /// schema carries no namespace field; pins are implicitly
-    /// `specify:`).
+    /// `emery:`).
     #[must_use]
     pub fn selector(&self) -> AdapterSelector {
         self.version.as_ref().map_or_else(

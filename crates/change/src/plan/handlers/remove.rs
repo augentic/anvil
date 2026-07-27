@@ -1,4 +1,4 @@
-//! `specify plan remove` — drop one pending plan entry while the plan
+//! `emery plan remove` — drop one pending plan entry while the plan
 //! is still replaceable (Gate 1 curation).
 
 use omnia_guest::api::invoke::CallContext;
@@ -19,7 +19,7 @@ pub struct RemoveInput {
     pub name: String,
 }
 
-/// `specify plan remove <name>`.
+/// `emery plan remove <name>`.
 #[derive(Clone, Copy, Debug)]
 pub struct Remove;
 

@@ -1,6 +1,6 @@
 //! Health diagnostics layered on top of `Plan::validate`:
 //! `cycle-in-depends-on`, `orphan-source`, and
-//! `stale-workspace-clone`. Surfaced through `specify plan validate`.
+//! `stale-workspace-clone`. Surfaced through `emery plan validate`.
 
 use std::path::Path;
 
@@ -62,7 +62,7 @@ pub struct CloneSignature {
 ///
 /// `slices_dir` and `registry` are forwarded to `Plan::validate` so
 /// the validate-level findings are bit-identical to those emitted by
-/// `specify plan validate`. `project_dir` is consulted by the
+/// `emery plan validate`. `project_dir` is consulted by the
 /// stale-workspace-clone check; pass `None` to skip it.
 ///
 /// Every check already emits the neutral [`Diagnostic`] currency, so

@@ -1,5 +1,5 @@
-//! Re-entry (`specify init --upgrade`) body: bumps `project.yaml.specify`
-//! to the running binary over an existing `.specify/` without re-scaffolding.
+//! Re-entry (`emery init --upgrade`) body: bumps `project.yaml.emery`
+//! to the running binary over an existing `.emery/` without re-scaffolding.
 //! Mutates only `project.yaml`; never touches slices, specs, archive, registry,
 //! or the adapter cache.
 //!
@@ -19,13 +19,13 @@ use crate::init::{InitOptions, InitResult, resolve_version, validate_platforms};
 
 /// Run the re-entry version bump.
 ///
-/// Loads the existing config, then bumps the `specify` pin to the
+/// Loads the existing config, then bumps the `emery` pin to the
 /// running binary's version — but only when it differs, so an
 /// already-current project is a true no-op (no `project.yaml` write).
 ///
 /// # Errors
 ///
-/// - [`Error::NotInitialized`] when `.specify/project.yaml` is absent —
+/// - [`Error::NotInitialized`] when `.emery/project.yaml` is absent —
 ///   `--upgrade` requires an existing project.
 /// - [`Error::CliTooOld`] when the pinned floor is newer than this
 ///   binary (propagated by the loader).
@@ -57,10 +57,10 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         false
     };
 
-    let specify_version_changed = cfg.specify_version.as_deref() != Some(target.as_str());
-    let needs_write = specify_version_changed || platforms_changed;
-    if specify_version_changed {
-        cfg.specify_version = Some(target.clone());
+    let emery_version_changed = cfg.emery_version.as_deref() != Some(target.as_str());
+    let needs_write = emery_version_changed || platforms_changed;
+    if emery_version_changed {
+        cfg.emery_version = Some(target.clone());
     }
     if needs_write {
         let serialised = serde_saphyr::to_string(&cfg)?;
@@ -79,7 +79,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         adapter_name,
         directories_created: Vec::new(),
         scaffolded_rule_keys: Vec::new(),
-        specify_version: target,
+        emery_version: target,
         context_skip_reason: None,
     })
 }

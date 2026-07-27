@@ -1,4 +1,4 @@
-//! Clap argument types for the `specify plan *` routes, including the
+//! Clap argument types for the `emery plan *` routes, including the
 //! locked argv grammars for `--source` ([`source_assign`]) and
 //! `--sources` / `--add-source` ([`binding_arg`]). The parsed values
 //! land directly in the workflow wire DTOs, with each `*Args` type
@@ -211,7 +211,7 @@ pub struct AddArgs {
     /// Target registry project name
     #[arg(long)]
     pub project: Option<String>,
-    /// Baseline paths relevant to this change, relative to `.specify/` (repeatable)
+    /// Baseline paths relevant to this change, relative to `.emery/` (repeatable)
     #[arg(long)]
     pub context: Vec<String>,
     /// Set a per-slice `authority-override` entry on the slice
@@ -221,7 +221,7 @@ pub struct AddArgs {
     /// [`ClaimKind`](artifacts::evidence::ClaimKind)
     /// enum at parse time. Repeatable; later occurrences win on
     /// the same `(kind)` key. Orphan source keys are caught by
-    /// `specify slice validate`. One
+    /// `emery slice validate`. One
     /// `plan.amend.authority-override` event fires per resolved
     /// entry.
     #[arg(long = "authority-override", action = ArgAction::Append)]
@@ -259,7 +259,7 @@ pub struct AmendArgs {
     /// reconciliation; divergence and writer-ownership contract). Accepts `likely`, `accepted`, or
     /// `rejected` — the CLI is the single writer of this field
     /// across every value of the closed enum, so use
-    /// `specify plan amend <plan> <slice> --divergence likely`
+    /// `emery plan amend <plan> <slice> --divergence likely`
     /// (or `--divergence accepted|rejected`) instead of editing
     /// `plan.yaml` by hand. `none` (absent) is the implicit
     /// default; omit this flag to leave the field unchanged.
@@ -285,7 +285,7 @@ pub struct AmendArgs {
     /// wins (clears apply after sets). Validated against the
     /// closed [`ClaimKind`](artifacts::evidence::ClaimKind) enum
     /// at parse time; orphan source
-    /// keys are caught by `specify slice validate`.
+    /// keys are caught by `emery slice validate`.
     #[arg(
         long = "authority-override",
         value_names = ["SLICE", "KIND=KEY"],

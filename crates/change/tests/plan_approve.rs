@@ -23,7 +23,7 @@ fn approve_input() -> ApproveInput {
 }
 
 fn journal_lines(project: &Session) -> Vec<String> {
-    let path = project.root().join(".specify/journal.jsonl");
+    let path = project.root().join(".emery/journal.jsonl");
     if !path.exists() {
         return Vec::new();
     }

@@ -16,7 +16,7 @@ use super::require_file;
 )]
 pub struct StatusInput {}
 
-/// `specify plan status`.
+/// `emery plan status`.
 ///
 /// Read-only projection of the plan's execution state into a
 /// deterministic `next-action`. All projection logic lives in

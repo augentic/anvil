@@ -51,11 +51,11 @@ jobs:
         with:
           key: release-${{ matrix.target }}
 
-      # build.rs embeds the engine via a child wasm32 build when SPECIFY_WASM
+      # build.rs embeds the engine via a child wasm32 build when EMERY_WASM
       # is unset (same path as `cargo install --git`).
       - name: Build
         shell: bash
-        run: cargo build --release --locked --target ${{ matrix.target }} --bin specify
+        run: cargo build --release --locked --target ${{ matrix.target }} --bin emery
 
       - name: Package
         id: pkg
@@ -67,11 +67,11 @@ jobs:
           set -euo pipefail
           release_dir="target/${TARGET}/release"
           if [[ "${RUNNER_OS}" == "Windows" ]]; then
-            archive="specify-v${VERSION}-${TARGET}.zip"
-            tar -a -cf "${archive}" -C "${release_dir}" specify.exe
+            archive="emery-v${VERSION}-${TARGET}.zip"
+            tar -a -cf "${archive}" -C "${release_dir}" emery.exe
           else
-            archive="specify-v${VERSION}-${TARGET}.tar.gz"
-            tar -czf "${archive}" -C "${release_dir}" specify
+            archive="emery-v${VERSION}-${TARGET}.tar.gz"
+            tar -czf "${archive}" -C "${release_dir}" emery
           fi
           if command -v sha256sum >/dev/null; then
             sha256sum "${archive}" > "${archive}.sha256"

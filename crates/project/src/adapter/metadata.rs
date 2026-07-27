@@ -16,9 +16,9 @@ use super::routed::RoutedId;
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Metadata {
-    /// Optional host-CLI compatibility floor (`specify-floor`).
+    /// Optional host-CLI compatibility floor (`emery-floor`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub specify_floor: Option<String>,
+    pub emery_floor: Option<String>,
     /// Target-declared build inputs; empty for source adapters.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<BuildInputDeclaration>,

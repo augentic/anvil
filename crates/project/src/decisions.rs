@@ -1,10 +1,10 @@
 //! Decision Record catalogue.
 //!
-//! The append-only baseline catalogue at `.specify/decisions/` is the
+//! The append-only baseline catalogue at `.emery/decisions/` is the
 //! durable home for design *decisions* — the immutable "why" plus the
-//! rejected alternatives. `specify slice merge` promotes each
-//! slice-authored record under `.specify/slices/<slice>/decisions/` into
-//! `.specify/decisions/DEC-NNNN-<slug>.md` by whole-file add (the same
+//! rejected alternatives. `emery slice merge` promotes each
+//! slice-authored record under `.emery/slices/<slice>/decisions/` into
+//! `.emery/decisions/DEC-NNNN-<slug>.md` by whole-file add (the same
 //! opaque-add strategy contracts use), assigning the durable
 //! project-global `DEC-NNNN` id; the only permitted mutation to an
 //! existing record is flipping its `status` to `superseded` when a newer
@@ -95,7 +95,7 @@ pub fn list_md_files(dir: &Path) -> Result<Vec<PathBuf>, Error> {
     Ok(out)
 }
 
-/// Read the baseline catalogue at `.specify/decisions/`, returning every
+/// Read the baseline catalogue at `.emery/decisions/`, returning every
 /// record sorted by `DEC-NNNN` ascending. A missing directory yields an
 /// empty vector.
 ///
@@ -152,7 +152,7 @@ fn read_slice_records(src: &Path) -> Result<Vec<SliceRecord>, Error> {
         let (record, body) = parse_file(&text).ok_or_else(|| Error::Diag {
             code: "decision-record-malformed",
             detail: format!(
-                "slice decision `{}` could not be parsed; run `specify slice validate` first",
+                "slice decision `{}` could not be parsed; run `emery slice validate` first",
                 path.display()
             ),
         })?;
@@ -194,7 +194,7 @@ struct NewWrite {
 /// Promote every slice-authored Decision Record into the baseline
 /// catalogue, returning the assigned `DEC-NNNN` ids in slug order.
 ///
-/// Records land at `.specify/decisions/DEC-NNNN-<slug>.md` by whole-file
+/// Records land at `.emery/decisions/DEC-NNNN-<slug>.md` by whole-file
 /// add; each `supersedes:` target (a baseline `DEC-NNNN` or a slug
 /// merged earlier in this slice) is re-resolved against the live
 /// baseline ∪ ids assigned earlier in this same merge and its target

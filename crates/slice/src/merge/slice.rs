@@ -241,8 +241,8 @@ pub fn commit(
 
     // Decisions pass — core (runs for every target), part of the
     // same merge. Promotion is keyed on the slice name and writes into
-    // `.specify/decisions/`, derived from `archive_dir` (a sibling under
-    // `.specify/`). The supersede-orphan re-check aborts here before any
+    // `.emery/decisions/`, derived from `archive_dir` (a sibling under
+    // `.emery/`). The supersede-orphan re-check aborts here before any
     // baseline write, so a failure leaves the slice `Built` for a clean
     // retry; the kernel's `(slice, slug)` guard keeps that retry from
     // double-promoting.
@@ -283,9 +283,9 @@ pub fn commit(
 }
 
 /// Promote the slice's Decision Records into the baseline catalogue.
-/// `archive_dir` is `<project>/.specify/archive`, so its grandparent is
-/// the project root and its parent is `.specify`; the catalogue lives at
-/// `.specify/decisions/`. The slice name is the slice directory's final
+/// `archive_dir` is `<project>/.emery/archive`, so its grandparent is
+/// the project root and its parent is `.emery`; the catalogue lives at
+/// `.emery/decisions/`. The slice name is the slice directory's final
 /// component.
 fn promote_decisions(
     slice_dir: &Path, archive_dir: &Path, now: Timestamp,

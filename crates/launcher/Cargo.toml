@@ -1,12 +1,16 @@
 [package]
-name = "launcher"
-description = "Deployment policy for the shipped specify binary: the macro-facing mount and resolver expressions behind a dynamic Omnia deployment"
+name = "emery-launcher"
+description = "Deployment policy for the shipped emery binary: the macro-facing mount and resolver expressions behind a dynamic Omnia deployment"
 publish = false
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+
+# Workspace code imports the short crate name.
+[lib]
+name = "launcher"
 
 [dependencies]
 anyhow.workspace = true

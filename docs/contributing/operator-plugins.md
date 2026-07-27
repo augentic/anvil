@@ -1,6 +1,6 @@
 # Cursor operator plugins
 
-Specify's product is the Rust `specify` runtime and the source/target adapters in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters). The `plugins/` tree is only the Cursor distribution surface: ultrathin slash-command wrappers that invoke CLI verbs and relay their output.
+Emery's product is the Rust `emery` runtime and the source/target adapters in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters). The `plugins/` tree is only the Cursor distribution surface: ultrathin slash-command wrappers that invoke CLI verbs and relay their output.
 
 Do not put orchestration, synthesis, validation, or code-generation prose in skill bodies. That work lives in guest orchestrations, embedded judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`), and adapter `prose/prompts/` in the adapters repo.
 
@@ -8,7 +8,7 @@ Do not put orchestration, synthesis, validation, or code-generation prose in ski
 
 | Plugin | Directory | Prefix | Role |
 | ------ | --------- | ------ | ---- |
-| Specify | `plugins/spec/` | `/spec:` | Workflow wrappers: `init`, `plan`, `execute`, `refine`, `build`, `merge`, `drop`, `finalize` |
+| Emery | `plugins/emery/` | `/emery:` | Workflow wrappers: `init`, `plan`, `execute`, `refine`, `build`, `merge`, `drop`, `finalize` |
 
 Layout:
 
@@ -26,31 +26,31 @@ The marketplace manifest at `.cursor-plugin/marketplace.json` lists exactly thes
 
 ## Preview a working-tree plugin
 
-The `/spec:*` skills are ultrathin wrappers: they check `specify --version`, elicit arguments, invoke one CLI verb, and relay stdout. Preview the working-tree plugin separately from building the CLI that skills call.
+The `/emery:*` skills are ultrathin wrappers: they check `emery --version`, elicit arguments, invoke one CLI verb, and relay stdout. Preview the working-tree plugin separately from building the CLI that skills call.
 
 From the repository root:
 
 ```bash
-cursor-agent --plugin-dir plugins/spec
+cursor-agent --plugin-dir plugins/emery
 ```
 
-That loads `plugins/spec/` instead of the marketplace copy. Omit it to use the published marketplace plugin. Then run `/spec:init`, `/spec:plan`, and the other skills in chat as usual.
+That loads `plugins/emery/` instead of the marketplace copy. Omit it to use the published marketplace plugin. Then run `/emery:init`, `/emery:plan`, and the other skills in chat as usual.
 
 Skills need a real binary on `PATH` (`cargo make lab` is the native lab shim, not this):
 
 ```bash
 cargo install --path . --locked
-specify --version
+emery --version
 ```
 
 Reinstall when you change the CLI. Guest verbs that call the model also need `cursor-agent` on `PATH` and logged in.
 
 | You're changing…                 | Do this                                                                         |
 | -------------------------------- | ------------------------------------------------------------------------------- |
-| `plugins/spec/skills/*/SKILL.md` | `cursor-agent --plugin-dir plugins/spec` (no rebuild)                           |
-| Rust CLI / guest orchestrations  | `cargo install --path . --locked`, then use skills or call `specify …` directly |
+| `plugins/emery/skills/*/SKILL.md` | `cursor-agent --plugin-dir plugins/emery` (no rebuild)                           |
+| Rust CLI / guest orchestrations  | `cargo install --path . --locked`, then use skills or call `emery …` directly |
 
-For a dry run without Cursor, call the same verbs the skills wrap (`specify init`, `specify plan author`, …) after install.
+For a dry run without Cursor, call the same verbs the skills wrap (`emery init`, `emery plan author`, …) after install.
 
 ## Publishing a new Cursor plugin
 

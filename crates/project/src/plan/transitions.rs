@@ -5,7 +5,7 @@
 //! The legal edges are `Pending → InProgress` (written by
 //! `plan next`, never here) and `InProgress → Done` per entry, plus
 //! `Pending → Approved` plan-level (operator stamp at Gate 1, workflow
-//! §The Plan / §Writer ownership; `/spec:plan` MUST NOT call it).
+//! §The Plan / §Writer ownership; `/emery:plan` MUST NOT call it).
 
 use error::Error;
 

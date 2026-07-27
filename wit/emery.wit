@@ -1,17 +1,17 @@
-/// The `specify:adapter` contract. Adapter guests export exactly one axis
+/// The `emery:adapter` contract. Adapter guests export exactly one axis
 /// interface (`source` xor `target`; the additive `adapter` world serves
-/// both, e.g. the Specify-owned fixture) plus `wasi:http/incoming-handler`,
+/// both, e.g. the Emery-owned fixture) plus `wasi:http/incoming-handler`,
 /// which serves the adapter's compiled-in references over MCP. Judgment is
 /// an Omnia host effect: each judgment operation issues
 /// `omnia:model/completion.create` with `format: schema(...)` so the host
 /// gate validates the answer. The records below are the contract's source
 /// of truth; the answer schemas the model host consumes are generated from
-/// the matching Rust wire types (`project::answers` in `augentic/specify`)
+/// the matching Rust wire types (`project::answers` in `augentic/emery`)
 /// minus call-scoped envelope fields the caller already knows. No resource
 /// types cross the seam: host-mediated dispatch carries plain values only,
 /// routed by each call's `adapter-id` first argument, and every guest opens
 /// its own `"."` preopen rather than receiving a directory handle.
-package specify:adapter@0.1.0;
+package emery:adapter@0.1.0;
 
 interface types {
   /// The error returned by operations.
@@ -135,10 +135,10 @@ interface source {
   /// so only the compatibility floor remains on the record.
   record adapter-metadata {
     /// Optional host-CLI compatibility floor: the exact minimum
-    /// `specify` platform version this adapter needs. The host compares
+    /// `emery` platform version this adapter needs. The host compares
     /// it against the running binary at resolve time and aborts when
     /// the binary is older. Absent means no floor.
-    specify-floor: option<string>,
+    emery-floor: option<string>,
   }
 
   /// Deterministic adapter metadata, read by the host at resolve time
@@ -307,10 +307,10 @@ interface target {
   /// declared build inputs and platform capability.
   record adapter-metadata {
     /// Optional host-CLI compatibility floor: the exact minimum
-    /// `specify` platform version this adapter needs. The host compares
+    /// `emery` platform version this adapter needs. The host compares
     /// it against the running binary at resolve time and aborts when
     /// the binary is older. Absent means no floor.
-    specify-floor: option<string>,
+    emery-floor: option<string>,
     /// Adapter-declared build inputs, each a slice-tree-relative path
     /// the `build` operation consumes. Empty when the target declares
     /// none.
@@ -365,7 +365,7 @@ world target-adapter {
 /// A combined source and target adapter component. Additive: external
 /// adapters remain single-axis (`source-adapter` xor `target-adapter`);
 /// this world exists for components that deliberately serve both axes,
-/// such as the Specify-owned fixture adapter, bound under one artifact
+/// such as the Emery-owned fixture adapter, bound under one artifact
 /// at both a `source:<name>` and a `target:<name>` dispatch id.
 world adapter {
   export source;

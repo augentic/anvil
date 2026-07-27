@@ -462,7 +462,7 @@
       "type": "object"
     }
   },
-  "$id": "https://github.com/augentic/specify/answers/synthesis.schema.json",
+  "$id": "https://github.com/augentic/emery/answers/synthesis.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "Generated judgment-answer schema — generated from the Rust wire types by slice::answers; do not edit. Validates the schema-gated answer to the slice synthesis judgment: the `kind: response` envelope carrying the structured model and the prose-only Markdown artifacts. The deterministic tail re-parses the answer and runs the projection kernel.",
@@ -497,6 +497,6 @@
     "model",
     "artifacts"
   ],
-  "title": "Specify synthesis answer",
+  "title": "Emery synthesis answer",
   "type": "object"
 }

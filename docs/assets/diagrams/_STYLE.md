@@ -1,6 +1,6 @@
 # Diagram authoring contract
 
-Standalone SVG files under `docs/assets/diagrams/` follow these rules so hero pages stay visually consistent with the Specify reference style.
+Standalone SVG files under `docs/assets/diagrams/` follow these rules so hero pages stay visually consistent with the Emery reference style.
 
 ## File format
 

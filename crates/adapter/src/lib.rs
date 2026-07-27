@@ -1,4 +1,4 @@
-//! Shared guest support for Specify adapter components.
+//! Shared guest support for Emery adapter components.
 //!
 //! Per-adapter crates implement [`Source`] or [`Target`] on a unit type;
 //! the wasm export macros and the native host consume that trait. The

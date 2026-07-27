@@ -40,7 +40,7 @@ mod resolve {
         let err = run::<project::adapter::handlers::SourceResolve, _, _>(
             &project,
             project::adapter::handlers::ResolveInput {
-                value: "specify:demo-target@1.2.0".to_string(),
+                value: "emery:demo-target@1.2.0".to_string(),
                 project_dir: None,
             },
         )
@@ -96,13 +96,13 @@ mod resolve {
     #[test]
     fn sibling_checkout_never_probed() {
         // Resolution is project-contained: an artifact in a sibling
-        // `specify-adapters` checkout (the retired development probe)
+        // `emery-adapters` checkout (the retired development probe)
         // must not resolve a bare name.
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let outer = tmp.path().canonicalize().expect("canonical tempdir");
         let project_dir = outer.join("project");
         std::fs::create_dir_all(&project_dir).expect("mkdir project");
-        let sibling = outer.join("specify-adapters/target/wasm32-wasip2/release");
+        let sibling = outer.join("emery-adapters/target/wasm32-wasip2/release");
         std::fs::create_dir_all(&sibling).expect("mkdir sibling layout");
         std::fs::write(sibling.join("demo.wasm"), "{}").expect("stage sibling component");
 

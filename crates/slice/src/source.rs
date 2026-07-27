@@ -1,4 +1,4 @@
-//! The `specify source extract` operation (the slice-scoped half of
+//! The `emery source extract` operation (the slice-scoped half of
 //! the source-axis surface; survey lives in the `change` crate).
 
 use std::io::Write;
@@ -25,7 +25,7 @@ pub struct ExtractInput {
     pub slice: String,
 }
 
-/// `specify source extract <source> <lead> --slice <slice>` →
+/// `emery source extract <source> <lead> --slice <slice>` →
 /// the internal extract orchestration.
 #[derive(Clone, Copy, Debug)]
 pub struct Extract;

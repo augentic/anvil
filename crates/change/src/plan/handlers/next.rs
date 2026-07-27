@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 )]
 pub struct NextInput {}
 
-/// `specify plan next`.
+/// `emery plan next`.
 ///
 /// Return the active in-progress entry, or transition the next
 /// eligible `Pending` entry to `InProgress` and return it. The only

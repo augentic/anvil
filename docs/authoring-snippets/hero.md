@@ -1,7 +1,7 @@
 <!-- Copy into chapter markdown. Omit duplicate # Title H1. -->
 
 <div class="hero">
-<div class="eyebrow">Specify Developer Guide</div>
+<div class="eyebrow">Emery Developer Guide</div>
 <h1 class="hero-title">Chapter title</h1>
 
 Lede paragraph — first paragraph inside the hero is styled automatically.

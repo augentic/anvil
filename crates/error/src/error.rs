@@ -6,15 +6,15 @@
 
 use std::borrow::Cow;
 
-/// Structured error type for all `specify-*` crates.
+/// Structured error type for all `emery-*` crates.
 ///
 /// Variants carry enough context for the CLI to assign exit codes and
 /// choose an output format without string-parsing.
 #[derive(Debug, thiserror::Error)]
 #[expect(missing_docs, reason = "variant-level docs cover self-explanatory error fields")]
 pub enum Error {
-    /// The `.specify/project.yaml` file is missing.
-    #[error("not initialized: .specify/project.yaml not found")]
+    /// The `.emery/project.yaml` file is missing.
+    #[error("not initialized: .emery/project.yaml not found")]
     NotInitialized,
 
     /// Structured catch-all for diagnostics that don't have a dedicated
@@ -44,16 +44,16 @@ pub enum Error {
     Validation { code: Cow<'static, str>, detail: String },
 
     /// The installed CLI version is older than the project floor.
-    #[error("specify version {found} is older than the project floor {required}; upgrade the CLI")]
+    #[error("emery version {found} is older than the project floor {required}; upgrade the CLI")]
     CliTooOld { required: String, found: String },
 
     /// The installed CLI version is older than an adapter's declared
-    /// host-CLI compatibility floor (the `specify-floor` describe
+    /// host-CLI compatibility floor (the `emery-floor` describe
     /// key). Routes to exit 3 (`Exit::VersionTooOld`) like
     /// [`Self::CliTooOld`] but carries the distinct `adapter-cli-too-old`
     /// discriminant so the operator sees which adapter outran the binary.
     #[error(
-        "specify version {found} is older than the floor {required} required by adapter {adapter}; upgrade the CLI"
+        "emery version {found} is older than the floor {required} required by adapter {adapter}; upgrade the CLI"
     )]
     AdapterCliTooOld { adapter: String, required: String, found: String },
 
@@ -107,7 +107,7 @@ impl Error {
                     "complete or drop the listed entries, or rerun with --force to archive anyway.",
                 ),
                 "init-requires-adapter-or-workspace" => Some(
-                    "`specify init <adapter>` for a regular project, or `specify init --workspace` for a workspace.\nsee: docs/init.md",
+                    "`emery init <adapter>` for a regular project, or `emery init --workspace` for a workspace.\nsee: docs/init.md",
                 ),
                 _ => None,
             },
@@ -127,7 +127,7 @@ impl Error {
             Self::Diag { code, .. } => Cow::Borrowed(*code),
             Self::Argument { .. } => Cow::Borrowed("argument"),
             Self::Validation { code, .. } => code.clone(),
-            Self::CliTooOld { .. } => Cow::Borrowed("specify-version-too-old"),
+            Self::CliTooOld { .. } => Cow::Borrowed("emery-version-too-old"),
             Self::AdapterCliTooOld { .. } => Cow::Borrowed("adapter-cli-too-old"),
             Self::ArtifactNotFound { .. } => Cow::Borrowed("artifact-not-found"),
             Self::Filesystem { op, .. } => Cow::Owned(format!("filesystem-{op}")),

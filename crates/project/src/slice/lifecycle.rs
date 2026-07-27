@@ -23,11 +23,11 @@ use error::Error;
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum LifecycleStatus {
-    /// Slice directory created; `/spec:refine` extract + synthesis in flight.
+    /// Slice directory created; `/emery:refine` extract + synthesis in flight.
     Refining,
-    /// Canonical artifacts validated; ready for `/spec:build`.
+    /// Canonical artifacts validated; ready for `/emery:build`.
     Refined,
-    /// Tasks complete; ready for `/spec:merge`.
+    /// Tasks complete; ready for `/emery:merge`.
     Built,
     /// Specs merged into baseline and slice archived.
     Merged,

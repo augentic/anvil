@@ -4,7 +4,7 @@
 //!
 //! A plain value: construction is the only place layout policy lives.
 //! [`Locations::from_env`] is the shipped production layout — defaults
-//! in code, `SPECIFY_HOME` the only override, captured once at each
+//! in code, `EMERY_HOME` the only override, captured once at each
 //! composition root. [`Locations::explicit`] is the injection point
 //! for sandboxes, tests, and the engine guest's preopens. There is no
 //! trait and no alternate implementation; kernels and handlers receive
@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 /// the guest constructs its `Locations` over the preopen directly —
 /// one project per deployment, so no project-id keying is needed
 /// in-guest.
-pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
+pub const GUEST_CACHE_MOUNT: &str = "/emery-cache";
 
 /// Nominal store root inside the engine guest's layout.
 ///
@@ -32,7 +32,7 @@ pub const GUEST_CACHE_MOUNT: &str = "/specify-cache";
 /// the guest never opens a store file. The constant survives as the
 /// guest's nominal [`Locations::store_root`] — pure path math feeding
 /// origin display, never I/O.
-pub const GUEST_STORE_MOUNT: &str = "/specify-store";
+pub const GUEST_STORE_MOUNT: &str = "/emery-store";
 
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,9 +60,9 @@ pub struct Locations {
 }
 
 impl Locations {
-    /// Production layout: capture `SPECIFY_HOME` once. A non-empty
+    /// Production layout: capture `EMERY_HOME` once. A non-empty
     /// absolute override wins; otherwise the effective home is
-    /// `$HOME/.specify`, then `<temp>/specify` when `$HOME` is
+    /// `$HOME/.emery`, then `<temp>/emery` when `$HOME` is
     /// unavailable. Store and cache derive together as `<home>/store`
     /// and `<home>/cache`.
     ///
@@ -72,9 +72,9 @@ impl Locations {
     #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
     pub fn from_env() -> Self {
-        let home = env_path("SPECIFY_HOME")
-            .or_else(|| env_path("HOME").map(|user_home| user_home.join(".specify")))
-            .unwrap_or_else(|| std::env::temp_dir().join("specify"));
+        let home = env_path("EMERY_HOME")
+            .or_else(|| env_path("HOME").map(|user_home| user_home.join(".emery")))
+            .unwrap_or_else(|| std::env::temp_dir().join("emery"));
         Self::explicit(home.join("store"), CachePlacement::Parent(home.join("cache")))
     }
 

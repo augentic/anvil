@@ -1,4 +1,4 @@
-//! Specify project foundation — the deployment-neutral layer under the
+//! Emery project foundation — the deployment-neutral layer under the
 //! slice and change loops: init, adapter resolution, config, journal,
 //! registry, the plan and slice-metadata data models, the seam
 //! capability traits, the judgment kernel, and the shared handler

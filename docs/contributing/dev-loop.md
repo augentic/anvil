@@ -1,6 +1,6 @@
 # The Developer Loop
 
-Specify's developer loop is self-contained: every rung runs from this checkout alone, with no sibling repository, no adapter component build, and no model credentials on the default path. The two local rungs mirror the [testing standards](../standards/testing.md#the-two-rungs); climb only as far as the change demands.
+Emery's developer loop is self-contained: every rung runs from this checkout alone, with no sibling repository, no adapter component build, and no model credentials on the default path. The two local rungs mirror the [testing standards](../standards/testing.md#the-two-rungs); climb only as far as the change demands.
 
 ```bash
 cargo make test                              # fast native integration tests; model-free and no Wasmtime
@@ -13,7 +13,7 @@ Runs `cargo nextest --workspace` over the workspace crates (including `mock` and
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
-`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings`, this rung, doctests, and docs. `cargo make ci` adds vet/deny. When a change crosses a WIT, dispatch, or preopen seam, also compile-check the wasm32 guests — `cargo check --lib -p specify --examples --target wasm32-wasip2` — so a WIT revision and its seam break in the same push.
+`cargo make check` is the pre-commit gate: formatting, clippy under `-D warnings`, this rung, doctests, and docs. `cargo make ci` adds vet/deny. When a change crosses a WIT, dispatch, or preopen seam, also compile-check the wasm32 guests — `cargo check --lib -p emery --examples --target wasm32-wasip2` — so a WIT revision and its seam break in the same push.
 
 ## 2. `cargo make eval` — prompt evaluation
 
@@ -38,4 +38,4 @@ There is no automated WASM boundary rung. The component seam — the embedded en
 - Per push: `cargo make ci` — the self-contained workspace gate (nextest `--workspace`, clippy/doc/doctest/vet/deny). No sibling checkout, no component hosting, no model.
 - Never: the eval rung or the wasm example. CI never requires model credentials.
 
-`specify-adapters` gates its own crates and components against the published WIT contract and its declared engine pin; neither repository gates on the other's HEAD.
+`emery-adapters` gates its own crates and components against the published WIT contract and its declared engine pin; neither repository gates on the other's HEAD.

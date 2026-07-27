@@ -1,16 +1,16 @@
 //! Workflow journal events.
 //!
-//! Append-only newline-delimited JSON at `.specify/journal.jsonl`,
+//! Append-only newline-delimited JSON at `.emery/journal.jsonl`,
 //! shared by every plan-, slice-, propose-, extract-, and synthesis-
 //! related signal listed in [workflow §Observability]. One line per
 //! [`Event`]; readers tail the file and skip blank lines.
 //!
 //! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
 //! `event`; the append plus dropped-event sidecar in `append`; the
-//! best-effort emit helpers in `emit`; the `specify journal {emit,
+//! best-effort emit helpers in `emit`; the `emery journal {emit,
 //! show}` operations in [`handlers`]. This root owns the read side
 //! (forward reads, backward recent reads, and the private
-//! filtered `show` projection behind `specify journal show`) and
+//! filtered `show` projection behind `emery journal show`) and
 //! re-exports the public surface so callers keep importing
 //! `crate::journal::*`.
 //!
@@ -36,14 +36,14 @@ use crate::config::Layout;
 /// Project-relative path the journal lives at.
 const JOURNAL_FILE_NAME: &str = "journal.jsonl";
 
-/// Absolute path to the journal at `<project_dir>/.specify/journal.jsonl`.
+/// Absolute path to the journal at `<project_dir>/.emery/journal.jsonl`.
 #[must_use]
 pub(crate) fn path(layout: Layout<'_>) -> PathBuf {
-    layout.specify_dir().join(JOURNAL_FILE_NAME)
+    layout.emery_dir().join(JOURNAL_FILE_NAME)
 }
 
 /// Read every parseable [`Event`] from the journal at
-/// `<project_dir>/.specify/journal.jsonl`, in append (file) order.
+/// `<project_dir>/.emery/journal.jsonl`, in append (file) order.
 ///
 /// A missing journal yields an empty vector. Blank lines are skipped.
 /// Lines that fail to parse as an [`Event`] are skipped rather than
@@ -143,7 +143,7 @@ pub(crate) fn scan_recent(
     .map_err(Error::Io)
 }
 
-/// Read events for `specify journal show`, in append (file) order.
+/// Read events for `emery journal show`, in append (file) order.
 ///
 /// `filter` keeps events whose dotted-kebab wire id starts with the
 /// given prefix (e.g. `slice.build` or `plan.entry.advanced`); `limit`

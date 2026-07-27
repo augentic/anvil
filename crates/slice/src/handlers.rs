@@ -1,4 +1,4 @@
-//! The `specify slice *` command operations, plus `archive prune`.
+//! The `emery slice *` command operations, plus `archive prune`.
 //!
 //! The prune kernel lives in the private actions module; the refine /
 //! build / merge operations drive their internal kernels (slice

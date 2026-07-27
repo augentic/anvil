@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// Slice-level reconciliation outcome.
 ///
 /// Closed `none | likely | accepted | rejected` taxonomy on
-/// `plan.yaml.slices[].divergence`, written only by `specify plan
+/// `plan.yaml.slices[].divergence`, written only by `emery plan
 /// amend`.
 #[derive(
     Debug,
@@ -31,8 +31,8 @@ pub enum Divergence {
     /// `plan.amend.divergence` `from` field on the first transition.
     #[serde(rename = "none")]
     None,
-    /// Staged by the `/spec:plan` agent after the reconcile write, via
-    /// `specify plan amend --divergence likely`, on
+    /// Staged by the `/emery:plan` agent after the reconcile write, via
+    /// `emery plan amend --divergence likely`, on
     /// materially-disagreeing lead synopses.
     Likely,
     /// Operator-stamped at Gate 1 — divergence acknowledged and
@@ -55,7 +55,7 @@ impl Divergence {
 
 /// One field on which a slice's matched leads materially disagree.
 ///
-/// Recorded by the `/spec:plan` propose agent alongside a `divergence`
+/// Recorded by the `/emery:plan` propose agent alongside a `divergence`
 /// flag. The CLI never decides materiality — it only checks structural
 /// consistency: a flagged slice records at least one disagreement, and
 /// each disagreement names at least two distinct source values.

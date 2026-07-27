@@ -57,14 +57,14 @@ pub enum MergeStrategy {
 ///
 /// Single source of truth shared by the native merge verbs, the
 /// synthesize baseline resolution, and the guest orchestrators; future
-/// adapter manifests should drive this through `specify-adapter`.
+/// adapter manifests should drive this through `emery-adapter`.
 #[must_use]
 pub fn artifact_classes(project_root: &Path, slice_dir: &Path) -> Vec<ArtifactClass> {
     vec![
         ArtifactClass {
             name: "specs".to_string(),
             staged_dir: slice_dir.join("specs"),
-            baseline_dir: Layout::new(project_root).specify_dir().join("specs"),
+            baseline_dir: Layout::new(project_root).emery_dir().join("specs"),
             strategy: MergeStrategy::ThreeWayMerge,
         },
         ArtifactClass {

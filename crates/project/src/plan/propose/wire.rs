@@ -50,7 +50,7 @@ pub struct ProposalRequest {
 /// One project the agent may bind a response slice to.
 ///
 /// For a workspace this is projected from the committed
-/// `.specify/topology.lock`; for a single regular project the
+/// `.emery/topology.lock`; for a single regular project the
 /// CLI synthesises one entry from `project.yaml` (name + resolved
 /// target adapter + description) plus the project's own baseline
 /// projection.
@@ -74,7 +74,7 @@ pub struct ProjectRef {
     pub description: Option<String>,
     /// Deterministic baseline surface: the domains this project
     /// owns and a sample of each domain's requirement titles, projected
-    /// from `.specify/specs/` through `.specify/topology.lock`. The
+    /// from `.emery/specs/` through `.emery/topology.lock`. The
     /// agent binds a slice on actual owned behaviour. Empty stays off
     /// the wire (greenfield routes on `description` alone).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -83,7 +83,7 @@ pub struct ProjectRef {
     /// ledger, newest activity last. Empty stays off the wire.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub recent: Vec<String>,
-    /// Accepted Decision Records projected from `.specify/decisions/`:
+    /// Accepted Decision Records projected from `.emery/decisions/`:
     /// the third routing-identity axis — *why* the project is
     /// shaped the way it is, surfaced so the agent can route a slice on
     /// architectural commitment and flag a lead that contradicts an
@@ -206,7 +206,7 @@ pub struct ResponseSlice {
     /// Agent-flagged slice-level divergence: `likely` when the matched
     /// leads materially disagree. Absent means no divergence. The kernel
     /// carries it onto `plan.yaml.slices[].divergence`; the operator
-    /// adjudicates `accepted` / `rejected` later via `specify plan amend
+    /// adjudicates `accepted` / `rejected` later via `emery plan amend
     /// --divergence`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub divergence: Option<Divergence>,

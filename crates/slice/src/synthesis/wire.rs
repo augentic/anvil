@@ -160,7 +160,7 @@ pub struct SynthesisInputs {
     /// refine orchestration — never by this module.
     pub guidance_brief: String,
     /// The slice's bound project baseline surface (one entry
-    /// per `.specify/specs/<domain>/spec.md`), so synthesis reconciles
+    /// per `.emery/specs/<domain>/spec.md`), so synthesis reconciles
     /// against existing requirements instead of duplicating them. Read
     /// from the project topology at assembly time; empty (greenfield, or
     /// no baseline) stays off the wire. Context only — no schema or
@@ -185,7 +185,7 @@ pub struct SynthesisInputs {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct DomainDetail {
-    /// Domain directory slug under `.specify/specs/`.
+    /// Domain directory slug under `.emery/specs/`.
     pub domain: String,
     /// Existing baseline `REQ-NNN` ids in id order.
     pub req_ids: Vec<String>,

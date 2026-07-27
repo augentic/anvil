@@ -6,9 +6,9 @@
 //! tail (report schema gate, `enforce_report_*`, the `built`
 //! transition, the `slice.build.*` bracket), and merge dispatches the
 //! target's phased merge gates (preflight / postflight) around the
-//! deterministic core commit. `specify source extract`, `specify slice
-//! build`, and `specify slice merge run` route here through the guest;
-//! the change loop (`specify plan execute`) drives the same entry
+//! deterministic core commit. `emery source extract`, `emery slice
+//! build`, and `emery slice merge run` route here through the guest;
+//! the change loop (`emery plan execute`) drives the same entry
 //! points per plan entry.
 //!
 //! Time is injected: every orchestrator takes the caller's `now`

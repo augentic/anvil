@@ -1,4 +1,4 @@
-//! Wasm-clean command and HTTP transport for `specify`.
+//! Wasm-clean command and HTTP transport for `emery`.
 //!
 //! Owns the typed route assemblies, clap-to-operation-input
 //! conversions, projectors, and exit-code contract.

@@ -1,14 +1,18 @@
 [package]
-name = "project"
+name = "emery-project"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Specify project foundation: init, adapter resolution, config, journal, registry, the plan and slice data models, seam capability traits, and the judgment kernel"
+description = "Emery project foundation: init, adapter resolution, config, journal, registry, the plan and slice data models, seam capability traits, and the judgment kernel"
 categories = ["development-tools"]
-keywords = ["specify", "workflow", "foundation"]
+keywords = ["emery", "workflow", "foundation"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-project.
+[lib]
+name = "project"
 
 [lints]
 workspace = true

@@ -116,9 +116,9 @@ pub(crate) fn source_map(
 
 /// Parse the `<adapter>` half of a source binding: a bare development
 /// name (`typescript`) or a first-party exact pin
-/// (`typescript@1.2.0`, sugar for `specify:typescript@1.2.0`). The pin
+/// (`typescript@1.2.0`, sugar for `emery:typescript@1.2.0`). The pin
 /// lands in the binding's existing `version` field — `SourceBinding`
-/// carries no namespace, so only the implicit `specify` namespace is
+/// carries no namespace, so only the implicit `emery` namespace is
 /// representable.
 ///
 /// # Errors

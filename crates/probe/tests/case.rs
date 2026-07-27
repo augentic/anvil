@@ -227,10 +227,10 @@ mod expected {
     }
 }
 
-// One `specify` verb through the native command surface, for staging
+// One `emery` verb through the native command surface, for staging
 // fixtures the way an operator would produce them.
 async fn invoke(root: &Path, model: &DynModel, argv: &[&str]) {
-    let mut full = vec!["specify".to_string()];
+    let mut full = vec!["emery".to_string()];
     full.extend(argv.iter().map(ToString::to_string));
     let locations = Locations::explicit(
         root.join("adapter-store"),
@@ -243,7 +243,7 @@ async fn invoke(root: &Path, model: &DynModel, argv: &[&str]) {
     assert_eq!(
         response.exit,
         0,
-        "`specify {}` failed: {}{}",
+        "`emery {}` failed: {}{}",
         argv.join(" "),
         String::from_utf8_lossy(&response.stdout),
         String::from_utf8_lossy(&response.stderr),
@@ -304,7 +304,7 @@ fn stage_case(cases: &Path, id: &str, body: &str) {
 }
 
 fn journal(root: &Path) -> String {
-    fs::read_to_string(root.join(".specify/journal.jsonl")).expect("journal.jsonl")
+    fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal.jsonl")
 }
 
 #[tokio::test]
@@ -332,11 +332,11 @@ async fn build_case_reaches_built() {
     .expect("the build case passes");
 
     let root = sandbox.join("greeting-build");
-    let metadata = SliceMetadata::load(&root.join(".specify/slices/greeting"))
+    let metadata = SliceMetadata::load(&root.join(".emery/slices/greeting"))
         .expect("slice metadata after build");
     assert_eq!(metadata.status, LifecycleStatus::Built);
     assert!(
-        root.join(".specify/slices/greeting/build/report.yaml").is_file(),
+        root.join(".emery/slices/greeting/build/report.yaml").is_file(),
         "the authoritative build report is persisted"
     );
     assert!(root.join("mock-build/greeting.md").is_file(), "the expected output exists");

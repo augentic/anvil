@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Train a specialized Small Language Model (SLM) to generate Omnia Rust crates from Specify artifacts, with Vectis following once the Omnia path is proven. The goal is not to replace the Specify workflow. It is to make the model behind the Omnia `build/crate.md` brief cheaper, faster, more reproducible, and easier to operate at scale.
+Train a specialized Small Language Model (SLM) to generate Omnia Rust crates from Emery artifacts, with Vectis following once the Omnia path is proven. The goal is not to replace the Emery workflow. It is to make the model behind the Omnia `build/crate.md` brief cheaper, faster, more reproducible, and easier to operate at scale.
 
 The proposed shape is conservative: keep the existing briefs, references, artifacts, and verify-repair loop as the authority; add an SLM backend behind the Omnia crate-build phase; score every generated crate with deterministic checks; and fall back to the frontier model when the SLM fails or sees an unsupported slice shape.
 
@@ -20,7 +20,7 @@ Most fine-tuning proposals struggle because the task, input shape, and reward si
 
 ### Economic Motivation
 
-Order-of-magnitude economics are favorable if Specify is used across many downstream projects or migration slices. A single crate generation is likely to consume roughly 30k-80k input tokens and 5k-25k output tokens.
+Order-of-magnitude economics are favorable if Emery is used across many downstream projects or migration slices. A single crate generation is likely to consume roughly 30k-80k input tokens and 5k-25k output tokens.
 
 | Model class | Per-crate cost |
 | --- | --- |
@@ -30,7 +30,7 @@ Order-of-magnitude economics are favorable if Specify is used across many downst
 
 First-pass training should be in the low thousands of dollars or less on rented GPUs. A practical budget is roughly `$400-$1,200` for optional continual pretraining, SFT, and DPO on a rented H100-class machine. Delta retraining for SDK changes should usually be much cheaper.
 
-At 100 crate generations per month, the economics are close but still favorable over a year once training is amortized. At 500+ crate generations per month, the SLM pays back quickly. At migration scale, where `/spec:execute` may generate or repair many crates across many slices in a reviewed change, inference cost stops being a gating concern.
+At 100 crate generations per month, the economics are close but still favorable over a year once training is amortized. At 500+ crate generations per month, the SLM pays back quickly. At migration scale, where `/emery:execute` may generate or repair many crates across many slices in a reviewed change, inference cost stops being a gating concern.
 
 ### Operational Motivation
 
@@ -39,14 +39,14 @@ The non-monetary benefits may matter more than the direct token savings:
 - **Latency:** A specialized self-hosted model should reduce multi-crate generation loops from frontier-model pacing to local batch inference pacing, often improving wall-clock time by several multiples.
 - **Reproducibility:** Pinned weights make generation behavior auditable and less exposed to provider-side model changes.
 - **Data locality:** Specs and designs can stay inside customer-controlled infrastructure.
-- **Workflow sovereignty:** Specify becomes less exposed to provider pricing, rate limits, and terms-of-service changes.
+- **Workflow sovereignty:** Emery becomes less exposed to provider pricing, rate limits, and terms-of-service changes.
 - **Task quality:** Once enough high-quality examples exist, the SLM can internalize Omnia-specific idioms better than a general frontier model prompted at runtime.
 
 ## Design
 
 ### Scope
 
-This RFC covers the training and operational shape for an Omnia-first SLM backend. It does not define a new slice lifecycle, replace `/spec:build`, or move deterministic verification out of the CLI and existing skills.
+This RFC covers the training and operational shape for an Omnia-first SLM backend. It does not define a new slice lifecycle, replace `/emery:build`, or move deterministic verification out of the CLI and existing skills.
 
 Vectis is intentionally second. The first implementation should prove the scoring harness, corpus pipeline, SFT loop, and dispatch boundary on Omnia before adding a Vectis adapter.
 
@@ -55,7 +55,7 @@ Vectis is intentionally second. The first implementation should prove the scorin
 Use three sources, in this order of trust:
 
 1. **Real merged slices:** `(spec.md, design.md, tasks.md) -> crate files` from downstream Omnia projects.
-2. **Extract-derived pairs:** specs and designs reconstructed by `/spec:extract`, paired with the accepted target crate.
+2. **Extract-derived pairs:** specs and designs reconstructed by `/emery:extract`, paired with the accepted target crate.
 3. **Synthetic pairs:** frontier-model outputs generated through the existing Omnia `build/crate.md` brief, kept only when they pass the scorer.
 
 Initial corpus targets:
@@ -91,7 +91,7 @@ The SLM should not memorize the whole reference corpus. Keep `adapters/targets/o
 
 The first training loop has four stages:
 
-1. **Optional continual pretraining:** Run a short pass over Omnia SDK Rust, merged crate outputs, Omnia adapter references and examples, and existing Specify artifacts. This is for vocabulary and idiom familiarity, not behavior.
+1. **Optional continual pretraining:** Run a short pass over Omnia SDK Rust, merged crate outputs, Omnia adapter references and examples, and existing Emery artifacts. This is for vocabulary and idiom familiarity, not behavior.
 2. **Supervised fine-tuning:** Run QLoRA on real, extract-derived, and filtered synthetic examples.
 3. **Preference optimization:** Once SFT produces plausible crates, use reject-sampled DPO. Pair high-scoring and low-scoring outputs from the same prompt.
 4. **Quantized deployment:** Quantize the resulting adapter or merged model and re-run the held-out scorer on the deployed artifact.
@@ -130,7 +130,7 @@ The Omnia adapter guest continues to drive the `build/crate.md` prompt through `
 generate -> score -> repair -> score -> fallback if still failing
 ```
 
-This makes the SLM an operational optimization, not a new delivery process. Specify artifacts, skills, references, and CLI checks remain the authority.
+This makes the SLM an operational optimization, not a new delivery process. Emery artifacts, skills, references, and CLI checks remain the authority.
 
 ## Risks
 
@@ -138,7 +138,7 @@ This makes the SLM an operational optimization, not a new delivery process. Spec
 | --- | --- |
 | The SLM passes syntax checks but misses behavior | Keep MockProvider replay, traceability, and substance checks in `score-crate`. |
 | Novel adapters regress | Fall back to the frontier model after failed repair attempts. |
-| Synthetic data erodes conventions | Filter synthetic pairs through the scorer and preserve the Specify authority hierarchy. |
+| Synthetic data erodes conventions | Filter synthetic pairs through the scorer and preserve the Emery authority hierarchy. |
 | SDK changes cause drift | Retrieve current references at inference and run cheap delta fine-tunes only when needed. |
 | Update-mode generation is weaker than create-mode | Keep update-mode as a first-class training category, with existing crate inventory in the prompt. |
 | Customer data leaks into training | Hash, dedupe, segregate customer-derived pairs, and support project-level opt-out. |
@@ -179,4 +179,4 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 - [`crates/diagnostics`](../../crates/diagnostics/) — shared `Diagnostic` substrate
 - [Workflow, standards, and artifacts](../../docs/explanation/standards-layer.md) — standards live in adapters
-- [`targets/omnia/prose/prompts/build/crate.md`](https://github.com/augentic/specify-adapters/blob/main/targets/omnia/prose/prompts/build/crate.md)
+- [`targets/omnia/prose/prompts/build/crate.md`](https://github.com/augentic/emery-adapters/blob/main/targets/omnia/prose/prompts/build/crate.md)

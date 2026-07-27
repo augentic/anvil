@@ -15,11 +15,11 @@ use crate::{BuildStatus, orchestrate};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildInput {
-    /// Slice name (under `.specify/slices/`).
+    /// Slice name (under `.emery/slices/`).
     pub name: String,
 }
 
-/// `specify slice build <name>` → the internal build orchestration.
+/// `emery slice build <name>` → the internal build orchestration.
 #[derive(Clone, Copy, Debug)]
 pub struct Build;
 

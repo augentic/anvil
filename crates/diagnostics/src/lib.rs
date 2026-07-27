@@ -1,7 +1,7 @@
-//! Specify neutral diagnostic substrate, plus the [`digest`] SHA-256
+//! Emery neutral diagnostic substrate, plus the [`digest`] SHA-256
 //! helpers and the digest-keyed [`cache`] path plumbing.
 //!
-//! This crate owns the [`Diagnostic`] currency shared by both Specify
+//! This crate owns the [`Diagnostic`] currency shared by both Emery
 //! check surfaces — the advisory review surface and the
 //! workflow-gating `validate` surface — together with the fingerprint
 //! algorithm. The two surfaces stay conceptually distinct (they differ

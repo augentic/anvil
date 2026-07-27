@@ -6,7 +6,7 @@
 
 # Getting Started
 
-- [What is Specify?](orientation/index.md)
+- [What is Emery?](orientation/index.md)
 - [Prerequisites](orientation/prerequisites.md)
 
 ---
@@ -32,7 +32,7 @@
 
 ---
 
-# Understanding Specify
+# Understanding Emery
 
 - [Core concepts](explanation/concepts.md)
 - [Workflow, standards, and artifacts](explanation/standards-layer.md)
@@ -55,12 +55,12 @@
 - [Change skills](reference/change-skills/index.md)
 - [Slice skills](reference/slice-skills/index.md)
 - [CLI reference](reference/cli/index.md)
-  - [specify init](reference/cli/init.md)
-  - [specify slice](reference/cli/slice.md)
-  - [specify plan](reference/cli/plan.md)
-  - [specify adapter, source and target resolve](reference/cli/adapter.md)
-  - [specify registry](reference/cli/registry.md)
-  - [specify workspace](reference/cli/workspace.md)
+  - [emery init](reference/cli/init.md)
+  - [emery slice](reference/cli/slice.md)
+  - [emery plan](reference/cli/plan.md)
+  - [emery adapter, source and target resolve](reference/cli/adapter.md)
+  - [emery registry](reference/cli/registry.md)
+  - [emery workspace](reference/cli/workspace.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)
   - [Vectis WASI tools](reference/cli/vectis.md)
   - [CLI output shapes](reference/cli-output-shapes.md)
@@ -84,7 +84,7 @@
 # Contributing
 
 - [Overview](contributing/index.md)
-- [Augentic specialist usage](explanation/augentic-specify-usage.md)
+- [Augentic specialist usage](explanation/augentic-emery-usage.md)
 - [Documentation authoring standards](standards/doc-authoring.md)
 - [Authoring snippets](authoring-snippets/README.md)
   - [Hero](authoring-snippets/hero.md)

@@ -28,7 +28,7 @@ pub struct ValidateInput {
     pub name: String,
 }
 
-/// `specify slice validate <name>`.
+/// `emery slice validate <name>`.
 #[derive(Clone, Copy, Debug)]
 pub struct Validate;
 

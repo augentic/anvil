@@ -1,4 +1,4 @@
-//! The Specify native host: a Wasm-free deployment of the workflow
+//! The Emery native host: a Wasm-free deployment of the workflow
 //! engine over statically compiled adapters.
 //!
 //! Consumers declare their linked adapters once through the validated

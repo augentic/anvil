@@ -2,7 +2,7 @@
 //!
 //! The provenance view is **not** a persisted file. It is projected on
 //! demand from a slice's single `model.yaml` (which carries provenance
-//! inline) by `specify slice provenance`. Because the model and its
+//! inline) by `emery slice provenance`. Because the model and its
 //! provenance share one source of truth, the two can never drift and
 //! no drift gate is needed. These typed DTOs own the audit shape. See
 //! [`crate::model::SliceModel::to_provenance_index`].
@@ -20,14 +20,14 @@ pub struct ProvenanceIndex {
     /// Stored schema version. Currently `1`; additive fields land
     /// without a bump.
     pub version: u32,
-    /// Slice name. MUST match the directory under `.specify/slices/`.
+    /// Slice name. MUST match the directory under `.emery/slices/`.
     pub slice: String,
     /// UTC second-precision timestamp at which the projection was
     /// produced. Resolution is to the second so byte-stable diffs
     /// survive reasonably-fast clocks.
     #[serde(with = "project::serde_time::rfc3339")]
     pub generated_at: Timestamp,
-    /// CLI version that produced the projection (e.g. `specify@2.1.0`).
+    /// CLI version that produced the projection (e.g. `emery@2.1.0`).
     pub generator: String,
     /// One entry per `REQ-*` requirement in `model.yaml`; order matches
     /// the model's declaration order.

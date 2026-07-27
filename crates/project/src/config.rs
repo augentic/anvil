@@ -1,5 +1,5 @@
-//! `ProjectConfig` — in-memory model of `.specify/project.yaml` — and
-//! `Layout<'a>`, the typed home for every `.specify/` and repo-root
+//! `ProjectConfig` — in-memory model of `.emery/project.yaml` — and
+//! `Layout<'a>`, the typed home for every `.emery/` and repo-root
 //! path helper the CLI reaches for.
 
 mod atomic;
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::platform::Platform;
 
-/// In-memory representation of `.specify/project.yaml`.
+/// In-memory representation of `.emery/project.yaml`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ProjectConfig {
     /// Project name (defaults to the project directory name at init time).
@@ -24,7 +24,7 @@ pub struct ProjectConfig {
     ///
     /// Authored intent only. A project's *derived* routing identity —
     /// the `surface[]` of owned domains and a `recent[]` merge tail — is
-    /// projected from its baseline (`.specify/specs/` + journal), never
+    /// projected from its baseline (`.emery/specs/` + journal), never
     /// re-authored here. Unknown facets such as `capabilities` /
     /// `keywords` are silently ignored (this struct does not
     /// `deny_unknown_fields`).
@@ -37,23 +37,23 @@ pub struct ProjectConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<String>,
 
-    /// Minimum `specify` CLI version required to operate on this project,
-    /// serialised as the `specify:` key in `project.yaml`. Written by
-    /// `specify init` as the running binary's version and enforced by
+    /// Minimum `emery` CLI version required to operate on this project,
+    /// serialised as the `emery:` key in `project.yaml`. Written by
+    /// `emery init` as the running binary's version and enforced by
     /// [`ProjectConfig::load`] via the `semver` crate.
-    #[serde(rename = "specify", default, skip_serializing_if = "Option::is_none")]
-    pub specify_version: Option<String>,
+    #[serde(rename = "emery", default, skip_serializing_if = "Option::is_none")]
+    pub emery_version: Option<String>,
 
     /// Map of artifact key (`proposal`, `specs`, `design`, `tasks`) to a
-    /// path (relative to `.specify/`) of a markdown file containing extra
+    /// path (relative to `.emery/`) of a markdown file containing extra
     /// rules for that artifact. Scaffolded with one empty entry per key
-    /// by `specify init`.
+    /// by `emery init`.
     #[serde(default)]
     pub rules: BTreeMap<String, String>,
 
     /// Target platforms this project builds for (e.g. `core`, `ios`,
-    /// `android`). Set at `specify init --platforms` and changeable via
-    /// `specify init --upgrade --platforms`. When the bound target
+    /// `android`). Set at `emery init --platforms` and changeable via
+    /// `emery init --upgrade --platforms`. When the bound target
     /// adapter declares `platforms.required`, this field must be
     /// non-empty and must include `Platform::Core`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -71,18 +71,18 @@ pub struct ProjectConfig {
     pub workspace: bool,
 }
 impl ProjectConfig {
-    /// Load `.specify/project.yaml` from `project_dir`.
+    /// Load `.emery/project.yaml` from `project_dir`.
     ///
-    /// Enforces the `specify` version floor: a pinned version newer than
+    /// Enforces the `emery` version floor: a pinned version newer than
     /// `CARGO_PKG_VERSION` is rejected, but an unparseable pin is
     /// tolerated — we prefer a permissive stance for a human-edited file.
     ///
     /// # Errors
     ///
-    /// - [`Error::NotInitialized`] if `.specify/project.yaml` is absent.
+    /// - [`Error::NotInitialized`] if `.emery/project.yaml` is absent.
     /// - [`Error::Io`] if the file exists but cannot be read.
     /// - [`Error::YamlDe`] if the file is not valid project YAML.
-    /// - [`Error::CliTooOld`] if the pinned `specify` version floor is
+    /// - [`Error::CliTooOld`] if the pinned `emery` version floor is
     ///   newer than this binary's version.
     pub fn load(project_dir: &Path) -> Result<Self, Error> {
         Self::load_with_current(project_dir, env!("CARGO_PKG_VERSION"))
@@ -103,7 +103,7 @@ impl ProjectConfig {
 
         let cfg: Self = serde_saphyr::from_str(&text)?;
 
-        if let Some(required) = &cfg.specify_version
+        if let Some(required) = &cfg.emery_version
             && version_is_older(current, required)
         {
             return Err(Error::CliTooOld {
@@ -116,7 +116,7 @@ impl ProjectConfig {
     }
 
     /// Walk `start_dir` and its ancestors looking for the first directory
-    /// that contains `.specify/project.yaml`. Returns `None` when no
+    /// that contains `.emery/project.yaml`. Returns `None` when no
     /// ancestor is initialised. Filesystem probe errors are treated as
     /// "this candidate isn't initialised" — the next ancestor is tried.
     #[must_use]
@@ -128,12 +128,12 @@ impl ProjectConfig {
     }
 }
 
-/// Typed view over a project root that exposes every `.specify/` and
+/// Typed view over a project root that exposes every `.emery/` and
 /// repo-root path helper as an inherent method.
 ///
 /// Construct with [`Layout::new`]. The newtype concentrates the
-/// `.specify/` boundary in one place: callers never join
-/// `.specify/...` literally; they ask the layout for the directory
+/// `.emery/` boundary in one place: callers never join
+/// `.emery/...` literally; they ask the layout for the directory
 /// they want. Plan artifacts (`plan.yaml`, `change.md`,
 /// `discovery.md`) anchor at the invoked project directory alongside
 /// everything else.
@@ -155,62 +155,62 @@ impl<'a> Layout<'a> {
         self.project_dir
     }
 
-    /// Absolute path to `<project_dir>/.specify/`.
+    /// Absolute path to `<project_dir>/.emery/`.
     #[must_use]
-    pub fn specify_dir(&self) -> PathBuf {
-        self.project_dir.join(".specify")
+    pub fn emery_dir(&self) -> PathBuf {
+        self.project_dir.join(".emery")
     }
 
-    /// Absolute path to `<project_dir>/.specify/project.yaml`.
+    /// Absolute path to `<project_dir>/.emery/project.yaml`.
     #[must_use]
     pub fn config_path(&self) -> PathBuf {
-        self.specify_dir().join("project.yaml")
+        self.emery_dir().join("project.yaml")
     }
 
-    /// Absolute path to `<project_dir>/.specify/specs/` — the baseline
+    /// Absolute path to `<project_dir>/.emery/specs/` — the baseline
     /// specs tree, one domain directory per `spec.md`.
     #[must_use]
     pub fn specs_dir(&self) -> PathBuf {
-        self.specify_dir().join("specs")
+        self.emery_dir().join("specs")
     }
 
-    /// Absolute path to `<project_dir>/.specify/slices/`.
+    /// Absolute path to `<project_dir>/.emery/slices/`.
     #[must_use]
     pub fn slices_dir(&self) -> PathBuf {
-        self.specify_dir().join(crate::slice::SLICES_DIR_NAME)
+        self.emery_dir().join(crate::slice::SLICES_DIR_NAME)
     }
 
     /// Absolute path to one slice's working directory,
-    /// `<project_dir>/.specify/slices/<name>/`.
+    /// `<project_dir>/.emery/slices/<name>/`.
     #[must_use]
     pub fn slice_dir(&self, name: &str) -> PathBuf {
         self.slices_dir().join(name)
     }
 
-    /// Absolute path to `<project_dir>/.specify/topology.lock` — the
+    /// Absolute path to `<project_dir>/.emery/topology.lock` — the
     /// committed projection of each member project's `project.yaml`
     /// topology facets projected from the workspace registry.
     /// Machine-written; never hand-edited.
     #[must_use]
     pub fn topology_lock_path(&self) -> PathBuf {
-        self.specify_dir().join("topology.lock")
+        self.emery_dir().join("topology.lock")
     }
 
-    /// Absolute path to `<project_dir>/.specify/decisions/` — the
+    /// Absolute path to `<project_dir>/.emery/decisions/` — the
     /// append-only Decision Record catalogue promoted by
-    /// `specify slice merge`. One flat, project-global tree of
+    /// `emery slice merge`. One flat, project-global tree of
     /// `DEC-NNNN-<slug>.md` files. Machine-written by merge; the single
     /// permitted post-write mutation is a supersede status flip.
     #[must_use]
     pub fn decisions_dir(&self) -> PathBuf {
-        self.specify_dir().join("decisions")
+        self.emery_dir().join("decisions")
     }
 
-    /// Absolute path to `<project_dir>/.specify/archive/`. Centralised
+    /// Absolute path to `<project_dir>/.emery/archive/`. Centralised
     /// here so there is exactly one place the convention lives.
     #[must_use]
     pub fn archive_dir(&self) -> PathBuf {
-        self.specify_dir().join("archive")
+        self.emery_dir().join("archive")
     }
 
     /// Absolute path to `<project_dir>/registry.yaml` — the platform
@@ -227,13 +227,13 @@ impl<'a> Layout<'a> {
         self.project_dir.join("plan.yaml")
     }
 
-    /// Absolute path to `<project_dir>/.specify/guest.lock` — the
+    /// Absolute path to `<project_dir>/.emery/guest.lock` — the
     /// guest execute loop's create-exclusive advisory marker
     /// (the engine guest marker), the guest-vs-guest
     /// breakout refusal fence.
     #[must_use]
     pub fn guest_lock_path(&self) -> PathBuf {
-        self.specify_dir().join("guest.lock")
+        self.emery_dir().join("guest.lock")
     }
 
     /// Absolute path to `<project_dir>/change.md` — the umbrella
@@ -244,7 +244,7 @@ impl<'a> Layout<'a> {
     }
 
     /// Absolute path to `<project_dir>/discovery.md` — the candidate
-    /// inventory written at `/spec:plan`'s survey step and read during
+    /// inventory written at `/emery:plan`'s survey step and read during
     /// lead reconciliation. Lives beside `plan.yaml`.
     #[must_use]
     pub fn discovery_path(&self) -> PathBuf {
@@ -257,7 +257,7 @@ impl<'a> Layout<'a> {
 ///
 /// A slot is identified structurally: some ancestor's immediate parent
 /// is a `workspace/` directory whose own parent (the platform root)
-/// carries a `.specify/project.yaml`. The platform-config check
+/// carries a `.emery/project.yaml`. The platform-config check
 /// disambiguates a real slot from an ordinary project that merely sits
 /// inside a directory named `workspace`, so this necessarily touches
 /// the filesystem. Context generation uses the shared posture to skip
@@ -273,7 +273,7 @@ pub fn is_slot(project_dir: &Path) -> bool {
             return false;
         }
         workspace.parent().is_some_and(|platform_root| {
-            platform_root.join(".specify").join("project.yaml").is_file()
+            platform_root.join(".emery").join("project.yaml").is_file()
         })
     })
 }

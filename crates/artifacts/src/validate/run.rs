@@ -83,7 +83,7 @@ pub fn validate_slice(slice_dir: &Path) -> Result<Vec<Diagnostic>, Error> {
             // Glob matched nothing. If the configured path is literal,
             // treat that as "artifact missing" so the skill sees the
             // failure. Globs that legitimately match nothing are
-            // skipped silently — Specify slices don't have to populate
+            // skipped silently — Emery slices don't have to populate
             // every overlay (e.g. `contracts/`).
             if !artifact.contains('*') {
                 let missing_path = slice_dir.join(artifact);

@@ -20,7 +20,7 @@ use super::require_file;
 )]
 pub struct ValidateInput {}
 
-/// `specify plan validate` — structure + plan/change consistency,
+/// `emery plan validate` — structure + plan/change consistency,
 /// including the health diagnostics (`cycle-in-depends-on`,
 /// `orphan-source`, `stale-workspace-clone`).
 #[derive(Clone, Copy, Debug)]
@@ -46,7 +46,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
                 body,
                 "plan-structural-errors",
                 "plan must be free of structural errors",
-                "run 'specify plan validate' for detail",
+                "run 'emery plan validate' for detail",
             ))
         } else {
             Ok(body)

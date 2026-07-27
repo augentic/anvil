@@ -1,4 +1,4 @@
-//! Clap argument types for `specify adapter *`. Each `*Args` type
+//! Clap argument types for `emery adapter *`. Each `*Args` type
 //! mirrors its command's workflow wire input.
 
 use std::path::PathBuf;
@@ -13,8 +13,8 @@ pub struct AddArgs {
     #[arg(value_name = "PATH")]
     pub component: PathBuf,
     /// Project directory the cache is keyed by (defaults to the
-    /// nearest ancestor carrying `.specify/project.yaml`, else the
-    /// current directory); `.specify/` need not exist yet.
+    /// nearest ancestor carrying `.emery/project.yaml`, else the
+    /// current directory); `.emery/` need not exist yet.
     #[arg(long)]
     pub project_dir: Option<PathBuf>,
 }

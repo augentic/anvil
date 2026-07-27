@@ -1,14 +1,14 @@
 //! Lab-only live-model probe over the native host.
 //!
 //! The library owns the typed eval [`case`] runner (workflow and
-//! build cases over real `specify` verbs), deterministic grading,
+//! build cases over real `emery` verbs), deterministic grading,
 //! model-request telemetry, retained-sandbox lifecycle, and the eval
 //! CLI parsing. The core constructs no concrete adapter catalog, no
 //! Cursor backend, and no Tokio runtime: the process-facing entry
 //! ([`run`]) receives a workspace root, a validated
 //! [`native::Catalog`], a [`ModelFactory`], and the composition
 //! root's `cases/` and `sandbox/` directories (the `eval` example at
-//! `examples/eval/` here and in `augentic/specify-adapters`), and
+//! `examples/eval/` here and in `augentic/emery-adapters`), and
 //! drives every case command through the native command API.
 //!
 //! `feature = "client"` adds [`client`] — the shared cursor-backed

@@ -9,7 +9,7 @@
 
 .env
 target/
-/specify
+/emery
 
 **/*.rs.bk
 rustc-ice-*
@@ -23,8 +23,8 @@ quality/.sandbox/
 sandbox/
 sandbox.lock
 
-# Specify project state and integration-run scratch logs
-.specify/.cache/
-.specify/project.yaml
+# Emery project state and integration-run scratch logs
+.emery/.cache/
+.emery/project.yaml
 stderr.log
 stdout.log

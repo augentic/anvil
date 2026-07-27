@@ -42,4 +42,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --assets ./docs/book/html --name specify-docs --compatibility-date ${{ steps.date.outputs.today }}
+          command: deploy --assets ./docs/book/html --name emery-docs --compatibility-date ${{ steps.date.outputs.today }}

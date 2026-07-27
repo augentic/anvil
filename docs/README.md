@@ -1,6 +1,6 @@
-# Specify Developer Guide -- Local Development
+# Emery Developer Guide -- Local Development
 
-This directory contains the [mdBook](https://rust-lang.github.io/mdBook/) 0.5 source for the Specify Developer Guide. See [`standards/doc-authoring.md`](standards/doc-authoring.md) for HTML component blocks and admonition conventions.
+This directory contains the [mdBook](https://rust-lang.github.io/mdBook/) 0.5 source for the Emery Developer Guide. See [`standards/doc-authoring.md`](standards/doc-authoring.md) for HTML component blocks and admonition conventions.
 
 ## Prerequisites
 
@@ -31,7 +31,7 @@ Output lands in `docs/book/html/` (the CI deploy step points Cloudflare Pages at
 
 - Forked mdBook theme: [`theme/`](theme/) — re-vendor from stock on mdBook upgrades (see below).
 - Project-owned chrome overrides: [`theme/css/chrome.css`](theme/css/chrome.css) (banner block at file bottom), [`theme/head.hbs`](theme/head.hbs).
-- Cross-cutting component CSS: [`assets/theme/specify-docs.css`](assets/theme/specify-docs.css).
+- Cross-cutting component CSS: [`assets/theme/emery-docs.css`](assets/theme/emery-docs.css).
 - Interactive authority widget: [`assets/theme/authority-widget.js`](assets/theme/authority-widget.js).
 - Copy-paste HTML scaffolds: [`authoring-snippets/`](authoring-snippets/README.md) (also listed in `SUMMARY.md` for the link gate).
 - SVG diagrams: `assets/diagrams/` — see `_STYLE.md` in that folder.

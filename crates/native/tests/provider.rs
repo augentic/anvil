@@ -74,7 +74,7 @@ async fn exact_pin_matching() {
     let provider = provider(tmp.path(), &[]);
     let paths = paths(tmp.path());
 
-    let exact = AdapterSelector::parse("specify:pinned@1.2.3").expect("package selector");
+    let exact = AdapterSelector::parse("emery:pinned@1.2.3").expect("package selector");
     let resolved =
         provider.ensure_target(&exact, &paths).await.expect("the exact compiled pin ensures");
     assert_eq!(resolved.manifest.name, "pinned");
@@ -83,7 +83,7 @@ async fn exact_pin_matching() {
         Some("1.2.3")
     );
 
-    let mismatch = AdapterSelector::parse("specify:pinned@1.0.0").expect("package selector");
+    let mismatch = AdapterSelector::parse("emery:pinned@1.0.0").expect("package selector");
     let err = provider
         .ensure_target(&mismatch, &paths)
         .await
@@ -95,7 +95,7 @@ async fn exact_pin_matching() {
     // The mock probe compiles with the `0.0.0` development
     // placeholder, so even its "exact" pin refuses: unpublished
     // identities match only bare references.
-    let placeholder = AdapterSelector::parse("specify:mock@0.0.0").expect("package selector");
+    let placeholder = AdapterSelector::parse("emery:mock@0.0.0").expect("package selector");
     let err =
         provider.ensure_target(&placeholder, &paths).await.expect_err("a placeholder pin refuses");
     assert_eq!(err.variant_str(), "adapter-not-linked");
@@ -119,7 +119,7 @@ async fn component_selector_refused() {
     assert!(err.to_string().contains("does not load the supplied component"), "{err}");
 }
 
-// The runtime `specify_floor` gate stays active for linked entries:
+// The runtime `emery_floor` gate stays active for linked entries:
 // compilation proves trait compatibility, not semantic compatibility.
 #[test]
 fn floor_enforced_at_resolve() {

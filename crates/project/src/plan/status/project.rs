@@ -8,7 +8,7 @@ use super::super::model::{Entry, Lifecycle, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
 
-/// Project the read-only `specify plan status` body.
+/// Project the read-only `emery plan status` body.
 ///
 /// Selection: the active `in-progress` entry, else the next eligible
 /// `pending` entry (what `plan next` would claim), else `drained` /
@@ -108,18 +108,16 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
     let slice = resolution.slice.as_deref();
     match resolution.action {
-        NextActionKind::Refine => slice.map(|s| format!("/spec:refine {s}")),
-        NextActionKind::Build => slice.map(|s| format!("/spec:build {s}")),
-        NextActionKind::Merge => slice.map(|s| format!("/spec:merge {s}")),
-        NextActionKind::Drained => Some(format!("/spec:finalize {}", plan.name)),
+        NextActionKind::Refine => slice.map(|s| format!("/emery:refine {s}")),
+        NextActionKind::Build => slice.map(|s| format!("/emery:build {s}")),
+        NextActionKind::Merge => slice.map(|s| format!("/emery:merge {s}")),
+        NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::PlanNotApproved => Some("specify plan approve".to_string()),
-            StopReason::RefineFailed => slice.map(|s| format!("/spec:refine {s}")),
-            StopReason::BuildFailed => slice.map(|s| format!("/spec:build {s}")),
-            StopReason::MergeConflict => slice.map(|s| format!("/spec:merge {s}")),
-            StopReason::MergeIncomplete => {
-                slice.map(|s| format!("specify plan transition {s} done"))
-            }
+            StopReason::PlanNotApproved => Some("emery plan approve".to_string()),
+            StopReason::RefineFailed => slice.map(|s| format!("/emery:refine {s}")),
+            StopReason::BuildFailed => slice.map(|s| format!("/emery:build {s}")),
+            StopReason::MergeConflict => slice.map(|s| format!("/emery:merge {s}")),
+            StopReason::MergeIncomplete => slice.map(|s| format!("emery plan transition {s} done")),
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
     }

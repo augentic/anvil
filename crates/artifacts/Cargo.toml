@@ -1,5 +1,5 @@
 [package]
-name = "artifacts"
+name = "emery-artifacts"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,8 +7,12 @@ repository.workspace = true
 rust-version.workspace = true
 description = "Artifact types and parsers (spec, task, evidence, discovery) plus the shared atomic writer"
 categories = ["development-tools"]
-keywords = ["specify", "model", "workflow"]
+keywords = ["emery", "model", "workflow"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-artifacts.
+[lib]
+name = "artifacts"
 
 [lints]
 workspace = true

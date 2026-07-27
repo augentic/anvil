@@ -45,7 +45,7 @@ impl Event {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "event", content = "payload")]
 pub enum EventKind {
-    /// Gate 1 cleared — `specify plan approve`.
+    /// Gate 1 cleared — `emery plan approve`.
     #[serde(rename = "plan.transition.approved", rename_all = "kebab-case")]
     PlanTransitionApproved {
         /// Governing plan.
@@ -58,7 +58,7 @@ pub enum EventKind {
         actor: Actor,
     },
     /// Operator walked one rung backwards on per-entry status via
-    /// `specify plan transition <entry> --undo`. One event per rung
+    /// `emery plan transition <entry> --undo`. One event per rung
     /// (`done → in-progress` and `in-progress → pending` each fire
     /// individually) so the journal records every step the operator
     /// took and replay traces line up with the forward-direction
@@ -74,7 +74,7 @@ pub enum EventKind {
         /// Status the entry holds after the undo.
         to: crate::plan::Status,
     },
-    /// `specify plan next` advanced one entry `pending → in-progress`
+    /// `emery plan next` advanced one entry `pending → in-progress`
     /// (the sole writer of per-entry `in-progress`). Fires only when
     /// an entry actually advanced — returning the already-active entry
     /// or reporting drained/stuck emits nothing, so the *absence* of
@@ -88,9 +88,9 @@ pub enum EventKind {
         slice_name: SliceName,
     },
     /// Stamped `slices[].divergence` via
-    /// `specify plan amend --divergence <likely|accepted|rejected>`.
+    /// `emery plan amend --divergence <likely|accepted|rejected>`.
     /// The CLI is the single writer. In the reconcile flow the
-    /// `/spec:plan` agent stages `likely`
+    /// `/emery:plan` agent stages `likely`
     /// through this event after the reconcile write; the operator later
     /// flips `accepted` / `rejected` the same way. This is the only
     /// path that writes the `divergence` field.
@@ -110,7 +110,7 @@ pub enum EventKind {
         to: Divergence,
     },
     /// Slice transitioned to `refined` — synthesis finished and the
-    /// slice is ready for `/spec:build`.
+    /// slice is ready for `/emery:build`.
     #[serde(rename = "slice.transition.refined", rename_all = "kebab-case")]
     SliceTransitionRefined {
         /// Affected slice.
@@ -118,8 +118,8 @@ pub enum EventKind {
     },
     /// The `source extract` finalize tail validated and
     /// persisted one source-bound Evidence document. One event per
-    /// `(source, slice)` pair. CLI-owned — the `/spec:refine` skill
-    /// never emits this via `specify journal emit`.
+    /// `(source, slice)` pair. CLI-owned — the `/emery:refine` skill
+    /// never emits this via `emery journal emit`.
     #[serde(rename = "slice.extract.completed", rename_all = "kebab-case")]
     SliceExtractCompleted {
         /// Affected slice.
@@ -129,7 +129,7 @@ pub enum EventKind {
     },
     /// `[conflict]` on a requirement in `spec.md` — same-authority
     /// disagreement the operator must reconcile. Emitted by
-    /// `specify slice validate` after a successful run.
+    /// `emery slice validate` after a successful run.
     #[serde(rename = "slice.synthesis.conflict", rename_all = "kebab-case")]
     SliceSynthesisConflict {
         /// Affected slice.
@@ -139,7 +139,7 @@ pub enum EventKind {
     },
     /// `[divergence]` on a requirement in `spec.md` — cross-authority
     /// disagreement preserved as inline commentary. Emitted by
-    /// `specify slice validate` after a successful run.
+    /// `emery slice validate` after a successful run.
     #[serde(rename = "slice.synthesis.divergence", rename_all = "kebab-case")]
     SliceSynthesisDivergence {
         /// Affected slice.
@@ -149,7 +149,7 @@ pub enum EventKind {
     },
     /// `[unknown]` on a requirement in `spec.md` — a gap the operator
     /// must close before the requirement is meaningful. Emitted by
-    /// `specify slice validate` after a successful run.
+    /// `emery slice validate` after a successful run.
     #[serde(rename = "slice.synthesis.unknown", rename_all = "kebab-case")]
     SliceSynthesisUnknown {
         /// Affected slice.
@@ -157,7 +157,7 @@ pub enum EventKind {
         /// `ID:` value on the tagged requirement block.
         requirement_id: String,
     },
-    /// Slice synthesis began — `/spec:refine` started folding the
+    /// Slice synthesis began — `/emery:refine` started folding the
     /// extracted evidence into `proposal.md` / `spec.md` / `design.md`
     /// / `tasks.md` / `model.yaml`. One event per slice. Distinct from the per-requirement
     /// `slice.synthesis.*` tag events above — `synthesize` is the
@@ -198,7 +198,7 @@ pub enum EventKind {
         /// Short human reason / finding code for the failure.
         reason: String,
     },
-    /// `/spec:build` started implementing the slice — the target
+    /// `/emery:build` started implementing the slice — the target
     /// adapter's `build` brief began running against the refined
     /// artifacts. One event per slice.
     #[serde(rename = "slice.build.started", rename_all = "kebab-case")]
@@ -206,15 +206,15 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `/spec:build` finished implementing the slice — the target
+    /// `/emery:build` finished implementing the slice — the target
     /// adapter's `build` brief completed and the slice is ready for
-    /// `/spec:merge`. One event per slice.
+    /// `/emery:merge`. One event per slice.
     #[serde(rename = "slice.build.succeeded", rename_all = "kebab-case")]
     SliceBuildSucceeded {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `/spec:build` stopped before the slice was implemented.
+    /// `/emery:build` stopped before the slice was implemented.
     /// `reason` carries a short human
     /// reason or finding code so the journal records why the build
     /// stalled.
@@ -225,16 +225,16 @@ pub enum EventKind {
         /// Short human reason / finding code for the failure.
         reason: String,
     },
-    /// `specify slice merge` began folding the slice's deltas into the
+    /// `emery slice merge` began folding the slice's deltas into the
     /// baseline. The `slice.merge.*` pair
-    /// fires on the `specify slice merge` validator outcome, not on a
+    /// fires on the `emery slice merge` validator outcome, not on a
     /// merge report. One event per slice.
     #[serde(rename = "slice.merge.started", rename_all = "kebab-case")]
     SliceMergeStarted {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `specify slice merge` validated and applied the slice's deltas
+    /// `emery slice merge` validated and applied the slice's deltas
     /// to the baseline. Fires on the
     /// validator outcome, not on a merge report. One event per slice.
     #[serde(rename = "slice.merge.succeeded", rename_all = "kebab-case")]
@@ -242,7 +242,7 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `specify slice merge` refused to fold the slice into the
+    /// `emery slice merge` refused to fold the slice into the
     /// baseline. Fires on the validator
     /// outcome, not on a merge report. `reason` carries a short human
     /// reason or finding code so the journal records why the merge
@@ -256,10 +256,10 @@ pub enum EventKind {
     },
     /// The guest merge orchestrator skipped the workspace-clone git
     /// commit leg — the engine guest owns no git surface, so the
-    /// merge lands on `.specify/` state only. Explicit
+    /// merge lands on `.emery/` state only. Explicit
     /// so a journal reader can tell a guest merge (no `merge-sha` on
     /// its `slice.archive.created`) from a native merge that simply ran
-    /// outside a clone. Native `specify slice merge` never emits this.
+    /// outside a clone. Native `emery slice merge` never emits this.
     #[serde(rename = "slice.merge.commit-skipped", rename_all = "kebab-case")]
     SliceMergeCommitSkipped {
         /// Affected slice.
@@ -318,8 +318,8 @@ pub enum EventKind {
     },
     /// per-slice authority override — operator set or cleared a per-slice
     /// `authority-override` map at Gate 1. CLI-driven via
-    /// `specify plan add --authority-override`,
-    /// `specify plan amend --authority-override`, or the matching
+    /// `emery plan add --authority-override`,
+    /// `emery plan amend --authority-override`, or the matching
     /// `--clear-*` flags.
     #[serde(rename = "plan.amend.authority-override", rename_all = "kebab-case")]
     PlanAmendAuthorityOverride {
@@ -340,8 +340,8 @@ pub enum EventKind {
     },
     /// The `plan author` reconcile kernel validated the agent
     /// reconciliation response and wrote `plan.yaml.slices[]`. One indivisible event
-    /// per successful invocation — the `/spec:plan` skill never calls
-    /// `specify journal emit` here.
+    /// per successful invocation — the `/emery:plan` skill never calls
+    /// `emery journal emit` here.
     #[serde(rename = "plan.reconcile.completed", rename_all = "kebab-case")]
     PlanReconcileCompleted {
         /// Governing plan.
@@ -356,9 +356,9 @@ pub enum EventKind {
     /// append-only journal records what merged, when, which baseline
     /// specs it touched, a one-line outcome summary, and the git SHA
     /// the baseline sat at. The archived slice folder under
-    /// `.specify/archive/` is a prunable convenience cache
-    /// (`specify archive prune`), not the system of record — this
-    /// event plus git history of `.specify/specs/` is.
+    /// `.emery/archive/` is a prunable convenience cache
+    /// (`emery archive prune`), not the system of record — this
+    /// event plus git history of `.emery/specs/` is.
     #[serde(rename = "slice.archive.created", rename_all = "kebab-case")]
     SliceArchiveCreated {
         /// Archived slice.
@@ -377,7 +377,7 @@ pub enum EventKind {
         /// `DEC-NNNN` ids promoted into the Decision Record catalogue by
         /// this merge, in slug order. Empty stays off the wire;
         /// this is the durable ledger of promoted decisions alongside git
-        /// history of `.specify/decisions/`.
+        /// history of `.emery/decisions/`.
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         decisions: Vec<String>,
     },
@@ -386,7 +386,7 @@ pub enum EventKind {
 /// Closed `actor` enum on [`EventKind::PlanTransitionApproved`] —
 /// who drove the Gate-1 stamp.
 ///
-/// Self-reported through `specify plan approve --actor` (default
+/// Self-reported through `emery plan approve --actor` (default
 /// `operator`), so the value is grading evidence for eval probes
 /// (`gate-1-not-auto-stamped`), not an enforcement surface. Defaults
 /// to [`Actor::Operator`] both at the flag and at deserialisation so

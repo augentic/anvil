@@ -118,7 +118,7 @@ pub struct Seeded {
 /// not during seeding. Relative `path`s anchor at the carried project
 /// root. The shared mirror kernel behind the component-selector ensure
 /// leg (`mirror`, which adds the persisted-mirror fallback) and
-/// `specify adapter add` (strict: a missing path fails even when the
+/// `emery adapter add` (strict: a missing path fails even when the
 /// derived name is already cached — a stale entry must not mask a
 /// typo).
 ///

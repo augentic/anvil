@@ -7,7 +7,7 @@ use error::Error;
 
 use super::core::{
     AdapterLocation, Axis, Origin, ResolvedSource, ResolvedTarget, SourceAdapter, TargetAdapter,
-    check_requires_specify, parse_floor,
+    check_requires_emery, parse_floor,
 };
 use super::metadata::{self, Metadata};
 use super::selector::AdapterSelector;
@@ -146,14 +146,14 @@ fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -
 pub fn source(
     name: &str, version: Option<semver::Version>, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedSource, Error> {
-    let Metadata { specify_floor, .. } = metadata;
-    let floor = parse_floor(specify_floor.as_deref(), name, &origin)?;
-    check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
+    let Metadata { emery_floor, .. } = metadata;
+    let floor = parse_floor(emery_floor.as_deref(), name, &origin)?;
+    check_requires_emery(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
     Ok(ResolvedSource {
         manifest: SourceAdapter {
             name: name.to_string(),
             version,
-            requires_specify: floor,
+            requires_emery: floor,
         },
         origin,
     })
@@ -167,13 +167,13 @@ pub fn source(
 pub fn target(
     name: &str, version: Option<semver::Version>, metadata: Metadata, origin: Origin,
 ) -> Result<ResolvedTarget, Error> {
-    let floor = parse_floor(metadata.specify_floor.as_deref(), name, &origin)?;
-    check_requires_specify(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
+    let floor = parse_floor(metadata.emery_floor.as_deref(), name, &origin)?;
+    check_requires_emery(floor.as_ref(), env!("CARGO_PKG_VERSION"), name, &origin)?;
     Ok(ResolvedTarget {
         manifest: TargetAdapter {
             name: name.to_string(),
             version,
-            requires_specify: floor,
+            requires_emery: floor,
             inputs: metadata.inputs,
             platforms: metadata.platforms,
         },
@@ -201,7 +201,7 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
 /// project component cache for a bare or local-component selector.
 /// Resolution is project-contained: there is no sibling-checkout or
 /// build-tree probe — an adapter built elsewhere reaches the project
-/// through `specify adapter add` (or a local component at init) or a
+/// through `emery adapter add` (or a local component at init) or a
 /// pinned store install.
 ///
 /// The metadata-free half of [`Component`] resolution — the deployment
@@ -223,7 +223,7 @@ pub fn locate(
                 code: "adapter-not-found",
                 detail: format!(
                     "adapter `{name}@{version}` (axis `{axis}`) is not installed in the global \
-                     store at {}; `specify init specify:{name}@{version}` installs the published \
+                     store at {}; `emery init emery:{name}@{version}` installs the published \
                      component",
                     entry.display(),
                 ),
@@ -237,7 +237,7 @@ pub fn locate(
                     code: "adapter-sidecar-missing",
                     detail: format!(
                         "store entry {} has no digest sidecar; unverifiable components are \
-                         refused — reinstall `specify:{name}@{version}` to record one",
+                         refused — reinstall `emery:{name}@{version}` to record one",
                         entry.display(),
                     ),
                 });
@@ -269,8 +269,8 @@ pub fn locate(
         code: "adapter-not-found",
         detail: format!(
             "adapter `{name}` (axis `{axis}`) is not in the project component cache at {}; seed \
-             it with `specify adapter add <path/to/{name}.wasm>` or pin a published version \
-             (`specify:{name}@<semver>`)",
+             it with `emery adapter add <path/to/{name}.wasm>` or pin a published version \
+             (`emery:{name}@<semver>`)",
             entry.display(),
         ),
     })

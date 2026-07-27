@@ -1,4 +1,4 @@
-//! The plan-authoring orchestrator behind `/spec:plan`: scaffold →
+//! The plan-authoring orchestrator behind `/emery:plan`: scaffold →
 //! survey fan-out → reconciliation judgment → persist → Gate 1 prose →
 //! `plan validate` doctor sweep.
 //!
@@ -40,7 +40,7 @@ pub struct AuthorOutcome {
     /// Proposed slice names written to `plan.yaml.slices[]`, in the
     /// agent's response order.
     pub slices: Vec<String>,
-    /// The literal closing hint the `/spec:plan` skill prints — Gate 1
+    /// The literal closing hint the `/emery:plan` skill prints — Gate 1
     /// stays operator-only, so the orchestrator relays the command
     /// instead of running it.
     pub hint: String,
@@ -83,7 +83,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     refuse_workspace(layout)?;
     // Ensure every binding up front — before the scaffold write and
     // the survey fan-out — so an unresolvable adapter (missing pin,
-    // `specify_floor`) fails fast with nothing on disk.
+    // `emery_floor`) fails fast with nothing on disk.
     for binding in bindings.values() {
         resolver.ensure_source(&binding.selector(), paths).await?;
     }
@@ -144,15 +144,15 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     })
 }
 
-/// The literal Gate 1 closing hint the `/spec:plan` skill prints.
+/// The literal Gate 1 closing hint the `/emery:plan` skill prints.
 fn gate_hint(name: &str) -> String {
     format!(
-        "Plan `{name}` is at `pending`. Run `specify plan approve` to stamp \
-         Gate 1, then `specify plan execute` to drive the slices."
+        "Plan `{name}` is at `pending`. Run `emery plan approve` to stamp \
+         Gate 1, then `emery plan execute` to drive the slices."
     )
 }
 
-/// Refuse workspace-routed plan authoring: the `/spec:plan` skill
+/// Refuse workspace-routed plan authoring: the `/emery:plan` skill
 /// syncs workspace slots before surveying, and the guest collapse has
 /// no counterpart yet — the shared [`super::routing`] classification
 /// with this operation's own refusal code.
@@ -165,7 +165,7 @@ fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
         "the guest plan-authoring collapse runs single-project plans only",
         format!(
             "{subject}; workspace routing (slot sync) has no in-guest counterpart — author \
-             workspace plans through the native /spec:plan skill"
+             workspace plans through the native /emery:plan skill"
         ),
     ))
 }
@@ -254,7 +254,7 @@ fn validate(layout: Layout<'_>) -> Result<(), Error> {
         return Err(Error::validation_failed(
             "plan-structural-errors",
             "plan must be free of structural errors",
-            "run 'specify plan validate' for detail",
+            "run 'emery plan validate' for detail",
         ));
     }
     Ok(())

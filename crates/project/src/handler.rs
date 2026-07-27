@@ -1,6 +1,6 @@
 //! Shared plumbing for workflow operations.
 //!
-//! Every `specify` command is an
+//! Every `emery` command is an
 //! [`omnia_guest::api::operation::Operation`] implementation
 //! co-located with the domain module that owns its kernel. This module
 //! carries the pieces they share: the [`Anchor`] provider capability,

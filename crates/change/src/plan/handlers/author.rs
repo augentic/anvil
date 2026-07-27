@@ -1,4 +1,4 @@
-//! `plan author` — the collapsed `/spec:plan` flow exiting at
+//! `plan author` — the collapsed `/emery:plan` flow exiting at
 //! `lifecycle: pending`.
 
 use std::io::Write;
@@ -33,8 +33,8 @@ pub struct AuthorInput {
     pub intent: Option<String>,
 }
 
-/// `specify plan author <name> [--source ...]` →
-/// the internal author orchestration — the collapsed `/spec:plan` flow exiting
+/// `emery plan author <name> [--source ...]` →
+/// the internal author orchestration — the collapsed `/emery:plan` flow exiting
 /// at `lifecycle: pending`.
 #[derive(Clone, Copy, Debug)]
 pub struct Author;

@@ -1,7 +1,7 @@
 //! Agent-inferred, operator-reviewable component catalog (component
 //! catalog contract).
 //!
-//! The catalog lives at `.specify/design-system/components.yaml` and
+//! The catalog lives at `.emery/design-system/components.yaml` and
 //! declares shared UI components that the Vectis target factors into
 //! shared code at build time. The catalog is **written by the guest
 //! build orchestration's bind bookkeeping** (driven by the
@@ -17,7 +17,7 @@ use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 /// On-disk path relative to project root.
-const CATALOG_REL: &str = ".specify/design-system/components.yaml";
+const CATALOG_REL: &str = ".emery/design-system/components.yaml";
 
 /// Shared load kernel for the design-system YAML inputs.
 ///

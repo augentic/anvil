@@ -1,8 +1,8 @@
 # Wasm Example
 
-End-to-end run of the Specify change workflow over the real WASM component seam: the shipped `specify` binary (embedded engine guest) plus the mock source and target adapter components.
+End-to-end run of the Emery change workflow over the real WASM component seam: the shipped `emery` binary (embedded engine guest) plus the mock source and target adapter components.
 
-The two adapter components ([source.rs](source.rs), [target.rs](target.rs)) are each one SDK export-macro invocation over the canonical `mock::Adapter` implementor — the same anatomy as a production adapter in `augentic/specify-adapters`. There is no `omnia.toml`: the example invokes the built binary directly. The run script sandboxes the layout with `SPECIFY_HOME`, seeds the source via `specify adapter add` (plan `--source` accepts bare names only), and admits the target as a local `.wasm` at `specify init`.
+The two adapter components ([source.rs](source.rs), [target.rs](target.rs)) are each one SDK export-macro invocation over the canonical `mock::Adapter` implementor — the same anatomy as a production adapter in `augentic/emery-adapters`. There is no `omnia.toml`: the example invokes the built binary directly. The run script sandboxes the layout with `EMERY_HOME`, seeds the source via `emery adapter add` (plan `--source` accepts bare names only), and admits the target as a local `.wasm` at `emery init`.
 
 ## Quick start
 
@@ -34,7 +34,7 @@ Artifacts land under the gitignored `sandbox/wasm/` — the project tree at `san
 
 1. Every command runs in the embedded engine guest; bound adapters fault in by routed id through the fail-closed resolver (`target:target`, `source:source`).
 2. The source adapter surveys and extracts greeting requirements.
-3. Specify reconciles them and drives refine → build → merge.
+3. Emery reconciles them and drives refine → build → merge.
 4. The target adapter builds and merges the result.
 
 After running, inspect the generated result at:

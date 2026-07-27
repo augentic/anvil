@@ -1,8 +1,8 @@
 //! Builds and embeds the wasm32 engine component the shipped binary
 //! boots.
 //!
-//! Emits `SPECIFY_WASM` for the `include_bytes!` in `src/main.rs`.
-//! Resolution order: an explicit `SPECIFY_WASM` environment override
+//! Emits `EMERY_WASM` for the `include_bytes!` in `src/main.rs`.
+//! Resolution order: an explicit `EMERY_WASM` environment override
 //! (the release pipeline), else a child `cargo build --lib --target
 //! wasm32-wasip2` into an isolated target directory under `OUT_DIR`
 //! so plain `cargo install --git … --locked` produces a bootable
@@ -27,9 +27,9 @@ fn main() {
         return;
     }
 
-    println!("cargo:rerun-if-env-changed=SPECIFY_WASM");
+    println!("cargo:rerun-if-env-changed=EMERY_WASM");
 
-    let engine = std::env::var_os("SPECIFY_WASM").map_or_else(build_engine, |explicit| {
+    let engine = std::env::var_os("EMERY_WASM").map_or_else(build_engine, |explicit| {
         // Anchor a relative override at the manifest dir: the release
         // pipeline passes a workspace-relative path so it resolves
         // both natively and inside a `cross` container, and the
@@ -40,7 +40,7 @@ fn main() {
                 PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
             path = manifest_dir.join(path);
         }
-        assert!(path.is_file(), "SPECIFY_WASM is set but {} is not a file", path.display());
+        assert!(path.is_file(), "EMERY_WASM is set but {} is not a file", path.display());
         path
     });
 
@@ -48,7 +48,7 @@ fn main() {
     assert!(len > 0, "engine component at {} is empty; refusing to embed it", engine.display());
 
     println!("cargo:rerun-if-changed={}", engine.display());
-    println!("cargo:rustc-env=SPECIFY_WASM={}", engine.display());
+    println!("cargo:rustc-env=EMERY_WASM={}", engine.display());
 }
 
 /// Compile the engine guest cdylib for `wasm32-wasip2` with a child
@@ -94,10 +94,7 @@ fn build_engine() -> PathBuf {
         .unwrap_or_else(|err| panic!("failed to spawn the wasm32 engine build: {err}"));
     assert!(status.success(), "{TARGET_HINT}");
 
-    target_dir
-        .join(WASM_TARGET)
-        .join(if release { "release" } else { "debug" })
-        .join("specify.wasm")
+    target_dir.join(WASM_TARGET).join(if release { "release" } else { "debug" }).join("emery.wasm")
 }
 
 /// Strip the parent build's Cargo and rustc environment from the

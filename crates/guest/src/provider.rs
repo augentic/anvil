@@ -20,7 +20,7 @@ use project::handler::{Anchor, ExecutionPaths};
 use project::seam::{self, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree};
 use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 
-use crate::bindings::specify::adapter::{source, target, types};
+use crate::bindings::emery::adapter::{source, target, types};
 
 /// Workflow capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -147,7 +147,7 @@ pub fn metadata(request: &Request<'_>) -> Result<Metadata, Error> {
         Axis::Source => {
             let record = source::metadata(request.adapter_id);
             Metadata {
-                specify_floor: record.specify_floor,
+                emery_floor: record.emery_floor,
                 inputs: Vec::new(),
                 platforms: None,
             }
@@ -155,7 +155,7 @@ pub fn metadata(request: &Request<'_>) -> Result<Metadata, Error> {
         Axis::Target => {
             let record = target::metadata(request.adapter_id);
             Metadata {
-                specify_floor: record.specify_floor,
+                emery_floor: record.emery_floor,
                 inputs: record
                     .inputs
                     .into_iter()

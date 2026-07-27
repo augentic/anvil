@@ -1,6 +1,6 @@
 //! Component-catalog drift gate. Cross-references every `component:`
 //! directive on the slice's Evidence claims against the project-level
-//! component catalog (`.specify/design-system/components.yaml`).
+//! component catalog (`.emery/design-system/components.yaml`).
 
 use diagnostics::{Artifact, Diagnostic};
 use error::Result;

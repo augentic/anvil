@@ -1,6 +1,6 @@
 # Component catalog
 
-Vectis-only, agent-inferred and operator-reviewable: `.specify/design-system/components.yaml` declares shared UI components the Vectis target factors at build time (alongside `tokens.yaml` and `assets.yaml`). The catalog is written by the vectis target's in-guest inference during each build when shared structures appear across the accumulated composition baseline — it is not hand-curated — and the operator reviews, rejects, or renames entries. An operator who already knows a shared part of the design may pre-define it in a hand-authored `parts.yaml` ([Operator-defined parts](#operator-defined-parts-partsyaml)) that seeds inference with naming and promotion authority; everything else is discovered. Projects with no shared structures have no catalog and behave as before.
+Vectis-only, agent-inferred and operator-reviewable: `.emery/design-system/components.yaml` declares shared UI components the Vectis target factors at build time (alongside `tokens.yaml` and `assets.yaml`). The catalog is written by the vectis target's in-guest inference during each build when shared structures appear across the accumulated composition baseline — it is not hand-curated — and the operator reviews, rejects, or renames entries. An operator who already knows a shared part of the design may pre-define it in a hand-authored `parts.yaml` ([Operator-defined parts](#operator-defined-parts-partsyaml)) that seeds inference with naming and promotion authority; everything else is discovered. Projects with no shared structures have no catalog and behave as before.
 
 ## Problem: cross-slice component drift
 
@@ -9,10 +9,10 @@ Each `screenshots.extract` invocation only sees one lead. Stage-6 detection prom
 ## File location
 
 ```text
-.specify/design-system/components.yaml
+.emery/design-system/components.yaml
 ```
 
-Workspace mode: `<coordinator-root>/workspace/<project>/.specify/design-system/components.yaml`
+Workspace mode: `<coordinator-root>/workspace/<project>/.emery/design-system/components.yaml`
 
 ## Schema (minimal)
 
@@ -42,7 +42,7 @@ Inference is the default author; the operator reviews rather than curating from 
 
 ## Operator-defined parts (`parts.yaml`)
 
-Operators who know a shared part of a design up front can declare it instead of waiting for inference to discover it. `.specify/design-system/parts.yaml` is a hand-authored **input** that sits beside `tokens.yaml` and `assets.yaml`; the agent-written `components.yaml` stays the **resolved** catalog. This is an inputs-vs-resolved split, not a second writer over one file — the bind step re-derives the part-backed catalog entries from `parts.yaml` on every run, so there is nothing to clobber and no collision with the catalog's no-overwrite rules.
+Operators who know a shared part of a design up front can declare it instead of waiting for inference to discover it. `.emery/design-system/parts.yaml` is a hand-authored **input** that sits beside `tokens.yaml` and `assets.yaml`; the agent-written `components.yaml` stays the **resolved** catalog. This is an inputs-vs-resolved split, not a second writer over one file — the bind step re-derives the part-backed catalog entries from `parts.yaml` on every run, so there is nothing to clobber and no collision with the catalog's no-overwrite rules.
 
 ```yaml
 version: 1
@@ -67,7 +67,7 @@ A part carries two authorities over inference: **naming** (the operator's slug w
 
 | Surface | Finding | Meaning |
 | --- | --- | --- |
-| `specify slice validate` | `slice-catalog-drift` | Evidence has `component: <slug>` not in catalog or `rejected`. Absent catalog = no-op. |
+| `emery slice validate` | `slice-catalog-drift` | Evidence has `component: <slug>` not in catalog or `rejected`. Absent catalog = no-op. |
 | vectis in-guest composition validation | Catalog cross-reference | Every `component:` in `composition.yaml` must be `confirmed`. |
 
 ## What the catalog does not do

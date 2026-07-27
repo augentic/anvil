@@ -1,6 +1,6 @@
-//! The Specify change loop: plan-driven multi-slice changes — the
+//! The Emery change loop: plan-driven multi-slice changes — the
 //! author orchestration (survey fan-out, reconciliation judgment,
-//! Gate 1 prose), the drained execute loop, and the `specify plan *`
+//! Gate 1 prose), the drained execute loop, and the `emery plan *`
 //! operations. The `plan.yaml` state machine lives in
 //! [`project::plan`]; the per-slice refine / build / merge loop this
 //! crate drives lives in `slice`. See

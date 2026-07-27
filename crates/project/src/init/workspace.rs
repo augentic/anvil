@@ -1,6 +1,6 @@
 //! Workspace variant of `init` — scaffolds a registry-only platform
 //! workspace (`registry.yaml` plus `project.yaml { workspace: true }`).
-//! Refuses to run when `.specify/` already exists.
+//! Refuses to run when `.emery/` already exists.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -20,14 +20,14 @@ use crate::registry::Registry;
 /// ```text
 /// <project_dir>/
 /// ├── registry.yaml     # { version: 1, projects: [] }
-/// └── .specify/
+/// └── .emery/
 ///     └── project.yaml  # { name: …, workspace: true }
 /// ```
 ///
 /// `registry.yaml` is the one platform-component artefact init
 /// scaffolds — bootstrapping a workspace *is* bootstrapping its
 /// registry. `change.md` and `plan.yaml` stay operator-managed even on
-/// a workspace; the operator runs `/spec:plan <name>`
+/// a workspace; the operator runs `/emery:plan <name>`
 /// (which scaffolds both files atomically) when the work itself begins.
 ///
 /// Adapter resolution is intentionally skipped — a workspace binds no
@@ -37,7 +37,7 @@ use crate::registry::Registry;
 ///
 /// Returns an error if [`InitOptions::adapter`] is set (mutually
 /// exclusive with `--workspace`), if the project name is not kebab-case,
-/// if `.specify/` already exists, or if any filesystem write fails.
+/// if `.emery/` already exists, or if any filesystem write fails.
 pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     if opts.adapter.is_some() {
         return Err(Error::Diag {
@@ -47,14 +47,14 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     }
 
     let layout = Layout::new(opts.project_dir);
-    let specify_dir = layout.specify_dir();
-    if specify_dir.exists() {
+    let emery_dir = layout.emery_dir();
+    if emery_dir.exists() {
         return Err(Error::Diag {
-            code: "workspace-init-specify-dir-exists",
+            code: "workspace-init-emery-dir-exists",
             detail: format!(
-                "init --workspace: refusing to scaffold over an existing `.specify/` at {}; \
+                "init --workspace: refusing to scaffold over an existing `.emery/` at {}; \
                  remove it first or run without --workspace for a regular project",
-                specify_dir.display()
+                emery_dir.display()
             ),
         });
     }
@@ -71,16 +71,16 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         });
     }
 
-    fs::create_dir_all(&specify_dir)?;
-    let directories_created: Vec<PathBuf> = vec![specify_dir];
+    fs::create_dir_all(&emery_dir)?;
+    let directories_created: Vec<PathBuf> = vec![emery_dir];
 
-    let specify_version = resolve_version();
+    let emery_version = resolve_version();
 
     let cfg = ProjectConfig {
         name,
         description: opts.description.map(str::to_string),
         adapter: None,
-        specify_version: Some(specify_version.clone()),
+        emery_version: Some(emery_version.clone()),
         rules: BTreeMap::new(),
         workspace: true,
         platforms: Vec::new(),
@@ -107,7 +107,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         cache_present: false,
         directories_created,
         scaffolded_rule_keys: Vec::new(),
-        specify_version,
+        emery_version,
         context_skip_reason: None,
     })
 }

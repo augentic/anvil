@@ -2,7 +2,7 @@
 //!
 //! One argv dispatch serving both composition examples — the `eval`
 //! example in this repository over the mock catalog and the one in
-//! `augentic/specify-adapters` over the first-party catalog: native
+//! `augentic/emery-adapters` over the first-party catalog: native
 //! command passthrough by default, the live case runner under the
 //! `eval` subcommand. The client owns the lazily connected cursor
 //! backend ([`DevModel`]), the process tracing subscriber (console
@@ -56,7 +56,7 @@ impl<'writer> FormatFields<'writer> for PlainFields {
 ///
 /// The `eval` subcommand routes through [`crate::run`] (with the
 /// composition's `cases` and `sandbox` roots, when carried); anything
-/// else runs through the native command API under a `specify.command`
+/// else runs through the native command API under a `emery.command`
 /// span.
 ///
 /// # Errors

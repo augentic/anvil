@@ -168,7 +168,7 @@
       ]
     }
   },
-  "$id": "https://github.com/augentic/specify/answers/evidence.schema.json",
+  "$id": "https://github.com/augentic/emery/answers/evidence.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's extract operation: the Evidence shape minus the envelope `lead` key (the extract call names the lead). Per-kind claim body fields are intentionally open; claim ids carry the dotted-kebab grammar in-schema and `requirement` / `criterion` / `example` claims conditionally require one — both re-checked deterministically after the gate.",
   "properties": {
@@ -188,6 +188,6 @@
     "authority",
     "claims"
   ],
-  "title": "Specify extract answer",
+  "title": "Emery extract answer",
   "type": "object"
 }

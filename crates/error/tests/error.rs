@@ -18,7 +18,7 @@ fn cli_too_old_display() {
         required: "1.0.0".to_string(),
         found: "0.9.0".to_string(),
     };
-    assert_eq!(err.variant_str(), "specify-version-too-old");
+    assert_eq!(err.variant_str(), "emery-version-too-old");
     let msg = err.to_string();
     assert!(msg.contains("0.9.0") && msg.contains("1.0.0"), "both versions in display: {msg}");
     assert!(err.hint().is_none(), "CliTooOld has no recovery hint");

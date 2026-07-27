@@ -35,7 +35,7 @@ macro_rules! mock_source {
             };
 
             fn metadata() -> SourceMetadata {
-                SourceMetadata { specify_floor: None }
+                SourceMetadata { emery_floor: None }
             }
 
             fn docs() -> &'static [Doc] {
@@ -67,7 +67,7 @@ macro_rules! mock_target {
 
             fn metadata() -> TargetMetadata {
                 TargetMetadata {
-                    specify_floor: None,
+                    emery_floor: None,
                     inputs: Vec::new(),
                     platforms: None,
                 }

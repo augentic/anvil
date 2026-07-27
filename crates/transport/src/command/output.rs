@@ -1,5 +1,5 @@
 //! Output format, the single [`emit`] entry point, and the exit-code
-//! contract shared by the native `specify` binary and the workflow
+//! contract shared by the native `emery` binary and the workflow
 //! guest.
 //!
 //! `Exit::from(&Error)` is the single source of truth for the failure

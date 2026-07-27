@@ -1,4 +1,4 @@
-# Specify on Omnia — The Effect-Oriented Architecture
+# Emery on Omnia — The Effect-Oriented Architecture
 
 > Status: This is the standing architecture — the agreed direction being worked toward. It sequences the work into independently valuable stages and lives alongside [roadmap.md](roadmap.md).
 >
@@ -8,15 +8,15 @@
 
 The architecture boils down to a single concept:
 
-> The "Specify" CLI is Omnia compiled with Specify-specific Wasm guests.
+> The "Emery" CLI is Omnia compiled with Emery-specific Wasm guests.
 
-Everything that follows is a consequence of this idea. The runtime hosts Wasm guests and satisfies a fixed vocabulary of typed effects; it holds no domain, workflow, or model knowledge. Specify's behaviour — orchestrating the workflow, extracting from sources, building for targets, and development tooling — lives in the guests and in the backends bound behind Omnia's host interfaces.
+Everything that follows is a consequence of this idea. The runtime hosts Wasm guests and satisfies a fixed vocabulary of typed effects; it holds no domain, workflow, or model knowledge. Emery's behaviour — orchestrating the workflow, extracting from sources, building for targets, and development tooling — lives in the guests and in the backends bound behind Omnia's host interfaces.
 
 Context comes from artifacts, not conversational history. Each model evaluation is self-contained: a guest hands the model one **whole brief** and a typed tool surface scoped to concrete artifacts (like `spec.md` or a build request), never an accumulated chat transcript. This avoids the overloaded context windows that cause failures.
 
 This approach provides three major benefits:
 
-1. **Cloud-native portability**: Specify scales from a desktop CLI to a cloud service. Because the execution environment is abstracted behind Omnia's host interfaces, moving to the cloud swaps backends, not guest code.
+1. **Cloud-native portability**: Emery scales from a desktop CLI to a cloud service. Because the execution environment is abstracted behind Omnia's host interfaces, moving to the cloud swaps backends, not guest code.
 2. **Scalability and auditability**: An operation runs identically whether triggered from an editor or a CI pipeline.
 3. **Cost efficiency**: Because model evaluation is a typed call over specific inputs, a task can be routed to a frontier LLM, a small local model, or deterministic replay by swapping the model backend.
 
@@ -55,11 +55,11 @@ The runtime and guests interact both ways:
 
 Omnia is built on Wasmtime. Its design centers on pluggable host services behind typed interfaces, so a backend can be swapped without changing guest code. Three properties make this architecture possible:
 
-- **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` runs, and the guest decides what to do. There is no bespoke `specify` host.
+- **One binary, guest-selected behaviour**: `omnia <guest>.wasm <args…>` runs, and the guest decides what to do. There is no bespoke `emery` host.
 - **Instance-per-call execution**: a fresh instance spins up every time a guest is called, so a host→guest callback can never *recursively* re-enter an instance already on the stack — the one kind of reentrance the component model still traps (*sibling* reentrance, into a component whose other tasks are suspended, is allowed under the async ABI) — avoiding a class of aliasing complexity by construction.
-- **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Specify move from a desktop tool to a horizontally scalable service unchanged.
+- **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Emery move from a desktop tool to a horizontally scalable service unchanged.
 
-Specify extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core.
+Emery extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core.
 
 ## Judgment: the `wasi-model` host
 
@@ -102,21 +102,21 @@ Record/replay is a property of the backend boundary: a recording backend logs re
 
 A single operation spans several guests: the engine guest plus the source and target adapter guests it drives. Guests reach each other through **host-mediated dynamic linking** — never by composing them into one module ahead of time.
 
-- **How it works**: the caller imports the per-axis host interfaces (`source` / `target`) and names a plan-bound `adapter-id` as the first argument of each call (`build(id, …)`, `survey(id)`, …) — the very interfaces the adapters export, so there is no separate dispatch facade to keep in sync. The Omnia host intercepts these imports through the Wasmtime `Linker` and issues a wRPC invocation to the named adapter's matching export (`specify:adapter/source` / `target`) over the bound transport.
+- **How it works**: the caller imports the per-axis host interfaces (`source` / `target`) and names a plan-bound `adapter-id` as the first argument of each call (`build(id, …)`, `survey(id)`, …) — the very interfaces the adapters export, so there is no separate dispatch facade to keep in sync. The Omnia host intercepts these imports through the Wasmtime `Linker` and issues a wRPC invocation to the named adapter's matching export (`emery:adapter/source` / `target`) over the bound transport.
 - **The host's role**: the host selects the adapter **by identity**, instantiates a fresh, stateless instance, carries the typed WIT records to it over wRPC, invokes the exported function, and returns the typed result.
 - **Why it fits**: it preserves strict WIT typing with no manual byte serialization, supports dynamic (config-driven, OCI-resolved) adapter selection, and enforces instance-per-call — so a dispatched call cannot recursively re-enter its caller. The `wasi-model` `eval → resolve` callback is this same mechanism applied by the model backend.
 
 Because the interfaces (`target` / `source` / `references`) are statically known and only the adapter *instances* are dynamic, the host serves them with `wit-bindgen-wrpc`**-generated typed bindings** rather than wRPC's dynamic value-introspection path; the dynamic path remains available if an interface is ever unknown at host-compile time.
 
-The seam is a contract, not a wire protocol: every selected call rides [wRPC](https://github.com/bytecodealliance/wrpc) — a WIT-native, transport-agnostic RPC backend that encodes the typed records (and their async `stream` / `future` values) — over whatever transport the deployment binds: an in-process or Unix-domain-socket transport on a single node, NATS or QUIC across a cluster. Moving from desktop to cloud is therefore a transport swap, not a code change. Plain records (`revision`, `changeset`, `input`, `report`, `lead`, `evidence`) cross by value; a live resource such as the [working tree](#the-working-tree)'s `descriptor` never crosses, so `build` / `merge` always ship the content-addressed `revision` / `changeset` and the serving node re-materializes its own tree ([RFC-55](future/rfc-55-working-tree.md)) — uniformly, local or remote. wRPC stays behind the backend boundary — pinned and swappable, never in the `specify:adapter` contract — so the guest's view stays purely typed and the seam keeps a native in-process fast-path available if it is ever needed.
+The seam is a contract, not a wire protocol: every selected call rides [wRPC](https://github.com/bytecodealliance/wrpc) — a WIT-native, transport-agnostic RPC backend that encodes the typed records (and their async `stream` / `future` values) — over whatever transport the deployment binds: an in-process or Unix-domain-socket transport on a single node, NATS or QUIC across a cluster. Moving from desktop to cloud is therefore a transport swap, not a code change. Plain records (`revision`, `changeset`, `input`, `report`, `lead`, `evidence`) cross by value; a live resource such as the [working tree](#the-working-tree)'s `descriptor` never crosses, so `build` / `merge` always ship the content-addressed `revision` / `changeset` and the serving node re-materializes its own tree ([RFC-55](future/rfc-55-working-tree.md)) — uniformly, local or remote. wRPC stays behind the backend boundary — pinned and swappable, never in the `emery:adapter` contract — so the guest's view stays purely typed and the seam keeps a native in-process fast-path available if it is ever needed.
 
 ### Many guests, selected by identity
 
-The binary holds every guest on **one runtime** and picks among them in native code. The registry boots with exactly one static entry — the engine guest, embedded in the binary as component bytes — and every adapter is admitted lazily by exact opaque identity through Specify's fail-closed `GuestResolver` ([RFC-70 §Resolver-backed guest admission](rfc-70-deployment.md#resolver-backed-guest-admission)):
+The binary holds every guest on **one runtime** and picks among them in native code. The registry boots with exactly one static entry — the engine guest, embedded in the binary as component bytes — and every adapter is admitted lazily by exact opaque identity through Emery's fail-closed `GuestResolver` ([RFC-70 §Resolver-backed guest admission](rfc-70-deployment.md#resolver-backed-guest-admission)):
 
 ```text
 GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
-  "specify"                  -> InstancePre  (the command guest, embedded bytes —
+  "emery"                  -> InstancePre  (the command guest, embedded bytes —
                                               registered statically at boot)
   "source:typescript@0.5.0"  -> InstancePre  ┐  faulted in mid-run by exact routed id —
   "source:documentation"     -> InstancePre  │  verify-and-load from store (pinned) or
@@ -132,8 +132,8 @@ Each call selects an `InstancePre` by identity from the registry — resolving i
 
 The same select-by-identity resolves an **inbound trigger**, not only a guest-to-guest call:
 
-- A CLI command names its guest directly (`omnia <guest>.wasm`), or — on the Specify product path — the runtime forwards raw argv to the statically-registered command guest (the embedded engine)
-- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. Specify's ordinary deployment will use one fixed projection (`/mcp/<name>` → guest id; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) computed from the request path — no authored `[[route.http]]` table. Derived MCP route rows are RFC-70 Stage 2; until then adapters are reached over the CLI seam. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. A static prefix table remains available for hand-authored Omnia deployments (plain Omnia apps / optional file-flag manifests); programmatic path→identity routing is the ordinary product path once Stage 2 lands. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
+- A CLI command names its guest directly (`omnia <guest>.wasm`), or — on the Emery product path — the runtime forwards raw argv to the statically-registered command guest (the embedded engine)
+- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. Emery's ordinary deployment will use one fixed projection (`/mcp/<name>` → guest id; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) computed from the request path — no authored `[[route.http]]` table. Derived MCP route rows are RFC-70 Stage 2; until then adapters are reached over the CLI seam. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. A static prefix table remains available for hand-authored Omnia deployments (plain Omnia apps / optional file-flag manifests); programmatic path→identity routing is the ordinary product path once Stage 2 lands. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
 
 ## Lifecycle of an operation
 
@@ -196,12 +196,12 @@ This enables progressive optimisation: as a transformation becomes well-understo
 
 ## CLI bootstrapping
 
-Because "Specify is Omnia compiled with Specify-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `specify` binary is one `omnia::runtime!` command-mode invocation (`src/main.rs` — no handwritten `main`): the engine guest rides the macro's `guests:` key as embedded component bytes, `program:` forwards raw argv, and the mounts and the fail-closed `GuestResolver` are expressions the `launcher` crate evaluates once per process. Every invocation runs in the engine guest — help, version, grammar rejections, and `adapter add` (over its read-only seed preopen) included — with envelopes and exit codes passing through verbatim. The host layer carries no Specify vocabulary; it reads only the macro's deployment keys. See [RFC-70 §Omnia `runtime!` composition](rfc-70-deployment.md#omnia-runtime-composition).
+Because "Emery is Omnia compiled with Emery-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `emery` binary is one `omnia::runtime!` command-mode invocation (`src/main.rs` — no handwritten `main`): the engine guest rides the macro's `guests:` key as embedded component bytes, `program:` forwards raw argv, and the mounts and the fail-closed `GuestResolver` are expressions the `launcher` crate evaluates once per process. Every invocation runs in the engine guest — help, version, grammar rejections, and `adapter add` (over its read-only seed preopen) included — with envelopes and exit codes passing through verbatim. The host layer carries no Emery vocabulary; it reads only the macro's deployment keys. See [RFC-70 §Omnia `runtime!` composition](rfc-70-deployment.md#omnia-runtime-composition).
 
-The runtime acquires its adapter guests one way — the engine guest's own ensure legs hydrate them into the **global single-file store** at `$HOME/.specify/store` (the whole layout relocatable via `$SPECIFY_HOME`) or the project component cache, with **resolver-backed admission on first dispatch** ([RFC-70 Stage 3](rfc-70-deployment.md#stage-3--resolver-backed-dynamic-deployment)):
+The runtime acquires its adapter guests one way — the engine guest's own ensure legs hydrate them into the **global single-file store** at `$HOME/.emery/store` (the whole layout relocatable via `$EMERY_HOME`) or the project component cache, with **resolver-backed admission on first dispatch** ([RFC-70 Stage 3](rfc-70-deployment.md#stage-3--resolver-backed-dynamic-deployment)):
 
-- **Adapter resolution at init**: `specify init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command.
-- **Engine embedded in the binary**: the engine guest ships as static component bytes inside the binary (`include_bytes!` over the root `build.rs`'s `SPECIFY_WASM`), registered at boot as the sole `wasi:cli/run` exporter — the binary version *is* the engine version, one knob, no store install and no first-launch fetch. Local engine iteration rebuilds the wasm32 product and the native build re-embeds it.
+- **Adapter resolution at init**: `emery init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command.
+- **Engine embedded in the binary**: the engine guest ships as static component bytes inside the binary (`include_bytes!` over the root `build.rs`'s `EMERY_WASM`), registered at boot as the sole `wasi:cli/run` exporter — the binary version *is* the engine version, one knob, no store install and no first-launch fetch. Local engine iteration rebuilds the wasm32 product and the native build re-embeds it.
 - **Deployment policy**: the `launcher` crate's expressions anchor the project root from argv and the working directory, capture the layout once, create the writable project / cache / store mount directories, derive the optional `adapter add` seed preopen, and construct the fail-closed adapters-only `GuestResolver` ([RFC-70](rfc-70-deployment.md)). The resolver downloads nothing: adapters are hydrated by the engine guest's ensure legs and verify-and-loaded at dispatch. Persisted `resolution.json` diagnostics are RFC-70 Stage 2.
 
 ## Deferred relatives

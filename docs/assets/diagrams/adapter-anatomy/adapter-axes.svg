@@ -9,11 +9,11 @@
   <text x="480" y="28" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">TARGET ADAPTERS (output)</text>
   <rect x="40" y="44" width="380" height="56" rx="8" fill="#ede9d0" stroke="#c9b766"/>
   <text x="52" y="68" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">survey</text>
-  <text x="52" y="86" font-family="ui-monospace, monospace" font-size="11" fill="#555">/spec:plan &#8594; discovery.md leads</text>
+  <text x="52" y="86" font-family="ui-monospace, monospace" font-size="11" fill="#555">/emery:plan &#8594; discovery.md leads</text>
   <path d="M230 100 L230 120" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="40" y="120" width="380" height="56" rx="8" fill="#ede9d0" stroke="#c9b766"/>
   <text x="52" y="144" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">extract</text>
-  <text x="52" y="162" font-family="ui-monospace, monospace" font-size="11" fill="#555">/spec:refine &#8594; evidence/*.yaml</text>
+  <text x="52" y="162" font-family="ui-monospace, monospace" font-size="11" fill="#555">/emery:refine &#8594; evidence/*.yaml</text>
   <path d="M420 148 L460 148" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="460" y="100" width="400" height="72" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="472" y="124" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">core synthesis</text>
@@ -26,8 +26,8 @@
   <text x="622" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">build</text>
   <rect x="740" y="192" width="120" height="48" rx="8" fill="#e6d9f0" stroke="#a489d8"/>
   <text x="752" y="222" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">merge</text>
-  <text x="480" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">specify:&lt;name&gt;@&lt;semver&gt; (source component)</text>
-  <text x="480" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">specify:&lt;name&gt;@&lt;semver&gt; (target component)</text>
+  <text x="480" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">emery:&lt;name&gt;@&lt;semver&gt; (source component)</text>
+  <text x="480" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">emery:&lt;name&gt;@&lt;semver&gt; (target component)</text>
   <text x="40" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#555">&lt;store-root&gt;/&lt;name&gt;@&lt;version&gt;.wasm (global store)</text>
   <text x="40" y="286" font-family="ui-monospace, monospace" font-size="11" fill="#555">&lt;project-cache&gt;/components/&lt;name&gt;.wasm (out-of-tree)</text>
 </svg>

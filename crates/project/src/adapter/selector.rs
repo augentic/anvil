@@ -1,9 +1,9 @@
 //! [`AdapterSelector`] — the typed, kind-preserving adapter reference.
 //!
-//! One grammar serves the `specify init <adapter>` argument, recorded
+//! One grammar serves the `emery init <adapter>` argument, recorded
 //! `project.yaml.adapter` values, slice `metadata.yaml` targets, and
 //! the debug resolve verbs: package references
-//! (`specify:<name>@<semver>`), first-party shorthand (`omnia`,
+//! (`emery:<name>@<semver>`), first-party shorthand (`omnia`,
 //! `omnia@1.0.0`), and local component paths (`./adapter.wasm`,
 //! `file://…/adapter.wasm`). GitHub URLs are refused.
 //!
@@ -36,10 +36,10 @@ pub enum AdapterSelector {
         /// Kebab-case adapter name.
         name: String,
     },
-    /// Exact package reference (`specify:omnia@1.0.0`; `omnia@1.0.0`
-    /// is sugar for the `specify` namespace).
+    /// Exact package reference (`emery:omnia@1.0.0`; `omnia@1.0.0`
+    /// is sugar for the `emery` namespace).
     Package {
-        /// Registry namespace (`specify` for first-party adapters).
+        /// Registry namespace (`emery` for first-party adapters).
         namespace: String,
         /// Kebab-case adapter name.
         name: String,
@@ -55,9 +55,9 @@ pub enum AdapterSelector {
 }
 
 /// The wasm-pkg namespace first-party adapters publish under
-/// (`specify:<name>@<semver>` via `wkg publish` in the adapters repo;
-/// specify: naming cut — `augentic:` is reserved, not routed).
-pub const FIRST_PARTY_NAMESPACE: &str = "specify";
+/// (`emery:<name>@<semver>` via `wkg publish` in the adapters repo;
+/// emery: naming cut — `augentic:` is reserved, not routed).
+pub const FIRST_PARTY_NAMESPACE: &str = "emery";
 
 impl AdapterSelector {
     /// Parse an `<adapter>` argument or recorded adapter value.
@@ -86,8 +86,8 @@ impl AdapterSelector {
                 detail: format!(
                     "GitHub adapter URIs are not supported (`{value}`): a source checkout \
                      does not yield a usable adapter artifact. Pin a published component \
-                     (`specify:<name>@<semver>`), point at a local `.wasm` component file, or \
-                     seed one into the project component cache (`specify adapter add \
+                     (`emery:<name>@<semver>`), point at a local `.wasm` component file, or \
+                     seed one into the project component cache (`emery adapter add \
                      <path/to/component.wasm>`)"
                 ),
             });
@@ -127,8 +127,8 @@ impl AdapterSelector {
     }
 
     /// Best-effort adapter name from a recorded adapter value
-    /// (`omnia@1.0.0` → `omnia`, `specify:omnia@1.0.0` → `omnia`,
-    /// `file://…/specify_omnia.wasm` → `omnia`). Never fails over a
+    /// (`omnia@1.0.0` → `omnia`, `emery:omnia@1.0.0` → `omnia`,
+    /// `file://…/emery_omnia.wasm` → `omnia`). Never fails over a
     /// malformed historical value — it echoes the raw value instead,
     /// so orchestration routing and display stay total.
     #[must_use]
@@ -274,7 +274,7 @@ fn parse_validated_package(
 /// `(name, version)`. A bare `name` carries no pin (`None`) and
 /// resolves the seeded cache entry; a `name@<semver>` carries the
 /// parsed [`semver::Version`] and is sugar for the
-/// `specify:<name>@<semver>` package reference. Returns `None` for
+/// `emery:<name>@<semver>` package reference. Returns `None` for
 /// paths (`./foo`, `/abs`, `file://…`) and URLs (anything carrying `:`
 /// or `/`), and for a `@suffix` that is not exact semver — so those
 /// keep flowing through the component branch.
@@ -303,8 +303,8 @@ fn is_first_party_name(name: &str) -> bool {
 }
 
 /// Derive the kebab-case adapter name from a component filename:
-/// `specify_intent.wasm` → `intent`, `my-adapter.wasm` → `my-adapter`
-/// (the cargo `specify_` artifact prefix is stripped and underscores
+/// `emery_intent.wasm` → `intent`, `my-adapter.wasm` → `my-adapter`
+/// (the cargo `emery_` artifact prefix is stripped and underscores
 /// fold to kebab dashes).
 ///
 /// # Errors
@@ -315,7 +315,10 @@ pub fn name_from_component(path: &Path) -> Result<String, Error> {
         code: "adapter-dir-name-unresolved",
         detail: format!("cannot derive adapter name from {}", path.display()),
     })?;
-    let stem =
-        stem.strip_prefix("specify_").or_else(|| stem.strip_prefix("specify-")).unwrap_or(stem);
+    let stem = stem
+        .strip_prefix("emery_")
+        .or_else(|| stem.strip_prefix("emery-"))
+        .or_else(|| stem.strip_prefix("specify_"))
+        .unwrap_or(stem);
     Ok(stem.replace('_', "-"))
 }

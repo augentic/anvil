@@ -1,7 +1,7 @@
 //! On-disk `<slice_dir>/metadata.yaml` representation.
 //!
 //! [`SliceMetadata`] is the document, [`Outcome`] is the latest phase
-//! return surface read by the `specify plan execute` loop, and
+//! return surface read by the `emery plan execute` loop, and
 //! [`TouchedSpec`] lists the specs the slice mutates.
 
 use std::path::{Path, PathBuf};
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::adapter::TargetOperation;
 use crate::slice::OutcomeKind;
 
-/// Basename of the slice working directory under `.specify/`.
+/// Basename of the slice working directory under `.emery/`.
 pub const SLICES_DIR_NAME: &str = "slices";
 
 /// On-disk representation of `<slice_dir>/metadata.yaml`.
@@ -67,7 +67,7 @@ pub struct SliceMetadata {
     pub touched_specs: Vec<TouchedSpec>,
     /// Latest phase outcome. Written atomically by
     /// the merge commit tail (stamps `Success` before the archive move).
-    /// History lives in `.specify/journal.jsonl` (workflow §Observability).
+    /// History lives in `.emery/journal.jsonl` (workflow §Observability).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<Outcome>,
 }
@@ -135,7 +135,7 @@ impl SliceMetadata {
     ///
     /// Returns [`Error::ArtifactNotFound`] (`kind = "metadata.yaml"`)
     /// when the file is absent — the canonical "not a slice directory"
-    /// signal that `specify slice list` and the execute loop rely on.
+    /// signal that `emery slice list` and the execute loop rely on.
     /// [`Error::YamlDe`] surfaces serde-saphyr deserialisation failures
     /// (malformed YAML, unknown enum tags, type mismatches);
     /// [`Error::Io`] propagates filesystem read errors past the

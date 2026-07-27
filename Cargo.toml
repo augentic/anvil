@@ -1,8 +1,8 @@
 [package]
-name = "specify"
+name = "emery"
 description = "A tool for specifying and running code generation workflows"
 categories = ["command-line-utilities", "development-tools"]
-keywords = ["specify", "cli", "spec", "workflow", "automation"]
+keywords = ["emery", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
 edition.workspace = true
@@ -69,7 +69,7 @@ authors = ["Augentic"]
 edition = "2024"
 homepage = "https://augentic.io"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/augentic/specify"
+repository = "https://github.com/augentic/emery"
 rust-version = "1.97"
 version = "0.29.0"
 
@@ -185,20 +185,24 @@ tower = "0.5.3"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
-adapter = { path = "crates/adapter" }
-artifacts = { path = "crates/artifacts" }
-change = { path = "crates/change" }
-diagnostics = { path = "crates/diagnostics" }
-error = { path = "crates/error" }
-guest = { path = "crates/guest" }
-launcher = { path = "crates/launcher" }
-mock = { path = "crates/mock" }
-native = { path = "crates/native" }
-probe = { path = "crates/probe" }
-project = { path = "crates/project" }
-prose = { path = "crates/prose" }
-slice = { path = "crates/slice" }
-transport = { path = "crates/transport" }
+# Workspace crates publish under emery-* package names; the short keys keep
+# the in-tree crate names (and `use` paths) unchanged. Publishable entries
+# carry a version so `cargo publish --workspace` can rewrite the path deps;
+# `cargo set-version --workspace` keeps those requirements in step.
+adapter = { package = "emery-adapter", path = "crates/adapter", version = "0.29.0" }
+artifacts = { package = "emery-artifacts", path = "crates/artifacts", version = "0.29.0" }
+change = { package = "emery-change", path = "crates/change", version = "0.29.0" }
+diagnostics = { package = "emery-diagnostics", path = "crates/diagnostics", version = "0.29.0" }
+error = { package = "emery-error", path = "crates/error", version = "0.29.0" }
+guest = { package = "emery-guest", path = "crates/guest" }
+launcher = { package = "emery-launcher", path = "crates/launcher" }
+mock = { package = "emery-mock", path = "crates/mock" }
+native = { package = "emery-native", path = "crates/native", version = "0.29.0" }
+probe = { package = "emery-probe", path = "crates/probe" }
+project = { package = "emery-project", path = "crates/project", version = "0.29.0" }
+prose = { package = "emery-prose", path = "crates/prose", version = "0.29.0" }
+slice = { package = "emery-slice", path = "crates/slice", version = "0.29.0" }
+transport = { package = "emery-transport", path = "crates/transport", version = "0.29.0" }
 
 omnia = "0.35.0"
 omnia-cursor = "0.29.0"

@@ -1,10 +1,10 @@
-//! The drained execute loop behind `specify plan execute`: claim the
+//! The drained execute loop behind `emery plan execute`: claim the
 //! next entry, dispatch its phase (refine / build / merge), repeat
 //! until the plan projects `drained` or a stop. Every stop returns as
 //! a typed [`ExecuteOutcome::Stopped`] with a [`StopReason`] and hint.
 //!
 //! Dual-driving is refused by the create-exclusive [`GuestMarker`]
-//! (`<plan-root>/.specify/guest.lock`) held for the run. The loop adds
+//! (`<plan-root>/.emery/guest.lock`) held for the run. The loop adds
 //! no journal events of its own — it composes the per-phase cadence.
 
 use std::io::Write as _;
@@ -198,9 +198,9 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
 /// Refuse workspace-routed plans: a `project`-scoped entry needs a
 /// slot sync plus a chdir into `workspace/<project>/`, and the guest
 /// loop has no counterpart yet — running anyway would create slices
-/// under the workspace root's own `.specify/` tree. Workspace plans
-/// run hand-driven instead: `specify plan next`, then the
-/// `/spec:refine` → `/spec:build` → `/spec:merge` breakouts. Uses the
+/// under the workspace root's own `.emery/` tree. Workspace plans
+/// run hand-driven instead: `emery plan next`, then the
+/// `/emery:refine` → `/emery:build` → `/emery:merge` breakouts. Uses the
 /// shared [`super::routing`] classification with this operation's own
 /// refusal code; single-project plans are unaffected.
 fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
@@ -213,8 +213,8 @@ fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
         "the guest execute loop runs single-project plans only",
         format!(
             "{subject}; workspace routing (slot sync + chdir) has no in-guest counterpart — \
-             drive workspace plans hand-driven (`specify plan next`, then the \
-             /spec:refine → /spec:build → /spec:merge breakouts)"
+             drive workspace plans hand-driven (`emery plan next`, then the \
+             /emery:refine → /emery:build → /emery:merge breakouts)"
         ),
     ))
 }
@@ -255,7 +255,7 @@ fn claim_next(
 }
 
 /// The D1 create-exclusive advisory marker at
-/// `<plan-root>/.specify/guest.lock`, held for one guest execute run.
+/// `<plan-root>/.emery/guest.lock`, held for one guest execute run.
 ///
 /// `OpenOptions::create_new` makes acquisition atomic — exactly one
 /// guest execute loop can hold the marker per plan root, so a second

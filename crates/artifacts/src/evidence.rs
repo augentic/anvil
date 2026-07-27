@@ -1,7 +1,7 @@
 //! source-adapter Evidence shapes.
 //!
 //! Per-source `extract` output, persisted at
-//! `.specify/slices/<slice>/evidence/<source>.yaml`. The module owns
+//! `.emery/slices/<slice>/evidence/<source>.yaml`. The module owns
 //! the typed [`Document`] and [`Claim`] shapes (the Rust source of
 //! truth for the on-disk file and the extract judgment answer) plus
 //! the closed [`AuthorityClass`] / [`ClaimKind`] enums shared with

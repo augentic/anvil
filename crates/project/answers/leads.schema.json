@@ -28,7 +28,7 @@
       "type": "object"
     }
   },
-  "$id": "https://github.com/augentic/specify/answers/leads.schema.json",
+  "$id": "https://github.com/augentic/emery/answers/leads.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a source adapter's survey operation: an object carrying `leads[]`, each item the lead shape minus the envelope `source` key (the caller attributes every lead to the surveyed source). Lead ids and topic slugs carry the kebab-case grammar in-schema and are re-checked deterministically after the gate, alongside the trim-aware synopsis check the schema cannot express.",
@@ -44,6 +44,6 @@
   "required": [
     "leads"
   ],
-  "title": "Specify survey answer",
+  "title": "Emery survey answer",
   "type": "object"
 }

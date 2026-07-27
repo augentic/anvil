@@ -51,7 +51,7 @@ impl Sandbox {
 
     /// Seed a stub component into the project component cache — the
     /// single bare-name probe under the carried cache placement (what
-    /// `specify adapter add` leaves behind).
+    /// `emery adapter add` leaves behind).
     fn seed_cached_component(&self, name: &str) -> PathBuf {
         let components =
             ExecutionPaths::new(&self.root, self.locations.clone()).cache_dir().join("components");
@@ -132,12 +132,12 @@ fn mounts_are_the_well_known_locations() {
 #[test]
 fn anchors_at_the_project_root_ancestor() {
     let sandbox = Sandbox::new();
-    let specify = sandbox.root.join(".specify");
-    std::fs::create_dir_all(&specify).expect("mkdir .specify");
+    let emery = sandbox.root.join(".emery");
+    std::fs::create_dir_all(&emery).expect("mkdir .emery");
     std::fs::write(
-        specify.join("project.yaml"),
+        emery.join("project.yaml"),
         format!(
-            "name: fixture\nadapter: mock\nspecify: {}\nrules: {{}}\n",
+            "name: fixture\nadapter: mock\nemery: {}\nrules: {{}}\n",
             env!("CARGO_PKG_VERSION")
         ),
     )
@@ -247,7 +247,7 @@ async fn cold_pinned_miss_offline_is_a_hard_failure() {
         .expect_err("an offline cold miss fails deterministically");
     assert_eq!(code(&err), "adapter-install-failed");
     let detail = err.to_string();
-    assert!(detail.contains("specify:mock@9.9.9"), "{detail}");
+    assert!(detail.contains("emery:mock@9.9.9"), "{detail}");
     assert!(detail.contains("mock:9.9.9"), "names the OCI reference: {detail}");
 }
 
@@ -330,7 +330,7 @@ async fn engine_identities_are_not_resolvable() {
     let sandbox = Sandbox::new();
     let err = sandbox
         .resolver()
-        .resolve_component(&format!("specify:engine@{}", env!("CARGO_PKG_VERSION")))
+        .resolve_component(&format!("emery:engine@{}", env!("CARGO_PKG_VERSION")))
         .await
         .expect_err("no engine leg exists");
     assert_eq!(code(&err), "adapter-routed-id-malformed");

@@ -1,6 +1,6 @@
 //! `Plan::next_eligible` (single-step scheduler), the
 //! [`plan_next_body`] one-shot projection, and the [`claim_next`]
-//! claim kernel behind `specify plan next` and the execute loop.
+//! claim kernel behind `emery plan next` and the execute loop.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -73,7 +73,7 @@ impl Plan {
     }
 }
 
-/// Why `specify plan next` returned no freshly advanced entry.
+/// Why `emery plan next` returned no freshly advanced entry.
 ///
 /// Also signals when the active in-progress entry was returned instead.
 /// The kebab-case wire values (`drained` / `stuck` / `in-progress`) are
@@ -89,7 +89,7 @@ pub enum NextReason {
     InProgress,
 }
 
-/// Wire body for `specify plan next` (text + JSON). At most one of
+/// Wire body for `emery plan next` (text + JSON). At most one of
 /// `next` / `active` populates per call; `reason` carries the
 /// selection outcome.
 #[derive(Debug, Serialize, Default)]
@@ -114,7 +114,7 @@ pub struct NextBody {
     pub sources: Option<Vec<SliceSourceBinding>>,
 }
 
-/// One-shot `specify plan next` projection behind the dispatcher.
+/// One-shot `emery plan next` projection behind the dispatcher.
 ///
 /// Validates the plan, advances to the next eligible entry (the sole
 /// writer of per-entry `in-progress` per workflow §CLI surface), and
@@ -178,11 +178,11 @@ fn structural_errors() -> Error {
     Error::validation_failed(
         "plan-structural-errors",
         "plan must be free of structural errors",
-        "run 'specify plan validate' for detail",
+        "run 'emery plan validate' for detail",
     )
 }
 
-/// Claim the next plan entry: the shared kernel behind both `specify
+/// Claim the next plan entry: the shared kernel behind both `emery
 /// plan next` and the execute loop's per-phase claim.
 ///
 /// Runs [`plan_next_body`] inside the atomic state loop — `plan.yaml`

@@ -26,7 +26,7 @@ enum Error {
 }
 // GOOD
 enum Error {
-    /// Failed to read a managed file under `.specify/`.
+    /// Failed to read a managed file under `.emery/`.
     Read { kind: ReadKind, path: PathBuf, source: io::Error },
 }
 ```
@@ -45,7 +45,7 @@ ctx.emit_with(&resolved, |w, r| write_resolved(w, r))?;
 
 ## No traits for testability alone
 
-Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` (drive via the `CmdRunner` callable alias in `project::cmd`) or the filesystem. When a stable in-tree boundary already exists — for example `AtomicYaml` in `project::config`, shared by `Plan`, `Project`, and `Registry` for `.specify/` YAML state — implement that instead of inventing a sibling trait pair.
+Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` (drive via the `CmdRunner` callable alias in `project::cmd`) or the filesystem. When a stable in-tree boundary already exists — for example `AtomicYaml` in `project::config`, shared by `Plan`, `Project`, and `Registry` for `.emery/` YAML state — implement that instead of inventing a sibling trait pair.
 
 ```rust
 // BAD — trait pair that exists so MockProjectStore can swap in.

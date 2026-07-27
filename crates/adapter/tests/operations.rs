@@ -23,7 +23,7 @@ impl Source for Probe {
     };
 
     fn metadata() -> SourceMetadata {
-        SourceMetadata { specify_floor: None }
+        SourceMetadata { emery_floor: None }
     }
 
     fn docs() -> &'static [Doc] {
@@ -67,7 +67,7 @@ impl Target for Probe {
 
     fn metadata() -> TargetMetadata {
         TargetMetadata {
-            specify_floor: None,
+            emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
         }
@@ -119,7 +119,7 @@ async fn source_dispatch() {
 
     assert_eq!(<Probe as Source>::IDENTITY.name, "probe");
     assert_eq!(<Probe as Source>::IDENTITY.version, "0.0.0");
-    assert_eq!(<Probe as Source>::metadata(), SourceMetadata { specify_floor: None });
+    assert_eq!(<Probe as Source>::metadata(), SourceMetadata { emery_floor: None });
     assert_eq!(<Probe as Source>::docs()[0].path, "prompts/survey.md");
 }
 
@@ -159,7 +159,7 @@ async fn guidance_failure() {
 fn fn_pointer_coercion() {
     let metadata: fn() -> SourceMetadata = <Probe as Source>::metadata;
     let docs: fn() -> &'static [Doc] = <Probe as Source>::docs;
-    assert_eq!(metadata(), SourceMetadata { specify_floor: None });
+    assert_eq!(metadata(), SourceMetadata { emery_floor: None });
     assert_eq!(docs().len(), 1);
 }
 

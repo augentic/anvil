@@ -1,4 +1,4 @@
-//! Clap argument types for `specify source *`. Each `*Args` type mirrors
+//! Clap argument types for `emery source *`. Each `*Args` type mirrors
 //! its command's workflow wire input.
 
 use std::path::PathBuf;
@@ -12,7 +12,7 @@ pub struct ResolveArgs {
     /// `documentation`, `typescript`, `screenshots`).
     #[arg(value_name = "NAME")]
     pub value: String,
-    /// Project directory containing `.specify/` (defaults to the
+    /// Project directory containing `.emery/` (defaults to the
     /// current directory).
     #[arg(long, default_value = ".")]
     pub project_dir: Option<PathBuf>,
@@ -36,7 +36,7 @@ pub struct ExtractArgs {
     /// Lead id (from `discovery.md`) the Evidence is bound to.
     pub lead: String,
     /// Slice the Evidence is extracted into; keys the
-    /// `.specify/slices/<slice>/evidence/` target.
+    /// `.emery/slices/<slice>/evidence/` target.
     #[arg(long)]
     pub slice: String,
 }

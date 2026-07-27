@@ -41,7 +41,7 @@ pub struct SeedRequest {
 #[must_use]
 pub fn seed_request(argv: &[String]) -> Option<SeedRequest> {
     let mut full = Vec::with_capacity(argv.len() + 1);
-    full.push("specify".to_string());
+    full.push("emery".to_string());
     full.extend(argv.iter().cloned());
     let matches = grammar().try_get_matches_from(full).ok()?;
 
@@ -67,11 +67,11 @@ fn selected(mut matches: &clap::ArgMatches) -> (Vec<String>, &clap::ArgMatches) 
     (path, matches)
 }
 
-/// The assembled specify clap grammar, identical to the executing
+/// The assembled emery clap grammar, identical to the executing
 /// router's — built over a provider that never dispatches.
 fn grammar() -> clap::Command {
     let invoker = Invoker::new(
-        "specify",
+        "emery",
         Grammar {
             // Inert explicit locations: the grammar-only provider is
             // never dispatched, so no layout (and no environment
@@ -85,10 +85,7 @@ fn grammar() -> clap::Command {
             ),
         },
     );
-    super::router(invoker)
-        .expect("the specify route inventory is statically valid")
-        .command()
-        .clone()
+    super::router(invoker).expect("the emery route inventory is statically valid").command().clone()
 }
 
 /// Grammar-only provider: satisfies the router's capability bounds so

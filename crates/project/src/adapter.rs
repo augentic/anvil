@@ -8,14 +8,14 @@
 //! without changing workflow kernels.
 //!
 //! Resolution keys on the typed [`AdapterSelector`]: a package
-//! reference (`specify:<name>@<semver>`) dispatches metadata by
+//! reference (`emery:<name>@<semver>`) dispatches metadata by
 //! routed id — under the shipped deployment the host resolver backs
 //! the id with the single-file global store entry at
 //! `<store-root>/<name>@<version>.wasm` and installs a miss from the
 //! fixed first-party registry (pull-on-miss); a bare name or a
 //! persisted local component resolves the seeded project component
 //! cache (`<project-cache>/components/<name>.wasm`) populated by
-//! `specify adapter add` or a local component at init.
+//! `emery adapter add` or a local component at init.
 //! Resolution never probes outside the cache or store.
 //! Deployment provisioning (local-component mirroring, catalog
 //! matching) is the [`Resolver::ensure_source`] /

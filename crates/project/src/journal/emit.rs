@@ -21,7 +21,7 @@ use crate::config::Layout;
 /// routes a structured `warning:` line to stderr (naming `scope`, the
 /// journal path, and the I/O error) through the same operator-warning
 /// surface other best-effort failures use, and appends the dropped event
-/// to the `<project_dir>/.specify/journal.dropped` sidecar as a
+/// to the `<project_dir>/.emery/journal.dropped` sidecar as a
 /// recoverable audit trail. The mitigation is itself best-effort and
 /// never panics.
 pub fn emit_best_effort(layout: Layout<'_>, now: Timestamp, kind: EventKind, scope: &str) {

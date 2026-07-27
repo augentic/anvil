@@ -81,8 +81,8 @@ mod registry {
     }
 
     /// Regression: `registry validate` is documented to run before
-    /// `specify init` — it anchors on the invocation root and must not
-    /// demand `.specify/project.yaml`.
+    /// `emery init` — it anchors on the invocation root and must not
+    /// demand `.emery/project.yaml`.
     #[tokio::test]
     async fn validate_pre_init() {
         let project = Session::bare(Vec::new());
@@ -114,9 +114,9 @@ mod registry {
 mod archive {
     use super::*;
 
-    /// Stage two dated archive entries under `.specify/archive/`.
+    /// Stage two dated archive entries under `.emery/archive/`.
     fn stage(root: &Path) -> PathBuf {
-        let archive = root.join(".specify/archive");
+        let archive = root.join(".emery/archive");
         for name in ["2020-01-01-old", "2026-01-01-new"] {
             fs::create_dir_all(archive.join(name)).expect("stage archive entry");
             fs::write(archive.join(name).join("spec.md"), "# archived\n").expect("stage file");
@@ -215,7 +215,7 @@ mod init {
         .await
         .expect("init --upgrade succeeds");
         assert_eq!(body.mode, project::init::handlers::InitMode::Upgraded);
-        assert_eq!(body.specify_version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(body.emery_version, env!("CARGO_PKG_VERSION"));
     }
 
     #[tokio::test]
@@ -236,7 +236,7 @@ mod init {
         .expect("workspace scaffold succeeds");
         assert_eq!(body.adapter_name, "workspace");
         let config =
-            fs::read_to_string(project.root().join(".specify/project.yaml")).expect("project.yaml");
+            fs::read_to_string(project.root().join(".emery/project.yaml")).expect("project.yaml");
         assert!(config.contains("workspace: true"), "workspace mode is recorded:\n{config}");
         assert!(config.contains("name: demo-workspace"), "the name override lands:\n{config}");
         assert!(
@@ -251,7 +251,7 @@ mod init {
             "workspace context omits the per-language sections:\n{agents}"
         );
         assert!(
-            project.root().join(".specify/context.lock").is_file(),
+            project.root().join(".emery/context.lock").is_file(),
             "the fingerprint sidecar lands beside the generated context"
         );
     }
@@ -285,7 +285,7 @@ mod init {
             "the operator file is preserved byte-for-byte"
         );
         assert!(
-            !project.root().join(".specify/context.lock").exists(),
+            !project.root().join(".emery/context.lock").exists(),
             "no fingerprint sidecar is written when generation is skipped"
         );
     }
@@ -308,7 +308,7 @@ mod journal {
         .expect("emit succeeds");
         assert_eq!(body.event, "slice.build.started");
         let journal =
-            fs::read_to_string(project.root().join(".specify/journal.jsonl")).expect("journal");
+            fs::read_to_string(project.root().join(".emery/journal.jsonl")).expect("journal");
         assert!(
             journal.contains(r#""event":"slice.build.started""#),
             "the event landed:\n{journal}"
@@ -350,7 +350,7 @@ mod journal {
             "a bad payload is the validation failure (exit 2 at the CLI), got {err:?}"
         );
         assert!(
-            !project.root().join(".specify/journal.jsonl").exists(),
+            !project.root().join(".emery/journal.jsonl").exists(),
             "a refused emit appends nothing"
         );
     }
@@ -387,6 +387,6 @@ mod journal {
         .await
         .expect("a filter with no matches still succeeds");
         assert_eq!(unmatched.count, 0, "no plan events were emitted");
-        assert!(project.root().join(".specify/journal.jsonl").is_file(), "the journal persists");
+        assert!(project.root().join(".emery/journal.jsonl").is_file(), "the journal persists");
     }
 }

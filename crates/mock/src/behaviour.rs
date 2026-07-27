@@ -1,6 +1,6 @@
 //! The mock adapter's deterministic, model-free behaviour core.
 //!
-//! One id-keyed library implementing both `specify:adapter` axes over
+//! One id-keyed library implementing both `emery:adapter` axes over
 //! the SDK seam DTOs ([`adapter::seam`]) — the canonical internal
 //! representation. The trait implementors in [`crate::ops`] and the
 //! WASM adapter guest both route through it; only the workflow

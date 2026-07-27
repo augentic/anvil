@@ -1,4 +1,4 @@
-//! Clap argument types for `specify slice *`. Each `*Args` type mirrors
+//! Clap argument types for `emery slice *`. Each `*Args` type mirrors
 //! its command's workflow wire input.
 
 /// Arguments for `slice list` — none.
@@ -12,14 +12,14 @@ pub struct ListArgs {}
 /// Arguments for `slice validate`.
 #[derive(Debug, clap::Args)]
 pub struct ValidateArgs {
-    /// Slice name (under `.specify/slices/`)
+    /// Slice name (under `.emery/slices/`)
     pub name: String,
 }
 
 /// Arguments for `slice provenance`.
 #[derive(Debug, clap::Args)]
 pub struct ProvenanceArgs {
-    /// Slice name (under `.specify/slices/`)
+    /// Slice name (under `.emery/slices/`)
     pub name: String,
 }
 
@@ -33,7 +33,7 @@ pub struct RefineArgs {
 /// Arguments for `slice build`.
 #[derive(Debug, clap::Args)]
 pub struct BuildArgs {
-    /// Slice name (under `.specify/slices/`)
+    /// Slice name (under `.emery/slices/`)
     pub name: String,
 }
 
@@ -50,7 +50,7 @@ pub struct DropArgs {
 /// Arguments for `slice model show`.
 #[derive(Debug, clap::Args)]
 pub struct ModelShowArgs {
-    /// Slice name (under `.specify/slices/`)
+    /// Slice name (under `.emery/slices/`)
     pub name: String,
 }
 

@@ -1,16 +1,16 @@
-//! `.specify/topology.lock` — the committed projection of each member
+//! `.emery/topology.lock` — the committed projection of each member
 //! project's identity.
 //!
 //! `registry.yaml` carries membership + location only. A project's
 //! authored intent (`adapter`, `description`) lives in its
-//! `.specify/project.yaml`; its derived identity — the `surface[]` of
+//! `.emery/project.yaml`; its derived identity — the `surface[]` of
 //! owned domains and a `recent[]` tail of merge outcomes — is a
 //! deterministic structural projection of its baseline
-//! (`.specify/specs/` + `.specify/journal.jsonl`). `specify workspace
+//! (`.emery/specs/` + `.emery/journal.jsonl`). `emery workspace
 //! sync` resolves both into this committed lockfile so workspace plan-time
 //! topology (`workspace_topology`) reads a single derived source offline. The
 //! lockfile is machine-written (write-if-changed, mirroring
-//! `.specify/context.lock`); operators never hand-edit it.
+//! `.emery/context.lock`); operators never hand-edit it.
 
 use std::collections::HashMap;
 use std::fs;
@@ -31,7 +31,7 @@ use crate::registry::Registry;
 /// Current `topology.lock` schema version.
 pub const CURRENT_TOPOLOGY_LOCK_VERSION: u64 = 1;
 
-/// In-memory representation of `.specify/topology.lock`.
+/// In-memory representation of `.emery/topology.lock`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TopologyLock {
@@ -59,7 +59,7 @@ pub struct TopologyProject {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// Deterministic baseline surface: one entry per
-    /// `.specify/specs/<domain>/spec.md`, projected from the slot's
+    /// `.emery/specs/<domain>/spec.md`, projected from the slot's
     /// merged baseline. Empty stays off the wire (greenfield).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub surface: Vec<Surface>,
@@ -67,7 +67,7 @@ pub struct TopologyProject {
     /// slot's journal ledger, in append order. Empty stays off the wire.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub recent: Vec<String>,
-    /// Accepted Decision Records projected from `.specify/decisions/`,
+    /// Accepted Decision Records projected from `.emery/decisions/`,
     /// the most recent `K` in `DEC-NNNN` ascending order.
     /// The third routing-identity axis — *why* the project is shaped the
     /// way it is. Empty stays off the wire.
@@ -110,7 +110,7 @@ pub struct Decision {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Surface {
-    /// Domain directory slug under `.specify/specs/`.
+    /// Domain directory slug under `.emery/specs/`.
     pub domain: String,
     /// Requirement-block headings (`Requirement.name`, inline tag
     /// stripped) in `REQ-NNN` id order, capped at
@@ -161,7 +161,7 @@ impl TopologyLock {
         if version.version > CURRENT_TOPOLOGY_LOCK_VERSION {
             return Err(Error::validation_failed(
                 "topology-lock-version-too-new",
-                ".specify/topology.lock must be a supported version",
+                ".emery/topology.lock must be a supported version",
                 format!(
                     "topology-lock-version-too-new: lock version {} > supported \
                      {CURRENT_TOPOLOGY_LOCK_VERSION}",
@@ -264,12 +264,12 @@ fn validate_topology_platforms(
     })
 }
 
-/// Compare the committed `.specify/topology.lock` against each
+/// Compare the committed `.emery/topology.lock` against each
 /// materialised slot's projection, returning staleness diagnostics.
 ///
 /// Compares the lock against each slot's current `project.yaml` *and
 /// baseline projection*
-/// (`surface[]` from `.specify/specs/`, `recent[]` from the journal
+/// (`surface[]` from `.emery/specs/`, `recent[]` from the journal
 /// ledger), returning a `topology-cache-stale` suggestion on divergence.
 /// Because the projection is deterministic, this is a regenerate-and-compare check:
 /// [`TopologyProject::resolve`] re-derives the fresh entry and any drift
@@ -280,7 +280,7 @@ fn validate_topology_platforms(
 /// the cache is the derived projection of them.
 ///
 /// `workspace_base` is the top-level `workspace/`; `topology_lock_path` is
-/// `.specify/topology.lock`. The binary handler renders the returned
+/// `.emery/topology.lock`. The binary handler renders the returned
 /// diagnostics — it owns no projection logic of its own.
 #[must_use]
 pub fn cache_staleness(
@@ -297,7 +297,7 @@ pub fn cache_staleness(
 
     for rp in &registry.projects {
         let slot_project_dir = workspace_base.join(&rp.name);
-        if !slot_project_dir.join(".specify").join("project.yaml").exists() {
+        if !slot_project_dir.join(".emery").join("project.yaml").exists() {
             continue;
         }
         let slot_paths = paths.with_root(&slot_project_dir);
@@ -334,7 +334,7 @@ pub fn cache_staleness(
                 "topology-cache-stale",
                 Severity::Suggestion,
                 format!(
-                    "workspace slot '{}' has drifted from .specify/topology.lock; \
+                    "workspace slot '{}' has drifted from .emery/topology.lock; \
                      the topology cache must be regenerated before planning",
                     rp.name
                 ),
@@ -375,8 +375,8 @@ fn slot_binding_unresolvable(
         format!(
             "workspace slot '{registry_name}' binds target `{value}`, which is not resolvable by \
              routed adapter id (the id carries no slot): pin an exact published version \
-             (`specify:{name}@<semver>`) or seed the component into the deployment project's \
-             cache (`specify adapter add <path/to/{name}.wasm>` at the deployment root)"
+             (`emery:{name}@<semver>`) or seed the component into the deployment project's \
+             cache (`emery adapter add <path/to/{name}.wasm>` at the deployment root)"
         ),
         None,
     ))
@@ -385,7 +385,7 @@ fn slot_binding_unresolvable(
 fn malformed(detail: String) -> Error {
     Error::validation_failed(
         "topology-lock-malformed",
-        ".specify/topology.lock must be a supported topology lock file",
+        ".emery/topology.lock must be a supported topology lock file",
         detail,
     )
 }

@@ -1,14 +1,18 @@
 [package]
-name = "slice"
+name = "emery-slice"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Specify slice loop: refine / build / merge orchestration, synthesis, validation, and the specify slice operations"
+description = "Emery slice loop: refine / build / merge orchestration, synthesis, validation, and the emery slice operations"
 categories = ["development-tools"]
-keywords = ["specify", "workflow", "slice"]
+keywords = ["emery", "workflow", "slice"]
 readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-slice.
+[lib]
+name = "slice"
 
 [lints]
 workspace = true

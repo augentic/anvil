@@ -20,11 +20,11 @@ pub struct ExtractOutcome {
     pub source: String,
     /// Bound source adapter name.
     pub adapter: String,
-    /// Persisted `.specify/slices/<slice>/evidence/<source>.yaml`.
+    /// Persisted `.emery/slices/<slice>/evidence/<source>.yaml`.
     pub evidence: PathBuf,
 }
 
-/// Extract Evidence for one `(source, lead)` pair (`specify source
+/// Extract Evidence for one `(source, lead)` pair (`emery source
 /// extract`) and persist it into the slice's `evidence/` directory.
 ///
 /// The typed Evidence document is deterministically validated
@@ -35,7 +35,7 @@ pub struct ExtractOutcome {
 /// # Errors
 ///
 /// `source-unknown` for an unbound source key, adapter ensure/resolve
-/// failures (missing pin, `specify_floor`), seam and
+/// failures (missing pin, `emery_floor`), seam and
 /// `evidence-schema` validation failures from the adapter's extract
 /// leg, plus plan-load and persistence I/O failures.
 #[tracing::instrument(
@@ -52,14 +52,14 @@ pub async fn extract(
     let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {
         code: "source-unknown",
         detail: format!(
-            "no source `{source}` in plan.yaml.sources; `specify source extract` resolves \
+            "no source `{source}` in plan.yaml.sources; `emery source extract` resolves \
              its argument against the plan's source keys, not the adapter name"
         ),
     })?;
     let seam_lead = resolve_seam_lead(layout, source, lead)?;
 
     // Ensure/resolve before dispatch: the binding's pin and the
-    // adapter's `specify_floor` are enforced by the deployment's
+    // adapter's `emery_floor` are enforced by the deployment's
     // resolver, and dispatch routes by the exact resolved identity.
     let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest;
     tracing::Span::current().record("adapter", adapter.name.as_str());

@@ -29,12 +29,12 @@ pub struct TransitionInput {
     pub undo: bool,
 }
 
-/// `specify plan transition <entry> <target>`.
+/// `emery plan transition <entry> <target>`.
 ///
-/// The per-entry close (`<entry> done`; the `/spec:merge` skill is the
+/// The per-entry close (`<entry> done`; the `/emery:merge` skill is the
 /// canonical caller) and, with `--undo`, the one-rung reverse walk on
 /// per-entry status (`done → in-progress`, `in-progress → pending`).
-/// Plan-level Gate 1 is `specify plan approve`.
+/// Plan-level Gate 1 is `emery plan approve`.
 #[derive(Clone, Copy, Debug)]
 pub struct Transition;
 
@@ -131,7 +131,7 @@ fn target_invalid(target: &str) -> Error {
     Error::Argument {
         flag: "<target>",
         detail: match target {
-            "approved" => "plan-level `approved` is stamped by `specify plan approve`, not \
+            "approved" => "plan-level `approved` is stamped by `emery plan approve`, not \
                            `plan transition`."
                 .to_string(),
             "pending" => {
@@ -150,7 +150,7 @@ fn target_invalid(target: &str) -> Error {
             ),
             other => format!(
                 "per-entry transition target must be `done`; got `{other}`. \
-                 `done` is stamped by `/spec:merge` (or by hand once the slice is merged)."
+                 `done` is stamped by `/emery:merge` (or by hand once the slice is merged)."
             ),
         },
     }

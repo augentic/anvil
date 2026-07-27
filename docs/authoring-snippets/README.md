@@ -1,6 +1,6 @@
 # Authoring snippets
 
-Static HTML scaffolds for the Specify Developer Guide. Copy into chapter markdown — these are **not** wired to any preprocessor.
+Static HTML scaffolds for the Emery Developer Guide. Copy into chapter markdown — these are **not** wired to any preprocessor.
 
 See [`standards/doc-authoring.md`](../standards/doc-authoring.md) for conventions, admonitions, and exemplar chapters.
 

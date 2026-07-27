@@ -1,5 +1,5 @@
 //! Asynchronous native command execution over the shared typed
-//! Specify router.
+//! Emery router.
 //!
 //! Value-consuming and runtime-free: the composition root owns Tokio,
 //! `std::env::args`, execution-path construction, model backend
@@ -32,7 +32,7 @@ pub async fn execute(
 ) -> Result<CommandResponse, Error> {
     let provider = Provider::new(paths, model, catalog, ReferenceMode::Online);
     let router =
-        transport::command::router(Invoker::new("specify", provider.clone())).map_err(|err| {
+        transport::command::router(Invoker::new("emery", provider.clone())).map_err(|err| {
             Error::Router {
                 detail: err.to_string(),
             }

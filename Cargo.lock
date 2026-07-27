@@ -3,23 +3,6 @@
 version = 4
 
 [[package]]
-name = "adapter"
-version = "0.29.0"
-dependencies = [
- "mock",
- "omnia-guest",
- "omnia-testkit",
- "omnia-wasi-http",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.19",
- "tokio",
- "wasip3",
- "wit-bindgen 0.60.0",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -150,22 +133,6 @@ name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d902e3d592a523def97af8f317b08ce16b7ab854c1985a0c671e6f15cebc236"
-
-[[package]]
-name = "artifacts"
-version = "0.29.0"
-dependencies = [
- "diagnostics",
- "error",
- "glob",
- "regex",
- "schemars",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum 0.28.0",
- "tempfile",
-]
 
 [[package]]
 name = "async-trait"
@@ -468,29 +435,6 @@ dependencies = [
  "cfg-if",
  "cpufeatures 0.3.0",
  "rand_core 0.10.1",
-]
-
-[[package]]
-name = "change"
-version = "0.29.0"
-dependencies = [
- "artifacts",
- "diagnostics",
- "error",
- "jiff",
- "mock",
- "omnia-guest",
- "project",
- "prose",
- "semver",
- "serde",
- "serde-saphyr",
- "serde_json",
- "slice",
- "tempfile",
- "tokio",
- "tower",
- "tracing",
 ]
 
 [[package]]
@@ -1083,20 +1027,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "diagnostics"
-version = "0.29.0"
-dependencies = [
- "base16ct",
- "proptest",
- "schemars",
- "serde",
- "serde-saphyr",
- "serde_json",
- "sha2 0.11.0",
- "tempfile",
-]
-
-[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1168,6 +1098,276 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
+name = "emery"
+version = "0.29.0"
+dependencies = [
+ "anyhow",
+ "cfg-if",
+ "emery-adapter",
+ "emery-guest",
+ "emery-launcher",
+ "emery-mock",
+ "emery-native",
+ "emery-probe",
+ "omnia",
+ "omnia-cursor",
+ "omnia-wasi-http",
+ "omnia-wasi-model",
+ "omnia-wasi-otel",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "emery-adapter"
+version = "0.29.0"
+dependencies = [
+ "emery-mock",
+ "omnia-guest",
+ "omnia-testkit",
+ "omnia-wasi-http",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.19",
+ "tokio",
+ "wasip3",
+ "wit-bindgen 0.60.0",
+]
+
+[[package]]
+name = "emery-artifacts"
+version = "0.29.0"
+dependencies = [
+ "emery-diagnostics",
+ "emery-error",
+ "glob",
+ "regex",
+ "schemars",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum 0.28.0",
+ "tempfile",
+]
+
+[[package]]
+name = "emery-change"
+version = "0.29.0"
+dependencies = [
+ "emery-artifacts",
+ "emery-diagnostics",
+ "emery-error",
+ "emery-mock",
+ "emery-project",
+ "emery-prose",
+ "emery-slice",
+ "jiff",
+ "omnia-guest",
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tower",
+ "tracing",
+]
+
+[[package]]
+name = "emery-diagnostics"
+version = "0.29.0"
+dependencies = [
+ "base16ct",
+ "proptest",
+ "schemars",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "sha2 0.11.0",
+ "tempfile",
+]
+
+[[package]]
+name = "emery-error"
+version = "0.29.0"
+dependencies = [
+ "serde-saphyr",
+ "thiserror 2.0.19",
+]
+
+[[package]]
+name = "emery-guest"
+version = "0.29.0"
+dependencies = [
+ "emery-artifacts",
+ "emery-diagnostics",
+ "emery-error",
+ "emery-project",
+ "emery-slice",
+ "emery-transport",
+ "jiff",
+ "omnia-guest",
+ "omnia-wasi-otel",
+ "wasip3",
+ "wit-bindgen 0.60.0",
+]
+
+[[package]]
+name = "emery-launcher"
+version = "0.29.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "emery-artifacts",
+ "emery-diagnostics",
+ "emery-error",
+ "emery-project",
+ "emery-transport",
+ "oci-client",
+ "oci-wasm",
+ "omnia",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "emery-mock"
+version = "0.29.0"
+dependencies = [
+ "emery-adapter",
+ "emery-native",
+ "emery-project",
+ "omnia-guest",
+ "omnia-testkit",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "emery-native"
+version = "0.29.0"
+dependencies = [
+ "axum",
+ "emery-adapter",
+ "emery-artifacts",
+ "emery-diagnostics",
+ "emery-error",
+ "emery-project",
+ "emery-transport",
+ "omnia-guest",
+ "omnia-testkit",
+ "semver",
+ "tempfile",
+ "thiserror 2.0.19",
+ "tokio",
+]
+
+[[package]]
+name = "emery-probe"
+version = "0.29.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "emery-artifacts",
+ "emery-mock",
+ "emery-native",
+ "emery-project",
+ "jiff",
+ "omnia",
+ "omnia-cursor",
+ "omnia-guest",
+ "omnia-testkit",
+ "omnia-wasi-model",
+ "serde",
+ "tempfile",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "emery-project"
+version = "0.29.0"
+dependencies = [
+ "emery-artifacts",
+ "emery-diagnostics",
+ "emery-error",
+ "emery-mock",
+ "jiff",
+ "omnia-guest",
+ "petgraph",
+ "schemars",
+ "semver",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum 0.28.0",
+ "tempfile",
+ "thiserror 2.0.19",
+ "tokio",
+ "toml",
+ "tracing",
+]
+
+[[package]]
+name = "emery-prose"
+version = "0.29.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
+name = "emery-slice"
+version = "0.29.0"
+dependencies = [
+ "emery-artifacts",
+ "emery-diagnostics",
+ "emery-error",
+ "emery-mock",
+ "emery-project",
+ "emery-prose",
+ "jiff",
+ "omnia-guest",
+ "regex",
+ "schemars",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
+ "strum 0.28.0",
+ "tempfile",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "emery-transport"
+version = "0.29.0"
+dependencies = [
+ "clap",
+ "emery-artifacts",
+ "emery-change",
+ "emery-error",
+ "emery-mock",
+ "emery-native",
+ "emery-project",
+ "emery-slice",
+ "omnia-guest",
+ "omnia-testkit",
+ "serde",
+ "serde_json",
+ "strum 0.28.0",
+ "tempfile",
+ "tokio",
+ "tower",
+ "tracing",
+]
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1199,14 +1399,6 @@ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "error"
-version = "0.29.0"
-dependencies = [
- "serde-saphyr",
- "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -1512,23 +1704,6 @@ checksum = "d03f81ad4732830d85cfd417a9f62cde6dadda4354d37d078a6084a19560aa2d"
 dependencies = [
  "arraydeque",
  "smallvec",
-]
-
-[[package]]
-name = "guest"
-version = "0.29.0"
-dependencies = [
- "artifacts",
- "diagnostics",
- "error",
- "jiff",
- "omnia-guest",
- "omnia-wasi-otel",
- "project",
- "slice",
- "transport",
- "wasip3",
- "wit-bindgen 0.60.0",
 ]
 
 [[package]]
@@ -2137,25 +2312,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4933f3f57a8e9d9da04db23fb153356ecaf00cbd14aee46279c33dc80925c37"
 
 [[package]]
-name = "launcher"
-version = "0.29.0"
-dependencies = [
- "anyhow",
- "artifacts",
- "axum",
- "diagnostics",
- "error",
- "oci-client",
- "oci-wasm",
- "omnia",
- "project",
- "serde_json",
- "tempfile",
- "tokio",
- "transport",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2317,20 +2473,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mock"
-version = "0.29.0"
-dependencies = [
- "adapter",
- "native",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
 name = "moka"
 version = "0.12.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2345,25 +2487,6 @@ dependencies = [
  "smallvec",
  "tagptr",
  "uuid",
-]
-
-[[package]]
-name = "native"
-version = "0.29.0"
-dependencies = [
- "adapter",
- "artifacts",
- "axum",
- "diagnostics",
- "error",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "semver",
- "tempfile",
- "thiserror 2.0.19",
- "tokio",
- "transport",
 ]
 
 [[package]]
@@ -3157,60 +3280,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "probe"
-version = "0.29.0"
-dependencies = [
- "anyhow",
- "artifacts",
- "clap",
- "jiff",
- "mock",
- "native",
- "omnia",
- "omnia-cursor",
- "omnia-guest",
- "omnia-testkit",
- "omnia-wasi-model",
- "project",
- "serde",
- "tempfile",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "985e7ec9bb745e6ce6535b544d84d6cd6f7ad8bd711c398938ae983b91a766d9"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "project"
-version = "0.29.0"
-dependencies = [
- "artifacts",
- "diagnostics",
- "error",
- "jiff",
- "mock",
- "omnia-guest",
- "petgraph",
- "schemars",
- "semver",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum 0.28.0",
- "tempfile",
- "thiserror 2.0.19",
- "tokio",
- "toml",
- "tracing",
 ]
 
 [[package]]
@@ -3230,13 +3305,6 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
-]
-
-[[package]]
-name = "prose"
-version = "0.29.0"
-dependencies = [
- "tempfile",
 ]
 
 [[package]]
@@ -4135,29 +4203,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
-name = "slice"
-version = "0.29.0"
-dependencies = [
- "artifacts",
- "diagnostics",
- "error",
- "jiff",
- "mock",
- "omnia-guest",
- "project",
- "prose",
- "regex",
- "schemars",
- "serde",
- "serde-saphyr",
- "serde_json",
- "strum 0.28.0",
- "tempfile",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "smallvec"
 version = "1.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4174,28 +4219,6 @@ checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "specify"
-version = "0.29.0"
-dependencies = [
- "adapter",
- "anyhow",
- "cfg-if",
- "guest",
- "launcher",
- "mock",
- "native",
- "omnia",
- "omnia-cursor",
- "omnia-wasi-http",
- "omnia-wasi-model",
- "omnia-wasi-otel",
- "probe",
- "serde_json",
- "tempfile",
- "tokio",
 ]
 
 [[package]]
@@ -4745,29 +4768,6 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
-]
-
-[[package]]
-name = "transport"
-version = "0.29.0"
-dependencies = [
- "artifacts",
- "change",
- "clap",
- "error",
- "mock",
- "native",
- "omnia-guest",
- "omnia-testkit",
- "project",
- "serde",
- "serde_json",
- "slice",
- "strum 0.28.0",
- "tempfile",
- "tokio",
- "tower",
- "tracing",
 ]
 
 [[package]]

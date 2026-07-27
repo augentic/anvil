@@ -2,7 +2,7 @@
 <div class="eyebrow">Tutorial</div>
 <h1 class="hero-title">Quick start</h1>
 
-Run a complete Specify change in one sitting: one slice, intent-only source, Omnia target. When you finish, merged specs live in your baseline and the plan is archived.
+Run a complete Emery change in one sitting: one slice, intent-only source, Omnia target. When you finish, merged specs live in your baseline and the plan is archived.
 
 <div class="meta-row">
 
@@ -21,7 +21,7 @@ Run a complete Specify change in one sitting: one slice, intent-only source, Omn
 
 <h2><span class="num">1</span> What you will build</h2>
 
-A minimal Omnia project where Specify plans, specifies, implements, and merges a single slice driven entirely by operator intent — fixing a typo in `user.rs`. A one-slice change uses the same steps as a twelve-slice migration; only the plan row count differs.
+A minimal Omnia project where Emery plans, specifies, implements, and merges a single slice driven entirely by operator intent — fixing a typo in `user.rs`. A one-slice change uses the same steps as a twelve-slice migration; only the plan row count differs.
 </section>
 
 
@@ -31,7 +31,7 @@ A minimal Omnia project where Specify plans, specifies, implements, and merges a
 Complete [Prerequisites](../orientation/prerequisites.md):
 
 - Cursor with Augentic plugins installed
-- `specify` CLI (`specify --version` succeeds)
+- `emery` CLI (`emery --version` succeeds)
 - Rust toolchain with `wasm32-wasip2` target for Omnia
 
 Open your project in Cursor Agent chat. This tutorial assumes a fresh or disposable repo.
@@ -50,13 +50,13 @@ Open your project in Cursor Agent chat. This tutorial assumes a fresh or disposa
 Run once per project:
 
 ```text
-/spec:init omnia
+/emery:init omnia
 ```
 
-The skill runs `specify init omnia`, which scaffolds:
+The skill runs `emery init omnia`, which scaffolds:
 
 ```text
-.specify/
+.emery/
 ├── project.yaml
 ├── slices/
 ├── specs/          ← baseline accumulates here after merge
@@ -75,10 +75,10 @@ See [Directory layout](../reference/directory-layout.md) for the full tree.
 Describe what you want in one line:
 
 ```text
-/spec:plan fix-typo source intent="fix typo in user.rs"
+/emery:plan fix-typo source intent="fix typo in user.rs"
 ```
 
-`/spec:plan` writes three plan-time artifacts:
+`/emery:plan` writes three plan-time artifacts:
 
 **`change.md`** — operator narrative:
 
@@ -128,18 +128,18 @@ Sources: 1. Leads: 1.
 The skill exits at `plan.lifecycle: pending` and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Run `specify plan approve` to stamp Gate 1, then `specify plan execute` to drive the slices.
+Plan `fix-typo` is at `pending`. Run `emery plan approve` to stamp Gate 1, then `emery plan execute` to drive the slices.
 ```
 
 #### Operator review step (Gate 1)
 
-Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Specify calls it **Gate 1**. `/spec:plan` never stamps `approved` itself; you do:
+Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Emery calls it **Gate 1**. `/emery:plan` never stamps `approved` itself; you do:
 
 ```bash
-specify plan approve
+emery plan approve
 ```
 
-Alternatively, run `/spec:execute`: it asks for this confirmation explicitly, stamps Gate 1 on your behalf, then continues straight into the execute loop below.
+Alternatively, run `/emery:execute`: it asks for this confirmation explicitly, stamps Gate 1 on your behalf, then continues straight into the execute loop below.
 
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 </div>
@@ -152,10 +152,10 @@ Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 Drive the per-slice loop:
 
 ```text
-specify plan execute
+emery plan execute
 ```
 
-(`/spec:execute` runs this same loop, adding the Gate 1 confirmation when the plan is still `pending`.)
+(`/emery:execute` runs this same loop, adding the Gate 1 confirmation when the plan is still `pending`.)
 
 Inside execute, each slice runs **refine → build → merge**:
 
@@ -170,7 +170,7 @@ Inside execute, each slice runs **refine → build → merge**:
 
 ##### After refine
 
-Under `.specify/slices/fix-typo/` you will find:
+Under `.emery/slices/fix-typo/` you will find:
 
 | File | Purpose |
 | ---- | ------- |
@@ -194,12 +194,12 @@ Exact wording varies with your intent; see refine fixtures for shape reference.
 
 ##### After build
 
-Source code changes land in your project tree (not under `.specify/`). Task checkboxes in `tasks.md` flip to complete via the CLI.
+Source code changes land in your project tree (not under `.emery/`). Task checkboxes in `tasks.md` flip to complete via the CLI.
 
 ##### After merge
 
-- Spec deltas apply to `.specify/specs/`
-- The slice directory moves to `.specify/archive/`
+- Spec deltas apply to `.emery/specs/`
+- The slice directory moves to `.emery/archive/`
 - `plan.yaml` marks the entry `done`
 
 If execute parks on a failure, see [Drive a slice manually](../how-to/drive-slice-manually.md).
@@ -213,7 +213,7 @@ If execute parks on a failure, see [Drive a slice manually](../how-to/drive-slic
 When every plan entry is `done`, close the change:
 
 ```text
-/spec:finalize fix-typo
+/emery:finalize fix-typo
 ```
 
 Before finalizing, publish the completed repository changes through your normal Git and review workflow. Finalize confirms publication is complete and archives the drained plan; it performs no Git or forge operations.
@@ -224,7 +224,7 @@ Before finalizing, publish the completed repository changes through your normal 
 
 
 > [!TIP]
-> **Done.** You completed the full rhythm: `/spec:init` scaffolds once; `/spec:plan` exits at `pending`; Gate 1 is the operator review seam; `specify plan execute` loops refine → build → merge; `/spec:finalize` closes the change.
+> **Done.** You completed the full rhythm: `/emery:init` scaffolds once; `/emery:plan` exits at `pending`; Gate 1 is the operator review seam; `emery plan execute` loops refine → build → merge; `/emery:finalize` closes the change.
 
 <div class="see-also">
 <strong>See also</strong>
@@ -232,6 +232,6 @@ Before finalizing, publish the completed repository changes through your normal 
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
 - [Your first multi-slice change](first-change.md) — three slices from documentation
 - [Quick reference card](../reference/quick-reference.md) — command cheat sheet
-- [Change skills](../reference/change-skills/index.md) — `/spec:plan`, `/spec:execute`, `/spec:finalize` reference
+- [Change skills](../reference/change-skills/index.md) — `/emery:plan`, `/emery:execute`, `/emery:finalize` reference
 </div>
 

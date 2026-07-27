@@ -1,4 +1,4 @@
-//! Deployment policy for the shipped `specify` binary: the macro-facing
+//! Deployment policy for the shipped `emery` binary: the macro-facing
 //! mount and resolver expressions behind a dynamic Omnia deployment
 //! (RFC-70 Stage 3).
 //!
@@ -20,7 +20,7 @@
 //! host-owned — the guest gets no store mount. The embedded engine
 //! never touches the resolver: it is registered statically at boot.
 //!
-//! `SPECIFY_HOME` remains a relocation override only — the Cargo
+//! `EMERY_HOME` remains a relocation override only — the Cargo
 //! model: everything anchors at the user home or the project root by
 //! default, and one invocation captures the layout exactly once
 //! ([`Policy::new`] over `Locations::from_env`).

@@ -27,7 +27,7 @@ fn sidecar_verifies_content() {
     let digest = file_content_digest(&entry);
     assert!(digest.starts_with("sha256:"));
     let provenance = OciProvenance {
-        repository: "ghcr.io/augentic/specify-adapters/demo-target".to_string(),
+        repository: "ghcr.io/augentic/emery-adapters/demo-target".to_string(),
         manifest_digest: "sha256:manifest".to_string(),
         layer_digest: "sha256:registry".to_string(),
     };

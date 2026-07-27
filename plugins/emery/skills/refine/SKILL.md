@@ -1,6 +1,6 @@
 ---
-name: specify-refine
-description: Refine one plan entry's slice to `refined` by invoking the guest-routed `specify slice refine` orchestration and relaying its output. Use when driving one slice's extract-and-synthesis as a breakout; the `specify plan execute` loop runs the same orchestration itself.
+name: emery-refine
+description: Refine one plan entry's slice to `refined` by invoking the guest-routed `emery slice refine` orchestration and relaying its output. Use when driving one slice's extract-and-synthesis as a breakout; the `emery plan execute` loop runs the same orchestration itself.
 argument-hint: "[slice-name]"
 ---
 
@@ -11,10 +11,10 @@ The engine guest owns the whole refine flow — slice create (re-entry safe), th
 ## Invocation
 
 ```bash
-specify slice refine <slice-name>
+emery slice refine <slice-name>
 ```
 
-When `[slice-name]` is omitted, run `specify plan status` and use the slice it names for the `refine` action; if the plan projects no refine action, surface the status output and stop.
+When `[slice-name]` is omitted, run `emery plan status` and use the slice it names for the `refine` action; if the plan projects no refine action, surface the status output and stop.
 
 ## Relay
 
