@@ -42,10 +42,9 @@ mod package {
         // store neither blocks init nor leaves a guest-written entry.
         let project = Provider::bare();
 
-        let body =
-            run::<project::init::handlers::Init, _, _>(&project, input("emery:demo@1.2.0"))
-                .await
-                .expect("a cold package pin scaffolds");
+        let body = run::<project::init::handlers::Init, _, _>(&project, input("emery:demo@1.2.0"))
+            .await
+            .expect("a cold package pin scaffolds");
         assert_eq!(body.adapter_name, "demo");
         assert!(
             !project.store_entry("demo", "1.2.0").exists(),

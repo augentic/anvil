@@ -117,9 +117,7 @@ fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
             StopReason::RefineFailed => slice.map(|s| format!("/emery:refine {s}")),
             StopReason::BuildFailed => slice.map(|s| format!("/emery:build {s}")),
             StopReason::MergeConflict => slice.map(|s| format!("/emery:merge {s}")),
-            StopReason::MergeIncomplete => {
-                slice.map(|s| format!("emery plan transition {s} done"))
-            }
+            StopReason::MergeIncomplete => slice.map(|s| format!("emery plan transition {s} done")),
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
     }

@@ -94,10 +94,7 @@ fn build_engine() -> PathBuf {
         .unwrap_or_else(|err| panic!("failed to spawn the wasm32 engine build: {err}"));
     assert!(status.success(), "{TARGET_HINT}");
 
-    target_dir
-        .join(WASM_TARGET)
-        .join(if release { "release" } else { "debug" })
-        .join("emery.wasm")
+    target_dir.join(WASM_TARGET).join(if release { "release" } else { "debug" }).join("emery.wasm")
 }
 
 /// Strip the parent build's Cargo and rustc environment from the

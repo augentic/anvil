@@ -89,9 +89,7 @@ pub async fn install(
     let image =
         client.pull(&reference, &RegistryAuth::Anonymous).await.map_err(|err| Error::Diag {
             code: "adapter-install-failed",
-            detail: format!(
-                "failed to install `emery:{name}@{version}` from {reference}: {err:#}"
-            ),
+            detail: format!("failed to install `emery:{name}@{version}` from {reference}: {err:#}"),
         })?;
 
     let invalid = |detail: String| Error::Diag {

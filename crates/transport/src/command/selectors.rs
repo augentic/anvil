@@ -85,10 +85,7 @@ fn grammar() -> clap::Command {
             ),
         },
     );
-    super::router(invoker)
-        .expect("the emery route inventory is statically valid")
-        .command()
-        .clone()
+    super::router(invoker).expect("the emery route inventory is statically valid").command().clone()
 }
 
 /// Grammar-only provider: satisfies the router's capability bounds so
