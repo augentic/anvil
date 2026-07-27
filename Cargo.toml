@@ -179,9 +179,9 @@ tempfile = "3.27.0"
 thiserror = "2.0.19"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
 toml = "1.1.3"
+tower = "0.5.3"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
-tower = "0.5.3"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
@@ -215,9 +215,8 @@ omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
-omnia-cursor = { git = "https://github.com/augentic/backends.git" }
-
 omnia = { git = "https://github.com/augentic/omnia.git" }
+omnia-cursor = { git = "https://github.com/augentic/backends.git" }
 omnia-guest = { git = "https://github.com/augentic/omnia.git" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
@@ -225,6 +224,10 @@ omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
+# omnia-cursor = { path = "../backends/crates/cursor" }
+# omnia-guest = { path = "../omnia/crates/omnia-guest" }
+# omnia-testkit = { path = "../omnia/crates/testkit" }
+# omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io.
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
