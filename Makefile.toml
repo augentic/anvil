@@ -71,6 +71,12 @@ command = "cargo"
 args = ["doc", "--no-deps", "--workspace", "--all-features", "--locked"]
 env = { RUSTDOCFLAGS = "-Dwarnings" }
 
+# Developer Guide link integrity (`mdbook-linkcheck2` via docs/book.toml).
+# CI runs the same command in the `links` job; keep this task as the local shorthand.
+[tasks.links]
+command = "mdbook"
+args = ["build", "docs"]
+
 [tasks.miri]
 script = '''
 cargo +nightly miri setup

@@ -16,7 +16,7 @@ The authoritative crate graph (leaf → root, with per-crate roles) lives in [AG
 
 Adapter deterministic helpers sit co-located beside their adapter prose in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters) as in-guest library code compiled into each adapter's published component.
 
-Vectis does not link an adapter-specific crate into the root `emery` binary. Its deterministic helpers (UI artifact validation, render-only scaffolding) are in-guest library code inside its published component; platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/build.md) and [`merge`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/merge.md) prompts (which carry the Vectis writer / reviewer / template-updater behavior).
+Vectis does not link an adapter-specific crate into the root `emery` binary. Its deterministic helpers (UI artifact validation, shell verify, asset materialize) are in-guest library code inside its published component; greenfield shell trees are host-materialized from a local [`vectis-template`](https://github.com/augentic/vectis-template) checkout. Platform SDK, Cargo, Xcode, Gradle, and registry behavior lives in the Vectis target's [`build`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/build.md) and [`merge`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/merge.md) prompts.
 
 ## Dispatch pattern
 
