@@ -151,7 +151,7 @@ version = "0.4.45"
 criteria = "safe-to-deploy"
 
 [[exemptions.clap_complete]]
-version = "4.6.7"
+version = "4.6.8"
 criteria = "safe-to-deploy"
 
 [[exemptions.combine]]
@@ -555,15 +555,15 @@ version = "0.3.103"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema]]
-version = "0.49.1"
+version = "0.49.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema-regex]]
-version = "0.49.1"
+version = "0.49.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema-value]]
-version = "0.49.1"
+version = "0.49.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonwebtoken]]
@@ -815,7 +815,7 @@ version = "0.5.18"
 criteria = "safe-to-deploy"
 
 [[exemptions.referencing]]
-version = "0.49.1"
+version = "0.49.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.reqwest]]
@@ -879,11 +879,11 @@ version = "0.1.29"
 criteria = "safe-to-deploy"
 
 [[exemptions.schemars]]
-version = "1.2.1"
+version = "1.2.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.schemars_derive]]
-version = "1.2.1"
+version = "1.2.2"
 criteria = "safe-to-deploy"
 
 [[exemptions.sea-query]]
@@ -915,7 +915,7 @@ version = "1.0.229"
 criteria = "safe-to-deploy"
 
 [[exemptions.serde_derive_internals]]
-version = "0.29.1"
+version = "0.30.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.serde_spanned]]
