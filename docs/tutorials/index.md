@@ -1,8 +1,8 @@
 <div class="hero">
-<div class="eyebrow">Specify Developer Guide</div>
+<div class="eyebrow">Emery Developer Guide</div>
 <h1 class="hero-title">Tutorials</h1>
 
-Hands-on walkthroughs from zero to a working Specify change. Each tutorial builds on the previous one.
+Hands-on walkthroughs from zero to a working Emery change. Each tutorial builds on the previous one.
 
 <div class="meta-row">
 
@@ -15,7 +15,7 @@ Hands-on walkthroughs from zero to a working Specify change. Each tutorial build
 </div>
 
 
-Complete [Prerequisites](../orientation/prerequisites.md) (Cursor, Augentic plugins, `specify` CLI, and adapter tooling) before you start.
+Complete [Prerequisites](../orientation/prerequisites.md) (Cursor, Augentic plugins, `emery` CLI, and adapter tooling) before you start.
 
 <div class="card-grid">
 
@@ -77,6 +77,6 @@ After the quick start, skim [Core concepts](../explanation/concepts.md) for voca
 <strong>See also</strong>
 
 - [How-to guides](../how-to/index.md) — task recipes for common operator situations
-- [What is Specify?](../orientation/index.md) — mental model without hands-on steps
+- [What is Emery?](../orientation/index.md) — mental model without hands-on steps
 </div>
 

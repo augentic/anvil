@@ -40,7 +40,7 @@ impl RoutedId {
 
     /// The routed identity implied by a recorded adapter value
     /// (`omnia@1.0.0` → `target:omnia@1.0.0`, `omnia` →
-    /// `target:omnia`, `file://…/specify_omnia.wasm` →
+    /// `target:omnia`, `file://…/emery_omnia.wasm` →
     /// `target:omnia`). Total over historical values — an unparseable
     /// value routes the raw string as an unversioned name, mirroring
     /// [`AdapterSelector::recorded_name`].

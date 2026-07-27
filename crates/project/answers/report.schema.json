@@ -30,7 +30,7 @@
         },
         {
           "const": "decisions",
-          "description": "Decision Records (`.specify/slices/<slice>/decisions/<slug>.md`,\npromoted to `.specify/decisions/DEC-NNNN-<slug>.md`).",
+          "description": "Decision Records (`.emery/slices/<slice>/decisions/<slug>.md`,\npromoted to `.emery/decisions/DEC-NNNN-<slug>.md`).",
           "type": "string"
         },
         {
@@ -432,7 +432,7 @@
       "type": "object"
     },
     "Platform": {
-      "description": "Target platform for a Specify project.\n\n`Core` is the shared Rust business-logic crate; every project that\ndeclares platforms must include it. The shell variants (`Ios`,\n`Android`, `Web`, `Desktop`) represent native presentation layers.\n\nOnly `Ios` and `Android` have scaffold/build/verify support today;\n`Web` and `Desktop` are type-system placeholders signalling future\nfunctionality.",
+      "description": "Target platform for a Emery project.\n\n`Core` is the shared Rust business-logic crate; every project that\ndeclares platforms must include it. The shell variants (`Ios`,\n`Android`, `Web`, `Desktop`) represent native presentation layers.\n\nOnly `Ios` and `Android` have scaffold/build/verify support today;\n`Web` and `Desktop` are type-system placeholders signalling future\nfunctionality.",
       "oneOf": [
         {
           "const": "core",
@@ -503,7 +503,7 @@
       "type": "object"
     }
   },
-  "$id": "https://github.com/augentic/specify/answers/report.schema.json",
+  "$id": "https://github.com/augentic/emery/answers/report.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a target adapter's build or merge operation: the report shape minus the envelope keys (`version`, `slice`, `target`) the caller already knows.",
@@ -544,6 +544,6 @@
   "required": [
     "status"
   ],
-  "title": "Specify build/merge answer",
+  "title": "Emery build/merge answer",
   "type": "object"
 }

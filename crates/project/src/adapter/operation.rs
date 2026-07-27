@@ -91,10 +91,10 @@ impl SourceOperation {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TargetOperation {
-    /// Build — implementation, driven by `/spec:build`.
+    /// Build — implementation, driven by `/emery:build`.
     Build,
-    /// Guidance — synthesis-time guidance read by core during `/spec:refine`.
+    /// Guidance — synthesis-time guidance read by core during `/emery:refine`.
     Guidance,
-    /// Merge — landing gate, driven by `/spec:merge`.
+    /// Merge — landing gate, driven by `/emery:merge`.
     Merge,
 }

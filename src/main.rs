@@ -1,8 +1,8 @@
-//! The shipped `specify` executable: one `omnia::runtime!` invocation
+//! The shipped `emery` executable: one `omnia::runtime!` invocation
 //! (RFC-70 Stage 3).
 //!
 //! The engine guest is embedded as static component bytes (`build.rs`
-//! resolves `SPECIFY_WASM`) and routed as the sole static
+//! resolves `EMERY_WASM`) and routed as the sole static
 //! `wasi:cli/run` exporter; every adapter guest is faulted in mid-run
 //! by exact routed id through the fail-closed launcher resolver,
 //! which installs a missing package pin from the first-party OCI
@@ -25,17 +25,17 @@ cfg_if::cfg_if! {
 
         omnia::runtime!({
             mode: command,
-            program: "specify",
+            program: "emery",
             guests: [{
-                id: "specify",
-                source: include_bytes!(env!("SPECIFY_WASM")),
+                id: "emery",
+                source: include_bytes!(env!("EMERY_WASM")),
             }],
             mounts: [
                 { name: ".", path: launcher::project_root(), writable: true },
                 { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
                 { name: launcher::seed_mount_name(), path: launcher::seed_mount_path() },
             ],
-            link: ["specify:adapter/source@0.1.0", "specify:adapter/target@0.1.0"],
+            link: ["emery:adapter/source@0.1.0", "emery:adapter/target@0.1.0"],
             resolver: launcher::resolver(),
             hosts: {
                 WasiHttp: HttpDefault,

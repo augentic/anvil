@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Specify change loop: plan author / execute orchestration and the specify plan operations"
+description = "Emery change loop: plan author / execute orchestration and the emery plan operations"
 categories = ["development-tools"]
-keywords = ["specify", "workflow", "plan"]
+keywords = ["emery", "workflow", "plan"]
 readme = "../../README.md"
 
 [lints]

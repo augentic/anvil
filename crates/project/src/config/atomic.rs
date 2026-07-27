@@ -1,4 +1,4 @@
-//! Ergonomic load → mutate → atomic-write loop for `.specify/` YAML
+//! Ergonomic load → mutate → atomic-write loop for `.emery/` YAML
 //! state. [`AtomicYaml`] pairs state with its [`Layout`] location;
 //! [`with_state`] wraps the load and atomic-write halves.
 
@@ -12,7 +12,7 @@ use serde::de::DeserializeOwned;
 use crate::config::{Layout, ProjectConfig};
 use crate::registry::Registry;
 
-/// A piece of `.specify/`-anchored YAML state.
+/// A piece of `.emery/`-anchored YAML state.
 ///
 /// Implementors pair a canonical on-disk location with atomic-write
 /// semantics by exposing a `load` / `path` pair so [`with_state`] can
@@ -124,7 +124,7 @@ impl AtomicYaml for ProjectConfig {
         layout.config_path()
     }
 
-    /// Delegate to the inherent loader so the `specify` floor
+    /// Delegate to the inherent loader so the `emery` floor
     /// check runs at load time. Map the canonical "absent" error
     /// ([`Error::NotInitialized`]) to `Ok(None)` so the trait's
     /// "absent → None" contract holds; callers that need the typed

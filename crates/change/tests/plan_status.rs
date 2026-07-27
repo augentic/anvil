@@ -50,7 +50,7 @@ async fn status(project: &Session, plan: &Plan) -> StatusBody {
 }
 
 fn write_slice(root: &std::path::Path, name: &str, status: LifecycleStatus) {
-    let slice_dir = root.join(".specify").join("slices").join(name);
+    let slice_dir = root.join(".emery").join("slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
     let status = serde_saphyr::to_string(&status).expect("serialize lifecycle").trim().to_string();
     std::fs::write(
@@ -70,7 +70,7 @@ fn append(root: &std::path::Path, events: &[JournalEvent]) {
         .map(|event| serde_json::to_string(event).expect("serialize journal event"))
         .collect::<Vec<_>>()
         .join("\n");
-    std::fs::write(root.join(".specify/journal.jsonl"), format!("{body}\n"))
+    std::fs::write(root.join(".emery/journal.jsonl"), format!("{body}\n"))
         .expect("write journal events");
 }
 
@@ -127,7 +127,7 @@ mod next_action {
         project::handler::Render::render(&body, &mut out).expect("render");
         let text = String::from_utf8(out).expect("utf8");
         assert!(
-            text.contains("drained \u{2014} run /spec:finalize test"),
+            text.contains("drained \u{2014} run /emery:finalize test"),
             "drained must render the literal finalize line, got:\n{text}"
         );
     }
@@ -324,7 +324,7 @@ mod re_entry {
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, Some(LoopStep::Merge));
         assert_eq!(body.last_completed, Some(LoopStep::Merge));
-        assert_eq!(body.resume.as_deref(), Some("specify plan transition a done"));
+        assert_eq!(body.resume.as_deref(), Some("emery plan transition a done"));
     }
 
     #[tokio::test]
@@ -334,7 +334,7 @@ mod re_entry {
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
         assert_eq!(body.last_completed, None);
-        assert_eq!(body.resume.as_deref(), Some("/spec:finalize test"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:finalize test"));
     }
 
     #[tokio::test]
@@ -343,7 +343,7 @@ mod re_entry {
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
-        assert_eq!(body.resume.as_deref(), Some("specify plan approve"));
+        assert_eq!(body.resume.as_deref(), Some("emery plan approve"));
     }
 
     #[tokio::test]

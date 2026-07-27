@@ -25,12 +25,12 @@ fn fixtures() -> PathBuf {
 fn stage(project: &Session, case: &Path, delta: &str) {
     let baseline = case.join("baseline.md");
     if baseline.is_file() {
-        let destination = project.root().join(".specify/specs").join(delta);
+        let destination = project.root().join(".emery/specs").join(delta);
         std::fs::create_dir_all(&destination).expect("create baseline directory");
         std::fs::copy(baseline, destination.join("spec.md")).expect("stage baseline");
     }
 
-    let destination = project.root().join(".specify/slices/golden/specs").join(delta);
+    let destination = project.root().join(".emery/slices/golden/specs").join(delta);
     std::fs::create_dir_all(&destination).expect("create delta directory");
     let source = case.join("delta.md");
     if source.is_file() {

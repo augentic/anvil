@@ -72,13 +72,13 @@ async fn mismatched_pin_refused_before_scaffold() {
     let session = Session::scripted("mock", Vec::new());
 
     // `<name>@<semver>` parses into the first-party package pin
-    // (implicit `specify` namespace); native ensure succeeds only on
+    // (implicit `emery` namespace); native ensure succeeds only on
     // the exact compiled identity, so a mismatched pin refuses before
     // survey.
     let err = author(&session, "mock@1.0.0").await.expect_err("ensure refuses the pin");
     let detail = err.to_string();
     assert!(detail.contains("adapter-not-linked"), "{detail}");
-    assert!(detail.contains("specify:mock@1.0.0"), "pin parsed into the package form: {detail}");
+    assert!(detail.contains("emery:mock@1.0.0"), "pin parsed into the package form: {detail}");
     assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
 }
 
@@ -132,7 +132,7 @@ async fn survey_ensures_pinned_binding_before_dispatch() {
     .expect_err("ensure refuses the pin before dispatch");
     let detail = err.to_string();
     assert!(detail.contains("adapter-not-linked"), "{detail}");
-    assert!(detail.contains("specify:mock@1.0.0"), "{detail}");
+    assert!(detail.contains("emery:mock@1.0.0"), "{detail}");
 }
 
 #[tokio::test]
@@ -204,10 +204,10 @@ async fn merge_failure_parks_built() {
     assert!(detail.contains("mock merge failure"), "typed detail preserved: {detail}");
 
     let metadata =
-        std::fs::read_to_string(session.root().join(".specify/slices/greeting/metadata.yaml"))
+        std::fs::read_to_string(session.root().join(".emery/slices/greeting/metadata.yaml"))
             .expect("slice still present");
     assert!(metadata.contains("status: built"), "no commit happened:\n{metadata}");
-    assert!(!session.root().join(".specify/specs/greeting/spec.md").exists(), "no baseline write");
+    assert!(!session.root().join(".emery/specs/greeting/spec.md").exists(), "no baseline write");
 }
 
 #[tokio::test]

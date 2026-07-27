@@ -1,4 +1,4 @@
-//! Data-directory eval cases over real `specify` verbs.
+//! Data-directory eval cases over real `emery` verbs.
 //!
 //! A case is a directory under the composition root's `cases/` tree
 //! holding one `case.toml` (and usually a sibling `fixture/`; a
@@ -62,7 +62,7 @@ enum Kind {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Workflow {
-    /// Target adapter passed to `specify init`.
+    /// Target adapter passed to `emery init`.
     pub target: String,
     /// Change name passed to `plan author`.
     pub change: String,
@@ -103,7 +103,7 @@ pub struct CloneSpec {
 }
 
 /// A build case: the fixture carries the exact refined state
-/// `specify slice build` consumes, including valid project and slice
+/// `emery slice build` consumes, including valid project and slice
 /// metadata — the runner never stamps lifecycle state.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
@@ -314,12 +314,12 @@ async fn run_build(
     Ok(())
 }
 
-// One `specify` verb through the native command surface, which owns
-// the `specify.command` span.
+// One `emery` verb through the native command surface, which owns
+// the `emery.command` span.
 async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str]) -> Result<()> {
     let command = argv.join(" ");
-    tracing::info!("specify {command}");
-    let mut full = vec!["specify".to_string()];
+    tracing::info!("emery {command}");
+    let mut full = vec!["emery".to_string()];
     full.extend(argv.iter().map(ToString::to_string));
     let locations = Locations::explicit(
         root.join("adapter-store"),
@@ -329,7 +329,7 @@ async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str])
     let response = native::command::execute(paths, model.clone(), catalog.clone(), full).await?;
     io::stdout().write_all(&response.stdout)?;
     io::stderr().write_all(&response.stderr)?;
-    ensure!(response.exit == 0, "`specify {command}` exited {}", response.exit);
+    ensure!(response.exit == 0, "`emery {command}` exited {}", response.exit);
     Ok(())
 }
 

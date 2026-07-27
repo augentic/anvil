@@ -44,7 +44,7 @@ Driver-side knobs (read by `probe::client`):
 | `RUST_LOG=<filter>`       | `tracing` filter for the native composition (`probe::client` installs the subscriber). Example: `info,omnia_cursor=debug`. |
 | `EVAL_LOG=<path>`         | Log-file override. When unset, a named eval case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
 
-A run's spans — `eval.case` (this crate), `specify.command` (the
+A run's spans — `eval.case` (this crate), `emery.command` (the
 transport router), the engine orchestration spans (`plan.author`,
 `plan.execute.entry`, `slice.refine` / `slice.build` / `slice.merge`,
 `source.survey` / `source.extract`, `judgment.leg`), and
@@ -72,7 +72,7 @@ fresh sandbox. Two kinds exist:
   `.git`) and reuses that gitignored cache afterwards — for source
   trees that cannot ship as committed fixtures; delete the cached
   tree to refresh the snapshot.
-- **`kind = "build"`** — one `specify slice build <slice>` against a
+- **`kind = "build"`** — one `emery slice build <slice>` against a
   committed refined fixture (valid project + slice metadata; the runner
   never stamps lifecycle state), then the built gates.
 
@@ -88,7 +88,7 @@ that failure.
 
 ## Model judgment
 
-Specify core has two steps that require a model's judgement.
+Emery core has two steps that require a model's judgement.
 
 
 | Schema      | Step       | Crate    | Purpose                                                                                                                                     |

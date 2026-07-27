@@ -1,6 +1,6 @@
 # Contribution Guide
 
-Augentic welcomes contributions to the Specify framework. This document covers the essentials for getting a pull request accepted. For detailed guidance on the runtime, adapters, schemas, and Cursor skill wrappers, see the [Contributing section](docs/contributing/index.md) of the Developer Guide.
+Augentic welcomes contributions to the Emery framework. This document covers the essentials for getting a pull request accepted. For detailed guidance on the runtime, adapters, schemas, and Cursor skill wrappers, see the [Contributing section](docs/contributing/index.md) of the Developer Guide.
 
 ## Table of Contents
 
@@ -16,12 +16,12 @@ Unless you are fixing a known bug, we recommend discussing your change with the 
 
 The framework lives in one repository with two surfaces:
 
-- **Rust workspace** (`src/`, `crates/`, `examples/`) — the `specify` binary, guest orchestrations, and JSON schemas it distributes
-- **Prose and Cursor wrappers** (`plugins/`, `docs/`, `.cursor-plugin/`) — ultrathin `/spec:*` skill wrappers, documentation, and the marketplace manifest
+- **Rust workspace** (`src/`, `crates/`, `examples/`) — the `emery` binary, guest orchestrations, and JSON schemas it distributes
+- **Prose and Cursor wrappers** (`plugins/`, `docs/`, `.cursor-plugin/`) — ultrathin `/emery:*` skill wrappers, documentation, and the marketplace manifest
 
-Adapters live in the sibling [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters) repository.
+Adapters live in the sibling [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters) repository.
 
-See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides. To preview working-tree `/spec:*` skills against a local CLI, see [Cursor operator plugins](docs/contributing/operator-plugins.md).
+See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides. To preview working-tree `/emery:*` skills against a local CLI, see [Cursor operator plugins](docs/contributing/operator-plugins.md).
 
 ## Code style
 
@@ -33,7 +33,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 
 ### Docs and skill wrappers
 
-- Keep `/spec:*` skill bodies ultrathin invoke-and-relay — body style is guidance in [`docs/standards/cli-contract.md`](docs/standards/cli-contract.md)
+- Keep `/emery:*` skill bodies ultrathin invoke-and-relay — body style is guidance in [`docs/standards/cli-contract.md`](docs/standards/cli-contract.md)
 - `cargo make links` must pass before submitting a pull request that touches docs. See [Quality gates](docs/contributing/quality-gates.md#consistency-links).
 - Use kebab-case for file names, change names, and adapter identifiers
 - Generation behavior belongs in guest orchestrations or adapter prompts, not in skill bodies

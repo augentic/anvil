@@ -1,12 +1,12 @@
-# Native Specify — Native Host, Eval, and Lab Composition
+# Native Emery — Native Host, Eval, and Lab Composition
 
 > Status: Implemented (archived). Stages 1–5 complete; optional Stage 5 polish (`--version` flavor labels / help neutralization) deferred. Native operator distribution and shared catalog library remain follow-up (out of scope).
 >
-> Owns: the Wasm-free, statically composed host for the Specify engine; the small shared seams it needs; and its separation from live-model eval and in-repo lab composition.
+> Owns: the Wasm-free, statically composed host for the Emery engine; the small shared seams it needs; and its separation from live-model eval and in-repo lab composition.
 
 ## Abstract
 
-Specify is one product with two ways to satisfy the same capability contracts:
+Emery is one product with two ways to satisfy the same capability contracts:
 
 - the existing **Wasm deployment** composes the engine and adapters as components through Omnia;
 - the **native host** compiles the engine core and selected Rust adapter libraries into one process.
@@ -74,13 +74,13 @@ The native host makes those concerns visible:
 
 1. Establish the native host as a first-class way to run the same engine core and command contract as the Wasm flavor.
 2. Keep the native host out of the engine core; engine crates depend only on capability contracts and deployment-neutral adapter types.
-3. Preserve dependency inversion: `native` never depends on `eval`, `lab`, `mock`, Cursor crates, or `augentic/specify-adapters`.
+3. Preserve dependency inversion: `native` never depends on `eval`, `lab`, `mock`, Cursor crates, or `augentic/emery-adapters`.
 4. Compose with values: catalogs and model backends are supplied by composition roots; the host carries no binding trait, registration macro, or model type parameter.
 5. Make the native catalog a complete static declaration: each adapter's identity, operation axis, metadata, and embedded references.
 6. Let the native host satisfy an exact adapter pin when the compiled catalog contains that exact `(name, version)`; reject mismatches and local component selectors without silently substituting another implementation.
 7. Replace byte-oriented `Hydrator::fetch` with `Resolver::ensure` so initialization does not run component hydration before native catalog matching.
 8. Preserve workflow command I/O, exit codes, artifacts, lifecycle transitions, adapter operation order, and model request/answer shapes across providers; selector diagnostics and native provisioning remain the explicit divergences.
-9. Keep Specify's engine integration tests self-contained over local mock adapters through `native`'s library API.
+9. Keep Emery's engine integration tests self-contained over local mock adapters through `native`'s library API.
 10. Separate command execution from live-model eval: command mode lives in `native`; `eval` is optional and lab-only.
 11. Make runtime values and resources explicit: project root, cache parent, model value, MCP listener ownership.
 12. Keep one native implementation of provider dispatch, catalog construction, and MCP reference serving, with adapter operations monomorphized at exactly one model type (`DynModel`).
@@ -90,13 +90,13 @@ The native host makes those concerns visible:
 - Replacing the Wasm deployment.
 - Loading `.wasm` components from the native host.
 - Claiming WIT, component ABI, isolation, digest, or adapter-store coverage from native tests.
-- Moving first-party adapter implementations into the Specify repository.
-- Making Specify depend on the sibling `specify-adapters` checkout.
+- Moving first-party adapter implementations into the Emery repository.
+- Making Emery depend on the sibling `emery-adapters` checkout.
 - Changing workflow semantics, artifact schemas, lifecycle transitions, or prompts.
 - Making `adapter::Source` / `adapter::Target` object-safe; their operation methods remain generic associated functions. This RFC only adds static identity to their contract and erases the host's model handle.
 - Guaranteeing a fully static executable. The native host statically composes the Rust engine and adapters but may still use platform libraries and an external model backend.
 - Supporting two published adapters with the same name under different package namespaces. Adapter names remain globally unique across namespaces and axes for published adapters; namespace on a package selector is parse/display provenance, not a second engine identity.
-- Defining a native operator distribution (package name, install identity, coexistence with Wasm `specify`, bundle version, release cadence). The adapters `lab` owns the first-party catalog until a distribution decision needs a shared library.
+- Defining a native operator distribution (package name, install identity, coexistence with Wasm `emery`, bundle version, release cadence). The adapters `lab` owns the first-party catalog until a distribution decision needs a shared library.
 - Adding a `composition` package in this RFC. Extract `catalog()` from the adapters lab when a second consumer (a product binary) appears.
 - Serving the HTTP transport from the native host. The reference router must remain mountable by a later HTTP host without a second implementation.
 - Adding cooperative cancellation or concurrent multi-command service semantics. The initial native command path is one command to completion per process.
@@ -119,7 +119,7 @@ The native host makes those concerns visible:
 - **Adapter selector** — the operator-supplied shape retained through `ensure`: bare name, exact package reference, or local component path.
 - **Erased model (`DynModel`)** — the native host's one concrete model type: a reference-counted object-safe wrapper that any `Model` backend converts into.
 - **Eval library (`eval`)** — lab-only trial, scenario, grading, telemetry, sandbox, and eval CLI logic.
-- **Lab (`lab`)** — an unpublished repository composition binary that dispatches between native command passthrough and eval. Specify's lab binds mock adapters; the adapter repository's lab declares the first-party catalog and depends on the concrete adapter crates.
+- **Lab (`lab`)** — an unpublished repository composition binary that dispatches between native command passthrough and eval. Emery's lab binds mock adapters; the adapter repository's lab declares the first-party catalog and depends on the concrete adapter crates.
 - **Fixture adapters** — deterministic local SDK-native adapters in `crates/mock`, not mocks of the engine seam.
 
 ## Decision
@@ -149,7 +149,7 @@ lab  ──► eval + native + one repository-owned catalog
 
 One breath: engine code talks to capabilities; Wasm satisfies them with components; native satisfies them with a validated catalog and an erased model; labs and tests are composition roots that pass those values in; eval is just another client of the native command API.
 
-Dependency direction in the Specify workspace:
+Dependency direction in the Emery workspace:
 
 ```text
 lab ──► mock
@@ -160,7 +160,7 @@ tests ──► native (+ mock as needed)
 native ──✗──► eval
 native ──✗──► lab
 native ──✗──► mock
-native ──✗──► specify-adapters
+native ──✗──► emery-adapters
 native ──✗──► Cursor / omnia-cursor
 
 engine-core production dependencies ──✗──► native / eval / mock / lab
@@ -184,27 +184,27 @@ Cursor integration lives at composition roots (labs, and any future product bina
 
 ### Adapter composition
 
-Wasm `specify` ships the engine and composes adapter components dynamically. The operator binary has no compile-time dependency on `specify-adapters`.
+Wasm `emery` ships the engine and composes adapter components dynamically. The operator binary has no compile-time dependency on `emery-adapters`.
 
 Native composition is static:
 
-1. Specify owns `crates/native` and the native command API.
-2. Specify ships no first-party-bound native executable; that would introduce a reverse dependency on `specify-adapters`.
-3. Specify's `lab` uses `mock::catalog()`.
+1. Emery owns `crates/native` and the native command API.
+2. Emery ships no first-party-bound native executable; that would introduce a reverse dependency on `emery-adapters`.
+3. Emery's `lab` uses `mock::catalog()`.
 4. The adapter repository's `lab` depends on `eval`, `native`, and the concrete first-party adapters, and owns `catalog()` (plus a CI inventory check that every first-party adapter appears exactly once on its axis).
 5. When a native operator distribution binary appears later, extract the shared catalog into a library both the lab and that binary consume. This RFC does not add that library.
 
 ```text
-augentic/specify                         augentic/specify-adapters
+augentic/emery                         augentic/emery-adapters
 ────────────────                         ─────────────────────────
 native host library ───────────────────► lab binary
 eval library ──────────────────────────►   catalog() + command/eval dispatch
-mock catalog ─► Specify lab             concrete first-party adapters
+mock catalog ─► Emery lab             concrete first-party adapters
 ```
 
 ### Dependency enforcement
 
-The Specify `checks` package enforces dependency direction by parsing Cargo manifests:
+The Emery `checks` package enforces dependency direction by parsing Cargo manifests:
 
 - `error`, `diagnostics`, `artifacts`, `adapter`, `project`, `slice`, `change`, and `transport` reject `native`, `eval`, `mock`, `lab`, and the removed `harness` in production and build dependencies;
 - explicit dev-dependencies on `native` and `mock` remain legal for engine integration suites;
@@ -214,7 +214,7 @@ The Specify `checks` package enforces dependency direction by parsing Cargo mani
 The adapter repository adds its own checks:
 
 - the lab's default catalog contains every first-party adapter exactly once on its declared axis; any subset feature declares and tests its reduced expected inventory;
-- published first-party adapter names remain globally unique across axes (store has no axis segment). Fixture's dual-axis `mock` name is Specify-local and unpublished.
+- published first-party adapter names remain globally unique across axes (store has no axis segment). Fixture's dual-axis `mock` name is Emery-local and unpublished.
 
 Extend the existing `checks` manifest coverage with these rules, then retire `crates/harness/tests/boundary.rs`; the invariant moves rather than disappearing.
 
@@ -314,7 +314,7 @@ Init, upgrade, and plan differences stay in handlers (`if upgrade { … }`); the
 
 Ensure and resolve receive `AdapterSelector`, so a persisted local component URI can never be silently narrowed to a bare native name.
 
-Native initialization and upgrade persist the operator's selector as given. Resolve/ensure report the catalog entry's actual version in the resolved identity; they do not rewrite a bare binding into an exact package pin. Upgrade re-ensures the recorded binding and updates the Specify pin without silently changing the adapter selector.
+Native initialization and upgrade persist the operator's selector as given. Resolve/ensure report the catalog entry's actual version in the resolved identity; they do not rewrite a bare binding into an exact package pin. Upgrade re-ensures the recorded binding and updates the Emery pin without silently changing the adapter selector.
 
 ### Adapter reference semantics
 
@@ -325,9 +325,9 @@ Native ensure is a static package match, not a component-store lookup:
 - **Mismatched pins** fail as `adapter-not-linked`, naming the native version and pointing to a compatible native build or the Wasm deployment.
 - **Local components** fail as unsupported by the native host before component cache writes occur.
 - **Hydration and digests** do not apply to native entries.
-- **Version floors** remain enforced at runtime. Rust compilation proves trait compatibility, not semantic compatibility with the adapter's declared `specify_floor`.
+- **Version floors** remain enforced at runtime. Rust compilation proves trait compatibility, not semantic compatibility with the adapter's declared `emery_floor`.
 
-A project carrying an exact first-party adapter pin can move between providers once the active deployment has ensured that identity (`specify init --upgrade` installs a missing component; native ensure matches the catalog). The component deployment verifies component bytes; the native host asserts the package identity compiled into its catalog.
+A project carrying an exact first-party adapter pin can move between providers once the active deployment has ensured that identity (`emery init --upgrade` installs a missing component; native ensure matches the catalog). The component deployment verifies component bytes; the native host asserts the package identity compiled into its catalog.
 
 ### Source binding resolution (Stage 1b)
 
@@ -335,16 +335,16 @@ Today `SourceBinding.version` is persisted but survey/extract dispatch ignores i
 
 Stage 1b closes the gap after Stage 1's shared seams land:
 
-- plan-author source parsing accepts the first-party shorthand `<name>@<semver>` (implicit `specify` namespace) and materializes the existing `adapter` plus `version` fields;
+- plan-author source parsing accepts the first-party shorthand `<name>@<semver>` (implicit `emery` namespace) and materializes the existing `adapter` plus `version` fields;
 - plan author ensures every source binding before survey;
-- `source survey` and `source extract` ensure/resolve the binding again before dispatch, enforcing exact version and `specify_floor`;
+- `source survey` and `source extract` ensure/resolve the binding again before dispatch, enforcing exact version and `emery_floor`;
 - dispatch uses the resolved source name only after that succeeds.
 
 Package namespace is not added to `SourceBinding`. Stage 1b may land before or after Stage 2; it must not block the `native` extract.
 
 ### Execution paths and cache isolation
 
-The current eval helper mutates `SPECIFY_PROJECT_CACHE` under a scoped unsafe guard. That is not a sound configuration mechanism for a reusable multithreaded host.
+The current eval helper mutates `EMERY_PROJECT_CACHE` under a scoped unsafe guard. That is not a sound configuration mechanism for a reusable multithreaded host.
 
 The provider-carried path value gains an optional explicit cache parent alongside the project root:
 
@@ -360,7 +360,7 @@ The type lives in `project::handler` beside `Anchor`, exposes read-only accessor
 - native lab execution passes a canonical project root and inherits the operator's configured/default cache parent;
 - eval and mock sessions pass a sandbox-local cache parent;
 - the Wasm provider continues to resolve the guest cache mount;
-- `SPECIFY_PROJECT_CACHE` remains a process-start configuration input, not a variable changed while tasks are running.
+- `EMERY_PROJECT_CACHE` remains a process-start configuration input, not a variable changed while tasks are running.
 
 `ExecutionPaths::operator(root)` captures the process-start cache configuration; `ExecutionPaths::isolated(root, cache_parent)` supplies an explicit parent. The provider's anchoring capability exposes the value, and internal `Layout`/cache helpers carry the override from operation context. This is deployment configuration, not a test-only public API widening.
 
@@ -610,7 +610,7 @@ Eval scratch state receives an explicit sandbox-local cache parent. The persiste
 
 Each repository owns an unpublished `lab` binary. It creates one Tokio runtime through its async `main`, parses its own lab-only arguments, constructs any Cursor backend, owns its catalog declaration, and dispatches visibly between native command mode and `eval::run`.
 
-- ordinary arguments run a Specify command through `native`;
+- ordinary arguments run a Emery command through `native`;
 - `eval` runs the shared eval client;
 - `--project-dir` is parsed only here;
 - when placed before `eval`, `--project-dir` intentionally anchors that eval's `sandbox/` instead of relying on process current directory;
@@ -623,7 +623,7 @@ Integration tests assemble an offline `native::Provider` directly and never requ
 
 ## Adapter-repository composition
 
-`augentic/specify-adapters` consumes Specify's `adapter`, `native`, and lab-only `eval` crates one-way.
+`augentic/emery-adapters` consumes Emery's `adapter`, `native`, and lab-only `eval` crates one-way.
 
 | Target | Role                                     | Entry                         | Catalog                      |
 | ------ | ---------------------------------------- | ----------------------------- | ---------------------------- |
@@ -635,7 +635,7 @@ The wasm example remains a separate Wasm gate. A future native product binary wo
 
 | Concern                | Wasm deployment                          | Native host                                              |
 | ---------------------- | ---------------------------------------- | -------------------------------------------------------- |
-| Specify product        | Existing released `specify` distribution | Follow-up distribution; lab owns catalog until then      |
+| Emery product        | Existing released `emery` distribution | Follow-up distribution; lab owns catalog until then      |
 | Workflow composition   | `src/lib.rs` + WIT-backed provider       | `native::Provider` + async command assembly              |
 | Adapter declaration    | component deployment configuration       | validated `Catalog` value                                |
 | Adapter identity       | package/store identity                   | compile-time SDK `(name, version)`                       |
@@ -691,7 +691,7 @@ CLI-reachable workflow behavior goes through the transport router. Native host d
 - source/target function-pointer dispatch;
 - bare and exact-pin ensure;
 - mismatched-pin and component-selector refusal;
-- runtime `specify_floor` enforcement;
+- runtime `emery_floor` enforcement;
 - reference no-op, bind failure, grant routing, and shutdown.
 
 No native production dependency on mock is introduced. Same-name source and target probe entries are allowed (mirroring mock).
@@ -716,7 +716,7 @@ Fixture behavior, answer recording, and catalog inventory remain under `crates/m
 No native test claims Wasm coverage. Existing component gates remain:
 
 - adapter crate tests;
-- the Specify mock wasm example;
+- the Emery mock wasm example;
 - the first-party wasm example over the published engine component.
 
 ## Module migration
@@ -744,7 +744,7 @@ Move the current `crates/eval` binary to `crates/lab`, then create the new `crat
 
 ## Cargo and feature layout
 
-### Specify workspace
+### Emery workspace
 
 ```toml
 native = { path = "crates/native" }
@@ -791,14 +791,14 @@ Both `eval` and `lab` are `publish = false` and never attached to a release.
 Replace the harness dependency with:
 
 ```toml
-adapter = { git = "https://github.com/augentic/specify.git" }
-native = { git = "https://github.com/augentic/specify.git" }
-eval = { git = "https://github.com/augentic/specify.git" }
+adapter = { git = "https://github.com/augentic/emery.git" }
+native = { git = "https://github.com/augentic/emery.git" }
+eval = { git = "https://github.com/augentic/emery.git" }
 ```
 
 These are root `[workspace.dependencies]` declarations, not dependencies of every member:
 
-| Adapter-repository member    | Specify dependencies                                                   |
+| Adapter-repository member    | Emery dependencies                                                   |
 | ---------------------------- | ---------------------------------------------------------------------- |
 | source/target adapter crates | `adapter`                                                              |
 | `lab`                        | `eval`, `native/cli`, Cursor crates, and concrete first-party adapters |
@@ -848,7 +848,7 @@ Depends on Stage 1's `AdapterSelector` and `ensure_*`. Does not block Stage 2.
 
 1. Accept `<name>@<semver>` at plan-author source parsing into the existing `adapter` / `version` wire fields.
 2. Ensure every plan source binding before survey.
-3. Ensure/resolve again in `source survey` and `source extract` before dispatch; enforce exact version and `specify_floor`.
+3. Ensure/resolve again in `source survey` and `source extract` before dispatch; enforce exact version and `emery_floor`.
 4. Keep the `SourceBinding` schema unchanged; add no package namespace field.
 
 ### Stage 2 — Extract the native host
@@ -874,15 +874,15 @@ Depends on Stage 1's `AdapterSelector` and `ensure_*`. Does not block Stage 2.
 
 ### Stage 4 — Adapter repository
 
-1. Pin a Specify revision exposing `adapter`, `native`, and `eval`.
+1. Pin a Emery revision exposing `adapter`, `native`, and `eval`.
 2. Update every first-party adapter identity and native test support.
 3. Rename adapter `eval` to `lab`, flip it to `publish = false`, declare first-party `catalog()` in the lab, depend on concrete adapters, and construct the Cursor model in the lab.
 4. Add a catalog inventory check (every first-party adapter exactly once on its axis; global published-name uniqueness across axes).
-5. Confirm no reverse dependency from Specify to `specify-adapters`.
+5. Confirm no reverse dependency from Emery to `emery-adapters`.
 
 ### Stage 5 — Documentation and checks
 
-Update both repositories' `AGENTS.md`, adapter `TESTING.md`, Specify testing/architecture/workflow standards, quality-gate docs, Makefiles, CLI help, and rustdoc.
+Update both repositories' `AGENTS.md`, adapter `TESTING.md`, Emery testing/architecture/workflow standards, quality-gate docs, Makefiles, CLI help, and rustdoc.
 
 Document:
 
@@ -897,11 +897,11 @@ Document:
 
 Optionally neutralize shared help wording and add a composition-supplied `--version` label. Cosmetic renames remain optional.
 
-Extend Specify and adapters checks with the dependency rules above.
+Extend Emery and adapters checks with the dependency rules above.
 
 ### Stage 6 — Verification
 
-In `augentic/specify`:
+In `augentic/emery`:
 
 ```bash
 cargo make check
@@ -909,11 +909,11 @@ cargo make ci
 cargo make lab -- --help
 cargo make lab -- --version
 cargo make eval
-cargo check --lib -p specify --examples --target wasm32-wasip2
+cargo check --lib -p emery --examples --target wasm32-wasip2
 cargo make wasm-run
 ```
 
-In `augentic/specify-adapters`:
+In `augentic/emery-adapters`:
 
 ```bash
 cargo make check
@@ -928,7 +928,7 @@ Live-model and composed wasm-run commands remain operator-invoked when credentia
 
 ## Acceptance criteria
 
-1. Documentation presents Specify's engine core with a Wasm provider and a native host, without claiming native component/WIT/store properties.
+1. Documentation presents Emery's engine core with a Wasm provider and a native host, without claiming native component/WIT/store properties.
 2. `adapter::Source` and `adapter::Target` expose validated static `AdapterIdentity { name, version }` while retaining generic associated operation methods.
 3. `AdapterSelector` preserves bare, package, and component input kinds through ensure; the lossy `AdapterRef` no longer exists.
 4. `Hydrator` is gone; `Resolver::ensure_source` / `ensure_target` own deployment policy. There is no `AdapterDeployment` trait.
@@ -936,30 +936,30 @@ Live-model and composed wasm-run commands remain operator-invoked when credentia
 6. The native host resolves bare names to actual catalog versions and satisfies exact package pins present in the catalog.
 7. Mismatched pins and local component selectors fail as `adapter-not-linked`; a local path can never select a same-named compiled adapter.
 8. Native init and upgrade persist the operator's selector as typed; bare bindings are not rewritten into exact package pins.
-9. The runtime `specify_floor` gate remains active for native catalog entries at ensure time.
+9. The runtime `emery_floor` gate remains active for native catalog entries at ensure time.
 10. `Catalog` and `Provider` carry no model type parameter; no `Binding` trait or `adapters!` macro remains.
 11. Catalog construction validates identities, per-axis duplicates, and reference shelf coherence; same-name source and target entries remain legal (mock keeps `mock` on both axes).
 12. `native` contains no concrete adapter, mock, eval, lab, or Cursor dependency in production dependencies.
 13. Command execution accepts execution paths, model, catalog, and argv values; libraries do not construct Tokio runtimes.
 14. Lab command execution anchors at a canonical project root; lab-only `--project-dir` is canonicalized before provider construction.
-15. Cache isolation is explicit in execution context; no native/eval/mock path mutates `SPECIFY_PROJECT_CACHE` after runtime startup.
+15. Cache isolation is explicit in execution context; no native/eval/mock path mutates `EMERY_PROJECT_CACHE` after runtime startup.
 16. Online providers fail loudly when reference documents cannot be served, no-op for no-doc catalogs, share one listener across clones, and expose an awaited shutdown path used by command execution.
 17. `eval` receives workspace root, catalog, and model factory values, constructs neither concrete adapters nor Cursor backends, and creates no runtime.
 18. Scenario reports derive the effective model from observed requests plus the factory-supplied default.
-19. Specify engine integration tests use offline `native` plus mock adapters and caller-held recording-model handles.
+19. Emery engine integration tests use offline `native` plus mock adapters and caller-held recording-model handles.
 20. The adapter repository's lab owns first-party `catalog()`; this RFC adds no `composition` package.
 21. Both labs remain unpublished and are never documented as install paths.
 22. `cargo make lab`, `cargo make eval`, and prompt scenarios preserve their lab behavior.
 23. The Wasm engine guest, component manifests, shipped Wasm runtime behavior, and current Wasm release surface remain intact.
 24. Native tests explicitly avoid claiming component ABI, WIT, isolation, digest, or adapter-store coverage.
 25. The native command path is documented as single-flight; eval guards its persistent sandbox against concurrent writers.
-26. Specify and adapter-repository checks enforce their respective dependency and catalog boundaries.
+26. Emery and adapter-repository checks enforce their respective dependency and catalog boundaries.
 27. Full local CI passes in both repositories, or unavailable live gates are reported precisely.
 28. Documentation leaves native operator distribution and any shared catalog-library extraction to follow-up work.
 
 Stage 1b acceptance (does not block Stages 2–6):
 
-29. Plan author ensures source bindings, while survey/extract ensure/resolve them again; source pins and `specify_floor` can no longer bypass deployment policy on the source axis.
+29. Plan author ensures source bindings, while survey/extract ensure/resolve them again; source pins and `emery_floor` can no longer bypass deployment policy on the source axis.
 
 ## Risks and mitigations
 
@@ -1097,9 +1097,9 @@ Rejected for this cut. With one consumer, the adapters lab can own `catalog()` a
 
 Deferred. Distribution identity is undecided. Lab-owned catalog is enough until then.
 
-### Put the first-party native executable in Specify
+### Put the first-party native executable in Emery
 
-Rejected. It would create a Specify-to-`specify-adapters` dependency or move adapters in-tree.
+Rejected. It would create a Emery-to-`emery-adapters` dependency or move adapters in-tree.
 
 ### Treat the lab as the native product
 
@@ -1115,15 +1115,15 @@ Rejected. If a version label is added later, an opaque string from the compositi
 
 ### Move the model bridge to Omnia now
 
-Deferred. Labs may keep a private bridge. Upstreaming it is not required to separate Specify's host and eval boundaries.
+Deferred. Labs may keep a private bridge. Upstreaming it is not required to separate Emery's host and eval boundaries.
 
 ### Move `native` to a separate repository
 
-Rejected. It evolves atomically with workflow, transport, and adapter SDK contracts; Specify's tests consume it directly.
+Rejected. It evolves atomically with workflow, transport, and adapter SDK contracts; Emery's tests consume it directly.
 
 ## Consequences
 
-- Specify has one engine core with a Wasm provider and a native host.
+- Emery has one engine core with a Wasm provider and a native host.
 - `native` is a reusable host library; `eval` and `lab` are lab-only; Cursor stays at composition roots.
 - Composition is value-level end to end: catalog, model, execution paths, and argv.
 - Adapter selectors retain their input kind; `Resolver::ensure_*` is the deployment policy entry.

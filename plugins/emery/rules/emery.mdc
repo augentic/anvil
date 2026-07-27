@@ -1,13 +1,13 @@
 ---
-description: Specify plugin context -- Specify workflow orchestration for planning, executing, refining, building, merging, and dropping slices
+description: Emery plugin context -- Emery workflow orchestration for planning, executing, refining, building, merging, and dropping slices
 alwaysApply: true
 ---
 
-# Specify Plugin - Specify Workflow
+# Emery Plugin - Emery Workflow
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: initialize a project, plan a change, approve and execute the plan, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `specify` CLI verb and relays its output; `/spec:execute` wraps the guest-routed `specify plan execute` loop behind an explicit Gate 1 confirmation.
+This plugin provides the core Emery workflow skills: initialize a project, plan a change, approve and execute the plan, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output; `/emery:execute` wraps the guest-routed `emery plan execute` loop behind an explicit Gate 1 confirmation.
 
 **Purpose**: Drive the `plan -> execute` rhythm (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 
@@ -30,7 +30,7 @@ refining -> refined -> built -> merged
      `--------> `-------> `-------> dropped
 ```
 
-- **refining**: Slice directory created; `/spec:refine` extract + synthesis in flight
+- **refining**: Slice directory created; `/emery:refine` extract + synthesis in flight
 - **refined**: Proposal, spec, design, and tasks are validated
 - **built**: All tasks done, ready to merge
 - **merged**: Delta specs merged into baseline, slice archived
@@ -41,46 +41,46 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata
 ## Workflow
 
 ```text
-/spec:init <target>               (once per project; for a registry-only workspace, use specify init --workspace)
+/emery:init <target>               (once per project; for a registry-only workspace, use emery init --workspace)
 
-/spec:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
+/emery:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
 
-/spec:execute                     (Gate 1 on explicit operator confirmation, then the guest-routed
+/emery:execute                     (Gate 1 on explicit operator confirmation, then the guest-routed
                                    refine -> build -> merge loop; CLI equivalent:
-                                   specify plan approve + specify plan execute)
+                                   emery plan approve + emery plan execute)
 
-/spec:finalize <name>             (confirm publication, archive plan)
+/emery:finalize <name>             (confirm publication, archive plan)
 ```
 
 Breakouts invoke the same guest orchestrations one slice at a time, when the execute loop parks or the operator wants to drive a slice by hand:
 
-- **/spec:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined` (`specify slice refine`).
-- **/spec:build**: Build one slice through its target adapter (`specify slice build`).
-- **/spec:merge**: Fold a slice's deltas into the baseline and archive it (`specify slice merge run`).
-- **/spec:drop**: Abandon a slice without merging (`specify slice drop`).
+- **/emery:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined` (`emery slice refine`).
+- **/emery:build**: Build one slice through its target adapter (`emery slice build`).
+- **/emery:merge**: Fold a slice's deltas into the baseline and archive it (`emery slice merge run`).
+- **/emery:drop**: Abandon a slice without merging (`emery slice drop`).
 
 ## Troubleshooting
 
 ### Project not initialized
 
-- Run `/spec:init <target>` in the project root to create `.specify/` and write `project.yaml`
-- Verify `.specify/project.yaml` exists
+- Run `/emery:init <target>` in the project root to create `.emery/` and write `project.yaml`
+- Verify `.emery/project.yaml` exists
 
 ### Slice not found
 
-- Inspect `.specify/slices/` to see active slices
+- Inspect `.emery/slices/` to see active slices
 - Check the slice name matches (kebab-case)
 
 ### Artifacts incomplete
 
-- Run `specify slice validate <name>` to check artifact status
-- Re-run `/spec:refine <name>` to regenerate artifacts for one slice
-- Re-run `/spec:plan <name> ...` to author a fresh change
+- Run `emery slice validate <name>` to check artifact status
+- Re-run `/emery:refine <name>` to regenerate artifacts for one slice
+- Re-run `/emery:plan <name> ...` to author a fresh change
 
 ## Related Documentation
 
 - See the project root `AGENTS.md` for overall project context
-- [Init SKILL.md](skills/init/SKILL.md) — Initialize Specify
+- [Init SKILL.md](skills/init/SKILL.md) — Initialize Emery
 - [Plan SKILL.md](skills/plan/SKILL.md) — Author `change.md` + `plan.yaml`
 - [Execute SKILL.md](skills/execute/SKILL.md) — Confirm Gate 1, then drive the drained per-slice loop
 - [Refine SKILL.md](skills/refine/SKILL.md) — Synthesize artifacts for one slice
@@ -88,7 +88,7 @@ Breakouts invoke the same guest orchestrations one slice at a time, when the exe
 - [Merge SKILL.md](skills/merge/SKILL.md) — Finalize completed slices
 - [Drop SKILL.md](skills/drop/SKILL.md) — Discard a slice without merging specs
 - [Finalize SKILL.md](skills/finalize/SKILL.md) — Close out a change
-- [Specify Artifact Guidance Supplement](../../../docs/explanation/augentic-specify-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
+- [Emery Artifact Guidance Supplement](../../../docs/explanation/augentic-emery-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
 
 ## Specification
 

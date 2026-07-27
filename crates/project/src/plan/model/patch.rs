@@ -70,7 +70,7 @@ pub struct EntryPatch {
     pub context: Option<Vec<String>>,
     /// Set `divergence` when `Some`. `None` leaves the field
     /// untouched. The CLI is the only caller that materialises this
-    /// patch (`specify plan amend --divergence`) — divergence and writer-ownership contract
+    /// patch (`emery plan amend --divergence`) — divergence and writer-ownership contract
     /// widens the accepted operator surface to include `Likely`
     /// alongside `Accepted` / `Rejected`; the implicit `None` value
     /// is still rejected at the flag-parser level (omit

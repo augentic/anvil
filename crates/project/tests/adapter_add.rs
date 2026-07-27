@@ -1,4 +1,4 @@
-//! `specify adapter add` — the pre-init cache-seeding surface: seed →
+//! `emery adapter add` — the pre-init cache-seeding surface: seed →
 //! bare init, seed → bare source resolve, per-component provenance
 //! sidecars that never clobber each other, and same-name reseeding as
 //! the replacement act.
@@ -33,7 +33,7 @@ fn stage(provider: &Provider, relative: &str, bytes: &[u8]) {
 
 #[tokio::test]
 async fn pre_init_target_seed_then_bare_init() {
-    // No `.specify/` exists yet: the seed lands in the out-of-tree
+    // No `.emery/` exists yet: the seed lands in the out-of-tree
     // cache, and the subsequent bare init resolves it as the project
     // target without any development build present.
     let project = Provider::bare();
@@ -41,7 +41,7 @@ async fn pre_init_target_seed_then_bare_init() {
 
     let body = seed(&project, "downloads/demo.wasm").await;
     assert_eq!(body.name, "demo");
-    assert!(!project.root.join(".specify").exists(), "seeding scaffolds nothing");
+    assert!(!project.root.join(".emery").exists(), "seeding scaffolds nothing");
 
     let init = run::<project::init::handlers::Init, _, _>(
         &project,

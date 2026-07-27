@@ -1,8 +1,8 @@
 # Documentation authoring standards
 
-House rules for the Specify Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css).
+House rules for the Emery Developer Guide (`docs/`). The guide is built with [mdBook](https://rust-lang.github.io/mdBook/) and deployed from [`.github/workflows/docs.yaml`](../../.github/workflows/docs.yaml). The visual system lives in [`docs/assets/theme/emery-docs.css`](../assets/theme/emery-docs.css).
 
-**Runtime vs book:** Core judgment prose is embedded in the `specify` binary from `crates/slice/prompts/` and `crates/change/prompts/`; adapter prompts and references ship inside each adapter component in `augentic/specify-adapters`. The plugin cache ships only `plugins/`, so skill bodies link only to plugin-local `references/…` siblings — never into `docs/` with relative paths. Use `https://specify.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
+**Runtime vs book:** Core judgment prose is embedded in the `emery` binary from `crates/slice/prompts/` and `crates/change/prompts/`; adapter prompts and references ship inside each adapter component in `augentic/emery-adapters`. The plugin cache ships only `plugins/`, so skill bodies link only to plugin-local `references/…` siblings — never into `docs/` with relative paths. Use `https://emery.augentic.io/<chapter>.html` only for optional human-oriented depth in reference tables.
 
 ## Document types (Diátaxis)
 
@@ -15,7 +15,7 @@ Organise chapters by reader intent. The `docs/SUMMARY.md` section order follows 
 | **Explanation** | `explanation/`, `orientation/` | Understand concepts and design            | Prose + SVG diagrams; no step-by-step commands as primary content |
 | **Reference**   | `reference/`, `appendices/`    | Look up precise facts                     | Synopsis first; tables; link to explanation for rationale         |
 
-Getting Started (`orientation/`) is setup and path selection only — vocabulary lives under Understanding Specify (`explanation/concepts.md`).
+Getting Started (`orientation/`) is setup and path selection only — vocabulary lives under Understanding Emery (`explanation/concepts.md`).
 
 Contributing and standards docs (`contributing/`, `standards/`) follow reference conventions unless they are explicitly procedural how-tos.
 
@@ -23,7 +23,7 @@ Chapters that use a hero block should **omit** the duplicate `# Title` H1 — th
 
 ## Visual system
 
-The book ships a forked mdbook theme ([`docs/theme/`](../theme/index.hbs)) plus the cross-cutting stylesheet at [`docs/assets/theme/specify-docs.css`](../assets/theme/specify-docs.css). Reuse the component classes instead of inventing ad-hoc styling:
+The book ships a forked mdbook theme ([`docs/theme/`](../theme/index.hbs)) plus the cross-cutting stylesheet at [`docs/assets/theme/emery-docs.css`](../assets/theme/emery-docs.css). Reuse the component classes instead of inventing ad-hoc styling:
 
 | Class                                                              | Use                                                                                  |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
@@ -42,7 +42,7 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/index.hbs)) plus 
 | `.card-grid` + `.card` + `.card-time`                              | Section landing page link cards                                                      |
 | `.synopsis`                                                        | Reference page scannable lead                                                        |
 | `.see-also`                                                        | Consistent footer link block                                                         |
-| `.platform` + `.platform-product[data-active=true]`                | Augentic product stack strip (Specify / Omnia / Vectis)                              |
+| `.platform` + `.platform-product[data-active=true]`                | Augentic product stack strip (Emery / Omnia / Vectis)                              |
 | `.status-pill`                                                     | Inline status badge (e.g. Draft)                                                     |
 | `.pill.agreed` / `.divergence` / `.conflict`                       | Inline requirement status chips                                                      |
 | `.authority-widget`                                                | Interactive authority resolution demo (adapter-anatomy only)                         |
@@ -50,7 +50,7 @@ The book ships a forked mdbook theme ([`docs/theme/`](../theme/index.hbs)) plus 
 
 ## HTML component blocks
 
-Copy HTML scaffolds from [`docs/authoring-snippets/`](../authoring-snippets/README.md) or from the exemplar chapters listed under [Page-type scaffolds](#page-type-scaffolds). Paste the markup directly into chapter markdown — mdBook passes it through to the HTML renderer. Styles live in [`specify-docs.css`](../assets/theme/specify-docs.css); do not invent one-off CSS.
+Copy HTML scaffolds from [`docs/authoring-snippets/`](../authoring-snippets/README.md) or from the exemplar chapters listed under [Page-type scaffolds](#page-type-scaffolds). Paste the markup directly into chapter markdown — mdBook passes it through to the HTML renderer. Styles live in [`emery-docs.css`](../assets/theme/emery-docs.css); do not invent one-off CSS.
 
 ### Hero block
 
@@ -58,7 +58,7 @@ Omit the duplicate `# Title` H1 when using a hero — the hero owns the page tit
 
 ```html
 <div class="hero">
-<div class="eyebrow">Specify Developer Guide</div>
+<div class="eyebrow">Emery Developer Guide</div>
 <h1 class="hero-title">From prompts to durable specs</h1>
 
 First paragraph is styled as the lede automatically.
@@ -116,8 +116,8 @@ Available `data-d` values are `D1`–`D8`; they drive the tag colour.
 <div class="audience-grid">
 
 <div class="audience">
-<h4>New to Specify</h4>
-Read [What is Specify?](orientation/index.md)…
+<h4>New to Emery</h4>
+Read [What is Emery?](orientation/index.md)…
 </div>
 
 </div>
@@ -130,7 +130,7 @@ Read [What is Specify?](orientation/index.md)…
 <span class="step-label">Step 01</span>
 <h3 class="step-title">Initialise the project</h3>
 
-Run once per project: `/spec:init omnia`
+Run once per project: `/emery:init omnia`
 </div>
 ```
 
@@ -154,7 +154,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```html
 <div class="synopsis">
-Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `emery plan *`.
 </div>
 
 <div class="see-also">
@@ -170,7 +170,7 @@ Optional `variant=` values: `gate`, `gotcha`, `success`, `unchanged`. Omit `vari
 
 ```markdown
 \{{#template templates/tutorial-step-open.md num=01 title=Initialise the project}}
-Run once per project: `/spec:init omnia`
+Run once per project: `/emery:init omnia`
 \{{#template templates/tutorial-step-close.md}}
 ```
 
@@ -178,7 +178,7 @@ Run once per project: `/spec:init omnia`
 
 ```markdown
 \{{#template templates/prereq-open.md}}
-Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI, …
+Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `emery` CLI, …
 \{{#template templates/prereq-close.md}}
 ```
 
@@ -186,7 +186,7 @@ Complete [Prerequisites](../orientation/prerequisites.md): Cursor, `specify` CLI
 
 ```markdown
 \{{#template templates/when-open.md}}
-Use this guide when `specify plan execute` parks on build or merge failure.
+Use this guide when `emery plan execute` parks on build or merge failure.
 \{{#template templates/when-close.md}}
 ```
 
@@ -195,7 +195,7 @@ Use this guide when `specify plan execute` parks on build or merge failure.
 ```markdown
 \{{#template templates/rhythm-open.md}}
 \{{#template templates/rhythm-step-open.md num=01 label=Plan title=Define the change}}
-`/spec:plan` writes `plan.yaml` and exits at `pending`.
+`/emery:plan` writes `plan.yaml` and exits at `pending`.
 \{{#template templates/rhythm-step-close.md}}
 \{{#template templates/rhythm-close.md}}
 ```
@@ -214,7 +214,7 @@ Run a one-slice Omnia change from intent through finalize.
 
 ```markdown
 \{{#template templates/synopsis-open.md}}
-Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
+Agent-driven orchestrator. Deterministic work delegates to `emery plan *`.
 \{{#template templates/synopsis-close.md}}
 ```
 
@@ -231,7 +231,7 @@ Agent-driven orchestrator. Deterministic work delegates to `specify plan *`.
 
 ```markdown
 \{{#template templates/platform-open.md}}
-\{{#template templates/platform-product-open.md name=Specify role=Engine active=true}}
+\{{#template templates/platform-product-open.md name=Emery role=Engine active=true}}
 Enforces the spec-first rhythm documented in this guide.
 \{{#template templates/platform-product-close.md}}
 \{{#template templates/platform-close.md}}
@@ -266,7 +266,7 @@ Use mdBook 0.5 [native admonitions](https://rust-lang.github.io/mdBook/format/ma
 
 ```markdown
 > [!IMPORTANT]
-> **Gate 1.** The operator stamps `approved` explicitly — `/spec:plan` never writes it.
+> **Gate 1.** The operator stamps `approved` explicitly — `/emery:plan` never writes it.
 ```
 
 Multi-line bodies prefix every line with `> `.
@@ -285,7 +285,7 @@ Copy the exemplar chapter for each Diátaxis type when authoring or migrating pa
 
 ## Palette and theme picker
 
-Light / dark mode is driven by mdbook's theme picker (the paintbrush icon in the menu bar). The relevant CSS variable buckets live at the top of [`specify-docs.css`](../assets/theme/specify-docs.css):
+Light / dark mode is driven by mdbook's theme picker (the paintbrush icon in the menu bar). The relevant CSS variable buckets live at the top of [`emery-docs.css`](../assets/theme/emery-docs.css):
 
 - `html.light`, `html.rust` → light palette
 - `html.coal`, `html.navy`, `html.ayu` → dark palette
@@ -294,7 +294,7 @@ OS-level `prefers-color-scheme` is available via the **Auto** entry in mdBook's 
 
 ## Sidebar heading navigation
 
-mdBook 0.5 adds an **On this page** block to the left sidebar while you read a chapter. Every `##` and `###` heading appears automatically — no author opt-in. Style overrides live in [`specify-docs.css`](../assets/theme/specify-docs.css) and [`theme/css/chrome.css`](../theme/css/chrome.css).
+mdBook 0.5 adds an **On this page** block to the left sidebar while you read a chapter. Every `##` and `###` heading appears automatically — no author opt-in. Style overrides live in [`emery-docs.css`](../assets/theme/emery-docs.css) and [`theme/css/chrome.css`](../theme/css/chrome.css).
 
 ## Diagram policy
 

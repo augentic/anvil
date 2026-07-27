@@ -38,7 +38,7 @@ fn append_all(layout: Layout<'_>, events: &[Event]) -> Result<(), Error> {
     if events.is_empty() {
         return Ok(());
     }
-    std::fs::create_dir_all(layout.specify_dir())?;
+    std::fs::create_dir_all(layout.emery_dir())?;
     let path = path(layout);
     let mut payload = String::new();
     for event in events {
@@ -61,7 +61,7 @@ fn append_all(layout: Layout<'_>, events: &[Event]) -> Result<(), Error> {
 /// without changing the calling verb's exit code.
 pub(super) fn record_dropped(layout: Layout<'_>, scope: &str, event: &Event, err: &Error) {
     let journal = path(layout);
-    let sidecar = layout.specify_dir().join(DROPPED_FILE_NAME);
+    let sidecar = layout.emery_dir().join(DROPPED_FILE_NAME);
     if append_dropped(layout, event).is_ok() {
         eprintln!(
             "warning: {scope}: failed to append journal event to {} ({err}); \
@@ -85,8 +85,8 @@ pub(super) fn append_dropped(layout: Layout<'_>, event: &Event) -> Result<(), Er
         code: "journal-event-serialise-failed",
         detail: format!("failed to serialise dropped journal event: {err}"),
     })?;
-    std::fs::create_dir_all(layout.specify_dir())?;
-    let sidecar = layout.specify_dir().join(DROPPED_FILE_NAME);
+    std::fs::create_dir_all(layout.emery_dir())?;
+    let sidecar = layout.emery_dir().join(DROPPED_FILE_NAME);
     let mut file = std::fs::OpenOptions::new().create(true).append(true).open(&sidecar)?;
     file.write_all(line.as_bytes())?;
     file.write_all(b"\n")?;

@@ -1,4 +1,4 @@
-//! Specify's canonical mock adapter crate.
+//! Emery's canonical mock adapter crate.
 //!
 //! One SDK-native mock kernel serving every workflow suite and the
 //! examples guest:
@@ -11,7 +11,7 @@
 //!   the per-axis operations traits (`adapter::Source` /
 //!   `adapter::Target`) over the core.
 //! - [`registry`] (host) — the exhaustive native catalog the workflow
-//!   suites and the Specify lab bind into the native host.
+//!   suites and the Emery lab bind into the native host.
 //! - [`session`] (host) — throw-away project trees over an offline
 //!   [`native::Provider`], plus the RAII current-directory guard.
 //! - [`invoke`] (host) — typed operation invocation for suites that

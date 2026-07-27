@@ -1,4 +1,4 @@
-//! Crash-safe writers shared by every `.specify/*.yaml` writer: write
+//! Crash-safe writers shared by every `.emery/*.yaml` writer: write
 //! to a temp file in the same parent, `sync_all`, then `persist`
 //! (atomic rename) so readers never observe a partial write.
 
@@ -33,7 +33,7 @@ pub fn serialise_yaml<T: Serialize>(value: &T) -> Result<String, Error> {
 }
 
 /// Atomically write `bytes` to `path`. Used for non-YAML writers (e.g.
-/// the PID stamp in `.specify/plan.lock`) where the caller has already
+/// the PID stamp in `.emery/plan.lock`) where the caller has already
 /// produced the exact on-disk bytes.
 ///
 /// # Errors

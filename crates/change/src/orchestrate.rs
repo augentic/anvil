@@ -3,7 +3,7 @@
 //! Plan authoring (survey fan-out → reconciliation judgment → persist
 //! → Gate 1 prose) and the drained execute loop that dispatches the
 //! per-slice refine / build / merge phases through the `slice` crate.
-//! `specify plan author`, `specify plan execute`, and `specify source
+//! `emery plan author`, `emery plan execute`, and `emery source
 //! survey` route here through the guest.
 //!
 //! Time is injected: every orchestrator takes the caller's `now`

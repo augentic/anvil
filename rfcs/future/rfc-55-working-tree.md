@@ -1,6 +1,6 @@
 # RFC-55: Working-Tree Materialization — the git-aware `wasi:filesystem` backend
 
-> **Status: Deferred.** Every guest runs against the shared `[[mount]]` preopens of the operator's live project tree, so materialized working trees are not needed until a multi-node deployment exists. The `revision` / `changeset` types stay in `specify:adapter` as this RFC's forward hook. Owns: the value↔tree boundary
+> **Status: Deferred.** Every guest runs against the shared `[[mount]]` preopens of the operator's live project tree, so materialized working trees are not needed until a multi-node deployment exists. The `revision` / `changeset` types stay in `emery:adapter` as this RFC's forward hook. Owns: the value↔tree boundary
 
 ## Abstract
 
@@ -24,7 +24,7 @@ The git backend, concretely: resolve `slice -> base revision` from durable plan 
 - `materialize` and native `changes()` over the value↔tree boundary.
 - `slice -> revision` resolution from durable plan / journal state.
 - Out-of-sequence dependency-layering of producer `changeset`s.
-- Materialized-tree lifecycle: scratch, teardown, optional cache / GC (and its relation to `specify archive prune`).
+- Materialized-tree lifecycle: scratch, teardown, optional cache / GC (and its relation to `emery archive prune`).
 - `local-path` provisioning for the spawned-agent (cursor) model backend, and the `none` signal on a node with no local tree.
 - Backend variants behind one `revision` abstraction: git first, then object-store snapshot (`wasi:blobstore`) and copy-on-write / overlay.
 
@@ -41,7 +41,7 @@ The git backend, concretely: resolve `slice -> base revision` from durable plan 
 2. A build's tree re-materializes on a different node from values alone (revision + object store), with no shared mount.
 3. A dependent slice builds against a base `revision` layered with an un-merged producer `changeset`.
 4. `local-path` is present on nodes with a real checkout and `none` elsewhere, gating agent-driven operations.
-5. The Specify runtime binary binds this backend behind `wasi:filesystem`; `cargo make ci` stays green.
+5. The Emery runtime binary binds this backend behind `wasi:filesystem`; `cargo make ci` stays green.
 
 ## Risks and invariants
 
@@ -49,4 +49,4 @@ The git backend, concretely: resolve `slice -> base revision` from durable plan 
 - **Round-trip fidelity.** `revision -> tree -> changeset` must round-trip faithfully — whole-operation replay depends on it.
 - **Deterministic layering.** Dependency-layering never silently reorders or drops edits; it is anchored by `changeset.base`.
 - **Git unprivileged.** Git is the first `wasi:filesystem` backend, behind the neutral `revision` / `changeset` abstraction, so an object-store or CoW backend is a drop-in.
-- **Law 2 in the runtime core.** The generic `wasi:filesystem` / `wasi:blobstore` host stays domain-agnostic in Omnia; slice / revision logic lives in the Specify backend and native orchestration.
+- **Law 2 in the runtime core.** The generic `wasi:filesystem` / `wasi:blobstore` host stays domain-agnostic in Omnia; slice / revision logic lives in the Emery backend and native orchestration.

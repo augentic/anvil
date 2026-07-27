@@ -44,7 +44,7 @@ fn provenance_refuses_evidenced_without_sources() {
 #[test]
 fn baseline_reads_domain_specs() {
     let tmp = TempDir::new().expect("tempdir");
-    let domain = tmp.path().join(".specify/specs/auth");
+    let domain = tmp.path().join(".emery/specs/auth");
     fs::create_dir_all(&domain).expect("domain");
     fs::write(
         domain.join("spec.md"),

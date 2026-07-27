@@ -28,7 +28,7 @@ pub struct MergeRunInput {
     pub allow_composition_replace: bool,
 }
 
-/// `specify slice merge run <name>` → the merge orchestration: the
+/// `emery slice merge run <name>` → the merge orchestration: the
 /// target's phased merge gates around the deterministic core merge.
 #[derive(Clone, Copy, Debug)]
 pub struct MergeRun;
@@ -98,7 +98,7 @@ pub struct PreviewInput {
     pub name: String,
 }
 
-/// `specify slice merge preview <name>` — show the merge operations
+/// `emery slice merge preview <name>` — show the merge operations
 /// that would be applied, without writing.
 #[derive(Clone, Copy, Debug)]
 pub struct Preview;
@@ -196,7 +196,7 @@ pub struct ConflictCheckInput {
     pub name: String,
 }
 
-/// `specify slice merge conflict-check <name>` — report `type:
+/// `emery slice merge conflict-check <name>` — report `type:
 /// modified` baselines modified after this slice's `defined_at`.
 #[derive(Clone, Copy, Debug)]
 pub struct ConflictCheck;

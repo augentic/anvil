@@ -194,7 +194,7 @@ pub const fn platform(platform: aseam::Platform) -> project::platform::Platform 
 #[must_use]
 pub fn source_metadata(record: aseam::SourceMetadata) -> Metadata {
     Metadata {
-        specify_floor: record.specify_floor,
+        emery_floor: record.emery_floor,
         inputs: Vec::new(),
         platforms: None,
     }
@@ -204,7 +204,7 @@ pub fn source_metadata(record: aseam::SourceMetadata) -> Metadata {
 #[must_use]
 pub fn target_metadata(record: aseam::TargetMetadata) -> Metadata {
     Metadata {
-        specify_floor: record.specify_floor,
+        emery_floor: record.emery_floor,
         inputs: record
             .inputs
             .into_iter()

@@ -1,4 +1,4 @@
-//! The `specify plan *` verb family plus the shared plan-file helpers.
+//! The `emery plan *` verb family plus the shared plan-file helpers.
 
 mod add;
 mod amend;

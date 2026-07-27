@@ -1,4 +1,4 @@
-//! Clap argument types for `specify journal *`. Each `*Args` type
+//! Clap argument types for `emery journal *`. Each `*Args` type
 //! mirrors its command's workflow wire input.
 
 use clap::Args;

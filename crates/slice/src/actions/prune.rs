@@ -1,8 +1,8 @@
 //! `archive prune` — retention GC over the slice archive.
 //!
-//! The archived slice folders under `.specify/archive/YYYY-MM-DD-<slice>/`
+//! The archived slice folders under `.emery/archive/YYYY-MM-DD-<slice>/`
 //! are a prunable convenience cache, not the system of record. The durable
-//! record is git history of `.specify/specs/` plus the
+//! record is git history of `.emery/specs/` plus the
 //! `slice.archive.created` outcome-ledger journal entries; this verb
 //! reclaims disk by dropping archived folders that fall outside the
 //! supplied retention bounds. Mirrors the tool-cache GC in

@@ -1,4 +1,4 @@
-//! The specify engine guest, as a library.
+//! The emery engine guest, as a library.
 //!
 //! One `wit_bindgen::generate!` over the `workflow` world (the
 //! `source` / `target` imports Omnia satisfies by host-mediated
@@ -9,8 +9,8 @@
 //! The crate is `wasm32`-only: native builds see an empty crate.
 //!
 //! A deployment's guest crate is one invocation: `guest::export!();`.
-//! The engine's root `specify` cdylib is the canonical caller; the
-//! wasm example in `augentic/specify-adapters` builds the identical
+//! The engine's root `emery` cdylib is the canonical caller; the
+//! wasm example in `augentic/emery-adapters` builds the identical
 //! guest from this crate rather than vendoring these sources.
 #![cfg(target_arch = "wasm32")]
 
@@ -36,7 +36,7 @@ pub use {omnia_guest, omnia_wasi_otel, transport, wasip3};
 /// `wasi:http/incoming-handler` service, both routing through the
 /// [`Provider`]. The project root is the `"."` mount preopen: WASI
 /// resolves relative paths against it, so `project::handler::Ctx::load`
-/// finds `.specify/project.yaml` exactly as a native run from the
+/// finds `.emery/project.yaml` exactly as a native run from the
 /// project root would. Exit codes pass through verbatim — the command
 /// entry maps the route's numeric code onto
 /// `wasi:cli/exit#exit-with-code`, preserving the closed exit-code
@@ -55,7 +55,7 @@ macro_rules! export {
                 // the guard exports buffered telemetry on drop.
                 let telemetry = $crate::omnia_wasi_otel::init();
                 let invoker =
-                    $crate::omnia_guest::api::invoke::Invoker::new("specify", $crate::Provider);
+                    $crate::omnia_guest::api::invoke::Invoker::new("emery", $crate::Provider);
                 let router = $crate::transport::command::router(invoker).map_err(|_e| ())?;
                 let argv = $crate::wasip3::cli::environment::get_arguments();
                 let response = $crate::transport::command::execute(&router, argv).await;
@@ -85,7 +85,7 @@ macro_rules! export {
                 $crate::wasip3::http::types::ErrorCode,
             > {
                 let invoker =
-                    $crate::omnia_guest::api::invoke::Invoker::new("specify", $crate::Provider);
+                    $crate::omnia_guest::api::invoke::Invoker::new("emery", $crate::Provider);
                 let router = $crate::transport::http::router(invoker);
                 $crate::omnia_guest::api::http::serve(router, request).await
             }

@@ -1,4 +1,4 @@
-//! `specify registry *` — validated edits to `registry.yaml` inside
+//! `emery registry *` — validated edits to `registry.yaml` inside
 //! the project root. Pure filesystem, so the verbs run on every
 //! transport.
 
@@ -24,7 +24,7 @@ use crate::plan::Plan;
 )]
 pub struct ValidateInput {}
 
-/// `specify registry validate` — validate `registry.yaml` shape.
+/// `emery registry validate` — validate `registry.yaml` shape.
 /// Absent file exits 0.
 #[derive(Clone, Copy, Debug)]
 pub struct Validate;
@@ -37,12 +37,12 @@ impl<P: Anchor> Operation<P> for Validate {
     async fn call(
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        // `specify registry validate` is allowed to run before `specify
+        // `emery registry validate` is allowed to run before `emery
         // init`, so it anchors directly from the provider instead of
-        // loading `Ctx` (which requires `.specify/project.yaml`). An
+        // loading `Ctx` (which requires `.emery/project.yaml`). An
         // initialised ancestor still wins so the verb sees the same
         // root as every other command — and its config load failures
-        // (parse errors, the `specify:` version floor) still propagate;
+        // (parse errors, the `emery:` version floor) still propagate;
         // only the genuinely uninitialised case falls back to the
         // anchor directory with the base (non-workspace) shape check.
         let anchor = context.provider.project_root();
@@ -110,7 +110,7 @@ pub struct AddInput {
     pub description: Option<String>,
 }
 
-/// `specify registry add <name> --url <url>` — append a new project
+/// `emery registry add <name> --url <url>` — append a new project
 /// entry to `registry.yaml`, creating the file when absent.
 #[derive(Clone, Copy, Debug)]
 pub struct Add;
@@ -226,7 +226,7 @@ pub struct RemoveInput {
     pub name: String,
 }
 
-/// `specify registry remove <name>` — remove an existing project
+/// `emery registry remove <name>` — remove an existing project
 /// entry. Warns when `plan.yaml` references it.
 #[derive(Clone, Copy, Debug)]
 pub struct Remove;
@@ -340,7 +340,7 @@ fn plan_refs(project_dir: &Path, removed: &str) -> Vec<String> {
             } else {
                 vec![format!(
                     "plan.yaml has {n} entry(ies) still referencing project `{removed}`: {entries}. \
-                     Run `specify plan amend <change> --project <other>` to rewire them.",
+                     Run `emery plan amend <change> --project <other>` to rewire them.",
                     n = referencing.len(),
                     entries = referencing.join(", "),
                 )]

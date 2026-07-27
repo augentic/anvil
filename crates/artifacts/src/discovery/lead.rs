@@ -4,7 +4,7 @@
 //! produced it, the kebab-case `lead` (unique only within that
 //! `source`), and the content-bearing per-source `synopsis`. Identity
 //! is the `(source, lead)` pair; cross-source unification is deferred
-//! to plan time, where `/spec:plan`'s `propose` sub-step reads these
+//! to plan time, where `/emery:plan`'s `propose` sub-step reads these
 //! leads but never edits `discovery.md`.
 
 use error::Error;

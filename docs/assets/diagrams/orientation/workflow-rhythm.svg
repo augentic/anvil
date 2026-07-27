@@ -1,5 +1,5 @@
-<svg viewBox="0 0 920 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Specify change rhythm from plan through Gate 1 to execute and finalize">
-  <title>Specify change rhythm</title>
+<svg viewBox="0 0 920 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Emery change rhythm from plan through Gate 1 to execute and finalize">
+  <title>Emery change rhythm</title>
   <defs>
     <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
       <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
@@ -7,7 +7,7 @@
   </defs>
   <text x="20" y="24" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">CHANGE RHYTHM</text>
   <rect x="20" y="40" width="150" height="52" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
-  <text x="32" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/spec:plan</text>
+  <text x="32" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/emery:plan</text>
   <text x="32" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#555">exits at pending</text>
   <path d="M170 66 L210 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <polygon points="230,66 248,52 248,80" fill="#fbeede" stroke="#b85c00"/>
@@ -19,7 +19,7 @@
   <text x="452" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#555">refine &#8594; build &#8594; merge</text>
   <path d="M590 66 L630 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="630" y="40" width="160" height="52" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
-  <text x="642" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/spec:finalize</text>
+  <text x="642" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/emery:finalize</text>
   <text x="642" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#555">push &#8594; PRs &#8594; archive</text>
   <text x="20" y="118" font-family="ui-monospace, monospace" font-size="11" fill="#888">N=1 and N=12 use the same rhythm &#8212; only the plan contents differ.</text>
 </svg>

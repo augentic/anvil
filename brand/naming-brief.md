@@ -74,9 +74,9 @@ For each: 1-line why it’s likeable, CLI example, and any obvious collision. Th
 | **Compress Crossholt** | Same meaning as the coined shortlist, 4–6 letters |
 | **Codename energy** | More Linear/Vercel (warp, chalk, forge) than consultancy |
 | **Dual name** | Cute internal CLI + boring public repo later if OSS happens |
-| **Slash namespace separate** | e.g. binary changes, skills stay `/spec:*` for Cursor muscle memory |
+| **Slash namespace separate** | e.g. binary changes, skills stay `/emery:*` for Cursor muscle memory |
 
-When kicking off a run, state tone: **tool**, **uncover**, **proof**, or a mix — and whether slash commands may stay `/spec:*` while the binary changes.
+When kicking off a run, state tone: **tool**, **uncover**, **proof**, or a mix — and whether slash commands may stay `/emery:*` while the binary changes.
 
 ## Scoring under the relaxed plan
 

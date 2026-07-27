@@ -1,4 +1,4 @@
-//! The refine-phase orchestrator behind `/spec:refine`: slice create
+//! The refine-phase orchestrator behind `/emery:refine`: slice create
 //! (re-entry safe), per-binding extract fan-out, the synthesis
 //! judgment leg, the persist tail, the validate gate sweep, and the
 //! `refined` transition. A validate failure leaves the slice
@@ -191,7 +191,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 }
 
 /// Refine one named plan entry outside the execute loop — the guest
-/// breakout of `/spec:refine`.
+/// breakout of `/emery:refine`.
 ///
 /// Claim semantics mirror the standalone `slice build <name>` posture:
 /// the verb acts on the named slice directly against a `pending` or
@@ -218,7 +218,7 @@ pub async fn refine_breakout<P: Model, S: Source, T: Target, R: Resolver>(
             "slice-refine-entry-done",
             "the plan entry is still open",
             format!(
-                "plan entry `{slice}` is already `done`; walk it back with `specify plan \
+                "plan entry `{slice}` is already `done`; walk it back with `emery plan \
                  transition {slice} --undo` before re-refining"
             ),
         ));

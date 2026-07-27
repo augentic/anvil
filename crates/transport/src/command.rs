@@ -1,4 +1,4 @@
-//! Typed command grammar, conversions, and Specify projection policy.
+//! Typed command grammar, conversions, and Emery projection policy.
 
 use clap::Args;
 use omnia_guest::Model;
@@ -35,11 +35,11 @@ const ABOUT: &str = "Deterministic primitives for spec-driven development";
 #[derive(Clone, Copy, Debug, Args)]
 pub struct Globals {
     /// Output format.
-    #[arg(long, env = "SPECIFY_FORMAT", default_value = "text")]
+    #[arg(long, env = "EMERY_FORMAT", default_value = "text")]
     pub format: Format,
 }
 
-/// Flags for `specify init`.
+/// Flags for `emery init`.
 #[derive(Debug, Args)]
 struct InitArgs {
     /// Adapter identifier or local component path.
@@ -57,7 +57,7 @@ struct InitArgs {
     /// Comma-separated target platforms.
     #[arg(long, conflicts_with = "workspace")]
     platforms: Option<String>,
-    /// Re-enter initialization to update the Specify version pin.
+    /// Re-enter initialization to update the Emery version pin.
     #[arg(long, conflicts_with_all = ["adapter", "workspace", "name", "description"])]
     upgrade: bool,
 }
@@ -98,21 +98,21 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     NamespaceHelp::new(&["slice", "merge"], "Spec-merge operations for a slice"),
     NamespaceHelp::new(
         &["archive"],
-        "Slice-archive cache maintenance. The archived slice folders under `.specify/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
+        "Slice-archive cache maintenance. The archived slice folders under `.emery/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
     ),
     NamespaceHelp::new(&["plan"], "Executable plan operations — `plan.yaml` lifecycle"),
     NamespaceHelp::new(
         &["journal"],
-        "Workflow journal at `.specify/journal.jsonl`. `emit` is a guarded front door onto the closed §Observability event taxonomy — it appends one well-formed line, minting no event kinds of its own",
+        "Workflow journal at `.emery/journal.jsonl`. `emit` is a guarded front door onto the closed §Observability event taxonomy — it appends one well-formed line, minting no event kinds of its own",
     ),
     NamespaceHelp::new(&["registry"], "Platform registry at `registry.yaml` (repo root)"),
 ];
 
-/// Specify's command output and error projection.
+/// Emery's command output and error projection.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct SpecifyProjector;
+pub struct EmeryProjector;
 
-impl<T> Projector<T, project::handler::Error, error::Error, Globals> for SpecifyProjector
+impl<T> Projector<T, project::handler::Error, error::Error, Globals> for EmeryProjector
 where
     T: Render + Serialize + Send + 'static,
 {
@@ -173,7 +173,7 @@ fn operation_response(
     }
 }
 
-/// Assemble the complete Specify command router.
+/// Assemble the complete Emery command router.
 ///
 /// # Errors
 ///
@@ -186,19 +186,19 @@ pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
     P: Provider + Anchor + Model + Resolver + Source + Target,
 {
-    let command = clap::Command::new("specify").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
+    let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
         .completions(
             Completions::new()
                 .about("Print a shell-completion script for `<shell>` to stdout")
-                .long_about("Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `specify completions zsh > ~/.zsh/_specify`). Generated via `clap_complete`; the output tracks the live clap surface so every new verb is auto-discovered."),
+                .long_about("Print a shell-completion script for `<shell>` to stdout.\n\nPipe into your shell's completion directory (e.g. `emery completions zsh > ~/.zsh/_emery`). Generated via `clap_complete`; the output tracks the live clap surface so every new verb is auto-discovered."),
         );
 
     macro_rules! route {
         ($path:expr, $args:ty, $operation:ty, $about:literal) => {
             router = router.route(
                 $path,
-                run::<$args, $operation>().about($about).project_with(SpecifyProjector),
+                run::<$args, $operation>().about($about).project_with(EmeryProjector),
             );
         };
         ($path:expr, $args:ty, $operation:ty, $about:literal, $long_about:literal) => {
@@ -207,7 +207,7 @@ where
                 run::<$args, $operation>()
                     .about($about)
                     .long_about($long_about)
-                    .project_with(SpecifyProjector),
+                    .project_with(EmeryProjector),
             );
         };
     }
@@ -216,15 +216,15 @@ where
         ["init"],
         InitArgs,
         project::init::handlers::Init,
-        "Initialize .specify/ in a project",
-        "Initialize .specify/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path) for a regular project, or `--workspace` for a registry-only workspace. The two are mutually exclusive — clap enforces the conflict and exits `2` with its standard parse-error diagnostic. A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `specify init --upgrade`."
+        "Initialize .emery/ in a project",
+        "Initialize .emery/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path) for a regular project, or `--workspace` for a registry-only workspace. The two are mutually exclusive — clap enforces the conflict and exits `2` with its standard parse-error diagnostic. A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
     );
     route!(
         ["adapter", "add"],
         adapter::AddArgs,
         project::adapter::handlers::AdapterAdd,
         "Seed a local `.wasm` component into the project component cache",
-        "Seed a local `.wasm` component into the project component cache.\n\nMirrors the component to `<project-cache>/components/<name>.wasm` (the kebab name derives from the filename) and stamps a per-component provenance sidecar. Pre-init and axis-neutral: `.specify/` need not exist and the component's exports are not inspected — the bare binding that later resolves the name (project target or plan source) supplies the expected axis. Re-seeding the same name replaces the entry; the explicit command is the approval act."
+        "Seed a local `.wasm` component into the project component cache.\n\nMirrors the component to `<project-cache>/components/<name>.wasm` (the kebab name derives from the filename) and stamps a per-component provenance sidecar. Pre-init and axis-neutral: `.emery/` need not exist and the component's exports are not inspected — the bare binding that later resolves the name (project target or plan source) supplies the expected axis. Re-seeding the same name replaces the entry; the explicit command is the approval act."
     );
     route!(
         ["source", "resolve"],
@@ -244,8 +244,8 @@ where
         ["source", "extract"],
         source::ExtractArgs,
         ::slice::source::Extract,
-        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.specify/slices/<slice>/evidence/<source>.yaml`",
-        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.specify/slices/<slice>/evidence/<source>.yaml`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
+        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml`",
+        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
     );
     route!(
         ["target", "resolve"],
@@ -257,7 +257,7 @@ where
         ["slice", "list"],
         slice::ListArgs,
         ::slice::handlers::List,
-        "List every slice under `.specify/slices/` with its lifecycle status and target"
+        "List every slice under `.emery/slices/` with its lifecycle status and target"
     );
     route!(
         ["slice", "validate"],
@@ -281,8 +281,8 @@ where
         ["slice", "refine"],
         slice::RefineArgs,
         ::slice::handlers::Refine,
-        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop",
-        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/spec:refine` breakout outside the execute loop.\n\nActs on the named slice directly against a `pending` or `in-progress` plan entry (the standalone `slice build <name>` posture); never advances per-entry status, and refuses a `done` entry.\n\nGuest-only. The native binary refuses this verb — natively the phase is driven by the `/spec:refine` skill."
+        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/emery:refine` breakout outside the execute loop",
+        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/emery:refine` breakout outside the execute loop.\n\nActs on the named slice directly against a `pending` or `in-progress` plan entry (the standalone `slice build <name>` posture); never advances per-entry status, and refuses a `done` entry.\n\nGuest-only. The native binary refuses this verb — natively the phase is driven by the `/emery:refine` skill."
     );
     route!(
         ["slice", "build"],
@@ -319,8 +319,8 @@ where
         ["archive", "prune"],
         archive::PruneArgs,
         ::slice::handlers::Prune,
-        "Prune archived slice folders under `.specify/archive/` that fall outside the supplied retention bounds",
-        "Prune archived slice folders under `.specify/archive/` that fall outside the supplied retention bounds.\n\nThe archive is a prunable convenience cache, not the system of record — git history of `.specify/specs/` plus the `slice.archive.created` journal entries are. At least one of `--keep` / `--older-than` is required; a folder is pruned when it falls outside the newest-`--keep` window or is older than `--older-than` days."
+        "Prune archived slice folders under `.emery/archive/` that fall outside the supplied retention bounds",
+        "Prune archived slice folders under `.emery/archive/` that fall outside the supplied retention bounds.\n\nThe archive is a prunable convenience cache, not the system of record — git history of `.emery/specs/` plus the `slice.archive.created` journal entries are. At least one of `--keep` / `--older-than` is required; a folder is pruned when it falls outside the newest-`--keep` window or is older than `--older-than` days."
     );
     route!(
         ["plan", "validate"],
@@ -366,48 +366,48 @@ where
         plan::ApproveArgs,
         ::change::plan::handlers::Approve,
         "Stamp Gate 1 — transition the active plan's lifecycle `pending → approved`",
-        "Stamp Gate 1 — transition the active plan's lifecycle `pending → approved`.\n\nNameless: there is exactly one active `plan.yaml`, so no selector is needed. Operator-only — `/spec:plan` MUST NOT call this verb; skill bodies stop at `pending` and print the literal `specify plan approve` command in their closing hint for the operator to run. Approving an already-approved plan is an idempotent no-op (no disk write, no journal event)."
+        "Stamp Gate 1 — transition the active plan's lifecycle `pending → approved`.\n\nNameless: there is exactly one active `plan.yaml`, so no selector is needed. Operator-only — `/emery:plan` MUST NOT call this verb; skill bodies stop at `pending` and print the literal `emery plan approve` command in their closing hint for the operator to run. Approving an already-approved plan is an idempotent no-op (no disk write, no journal event)."
     );
     route!(
         ["plan", "transition"],
         plan::TransitionArgs,
         ::change::plan::handlers::Transition,
         "Apply a validated per-entry status transition",
-        "Apply a validated per-entry status transition.\n\n`<name>` is a plan-entry name and `<target>` is `done` — the per-entry close; the `/spec:merge` skill is the canonical caller. `--undo` walks one rung backwards instead. Plan-level Gate 1 is `specify plan approve`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
+        "Apply a validated per-entry status transition.\n\n`<name>` is a plan-entry name and `<target>` is `done` — the per-entry close; the `/emery:merge` skill is the canonical caller. `--undo` walks one rung backwards instead. Plan-level Gate 1 is `emery plan approve`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
     );
     route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
         "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint.\n\nGuest-only through the composed-deployment leg: the `/spec:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint.\n\nGuest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
         "Run the drained execute loop in the engine guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`)",
-        "Run the drained execute loop in the engine guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nGuest-only through the composed-deployment leg: the loop holds the create-exclusive `.specify/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop in the engine guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nGuest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
         plan::ArchiveArgs,
         ::change::plan::handlers::Archive,
-        "Archive the current plan to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`"
+        "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml`"
     );
     route!(
         ["journal", "emit"],
         journal::EmitArgs,
         project::journal::handlers::Emit,
-        "Append one event to `.specify/journal.jsonl`",
-        "Append one event to `.specify/journal.jsonl`.\n\n`<event-id>` names a variant in the closed workflow §Observability event taxonomy (e.g. `source.execution.agent`); `--payload` carries that variant's fields as a JSON object. The taxonomy is the payload schema — a single serde round-trip validates both the id and the fields. An unknown id exits `2` with `journal-emit-unknown-event`; a payload that fails the variant's field schema exits `2` with `journal-emit-payload-schema`. On success the CLI stamps a second-precision UTC timestamp and appends exactly one line."
+        "Append one event to `.emery/journal.jsonl`",
+        "Append one event to `.emery/journal.jsonl`.\n\n`<event-id>` names a variant in the closed workflow §Observability event taxonomy (e.g. `source.execution.agent`); `--payload` carries that variant's fields as a JSON object. The taxonomy is the payload schema — a single serde round-trip validates both the id and the fields. An unknown id exits `2` with `journal-emit-unknown-event`; a payload that fails the variant's field schema exits `2` with `journal-emit-payload-schema`. On success the CLI stamps a second-precision UTC timestamp and appends exactly one line."
     );
     route!(
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
-        "Read events from `.specify/journal.jsonl` in append order",
-        "Read events from `.specify/journal.jsonl` in append order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing journal yields no events."
+        "Read events from `.emery/journal.jsonl` in append order",
+        "Read events from `.emery/journal.jsonl` in append order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing journal yields no events."
     );
     route!(
         ["registry", "validate"],
@@ -435,7 +435,7 @@ where
 }
 
 /// Run one routed invocation (`argv[0]` is the binary name) under the
-/// `specify.command` span.
+/// `emery.command` span.
 ///
 /// The span carries only the bounded verb label and the response exit
 /// code — never the full argv, which may embed operator prose (e.g.
@@ -447,7 +447,7 @@ where
     P: Provider + Anchor + Model + Resolver + Source + Target,
 {
     let span = tracing::info_span!(
-        "specify.command",
+        "emery.command",
         command = %label(&argv),
         exit = tracing::field::Empty,
     );

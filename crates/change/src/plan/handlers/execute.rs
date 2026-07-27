@@ -23,7 +23,7 @@ use crate::orchestrate::{self, ExecuteOutcome};
 )]
 pub struct ExecuteInput {}
 
-/// `specify plan execute` → the internal execute orchestration — the drained
+/// `emery plan execute` → the internal execute orchestration — the drained
 /// refine → build → merge loop over the approved plan.
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;

@@ -14,21 +14,21 @@
 The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional sources at plan time:
 
 ```text
-/spec:plan <name> source legacy=./vendor/monolith source docs=./design-notes
+/emery:plan <name> source legacy=./vendor/monolith source docs=./design-notes
 ```
 
 ## All skills
 
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `/spec:init`             | One-time project setup; run `specify init --workspace` for a registry-only workspace               |
-| `/spec:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
-| `/spec:execute`          | Confirm Gate 1, then drive the per-slice refine → build → merge loop (`specify plan execute`) |
-| `/spec:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
-| `/spec:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
-| `/spec:build`            | Breakout: validate artifacts, implement tasks                                                  |
-| `/spec:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |
-| `/spec:drop`             | Discard a slice without merging                                                                |
+| `/emery:init`             | One-time project setup; run `emery init --workspace` for a registry-only workspace               |
+| `/emery:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
+| `/emery:execute`          | Confirm Gate 1, then drive the per-slice refine → build → merge loop (`emery plan execute`) |
+| `/emery:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
+| `/emery:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
+| `/emery:build`            | Breakout: validate artifacts, implement tasks                                                  |
+| `/emery:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |
+| `/emery:drop`             | Discard a slice without merging                                                                |
 
 ## Artifacts
 
@@ -37,11 +37,11 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 | `change.md`         | Why is the change happening?        | `change.md` (project root; workspace mode: at workspace)          |
 | `plan.yaml`         | Which slices, in what order?        | `plan.yaml` (project root)                                        |
 | `discovery.md`      | What leads did sources surface? | `discovery.md` (project root)                                     |
-| `proposal.md`       | Why does this slice exist?          | `.specify/slices/<name>/proposal.md`                              |
-| `spec.md`           | What must the system do?            | `.specify/slices/<name>/specs/<domain>/spec.md`                     |
-| `design.md`         | How will it be implemented?         | `.specify/slices/<name>/design.md`                                |
-| `tasks.md`          | In what sequence?                   | `.specify/slices/<name>/tasks.md`                                 |
-| `evidence/<key>.yaml` | What did this source say?         | `.specify/slices/<name>/evidence/<source>.yaml`               |
+| `proposal.md`       | Why does this slice exist?          | `.emery/slices/<name>/proposal.md`                              |
+| `spec.md`           | What must the system do?            | `.emery/slices/<name>/specs/<domain>/spec.md`                     |
+| `design.md`         | How will it be implemented?         | `.emery/slices/<name>/design.md`                                |
+| `tasks.md`          | In what sequence?                   | `.emery/slices/<name>/tasks.md`                                 |
+| `evidence/<key>.yaml` | What did this source say?         | `.emery/slices/<name>/evidence/<source>.yaml`               |
 
 ## Lifecycle states
 
@@ -69,33 +69,33 @@ refining --> refined --> built --> merged
 
 ```bash
 # Project setup
-specify init <target>                                    # single-project scaffold (positional target adapter)
-specify init --workspace                                       # registry-only workspace
-specify source resolve <name>                            # validate a source adapter manifest
-specify target resolve <value>                           # validate a target adapter (name, path, or URL)
+emery init <target>                                    # single-project scaffold (positional target adapter)
+emery init --workspace                                       # registry-only workspace
+emery source resolve <name>                            # validate a source adapter manifest
+emery target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-specify plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits at pending
-specify plan add <entry> --sources <key>=<lead> --project <name>
-specify plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
-specify plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
-specify plan approve                                     # Gate 1; operator-only (lock-exempt)
-specify plan status                                      # read-only next-action projection
-specify plan next                                        # active in-progress, or pick next pending
-specify plan archive
+emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits at pending
+emery plan add <entry> --sources <key>=<lead> --project <name>
+emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
+emery plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
+emery plan approve                                     # Gate 1; operator-only (lock-exempt)
+emery plan status                                      # read-only next-action projection
+emery plan next                                        # active in-progress, or pick next pending
+emery plan archive
 
 # Slice management
-specify slice list                                       # read-only: every slice with status + target
-specify slice refine <name>                              # guest-routed: create + extract + synthesis + refined
-specify slice validate <name>
-specify slice merge run <name>                           # also: merge preview / merge conflict-check
-specify slice drop <name> [--reason "..."]
+emery slice list                                       # read-only: every slice with status + target
+emery slice refine <name>                              # guest-routed: create + extract + synthesis + refined
+emery slice validate <name>
+emery slice merge run <name>                           # also: merge preview / merge conflict-check
+emery slice drop <name> [--reason "..."]
 
 # Maintenance & bootstrap
-specify init --upgrade                                   # bump specify pin + re-scaffold preservation-safe files only
+emery init --upgrade                                   # bump emery pin + re-scaffold preservation-safe files only
 ```
 
-A pin newer than the binary is exit `3` (update the binary through its install channel first); an older pin loads normally — pre-1.0 majors are re-init, not migration. `specify init --upgrade` updates the project pin and preservation-safe scaffold, not the installed CLI.
+A pin newer than the binary is exit `3` (update the binary through its install channel first); an older pin loads normally — pre-1.0 majors are re-init, not migration. `emery init --upgrade` updates the project pin and preservation-safe scaffold, not the installed CLI.
 
 ## Adapters
 
@@ -103,9 +103,9 @@ Target adapters live under `adapters/targets/<name>/`:
 
 | Adapter   | URL                                                       | Target                |
 | --------- | --------------------------------------------------------- | --------------------- |
-| Omnia     | `https://github.com/augentic/specify/adapters/targets/omnia`       | Rust WASM             |
-| Vectis    | `https://github.com/augentic/specify/adapters/targets/vectis`      | Crux cross-platform   |
-| Contracts | `https://github.com/augentic/specify/adapters/targets/contracts`   | API contracts         |
+| Omnia     | `https://github.com/augentic/emery/adapters/targets/omnia`       | Rust WASM             |
+| Vectis    | `https://github.com/augentic/emery/adapters/targets/vectis`      | Crux cross-platform   |
+| Contracts | `https://github.com/augentic/emery/adapters/targets/contracts`   | API contracts         |
 
 First-party source adapters live under `adapters/sources/<name>/`: `intent`, `documentation`, `typescript`, `screenshots`.
 
@@ -116,8 +116,8 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
 ├── AGENTS.md             # generated agent guidance with operator-editable prose outside fences
 ├── registry.yaml         # workspace catalogue (workspace mode only)
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
-└── .specify/
-    ├── project.yaml      # project config (target, sources, workspace, specify-version)
+└── .emery/
+    ├── project.yaml      # project config (target, sources, workspace, emery-version)
     ├── change.md         # operator brief (per active change)
     ├── plan.yaml         # change plan
     ├── discovery.md      # plan-time lead inventory
@@ -132,11 +132,11 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
 ## Install
 
 ```bash
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while specify is private
-brew tap augentic/tap && brew install specify
+export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while emery is private
+brew tap augentic/tap && brew install emery
 
-# or: cargo binstall --git https://github.com/augentic/specify specify@0.28.0
-# or: cargo install --git https://github.com/augentic/specify --locked
+# or: cargo binstall --git https://github.com/augentic/emery emery@0.28.0
+# or: cargo install --git https://github.com/augentic/emery --locked
 ```
 
 Platform archives also ship on the GitHub Releases page (verify against each `.sha256` companion).

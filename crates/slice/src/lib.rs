@@ -1,6 +1,6 @@
-//! The Specify slice loop: refine / build / merge orchestration,
+//! The Emery slice loop: refine / build / merge orchestration,
 //! synthesis, validation, provenance, the delta-merge engine, and the
-//! `specify slice *` operations. The slice data model (`metadata.yaml`,
+//! `emery slice *` operations. The slice data model (`metadata.yaml`,
 //! lifecycle, outcome) and the deployment-neutral foundation live in
 //! `project`; the change loop that drives this crate per plan entry
 //! lives in `change`. See `docs/standards/architecture.md` for the

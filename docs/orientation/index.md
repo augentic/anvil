@@ -1,6 +1,6 @@
-# What is Specify?
+# What is Emery?
 
-Specify orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Specify at existing documentation, intent, or legacy code), Specify generates a plan and durable artifacts, then the `specify` runtime and target adapters implement each slice from those artifacts. Operators drive the loop with `/spec:*` skills — ultrathin wrappers over CLI verbs.
+Emery orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Emery at existing documentation, intent, or legacy code), Emery generates a plan and durable artifacts, then the `emery` runtime and target adapters implement each slice from those artifacts. Operators drive the loop with `/emery:*` skills — ultrathin wrappers over CLI verbs.
 
 ## A graduated path
 
@@ -25,37 +25,37 @@ You do not need to read this guide front to back. Pick the row that matches wher
 
 Every change flows through one rhythm:
 
-1. **Plan** — `/spec:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
-2. **Operator review (Gate 1)** — you stamp `approved`: `specify plan approve`.
-3. **Execute** — `specify plan execute` loops per slice: refine → build → merge.
-4. **Finalize** — after operator-owned publication is complete, `/spec:finalize` archives the plan.
+1. **Plan** — `/emery:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
+2. **Operator review (Gate 1)** — you stamp `approved`: `emery plan approve`.
+3. **Execute** — `emery plan execute` loops per slice: refine → build → merge.
+4. **Finalize** — after operator-owned publication is complete, `/emery:finalize` archives the plan.
 
 <div class="pipeline">
 
-![Specify change rhythm](../assets/diagrams/orientation/workflow-rhythm.svg)
+![Emery change rhythm](../assets/diagrams/orientation/workflow-rhythm.svg)
 
 <p class="pipeline-caption">plan → operator review (Gate 1) → execute → finalize — a one-slice change uses the same steps as a twelve-slice migration.</p>
 </div>
 
 <div class="callout">
-  <strong>Gate 1.</strong> The operator review step between plan and execute. <code>/spec:plan</code> exits at <code>pending</code>; you stamp <code>approved</code> explicitly. Nothing executes until that transition.
+  <strong>Gate 1.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits at <code>pending</code>; you stamp <code>approved</code> explicitly. Nothing executes until that transition.
 </div>
 
 ## Why artifacts matter
 
-Without Specify, reasoning lives in the chat and is lost when the session ends. Specify makes it durable in version-controlled files under `.specify/`. Plan-time artifacts (`change.md`, `plan.yaml`, `discovery.md`) coordinate the change; per-slice artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`) capture requirements and implementation sequencing. See [Artifacts in depth](../explanation/artifacts.md) for the full dependency chain.
+Without Emery, reasoning lives in the chat and is lost when the session ends. Emery makes it durable in version-controlled files under `.emery/`. Plan-time artifacts (`change.md`, `plan.yaml`, `discovery.md`) coordinate the change; per-slice artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`) capture requirements and implementation sequencing. See [Artifacts in depth](../explanation/artifacts.md) for the full dependency chain.
 
-## Specify and git
+## Emery and git
 
-Artifacts are regular files — you commit and review them like source code. `/spec:merge` applies spec deltas on disk but does not create git commits. You control when to commit.
+Artifacts are regular files — you commit and review them like source code. `/emery:merge` applies spec deltas on disk but does not create git commits. You control when to commit.
 
 ## What you interact with
 
-**`/spec:*` skills** — slash-commands in Cursor (`/spec:init`, `/spec:plan`, `/spec:finalize`, and the per-slice breakouts). Each skill elicits arguments, invokes one `specify` verb, and relays its output. The full list lives in the [Quick reference card](../reference/quick-reference.md).
+**`/emery:*` skills** — slash-commands in Cursor (`/emery:init`, `/emery:plan`, `/emery:finalize`, and the per-slice breakouts). Each skill elicits arguments, invokes one `emery` verb, and relays its output. The full list lives in the [Quick reference card](../reference/quick-reference.md).
 
-You can also run one phase by hand (a **breakout**) — `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
+You can also run one phase by hand (a **breakout**) — `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
-Behind the skills, the `specify` CLI and its guest orchestrations own lifecycle, validation, synthesis, and target build. Target adapters own domain-specific generation.
+Behind the skills, the `emery` CLI and its guest orchestrations own lifecycle, validation, synthesis, and target build. Target adapters own domain-specific generation.
 
 ## Going deeper
 

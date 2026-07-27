@@ -1,4 +1,4 @@
-//! Shared HTTP route table and Specify JSON projection.
+//! Shared HTTP route table and Emery JSON projection.
 
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
@@ -13,11 +13,11 @@ use project::handler::Anchor;
 use project::seam::{Source, Target};
 use serde::Serialize;
 
-/// Specify's JSON HTTP output and error policy.
+/// Emery's JSON HTTP output and error policy.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct SpecifyProjector;
+pub struct EmeryProjector;
 
-impl<O, P> Projector<O, P> for SpecifyProjector
+impl<O, P> Projector<O, P> for EmeryProjector
 where
     O: Operation<P, Error = project::handler::Error>,
     O::Output: Serialize,
@@ -90,12 +90,12 @@ where
 {
     macro_rules! get {
         ($operation:ty) => {
-            get_with::<$operation, P, SpecifyProjector>(SpecifyProjector)
+            get_with::<$operation, P, EmeryProjector>(EmeryProjector)
         };
     }
     macro_rules! post {
         ($operation:ty) => {
-            post_with::<$operation, P, SpecifyProjector>(SpecifyProjector)
+            post_with::<$operation, P, EmeryProjector>(EmeryProjector)
         };
     }
 

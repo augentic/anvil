@@ -23,7 +23,7 @@ fn write_decision(path: &Path, frontmatter: &str) {
 #[tokio::test]
 async fn orphan_supersede_reported() {
     let project = Session::scripted("mock", Vec::new());
-    let decisions = project.root().join(".specify/slices/demo/decisions");
+    let decisions = project.root().join(".emery/slices/demo/decisions");
     fs::create_dir_all(&decisions).expect("create slice decisions");
     write_decision(
         &decisions.join("new-choice.md"),
@@ -46,9 +46,9 @@ async fn orphan_supersede_reported() {
 #[tokio::test]
 async fn merge_promotes_and_supersedes() {
     let project = Session::scripted("mock", Vec::new());
-    let slice = project.root().join(".specify/slices/demo");
+    let slice = project.root().join(".emery/slices/demo");
     let staged = slice.join("decisions");
-    let baseline = project.root().join(".specify/decisions");
+    let baseline = project.root().join(".emery/decisions");
     fs::create_dir_all(&staged).expect("create staged decisions");
     fs::create_dir_all(&baseline).expect("create baseline decisions");
     fs::write(slice.join("metadata.yaml"), "target: mock\nstatus: built\ntouched-specs: []\n")

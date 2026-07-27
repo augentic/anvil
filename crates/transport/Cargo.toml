@@ -1,6 +1,6 @@
 [package]
 name = "transport"
-description = "Wasm-clean command and HTTP transport for `specify`"
+description = "Wasm-clean command and HTTP transport for `emery`"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

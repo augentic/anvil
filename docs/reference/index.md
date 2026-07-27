@@ -1,6 +1,6 @@
 # Reference
 
-The reference section is the lookup table for Specify. Use it when you need precise detail on a specific skill, CLI command, artifact format, or configuration file.
+The reference section is the lookup table for Emery. Use it when you need precise detail on a specific skill, CLI command, artifact format, or configuration file.
 
 ## Sections
 
@@ -8,19 +8,19 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 - [Artifact Format](artifact-format.md) — full specification of the core artifacts (proposal, spec, design, tasks) and target-specific structured outputs, including delta formats, tags, and validation checklists.
 - [Lifecycle](lifecycle.md) — the three stacked lifecycles (plan, per-entry, slice), transitions, `metadata.yaml` shape.
-- [Directory Layout](directory-layout.md) — annotated `.specify/` tree with explanations.
+- [Directory Layout](directory-layout.md) — annotated `.emery/` tree with explanations.
 
 ### Skills
 
-- [Change Skills](change-skills/index.md) — `/spec:plan`, `specify plan execute`, `/spec:finalize`
-- [Slice Skills](slice-skills/index.md) — `/spec:init`, `/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`
+- [Change Skills](change-skills/index.md) — `/emery:plan`, `emery plan execute`, `/emery:finalize`
+- [Slice Skills](slice-skills/index.md) — `/emery:init`, `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`
 
 ### CLI
 
-- [CLI Reference](cli/index.md) — all `specify` subcommands grouped by family.
+- [CLI Reference](cli/index.md) — all `emery` subcommands grouped by family.
 ### Plugins
 
-- [Plugins](plugins/index.md) — Cursor operator plugin (Specify) and its `/spec:*` skill wrappers.
+- [Plugins](plugins/index.md) — Cursor operator plugin (Emery) and its `/emery:*` skill wrappers.
 
 ### Adapters
 

@@ -14,7 +14,7 @@ mod list {
     async fn sorted_with_status() {
         let project = Session::scripted("mock", Vec::new());
         for (name, status) in [("beta", "refined"), ("alpha", "refining")] {
-            let slice = project.root().join(".specify/slices").join(name);
+            let slice = project.root().join(".emery/slices").join(name);
             fs::create_dir_all(&slice).expect("create slice");
             fs::write(
                 slice.join("metadata.yaml"),
@@ -22,7 +22,7 @@ mod list {
             )
             .expect("stage metadata");
         }
-        fs::create_dir_all(project.root().join(".specify/slices/not-a-slice"))
+        fs::create_dir_all(project.root().join(".emery/slices/not-a-slice"))
             .expect("stage stray dir");
 
         let body = run::<slice::handlers::List, _, _>(
@@ -47,7 +47,7 @@ mod timestamps {
     #[tokio::test]
     async fn round_trip_rfc3339() {
         let project = Session::scripted("mock", Vec::new());
-        let slice = project.root().join(".specify/slices/demo");
+        let slice = project.root().join(".emery/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
             slice.join("metadata.yaml"),
@@ -67,7 +67,7 @@ mod timestamps {
         .await
         .expect("metadata parses and the drop saves");
 
-        let archived = project.root().join(".specify/archive");
+        let archived = project.root().join(".emery/archive");
         let dir = fs::read_dir(&archived)
             .expect("archive dir")
             .next()
@@ -82,7 +82,7 @@ mod timestamps {
     #[tokio::test]
     async fn malformed_rejected() {
         let project = Session::scripted("mock", Vec::new());
-        let slice = project.root().join(".specify/slices/demo");
+        let slice = project.root().join(".emery/slices/demo");
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
             slice.join("metadata.yaml"),

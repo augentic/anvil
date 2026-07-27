@@ -8,4 +8,4 @@ These documents are **symlinks** to the generated answer schemas in [`crates/pro
 | `evidence.schema.json` | source `extract` — Evidence minus the envelope `lead`                                      |
 | `report.schema.json`   | target `build` / `merge` — report minus `version` / `slice` / `target`, diagnostic inlined |
 
-This pin is temporary: once the `specify:adapter` package distribution carries the answer schemas (see [`wit/README.md`](../../../../wit/README.md)), this directory is deleted. Until then, regenerate goldens with `REGENERATE_GOLDENS=1` under `crates/project` — the symlinks pick up the new bytes automatically. Never edit schema files under this directory.
+This pin is temporary: once the `emery:adapter` package distribution carries the answer schemas (see [`wit/README.md`](../../../../wit/README.md)), this directory is deleted. Until then, regenerate goldens with `REGENERATE_GOLDENS=1` under `crates/project` — the symlinks pick up the new bytes automatically. Never edit schema files under this directory.

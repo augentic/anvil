@@ -1,6 +1,6 @@
 # CLI output shapes
 
-Canonical JSON envelope shapes for `specify *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body.
+Canonical JSON envelope shapes for `emery *` commands that skills shell out to. Skills should **link** to the relevant section here rather than embedding multi-line JSON examples in their `SKILL.md` body.
 
 ## Conventions
 
@@ -17,7 +17,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 
 The examples below are hand-curated illustrations of the happy path for each command; the accept/reject variant set is exercised by the integration suites under `crates/*/tests/`. When a command grows a new variant, copy the relevant output in here (trimmed if necessary) and add a sentence describing when the variant fires.
 
-### `specify plan add`
+### `emery plan add`
 
 Appends one entry to an existing plan.
 
@@ -40,7 +40,7 @@ Appends one entry to an existing plan.
 }
 ```
 
-### `specify plan amend`
+### `emery plan amend`
 
 Replaces a field on an existing plan entry. The `entry` body mirrors the post-amend state; absent fields surface as `null` or `[]` so consumers can rely on the shape regardless of which field was touched.
 
@@ -62,7 +62,7 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 }
 ```
 
-### `specify plan next`
+### `emery plan next`
 
 Returns the next entry the executor should pick up, or a `reason` describing why nothing is eligible. Success carries `next: "<entry>"`; drained / blocked / in-progress states carry `next: null` and a populated `reason` (`drained`, `in-progress`, etc.).
 
@@ -80,7 +80,7 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 
 ### Lead-reconciliation request envelope {#plan-reconcile-request}
 
-The reconcile leg inside the guest-routed `specify plan author` assembles the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
+The reconcile leg inside the guest-routed `emery plan author` assembles the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
 
 ```json
 {
@@ -109,7 +109,7 @@ Success summary after the reconcile kernel projects the agent **response** onto 
 }
 ```
 
-### `specify plan approve`
+### `emery plan approve`
 
 The nameless Gate 1 stamp. The `previous` / `current` pair pins the lifecycle move; an already-approved plan echoes `approved → approved` (the idempotent no-op).
 
@@ -124,7 +124,7 @@ The nameless Gate 1 stamp. The `previous` / `current` pair pins the lifecycle mo
 }
 ```
 
-### `specify plan transition`
+### `emery plan transition`
 
 Per-entry transitions only (`kind: "entry"`, or `kind: "undo"` with the `undo: { from, to }` pair). The `previous` / `current` pair pins the legal transition rung that fired.
 
@@ -141,7 +141,7 @@ Per-entry transitions only (`kind: "entry"`, or `kind: "undo"` with the `undo: {
 }
 ```
 
-### `specify plan status`
+### `emery plan status`
 
 Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). The verb never writes: `plan next` stays the only `in-progress` writer.
 
@@ -160,7 +160,7 @@ Read-only projection of the plan's execution state. `next-action` is the dispatc
   "next-action": "refine a",
   "plan": "demo",
   "project": "default",
-  "resume": "/spec:refine a",
+  "resume": "/emery:refine a",
   "slice": "a"
 }
 ```
@@ -182,19 +182,19 @@ A stopped plan carries the classification block:
   "next-action": "stop build-failed",
   "plan": "demo",
   "project": "default",
-  "resume": "/spec:build a",
+  "resume": "/emery:build a",
   "slice": "a",
   "stop": {
     "detail": "exhausted repair budget",
-    "hint": "Fix the failure, then retry /spec:build for the slice. The plan entry stays in-progress.",
+    "hint": "Fix the failure, then retry /emery:build for the slice. The plan entry stays in-progress.",
     "reason": "build-failed"
   }
 }
 ```
 
-### `specify plan validate`
+### `emery plan validate`
 
-Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `specify slice validate`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
+Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelope (`{ version, summary, findings }`) shared with `emery slice validate`. A clean plan carries an empty `findings` array and an all-zero `summary`; the exit code (`0`) signals pass, `2` signals a blocking finding.
 
 ```json
 {
@@ -211,13 +211,13 @@ Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelop
 
 A failed run carries one object per finding in `findings`, each with `rule-id` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. Health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`) attach their structured payload to `evidence` as `{ "kind": "structured", "data": … }`.
 
-### `specify plan archive`
+### `emery plan archive`
 
-Sweeps a closed plan into `.specify/archive/plans/`. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept. Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
+Sweeps a closed plan into `.emery/archive/plans/`. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept. Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
 
 ```json
 {
-  "archived": "<TEMPDIR>/.specify/archive/plans/demo-<YYYYMMDD>.yaml",
+  "archived": "<TEMPDIR>/.emery/archive/plans/demo-<YYYYMMDD>.yaml",
   "archived-plans-dir": null,
   "plan": {
     "name": "demo"
@@ -225,7 +225,7 @@ Sweeps a closed plan into `.specify/archive/plans/`. The `archived` field is the
 }
 ```
 
-### `specify slice merge run`
+### `emery slice merge run`
 
 Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one entry per spec file touched, each listing the requirement-level operations applied (`added`, `modified`, `removed`).
 
@@ -233,7 +233,7 @@ Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one en
 {
   "merged-specs": [
     {
-      "baseline-path": "<TEMPDIR>/.specify/specs/login/spec.md",
+      "baseline-path": "<TEMPDIR>/.emery/specs/login/spec.md",
       "name": "login",
       "operations": [
         {
@@ -249,7 +249,7 @@ Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one en
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the guest-routed `specify slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the guest-routed `emery slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -293,7 +293,7 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 }
 ```
 
-### `specify slice build`
+### `emery slice build`
 
 One envelope shape inside the guest-routed orchestration: the typed request is assembled, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail gates the typed report, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
 
@@ -306,7 +306,7 @@ One envelope shape inside the guest-routed orchestration: the typed request is a
 }
 ```
 
-### `specify slice validate`
+### `emery slice validate`
 
 Runs the slice-shape and cross-check predicates and renders a **`DiagnosticReport`** on stdout — the same neutral finding currency every check surface emits (`plan validate`, `slice validate`, build reports). The report shape is identical for clean and failed runs; what changes is the `findings[]` content and the `summary` counts.
 
@@ -328,16 +328,16 @@ Each finding carries a `rule-id` (dotted/kebab invariant id such as `design.refe
 Non-blocking `review` findings can still appear from pre-adapter advisories (e.g. `discovery-lead-synopsis-thin`) when a thin lead synopsis is present — those ride the same report shape but never block the gate.
 A failed run carries one `kind: "violation"` finding per breached invariant (e.g. `rule-id: "slice-model-source-orphan"`, `severity: "important"`) with `impact`/`remediation` describing the defect, the `summary` counts rise accordingly, and the process exits 2. The exit carries a payload-free error envelope on **stderr** whose `error` is the gate discriminant (e.g. `slice-pre-adapter-gate`); the rich per-finding detail lives only on the stdout report.
 
-### `specify init --upgrade`
+### `emery init --upgrade`
 
-Re-entry version bump. It shares the `specify init` body; the field that distinguishes the re-entry outcome is `specify-version-changed` — `true` when this run rewrote `project.yaml.specify` (a fresh init, or an `--upgrade` that bumped an older pin) and `false` on an `--upgrade` no-op where the pin already matched. The re-entry template reads it to render "upgraded" vs "already current".
+Re-entry version bump. It shares the `emery init` body; the field that distinguishes the re-entry outcome is `emery-version-changed` — `true` when this run rewrote `project.yaml.emery` (a fresh init, or an `--upgrade` that bumped an older pin) and `false` on an `--upgrade` no-op where the pin already matched. The re-entry template reads it to render "upgraded" vs "already current".
 
 ```json
 {
-  "config-path": "/abs/path/.specify/project.yaml",
+  "config-path": "/abs/path/.emery/project.yaml",
   "adapter-name": "omnia",
-  "specify-version": "2.0.0",
-  "specify-version-changed": true,
+  "emery-version": "2.0.0",
+  "emery-version-changed": true,
   "cache-present": true,
   "context-generated": false,
   "context-skipped": true

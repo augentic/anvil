@@ -4,7 +4,7 @@ Plan and execute a change with three slices bound to a documentation source. Thi
 
 ## What you will build
 
-An account-management revamp driven by written design notes: three Omnia slices (`account-registration`, `password-reset`, `account-audit-log`) that `specify plan execute` drives in plan order.
+An account-management revamp driven by written design notes: three Omnia slices (`account-registration`, `password-reset`, `account-audit-log`) that `emery plan execute` drives in plan order.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ An account-management revamp driven by written design notes: three Omnia slices 
 Bind a filesystem path instead of inline intent:
 
 ```text
-/spec:plan account-revamp source docs=./design-notes/account
+/emery:plan account-revamp source docs=./design-notes/account
 ```
 
 The plan surveys the documentation adapter and proposes multiple slices. Expected `plan.yaml` shape:
@@ -59,8 +59,8 @@ Before stamping `approved`, read:
 Amend if needed:
 
 ```bash
-specify plan amend <entry> --add-source <key>=<lead>
-specify plan approve
+emery plan amend <entry> --add-source <key>=<lead>
+emery plan approve
 ```
 
 See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
@@ -68,21 +68,21 @@ See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 ## Step 3 — Execute and watch per-entry status
 
 ```text
-specify plan execute
+emery plan execute
 ```
 
 Watch `plan.yaml.slices[].status` move from `pending` to `in-progress` to `done`.
 
-Only one entry is `in-progress` at a time. `specify plan next` picks the next eligible slice. Each slice gets its own directory under `.specify/slices/<name>/`.
+Only one entry is `in-progress` at a time. `emery plan next` picks the next eligible slice. Each slice gets its own directory under `.emery/slices/<name>/`.
 
-If you need to run one phase by hand (a **breakout**), cancel execute and invoke `/spec:refine`, `/spec:build`, or `/spec:merge` directly. See [Drive a slice manually](../how-to/drive-slice-manually.md).
+If you need to run one phase by hand (a **breakout**), cancel execute and invoke `/emery:refine`, `/emery:build`, or `/emery:merge` directly. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
 ## Step 4 — Finalize when drained
 
 When all three entries are `done`:
 
 ```text
-/spec:finalize account-revamp
+/emery:finalize account-revamp
 ```
 
 ## What you learned

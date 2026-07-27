@@ -8,9 +8,9 @@
 
 ## Intent
 
-Let an operator provide repositories and supporting inputs once, then reuse them across many Specify changes. Keep source inputs (`sources.yaml`) separate from target projects (`registry.yaml`) and per-change bindings (`plan.yaml`).
+Let an operator provide repositories and supporting inputs once, then reuse them across many Emery changes. Keep source inputs (`sources.yaml`) separate from target projects (`registry.yaml`) and per-change bindings (`plan.yaml`).
 
-The operator hands Specify a list of repositories. Specify profiles each one deterministically, matches the profile against adapter descriptors, recommends an exact pinned source binding per input, and — once approved — lowers those bindings into `specify plan author`. The operator never has to know that `typescript` is the adapter that reads a Node monolith.
+The operator hands Emery a list of repositories. Emery profiles each one deterministically, matches the profile against adapter descriptors, recommends an exact pinned source binding per input, and — once approved — lowers those bindings into `emery plan author`. The operator never has to know that `typescript` is the adapter that reads a Node monolith.
 
 ## Intake shape
 
@@ -34,7 +34,7 @@ It reads manifest sentinels and a file census — `package.json`, `go.mod`, `pom
 | D4 | Selection is profile → descriptor filter ([RFC-71](rfc-71-discovery.md)) → recommendation → operator approval → exact pinned binding. | The operator approves adapter names and pins once per input, then stops thinking about them. |
 | D5 | First cut recommends one source adapter per profiled input. | Multi-binding composition over one repository (say, `typescript` plus `captures` over the same tree) stays deferred; an operator can still declare it by hand. |
 | D6 | Approved bindings install through the existing pinned pull-on-miss path ([RFC-70](rfc-70-deployment.md)). | Intake adds no download mechanism, no second store, and no configurable registry. |
-| D7 | Approved bindings lower into `plan.yaml.sources` through `specify plan author`, addressed by an `@key` selector form. | Gate 1 still reviews the authored plan. Intake feeds the existing plan surface rather than becoming a parallel one. |
+| D7 | Approved bindings lower into `plan.yaml.sources` through `emery plan author`, addressed by an `@key` selector form. | Gate 1 still reviews the authored plan. Intake feeds the existing plan surface rather than becoming a parallel one. |
 | D8 | Source snapshots are immutable, live out of tree, and are never the target slot. | A repository that is both migration source and target keeps evidence integrity while its slot is being written ([RFC-73](rfc-73-materialization.md)). |
 | D9 | Plan-time survey stays serial in the first cut. | Repeat-until-drained is repository-at-a-time ([RFC-74](rfc-74-program.md)), so a `--jobs` fan-out is a throughput optimisation with no correctness role yet. It stays deferred, and the current first-failure-aborts behaviour remains the contract. |
 
@@ -46,7 +46,7 @@ Stages 1–3, serial:
 2. Git + docs snapshot materialization into an out-of-tree cache
 3. Repository profile + deterministic profiler
 4. Recommend → approve exact source bindings
-5. Lower approved `@key` bindings into `specify plan author`
+5. Lower approved `@key` bindings into `emery plan author`
 
 ## Deferred
 
@@ -58,6 +58,6 @@ Stages 1–3, serial:
 ## Non-goals
 
 - Replacing `plan.yaml` source bindings for ordinary single-repo work
-- Putting regenerable source snapshots under `.specify/cache/`
+- Putting regenerable source snapshots under `.emery/cache/`
 - Profiling as a model judgment — the profile is deterministic evidence; judgment happens later, over the recommendation
 - Selecting or binding target adapters ([RFC-74](rfc-74-program.md) owns that policy)

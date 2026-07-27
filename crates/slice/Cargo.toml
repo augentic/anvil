@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Specify slice loop: refine / build / merge orchestration, synthesis, validation, and the specify slice operations"
+description = "Emery slice loop: refine / build / merge orchestration, synthesis, validation, and the emery slice operations"
 categories = ["development-tools"]
-keywords = ["specify", "workflow", "slice"]
+keywords = ["emery", "workflow", "slice"]
 readme = "../../README.md"
 
 [lints]

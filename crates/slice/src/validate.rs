@@ -1,4 +1,4 @@
-//! Slice-validation kernel shared by `specify slice validate` and the
+//! Slice-validation kernel shared by `emery slice validate` and the
 //! guest refine orchestrator.
 //!
 //! [`run`] collects the ordered pre-adapter gates, then folds adapter

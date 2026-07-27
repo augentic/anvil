@@ -19,8 +19,8 @@ pub struct ArchiveInput {
     pub force: bool,
 }
 
-/// `specify plan archive` — move the current plan to
-/// `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`.
+/// `emery plan archive` — move the current plan to
+/// `.emery/archive/plans/<name>-<YYYYMMDD>.yaml`.
 #[derive(Clone, Copy, Debug)]
 pub struct Archive;
 

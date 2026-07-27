@@ -1,8 +1,8 @@
 <div class="hero">
-<div class="eyebrow">Specify Developer Guide</div>
+<div class="eyebrow">Emery Developer Guide</div>
 <h1 class="hero-title">Governed AI development starts with the spec</h1>
 
-Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans, slice artifacts, behavioral requirements, designs, and implementation tasks stay version-controlled so every generated change has a trail from intent to merge.
+Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, slice artifacts, behavioral requirements, designs, and implementation tasks stay version-controlled so every generated change has a trail from intent to merge.
 
 <div class="meta-row">
 
@@ -25,7 +25,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
   <div class="proof-item">
     <div class="proof-kicker">Control</div>
     <div class="proof-value">Gate 1</div>
-    <div class="proof-copy">The operator reviews and stamps the plan before <code>specify plan execute</code> can run.</div>
+    <div class="proof-copy">The operator reviews and stamps the plan before <code>emery plan execute</code> can run.</div>
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Trace</div>
@@ -68,7 +68,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
 <div class="card-grid">
   <a class="card" href="tutorials/quick-start.md">
     <div class="card-head">
-      <h3 class="card-title">Run Specify for the first time</h3>
+      <h3 class="card-title">Run Emery for the first time</h3>
       <span class="card-time">Start</span>
     </div>
     <div class="card-body">
@@ -90,7 +90,7 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
       <span class="card-time">Concepts</span>
     </div>
     <div class="card-body">
-      <p>See how Specify, source adapters, target adapters, and downstream builds fit together.</p>
+      <p>See how Emery, source adapters, target adapters, and downstream builds fit together.</p>
     </div>
   </a>
   <a class="card" href="how-to/drive-slice-manually.md">
@@ -107,26 +107,26 @@ Specify turns AI-assisted delivery into a repeatable docs-first workflow. Plans,
 ## See it in action
 
 ```text
-/spec:init omnia
+/emery:init omnia
 
-/spec:plan fix-typo source intent="fix typo in user.rs"
+/emery:plan fix-typo source intent="fix typo in user.rs"
   --> writes change.md + plan.yaml + discovery.md, exits at pending
 
-specify plan approve
+emery plan approve
   --> operator review step (Gate 1)
 
-specify plan execute
-  --> /spec:refine + /spec:build + /spec:merge per slice until drained
+emery plan execute
+  --> /emery:refine + /emery:build + /emery:merge per slice until drained
 
-/spec:finalize fix-typo
-  --> publish outside Specify, archive plan
+/emery:finalize fix-typo
+  --> publish outside Emery, archive plan
 ```
 
 ## Built for the Augentic stack
 
 <div class="platform">
   <div class="platform-product" data-active="true">
-    <div class="platform-name">Specify</div>
+    <div class="platform-name">Emery</div>
     <div class="platform-role">Engine</div>
     <div class="platform-body">
       <p>Owns planning, slice artifacts, lifecycle gates, and the auditable contract from intent to merge.</p>
@@ -150,9 +150,9 @@ specify plan execute
 
 ## Guide structure
 
-- **[Getting Started](orientation/index.md)** -- what Specify is and how to install it.
+- **[Getting Started](orientation/index.md)** -- what Emery is and how to install it.
 - **[Tutorials](tutorials/index.md)** -- hands-on walkthroughs from first slice to cross-repo changes.
 - **[How-to Guides](how-to/index.md)** -- task-oriented recipes for common operator situations.
-- **[Understanding Specify](explanation/concepts.md)** -- concepts, architecture, and design decisions.
+- **[Understanding Emery](explanation/concepts.md)** -- concepts, architecture, and design decisions.
 - **[Reference](reference/index.md)** -- skills, CLI commands, artifact formats, and configuration.
 - **[Contributing](contributing/index.md)** -- the Rust runtime, consistency checks, and Cursor skill wrappers.

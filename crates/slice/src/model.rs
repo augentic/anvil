@@ -1,12 +1,12 @@
 //! Slice model — `model.yaml`.
 //!
 //! One structured artifact per slice at
-//! `.specify/slices/<slice>/model.yaml`. The typed [`SliceModel`]
+//! `.emery/slices/<slice>/model.yaml`. The typed [`SliceModel`]
 //! shape covers both the agent's synthesis-response `model` and the
 //! persisted file: kernel-owned and header fields are optional so the
 //! kernel re-derives/stamps them on projection (normalize, never
 //! reject). Provenance is carried inline on each requirement, so the
-//! provenance view is *projected* on demand by `specify slice
+//! provenance view is *projected* on demand by `emery slice
 //! provenance` rather than persisted as a second file.
 
 use std::collections::BTreeMap;

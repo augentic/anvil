@@ -1,4 +1,4 @@
-//! Kernel-level operations on a Specify slice directory, driven by the
+//! Kernel-level operations on a Emery slice directory, driven by the
 //! refine / build / merge orchestrations and the drop / prune verbs.
 //!
 //! Create, transition, touched-spec classification, archive, and

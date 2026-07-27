@@ -43,7 +43,7 @@ pub struct RegistryProject {
     /// into a brand-new project's `project.yaml` when `workspace sync`
     /// clones an empty repo. **Not** read for plan-time topology; a
     /// project's authoritative target adapter lives in its own
-    /// `project.yaml` and is projected into `.specify/topology.lock`.
+    /// `project.yaml` and is projected into `.emery/topology.lock`.
     /// Opaque at this layer; the `name@version` suffix is not parsed
     /// here.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -58,7 +58,7 @@ pub struct RegistryProject {
     pub contracts: Option<ContractRoles>,
     /// Optional greenfield identity seed. Carries the
     /// project's intended domain slugs so a fresh project with no
-    /// baseline (`.specify/specs/` absent) still routes leads at plan
+    /// baseline (`.emery/specs/` absent) still routes leads at plan
     /// time — the greenfield analog of the projected `surface[]` domain
     /// list. The seed projects into an empty `ProjectRef.surface[]` and
     /// is ignored once a real baseline exists. Carries domain slugs

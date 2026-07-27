@@ -1,4 +1,4 @@
-//! `specify plan add` — append one slice entry to an existing
+//! `emery plan add` — append one slice entry to an existing
 //! `plan.yaml`. Authority-override seeding is delegated to the shared
 //! domain helper so the journal events match `plan amend`
 //! byte-for-byte.
@@ -36,7 +36,7 @@ pub struct AddInput {
     /// Target registry project name.
     #[serde(default)]
     pub project: Option<String>,
-    /// Baseline paths relevant to this change, relative to `.specify/`.
+    /// Baseline paths relevant to this change, relative to `.emery/`.
     #[serde(default)]
     pub context: Vec<String>,
     /// Per-slice authority-override assignments for the slice being
@@ -45,7 +45,7 @@ pub struct AddInput {
     pub authority_override: Vec<KindAssign>,
 }
 
-/// `specify plan add <name> [flags]` — append one `pending` entry.
+/// `emery plan add <name> [flags]` — append one `pending` entry.
 #[derive(Clone, Copy, Debug)]
 pub struct Add;
 

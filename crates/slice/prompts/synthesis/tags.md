@@ -1,13 +1,13 @@
 # Tag grammar
 
-The kernel renders three review-signal tags into `spec.md` from each requirement's `status` (see [`authority.md`](authority.md)). Each tag appears after the human-readable name, separated by a single space. Tags never park the slice — they document uncertainty so the operator can reconcile by re-running `/spec:refine` (with a different verdict or amended `authority-override`) after `refined`.
+The kernel renders three review-signal tags into `spec.md` from each requirement's `status` (see [`authority.md`](authority.md)). Each tag appears after the human-readable name, separated by a single space. Tags never park the slice — they document uncertainty so the operator can reconcile by re-running `/emery:refine` (with a different verdict or amended `authority-override`) after `refined`.
 
 ## Closed tag set
 
 | Tag | Mirrors `Status:` | Meaning | Operator action |
 | --- | ----------------- | ------- | --------------- |
-| `[unknown]` | `unknown` | No contributing Evidence claim | Add a source via `specify plan amend --add-source`; re-run `/spec:refine` |
-| `[conflict]` | `conflict` | Same-class disagreement; no winner | Pin via `specify plan amend --authority-override` (or drop a source); re-run `/spec:refine` |
+| `[unknown]` | `unknown` | No contributing Evidence claim | Add a source via `emery plan amend --add-source`; re-run `/emery:refine` |
+| `[conflict]` | `conflict` | Same-class disagreement; no winner | Pin via `emery plan amend --authority-override` (or drop a source); re-run `/emery:refine` |
 | `[divergence]` | `divergence` | Disagreement; one wins by authority (`intent > documentation > behaviour`) | Override if the winner is wrong; otherwise proceed |
 
 Headline: `### Requirement: <Name> [<tag>]`. One tag per headline; no stacking. `Status: agreed` carries no tag.
@@ -26,12 +26,12 @@ The provenance parser refuses output where the headline tag and `Status:` disagr
 Agent authors `statement` and `notes` (`Note:` lines); kernel renders the tag from `status`.
 
 - **`[unknown]`** — gap statement (what exists / is mentioned, that behaviour is not evidenced) plus ≥1 WHEN/THEN scenario that does not invent behaviour. `Sources: []` only.
-- **`[conflict]`** — only `Note:` lines (one per source value) plus `Operator reconciliation required before /spec:build.` No operative body sentence. `Sources:` lists every contributing key.
+- **`[conflict]`** — only `Note:` lines (one per source value) plus `Operator reconciliation required before /emery:build.` No operative body sentence. `Sources:` lists every contributing key.
 - **`[divergence]`** — winning value as operative body; one `Note:` per loser. `Sources:` winner first.
 
 ## Journal-event hand-off
 
-For each tagged requirement, `specify slice validate` appends one `slice.synthesis.{unknown|conflict|divergence}` event after validation succeeds. Record verdicts honestly so the events surface real gaps.
+For each tagged requirement, `emery slice validate` appends one `slice.synthesis.{unknown|conflict|divergence}` event after validation succeeds. Record verdicts honestly so the events surface real gaps.
 
 ## Anti-patterns
 

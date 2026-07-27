@@ -8,7 +8,7 @@
 
 ## Abstract
 
-Add an optional managed materialization layer for workspace slots so Specify can work through a list of repositories without requiring the operator to clone and prepare every target checkout by hand.
+Add an optional managed materialization layer for workspace slots so Emery can work through a list of repositories without requiring the operator to clone and prepare every target checkout by hand.
 
 The registry remains the declaration of target project membership and location. A materializer turns a registry entry into a writable `workspace/<project>/` slot at an exact base revision, applies branch and cleanliness policy, and grants the workflow a lease for one change at a time.
 
@@ -23,7 +23,7 @@ Current workspace mode intentionally leaves slot materialization to the operator
 - `plan execute` assumes required slots already exist;
 - the operator publishes and merges changes before finalize.
 
-That boundary is appropriate for an explicit multi-repo change. It blocks the desired migration experience where an operator supplies a repository list and Specify processes repositories serially or in bounded parallel batches.
+That boundary is appropriate for an explicit multi-repo change. It blocks the desired migration experience where an operator supplies a repository list and Emery processes repositories serially or in bounded parallel batches.
 
 A source snapshot is immutable input for `survey` and `extract`; a workspace slot is a mutable target tree for `build` and `merge`. Even when both originate from the same repository and revision, they are different capabilities.
 
@@ -42,7 +42,7 @@ A source snapshot is immutable input for `survey` and `extract`; a workspace slo
 
 - Selecting target projects or target adapters.
 - Publishing branches, opening pull requests, or waiting for CI in the first version.
-- Replacing Git with a Specify-specific version-control model.
+- Replacing Git with a Emery-specific version-control model.
 - Allowing concurrent writers in one slot.
 - Moving build or merge lifecycle authority out of the workflow CLI.
 - Making registry URLs writable configuration inside adapters.
@@ -62,7 +62,7 @@ projects:
     materialization:
       mode: managed
       base: refs/heads/main
-      branch-prefix: specify/
+      branch-prefix: emery/
   - name: mobile
     url: ../mobile
     materialization:
@@ -71,8 +71,8 @@ projects:
 
 Modes:
 
-- `operator` — current behavior; Specify validates an existing slot but never creates or resets it;
-- `managed` — Specify may create and refresh the slot under the declared policy;
+- `operator` — current behavior; Emery validates an existing slot but never creates or resets it;
+- `managed` — Emery may create and refresh the slot under the declared policy;
 - `external` — reserved: a deployment backend supplies a working-tree lease without a local top-level slot. This mode ships with the hosted backend (Stage 4), and registry validation refuses it until then.
 
 `operator` remains the default for existing registries.
@@ -109,7 +109,7 @@ struct WorkingTreeLease {
     project: String,
     base: String,              // exact commit, resolved before mutation
     tree: TreeRef,             // local path or opaque hosted reference
-    branch: Option<String>,    // "specify/migrate-payments/billing"
+    branch: Option<String>,    // "emery/migrate-payments/billing"
     lease: LeaseId,
     expiry: Timestamp,         // recorded locally, acted on by hosted backends
     disposition: Disposition,  // created | refreshed | reused
@@ -158,7 +158,7 @@ A live lease record, matching the model below:
   "entry": "billing-api",
   "owner": { "kind": "process", "pid": 48213, "host": "op-laptop" },
   "base": "5d92…",
-  "branch": "specify/migrate-payments/billing",
+  "branch": "emery/migrate-payments/billing",
   "acquired": "2026-07-19T21:04:11Z",
   "expiry": "2026-07-20T21:04:11Z",
   "last-event": "slice.build.started"
@@ -169,10 +169,10 @@ No materialization state is committed in the target project. The workspace journ
 
 ### Topology projection
 
-Workspace planning also requires `.specify/topology.lock`, while the current engine only reads and staleness-checks that projection. Managed materialization therefore adds one CLI-owned writer:
+Workspace planning also requires `.emery/topology.lock`, while the current engine only reads and staleness-checks that projection. Managed materialization therefore adds one CLI-owned writer:
 
 ```bash
-specify workspace topology refresh
+emery workspace topology refresh
 ```
 
 The refresh operation:
@@ -205,7 +205,7 @@ The branch name is deterministic:
 
 Collisions fail with a recovery hint unless policy explicitly permits re-entry onto the matching branch and recorded base.
 
-Specify never performs an implicit destructive reset of an operator-owned slot.
+Emery never performs an implicit destructive reset of an operator-owned slot.
 
 Branch preparation belongs to materialization; commit ownership stays with `slice merge`. The materializer creates the change branch and records the exact base, but it never commits workflow content — the merge orchestration remains the only commit writer. A unified Git provider capability may later subsume both behind one seam once forge operations (push, pull requests) land; the first version keeps the two writers distinct rather than designing that provider speculatively.
 
@@ -230,8 +230,8 @@ Lease files under the project cache are the authoritative ownership record; the 
 Lease acquisition fails when another live lease exists. Stale lease recovery is explicit:
 
 ```bash
-specify workspace lease inspect <project>
-specify workspace lease recover <project>
+emery workspace lease inspect <project>
+emery workspace lease recover <project>
 ```
 
 Recovery validates the working tree and journal before changing ownership. It never discards uncommitted work automatically.
@@ -241,7 +241,7 @@ Recovery validates the working tree and journal before changing ownership. It ne
 Managed slots distinguish:
 
 - clean at declared base;
-- clean on the expected Specify branch;
+- clean on the expected Emery branch;
 - dirty with changes explained by the active slice;
 - dirty with unaccounted changes;
 - base drifted because the remote advanced;
@@ -250,16 +250,16 @@ Managed slots distinguish:
 Only the first three states may proceed. Unaccounted or diverged states stop execution with a structured diagnostic:
 
 ```console
-$ specify workspace inspect billing --format json
+$ emery workspace inspect billing --format json
 {
   "project": "billing",
   "mode": "managed",
   "state": "dirty-unaccounted",
   "base": "5d92…",
-  "branch": "specify/migrate-payments/billing",
+  "branch": "emery/migrate-payments/billing",
   "unaccounted": ["src/lib/patch.ts"],
   "lease": null,
-  "next": "inspect the tree; commit or discard src/lib/patch.ts, then `specify workspace prepare billing --change migrate-payments`"
+  "next": "inspect the tree; commit or discard src/lib/patch.ts, then `emery workspace prepare billing --change migrate-payments`"
 }
 ```
 
@@ -279,7 +279,7 @@ This preserves evidence integrity during in-place migration.
 
 ### Project initialization and target binding
 
-A newly materialized target may lack `.specify/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [Migration Programs](rfc-74-program.md#applying-approved-topology). An existing configuration remains authoritative.
+A newly materialized target may lack `.emery/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [Migration Programs](rfc-74-program.md#applying-approved-topology). An existing configuration remains authoritative.
 
 One slot carries one target adapter. A repository holding two independent workloads is split into two registry projects — and therefore two slots — before the program schedules it; the materializer never sees a multi-target project.
 
@@ -288,12 +288,12 @@ One slot carries one target adapter. A repository holding two independent worklo
 Add explicit workspace operations:
 
 ```bash
-specify workspace sync [<project>...] [--jobs <n>]
-specify workspace inspect [<project>] [--format json]
-specify workspace topology refresh
-specify workspace prepare <project> --change <name>
-specify workspace release <project> --change <name>
-specify workspace clean <project>
+emery workspace sync [<project>...] [--jobs <n>]
+emery workspace inspect [<project>] [--format json]
+emery workspace topology refresh
+emery workspace prepare <project> --change <name>
+emery workspace release <project> --change <name>
+emery workspace clean <project>
 ```
 
 `sync` creates or fetches managed slots. `prepare` pins the base, creates the branch, and acquires the lease. `release` drops the lease after validating the tree and recording the outcome.
@@ -301,14 +301,14 @@ specify workspace clean <project>
 One managed project through the full cycle:
 
 ```console
-$ specify workspace sync billing
+$ emery workspace sync billing
 billing  cloned git@github.com:org/billing.git at refs/heads/main → workspace/billing (topology refreshed)
-$ specify workspace prepare billing --change migrate-payments
-billing  base 5d92… branch specify/migrate-payments/billing lease acquired (expires 2026-07-20T21:04:11Z)
-$ specify workspace prepare billing --change other-change
-error: workspace-lease-held: billing is leased by change `migrate-payments` (acquired 2026-07-19T21:04:11Z); `specify workspace lease inspect billing`
-$ specify workspace release billing --change migrate-payments
-billing  lease released — tree clean on specify/migrate-payments/billing, outcome recorded
+$ emery workspace prepare billing --change migrate-payments
+billing  base 5d92… branch emery/migrate-payments/billing lease acquired (expires 2026-07-20T21:04:11Z)
+$ emery workspace prepare billing --change other-change
+error: workspace-lease-held: billing is leased by change `migrate-payments` (acquired 2026-07-19T21:04:11Z); `emery workspace lease inspect billing`
+$ emery workspace release billing --change migrate-payments
+billing  lease released — tree clean on emery/migrate-payments/billing, outcome recorded
 ```
 
 `clean` removes only a clean, unleased managed slot. It refuses dirty, leased, or operator-mode paths.
@@ -325,7 +325,7 @@ The first migration coordinator uses the existing root plan-status/advance surfa
 
 The first version stops after local execution:
 
-1. Specify materializes and modifies the slot.
+1. Emery materializes and modifies the slot.
 2. Target merge commits the local change according to existing semantics.
 3. The operator inspects, pushes, opens a pull request, and merges it.
 4. Finalize archives only after operator-owned publication.
@@ -405,7 +405,7 @@ Operator-prepared slots satisfy first delivery. These stages backfill cloning an
 ## Acceptance criteria
 
 1. Existing registries default to operator materialization with no behavior change.
-2. A managed registry entry can be cloned and inspected through Specify.
+2. A managed registry entry can be cloned and inspected through Emery.
 3. Managed sync can regenerate a byte-stable topology lock from the materialized slots.
 4. A missing or dirty required slot cannot silently disappear from the topology projection.
 5. Every execution records an exact target base revision.
@@ -414,7 +414,7 @@ Operator-prepared slots satisfy first delivery. These stages backfill cloning an
 8. Interrupted work can resume only when lease, branch, base, and journal agree.
 9. Source adapters cannot write or read through the target slot capability.
 10. A repository used as both source and target has separate immutable and writable trees.
-11. Project initialization runs through `specify init`, not materializer file writes.
+11. Project initialization runs through `emery init`, not materializer file writes.
 12. Publication remains operator-owned and finalize preserves its current gate.
 13. Managed cleanup cannot remove an operator-owned or dirty checkout.
 14. The local and hosted implementations expose the same lease semantics.

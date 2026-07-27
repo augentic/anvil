@@ -1,4 +1,4 @@
-//! `specify journal {emit, show}` — the front doors onto the closed
+//! `emery journal {emit, show}` — the front doors onto the closed
 //! workflow §Observability event taxonomy.
 //!
 //! `emit` is the guarded write: it deserialises `<event-id>` +
@@ -6,7 +6,7 @@
 //! (the taxonomy *is* the per-kind payload schema — there is no
 //! parallel JSON-schema registry), stamps a second-precision UTC
 //! timestamp, and appends exactly one well-formed line to
-//! `.specify/journal.jsonl`. The emitter mints no event kinds of its
+//! `.emery/journal.jsonl`. The emitter mints no event kinds of its
 //! own. `show` is the read: a filter/limit projection over the same
 //! file that emits nothing.
 
@@ -33,7 +33,7 @@ pub struct EmitInput {
     pub payload: Option<String>,
 }
 
-/// `specify journal emit <event-id> [--payload <json>]`.
+/// `emery journal emit <event-id> [--payload <json>]`.
 ///
 /// Reassembles the adjacently-tagged `{ event, payload }` wire shape
 /// and runs a single serde round-trip into [`EventKind`]; the closed
@@ -41,7 +41,7 @@ pub struct EmitInput {
 /// validates both the id and the payload fields. The verb then stamps
 /// a second-precision UTC timestamp (the [`Event`] serde format
 /// truncates `Timestamp::now()` to seconds) and appends exactly one
-/// line to `.specify/journal.jsonl` via the internal batch appender.
+/// line to `.emery/journal.jsonl` via the internal batch appender.
 ///
 /// Failures: `journal-emit-unknown-event` (exit 2) when `event` is not
 /// a variant in the closed taxonomy; `journal-emit-payload-schema`
@@ -137,7 +137,7 @@ pub struct ShowInput {
     pub limit: Option<usize>,
 }
 
-/// `specify journal show [--filter <event-id-prefix>] [--limit N]`.
+/// `emery journal show [--filter <event-id-prefix>] [--limit N]`.
 ///
 /// Read-only projection: emits no journal event and writes nothing.
 /// Text mode prints the canonical JSONL lines (one `{ timestamp,

@@ -1,8 +1,8 @@
 <div class="hero">
-<div class="eyebrow">Understanding Specify</div>
+<div class="eyebrow">Understanding Emery</div>
 <h1 class="hero-title">Core concepts</h1>
 
-Recognise every term that appears throughout the guide after a quick skim of [What is Specify?](../orientation/index.md) or the [Quick start](../tutorials/quick-start.md).
+Recognise every term that appears throughout the guide after a quick skim of [What is Emery?](../orientation/index.md) or the [Quick start](../tutorials/quick-start.md).
 
 <div class="meta-row">
 
@@ -56,7 +56,7 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
 <div class="rhythm-label">Plan</div>
 <h4 class="rhythm-title">Define the change</h4>
 
-`/spec:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
+`/emery:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
 </div>
 
 
@@ -74,7 +74,7 @@ Operator stamps `approved`. Nothing executes until this transition.
 <div class="rhythm-label">Execute</div>
 <h4 class="rhythm-title">Build in the loop</h4>
 
-`specify plan execute` drives refine → build → merge per slice until drained.
+`emery plan execute` drives refine → build → merge per slice until drained.
 </div>
 
 
@@ -90,24 +90,24 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 
 ![Change rhythm](../assets/diagrams/concepts/change-rhythm.svg)
 
-<p class="pipeline-caption">/spec:plan exits pending; operator stamps Gate 1; specify plan execute drives slices; /spec:finalize closes the change.</p>
+<p class="pipeline-caption">/emery:plan exits pending; operator stamps Gate 1; emery plan execute drives slices; /emery:finalize closes the change.</p>
 </div>
 
 
-`/spec:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `specify plan approve` (Gate 1). The guest-routed `specify plan execute` then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Specify; `/spec:finalize` archives only after that publication is complete.
+`/emery:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `emery plan approve` (Gate 1). The guest-routed `emery plan execute` then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
 
-A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `specify plan execute` runs the same single-slice rhythm.
+A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `emery plan execute` runs the same single-slice rhythm.
 
 ## The per-slice loop
 
-Each slice runs through three phases inside `specify plan execute`. `/spec:refine` extracts evidence per bound source and synthesizes the artifacts. `/spec:build` works through the task list and writes code. `/spec:merge` folds the slice's specs into the baseline.
+Each slice runs through three phases inside `emery plan execute`. `/emery:refine` extracts evidence per bound source and synthesizes the artifacts. `/emery:build` works through the task list and writes code. `/emery:merge` folds the slice's specs into the baseline.
 
 <div class="pipeline">
 
 
 ![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
 
-<p class="pipeline-caption">refine → build → merge inside specify plan execute; merge folds specs into .specify/specs/ baseline.</p>
+<p class="pipeline-caption">refine → build → merge inside emery plan execute; merge folds specs into .emery/specs/ baseline.</p>
 </div>
 
 
@@ -119,28 +119,28 @@ Refine generates four documents in dependency order. Each one answers a differen
 
 | Artifact      | Question it answers                                                                | Location                            |
 | ------------- | ---------------------------------------------------------------------------------- | ----------------------------------- |
-| `proposal.md` | *Why* does this slice exist? What is in scope?                                     | `.specify/slices/<name>/proposal.md` |
-| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.specify/slices/<name>/specs/<domain>/spec.md` |
-| `design.md`   | *How* will the behaviour be implemented?                                            | `.specify/slices/<name>/design.md`   |
-| `tasks.md`    | In what *sequence* should it be built?                                              | `.specify/slices/<name>/tasks.md`    |
+| `proposal.md` | *Why* does this slice exist? What is in scope?                                     | `.emery/slices/<name>/proposal.md` |
+| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.emery/slices/<name>/specs/<domain>/spec.md` |
+| `design.md`   | *How* will the behaviour be implemented?                                            | `.emery/slices/<name>/design.md`   |
+| `tasks.md`    | In what *sequence* should it be built?                                              | `.emery/slices/<name>/tasks.md`    |
 
 Synthesis is owned by **core**, not by adapters. Source adapters supply `Evidence`; target adapters supply a `guidance` prompt that core synthesis reads as idiom guidance. The four canonical artifacts are written by core in a fixed substep order (`proposal → specs → design → tasks`).
 
 ## The baseline
 
-The **baseline** is the accumulated set of merged specs at `.specify/specs/`. It represents the current known behaviour of your system. Every time you run `/spec:merge`, the slice's spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline files. The slice itself is then archived for audit.
+The **baseline** is the accumulated set of merged specs at `.emery/specs/`. It represents the current known behaviour of your system. Every time you run `/emery:merge`, the slice's spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline files. The slice itself is then archived for audit.
 
 Future slices read from the baseline. When you describe a new piece of work, refine consults the baseline to keep new specs consistent with what already exists. Specs are version-controlled alongside your code, so the baseline is reviewable, diffable, and revertable like any other source file.
 
 ## Slice vs change
 
-A **slice** is one trip through the refine → build → merge loop. It lives at `.specify/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
+A **slice** is one trip through the refine → build → merge loop. It lives at `.emery/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
 
-A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace; every change is driven through `/spec:plan`, `specify plan execute`, `/spec:finalize`.
+A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace; every change is driven through `/emery:plan`, `emery plan execute`, `/emery:finalize`.
 
 ## Source and target adapters
 
-Specify splits adapters by direction.
+Emery splits adapters by direction.
 
 A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `typescript`, `captures`, `screenshots`.
 
@@ -148,11 +148,11 @@ A **target adapter** is the output role. It consumes `spec.md` + `design.md` and
 
 Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export. See [Anatomy of an adapter](adapter-anatomy.md).
 
-You pick the target at scaffolding time (`/spec:init <target>`). You bind sources per change (`/spec:plan <name> source legacy=./repo source docs=./design-notes`).
+You pick the target at scaffolding time (`/emery:init <target>`). You bind sources per change (`/emery:plan <name> source legacy=./repo source docs=./design-notes`).
 
 ## Evidence, provenance, authority
 
-When refine runs, each bound source produces an `Evidence` document at `.specify/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)) and a list of `claims:` with structured kinds.
+When refine runs, each bound source produces an `Evidence` document at `.emery/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)) and a list of `claims:` with structured kinds.
 
 Core synthesis reconciles `Evidence[]` into the slice's per-domain `specs/<domain>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
 
@@ -162,18 +162,18 @@ Sources: [identity-design-notes, legacy-monolith]
 Status: agreed
 ```
 
-`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tag-and-proceeds. The `ID:` / `Sources:` / `Status:` lines and headline tags are kernel-rendered; the operator reconciles by recording a per-slice authority override (`specify plan amend --authority-override`) or amending the plan's sources, then re-running `/spec:refine` — never by hand-editing those kernel lines (doing so trips `slice-spec-provenance-stale`). See [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md).
+`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tag-and-proceeds. The `ID:` / `Sources:` / `Status:` lines and headline tags are kernel-rendered; the operator reconciles by recording a per-slice authority override (`emery plan amend --authority-override`) or amending the plan's sources, then re-running `/emery:refine` — never by hand-editing those kernel lines (doing so trips `slice-spec-provenance-stale`). See [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md).
 
 ## Skills
 
-A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how you drive Specify — the agent owns judgement, the skill owns the workflow, and the `specify` CLI does the deterministic work (validation, lifecycle transitions, spec merging, plan writes) underneath.
+A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how you drive Emery — the agent owns judgement, the skill owns the workflow, and the `emery` CLI does the deterministic work (validation, lifecycle transitions, spec merging, plan writes) underneath.
 
 The default rhythm:
 
 > [!NOTE]
-> **Commands.** `/spec:init <target>` → `/spec:plan <name> source …` → `specify plan approve` (Gate 1) → `specify plan execute` → `/spec:finalize <name>`
+> **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan approve` (Gate 1) → `emery plan execute` → `/emery:finalize <name>`
 
-Breakouts (`/spec:refine`, `/spec:build`, `/spec:merge`, `/spec:drop`) run one phase by hand when execute parks or you want manual control.
+Breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`) run one phase by hand when execute parks or you want manual control.
 
 <div class="see-also">
 <strong>See also</strong>

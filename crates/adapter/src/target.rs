@@ -21,7 +21,7 @@ mod generated {
     });
 }
 
-pub use generated::exports::specify::adapter::target::*;
+pub use generated::exports::emery::adapter::target::*;
 pub use generated::*;
 
 impl From<crate::seam::BuildInput> for BuildInput {
@@ -46,7 +46,7 @@ impl From<crate::seam::PlatformsCapability> for PlatformsCapability {
 impl From<crate::seam::TargetMetadata> for AdapterMetadata {
     fn from(metadata: crate::seam::TargetMetadata) -> Self {
         Self {
-            specify_floor: metadata.specify_floor,
+            emery_floor: metadata.emery_floor,
             inputs: metadata.inputs.into_iter().map(Into::into).collect(),
             platforms: metadata.platforms.map(Into::into),
         }

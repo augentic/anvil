@@ -11,14 +11,14 @@ use crate::adapter::{ResolvedTarget, Resolver};
 use crate::config::{Layout, ProjectConfig};
 
 /// Shared context for every verb that operates inside an initialised
-/// `.specify/` project. Created at the top of each `handle` body via
+/// `.emery/` project. Created at the top of each `handle` body via
 /// [`Ctx::load`] against the provider's [`Anchor`].
 #[derive(Debug)]
 pub struct Ctx {
     /// Resolved project root — the nearest ancestor of the anchor
-    /// carrying `.specify/project.yaml`.
+    /// carrying `.emery/project.yaml`.
     pub project_dir: PathBuf,
-    /// Loaded `.specify/project.yaml`.
+    /// Loaded `.emery/project.yaml`.
     pub config: ProjectConfig,
     /// The provider's cache placement re-anchored at the resolved
     /// project root — what adapter resolution receives.
@@ -27,7 +27,7 @@ pub struct Ctx {
 
 impl Ctx {
     /// Resolve the project root from the provider's anchor, load
-    /// `.specify/project.yaml`, and bundle everything into a `Ctx`.
+    /// `.emery/project.yaml`, and bundle everything into a `Ctx`.
     ///
     /// # Errors
     ///
@@ -58,7 +58,7 @@ impl Ctx {
         crate::target_policy::project_adapter(resolver, &self.config, &self.paths)
     }
 
-    /// Typed view over `.specify/`-anchored paths. Hand this to
+    /// Typed view over `.emery/`-anchored paths. Hand this to
     /// [`crate::config::with_state`] in handlers that mutate
     /// `plan.yaml` / `registry.yaml`.
     #[must_use]

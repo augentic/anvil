@@ -65,13 +65,13 @@ fn reset_synthesis_answer() -> String {
                 "scenarios": ["A user requests a password reset (behaviour unspecified)"]
             }],
             "tasks": [
-                { "id": "TASK-001", "text": "Specify the password reset flow.", "satisfies": ["REQ-001"] }
+                { "id": "TASK-001", "text": "Emery the password reset flow.", "satisfies": ["REQ-001"] }
             ]
         },
         "artifacts": {
             "proposal": "# password-reset\n\n## Why\n\nDocs mention it without detail.\n\n## Domains\n\n- password-reset — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
             "design": "# Design\n\nHow password-reset lands.\n",
-            "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Specify the flow (TASK-001)\n",
+            "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Emery the flow (TASK-001)\n",
             "specs": [{ "domain": "password-reset", "content": "## password-reset\nAgent prose body.\n" }]
         }
     }))
@@ -139,7 +139,7 @@ async fn divergence_docs_wins() {
 
     // The written spec carries the inline `[divergence]` tag.
     let spec = fs::read_to_string(
-        session.root().join(".specify/slices/session-policy/specs/session/spec.md"),
+        session.root().join(".emery/slices/session-policy/specs/session/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[divergence]"), "{spec}");
@@ -197,7 +197,7 @@ async fn decisions_exact_set() {
 
     // A baseline Decision Record the slice can legally supersede — and
     // the projection the synthesis inputs must surface.
-    let baseline_dir = root.join(".specify/decisions");
+    let baseline_dir = root.join(".emery/decisions");
     fs::create_dir_all(&baseline_dir).expect("create baseline decisions");
     fs::write(
         baseline_dir.join("DEC-0001-session-ttl.md"),
@@ -220,7 +220,7 @@ async fn decisions_exact_set() {
 
     // The sidecar carries only slice-authored fields; the engine stamps
     // `id` / `slice` / `date` at merge.
-    let sidecar = root.join(".specify/slices/session-policy/decisions/session-ttl-source.md");
+    let sidecar = root.join(".emery/slices/session-policy/decisions/session-ttl-source.md");
     let record = fs::read_to_string(&sidecar).expect("decision sidecar written");
     assert!(record.contains("slug: session-ttl-source"), "{record}");
     assert!(record.contains("status: accepted"), "{record}");
@@ -231,7 +231,7 @@ async fn decisions_exact_set() {
 
     // Re-refine with a decision-free response: the exact-set
     // replacement clears both the generated record and any stray file.
-    let slice_dir = root.join(".specify/slices/session-policy");
+    let slice_dir = root.join(".emery/slices/session-policy");
     fs::write(slice_dir.join("decisions/stale.md"), "stale").expect("plant stray file");
     let metadata_path = slice_dir.join("metadata.yaml");
     let metadata = fs::read_to_string(&metadata_path).expect("read metadata");
@@ -286,7 +286,7 @@ async fn evidence_gap_projects_unknown() {
     assert!(requirement.claims.is_empty(), "{requirement:?}");
 
     let spec = fs::read_to_string(
-        session.root().join(".specify/slices/password-reset/specs/password-reset/spec.md"),
+        session.root().join(".emery/slices/password-reset/specs/password-reset/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[unknown]"), "{spec}");

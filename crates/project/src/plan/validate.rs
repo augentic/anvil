@@ -73,7 +73,7 @@ pub fn structured_finding(
 impl Plan {
     /// Run all structural and semantic checks over the plan.
     ///
-    /// `slices_dir` (when `Some`) points at `.specify/slices/` and
+    /// `slices_dir` (when `Some`) points at `.emery/slices/` and
     /// enables the cross-reference checks against on-disk slice
     /// metadata. `registry` (when `Some`) enables the cross-registry
     /// checks (`project-not-in-registry`).
@@ -322,7 +322,7 @@ fn project_binding_required(changes: &[Entry], registry: &Registry) -> Vec<Diagn
 /// claim kind (the `BTreeMap` iteration order on
 /// [`super::model::AuthorityOverride::by_kind`]).
 ///
-/// Public for the per-slice helper at `specify slice validate` to
+/// Public for the per-slice helper at `emery slice validate` to
 /// surface only the findings relevant to one slice.
 #[must_use]
 pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
@@ -363,7 +363,7 @@ pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 ///   an orphan record (`slice-divergence-orphan-values`).
 ///
 /// Both are advisory (`Suggestion`): `divergence` is operator-settable
-/// standalone via `specify plan amend --divergence` (a contract-locked,
+/// standalone via `emery plan amend --divergence` (a contract-locked,
 /// advisory-metadata-in-v1 surface), so neither finding may block that
 /// write. They surface the inconsistency at `plan validate` / Gate 1.
 /// `rejected` carries no obligation (the plan is to be re-proposed), so
@@ -415,7 +415,7 @@ fn context_paths(changes: &[Entry]) -> Vec<Diagnostic> {
                     "plan.context-path-invalid",
                     Severity::Important,
                     format!(
-                        "entry '{}': context path '{}' must be relative to .specify/ (no '..' or absolute paths)",
+                        "entry '{}': context path '{}' must be relative to .emery/ (no '..' or absolute paths)",
                         entry.name, path
                     ),
                     Some(entry.name.to_string()),

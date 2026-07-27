@@ -26,7 +26,7 @@ pub struct MergeOutcome {
     pub archive_path: PathBuf,
 }
 
-/// Merge one built slice (`specify slice merge run`).
+/// Merge one built slice (`emery slice merge run`).
 ///
 /// Runs target preflight gate → deterministic `slice_merge::commit`
 /// → plan entry `done` → target postflight gate, with each gate's
@@ -210,7 +210,7 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
             "slice-merge-entry-not-in-progress",
             "a plan-owned merge stamps its entry `done` from `in-progress`",
             format!(
-                "plan entry `{slice}` is `{}`; claim it with `specify plan next` before merging",
+                "plan entry `{slice}` is `{}`; claim it with `emery plan next` before merging",
                 entry.status
             ),
         ));

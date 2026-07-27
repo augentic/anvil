@@ -1,5 +1,5 @@
-//! `specify archive prune` — the retention GC over
-//! `.specify/archive/`. Pure filesystem inside the project root, so
+//! `emery archive prune` — the retention GC over
+//! `.emery/archive/`. Pure filesystem inside the project root, so
 //! the verb runs on every transport.
 
 use std::io::Write;
@@ -27,11 +27,11 @@ pub struct PruneInput {
     pub dry_run: bool,
 }
 
-/// `specify archive prune` — prune archived slice folders that fall
+/// `emery archive prune` — prune archived slice folders that fall
 /// outside the supplied retention bounds.
 ///
 /// The archive is a prunable convenience cache, not the system of
-/// record — git history of `.specify/specs/` plus the
+/// record — git history of `.emery/specs/` plus the
 /// `slice.archive.created` journal entries are. At least one of
 /// `keep` / `older_than` is required; a folder is pruned when it falls
 /// outside the newest-`keep` window or is older than `older_than`

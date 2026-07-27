@@ -756,8 +756,8 @@ html:not(.js) .sidebar-resize-handle {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
- * Specify Developer Guide overrides — extends mdbook's chrome with the
- * project palette. See docs/assets/theme/specify-docs.css for component
+ * Emery Developer Guide overrides — extends mdbook's chrome with the
+ * project palette. See docs/assets/theme/emery-docs.css for component
  * styling; this file owns chrome geometry + palette wiring only.
  *
  * NOTE: Anything below this banner is project-owned. mdbook upgrades that

@@ -123,7 +123,7 @@ impl Discovery {
     }
 
     /// Re-render the document and atomically persist it at `path`.
-    /// The atomic envelope is shared with every other `.specify/`
+    /// The atomic envelope is shared with every other `.emery/`
     /// writer ([`atomic::bytes_write`]).
     ///
     /// # Errors

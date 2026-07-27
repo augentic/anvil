@@ -1,6 +1,6 @@
 # Workspace topology
 
-Specify preserves workspace topology as a planning concept, but it exposes no `specify workspace` command group. Slot materialization, branch preparation, commits, publication, pull requests, and merges are operator-owned repository operations outside Specify.
+Emery preserves workspace topology as a planning concept, but it exposes no `emery workspace` command group. Slot materialization, branch preparation, commits, publication, pull requests, and merges are operator-owned repository operations outside Emery.
 
 ## Workspace slots
 
@@ -10,25 +10,25 @@ The operator or surrounding automation must create and refresh slots before plan
 
 - Remote repository URLs normally map to an ordinary checkout or worktree.
 - Local paths may map to a symlink.
-- The slot's `.specify/project.yaml` and baseline must match the committed `.specify/topology.lock` projection used by plan validation.
+- The slot's `.emery/project.yaml` and baseline must match the committed `.emery/topology.lock` projection used by plan validation.
 
-Specify does not clone repositories, create worktrees, resolve default branches, create change branches, or repair stale slots.
+Emery does not clone repositories, create worktrees, resolve default branches, create change branches, or repair stale slots.
 
 ## Topology lock
 
-`.specify/topology.lock` is the committed plan-time projection of member project metadata and baseline routing identity. It remains part of workspace validation, but regeneration is operator-owned. Never hand-edit it as an ad hoc way to bypass a validation finding; regenerate it through the repository's chosen topology tooling and review the resulting diff.
+`.emery/topology.lock` is the committed plan-time projection of member project metadata and baseline routing identity. It remains part of workspace validation, but regeneration is operator-owned. Never hand-edit it as an ad hoc way to bypass a validation finding; regenerate it through the repository's chosen topology tooling and review the resulting diff.
 
-`specify plan validate` may report stale or mismatched workspace topology when a materialized slot diverges from `registry.yaml` or `.specify/topology.lock`. Resolve the repository state outside Specify, then rerun plan validation.
+`emery plan validate` may report stale or mismatched workspace topology when a materialized slot diverges from `registry.yaml` or `.emery/topology.lock`. Resolve the repository state outside Emery, then rerun plan validation.
 
 ## Publication and finalization
 
-After `specify plan execute` drains, the operator commits and publishes each affected repository through its normal Git and forge workflow. Open and merge pull requests, or complete any equivalent publication gate, before finalization.
+After `emery plan execute` drains, the operator commits and publishes each affected repository through its normal Git and forge workflow. Open and merge pull requests, or complete any equivalent publication gate, before finalization.
 
-`/spec:finalize` does not publish branches. It verifies the plan is drained and runs `specify plan archive` only after the operator confirms publication is complete.
+`/emery:finalize` does not publish branches. It verifies the plan is drained and runs `emery plan archive` only after the operator confirms publication is complete.
 
 ## See also
 
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
-- [specify plan execute](plan.md#specify-plan-execute) -- the guest-routed driver loop
-- [`specify plan archive`](plan.md) -- archive verb used by `/spec:finalize`
+- [emery plan execute](plan.md#emery-plan-execute) -- the guest-routed driver loop
+- [`emery plan archive`](plan.md) -- archive verb used by `/emery:finalize`

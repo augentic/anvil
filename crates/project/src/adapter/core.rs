@@ -1,7 +1,7 @@
 //! Axis-split adapter identity model and post-resolve coherence gates.
 //!
 //! An adapter is a single WebAssembly component: identity
-//! lives in the wasm-pkg package reference (`specify:<name>@<semver>`),
+//! lives in the wasm-pkg package reference (`emery:<name>@<semver>`),
 //! axis in the exported world (`source` xor `target`), and the
 //! remaining metadata (compatibility floor, build inputs, platforms
 //! in the component's own deterministic `metadata` export
@@ -9,7 +9,7 @@
 //!
 //! Resolution lives in [`super::resolve`]; this module owns the typed
 //! identity structs, the location enum, and the post-resolve floor
-//! gate ([`check_requires_specify`]).
+//! gate ([`check_requires_emery`]).
 
 use std::path::PathBuf;
 
@@ -90,14 +90,14 @@ pub struct BuildInputDeclaration {
 /// Declarative platforms capability from a target's metadata answer.
 ///
 /// When a target declares `platforms`, the CLI uses this to enforce
-/// platform requirements at `specify init` time and to scaffold
+/// platform requirements at `emery init` time and to scaffold
 /// defaults for greenfield workspace members.
 ///
-/// - `required` — if true, `specify init` demands `--platforms`.
+/// - `required` — if true, `emery init` demands `--platforms`.
 /// - `allowed` — the closed set of [`Platform`] tokens the target
 ///   accepts; any project token outside the set is rejected.
 /// - `default` — the platform set scaffolded when the operator does
-///   not specify (used by greenfield workspace sync).
+///   not emery (used by greenfield workspace sync).
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PlatformsCapability {
     /// Whether projects using this target must declare platforms.
@@ -139,7 +139,7 @@ pub enum PlatformsViolation {
 /// `PlatformsViolation::into_error`.
 #[derive(Debug, Clone, Copy)]
 pub enum PlatformsSurface<'a> {
-    /// `specify init --platforms` validation — the
+    /// `emery init --platforms` validation — the
     /// `project-platforms-*` family.
     Init {
         /// Target adapter name for the message text.
@@ -270,7 +270,7 @@ pub enum AdapterLocation {
     Store(PathBuf),
     /// Resolved from the project component cache
     /// (`<project-cache>/components/<name>.wasm`) — the seeded mirror
-    /// `specify adapter add` (or a local-component init) populated.
+    /// `emery adapter add` (or a local-component init) populated.
     /// Probed for bare-name (unpinned) references and persisted
     /// component selectors; never outside the carried cache placement.
     Cache(PathBuf),
@@ -323,10 +323,10 @@ pub struct SourceAdapter {
     /// resolve — a seeded component carries no package identity.
     pub version: Option<semver::Version>,
     /// Optional host-CLI compatibility floor from the metadata
-    /// answer's `specify-floor`. The resolver compares it against the
-    /// running binary (`check_requires_specify`) and aborts with
+    /// answer's `emery-floor`. The resolver compares it against the
+    /// running binary (`check_requires_emery`) and aborts with
     /// `adapter-cli-too-old` (exit 3) when the binary is older.
-    pub requires_specify: Option<semver::Version>,
+    pub requires_emery: Option<semver::Version>,
 }
 
 /// In-memory identity + metadata of a resolved target adapter.
@@ -342,10 +342,10 @@ pub struct TargetAdapter {
     /// resolve — a seeded component carries no package identity.
     pub version: Option<semver::Version>,
     /// Optional host-CLI compatibility floor from the metadata
-    /// answer's `specify-floor`. The resolver compares it against the
-    /// running binary (`check_requires_specify`) and aborts with
+    /// answer's `emery-floor`. The resolver compares it against the
+    /// running binary (`check_requires_emery`) and aborts with
     /// `adapter-cli-too-old` (exit 3) when the binary is older.
-    pub requires_specify: Option<semver::Version>,
+    pub requires_emery: Option<semver::Version>,
     /// Adapter-declared build inputs from the metadata answer. Each
     /// entry is a path relative to the build request's `inputs.root`,
     /// flagged `required`; the guest build orchestrator assembles
@@ -381,7 +381,7 @@ pub struct ResolvedTarget {
 impl SourceAdapter {
     /// Iterator over the source operations this adapter serves, in
     /// ascending kebab-name order (`extract < survey`) — the axis's
-    /// closed WIT operation set (`wit/specify.wit`).
+    /// closed WIT operation set (`wit/emery.wit`).
     pub(crate) fn operations() -> impl Iterator<Item = &'static SourceOperation> {
         const WIT_OPERATIONS: &[SourceOperation] =
             &[SourceOperation::Extract, SourceOperation::Survey];
@@ -392,7 +392,7 @@ impl SourceAdapter {
 impl TargetAdapter {
     /// Iterator over the target operations this adapter serves, in
     /// ascending kebab-name order (`build < guidance < merge`) — the
-    /// axis's closed WIT operation set (`wit/specify.wit`:
+    /// axis's closed WIT operation set (`wit/emery.wit`:
     /// guidance/build/merge).
     pub(crate) fn operations() -> impl Iterator<Item = &'static TargetOperation> {
         const WIT_OPERATIONS: &[TargetOperation] =
@@ -401,7 +401,7 @@ impl TargetAdapter {
     }
 }
 
-/// Parse a metadata answer's `specify-floor` string into a typed
+/// Parse a metadata answer's `emery-floor` string into a typed
 /// semver, naming the identity and resolved origin on failure.
 ///
 /// # Errors
@@ -417,9 +417,9 @@ pub(super) fn parse_floor(
     semver::Version::parse(floor).map(Some).map_err(|err| {
         Error::validation_failed(
             "adapter-floor-malformed",
-            "an adapter's metadata answer declares a semver `specify-floor`",
+            "an adapter's metadata answer declares a semver `emery-floor`",
             format!(
-                "adapter `{name}` ({}) declares `specify-floor: {floor}`, which is not an exact semver: {err}",
+                "adapter `{name}` ({}) declares `emery-floor: {floor}`, which is not an exact semver: {err}",
                 origin.reference,
             ),
         )
@@ -428,14 +428,14 @@ pub(super) fn parse_floor(
 
 /// Enforce an adapter's host-CLI compatibility floor.
 ///
-/// `floor` is the adapter's optional `specify` minimum from its
+/// `floor` is the adapter's optional `emery` minimum from its
 /// metadata answer (already parsed into a typed `semver::Version`);
 /// `current` is the running binary's version (the resolve call sites
 /// pass `env!("CARGO_PKG_VERSION")`, the same source [`crate::config`]
 /// uses). When the binary is older than the floor the adapter cannot be
 /// honored, so resolution aborts with [`Error::AdapterCliTooOld`] on
 /// the exit-3 `EXIT_VERSION_TOO_OLD` path — the adapter-granularity
-/// analog of the `project.yaml` `specify` floor.
+/// analog of the `project.yaml` `emery` floor.
 ///
 /// `current` is parsed permissively: an unparseable running version is
 /// treated as "not older" rather than bricking resolution, mirroring
@@ -445,7 +445,7 @@ pub(super) fn parse_floor(
 ///
 /// Returns [`Error::AdapterCliTooOld`] when `current` parses below
 /// `floor`.
-pub(super) fn check_requires_specify(
+pub(super) fn check_requires_emery(
     floor: Option<&semver::Version>, current: &str, name: &str, origin: &Origin,
 ) -> Result<(), Error> {
     let Some(floor) = floor else {
@@ -476,7 +476,7 @@ mod tests {
         };
         let floor = semver::Version::new(2, 0, 0);
 
-        check_requires_specify(Some(&floor), "not-a-version", "demo-target", &origin)
+        check_requires_emery(Some(&floor), "not-a-version", "demo-target", &origin)
             .expect("an unparseable running version must not brick resolution");
     }
 }

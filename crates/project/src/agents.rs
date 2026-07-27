@@ -1,7 +1,7 @@
 //! Init-time `AGENTS.md` scaffold.
 //!
 //! Writes a short fenced context document plus a minimal
-//! `.specify/context.lock` when `AGENTS.md` is absent. No root-marker
+//! `.emery/context.lock` when `AGENTS.md` is absent. No root-marker
 //! detection or multi-input fingerprinting — the fence and adapter
 //! line are the durable contract.
 
@@ -38,7 +38,7 @@ impl Skip {
     }
 }
 
-/// Generate root `AGENTS.md` and `.specify/context.lock` for a freshly
+/// Generate root `AGENTS.md` and `.emery/context.lock` for a freshly
 /// initialised project.
 ///
 /// Returns `Ok(None)` when generation ran, `Ok(Some(reason))` when it
@@ -67,18 +67,18 @@ pub fn generate(resolver: &impl Resolver, paths: &ExecutionPaths) -> Result<Opti
     let body_digest = format!("sha256:{}", diagnostics::digest::sha256_hex(body.as_bytes()));
     let document = format!(
         "# {name} - Agent Instructions\n\n\
-         <!-- specify:context begin\n\
+         <!-- emery:context begin\n\
          fingerprint: {body_digest}\n\
-         generated-by: specify {version}\n\
+         generated-by: emery {version}\n\
          -->\n\n\
          {body}\
-         <!-- specify:context end -->\n",
+         <!-- emery:context end -->\n",
         name = one_line(&config.name),
     );
 
     bytes_write(&project_dir.join("AGENTS.md"), document.as_bytes())?;
     yaml_write(
-        &Layout::new(project_dir).specify_dir().join("context.lock"),
+        &Layout::new(project_dir).emery_dir().join("context.lock"),
         &ContextLock {
             version: 1,
             fingerprint: body_digest.clone(),
@@ -115,12 +115,12 @@ fn render_body(adapter: Option<&str>) -> String {
     );
     format!(
         "## Conventions\n\
-         - Prefer `specify` CLI verbs over hand-editing `.specify/` state.\n\
+         - Prefer `emery` CLI verbs over hand-editing `.emery/` state.\n\
          {adapter_line}\
          \n## Boundaries\n\
-         - During execute/build/merge, agents consume Specify and adapters — they do not maintain them.\n\
-         - `metadata.yaml` and `plan.yaml` are framework-managed; update them through `specify` verbs.\n\
-         - `.specify/archive/` is framework-managed history.\n\n",
+         - During execute/build/merge, agents consume Emery and adapters — they do not maintain them.\n\
+         - `metadata.yaml` and `plan.yaml` are framework-managed; update them through `emery` verbs.\n\
+         - `.emery/archive/` is framework-managed history.\n\n",
     )
 }
 

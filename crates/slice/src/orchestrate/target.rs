@@ -159,7 +159,7 @@ async fn finalize(
 
 /// Assemble the build request from the declared inputs and persist it
 /// atomically to
-/// `.specify/slices/<slice>/build/request.yaml` — the native prepare
+/// `.emery/slices/<slice>/build/request.yaml` — the native prepare
 /// leg verbatim, minus the shell hooks.
 fn write_request(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,

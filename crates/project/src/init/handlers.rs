@@ -1,14 +1,14 @@
-//! `specify init` — the project initialization operation.
+//! `emery init` — the project initialization operation.
 //!
-//! Owns every filesystem write of project-scoped state — `.specify/`,
+//! Owns every filesystem write of project-scoped state — `.emery/`,
 //! `project.yaml`, `registry.yaml` (workspace mode), `.gitignore`
 //! lines, the per-project derived component-mirror cache tenant, and
-//! the generated `AGENTS.md` context (plus its `.specify/context.lock`
+//! the generated `AGENTS.md` context (plus its `.emery/context.lock`
 //! sidecar) when `AGENTS.md` is absent. `--upgrade` is the re-entry
-//! path: it bumps the `project.yaml.specify` pin over an existing
+//! path: it bumps the `project.yaml.emery` pin over an existing
 //! project, preserving every operator artifact. Running plain `init`
 //! in an already-initialized project changes nothing and exits 0 with
-//! a message routing to `specify init --upgrade`.
+//! a message routing to `emery init --upgrade`.
 //!
 //! Unlike the project-scoped verbs, init runs *before* a project
 //! exists, so it anchors at the provider's raw
@@ -28,7 +28,7 @@ use crate::config::{Layout, ProjectConfig};
 use crate::handler::{Anchor, ExecutionPaths, Render};
 use crate::platform::parse_platforms_csv;
 
-/// Wire input for `specify init` — the full argument surface.
+/// Wire input for `emery init` — the full argument surface.
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct InitInput {
@@ -52,7 +52,7 @@ pub struct InitInput {
     pub upgrade: bool,
 }
 
-/// `specify init` against the provider's anchor root (`"."` on both
+/// `emery init` against the provider's anchor root (`"."` on both
 /// sides: the guest's mount preopen, the native process CWD).
 #[derive(Clone, Copy, Debug)]
 pub struct Init;
@@ -92,7 +92,7 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
         if adapter.is_none() && !workspace && !upgrade {
             return Err(Error::validation_failed(
                 "init-adapter-required",
-                "specify init requires an adapter",
+                "emery init requires an adapter",
                 "pass `<adapter>` (first-party shorthand, package reference, or local component \
                  path), or `--workspace` for a registry-only workspace",
             )
@@ -171,7 +171,7 @@ pub enum InitMode {
     Upgraded,
 }
 
-/// Success envelope for `specify init`.
+/// Success envelope for `emery init`.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct InitBody {
@@ -187,10 +187,10 @@ pub struct InitBody {
     pub directories_created: Vec<String>,
     /// Rule keys scaffolded into the project.
     pub scaffolded_rule_keys: Vec<String>,
-    /// The `specify` version pinned on `project.yaml`.
-    pub specify_version: String,
+    /// The `emery` version pinned on `project.yaml`.
+    pub emery_version: String,
     /// `true` when this run generated root `AGENTS.md` and
-    /// `.specify/context.lock`.
+    /// `.emery/context.lock`.
     pub context_generated: bool,
     /// `true` when context generation was skipped.
     pub context_skipped: bool,
@@ -209,7 +209,7 @@ impl InitBody {
             cache_present: result.cache_present,
             directories_created: result.directories_created.iter().map(|p| canonical(p)).collect(),
             scaffolded_rule_keys: result.scaffolded_rule_keys.clone(),
-            specify_version: result.specify_version.clone(),
+            emery_version: result.emery_version.clone(),
             context_generated: result.context_skip_reason.is_none(),
             context_skipped: result.context_skip_reason.is_some(),
             context_skip_reason: result.context_skip_reason.map(super::Skip::as_str),
@@ -231,7 +231,7 @@ impl InitBody {
             adapter_name,
             directories_created: Vec::new(),
             scaffolded_rule_keys: Vec::new(),
-            specify_version: cfg.specify_version.unwrap_or_default(),
+            emery_version: cfg.emery_version.unwrap_or_default(),
             context_generated: false,
             context_skipped: false,
             context_skip_reason: None,
@@ -244,22 +244,22 @@ impl Render for InitBody {
         match self.mode {
             InitMode::AlreadyInitialized => {
                 writeln!(w, "Already initialized ({}); nothing changed.", self.config_path)?;
-                writeln!(w, "Run `specify init --upgrade` to bump the specify pin.")?;
+                writeln!(w, "Run `emery init --upgrade` to bump the emery pin.")?;
                 return Ok(());
             }
             InitMode::Upgraded => {
-                writeln!(w, "Upgraded .specify/")?;
+                writeln!(w, "Upgraded .emery/")?;
             }
             InitMode::Scaffolded if self.adapter_name == "workspace" => {
-                writeln!(w, "Scaffolded .specify/ as a registry-only workspace")?;
+                writeln!(w, "Scaffolded .emery/ as a registry-only workspace")?;
             }
             InitMode::Scaffolded => {
-                writeln!(w, "Scaffolded .specify/")?;
+                writeln!(w, "Scaffolded .emery/")?;
             }
         }
         writeln!(w, "  adapter: {}", self.adapter_name)?;
         writeln!(w, "  config: {}", self.config_path)?;
-        writeln!(w, "  specify: {}", self.specify_version)?;
+        writeln!(w, "  emery: {}", self.emery_version)?;
         if self.context_skip_reason == Some("existing-agents-md") {
             writeln!(w, "AGENTS.md already present; skipping context generate")?;
         }

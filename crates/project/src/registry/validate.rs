@@ -76,7 +76,7 @@ impl Registry {
         // The registry does not author a project's adapter or
         // description for plan-time topology. Those facets live in each
         // project's `project.yaml` and are checked against
-        // `.specify/topology.lock` by `specify plan validate`
+        // `.emery/topology.lock` by `emery plan validate`
         // (`topology-cache-stale`).
 
         Ok(())

@@ -1,4 +1,4 @@
-//! Clap argument types for `specify target *`. Each `*Args` type mirrors
+//! Clap argument types for `emery target *`. Each `*Args` type mirrors
 //! its command's workflow wire input.
 
 use std::path::PathBuf;
@@ -13,7 +13,7 @@ pub struct ResolveArgs {
     /// `@version` suffix is treated as an opaque identifier and
     /// is stripped for the manifest lookup.
     pub value: String,
-    /// Project directory containing `.specify/` (defaults to the
+    /// Project directory containing `.emery/` (defaults to the
     /// current directory).
     #[arg(long, default_value = ".")]
     pub project_dir: Option<PathBuf>,

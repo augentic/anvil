@@ -14,7 +14,7 @@ use crate::registry::{Registry, RegistryProject};
 ///
 /// Emits one [`STALE_CLONE`] per registry project whose existing
 /// workspace slot would be refused by `workspace sync`. Missing slots
-/// are left to `workspace sync`; absent `.specify-sync.yaml` metadata
+/// are left to `workspace sync`; absent `.emery-sync.yaml` metadata
 /// is ignored.
 pub(super) fn detect(registry: &Registry, project_dir: &Path) -> Vec<Diagnostic> {
     let mut sorted: Vec<&RegistryProject> = registry.projects.iter().collect();

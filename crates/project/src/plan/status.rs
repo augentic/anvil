@@ -1,4 +1,4 @@
-//! Read-only `specify plan status` projection.
+//! Read-only `emery plan status` projection.
 //!
 //! [`plan_status_body`] projects `plan.yaml` entries, the candidate
 //! slice's `metadata.yaml` lifecycle, and the journal tail into a
@@ -24,11 +24,11 @@ pub use project::plan_status_body;
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum NextActionKind {
-    /// Run `/spec:refine` for [`StatusBody::slice`].
+    /// Run `/emery:refine` for [`StatusBody::slice`].
     Refine,
-    /// Run `/spec:build` for [`StatusBody::slice`].
+    /// Run `/emery:build` for [`StatusBody::slice`].
     Build,
-    /// Run `/spec:merge` for [`StatusBody::slice`].
+    /// Run `/emery:merge` for [`StatusBody::slice`].
     Merge,
     /// Halt the loop; [`StatusBody::stop`] carries the reason.
     Stop,
@@ -42,11 +42,11 @@ pub enum NextActionKind {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum LoopStep {
-    /// The refine phase (`/spec:refine`).
+    /// The refine phase (`/emery:refine`).
     Refine,
-    /// The build phase (`/spec:build`).
+    /// The build phase (`/emery:build`).
     Build,
-    /// The merge phase (`/spec:merge`, including the per-entry `done` stamp).
+    /// The merge phase (`/emery:merge`, including the per-entry `done` stamp).
     Merge,
 }
 
@@ -83,24 +83,24 @@ impl StopReason {
     #[must_use]
     pub const fn hint(self) -> &'static str {
         match self {
-            Self::PlanNotApproved => "Stamp Gate 1 first: specify plan approve.",
+            Self::PlanNotApproved => "Stamp Gate 1 first: emery plan approve.",
             Self::RefineFailed => {
-                "Fix the failure, then retry /spec:refine for the slice. The plan entry stays \
+                "Fix the failure, then retry /emery:refine for the slice. The plan entry stays \
                  in-progress."
             }
             Self::BuildFailed => {
-                "Fix the failure, then retry /spec:build for the slice. The plan entry stays \
+                "Fix the failure, then retry /emery:build for the slice. The plan entry stays \
                  in-progress."
             }
             Self::MergeConflict => {
-                "Resolve the baseline conflict (or drop the slice), then retry /spec:merge. The \
+                "Resolve the baseline conflict (or drop the slice), then retry /emery:merge. The \
                  plan entry stays in-progress until the merge lands."
             }
             Self::SliceDropped => {
                 "The slice was dropped; amend or remove the plan entry to unblock the queue."
             }
             Self::MergeIncomplete => {
-                "The slice is merged but the entry is still in-progress; stamp it with specify \
+                "The slice is merged but the entry is still in-progress; stamp it with emery \
                  plan transition <entry> done."
             }
             Self::Stuck => {
@@ -137,7 +137,7 @@ pub struct StatusCounts {
     pub done: usize,
 }
 
-/// Wire body for `specify plan status` (text + JSON).
+/// Wire body for `emery plan status` (text + JSON).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct StatusBody {
@@ -171,7 +171,7 @@ pub struct StatusBody {
     pub last_completed: Option<LoopStep>,
     /// Next valid resume point as a literal command — the phase
     /// skill for dispatches and retryable stops, the Gate 1 / `done`
-    /// stamp for the stamp-shaped stops, `/spec:finalize` on drained.
+    /// stamp for the stamp-shaped stops, `/emery:finalize` on drained.
     /// `None` when no single command makes progress (`stuck`,
     /// `slice-dropped`).
     pub resume: Option<String>,
@@ -181,10 +181,10 @@ pub struct StatusBody {
     pub stop: Option<StopBody>,
 }
 
-/// Stop-conditions drained string: `drained — run /spec:finalize <name>`.
+/// Stop-conditions drained string: `drained — run /emery:finalize <name>`.
 #[must_use]
 pub fn drained_line(plan_name: &str) -> String {
-    format!("drained \u{2014} run /spec:finalize {plan_name}")
+    format!("drained \u{2014} run /emery:finalize {plan_name}")
 }
 
 /// Text rendering for `plan status`: a plan/entries header, then the

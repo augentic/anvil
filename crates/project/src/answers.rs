@@ -14,7 +14,7 @@
 //! The committed copies under `crates/project/answers/` (and
 //! `crates/slice/answers/` for the synthesis leg) are parity-gated
 //! against this generation by `crates/project/tests/answers.rs` and
-//! `crates/slice/tests/answers.rs`; adapters in `augentic/specify-adapters`
+//! `crates/slice/tests/answers.rs`; adapters in `augentic/emery-adapters`
 //! vendor the `leads` / `evidence` / `report` documents.
 
 use schemars::JsonSchema;
@@ -24,7 +24,7 @@ use crate::seam::wire::{BuildOutput, BuildStatus, UiSurface};
 use crate::seam::{Evidence, Lead};
 
 /// `$id` base for the generated answer documents.
-const ANSWERS_ID_BASE: &str = "https://github.com/augentic/specify/answers";
+const ANSWERS_ID_BASE: &str = "https://github.com/augentic/emery/answers";
 
 /// Kebab slug grammar for lead ids and topic slugs, mirroring
 /// `artifacts::evidence::is_kebab` in the deterministic tail.
@@ -99,7 +99,7 @@ pub fn root_schema<T: JsonSchema>(file: &str, title: &str, description: &str) ->
 pub fn leads() -> Value {
     let mut schema = root_schema::<LeadsAnswer>(
         "leads.schema.json",
-        "Specify survey answer",
+        "Emery survey answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to a source \
          adapter's survey operation: an object carrying `leads[]`, each item the lead shape \
@@ -130,7 +130,7 @@ pub fn leads() -> Value {
 pub fn evidence() -> Value {
     let mut schema = root_schema::<Evidence>(
         "evidence.schema.json",
-        "Specify extract answer",
+        "Emery extract answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to a source \
          adapter's extract operation: the Evidence shape minus the envelope `lead` key (the \
@@ -163,7 +163,7 @@ pub fn evidence() -> Value {
 pub fn report() -> Value {
     root_schema::<ReportAnswer>(
         "report.schema.json",
-        "Specify build/merge answer",
+        "Emery build/merge answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to a target \
          adapter's build or merge operation: the report shape minus the envelope keys \
@@ -190,7 +190,7 @@ pub fn report() -> Value {
 pub fn proposal() -> Value {
     let mut schema = root_schema::<crate::plan::ProposalResponse>(
         "proposal.schema.json",
-        "Specify plan reconciliation answer",
+        "Emery plan reconciliation answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to the plan-time \
          lead-reconciliation judgment: the `kind: response` envelope the guest `plan author` \

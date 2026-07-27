@@ -2,23 +2,23 @@
 
 Augentic-specific supplement: how **target adapters** (Omnia, Vectis, and friends) *consume* the standard artifacts. For artifact structure see [Artifact format](../reference/artifact-format.md) and [Artifacts in depth](./artifacts.md).
 
-Augentic uses stock Specify as its executable workflow contract. Operators drive `/spec:plan → specify plan execute` (which drives `/spec:refine → /spec:build → /spec:merge` per slice). Target adapters read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during build, but must not redefine the runtime contract. Artifact validation runs automatically inside `/spec:build` before implementation begins.
+Augentic uses stock Emery as its executable workflow contract. Operators drive `/emery:plan → emery plan execute` (which drives `/emery:refine → /emery:build → /emery:merge` per slice). Target adapters read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during build, but must not redefine the runtime contract. Artifact validation runs automatically inside `/emery:build` before implementation begins.
 
 ## Where specialists read and write
 
 ```text
 $PROJECT_DIR        = <workspace>
-$SLICE_DIR          = $PROJECT_DIR/.specify/slices/<slice-name>
+$SLICE_DIR          = $PROJECT_DIR/.emery/slices/<slice-name>
 $SPECS_DIR          = $SLICE_DIR/specs
 $DESIGN_PATH        = $SLICE_DIR/design.md
 $PROPOSAL_PATH      = $SLICE_DIR/proposal.md
 $TASKS_PATH         = $SLICE_DIR/tasks.md
 $DECISIONS_DIR      = $SLICE_DIR/decisions          # optional, slice-authored
-$BASELINE_SPECS     = $PROJECT_DIR/.specify/specs
-$BASELINE_DECISIONS = $PROJECT_DIR/.specify/decisions
+$BASELINE_SPECS     = $PROJECT_DIR/.emery/specs
+$BASELINE_DECISIONS = $PROJECT_DIR/.emery/decisions
 ```
 
-Merged and dropped slices are archived to `$PROJECT_DIR/.specify/archive/YYYY-MM-DD-<slice-name>/` — a prunable convenience cache, not the system of record.
+Merged and dropped slices are archived to `$PROJECT_DIR/.emery/archive/YYYY-MM-DD-<slice-name>/` — a prunable convenience cache, not the system of record.
 
 ## What belongs to specialists vs the artifacts
 
@@ -44,13 +44,13 @@ When a source adapter's `extract` reconstructs behaviour from legacy code, the s
 
 Never generate tasks that require human-only action: manual app testing, visual inspection, real-world API credentials, production services, physical-device checks, app-store review, or "ask the user to verify". When behaviour appears to need manual validation, write the agent-verifiable equivalent instead (a mocked API test, a replay, a simulator or build check, a contract test, or a scripted smoke test).
 
-`specify slice validate` checks only the checkbox and grouping *shape* of `tasks.md`; it does not inspect task intent. Agent-completability is therefore judged at write time and re-checked by `/spec:build` as a preflight.
+`emery slice validate` checks only the checkbox and grouping *shape* of `tasks.md`; it does not inspect task intent. Agent-completability is therefore judged at write time and re-checked by `/emery:build` as a preflight.
 
 Tasks are implemented by the active target adapter's `build` brief, which carries the specialist orchestration inline; they do not route to standalone Cursor skills.
 
 ## Decision Records
 
-A slice may author **Decision Records** at `$DECISIONS_DIR/<slug>.md` for the durable *why* behind a design choice. `/spec:merge` promotes them into `$BASELINE_DECISIONS/DEC-NNNN-<slug>.md`. See [Decision Records](../reference/artifact-format.md#decision-records-design-why) for the format and promotion rules. Accepted decisions also sharpen the project's plan-time routing identity (a third axis beside what the project does and what recently changed).
+A slice may author **Decision Records** at `$DECISIONS_DIR/<slug>.md` for the durable *why* behind a design choice. `/emery:merge` promotes them into `$BASELINE_DECISIONS/DEC-NNNN-<slug>.md`. See [Decision Records](../reference/artifact-format.md#decision-records-design-why) for the format and promotion rules. Accepted decisions also sharpen the project's plan-time routing identity (a third axis beside what the project does and what recently changed).
 
 ## See also
 

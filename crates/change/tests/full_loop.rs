@@ -52,7 +52,7 @@ async fn scaffold_author_approve(session: &Session) {
     assert_eq!(authored.slices, ["greeting"]);
     assert_eq!(authored.surveyed.len(), 1);
     assert_eq!(authored.surveyed[0].leads, ["greeting"]);
-    assert!(authored.hint.contains("specify plan approve"), "{}", authored.hint);
+    assert!(authored.hint.contains("emery plan approve"), "{}", authored.hint);
 
     run::<plan::handlers::Approve, _, _>(
         session.provider(),
@@ -95,14 +95,14 @@ async fn author_approve_execute_drains() {
     assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
 
     // Baseline merge output with complete provenance.
-    let baseline = root.join(".specify/specs/greeting/spec.md");
+    let baseline = root.join(".emery/specs/greeting/spec.md");
     let content = fs::read_to_string(&baseline).expect("baseline spec written");
     assert!(content.contains("ID: REQ-001"), "{content}");
     assert!(content.contains("Sources: main"), "{content}");
 
     // The merge archived the slice directory; the archived model.yaml
     // carries the kernel-projected provenance inline.
-    let archive = fs::read_dir(root.join(".specify/archive"))
+    let archive = fs::read_dir(root.join(".emery/archive"))
         .expect("archive dir exists")
         .map(|entry| entry.expect("archive entry").path())
         .find(|path| {
@@ -169,10 +169,10 @@ async fn preflight_parks_built() {
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
 
     // Nothing merged: the slice stays `built`, no baseline, no archive.
-    let metadata = fs::read_to_string(root.join(".specify/slices/greeting/metadata.yaml"))
+    let metadata = fs::read_to_string(root.join(".emery/slices/greeting/metadata.yaml"))
         .expect("slice still present");
     assert!(metadata.contains("status: built"), "{metadata}");
-    assert!(!root.join(".specify/specs/greeting/spec.md").exists());
+    assert!(!root.join(".emery/specs/greeting/spec.md").exists());
 
     // Clear the gate and resume through the breakout merge, then the
     // loop confirms drained.
@@ -214,8 +214,8 @@ async fn postflight_terminal() {
 
     // Non-rollback: the merge committed before the gate ran — baseline
     // written, slice archived, plan entry `done`.
-    assert!(root.join(".specify/specs/greeting/spec.md").is_file());
-    assert!(!root.join(".specify/slices/greeting").exists());
+    assert!(root.join(".emery/specs/greeting/spec.md").is_file());
+    assert!(!root.join(".emery/slices/greeting").exists());
     let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
     )
@@ -223,7 +223,7 @@ async fn postflight_terminal() {
     assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
 
     // The journal makes the irreversible state explicit.
-    let journal = fs::read_to_string(root.join(".specify/journal.jsonl")).expect("journal");
+    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
     assert!(journal.contains("slice.merge.postflight-failed"), "{journal}");
     assert!(!journal.contains("slice.merge.succeeded"), "{journal}");
 }

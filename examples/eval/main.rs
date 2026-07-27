@@ -1,4 +1,4 @@
-//! Specify's live composition example: native command passthrough
+//! Emery's live composition example: native command passthrough
 //! over the mock catalog by default, the live eval case runner under
 //! the `eval` subcommand. (wasm32 builds compile an empty stub so
 //! `--examples` passes.)

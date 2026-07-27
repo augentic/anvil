@@ -1,13 +1,13 @@
 # Registry & Open-Source Strategy
 
-Companion to RFC-77 (release process) · registry, open-source, brand & naming, growth · omnia, backends, specify, specify-adapters · Jul 25, 2026
+Companion to RFC-77 (release process) · registry, open-source, brand & naming, growth · omnia, backends, emery, emery-adapters · Jul 25, 2026
 
 > **Strategic posture: a consultancy's force multiplier, not a product.**
-> Every decision below is scored against one thesis: Specify is Propellerhead's delivery force multiplier — the revenue is services engagements, and the competition is other consultancies, not spec-kit / Kiro / Tessl. 
+> Every decision below is scored against one thesis: Emery is Propellerhead's delivery force multiplier — the revenue is services engagements, and the competition is other consultancies, not spec-kit / Kiro / Tessl. 
 >
-> **Specify isn't competing with AI coding tools; it's the delivery system that sits on top of them**. The crowded tooling market is validation, not threat: GitHub is paying to educate the category, and the free tools don't bid on delivery contracts. The guardrail is a trace test — every engine feature should trace to a client engagement need, and the scoreboard is margin per engagement and delivery speed, not framework adoption.
+> **Emery isn't competing with AI coding tools; it's the delivery system that sits on top of them**. The crowded tooling market is validation, not threat: GitHub is paying to educate the category, and the free tools don't bid on delivery contracts. The guardrail is a trace test — every engine feature should trace to a client engagement need, and the scoreboard is margin per engagement and delivery speed, not framework adoption.
 >
-> If the roadmap starts optimising Specify as a product, this whole strategy needs re-scoring.
+> If the roadmap starts optimising Emery as a product, this whole strategy needs re-scoring.
 
 
 
@@ -18,8 +18,8 @@ Companion to RFC-77 (release process) · registry, open-source, brand & naming, 
 | --------------------------- | ---------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
 | `augentic/omnia`            | Public     | crates.io — 0.34.0 published (both repos pin 0.35.0 via git patch) | MIT / Apache-2.0. Runtime layer, already open and publishing.                                                              |
 | `augentic/backends`         | Public     | crates.io — omnia-cursor 0.29.0 declared, git-patched to main      | Follows omnia's posture; already open.                                                                                     |
-| `augentic/specify`          | Private    | No crate registry — `publish = false` everywhere                   | Metadata already declares MIT / Apache-2.0 and a public repo URL. The posture is open source that hasn't been switched on. |
-| `augentic/specify-adapters` | Private    | GHCR wasm components only (`ghcr.io/augentic/specify-adapters`)    | Consumes engine crates as unpinned git dependencies, held by `Cargo.lock`. Holds the rule corpus and prompt prose.         |
+| `augentic/emery`          | Private    | No crate registry — `publish = false` everywhere                   | Metadata already declares MIT / Apache-2.0 and a public repo URL. The posture is open source that hasn't been switched on. |
+| `augentic/emery-adapters` | Private    | GHCR wasm components only (`ghcr.io/augentic/emery-adapters`)    | Consumes engine crates as unpinned git dependencies, held by `Cargo.lock`. Holds the rule corpus and prompt prose.         |
 
 
 
@@ -28,11 +28,11 @@ Companion to RFC-77 (release process) · registry, open-source, brand & naming, 
 
 **Recommendation:** No registry yet — pin the git dependencies by release tag instead.
 
-The `adapter` / `native` / `probe` / `prose` seam currently floats on specify's default branch, held only by the committed `Cargo.lock`. That is exactly what RFC-77 D9 warns about: adapters that only build against an unpublished seam state. Once Phase A gives durable `release-X.Y.Z` lines, pinning by tag makes D9 enforceable in `Cargo.toml` with zero infrastructure:
+The `adapter` / `native` / `probe` / `prose` seam currently floats on emery's default branch, held only by the committed `Cargo.lock`. That is exactly what RFC-77 D9 warns about: adapters that only build against an unpublished seam state. Once Phase A gives durable `release-X.Y.Z` lines, pinning by tag makes D9 enforceable in `Cargo.toml` with zero infrastructure:
 
 ```toml
-# specify-adapters/Cargo.toml — after RFC-77 Phase A
-adapter = { git = "https://github.com/augentic/specify.git", tag = "v0.28.0" }
+# emery-adapters/Cargo.toml — after RFC-77 Phase A
+adapter = { git = "https://github.com/augentic/emery.git", tag = "v0.28.0" }
 ```
 
 
@@ -42,42 +42,42 @@ adapter = { git = "https://github.com/augentic/specify.git", tag = "v0.28.0" }
 
 | Concern                                 | Detail                                                                                                                                                                    |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| crates.io is public-only, names collide | `adapter`, `native`, `probe`, `prose` are generic — publishing means renaming to `specify-*` across both repos for no consumer benefit.                                   |
+| crates.io is public-only, names collide | `adapter`, `native`, `probe`, `prose` are generic — publishing means renaming to `emery-*` across both repos for no consumer benefit.                                   |
 | Forces omnia pin hygiene first          | Published crates can't carry `[patch.crates-io]`. Both workspaces pin omnia 0.35.0, but crates.io is at 0.34.0 — every engine publish would be gated on an omnia publish. |
 | Private registry is ops burden          | Kellnr / Cloudsmith / JFrog add hosting and auth for a small team with exactly one internal consumer.                                                                     |
 | One consumer, same team                 | Git deps + tags + the committed sibling `[patch]` block already cover co-development.                                                                                     |
 
 
-> **Trigger to revisit.** The moment a third-party adapter author needs the SDK (RM-21), git dependencies into a private repo stop working. Then publish the SDK-facing crates (`adapter`, plus `native` / `probe` for the test harness) to crates.io under `specify-`* names. RFC-77's "no crates.io" non-goal is right for this cut — reword it as *deferred until third-party SDK consumers exist*, not rejected.
+> **Trigger to revisit.** The moment a third-party adapter author needs the SDK (RM-21), git dependencies into a private repo stop working. Then publish the SDK-facing crates (`adapter`, plus `native` / `probe` for the test harness) to crates.io under `emery-`* names. RFC-77's "no crates.io" non-goal is right for this cut — reword it as *deferred until third-party SDK consumers exist*, not rejected.
 
 
 
 ## 2 · Open vs closed source
 
-**Recommendation:** Open the platform (omnia, backends, specify). Open specify-adapters after an IP pass, keeping client-derived overlays private.
+**Recommendation:** Open the platform (omnia, backends, emery). Open emery-adapters after an IP pass, keeping client-derived overlays private.
 
 You're already half committed: omnia and backends are public and on crates.io, and both private workspaces declare MIT / Apache-2.0 with public repository URLs in their metadata. The strategic thesis — the advantage is the thinking, not the replicable software — argues for finishing the move.
 
-### Why opening specify is close to forced
+### Why opening emery is close to forced
 
 
 | Driver                                          | Argument                                                                                                                                                            |
 | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Your own roadmap requires it                    | RM-21 (third-party adapters, descriptor registry, trust policy) cannot exist around a private engine. Nobody builds against a WIT contract and SDK they can't read. |
-| Distribution friction fights the services model | Clients run the `specify` binary and pull adapter components from GHCR pull-on-miss. Private repos mean token provisioning for every client machine and CI runner.  |
+| Distribution friction fights the services model | Clients run the `emery` binary and pull adapter components from GHCR pull-on-miss. Private repos mean token provisioning for every client machine and CI runner.  |
 | The software is proof of the thinking           | For a consultancy, an open platform is compounding marketing: sales credibility, no lock-in objection, inbound interest, hiring.                                    |
 
 
 
 
-### specify-adapters — the real decision
+### emery-adapters — the real decision
 
 The distilled "thinking" — `codex/rules/`, review-team protocols, synthesis and build prompt corpora — lives here. But it is **already shipped to every client**: the prose is compiled into the `.wasm` components clients pull, and prompt text is trivially extractable from a component. Closing the repo protects the git history, not the content. The moat is velocity — rules and prompts improve every engagement; a fork inherits a stale snapshot without the practice that produced it.
 
 
 | Open                                                                                                                                               | Private                                                                                                                                                                                                                                                                                                    |
 | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **First-party adapters + rule corpus.** Your best portfolio piece, and effectively source-available anyway. Ship as-is after a one-time IP review. | **Client-derived and vertical prose.** Client-specific rule overlays, engagement adapters, domain playbooks. A private adapter repo publishes components the same way — `specify adapter add` and private GHCR pins already handle closed distribution. The boundary is per adapter/overlay, not per repo. |
+| **First-party adapters + rule corpus.** Your best portfolio piece, and effectively source-available anyway. Ship as-is after a one-time IP review. | **Client-derived and vertical prose.** Client-specific rule overlays, engagement adapters, domain playbooks. A private adapter repo publishes components the same way — `emery adapter add` and private GHCR pins already handle closed distribution. The boundary is per adapter/overlay, not per repo. |
 
 
 > **Licensing.** Keep the permissive MIT / Apache-2.0 already declared. BSL/FSL guards against a hyperscaler productizing your software — the thesis explicitly says the software isn't the product, and restrictive licenses would cost the credibility that motivates opening up.
@@ -88,7 +88,7 @@ The distilled "thinking" — `codex/rules/`, review-team protocols, synthesis an
 
 **Recommendation:** Propellerhead stays the firm. One new coined brand carries the open-source platform — shortlist: Crossholt, Sureholt, Gateholt, Scarpmere, pending legal clearance. No new consulting brand. Kitchen lean (not clearance): **Scarpmere** for the org/umbrella (replaces `augentic`); short CLI candidates and a wider inventory live in [naming-brief.md](./naming-brief.md#kitchen-inventory-jul-25-2026) (current short-word lean: **emery**).
 
-Propellerhead keeps the contracts, references, and 25 years of trust — the buyers who sign are the least moved by brand freshness. The open platform does the innovation signalling as *evidence*, not assertion (the Thoughtworks pattern). A separate consulting brand ("DarkTarn Consulting, powered by Propellerhead") is the worst of both worlds: zero inherited equity, and the tie-back tagline defeats the distancing it was invented for. Market evidence agrees — Specify is already winning clients under the Propellerhead name.
+Propellerhead keeps the contracts, references, and 25 years of trust — the buyers who sign are the least moved by brand freshness. The open platform does the innovation signalling as *evidence*, not assertion (the Thoughtworks pattern). A separate consulting brand ("DarkTarn Consulting, powered by Propellerhead") is the worst of both worlds: zero inherited equity, and the tie-back tagline defeats the distancing it was invented for. Market evidence agrees — Emery is already winning clients under the Propellerhead name.
 
 ### Why both current names must go
 
@@ -96,7 +96,7 @@ Propellerhead keeps the contracts, references, and 25 years of trust — the buy
 | Name       | Blocker                                                                                                                                                                                                                                                                                                                                                    |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `augentic` | Augentic GmbH (Munich, est. 2020) holds a **registered EU trademark** on "Augentic" since 2021 — identity, biometrics, and digital-currency software for governments. A senior user with a registered mark in adjacent classes; under a permissive OSS license the trademark is the only retained IP, so an unenforceable name is strategically untenable. |
-| `specify`  | GitHub's spec-kit is a **triple identical collision**: a CLI binary named `specify`, a `specify init` first command, and a `.specify/` scaffold directory — same niche, GitHub-backed, 35 agent integrations, on PyPI. A user with spec-kit installed cannot even have both binaries on PATH.                                                              |
+| `emery`  | GitHub's spec-kit is a **triple identical collision**: a CLI binary named `emery`, a `emery init` first command, and a `.emery/` scaffold directory — same niche, GitHub-backed, 35 agent integrations, on PyPI. A user with spec-kit installed cannot even have both binaries on PATH.                                                              |
 
 
 
@@ -110,7 +110,7 @@ Primary shortlist (knockout-clear for software; file classes 9/42 in NZ, AU, EU,
 | ---- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1    | **Crossholt** | Cross + holt (refuge / solid ground): the proven place to cross from legacy chaos to a modern system. Nine letters, said as spelled (`crossholt init`). No Tarn*, no Crawford phone collision, no "dark" tax. Nearest priors are a dissolved UK shell and an unrelated NY corp — different classes.        |
 | 2    | **Sureholt**  | Sure + holt: says the auditability differentiator out loud (evidence-backed certainty, not just speed). Same CLI shape as Crossholt. Slightly more marketing-literal — some will hear "SureSoftware" — but knockout-clean.                                                                                 |
-| 3    | **Gateholt**  | Gate + holt: native to the product vocabulary (Gate 1, merge gates) without colliding with `specify`. Exact compound looks clear; watch the dense "gate" neighbourhood in software (gateways, Gatehouse projects) — phonetic neighbours for counsel.                                                       |
+| 3    | **Gateholt**  | Gate + holt: native to the product vocabulary (Gate 1, merge gates) without colliding with `emery`. Exact compound looks clear; watch the dense "gate" neighbourhood in software (gateways, Gatehouse projects) — phonetic neighbours for counsel.                                                       |
 | 4    | **Scarpmere** | Scarp (geological cut / cliff face) + mere (clear water): best semantic fit for the system-archaeology modernization wedge. Hallway risk: "scarp" is unfamiliar and may come back as *sharp-mere* / *scar-meer*.                                                                                           |
 
 
@@ -133,8 +133,8 @@ Checked and eliminated: Stillmere (active UK civil-engineering consultancy), Sto
 
 | Today                       | Proposed                   | Notes                                                                                                                                                                      |
 | --------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `augentic/specify`          | `crossholt/crossholt`      | Engine + CLI carries the product name: binary `crossholt`, scaffold `.crossholt/`, WIT `crossholt:adapter`. Pre-1.0 hard-cut posture makes the rename a grep-and-replace. |
-| `augentic/specify-adapters` | `crossholt/adapters`       | GHCR becomes `ghcr.io/crossholt/adapters/<name>`.                                                                                                                          |
+| `augentic/emery`          | `crossholt/crossholt`      | Engine + CLI carries the product name: binary `crossholt`, scaffold `.crossholt/`, WIT `crossholt:adapter`. Pre-1.0 hard-cut posture makes the rename a grep-and-replace. |
+| `augentic/emery-adapters` | `crossholt/adapters`       | GHCR becomes `ghcr.io/crossholt/adapters/<name>`.                                                                                                                          |
 | `augentic/omnia`            | `crossholt/omnia`          | Name kept — see callout below.                                                                                                                                             |
 | `augentic/backends`         | `crossholt/omnia-backends` | `backends` is meaningless as a standalone public repo name; prefix with the substrate it belongs to (the crate is already `omnia-cursor`).                                 |
 
@@ -151,11 +151,11 @@ Everything above is a margin-and-credibility strategy; a force multiplier alone 
 
 ### The arithmetic constraint
 
-$50m from $10m is 5x — roughly 71% CAGR. At conventional T&M rates (~$250–300k/FTE) $50m means ~170–200 delivery heads; scaling headcount ~5x in 36 months while holding quality is the classic services-firm failure mode. The safer path to the 5x is **revenue per head**: fixed-price, outcome-priced work where Specify's speed advantage is captured as margin rather than passed on as cheaper hours, so the headcount curve stays well below the revenue curve.
+$50m from $10m is 5x — roughly 71% CAGR. At conventional T&M rates (~$250–300k/FTE) $50m means ~170–200 delivery heads; scaling headcount ~5x in 36 months while holding quality is the classic services-firm failure mode. The safer path to the 5x is **revenue per head**: fixed-price, outcome-priced work where Emery's speed advantage is captured as margin rather than passed on as cheaper hours, so the headcount curve stays well below the revenue curve.
 
 ### The wedge market: legacy modernization
 
-Specify's source adapters — `captures` (runtime behavior with replay digests), `screenshots`, `documentation`, `typescript` — plus evidence, provenance, and authority resolution constitute a **system-archaeology engine**: it recovers a provable specification from a running system nobody understands. That is the missing capability in the largest under-served enterprise market in Australasia: every bank, insurer, utility, and agency holds 20–40-year-old systems where every previous rewrite failed because *nobody could specify what the old system does*. Deal economics fit the arithmetic: modernization programs are $3–20m fixed-price engagements; five to eight concurrent programs is $50m.
+Emery's source adapters — `captures` (runtime behavior with replay digests), `screenshots`, `documentation`, `typescript` — plus evidence, provenance, and authority resolution constitute a **system-archaeology engine**: it recovers a provable specification from a running system nobody understands. That is the missing capability in the largest under-served enterprise market in Australasia: every bank, insurer, utility, and agency holds 20–40-year-old systems where every previous rewrite failed because *nobody could emery what the old system does*. Deal economics fit the arithmetic: modernization programs are $3–20m fixed-price engagements; five to eight concurrent programs is $50m.
 
 ### The differentiator: accountability, not speed
 
@@ -188,7 +188,7 @@ The RM-21 ecosystem play (third-party adapter authors, certification, marketplac
 | --- | ----------------------------------------------------------------------------------------------- | ------------------------------------- |
 | 0a  | Legal knockout + trademark filing for the platform name (classes 9/42 — NZ, AU, EU, US)         | —                                     |
 | 0b  | Secure the name everywhere: GitHub org, GHCR, domains, crates.io / PyPI namespaces              | Step 0a                               |
-| 0c  | Rename org, product, binary, `.specify/` dir, and WIT package while everything is still private | Step 0b                               |
+| 0c  | Rename org, product, binary, `.emery/` dir, and WIT package while everything is still private | Step 0b                               |
 | 1   | Land RFC-77 Phase A: release lines, tags, published WIT pins                                    | Step 0c                               |
 | 2   | Flip the engine repo public                                                                     | Step 1                                |
 | 3   | Switch adapter git deps to `tag =` pins (satisfies RFC-77 D9 in Cargo.toml)                     | Steps 1–2                             |

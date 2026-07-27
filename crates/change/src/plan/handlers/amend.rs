@@ -1,4 +1,4 @@
-//! `specify plan amend` — routes wholesale edits through
+//! `emery plan amend` — routes wholesale edits through
 //! [`Plan::amend`], additive `add-source` / `remove-source` edits
 //! through direct entry mutation, and authority-override assignments
 //! through the shared domain engine.
@@ -70,7 +70,7 @@ pub struct AmendInput {
     pub clear_authority_overrides: Vec<String>,
 }
 
-/// `specify plan amend <name> [flags]` — edit non-status fields on an
+/// `emery plan amend <name> [flags]` — edit non-status fields on an
 /// existing plan entry.
 #[derive(Clone, Copy, Debug)]
 pub struct Amend;

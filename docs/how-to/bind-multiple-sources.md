@@ -9,7 +9,7 @@ Reconcile evidence from more than one source adapter at plan time.
 Append multiple `source` positionals after the change name:
 
 ```text
-/spec:plan identity-revamp source legacy=typescript:./vendor/monolith source docs=documentation:./design-notes
+/emery:plan identity-revamp source legacy=typescript:./vendor/monolith source docs=documentation:./design-notes
 ```
 
 Each binding creates a slot in `plan.yaml.sources` and contributes leads to `discovery.md`.
@@ -27,16 +27,16 @@ Each binding creates a slot in `plan.yaml.sources` and contributes leads to `dis
 At plan-authoring time, reconcile leads across sources through the guest orchestration (survey fan-out, reconcile judgment, and slice write in one verb):
 
 ```bash
-specify plan author
+emery plan author
 ```
 
 Single-source intent slices may omit `project` when only one project exists; the kernel auto-binds and normalises `sources: [intent]`.
 
 ## Uncertain reconciliation
 
-When cross-source grouping is uncertain, `/spec:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review at Gate 1; amend before stamping `approved`.
+When cross-source grouping is uncertain, `/emery:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review at Gate 1; amend before stamping `approved`.
 
-When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `specify plan amend <entry> --divergence likely`.
+When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `emery plan amend <entry> --divergence likely`.
 
 ## Cross-cutting leads
 
@@ -44,6 +44,6 @@ Coverage is at-least-once: a lead may be bound into more than one slice. When a 
 
 ## See also
 
-- [`/spec:plan` skill body](../../plugins/spec/skills/plan/SKILL.md) — source binding grammar
+- [`/emery:plan` skill body](../../plugins/emery/skills/plan/SKILL.md) — source binding grammar
 - [Legacy migration at scale](../tutorials/legacy-migration-at-scale.md) — typescript orientation
 - [Resolve spec conflicts](resolve-spec-conflicts.md) — after refine surfaces tags

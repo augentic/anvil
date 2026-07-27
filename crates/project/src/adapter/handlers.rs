@@ -1,10 +1,10 @@
-//! `specify adapter add` plus `specify source resolve` /
-//! `specify target resolve` — seed the project component cache and
+//! `emery adapter add` plus `emery source resolve` /
+//! `emery target resolve` — seed the project component cache and
 //! resolve adapter components by identity.
 //!
 //! Project-context-free: every verb takes the project directory from
 //! the input (defaulting to the provider anchor) and none requires
-//! `.specify/project.yaml` to exist, so `adapter add` can run before
+//! `.emery/project.yaml` to exist, so `adapter add` can run before
 //! `init` and the verbs never load `crate::handler::Ctx`.
 
 use std::io::Write;
@@ -33,11 +33,11 @@ pub struct AddInput {
     pub project_dir: Option<PathBuf>,
 }
 
-/// `specify adapter add <path.wasm>` — mirror a local component into
+/// `emery adapter add <path.wasm>` — mirror a local component into
 /// the project component cache so a bare binding (project target or
 /// plan source, either axis) resolves it.
 ///
-/// Pre-init and axis-neutral: no `.specify/` is required, the
+/// Pre-init and axis-neutral: no `.emery/` is required, the
 /// component's exports are not inspected (a wrong-world component
 /// fails at the later dispatch/metadata axis gate), and re-seeding the
 /// same name replaces the entry and its provenance sidecar.
@@ -98,13 +98,13 @@ impl Render for AddBody {
 pub struct ResolveInput {
     /// Adapter identifier — kebab name or `name@version`.
     pub value: String,
-    /// Project directory containing `.specify/`; `None` anchors at the
+    /// Project directory containing `.emery/`; `None` anchors at the
     /// provider root.
     #[serde(default)]
     pub project_dir: Option<PathBuf>,
 }
 
-/// `specify source resolve <name>`.
+/// `emery source resolve <name>`.
 #[derive(Clone, Copy, Debug)]
 pub struct SourceResolve;
 
@@ -123,7 +123,7 @@ impl<P: Anchor + Resolver> Operation<P> for SourceResolve {
     }
 }
 
-/// `specify target resolve <value>`.
+/// `emery target resolve <value>`.
 #[derive(Clone, Copy, Debug)]
 pub struct TargetResolve;
 

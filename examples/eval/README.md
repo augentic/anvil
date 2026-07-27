@@ -47,7 +47,7 @@ schemas. Never CI — see [the developer loop](../../docs/contributing/dev-loop.
 
 ## Command passthrough
 
-Any specify verb against the mock catalog, in-process (no Wasm):
+Any emery verb against the mock catalog, in-process (no Wasm):
 
 ```bash
 cargo make lab -- --project-dir <dir> slice list

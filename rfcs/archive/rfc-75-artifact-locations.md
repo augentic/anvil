@@ -4,15 +4,15 @@
 >
 > Owns: on-disk location policy for resolvable artifacts (adapter store entries, digest sidecars, project component cache); the composition-root capture of the relocation environment overrides; removal of Cargo-layout and other co-dev probes from shipped crates.
 >
-> Builds on: [Specify on Omnia](../architecture.md), [RFC-70 Self-Assembling Wasm Deployment](../rfc-70-deployment.md), [Native Specify](native-deployment.md) (archived — implemented). Prior art for the configuration shape: the Omnia backends' `ConnectOptions` pattern (`backends/crates/kafka` — `#[derive(FromEnv)]`, production defaults in code, env vars the only override, resolved once at the composition root).
+> Builds on: [Emery on Omnia](../architecture.md), [RFC-70 Self-Assembling Wasm Deployment](../rfc-70-deployment.md), [Native Emery](native-deployment.md) (archived — implemented). Prior art for the configuration shape: the Omnia backends' `ConnectOptions` pattern (`backends/crates/kafka` — `#[derive(FromEnv)]`, production defaults in code, env vars the only override, resolved once at the composition root).
 >
 > Does not own: adapter identity grammar (`AdapterSelector`), registry discovery (RFC-71), native catalog composition, or Omnia guest linking.
 
 ## Abstract
 
-Shipped Specify code today hardcodes co-development filesystem knowledge into the component resolver: bare names probe `target/wasm32-wasip2/release/<name>.wasm`, locations are labeled `"dev"`, unpinned resolves invent version `0.0.0`, and supporting exemptions cascade through launcher preflight and topology closure. That is an anti-pattern.
+Shipped Emery code today hardcodes co-development filesystem knowledge into the component resolver: bare names probe `target/wasm32-wasip2/release/<name>.wasm`, locations are labeled `"dev"`, unpinned resolves invent version `0.0.0`, and supporting exemptions cascade through launcher preflight and topology closure. That is an anti-pattern.
 
-This RFC introduces a `Locations` **value** whose construction encodes the production layout. One umbrella location, `SPECIFY_HOME`, defaults to `$HOME/.specify` (falling back to `<temp>/specify` when `$HOME` is unavailable) and is the *only* override surface: `<home>/store` and `<home>/cache` are derived together, captured **once** at each composition root through the `FromEnv` pattern the Omnia backends use, then carried as plain data. There is no trait, no alternate layout binding, and no co-dev branch in the shipped binary: development loops **seed the production locations** (a new `specify adapter add` verb, `specify init ./path.wasm`, or a fully relocated sandbox).
+This RFC introduces a `Locations` **value** whose construction encodes the production layout. One umbrella location, `EMERY_HOME`, defaults to `$HOME/.emery` (falling back to `<temp>/emery` when `$HOME` is unavailable) and is the *only* override surface: `<home>/store` and `<home>/cache` are derived together, captured **once** at each composition root through the `FromEnv` pattern the Omnia backends use, then carried as plain data. There is no trait, no alternate layout binding, and no co-dev branch in the shipped binary: development loops **seed the production locations** (a new `emery adapter add` verb, `emery init ./path.wasm`, or a fully relocated sandbox).
 
 After this change, production resolution knows exactly two places:
 
@@ -42,7 +42,7 @@ Both hits become `AdapterLocation::Dev` with wire label `"dev"`. Related support
 | `init/context.rs` context fingerprint | `context.lock` inputs keyed on the `"dev"` origin label |
 | `examples/Makefile.toml` | Stages mock source under sandbox `target/` to satisfy the probe |
 | CLI help / AGENTS / workflow docs | Contract-lock the Cargo probe as product behavior |
-| `SPECIFY_PROSE_OVERLAY` in `adapter` | Dead eval-era prompt override in the shipped SDK — including a `panic!` branch and a leaked-`String` path shipping inside every published adapter component |
+| `EMERY_PROSE_OVERLAY` in `adapter` | Dead eval-era prompt override in the shipped SDK — including a `panic!` branch and a leaked-`String` path shipping inside every published adapter component |
 
 The probe is hazardous as well as inelegant: any consumer project that happens to be a Rust workspace can have an unverified build artifact at `target/wasm32-wasip2/release/<name>.wasm` silently satisfy a bare `project.yaml.adapter` binding. No serious production resolver should hunt the build directory. The product's well-known locations are store and cache; tools that want a live guest build **stage into those locations**.
 
@@ -61,25 +61,25 @@ The Omnia backends already solve this class of problem: a typed options struct (
 The previous draft proposed `Locations` as a trait with production default methods and composition-root overrides. Review rejected that framing:
 
 - by the draft's own preference (seed the cache, don't bind a Cargo layout), `Production` would be the trait's only implementor — exactly the `trait Foo` + sole `RealFoo` shape [style.md](../../docs/standards/style.md) forbids;
-- the variation the trait was defending already exists twice: env relocation for the store, `ExecutionPaths` for the cache parent — a trait override of `store_entry` and setting the deployment's `SPECIFY_HOME` would be two ways to say the same thing;
+- the variation the trait was defending already exists twice: env relocation for the store, `ExecutionPaths` for the cache parent — a trait override of `store_entry` and setting the deployment's `EMERY_HOME` would be two ways to say the same thing;
 - the wasm32 engine guest does not need layout polymorphism: it sees the `GUEST_STORE_MOUNT` / `GUEST_CACHE_MOUNT` preopens and binds them directly.
 
 A value constructed from env-with-defaults keeps the single production layout explicit, gives sandboxes and tests a typed injection point (`Locations::explicit`), and adds zero API surface for hypothetical composition roots. If a second real layout ever materializes, promoting the value behind a trait is a mechanical follow-up.
 
 ### What already works
 
-The engine guest path is already correct: the launcher hydrates `specify:engine@<binary version>` into the store; `examples/Makefile.toml` seeds store + `.meta` for local runs. There is no implemented `SPECIFY_ENGINE_PATH` probe in Rust (RFC architecture prose mentions it; this RFC rejects implementing it in the shipped launcher).
+The engine guest path is already correct: the launcher hydrates `emery:engine@<binary version>` into the store; `examples/Makefile.toml` seeds store + `.meta` for local runs. There is no implemented `EMERY_ENGINE_PATH` probe in Rust (RFC architecture prose mentions it; this RFC rejects implementing it in the shipped launcher).
 
-Relocation remains legitimate production configuration — sandboxes and installs — not a co-dev escape hatch. This RFC replaces the two independent variables and two independent default cascades with one deployment root, `SPECIFY_HOME`, captured once instead of read ambiently. Its effective default is `$HOME/.specify`; when `$HOME` is unavailable, `<temp>/specify`. Store and cache always derive atomically as `<SPECIFY_HOME>/store` and `<SPECIFY_HOME>/cache`.
+Relocation remains legitimate production configuration — sandboxes and installs — not a co-dev escape hatch. This RFC replaces the two independent variables and two independent default cascades with one deployment root, `EMERY_HOME`, captured once instead of read ambiently. Its effective default is `$HOME/.emery`; when `$HOME` is unavailable, `<temp>/emery`. Store and cache always derive atomically as `<EMERY_HOME>/store` and `<EMERY_HOME>/cache`.
 
 ## Goals
 
-1. Make on-disk artifact layout a **typed value with production defaults**, relocatable as one unit through `SPECIFY_HOME`, captured once at each composition root (the `FromEnv` pattern) and carried explicitly.
+1. Make on-disk artifact layout a **typed value with production defaults**, relocatable as one unit through `EMERY_HOME`, captured once at each composition root (the `FromEnv` pattern) and carried explicitly.
 2. Remove all Cargo `target/` knowledge from shipped crates (`project`, `launcher`, `transport` help, root binary).
 3. Keep store pins and project-cache components as the only production resolve paths.
-4. Preserve a working local iteration loop for **both axes** by seeding: a first-class cache-seeding CLI verb (`specify adapter add`), `specify init ./path.wasm`, and whole-sandbox env relocation. Source adapters have no init-time mirror today, so the verb is a Stage 1 requirement, not a nicety.
+4. Preserve a working local iteration loop for **both axes** by seeding: a first-class cache-seeding CLI verb (`emery adapter add`), `emery init ./path.wasm`, and whole-sandbox env relocation. Source adapters have no init-time mirror today, so the verb is a Stage 1 requirement, not a nicety.
 5. Stop inventing `0.0.0` as the component resolver's default identity for bare names — and settle the unpinned identity's wire shape **in Stage 1** (resolved identities carry `Option<semver::Version>`; envelopes omit the version and topology uses the bare name for cache-backed resolves).
-6. Delete the unused `SPECIFY_PROSE_OVERLAY` branch from the adapter SDK.
+6. Delete the unused `EMERY_PROSE_OVERLAY` branch from the adapter SDK.
 7. Remove ambient env reads and `unsafe` test env mutation from the layout path.
 8. Update the workflow contract and operator docs in the same change set so prose cannot reintroduce the probe.
 
@@ -88,18 +88,18 @@ Relocation remains legitimate production configuration — sandboxes and install
 - Changing Omnia, WIT worlds, or adapter publication.
 - Removing `AdapterSelector::Bare` from the grammar (policy for what bare *means* is in scope; deleting the variant is not).
 - Replacing the native host's catalog resolution (native has no component files; it keeps catalog match).
-- Implementing `SPECIFY_ENGINE_PATH` in the launcher.
+- Implementing `EMERY_ENGINE_PATH` in the launcher.
 - A `Locations` trait or any alternate layout implementation — deferred until a second real composition-root layout exists.
 - A general virtual filesystem or searchable path list for arbitrary assets.
 - Moving `mock` / `lab` / `eval` into the shipped binary.
 - Softening digest verification for store-backed entries.
-- Per-location or co-dev override variables. `SPECIFY_HOME` is the complete override surface; `SPECIFY_ADAPTER_STORE`, `SPECIFY_PROJECT_CACHE`, and `SPECIFY_DEV_ADAPTERS=1`-style flags are not retained as aliases.
+- Per-location or co-dev override variables. `EMERY_HOME` is the complete override surface; `EMERY_ADAPTER_STORE`, `EMERY_PROJECT_CACHE`, and `EMERY_DEV_ADAPTERS=1`-style flags are not retained as aliases.
 
 ## Decision
 
 ### D1 — `Locations` value: production defaults, one home override
 
-Introduce a deployment-neutral **value** (not a trait) that owns the two well-known roots and the layout formulas over them. Construction encodes policy; methods are pure path math. The one override (`SPECIFY_HOME`) is a plain `std::env::var_os` read inside `from_env` — a single optional variable does not warrant a config-derive dependency.
+Introduce a deployment-neutral **value** (not a trait) that owns the two well-known roots and the layout formulas over them. Construction encodes policy; methods are pure path math. The one override (`EMERY_HOME`) is a plain `std::env::var_os` read inside `from_env` — a single optional variable does not warrant a config-derive dependency.
 
 ```rust
 /// How the cache root carried by [`Locations`] is interpreted.
@@ -115,7 +115,7 @@ pub enum CachePlacement {
 ///
 /// A plain value: construction is the only place layout policy lives.
 /// [`Locations::from_env`] is the shipped production layout —
-/// defaults in code, `SPECIFY_HOME` the only override,
+/// defaults in code, `EMERY_HOME` the only override,
 /// captured once. [`Locations::explicit`] is the injection point for
 /// sandboxes, tests, and the engine guest's preopens. There is no
 /// trait and no alternate implementation.
@@ -126,12 +126,12 @@ pub struct Locations {
 }
 
 impl Locations {
-    /// Production layout: capture `SPECIFY_HOME` once. A valid
+    /// Production layout: capture `EMERY_HOME` once. A valid
     /// absolute override wins; otherwise the effective home is
-    /// `$HOME/.specify`, then `<temp>/specify` when `$HOME` is
+    /// `$HOME/.emery`, then `<temp>/emery` when `$HOME` is
     /// unavailable. Derive `<home>/store` and `<home>/cache`.
     /// Composition-root only — never called from kernels or handlers.
-    pub fn from_env() -> Self { /* env_path("SPECIFY_HOME") + defaults */ }
+    pub fn from_env() -> Self { /* env_path("EMERY_HOME") + defaults */ }
 
     /// Explicit layout — no env reads. Sandboxed sessions and tests
     /// pass `Parent`; the wasm32 guest passes `Project` for its
@@ -159,7 +159,7 @@ impl Locations {
 
 **Hard rule:** the formulas mention only store and project-cache shapes. They never mention `target/`, Cargo triple directories, or `.eval/`.
 
-`SPECIFY_HOME` is an all-or-nothing relocation. Empty or relative values are ignored and fall through to the effective default (`$HOME/.specify`, then `<temp>/specify`). There is no precedence matrix and no compatibility alias for the retired per-location variables: every deployment derives both roots from one absolute home.
+`EMERY_HOME` is an all-or-nothing relocation. Empty or relative values are ignored and fall through to the effective default (`$HOME/.emery`, then `<temp>/emery`). There is no precedence matrix and no compatibility alias for the retired per-location variables: every deployment derives both roots from one absolute home.
 
 Carriage: `ExecutionPaths` grows into the full layout carrier — project root plus `Locations` — constructed at each composition root (`ExecutionPaths::operator` calls `Locations::from_env()` once; `ExecutionPaths::isolated` takes `Locations::explicit` with `CachePlacement::Parent`; the engine guest constructs `explicit(GUEST_STORE_MOUNT, CachePlacement::Project(GUEST_CACHE_MOUNT))`). `ExecutionPaths::with_root` preserves the placement: a host `Parent` derives the new project's digest-keyed cache, while a guest `Project` keeps the one mounted preopen. Kernels, `locate`, ensure, and launcher hydrate receive the value through `ExecutionPaths` and never read `std::env` themselves.
 
@@ -167,7 +167,7 @@ The launcher constructs one `ExecutionPaths` after anchoring the project and pas
 
 `diagnostics::cache` reduces to pure path math parameterized by roots (project-id digesting, sidecar naming, digest verify). Its env-reading resolvers (`adapter_store_root()`, `projects_root()`) and its `cfg!(target_arch = "wasm32")` mount branches migrate into `Locations::from_env` / the guest's `explicit` construction. This is the same seam discipline as the Omnia backends: `Client::connect_with(options)` never reads env; `ConnectOptions::from_env()` at the composition root does.
 
-Dependency note: no new dependency — the single `SPECIFY_HOME` read is a hand-rolled `std::env::var_os` inside `Locations::from_env` in the crate that homes `Locations` (`project::handler`, beside `ExecutionPaths`). `from_env()` may be `#[cfg(not(target_arch = "wasm32"))]` — the guest only ever constructs `explicit`.
+Dependency note: no new dependency — the single `EMERY_HOME` read is a hand-rolled `std::env::var_os` inside `Locations::from_env` in the crate that homes `Locations` (`project::handler`, beside `ExecutionPaths`). `from_env()` may be `#[cfg(not(target_arch = "wasm32"))]` — the guest only ever constructs `explicit`.
 
 ### D2 — `locate` becomes layout-blind
 
@@ -186,7 +186,7 @@ Delete from shipped crates:
 - the second probe in `locate`
 - error / clap text that advertises `cargo build --release --target wasm32-wasip2`
 
-**Explicit exemption:** `selector::name_from_component` keeps stripping the `specify_` / `specify-` artifact prefix and folding underscores to kebab. That is boundary normalization of operator-supplied filenames (operators legitimately hand over cargo-built `.wasm` files), not a resolve probe. It is the one permitted Cargo-naming site in shipped code; the acceptance-criteria grep documents it as such.
+**Explicit exemption:** `selector::name_from_component` keeps stripping the `emery_` / `emery-` artifact prefix and folding underscores to kebab. That is boundary normalization of operator-supplied filenames (operators legitimately hand over cargo-built `.wasm` files), not a resolve probe. It is the one permitted Cargo-naming site in shipped code; the acceptance-criteria grep documents it as such.
 
 ### D3 — Replace `AdapterLocation::Dev`
 
@@ -211,12 +211,12 @@ This RFC prefers **Option A** for Stage 1: small, honest, and matches preflight�
 
 There is **no** co-dev layout binding — no `DevLocations` type, no optional trait method, no env flag. Local iteration uses production mechanisms:
 
-1. **Seed the project component cache.** `specify adapter add ./target/wasm32-wasip2/release/foo.wasm` (D5) mirrors the built component into the cache; `specify init ./path.wasm` continues to do the same for the project's target adapter. Make/lab tasks wrap the build-then-seed sequence.
-2. **Relocate the whole sandbox.** `SPECIFY_HOME` points store and cache at one scratch tree (`<home>/store`, `<home>/cache`). This is the env-override leg of D1 doing its production job, not a special co-dev mode.
+1. **Seed the project component cache.** `emery adapter add ./target/wasm32-wasip2/release/foo.wasm` (D5) mirrors the built component into the cache; `emery init ./path.wasm` continues to do the same for the project's target adapter. Make/lab tasks wrap the build-then-seed sequence.
+2. **Relocate the whole sandbox.** `EMERY_HOME` points store and cache at one scratch tree (`<home>/store`, `<home>/cache`). This is the env-override leg of D1 doing its production job, not a special co-dev mode.
 
 Cargo layout strings exist **only** in Make/lab/example scripts — never in shipped crates.
 
-### D5 — Cache seeding verb: `specify adapter add <path.wasm>`
+### D5 — Cache seeding verb: `emery adapter add <path.wasm>`
 
 Stage 1 must ship an operator-facing cache writer, because deleting the Cargo probe otherwise severs the source-adapter dev loop:
 
@@ -224,7 +224,7 @@ Stage 1 must ship an operator-facing cache writer, because deleting the Cargo pr
 - the only shipped writer of `<project-cache>/components/` today is the *target* adapter's init-time mirror;
 - the cache directory is deliberately out-of-tree and keyed by a SHA-256 of the project path, so “just `cp` into the cache” requires either digest arithmetic or full-sandbox relocation.
 
-`specify adapter add <path.wasm> [--project-dir <dir>]` is project-context-free: it defaults to the invocation directory, accepts an explicit project directory, and does not require `.specify/project.yaml` to exist. That permits `adapter add` followed by a bare `init`; relative component paths anchor at the selected project directory.
+`emery adapter add <path.wasm> [--project-dir <dir>]` is project-context-free: it defaults to the invocation directory, accepts an explicit project directory, and does not require `.emery/project.yaml` to exist. That permits `adapter add` followed by a bare `init`; relative component paths anchor at the selected project directory.
 
 The verb reuses the existing mirror kernel's file check, canonicalization, name derivation, copy, and provenance stamp. It is deliberately axis-neutral and does not inspect component exports: adapter names are unique across axes, and the binding that later resolves the bare name supplies the expected axis. A wrong-world component therefore fails at the existing dispatch/metadata axis gate, not during seeding. The launcher's selector projection classifies `adapter add` as engine-only; the component path is input to a copy operation, not an adapter requirement that must be enumerated before the command runs.
 
@@ -242,7 +242,7 @@ It is **not** “development shorthand for a live Cargo build.”
 
 | Stage | Policy |
 | ----- | ------ |
-| Stage 1 (this RFC) | Bare → cache only; miss fails closed with guidance to pin, `specify adapter add` a local `.wasm`, or supply one at init |
+| Stage 1 (this RFC) | Bare → cache only; miss fails closed with guidance to pin, `emery adapter add` a local `.wasm`, or supply one at init |
 | Stage 2 (optional follow-up) | Init may accept bare and materialize into cache, persisting a pin or component selector so committed state is not ambiguous |
 | Rejected | Bare → Cargo `target/` probe in shipped code |
 
@@ -265,11 +265,11 @@ Launcher preflight continues to digest-verify only store-backed closure entries.
 
 ### D9 — Delete the unused prose overlay
 
-`SPECIFY_PROSE_OVERLAY` / `.eval/prose/` in `adapter::registry` is dead co-dev support in a crate that ships inside every published adapter component — including a `panic!` on unreadable overlay files and a leaked-`String` path. No eval code configures it, and the adapters repository's testing contract says prompt edits rebuild natively and there is no overlay mode. Stage 1 deletes the environment branch, filesystem lookup, leak, panic path, and overlay test. `resolve` / `body` become embed-only; published components carry no overlay branch.
+`EMERY_PROSE_OVERLAY` / `.eval/prose/` in `adapter::registry` is dead co-dev support in a crate that ships inside every published adapter component — including a `panic!` on unreadable overlay files and a leaked-`String` path. No eval code configures it, and the adapters repository's testing contract says prompt edits rebuild natively and there is no overlay mode. Stage 1 deletes the environment branch, filesystem lookup, leak, panic path, and overlay test. `resolve` / `body` become embed-only; published components carry no overlay branch.
 
 ### D10 — Engine guest iteration stays store-seeded
 
-Do not implement `SPECIFY_ENGINE_PATH` (or an in-repo engine `target/` probe) in the shipped launcher. Local engine iteration continues to seed `engine@<version>.wasm` + `.meta` into the store (as `examples/Makefile.toml` already does). Strike or supersede the architecture RFC sentence that suggests otherwise.
+Do not implement `EMERY_ENGINE_PATH` (or an in-repo engine `target/` probe) in the shipped launcher. Local engine iteration continues to seed `engine@<version>.wasm` + `.meta` into the store (as `examples/Makefile.toml` already does). Strike or supersede the architecture RFC sentence that suggests otherwise.
 
 ### D11 — Capability placement
 
@@ -316,8 +316,8 @@ cargo build --target wasm32-wasip2
         ▼
  ┌──────┴───────────────────────────────┐
  │ per-component seed                    │ whole-sandbox relocation
- │ specify adapter add ./foo.wasm        │ SPECIFY_HOME=…
- │   (or specify init ./foo.wasm)        │   ├── store/
+ │ emery adapter add ./foo.wasm        │ EMERY_HOME=…
+ │   (or emery init ./foo.wasm)        │   ├── store/
  │                                        │   └── cache/
  └───────────────────────────────────────┘
         │
@@ -342,10 +342,10 @@ cargo build --target wasm32-wasip2
 2. Thread one carried `ExecutionPaths` through `locate`, ensure mirror paths, launcher hydrate, and deployment assembly; kernels stop reading env and launcher mounts use the value's root accessors.
 3. Delete Cargo probes and `AdapterLocation::Dev`; emit `"cache"`; update resolve envelopes and the init `context.lock` fingerprint keys that keyed on `"dev"`.
 4. Make resolved identity versions `Option<semver::Version>`; omit the version for cache-backed resolve envelopes, project unpinned topology targets as bare names, and replace the launcher's `0.0.0` skip with the explicit bare-target predicate.
-5. Ship `specify adapter add <path.wasm>` over the ensure mirror kernel; convert `ComponentMeta` to per-component sidecars.
-6. Retarget tests: `stage_dev_component` → seed the project cache (via `adapter add` or direct `Locations::explicit` paths); drop sandbox `target/` staging in `examples/Makefile.toml` in favor of `adapter add` / `init` with local components for both mock source and target; replace its two location exports with `SPECIFY_HOME="$PWD/sandbox/wasm"`; delete the `unsafe` env guards.
+5. Ship `emery adapter add <path.wasm>` over the ensure mirror kernel; convert `ComponentMeta` to per-component sidecars.
+6. Retarget tests: `stage_dev_component` → seed the project cache (via `adapter add` or direct `Locations::explicit` paths); drop sandbox `target/` staging in `examples/Makefile.toml` in favor of `adapter add` / `init` with local components for both mock source and target; replace its two location exports with `EMERY_HOME="$PWD/sandbox/wasm"`; delete the `unsafe` env guards.
 7. Remove cargo-build advertising from errors and clap about strings.
-8. Delete `SPECIFY_PROSE_OVERLAY` and its test.
+8. Delete `EMERY_PROSE_OVERLAY` and its test.
 9. Sync prose: `AGENTS.md`, `docs/standards/workflow.md`, `docs/standards/architecture.md`, `docs/reference/cli/init.md`, `docs/contributing/cli-architecture.md`, `docs/explanation/adapter-anatomy.md`, transport help, and the architecture RFC engine-override sentence.
 
 ### Stage 2 — Optional init materialization
@@ -360,10 +360,10 @@ If operator UX wants bare names at init without a prior `adapter add`, init may 
 | Resolve version for unpinned | Field and text line omitted instead of `0.0.0` (Stage 1) |
 | Topology target for unpinned | Bare `name`; pinned targets remain `name@version` |
 | Bare name without cache entry | Hard fail (`adapter-not-found`) instead of falling through to `target/` |
-| CLI surface | New verb: `specify adapter add <path.wasm>` |
-| Relocation environment | `SPECIFY_ADAPTER_STORE` / `SPECIFY_PROJECT_CACHE` are replaced by `SPECIFY_HOME`; `<home>/store` and `<home>/cache` relocate together |
-| Default store | `$HOME/.specify/adapters` → `$HOME/.specify/store` |
-| Default project cache | XDG / `$HOME/.cache/specify/projects` → `$HOME/.specify/cache/<project-id>` |
+| CLI surface | New verb: `emery adapter add <path.wasm>` |
+| Relocation environment | `EMERY_ADAPTER_STORE` / `EMERY_PROJECT_CACHE` are replaced by `EMERY_HOME`; `<home>/store` and `<home>/cache` relocate together |
+| Default store | `$HOME/.emery/adapters` → `$HOME/.emery/store` |
+| Default project cache | XDG / `$HOME/.cache/emery/projects` → `$HOME/.emery/cache/<project-id>` |
 | Component cache provenance | `component-meta.yaml` → per-component `<name>.meta.yaml` |
 | Store pins + digest | Unchanged |
 | Local `.wasm` at init | Unchanged (mirror to cache) |
@@ -375,7 +375,7 @@ If operator UX wants bare names at init without a prior `adapter add`, init may 
 - Integration tests stage components into the **project cache** (via `adapter add` or `Locations::explicit` paths), not under `target/`.
 - A focused test asserts that a file at `<project>/target/wasm32-wasip2/release/<name>.wasm` does **not** satisfy bare resolve.
 - Keep the existing sibling-checkout non-probe test.
-- Env capture gets its own small suite (`from_env` derives both roots from an absolute `SPECIFY_HOME`, ignores empty/relative values, defaults to `$HOME/.specify`, and falls back to `<temp>/specify` without `$HOME`); cache-placement coverage proves host `Parent` appends the project id while guest `Project` does not. Everything else injects `Locations::explicit` and the `unsafe` env-mutation guards delete.
+- Env capture gets its own small suite (`from_env` derives both roots from an absolute `EMERY_HOME`, ignores empty/relative values, defaults to `$HOME/.emery`, and falls back to `<temp>/emery` without `$HOME`); cache-placement coverage proves host `Parent` appends the project id while guest `Project` does not. Everything else injects `Locations::explicit` and the `unsafe` env-mutation guards delete.
 - `adapter add` gets integration coverage before init and on both axes: seed a target then initialize by bare name; seed a source, bind it bare in `plan.yaml.sources`, and resolve. Seed a second component and assert per-component provenance sidecars do not clobber; re-seed one name and assert its bytes and sidecar are replaced.
 - Launcher selector-projection coverage classifies `adapter add` as engine-only and verifies its component path does not become an axis-qualified closure requirement.
 - Launcher / wasm example: seed store + cache only.
@@ -389,16 +389,16 @@ Same PR as Stage 1 code must update every hit for:
 - `AdapterLocation::Dev`
 - origin label `"dev"` as a component-provider mechanism
 - bare name as “development shorthand” for Cargo
-- `SPECIFY_PROSE_OVERLAY`
+- `EMERY_PROSE_OVERLAY`
 
-Workflow contract language becomes: bare → project component cache; pin → store; local path → mirror then cache; `specify adapter add` seeds the cache for either axis. `SPECIFY_HOME` is documented on the `Locations` value as the complete override surface, with `$HOME/.specify` as its effective default.
+Workflow contract language becomes: bare → project component cache; pin → store; local path → mirror then cache; `emery adapter add` seeds the cache for either axis. `EMERY_HOME` is documented on the `Locations` value as the complete override surface, with `$HOME/.emery` as its effective default.
 
 ## Open questions
 
 Record answers here before implementation freezes Stage 1 wire behavior.
 
-1. **Verb naming.** `specify adapter add` vs `specify adapter install` vs folding into `specify init --component`? (`add` preferred: it is a cache seed, not a store install.)
-2. **Bare miss UX.** Exact `adapter-not-found` detail string — it should name `specify adapter add` and the pin form, and must not name Cargo.
+1. **Verb naming.** `emery adapter add` vs `emery adapter install` vs folding into `emery init --component`? (`add` preferred: it is a cache seed, not a store install.)
+2. **Bare miss UX.** Exact `adapter-not-found` detail string — it should name `emery adapter add` and the pin form, and must not name Cargo.
 3. **Plan source grammar.** Should plan sources also accept component selectors directly (mirroring at `plan author` time), making `adapter add` a convenience rather than the only path? Deferred; Stage 1's supported local path is `adapter add` followed by a bare binding.
 4. **Env reads at the leaf.** `Locations` homes in `project::handler` beside `ExecutionPaths`; confirm `diagnostics` keeps only pure math (no environment reads on the leaf).
 5. **Option A vs B for `AdapterLocation`.** Confirm Stage 1 enum vs opaque `Origin` only.
@@ -426,7 +426,7 @@ Same branch in the shipped binary; operators can trip it accidentally; still an 
 <details>
 <summary>Rejected: `DevLocations` / any co-dev layout binding in-tree</summary>
 
-Documents co-dev on a production seam and keeps Cargo layout strings in workspace crates. Seeding the cache through `specify adapter add` covers the same loop with production mechanisms. Rejected.
+Documents co-dev on a production seam and keeps Cargo layout strings in workspace crates. Seeding the cache through `emery adapter add` covers the same loop with production mechanisms. Rejected.
 </details>
 
 <details>
@@ -442,7 +442,7 @@ Works, but leaves layout as process-global state: sandboxes relocate the cache t
 </details>
 
 <details>
-<summary>Rejected: implement SPECIFY_ENGINE_PATH in launcher</summary>
+<summary>Rejected: implement EMERY_ENGINE_PATH in launcher</summary>
 
 Duplicates the store-seed path already used by the wasm example; adds another co-dev branch to the shipped binary. Rejected; supersede architecture prose.
 </details>
@@ -452,13 +452,13 @@ Duplicates the store-seed path already used by the wasm example; adds another co
 Stage 1 is done when:
 
 - [x] `Locations::from_env` / `Locations::explicit` are the only layout constructions; no kernel, handler, or `locate` path reads `std::env` for layout, and the launcher carries one captured value through hydration and deployment.
-- [x] `SPECIFY_HOME` is the only layout environment variable; it defaults to `$HOME/.specify` (then `<temp>/specify` without `$HOME`), and every effective home derives `<home>/store` and `<home>/cache` while the retired per-location variables have no compatibility path.
+- [x] `EMERY_HOME` is the only layout environment variable; it defaults to `$HOME/.emery` (then `<temp>/emery` without `$HOME`), and every effective home derives `<home>/store` and `<home>/cache` while the retired per-location variables have no compatibility path.
 - [x] No shipped crate contains `target/wasm32-wasip2` as a resolve probe (grep-clean except docs history / this RFC / Make-lab scripts / the documented `name_from_component` exemption).
 - [x] Bare resolve succeeds only from the project component cache (or store for pins).
-- [x] `specify adapter add` seeds the cache for either axis; a bare plan-source binding resolves a seeded component.
+- [x] `emery adapter add` seeds the cache for either axis; a bare plan-source binding resolves a seeded component.
 - [x] Resolve envelopes no longer emit `"dev"` and omit the version for cache-backed resolves; topology writes a bare target name for the same unpinned identity (no `0.0.0`).
 - [x] `examples/Makefile.toml` does not stage adapters under sandbox `target/`.
-- [x] Published adapter components carry no `SPECIFY_PROSE_OVERLAY` branch.
+- [x] Published adapter components carry no `EMERY_PROSE_OVERLAY` branch.
 - [x] The `unsafe` env-mutation test guards are deleted; env-capture behavior has direct coverage.
 - [x] Workflow / AGENTS / architecture docs describe store + cache only.
 - [x] `cargo make ci` passes.
@@ -502,7 +502,7 @@ Explicitly retained (documented exemption): `selector::name_from_component` Carg
 let paths = ExecutionPaths::operator(root); // internally: Locations::from_env()
 
 // Engine guest (wasm32): already-resolved mounts, no env and no
-// project-id suffix below /specify-cache.
+// project-id suffix below /emery-cache.
 let paths = ExecutionPaths::guest(); // explicit(store, CachePlacement::Project(cache))
 
 // Sandbox / test: explicit tempdirs, no env mutation.

@@ -1,4 +1,4 @@
-//! The Specify [`omnia::GuestResolver`]: fail-closed, adapters-only
+//! The Emery [`omnia::GuestResolver`]: fail-closed, adapters-only
 //! guest resolution over the invocation's one captured
 //! [`ExecutionPaths`].
 //!
@@ -20,7 +20,7 @@ use project::handler::ExecutionPaths;
 
 use crate::install::{self, Registry};
 
-/// The Specify guest resolver: adapter resolution (with the
+/// The Emery guest resolver: adapter resolution (with the
 /// package-pin pull-on-miss install leg) over one captured
 /// [`ExecutionPaths`].
 #[derive(Clone, Debug)]

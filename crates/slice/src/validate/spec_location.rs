@@ -28,7 +28,7 @@ pub(super) fn file_location(slice_dir: &Path) -> Vec<Diagnostic> {
         "Spec files live under specs/<domain>/spec.md, not at the slice root",
         "No spec files found under `specs/`. Found `spec.md` at the slice root — \
          move it to `specs/<domain>/spec.md` (one file per `proposal.md ## Domains` entry). \
-         The Specify workflow requires spec files under `specs/` for every target.",
+         The Emery workflow requires spec files under `specs/` for every target.",
         Artifact::Specs,
         None,
     )]

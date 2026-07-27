@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Unified error types for the Specify CLI"
+description = "Unified error types for the Emery CLI"
 categories = ["development-tools"]
-keywords = ["specify", "errors"]
+keywords = ["emery", "errors"]
 readme = "../../README.md"
 
 [lints]

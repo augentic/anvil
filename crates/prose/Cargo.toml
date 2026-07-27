@@ -6,7 +6,7 @@ license.workspace = true
 repository.workspace = true
 description = "Build-time codegen for embedded prompt corpora: walk a markdown tree, link-check it, and emit a generated DOCS table"
 categories = ["development-tools::build-utils"]
-keywords = ["specify", "prose", "codegen"]
+keywords = ["emery", "prose", "codegen"]
 readme = "../../README.md"
 
 [lints]

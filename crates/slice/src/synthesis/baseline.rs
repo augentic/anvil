@@ -1,6 +1,6 @@
 //! Baseline index for synthesis ID assignment and delta rendering.
 //!
-//! Built from the bound project's `.specify/specs/` tree at synthesize
+//! Built from the bound project's `.emery/specs/` tree at synthesize
 //! time. Each domain with an on-disk `spec.md` is [`DomainKind::Modified`];
 //! domains absent from the baseline are [`DomainKind::New`].
 

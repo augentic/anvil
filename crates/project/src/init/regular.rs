@@ -1,4 +1,4 @@
-//! Regular (non-workspace) init body. Scaffolds the per-project `.specify/`
+//! Regular (non-workspace) init body. Scaffolds the per-project `.emery/`
 //! tree over the ensured adapter binding and writes `project.yaml`.
 
 use std::collections::BTreeMap;
@@ -31,14 +31,14 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let mut directories_created: Vec<PathBuf> = Vec::new();
     // Repo-root artefacts (`registry.yaml`, `change.md`, `plan.yaml`)
     // are not pre-touched — their owning verbs mint them on demand.
-    // `.specify/specs/` is retained as a per-project convention used
+    // `.emery/specs/` is retained as a per-project convention used
     // by the bundled `omnia` adapter.
     // The memoization cache is out-of-tree (OS cache, created on demand
     // by the provider's ensure), so it is not scaffolded here.
     for dir in [
-        layout.specify_dir(),
+        layout.emery_dir(),
         layout.slices_dir(),
-        layout.specify_dir().join("specs"),
+        layout.emery_dir().join("specs"),
         layout.archive_dir(),
     ] {
         let already = dir.exists();
@@ -72,7 +72,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let scaffolded_rule_keys: Vec<String> =
         SCAFFOLDED_RULE_KEYS.iter().map(|key| (*key).to_string()).collect();
 
-    let specify_version = resolve_version();
+    let emery_version = resolve_version();
 
     let mut rules: BTreeMap<String, String> = BTreeMap::new();
     for key in &scaffolded_rule_keys {
@@ -82,7 +82,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         name,
         description: opts.description.map(str::to_string),
         adapter: Some(adapter_value),
-        specify_version: Some(specify_version.clone()),
+        emery_version: Some(emery_version.clone()),
         rules,
         platforms: validated_platforms,
         workspace: false,
@@ -102,7 +102,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         cache_present,
         directories_created,
         scaffolded_rule_keys,
-        specify_version,
+        emery_version,
         context_skip_reason: None,
     })
 }

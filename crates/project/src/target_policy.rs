@@ -37,7 +37,7 @@ pub fn project_adapter(
         return Err(Error::Diag {
             code: "workspace-no-adapter",
             detail: "this project has no adapter declared (workspaces do not run per-target \
-                     operations); only `specify registry` and `specify plan` verbs are supported \
+                     operations); only `emery registry` and `emery plan` verbs are supported \
                      on workspaces"
                 .to_string(),
         });

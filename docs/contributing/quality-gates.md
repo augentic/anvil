@@ -1,6 +1,6 @@
 # Quality gates
 
-Specify proves engine correctness from this repository alone: native integration tests are the primary surface and the live `eval` rung covers real model behavior. The placement rules live in [testing standards](../standards/testing.md); the [developer loop](dev-loop.md) maps ordinary changes onto commands. This page is the gate model — what runs when, and what each gate is allowed to prove.
+Emery proves engine correctness from this repository alone: native integration tests are the primary surface and the live `eval` rung covers real model behavior. The placement rules live in [testing standards](../standards/testing.md); the [developer loop](dev-loop.md) maps ordinary changes onto commands. This page is the gate model — what runs when, and what each gate is allowed to prove.
 
 ## Gate 1 — repository correctness (every push)
 
@@ -16,7 +16,7 @@ Cadence is documented convention, not automation: before a release tag, and afte
 
 ## The WASM seam (operator-invoked)
 
-There is no automated WASM gate. The facts only the component boundary can prove — WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam — are exercised by the operator-invoked wasm example: `cargo make wasm-run` builds the engine guest and the per-axis mock components, then invokes the shipped binary directly — the binary embeds the engine bytes and boots it for every command, seeding the mock source through in-guest `adapter add` and admitting the mock target as a local component at `init`, into a sandboxed cache the fail-closed resolver serves adapter dispatches from (see [`examples/wasm/README.md`](../../examples/wasm/README.md)) — and runs the full `init → author → approve → execute` loop against a live model. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam, and before a release tag. For a model-free signal, compile-check the guests: `cargo check --lib -p specify --examples --target wasm32-wasip2`.
+There is no automated WASM gate. The facts only the component boundary can prove — WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam — are exercised by the operator-invoked wasm example: `cargo make wasm-run` builds the engine guest and the per-axis mock components, then invokes the shipped binary directly — the binary embeds the engine bytes and boots it for every command, seeding the mock source through in-guest `adapter add` and admitting the mock target as a local component at `init`, into a sandboxed cache the fail-closed resolver serves adapter dispatches from (see [`examples/wasm/README.md`](../../examples/wasm/README.md)) — and runs the full `init → author → approve → execute` loop against a live model. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam, and before a release tag. For a model-free signal, compile-check the guests: `cargo check --lib -p emery --examples --target wasm32-wasip2`.
 
 ## Placement decision
 
@@ -25,16 +25,16 @@ When adding coverage:
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.
 3. Put cross-crate workflow behavior in the native engine suites over the mock adapter and scripted answers.
-4. Behavior that only a WebAssembly/WIT/runtime seam can prove has no automated home here — it is covered by the operator-run wasm example here and in `specify-adapters`.
+4. Behavior that only a WebAssembly/WIT/runtime seam can prove has no automated home here — it is covered by the operator-run wasm example here and in `emery-adapters`.
 5. If no deterministic predicate can decide the result, it has no automated home here — adapter output quality belongs to adapter authors, model transport to omnia.
 
 Do not copy an assertion into another gate for reassurance: each fact has one owning seam.
 
 ## Boundaries
 
-- `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Specify owns workflow scenario content: mock leads, evidence, scripted answers, and assertions.
+- `omnia-testkit` owns reusable model doubles, recording, temporary manifests, and runtime hosting. Emery owns workflow scenario content: mock leads, evidence, scripted answers, and assertions.
 - `mock::behaviour` (in `crates/mock`) is the only adapter double; the example components (`examples/wasm/source.rs` / `target.rs`) are its WIT component examples over the SDK export macros. Do not add another mock adapter or mock-adapter copy.
-- External adapters prove their own behavior against the published WIT package in `specify-adapters`; no Specify gate resolves that repository, and neither repository gates on the other's HEAD.
+- External adapters prove their own behavior against the published WIT package in `emery-adapters`; no Emery gate resolves that repository, and neither repository gates on the other's HEAD.
 
 ## Consistency (links)
 

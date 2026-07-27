@@ -47,7 +47,7 @@ pub async fn survey_all(
     Ok(surveyed)
 }
 
-/// Survey one `plan.yaml` source binding (`specify source survey
+/// Survey one `plan.yaml` source binding (`emery source survey
 /// <source>`) and merge its lead set into `discovery.md`.
 ///
 /// Resolves `source` against `plan.yaml.sources.<key>`, optionally
@@ -58,7 +58,7 @@ pub async fn survey_all(
 ///
 /// `source-unknown` for an unbound source key, an `--plan` argument
 /// error when the guard fails, adapter ensure/resolve failures
-/// (missing pin, `specify_floor`), seam and schema-gate failures from
+/// (missing pin, `emery_floor`), seam and schema-gate failures from
 /// the adapter's survey leg, plus plan-load and merge I/O failures.
 pub async fn survey(
     seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
@@ -80,7 +80,7 @@ pub async fn survey(
     let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {
         code: "source-unknown",
         detail: format!(
-            "no source `{source}` in plan.yaml.sources; `specify source survey` resolves \
+            "no source `{source}` in plan.yaml.sources; `emery source survey` resolves \
              its argument against the plan's source keys, not the adapter name"
         ),
     })?;
@@ -101,7 +101,7 @@ async fn survey_one(
     let layout = Layout::new(paths.project_root());
 
     // Ensure/resolve before dispatch: the binding's pin and the
-    // adapter's `specify_floor` are enforced by the deployment's
+    // adapter's `emery_floor` are enforced by the deployment's
     // resolver, and dispatch routes by the exact resolved identity.
     let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest;
     tracing::Span::current().record("adapter", adapter.name.as_str());

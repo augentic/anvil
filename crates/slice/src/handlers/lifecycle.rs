@@ -24,7 +24,7 @@ pub struct DropInput {
     pub reason: Option<String>,
 }
 
-/// `specify slice drop <name>` — transition a slice to `dropped` and
+/// `emery slice drop <name>` — transition a slice to `dropped` and
 /// archive it.
 #[derive(Clone, Copy, Debug)]
 pub struct Drop;

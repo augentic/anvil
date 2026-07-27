@@ -43,11 +43,11 @@ Comments answer "why does this look like this *today*?" — non-obvious intent, 
 // BAD
 //! Per the workspace split 2.9 ("Init wires components, not adapters"),
 //! `init` writes only the per-project skeleton — `project.yaml` plus
-//! the `.specify/` tree. The pre-Phase-3.7 filename was `charter.md`;
+//! the `.emery/` tree. The pre-Phase-3.7 filename was `charter.md`;
 //! Historical rename detail belongs in git history, not module docs.
 
 // GOOD
-//! Scaffolds `.specify/` plus `project.yaml`. Operator-facing artifacts
+//! Scaffolds `.emery/` plus `project.yaml`. Operator-facing artifacts
 //! (`registry.yaml`, `change.md`, `plan.yaml`) are minted by their
 //! owning verbs, not by `init`.
 ```
@@ -88,7 +88,7 @@ The codebase optimises for short reading over short writing. Concretely:
 
 ## Format dispatch
 
-Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector (`SpecifyProjector` in `crates/transport/src/command.rs`) owns format dispatch through the internal `emit` function in `crates/transport/src/command/output.rs`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
+Operations do **not** open-code `match format { Json, Text }`. They return typed bodies; the command projector (`EmeryProjector` in `crates/transport/src/command.rs`) owns format dispatch through the internal `emit` function in `crates/transport/src/command/output.rs`. Operations never pick a sink directly. See [handler-shape.md](./handler-shape.md) for the operation and projector contract.
 
 ```rust
 // BAD
@@ -193,7 +193,7 @@ Every public `enum` or `struct` that may grow gets `#[non_exhaustive]`. The exce
 
 YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
 
-Writes that must not be observed mid-update use the shared atomic helpers in `specify_slice::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (`plan.yaml`, `registry.yaml`, `change.md`, `tasks.md`, `metadata.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
+Writes that must not be observed mid-update use the shared atomic helpers in `slice::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (`plan.yaml`, `registry.yaml`, `change.md`, `tasks.md`, `metadata.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
 
 ## Module layout
 

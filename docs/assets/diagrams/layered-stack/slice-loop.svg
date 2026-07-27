@@ -6,11 +6,11 @@
     </marker>
   </defs>
   <rect x="20" y="24" width="180" height="48" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
-  <text x="32" y="54" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/spec:refine</text>
+  <text x="32" y="54" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/emery:refine</text>
   <path d="M200 48 L240 48" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="240" y="24" width="180" height="48" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
-  <text x="252" y="54" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/spec:build</text>
+  <text x="252" y="54" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/emery:build</text>
   <path d="M420 48 L460 48" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="460" y="24" width="180" height="48" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
-  <text x="472" y="54" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/spec:merge</text>
+  <text x="472" y="54" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/emery:merge</text>
 </svg>

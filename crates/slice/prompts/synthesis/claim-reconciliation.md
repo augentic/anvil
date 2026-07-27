@@ -55,8 +55,8 @@ When a `disagreed` `id` group has multiple authorities, the kernel's [§Resoluti
 
 - Kernel `Sources:` sort: authority class (`intent` < `documentation` < `behaviour`), then alphabetically by key within a class; highest-authority key first.
 - Order requirements by source order on the highest-authority Evidence (tie → alphabetical on first contributing key); the kernel assigns `REQ` ids in that declaration order.
-- Re-running `/spec:refine` on identical `Evidence[]` and `shape` MUST produce byte-identical artifacts.
+- Re-running `/emery:refine` on identical `Evidence[]` and `shape` MUST produce byte-identical artifacts.
 
 ## Plan-time reconciliation is a separate playbook
 
-Plan-time `Lead[]` reconciliation inside `specify plan author` is documented in the plan CLI reference. Cross-source matching is agent judgment; the kernel validates partition shape only. The operator curates at Gate 1 via `change.md` and `specify plan amend`.
+Plan-time `Lead[]` reconciliation inside `emery plan author` is documented in the plan CLI reference. Cross-source matching is agent judgment; the kernel validates partition shape only. The operator curates at Gate 1 via `change.md` and `emery plan amend`.

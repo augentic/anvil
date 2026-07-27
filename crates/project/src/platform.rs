@@ -3,7 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Target platform for a Specify project.
+/// Target platform for a Emery project.
 ///
 /// `Core` is the shared Rust business-logic crate; every project that
 /// declares platforms must include it. The shell variants (`Ios`,

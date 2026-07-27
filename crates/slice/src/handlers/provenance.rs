@@ -22,7 +22,7 @@ use crate::provenance::ProvenanceIndex;
 
 /// Generator label stamped on the projection header.
 fn generator() -> String {
-    format!("specify@{}", env!("CARGO_PKG_VERSION"))
+    format!("emery@{}", env!("CARGO_PKG_VERSION"))
 }
 
 /// Resolve the per-slice `authority-override` map from `plan.yaml`.
@@ -53,7 +53,7 @@ pub struct ProvenanceInput {
     pub name: String,
 }
 
-/// `specify slice provenance <name>`.
+/// `emery slice provenance <name>`.
 #[derive(Clone, Copy, Debug)]
 pub struct Provenance;
 
@@ -74,7 +74,7 @@ impl<P: Anchor> Operation<P> for Provenance {
                 "slice-model-missing",
                 "a synthesized slice carries model.yaml",
                 format!(
-                    "slice `{name}` has no model.yaml at {}; run `specify slice refine {name}` \
+                    "slice `{name}` has no model.yaml at {}; run `emery slice refine {name}` \
                      first",
                     model_path.display()
                 ),

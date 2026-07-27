@@ -49,7 +49,7 @@ impl Plan {
 
         let project_root = path.parent();
         let plans_dir =
-            project_root.map(|root| root.join(".specify").join("plans").join(plan.name.as_str()));
+            project_root.map(|root| root.join(".emery").join("plans").join(plan.name.as_str()));
         let co_move_plans = plans_dir.as_ref().filter(|p| p.is_dir()).cloned();
 
         let brief_src = Some(change_brief_path.to_path_buf()).filter(|p| p.is_file());

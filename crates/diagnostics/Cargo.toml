@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Neutral diagnostic substrate, SHA-256 digest helpers, and digest-keyed cache paths shared by Specify crates"
+description = "Neutral diagnostic substrate, SHA-256 digest helpers, and digest-keyed cache paths shared by Emery crates"
 categories = ["development-tools"]
-keywords = ["specify", "diagnostics"]
+keywords = ["emery", "diagnostics"]
 readme = "../../README.md"
 
 [lints]

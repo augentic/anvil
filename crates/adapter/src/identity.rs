@@ -5,7 +5,7 @@
 //! package and its resolved artifact location. A native host has no
 //! component artifact, so each SDK implementor exposes the equivalent
 //! identity as a `const`: the globally unique workflow `(name,
-//! version)` pair. Resolve-time metadata (`specify-floor`, build
+//! version)` pair. Resolve-time metadata (`emery-floor`, build
 //! inputs, platforms) remains separate — identity never travels in the
 //! WIT `metadata` answer.
 

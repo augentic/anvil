@@ -3,7 +3,7 @@
 //!
 //! Unlike the pure assembly in [`super::catalog`], every branch here
 //! touches the filesystem — the workspace branch reads the committed
-//! `.specify/topology.lock`; the regular branch resolves the project's
+//! `.emery/topology.lock`; the regular branch resolves the project's
 //! target adapter under `project_dir`.
 
 use std::path::{Path, PathBuf};
@@ -25,7 +25,7 @@ use crate::registry::topology::{Surface, TopologyLock};
 /// ([`ProjectConfig::workspace`]):
 ///
 /// - **Workspace** — one [`ProjectRef`] per entry in the committed
-///   `.specify/topology.lock`, the projection of each member
+///   `.emery/topology.lock`, the projection of each member
 ///   project's `project.yaml`.
 ///   `name`, `target`, `description`, `surface[]`, `decisions[]`, and
 ///   `recent[]` come from the cache. An absent cache fails `topology-cache-missing`
@@ -60,15 +60,15 @@ pub fn resolve_topology(
 /// non-empty `greenfield_seed.domains[]`, returning advisory
 /// `greenfield-seed-shadowed` findings for seeds a baseline supersedes:
 ///
-/// - **Greenfield** (`surface[]` empty *and* no `.specify/specs/`): the
+/// - **Greenfield** (`surface[]` empty *and* no `.emery/specs/`): the
 ///   seed domains project into `surface[]` as domains with empty
 ///   `requirements[]`, the greenfield analog of the baseline domain list,
 ///   so a fresh project still routes leads at plan time.
-/// - **Shadowed** (`.specify/specs/` exists): the real surface supersedes
+/// - **Shadowed** (`.emery/specs/` exists): the real surface supersedes
 ///   the seed, so the seed is ignored and a `greenfield-seed-shadowed`
 ///   info finding suggests removing the now-stale seed.
 ///
-/// `workspace` selects where each project's `.specify/specs/` lives:
+/// `workspace` selects where each project's `.emery/specs/` lives:
 /// the project dir itself for a single regular project, or
 /// `workspace/<name>/` for a workspace member.
 #[must_use]
@@ -104,7 +104,7 @@ pub fn apply_greenfield_seed(
     findings
 }
 
-/// Resolve a topology project's `.specify/specs/` directory: the project
+/// Resolve a topology project's `.emery/specs/` directory: the project
 /// dir itself for a regular project, `workspace/<name>/` for a workspace
 /// member.
 fn project_specs_dir(project_dir: &Path, name: &str, workspace: bool) -> PathBuf {
@@ -113,14 +113,14 @@ fn project_specs_dir(project_dir: &Path, name: &str, workspace: bool) -> PathBuf
     } else {
         project_dir.to_path_buf()
     };
-    Layout::new(&root).specify_dir().join("specs")
+    Layout::new(&root).emery_dir().join("specs")
 }
 
 /// Build one advisory `greenfield-seed-shadowed` info finding.
 fn seed_shadowed_finding(project: &str) -> Diagnostic {
     let message = format!(
         "project '{project}' declares a greenfield_seed but already has a baseline \
-         (.specify/specs/ exists); the real surface supersedes the seed — remove it from registry.yaml"
+         (.emery/specs/ exists); the real surface supersedes the seed — remove it from registry.yaml"
     );
     Diagnostic::finding(
         "greenfield-seed-shadowed".to_string(),
@@ -134,7 +134,7 @@ fn seed_shadowed_finding(project: &str) -> Diagnostic {
     )
 }
 
-/// Project every committed `.specify/topology.lock` entry into a
+/// Project every committed `.emery/topology.lock` entry into a
 /// [`ProjectRef`]. Workspace topology is derived from each member
 /// project's `project.yaml`, not from `registry.yaml`.
 fn workspace_topology(project_dir: &Path) -> Result<Vec<ProjectRef>> {
@@ -142,8 +142,8 @@ fn workspace_topology(project_dir: &Path) -> Result<Vec<ProjectRef>> {
     let lock = TopologyLock::load(&path)?.ok_or_else(|| {
         Error::validation_failed(
             "topology-cache-missing",
-            "a workspace has a committed .specify/topology.lock",
-            "workspace plan-time topology requires a generated .specify/topology.lock",
+            "a workspace has a committed .emery/topology.lock",
+            "workspace plan-time topology requires a generated .emery/topology.lock",
         )
     })?;
     Ok(lock

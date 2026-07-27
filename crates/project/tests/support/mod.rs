@@ -162,7 +162,7 @@ pub fn resolver() -> project::adapter::resolver::Component {
 /// The deterministic resolve-time metadata JSON a routed adapter id
 /// answers. The special identities:
 ///
-/// - `target:demo-target` — a `specify` floor newer than any real
+/// - `target:demo-target` — a `emery` floor newer than any real
 ///   binary (the `adapter-cli-too-old` gate);
 /// - `target:bad-floor` — an unparseable floor
 ///   (`adapter-floor-malformed`);
@@ -172,8 +172,8 @@ pub fn resolver() -> project::adapter::resolver::Component {
 #[must_use]
 pub fn metadata_json(adapter_id: &str) -> String {
     match adapter_id {
-        "target:demo-target" => r#"{"specify-floor":"999.0.0"}"#.to_string(),
-        "target:bad-floor" => r#"{"specify-floor":"v1"}"#.to_string(),
+        "target:demo-target" => r#"{"emery-floor":"999.0.0"}"#.to_string(),
+        "target:bad-floor" => r#"{"emery-floor":"v1"}"#.to_string(),
         "target:vectis" => json!({
             "inputs": [
                 { "path": "tokens.yaml", "required": true },

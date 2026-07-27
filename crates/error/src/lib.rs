@@ -1,4 +1,4 @@
-//! Unified error types for the `specify` CLI and its domain crates.
+//! Unified error types for the `emery` CLI and its domain crates.
 //! Every public function returns `Result<T, Error>`; variants are
 //! structured so the binary can route them to exit codes and formats.
 

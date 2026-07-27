@@ -1,10 +1,10 @@
-# Provenance projection (`specify slice provenance`)
+# Provenance projection (`emery slice provenance`)
 
-The audit-only view per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. Provenance is carried **inline** on each requirement in the single `model.yaml` artifact; this view is **projected on demand** by `specify slice provenance`, never persisted as a second file. The resolution rules — per-slice override, default ordering — live in [`authority.md`](../../crates/slice/prompts/synthesis/authority.md); this page covers only the shape of the projected view that records which rule fired.
+The audit-only view per slice of every `REQ-*` id and the contributing `(source, id)` pairs synthesis consulted plus the authority outcome. Provenance is carried **inline** on each requirement in the single `model.yaml` artifact; this view is **projected on demand** by `emery slice provenance`, never persisted as a second file. The resolution rules — per-slice override, default ordering — live in [`authority.md`](../../crates/slice/prompts/synthesis/authority.md); this page covers only the shape of the projected view that records which rule fired.
 
 ## How it's produced
 
-During the `specify slice refine` synthesis leg the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `specify slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and no journal event records a provenance write.
+During the `emery slice refine` synthesis leg the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `emery slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and no journal event records a provenance write.
 
 ## Block grammar
 
@@ -166,27 +166,27 @@ Boolean, optional:
 
 > The deferred per-Evidence `authority-overrides` surface (a future RFC — see [`authority.md`](../../crates/slice/prompts/synthesis/authority.md)) would add a `per-evidence-authority-override` step here. It is out of scope for v1.
 
-The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](../../crates/slice/prompts/synthesis/authority.md#resolution-order) byte-for-byte. The `provenance.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `specify slice validate` will not refuse it.
+The closed set matches the resolution-order taxonomy in [`authority.md` §Resolution order](../../crates/slice/prompts/synthesis/authority.md#resolution-order) byte-for-byte. The `provenance.schema.json` definition for `resolution-trace.step` accepts any non-empty string today (the taxonomy is enforced by skill discipline, not by the schema, until the step set is judged stable enough to close); writing a value outside the closed set is a skill-body error even though `emery slice validate` will not refuse it.
 
 ## Audit posture
 
-The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`specify slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/spec:build` reads `spec.md` and `design.md`; `/spec:merge` reads `metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
+The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`emery slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/emery:build` reads `spec.md` and `design.md`; `/emery:merge` reads `metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
 
-The provenance data lives inline in `model.yaml`, which `/spec:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to change a synthesis decision long-term amend `plan.yaml.slices[].authority-override` via `specify plan amend` (or adjust the source set) and re-run `/spec:refine`; the next refine reads back any prose edits outside the kernel-rendered provenance lines, but those lines themselves are never hand-edited.
+The provenance data lives inline in `model.yaml`, which `/emery:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to change a synthesis decision long-term amend `plan.yaml.slices[].authority-override` via `emery plan amend` (or adjust the source set) and re-run `/emery:refine`; the next refine reads back any prose edits outside the kernel-rendered provenance lines, but those lines themselves are never hand-edited.
 
 ## No drift surface
 
-Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift. `specify slice validate` checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/spec:refine`.
+Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift. `emery slice validate` checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/emery:refine`.
 
 ## Worked example
 
-A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `specify plan amend identity-password-reset --authority-override identity-password-reset criterion=runtime`. Three requirements illustrate the common shapes:
+A slice `identity-password-reset` binds three sources (`identity-design-notes` → `documentation`, `legacy-monolith` → `behaviour`, `runtime` → `behaviour`). The operator pins `runtime` as the `criterion`-class authority for the slice via `emery plan amend identity-password-reset --authority-override identity-password-reset criterion=runtime`. Three requirements illustrate the common shapes:
 
 ```yaml
 version: 1
 slice: identity-password-reset
 generated-at: 2026-05-22T13:15:00Z
-generator: specify@2.1.0
+generator: emery@2.1.0
 requirements:
   - id: REQ-001
     status: agreed
@@ -241,7 +241,7 @@ requirements:
     resolution: tied-conflict
 ```
 
-REQ-001 is the agreed cross-source case (one shared statement; no winner / loser). REQ-007 is the per-slice override case — the operator's `criterion: runtime` line promoted the behaviour-class source to the winner, the documentation-class loser survives as the `winner: false` entry, and the trace records exactly which surface broke the tie. REQ-009 is the `tied-conflict` case the operator must reconcile by recording a per-slice authority override (or amending the source set) and re-running `/spec:refine` before `/spec:build`.
+REQ-001 is the agreed cross-source case (one shared statement; no winner / loser). REQ-007 is the per-slice override case — the operator's `criterion: runtime` line promoted the behaviour-class source to the winner, the documentation-class loser survives as the `winner: false` entry, and the trace records exactly which surface broke the tie. REQ-009 is the `tied-conflict` case the operator must reconcile by recording a per-slice authority override (or amending the source set) and re-running `/emery:refine` before `/emery:build`.
 
 ## References
 

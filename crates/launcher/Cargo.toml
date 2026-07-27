@@ -1,6 +1,6 @@
 [package]
 name = "launcher"
-description = "Deployment policy for the shipped specify binary: the macro-facing mount and resolver expressions behind a dynamic Omnia deployment"
+description = "Deployment policy for the shipped emery binary: the macro-facing mount and resolver expressions behind a dynamic Omnia deployment"
 publish = false
 version.workspace = true
 edition.workspace = true

@@ -5,9 +5,9 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Specify adapter SDK: the per-axis operations traits, seam DTOs, judgment scaffolding, embedded prose registry, and the wasm export macros"
+description = "Emery adapter SDK: the per-axis operations traits, seam DTOs, judgment scaffolding, embedded prose registry, and the wasm export macros"
 categories = ["development-tools"]
-keywords = ["specify", "adapter", "sdk"]
+keywords = ["emery", "adapter", "sdk"]
 readme = "../../README.md"
 
 [lints]

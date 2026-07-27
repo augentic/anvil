@@ -23,7 +23,7 @@ async fn github_uri_refused() {
     let project = Provider::bare();
     let err = run::<project::init::handlers::Init, _, _>(
         &project,
-        input("https://github.com/augentic/specify/adapters/targets/demo"),
+        input("https://github.com/augentic/emery/adapters/targets/demo"),
     )
     .await
     .expect_err("GitHub URI must be refused");
@@ -43,7 +43,7 @@ mod package {
         let project = Provider::bare();
 
         let body =
-            run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
+            run::<project::init::handlers::Init, _, _>(&project, input("emery:demo@1.2.0"))
                 .await
                 .expect("a cold package pin scaffolds");
         assert_eq!(body.adapter_name, "demo");
@@ -53,9 +53,9 @@ mod package {
         );
 
         let project_yaml =
-            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+            fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
         assert!(
-            project_yaml.contains("adapter: specify:demo@1.2.0"),
+            project_yaml.contains("adapter: emery:demo@1.2.0"),
             "package reference is canonical:\n{project_yaml}"
         );
     }
@@ -64,14 +64,14 @@ mod package {
     async fn pin_resolves_as_store_identity() {
         let project = Provider::bare();
 
-        run::<project::init::handlers::Init, _, _>(&project, input("specify:demo@1.2.0"))
+        run::<project::init::handlers::Init, _, _>(&project, input("emery:demo@1.2.0"))
             .await
             .expect("package pin scaffolds");
 
         let body = run::<project::adapter::handlers::TargetResolve, _, _>(
             &project,
             project::adapter::handlers::ResolveInput {
-                value: "specify:demo@1.2.0".to_string(),
+                value: "emery:demo@1.2.0".to_string(),
                 project_dir: None,
             },
         )
@@ -95,7 +95,7 @@ mod shorthand {
             .await
             .expect("bare cached shorthand scaffolds");
         let project_yaml =
-            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
+            fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
         assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
 
         let project = Provider::bare();
@@ -103,8 +103,8 @@ mod shorthand {
             .await
             .expect("versioned shorthand scaffolds");
         let project_yaml =
-            fs::read_to_string(project.root.join(".specify/project.yaml")).expect("project.yaml");
-        assert!(project_yaml.contains("adapter: specify:demo@1.2.0"), "{project_yaml}");
+            fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
+        assert!(project_yaml.contains("adapter: emery:demo@1.2.0"), "{project_yaml}");
     }
 
     #[tokio::test]

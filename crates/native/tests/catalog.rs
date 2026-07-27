@@ -49,11 +49,11 @@ fn entries_and_metadata() {
     let entry = linked.get(Axis::Target, "mock").expect("target entry");
     assert_eq!(entry.version(), "0.0.0");
     assert_eq!(entry.server_name(), "mock-references");
-    assert_eq!(entry.metadata().specify_floor, None);
+    assert_eq!(entry.metadata().emery_floor, None);
     assert!(!entry.docs().is_empty());
 
     let floored = linked.get(Axis::Target, "floored").expect("floored entry");
-    assert_eq!(floored.metadata().specify_floor.as_deref(), Some("9.9.9"));
+    assert_eq!(floored.metadata().emery_floor.as_deref(), Some("9.9.9"));
 
     let err = linked.get(Axis::Source, "unknown").expect_err("unlinked refuses");
     assert_eq!(err.variant_str(), "adapter-not-linked");

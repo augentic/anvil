@@ -24,7 +24,7 @@ Per requirement, in declaration order:
 1. Group claims by `id` (`requirement` / `criterion`; see [`claim-reconciliation.md`](claim-reconciliation.md)).
 2. Record `(source, id, kind)` claims + `agreement` (`agreed` / `disagreed`); kernel resolves authority / `status` ([`authority.md`](authority.md)).
 3. Write `title`, `statement`, `scenarios[]`, `notes`. Order by highest-authority Evidence source order — kernel assigns `REQ-001…` in that order.
-4. Kernel derives tags; `specify slice validate` emits `slice.synthesis.{unknown|conflict|divergence}` with the requirement id.
+4. Kernel derives tags; `emery slice validate` emits `slice.synthesis.{unknown|conflict|divergence}` with the requirement id.
 
 Open with a short `## Overview`. Every requirement needs ≥1 WHEN/THEN scenario as a `#### Scenario:` H4 (GIVEN optional) — including evidence-gap / `[unknown]`; see [`spec-format.md`](spec-format.md).
 

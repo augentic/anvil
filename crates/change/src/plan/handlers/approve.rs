@@ -28,12 +28,12 @@ fn default_actor() -> String {
     "operator".to_string()
 }
 
-/// `specify plan approve`.
+/// `emery plan approve`.
 ///
 /// Stamps Gate 1 on the single active plan (`pending → approved`).
 /// Nameless — there is exactly one `plan.yaml`, so no selector is
-/// needed. Operator-only: `/spec:plan` MUST NOT call this verb, and
-/// `/spec:execute` runs it only behind an explicit operator
+/// needed. Operator-only: `/emery:plan` MUST NOT call this verb, and
+/// `/emery:execute` runs it only behind an explicit operator
 /// confirmation.
 ///
 /// Approving an already-approved plan is an idempotent no-op (exit 0,

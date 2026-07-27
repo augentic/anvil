@@ -1,13 +1,13 @@
 [package]
 name = "native"
-description = "Specify native host: statically composed adapter catalog, provider, references, and command execution"
+description = "Emery native host: statically composed adapter catalog, provider, references, and command execution"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 categories = ["development-tools"]
-keywords = ["specify", "workflow", "native"]
+keywords = ["emery", "workflow", "native"]
 readme = "../../README.md"
 
 [lints]

@@ -7,7 +7,7 @@ repository.workspace = true
 rust-version.workspace = true
 description = "Artifact types and parsers (spec, task, evidence, discovery) plus the shared atomic writer"
 categories = ["development-tools"]
-keywords = ["specify", "model", "workflow"]
+keywords = ["emery", "model", "workflow"]
 readme = "../../README.md"
 
 [lints]

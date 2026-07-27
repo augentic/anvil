@@ -62,7 +62,7 @@ impl Session {
         }
     }
 
-    /// A minimal initialised project (`.specify/project.yaml`) bound to
+    /// A minimal initialised project (`.emery/project.yaml`) bound to
     /// `target_adapter`, with `answers` behind the judgment legs.
     ///
     /// # Panics
@@ -71,9 +71,9 @@ impl Session {
     #[must_use]
     pub fn scripted(target_adapter: &str, answers: Vec<String>) -> Self {
         let session = Self::bare(answers);
-        std::fs::create_dir_all(session.root.join(".specify")).expect("mkdir .specify");
+        std::fs::create_dir_all(session.root.join(".emery")).expect("mkdir .emery");
         std::fs::write(
-            session.root.join(".specify/project.yaml"),
+            session.root.join(".emery/project.yaml"),
             format!("name: demo\nadapter: {target_adapter}\nrules: {{}}\n"),
         )
         .expect("write project.yaml");

@@ -2,9 +2,9 @@
 
 > Status: Stages 1 and 3 landed — Stage 2 diagnostics remain draft
 >
-> Owns: the operator-facing `specify` executable, deployment assembly, and Specify's fail-closed guest resolver over the adapter store and project cache.
+> Owns: the operator-facing `emery` executable, deployment assembly, and Emery's fail-closed guest resolver over the adapter store and project cache.
 >
-> Builds on: [Specify on Omnia](architecture.md). Program: RFCs 70–74.
+> Builds on: [Emery on Omnia](architecture.md). Program: RFCs 70–74.
 
 ## Landed (Stages 1 + 3)
 
@@ -14,7 +14,7 @@
 - Mounts + optional read-only `adapter add` seed preopen from `crates/launcher`
 - Exact routed identities (`source:<name>@<version>`, `target:<name>`, …) resolve from store / project cache
 
-Live description: [CLI architecture](../docs/contributing/cli-architecture.md), [AGENTS.md § launcher](../AGENTS.md#the-rust-workspace-specify-cli).
+Live description: [CLI architecture](../docs/contributing/cli-architecture.md), [AGENTS.md § launcher](../AGENTS.md#the-rust-workspace-emery-cli).
 
 Stage 1's pre-run adapter enumeration is **superseded and deleted**. Do not resurrect a host front door or guest table.
 
@@ -27,7 +27,7 @@ Stage 1's pre-run adapter enumeration is **superseded and deleted**. Do not resu
 
 ## Non-goals (unchanged)
 
-- Teaching Omnia Specify vocabulary
+- Teaching Omnia Emery vocabulary
 - Statically linking first-party adapters into the released Wasm distribution
 - Making the native host the default operator distribution
 - Selecting which adapters a project should use ([RFC-71](rfc-71-discovery.md) / [RFC-72](rfc-72-migration.md) / [RFC-74](rfc-74-program.md))

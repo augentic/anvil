@@ -1,4 +1,4 @@
-//! Registry topology and shape validation for Specify.
+//! Registry topology and shape validation for Emery.
 
 pub(crate) mod catalog;
 mod gitignore;

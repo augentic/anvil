@@ -1,8 +1,8 @@
 [package]
-name = "specify"
+name = "emery"
 description = "A tool for specifying and running code generation workflows"
 categories = ["command-line-utilities", "development-tools"]
-keywords = ["specify", "cli", "spec", "workflow", "automation"]
+keywords = ["emery", "cli", "spec", "workflow", "automation"]
 readme = "README.md"
 publish = false
 edition.workspace = true
@@ -69,7 +69,7 @@ authors = ["Augentic"]
 edition = "2024"
 homepage = "https://augentic.io"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/augentic/specify"
+repository = "https://github.com/augentic/emery"
 rust-version = "1.97"
 version = "0.29.0"
 

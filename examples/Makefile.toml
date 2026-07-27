@@ -6,7 +6,7 @@
 # Pair with `eval` for case runs: `cargo make lab -- --project-dir <dir> …`.
 [tasks.lab]
 command = "cargo"
-args = ["run", "-q", "-p", "specify", "--example", "eval", "--", "${@}"]
+args = ["run", "-q", "-p", "emery", "--example", "eval", "--", "${@}"]
 
 # One live eval case (`cargo make eval auth --restart [--until plan]`);
 # bare `cargo make eval` lists the cases. Case data lives in
@@ -17,7 +17,7 @@ env_files = [".env"]
 script = '''
   export EVAL_TIMEOUT_SECS="${EVAL_TIMEOUT_SECS:-300}"
   export RUST_LOG="${RUST_LOG:-info}"
-  cargo run -p specify --example eval -- eval "$@"
+  cargo run -p emery --example eval -- eval "$@"
 '''
 
 # -------------------------------------
@@ -29,8 +29,8 @@ script = "rm -rf sandbox/wasm"
 
 [tasks.wasm-build]
 script = '''
-cargo build -p specify --lib --examples --target wasm32-wasip2
-cargo build -p specify --bin specify
+cargo build -p emery --lib --examples --target wasm32-wasip2
+cargo build -p emery --bin emery
 '''
 
 [tasks.wasm-run]
@@ -40,18 +40,18 @@ script_runner = "bash"
 script = '''
 set -eo pipefail
 
-export SPECIFY_HOME="$PWD/sandbox/wasm"
+export EMERY_HOME="$PWD/sandbox/wasm"
 # Omnia's default guest timeout (30s) is too short for a live model.
 export GUEST_TIMEOUT_MS="${GUEST_TIMEOUT_MS:-3600000}"
 # export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
 
 # Fresh sandbox each run; cargo artifacts under target/ stay incremental.
-rm -rf "$SPECIFY_HOME"
-mkdir -p "$SPECIFY_HOME/project"
+rm -rf "$EMERY_HOME"
+mkdir -p "$EMERY_HOME/project"
 
 TARGET="$PWD/target"
 # Execute commands in the project directory, not the repository root.
-run() { (cd "$SPECIFY_HOME/project" && "$TARGET/debug/specify" "$@"); }
+run() { (cd "$EMERY_HOME/project" && "$TARGET/debug/emery" "$@"); }
 
 # Add source adapter to cache
 run adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"

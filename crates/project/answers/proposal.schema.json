@@ -2,7 +2,7 @@
   "$defs": {
     "Disagreement": {
       "additionalProperties": false,
-      "description": "One field on which a slice's matched leads materially disagree.\n\nRecorded by the `/spec:plan` propose agent alongside a `divergence`\nflag. The CLI never decides materiality — it only checks structural\nconsistency: a flagged slice records at least one disagreement, and\neach disagreement names at least two distinct source values.",
+      "description": "One field on which a slice's matched leads materially disagree.\n\nRecorded by the `/emery:plan` propose agent alongside a `divergence`\nflag. The CLI never decides materiality — it only checks structural\nconsistency: a flagged slice records at least one disagreement, and\neach disagreement names at least two distinct source values.",
       "properties": {
         "field": {
           "description": "The aspect the sources disagree on (a free-form label, e.g.\n`password-min-length`).",
@@ -42,7 +42,7 @@
       "type": "object"
     },
     "Divergence": {
-      "description": "Slice-level reconciliation outcome.\n\nClosed `none | likely | accepted | rejected` taxonomy on\n`plan.yaml.slices[].divergence`, written only by `specify plan\namend`.",
+      "description": "Slice-level reconciliation outcome.\n\nClosed `none | likely | accepted | rejected` taxonomy on\n`plan.yaml.slices[].divergence`, written only by `emery plan\namend`.",
       "oneOf": [
         {
           "const": "none",
@@ -51,7 +51,7 @@
         },
         {
           "const": "likely",
-          "description": "Staged by the `/spec:plan` agent after the reconcile write, via\n`specify plan amend --divergence likely`, on\nmaterially-disagreeing lead synopses.",
+          "description": "Staged by the `/emery:plan` agent after the reconcile write, via\n`emery plan amend --divergence likely`, on\nmaterially-disagreeing lead synopses.",
           "type": "string"
         },
         {
@@ -151,7 +151,7 @@
               "type": "null"
             }
           ],
-          "description": "Agent-flagged slice-level divergence: `likely` when the matched\nleads materially disagree. Absent means no divergence. The kernel\ncarries it onto `plan.yaml.slices[].divergence`; the operator\nadjudicates `accepted` / `rejected` later via `specify plan amend\n--divergence`."
+          "description": "Agent-flagged slice-level divergence: `likely` when the matched\nleads materially disagree. Absent means no divergence. The kernel\ncarries it onto `plan.yaml.slices[].divergence`; the operator\nadjudicates `accepted` / `rejected` later via `emery plan amend\n--divergence`."
         },
         "name": {
           "description": "Explicit plan slice name (kebab-case). Required — with `scope`\ngone the agent names every slice directly, and the kernel writes\nit verbatim to `plan.yaml.slices[].name`.",
@@ -186,7 +186,7 @@
       "type": "object"
     }
   },
-  "$id": "https://github.com/augentic/specify/answers/proposal.schema.json",
+  "$id": "https://github.com/augentic/emery/answers/proposal.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to the plan-time lead-reconciliation judgment: the `kind: response` envelope the guest `plan author` orchestration consumes. The deterministic tail re-checks the envelope kind and runs the projection kernel.",
@@ -225,6 +225,6 @@
     "slices",
     "gate"
   ],
-  "title": "Specify plan reconciliation answer",
+  "title": "Emery plan reconciliation answer",
   "type": "object"
 }

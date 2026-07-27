@@ -1,4 +1,4 @@
-//! Seam vocabulary mirroring the `specify:adapter` WIT records.
+//! Seam vocabulary mirroring the `emery:adapter` WIT records.
 //!
 //! Only answer-deserialized types carry serde derives.
 
@@ -273,9 +273,9 @@ impl Report {
 /// record. Read by the host at resolve time from compiled-in constants.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceMetadata {
-    /// Optional host-CLI compatibility floor (exact minimum `specify`
+    /// Optional host-CLI compatibility floor (exact minimum `emery`
     /// version). Absent means no floor.
-    pub specify_floor: Option<String>,
+    pub emery_floor: Option<String>,
 }
 
 /// One adapter-declared build input — mirrors the WIT
@@ -304,9 +304,9 @@ pub struct PlatformsCapability {
 /// record. Read by the host at resolve time from compiled-in constants.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TargetMetadata {
-    /// Optional host-CLI compatibility floor (exact minimum `specify`
+    /// Optional host-CLI compatibility floor (exact minimum `emery`
     /// version). Absent means no floor.
-    pub specify_floor: Option<String>,
+    pub emery_floor: Option<String>,
     /// Adapter-declared build inputs; empty when the target declares none.
     pub inputs: Vec<BuildInput>,
     /// Declarative platforms capability; absent when platform-agnostic.

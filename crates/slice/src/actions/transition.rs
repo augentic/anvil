@@ -78,12 +78,12 @@ pub fn transition(
     Ok(metadata)
 }
 
-/// Resolve the project root from `<project>/.specify/slices/<name>/`.
+/// Resolve the project root from `<project>/.emery/slices/<name>/`.
 fn project_root(slice_path: &Path) -> Option<std::path::PathBuf> {
     let slices_parent = slice_path.parent()?;
     if slices_parent.file_name()? != std::ffi::OsStr::new(SLICES_DIR_NAME) {
         return None;
     }
-    let specify_dir = slices_parent.parent()?;
-    specify_dir.parent().map(Path::to_path_buf)
+    let emery_dir = slices_parent.parent()?;
+    emery_dir.parent().map(Path::to_path_buf)
 }

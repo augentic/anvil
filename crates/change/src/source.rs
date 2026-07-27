@@ -1,4 +1,4 @@
-//! The `specify source survey` operation (the plan-scoped half of the
+//! The `emery source survey` operation (the plan-scoped half of the
 //! source-axis surface; extract lives in the `slice` crate).
 
 use std::io::Write;
@@ -23,7 +23,7 @@ pub struct SurveyInput {
     pub plan: Option<String>,
 }
 
-/// `specify source survey <source>` → the internal survey orchestration.
+/// `emery source survey <source>` → the internal survey orchestration.
 #[derive(Clone, Copy, Debug)]
 pub struct Survey;
 

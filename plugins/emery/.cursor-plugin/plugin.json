@@ -1,17 +1,17 @@
 {
-  "name": "spec",
-  "displayName": "Specify Workflow",
-  "description": "Specify workflow skills: init, plan, refine, build, merge, finalize, drop.",
+  "name": "emery",
+  "displayName": "Emery Workflow",
+  "description": "Emery workflow skills: init, plan, refine, build, merge, finalize, drop.",
   "version": "0.28.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
   },
-  "homepage": "https://github.com/augentic/specify",
-  "repository": "https://github.com/augentic/specify",
+  "homepage": "https://github.com/augentic/emery",
+  "repository": "https://github.com/augentic/emery",
   "license": "MIT or Apache-2.0",
   "keywords": [
-    "specify",
+    "emery",
     "workflow"
   ],
   "settings": {}

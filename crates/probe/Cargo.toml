@@ -2,7 +2,7 @@
 # the native host). The `client` feature adds the shared cursor
 # composition (`probe::client`) consumed by each repository's
 # composition example (`examples/eval/` here and in
-# `augentic/specify-adapters`). Never an install or release artifact.
+# `augentic/emery-adapters`). Never an install or release artifact.
 [package]
 name = "probe"
 description = "Lab-only live-model probe library over the native host"

@@ -1,18 +1,18 @@
 # Vectis Adapter
 
 - **Identifier:** `vectis`
-- **Package:** `specify:vectis@<semver>` in [`augentic/specify-adapters`](https://github.com/augentic/specify-adapters/tree/main/targets/vectis)
+- **Package:** `emery:vectis@<semver>` in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters/tree/main/targets/vectis)
 - **Purpose:** Cross-platform Crux application development (Rust core, Swift iOS shell, Kotlin Android shell)
 
 ## Operations
 
-Closed WIT target contract: `guidance`, `build`, `merge`. Core `/spec:refine` synthesises canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
+Closed WIT target contract: `guidance`, `build`, `merge`. Core `/emery:refine` synthesises canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
 
 | Operation | Owns |
 | --------- | ---- |
-| `guidance` | Idiom guidance for synthesis — [`prose/prompts/guidance.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/guidance.md) |
-| `build` | Composition regeneration, core/shell writers, verify-repair — [`prose/prompts/build.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/build.md) |
-| `merge` | Adoption gates after `specify slice merge` — [`prose/prompts/merge.md`](https://github.com/augentic/specify-adapters/blob/main/targets/vectis/prose/prompts/merge.md) |
+| `guidance` | Idiom guidance for synthesis — [`prose/prompts/guidance.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/guidance.md) |
+| `build` | Composition regeneration, core/shell writers, verify-repair — [`prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/build.md) |
+| `merge` | Adoption gates after `emery slice merge` — [`prose/prompts/merge.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/merge.md) |
 
 In-guest helpers: [Vectis in-guest tools](../cli/vectis.md). Component catalog: [Component factoring](../../explanation/components.md).
 

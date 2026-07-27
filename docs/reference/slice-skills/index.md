@@ -1,60 +1,60 @@
 # Slice skills
 
-Slice skills operate on a single slice inside `.specify/slices/<name>/`. They cover one-time project setup and the per-slice refine → build → merge loop. The change level ([Change skills](../change-skills/index.md), [specify plan execute](../cli/plan.md#specify-plan-execute)) sequences the same orchestrations inside `specify plan execute`; every step is also reachable as a manual breakout when execute parks.
+Slice skills operate on a single slice inside `.emery/slices/<name>/`. They cover one-time project setup and the per-slice refine → build → merge loop. The change level ([Change skills](../change-skills/index.md), [emery plan execute](../cli/plan.md#emery-plan-execute)) sequences the same orchestrations inside `emery plan execute`; every step is also reachable as a manual breakout when execute parks.
 
 ## The per-slice loop
 
 ```text
-/spec:init  →  (plan-time)  →  /spec:refine  →  /spec:build  →  /spec:merge
+/emery:init  →  (plan-time)  →  /emery:refine  →  /emery:build  →  /emery:merge
 ```
 
-`/spec:init` is one-time scaffolding. The loop runs inside `specify plan execute`, but each phase is invokable by hand. See [Drive a slice manually](../../how-to/drive-slice-manually.md).
+`/emery:init` is one-time scaffolding. The loop runs inside `emery plan execute`, but each phase is invokable by hand. See [Drive a slice manually](../../how-to/drive-slice-manually.md).
 
-**Canonical reference.** The authoritative operator surface for every skill — synopsis, arguments, the step-by-step critical path, guardrails, closing hints, and error modes — is its canonical skill body under [`plugins/spec/skills/<phase>/SKILL.md`](../../../plugins/spec/README.md). The sections below are navigation entries and carry no operator steps, so the two surfaces cannot drift.
+**Canonical reference.** The authoritative operator surface for every skill — synopsis, arguments, the step-by-step critical path, guardrails, closing hints, and error modes — is its canonical skill body under [`plugins/emery/skills/<phase>/SKILL.md`](../../../plugins/emery/README.md). The sections below are navigation entries and carry no operator steps, so the two surfaces cannot drift.
 
 ## Skill summary
 
 | Skill | Purpose | Reads | Writes |
 | ----- | ------- | ----- | ------ |
-| [/spec:init](#specinit) | One-time project setup | — | `.specify/`, `project.yaml`, cache, `AGENTS.md` |
-| [/spec:refine](#specrefine) | Extract per source, synthesize artifacts | Plan bindings, discovery, sources | Slice artifacts, Evidence, `model.yaml` |
-| [/spec:build](#specbuild) | Validate artifacts, implement tasks | Slice artifacts, target build prompts | Source code, task checkmarks |
-| [/spec:merge](#specmerge) | Apply slice deltas to baseline, archive slice | Slice specs, baseline | Updated baseline, archived slice, per-entry `done` |
-| [/spec:drop](#specdrop) | Discard a slice without merging | Slice metadata | Archived slice (dropped) |
+| [/emery:init](#specinit) | One-time project setup | — | `.emery/`, `project.yaml`, cache, `AGENTS.md` |
+| [/emery:refine](#specrefine) | Extract per source, synthesize artifacts | Plan bindings, discovery, sources | Slice artifacts, Evidence, `model.yaml` |
+| [/emery:build](#specbuild) | Validate artifacts, implement tasks | Slice artifacts, target build prompts | Source code, task checkmarks |
+| [/emery:merge](#specmerge) | Apply slice deltas to baseline, archive slice | Slice specs, baseline | Updated baseline, archived slice, per-entry `done` |
+| [/emery:drop](#specdrop) | Discard a slice without merging | Slice metadata | Archived slice (dropped) |
 
-## /spec:init
+## /emery:init
 
-Initialise Specify in a project. Run once before any other `/spec:` skill. Canonical body: [`/spec:init`](../../../plugins/spec/skills/init/SKILL.md).
+Initialise Emery in a project. Run once before any other `/emery:` skill. Canonical body: [`/emery:init`](../../../plugins/emery/skills/init/SKILL.md).
 
 See also: [Prerequisites](../../orientation/prerequisites.md) — what to install before init · [Directory layout](../directory-layout.md) — what init creates · [Configuration files](../configuration.md) — `project.yaml` format.
 
-## /spec:refine
+## /emery:refine
 
-Refine a plan entry's slice — invoke `specify slice refine`, which runs extract per bound source, synthesizes proposal, spec, design, and tasks, validates, and transitions to `refined`. Canonical body: [`/spec:refine`](../../../plugins/spec/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../crates/slice/prompts/synthesize.md).
+Refine a plan entry's slice — invoke `emery slice refine`, which runs extract per bound source, synthesizes proposal, spec, design, and tasks, validates, and transitions to `refined`. Canonical body: [`/emery:refine`](../../../plugins/emery/skills/refine/SKILL.md); what the agent writes into the synthesis response is owned by the [synthesis playbook](../../../crates/slice/prompts/synthesize.md).
 
 See also: [Resolve spec conflicts](../../how-to/resolve-spec-conflicts.md) — `[conflict]` and `[divergence]` tags · [Artifact format](../artifact-format.md) — requirement block shape · [Lifecycle](../lifecycle.md) — slice state machine.
 
-## /spec:build
+## /emery:build
 
-Implement tasks from a refined slice by invoking `specify slice build`, which drives the target adapter's build operation. Canonical body: [`/spec:build`](../../../plugins/spec/skills/build/SKILL.md).
+Implement tasks from a refined slice by invoking `emery slice build`, which drives the target adapter's build operation. Canonical body: [`/emery:build`](../../../plugins/emery/skills/build/SKILL.md).
 
 See also: [Drive a slice manually](../../how-to/drive-slice-manually.md) — when execute parks on build · [Artifact format](../artifact-format.md) — skill directive tag syntax.
 
-## /spec:merge
+## /emery:merge
 
-Merge a built slice into the baseline — apply spec deltas, archive the slice, stamp the plan entry `done`. Canonical body: [`/spec:merge`](../../../plugins/spec/skills/merge/SKILL.md).
+Merge a built slice into the baseline — apply spec deltas, archive the slice, stamp the plan entry `done`. Canonical body: [`/emery:merge`](../../../plugins/emery/skills/merge/SKILL.md).
 
 See also: [Lifecycle](../lifecycle.md) — merged state and archiving · [Directory layout](../directory-layout.md) — archive paths.
 
-## /spec:drop
+## /emery:drop
 
-Discard a slice without merging specs into the baseline. The alternative to [/spec:merge](#specmerge). Canonical body: [`/spec:drop`](../../../plugins/spec/skills/drop/SKILL.md).
+Discard a slice without merging specs into the baseline. The alternative to [/emery:merge](#specmerge). Canonical body: [`/emery:drop`](../../../plugins/emery/skills/drop/SKILL.md).
 
 See also: [Lifecycle](../lifecycle.md) — the dropped state.
 
 ## How skills delegate
 
-Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `specify` verb. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/spec/README.md) for the authoritative steps.
+Each skill is an ultrathin invoke-and-relay wrapper over one guest-routed `emery` verb. See [AGENTS.md § Skill / CLI responsibility split](../../../AGENTS.md) for the contract and each phase's [`SKILL.md`](../../../plugins/emery/README.md) for the authoritative steps.
 
 ## See also
 

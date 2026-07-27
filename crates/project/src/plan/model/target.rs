@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// This is the *resolved* target form, produced by
 /// [`crate::plan::resolve_target`] from a slice's bound
-/// project topology and surfaced by `specify plan next`, the slice
+/// project topology and surfaced by `emery plan next`, the slice
 /// `metadata.yaml`, and the build request. It is not a stored
 /// `plan.yaml` field — a slice binds only a `project`, and the target
 /// adapter is resolved on demand.

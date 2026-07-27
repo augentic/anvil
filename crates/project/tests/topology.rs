@@ -52,7 +52,7 @@ impl Resolver for CacheResolver {
             manifest: TargetAdapter {
                 name,
                 version,
-                requires_specify: None,
+                requires_emery: None,
                 inputs: Vec::new(),
                 platforms: None,
             },
@@ -77,12 +77,12 @@ impl Workspace {
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let base = tmp.path().canonicalize().expect("canonical tempdir");
         let root = base.join("platform");
-        let specify = root.join(".specify");
-        std::fs::create_dir_all(&specify).expect("mkdir .specify");
+        let emery = root.join(".emery");
+        std::fs::create_dir_all(&emery).expect("mkdir .emery");
         std::fs::write(
-            specify.join("project.yaml"),
+            emery.join("project.yaml"),
             format!(
-                "name: platform\nspecify: {}\nrules: {{}}\nworkspace: true\n",
+                "name: platform\nemery: {}\nrules: {{}}\nworkspace: true\n",
                 env!("CARGO_PKG_VERSION")
             ),
         )
@@ -93,12 +93,12 @@ impl Workspace {
         )
         .expect("write registry.yaml");
 
-        let slot = root.join("workspace").join("billing").join(".specify");
-        std::fs::create_dir_all(&slot).expect("mkdir slot .specify");
+        let slot = root.join("workspace").join("billing").join(".emery");
+        std::fs::create_dir_all(&slot).expect("mkdir slot .emery");
         std::fs::write(
             slot.join("project.yaml"),
             format!(
-                "name: billing\nadapter: {slot_adapter}\nspecify: {}\nrules: {{}}\n",
+                "name: billing\nadapter: {slot_adapter}\nemery: {}\nrules: {{}}\n",
                 env!("CARGO_PKG_VERSION")
             ),
         )
@@ -157,7 +157,7 @@ fn slot_local_cache_binding_is_flagged() {
         .expect("unresolvable finding");
     // The finding names the binding and both supported forms.
     assert!(unresolvable.title.contains("`mock`"), "{}", unresolvable.title);
-    assert!(unresolvable.title.contains("specify:mock@<semver>"), "{}", unresolvable.title);
+    assert!(unresolvable.title.contains("emery:mock@<semver>"), "{}", unresolvable.title);
     assert!(unresolvable.title.contains("adapter add"), "{}", unresolvable.title);
 }
 
@@ -178,7 +178,7 @@ fn deployment_cache_binding_is_resolvable() {
 // store miss during dispatch) — exempt.
 #[test]
 fn package_pin_binding_is_exempt() {
-    let workspace = Workspace::new("specify:mock@1.0.0");
+    let workspace = Workspace::new("emery:mock@1.0.0");
     let diagnostics = workspace.staleness();
     assert!(!codes(&diagnostics).contains(&UNRESOLVABLE), "{diagnostics:?}");
 }

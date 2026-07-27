@@ -1,4 +1,4 @@
-//! Transport-level coverage of Specify's shared HTTP router.
+//! Transport-level coverage of Emery's shared HTTP router.
 
 use std::fs;
 use std::path::Path;
@@ -13,7 +13,7 @@ use tower::ServiceExt as _;
 /// The HTTP router over an initialised scripted session — routing
 /// coverage only; no test dispatches judgment or an adapter seam.
 fn router(project: &Session) -> Router {
-    transport::http::router(Invoker::new("specify", project.provider().clone())).into_axum()
+    transport::http::router(Invoker::new("emery", project.provider().clone())).into_axum()
 }
 
 async fn send(router: Router, request: Request<Body>) -> (StatusCode, serde_json::Value) {
@@ -112,7 +112,7 @@ mod errors {
         );
         assert_eq!(
             value["error"], "invalid-request",
-            "decode failures render the Specify envelope: {value}"
+            "decode failures render the Emery envelope: {value}"
         );
         assert!(
             value["message"].as_str().is_some_and(|message| message.contains("url")),

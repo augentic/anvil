@@ -24,7 +24,7 @@ pub struct ModelShowInput {
     pub name: String,
 }
 
-/// `specify slice model show <name>`.
+/// `emery slice model show <name>`.
 #[derive(Clone, Copy, Debug)]
 pub struct ModelShow;
 
@@ -44,7 +44,7 @@ impl<P: Anchor> Operation<P> for ModelShow {
                 "slice-model-missing",
                 "a synthesized slice carries model.yaml",
                 format!(
-                    "slice `{name}` has no model.yaml at {}; run `specify slice refine {name}` \
+                    "slice `{name}` has no model.yaml at {}; run `emery slice refine {name}` \
                      first",
                     model_path.display()
                 ),

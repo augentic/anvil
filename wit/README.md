@@ -1,17 +1,17 @@
-# `specify:adapter` WIT
+# `emery:adapter` WIT
 
-This repo owns [`specify.wit`](specify.wit) and publishes it as the wasm-pkg package `specify:adapter`. [augentic/specify-adapters](https://github.com/augentic/specify-adapters) consumes it as a vendored copy.
+This repo owns [`emery.wit`](emery.wit) and publishes it as the wasm-pkg package `emery:adapter`. [augentic/emery-adapters](https://github.com/augentic/emery-adapters) consumes it as a vendored copy.
 
 ## Publishing
 
-Publishing is manual. Registry identities are immutable — bump the `package specify:adapter@<ver>;` declaration in `specify.wit` first, and never re-publish an existing version.
+Publishing is manual. Registry identities are immutable — bump the `package emery:adapter@<ver>;` declaration in `emery.wit` first, and never re-publish an existing version.
 
-Install [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) and configure the `specify:` namespace with credentials that can write to the backing registry (a GitHub token with `packages: write`):
+Install [wkg](https://github.com/bytecodealliance/wasm-pkg-tools) and configure the `emery:` namespace with credentials that can write to the backing registry (a GitHub token with `packages: write`):
 
 ```toml
 # ~/.config/wasm-pkg/config.toml
 [namespace_registries]
-specify = "augentic.io"
+emery = "augentic.io"
 
 [registry."augentic.io".oci]
 auth = { username = "<github-user>", password = "<token>" }
@@ -20,8 +20,8 @@ auth = { username = "<github-user>", password = "<token>" }
 Then, from the repo root:
 
 ```bash
-wkg wit build --wit-dir wit --output specify-adapter.wasm
-wkg publish specify-adapter.wasm --package specify:adapter@<ver>
+wkg wit build --wit-dir wit --output emery-adapter.wasm
+wkg publish emery-adapter.wasm --package emery:adapter@<ver>
 ```
 
 ## Consuming
@@ -29,11 +29,11 @@ wkg publish specify-adapter.wasm --package specify:adapter@<ver>
 Pulls are anonymous — the namespace mapping alone is enough:
 
 ```bash
-wkg get specify:adapter@<semver> --format wit --output specify.wit
+wkg get emery:adapter@<semver> --format wit --output emery.wit
 ```
 
 ### `wkg` Registry
 
-The `specify:` namespace maps to `augentic.io`, whose `/.well-known/wasm-pkg/registry.json` resolves to the backing OCI registry.
+The `emery:` namespace maps to `augentic.io`, whose `/.well-known/wasm-pkg/registry.json` resolves to the backing OCI registry.
 
 See [Composing and Distributing](https://component-model.bytecodealliance.org/composing-and-distributing/distributing.html) for more information.

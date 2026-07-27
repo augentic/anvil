@@ -3,7 +3,7 @@
 //! synthesis emits at the top of every requirement in `spec.md`.
 //!
 //! The parser is deliberately lenient on whitespace (operators
-//! hand-edit `spec.md` between `/spec:refine` and `/spec:build`) but
+//! hand-edit `spec.md` between `/emery:refine` and `/emery:build`) but
 //! strict on the closed [`RequirementStatus`] enum and on the inline
 //! heading [`RequirementTag`] coherence with the `Status:` line.
 //!
@@ -176,7 +176,7 @@ pub struct ParsedSpec {
 impl ParsedSpec {
     /// `true` when no requirement carries any `Sources:` or `Status:`
     /// metadata — interpreted as a pre-synthesis (refining) state.
-    /// Callers in `specify slice validate` skip the per-requirement
+    /// Callers in `emery slice validate` skip the per-requirement
     /// provenance gate in this state to keep the `refining` lifecycle
     /// observable without spurious failures.
     #[must_use]

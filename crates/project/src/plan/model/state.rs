@@ -15,7 +15,7 @@ use crate::name::{PlanName, SliceName};
 /// `pending` (default after `plan add` / `plan amend`), `in-progress`
 /// (written only by `plan next`), and `done` (written by
 /// `plan transition <name> done` — the final per-entry transition,
-/// stamped by `/spec:merge`). Build failures and merge conflicts leave
+/// stamped by `/emery:merge`). Build failures and merge conflicts leave
 /// the active entry `in-progress`; v1 has no per-entry `blocked`,
 /// `failed`, or `skipped` state.
 ///
@@ -56,7 +56,7 @@ pub enum Status {
 ///
 /// Two stored states only — `pending` (default after `plan author`
 /// scaffolds the plan) and `approved` (operator-stamped at Gate 1 via
-/// `specify plan approve`). "Currently
+/// `emery plan approve`). "Currently
 /// executing" and "drained" are computed from per-entry [`Status`] at
 /// read time via the plan's internal execution-state predicates.
 #[derive(
@@ -79,7 +79,7 @@ pub enum Lifecycle {
     /// Default after `plan author`; awaits operator review at Gate 1.
     #[default]
     Pending,
-    /// Operator has stamped Gate 1 — `specify plan execute` is now legal.
+    /// Operator has stamped Gate 1 — `emery plan execute` is now legal.
     Approved,
 }
 
@@ -127,7 +127,7 @@ pub struct Entry {
     ///
     /// The target adapter (`name[@vN]`) is **not** stored on the slice —
     /// it is resolved on demand from this project via the topology
-    /// (the committed `.specify/topology.lock` for a workspace, `project.yaml.adapter` for a single
+    /// (the committed `.emery/topology.lock` for a workspace, `project.yaml.adapter` for a single
     /// regular project) by the internal target-resolution kernel.
     #[serde(default)]
     pub project: Option<String>,
@@ -146,7 +146,7 @@ pub struct Entry {
     /// preserve the on-disk form via [`SliceSourceBinding`].
     #[serde(default)]
     pub sources: Vec<SliceSourceBinding>,
-    /// Baseline paths relevant to this change, relative to `.specify/`.
+    /// Baseline paths relevant to this change, relative to `.emery/`.
     /// Briefs use these as a focus hint when scanning baseline directories.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub context: Vec<String>,
@@ -155,14 +155,14 @@ pub struct Entry {
     pub description: Option<String>,
     /// workflow §Plan-time reconciliation — closed enum capturing slice-level
     /// reconciliation outcome. Absent on disk (the default) is semantic `none`.
-    /// `Likely` is set by `/spec:plan`'s `propose` sub-step on
+    /// `Likely` is set by `/emery:plan`'s `propose` sub-step on
     /// materially-disagreeing lead synopses; `Accepted` /
     /// `Rejected` are written by the operator at Gate 1 via
-    /// `specify plan amend --divergence`. Advisory metadata in v1.
+    /// `emery plan amend --divergence`. Advisory metadata in v1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub divergence: Option<Divergence>,
     /// workflow §Plan-time reconciliation — the per-field disagreeing
-    /// values backing a `divergence` flag. The `/spec:plan` propose agent
+    /// values backing a `divergence` flag. The `/emery:plan` propose agent
     /// records them when it flags `divergence: likely`; the CLI never
     /// decides materiality, only that a flagged slice records them and a
     /// recorded set carries a flag (`slice-divergence-unrecorded` /
@@ -174,7 +174,7 @@ pub struct Entry {
     /// by claim kind, valued by source key. Keys are the closed
     /// [`artifacts::evidence::ClaimKind`] enum; values MUST be source
     /// keys present in this slice's own [`Entry::sources`] list —
-    /// orphan keys are rejected by `specify slice validate` with
+    /// orphan keys are rejected by `emery slice validate` with
     /// `slice-authority-override-orphan-source`. Empty map and
     /// missing field are equivalent.
     #[serde(default, skip_serializing_if = "AuthorityOverride::is_empty")]
