@@ -5,17 +5,20 @@
 //! `augentic/specify-adapters` over the first-party catalog: native
 //! command passthrough by default, the live case runner under the
 //! `eval` subcommand. The client owns the lazily connected cursor
-//! backend ([`DevModel`]), process telemetry init via
-//! [`omnia::Telemetry`] (with an explicit [`omnia::telemetry::flush`]
-//! before exit so batched spans survive fast command exits), and the
+//! backend ([`DevModel`]), the process tracing subscriber (console
+//! plus an optional ANSI-free file copy — the lab exports no OTLP
+//! telemetry; the shipped runtime binary owns that), and the
 //! `--project-dir` convenience; the composition root keeps what the
 //! client refuses to own — the Tokio runtime, `std::env::args`
 //! collection, and the catalog, cases, and sandbox declarations.
 //!
-//! Driver-side tracing knobs (same as the Omnia runtime binary):
-//! - `RUST_LOG` — `tracing` filter (e.g. `info,opentelemetry_sdk=off`)
-//! - `OTEL_GRPC_URL` — optional OTLP gRPC endpoint; unset uses
-//!   OpenTelemetry defaults (`http://localhost:4317`)
+//! Driver-side tracing knobs:
+//! - `RUST_LOG` — `tracing` filter (e.g. `info,omnia_cursor=debug`)
+//! - `EVAL_LOG` — log-file override. When unset, a named eval case
+//!   logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at
+//!   startup) and passthrough commands log to console only. The file
+//!   receives an ANSI-free copy of the console output under the same
+//!   `RUST_LOG` filter; missing parent directories are created
 
 mod model;
 mod native;
@@ -27,8 +30,27 @@ use std::sync::Arc;
 use ::native::{Catalog, DynModel, ExecutionPaths};
 use anyhow::Context as _;
 pub use model::DevModel;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::fmt::format::{DefaultFields, FormatFields, Writer};
+use tracing_subscriber::layer::SubscriberExt as _;
+use tracing_subscriber::util::SubscriberInitExt as _;
 
 use crate::ModelFactory;
+
+/// Distinct [`FormatFields`] type so the file layer owns its own
+/// span-field cache. Sharing [`DefaultFields`] with the console layer
+/// would reuse that layer's ANSI-formatted entries (and double-append
+/// on every [`tracing::Span::record`]).
+#[derive(Debug, Default)]
+struct PlainFields(DefaultFields);
+
+impl<'writer> FormatFields<'writer> for PlainFields {
+    fn format_fields<R: tracing_subscriber::field::RecordFields>(
+        &self, writer: Writer<'writer>, fields: R,
+    ) -> std::fmt::Result {
+        self.0.format_fields(writer, fields)
+    }
+}
 
 /// Dispatch one composition-binary invocation over `catalog`.
 ///
@@ -39,28 +61,24 @@ use crate::ModelFactory;
 ///
 /// # Errors
 ///
-/// Returns telemetry init failures, `--project-dir` resolution
+/// Returns tracing init failures, `--project-dir` resolution
 /// failures, and every [`crate::run`] failure.
 pub async fn run(
-    argv: Vec<String>, catalog: Catalog, cases: Option<&Path>, sandbox: Option<&Path>,
-) -> anyhow::Result<ExitCode> {
-    // Mirrors Omnia `init_env`: install once, then flush before exit so
-    // batched spans survive even a fast passthrough command.
-    init_telemetry()?;
-    let code = dispatch(argv, catalog, cases, sandbox).await;
-    omnia::telemetry::flush();
-    code
-}
-
-async fn dispatch(
     mut argv: Vec<String>, catalog: Catalog, cases: Option<&Path>, sandbox: Option<&Path>,
 ) -> anyhow::Result<ExitCode> {
-    // `cargo make specify -- ARGS` forwards the literal `--` separator.
+    // `cargo make lab -- ARGS` forwards the literal `--` separator.
     if argv.get(1).is_some_and(|arg| arg == "--") {
         argv.remove(1);
     }
     let root = project_root(&mut argv)?;
+    init_tracing(log_destination(&argv, &root, sandbox))?;
+    dispatch(root, argv, catalog, cases, sandbox).await
+}
 
+async fn dispatch(
+    root: PathBuf, argv: Vec<String>, catalog: Catalog, cases: Option<&Path>,
+    sandbox: Option<&Path>,
+) -> anyhow::Result<ExitCode> {
     if argv.get(1).is_some_and(|arg| arg == "eval") {
         return crate::run(root, catalog, cursor_factory(), &argv[1..], cases, sandbox)
             .await
@@ -72,20 +90,71 @@ async fn dispatch(
     Ok(::native::command::run(paths, model, catalog, argv).await)
 }
 
-/// Process tracing / OTLP init (mirrors Omnia `init_env`). Idempotence
-/// lives in `omnia::Telemetry` — later builds in the same process
-/// share the first initialization's providers.
-fn init_telemetry() -> anyhow::Result<()> {
-    let endpoint = std::env::var("OTEL_GRPC_URL").ok();
-    let mut builder = omnia::Telemetry::new("specify-eval");
-    if let Some(endpoint) = endpoint.clone() {
-        builder = builder.endpoint(endpoint);
+/// The log-file destination: an explicit `EVAL_LOG` always wins; a
+/// named eval case defaults to a per-run timestamped file under the
+/// composition's sandbox root; anything else logs to console only.
+fn log_destination(argv: &[String], root: &Path, sandbox: Option<&Path>) -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("EVAL_LOG") {
+        return Some(PathBuf::from(path));
     }
-    builder.build().context("initializing telemetry")?;
-    if endpoint.is_none() {
-        tracing::debug!("OTEL_GRPC_URL unset; using OpenTelemetry defaults");
+    if argv.get(1).is_none_or(|arg| arg != "eval") {
+        return None;
+    }
+    let case = crate::run::case_of(&argv[1..])?;
+    let stamp = jiff::Timestamp::now().strftime("%Y%m%d-%H%M%S");
+    let sandbox = crate::run::anchored(root, sandbox?);
+    // Collapse `examples/eval/../../sandbox` once the root exists.
+    let sandbox = sandbox.canonicalize().unwrap_or(sandbox);
+    Some(sandbox.join("logs").join(case).join(format!("eval-{stamp}.log")))
+}
+
+/// Process tracing init: a console layer plus, when `log` names a
+/// file, an ANSI-free copy of the same `RUST_LOG`-filtered output.
+fn init_tracing(log: Option<PathBuf>) -> anyhow::Result<()> {
+    // The cursor backend's HTTP stack is noisy below its own spans.
+    let filter = EnvFilter::from_default_env()
+        .add_directive("hyper=off".parse()?)
+        .add_directive("h2=off".parse()?)
+        .add_directive("tonic=off".parse()?);
+    let (file, log) = match log {
+        Some(path) => {
+            let (layer, path) = file_layer(&path)?;
+            (Some(layer), Some(path))
+        }
+        None => (None, None),
+    };
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(tracing_subscriber::fmt::layer())
+        .with(file)
+        .try_init()
+        .context("installing the tracing subscriber")?;
+    if let Some(log) = log {
+        tracing::info!("eval log: {}", log.display());
     }
     Ok(())
+}
+
+/// An ANSI-free file copy of the console output.
+///
+/// Returns the canonical path (parents created) for the startup
+/// announcement.
+fn file_layer<S>(path: &Path) -> anyhow::Result<(impl tracing_subscriber::Layer<S>, PathBuf)>
+where
+    S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
+{
+    if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating {}", parent.display()))?;
+    }
+    let file = std::fs::File::create(path)
+        .with_context(|| format!("creating the log file {}", path.display()))?;
+    let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let layer = tracing_subscriber::fmt::layer()
+        .with_ansi(false)
+        .fmt_fields(PlainFields::default())
+        .with_writer(Arc::new(file));
+    Ok((layer, path))
 }
 
 /// A lazily connected cursor-agent backend per case root.

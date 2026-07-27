@@ -191,7 +191,7 @@ prose                    # build-dependency crate — embed-time prompt-corpus w
 native                   # the native host — the validated adapter Catalog over the SDK operations traits, DynModel type erasure, the non-generic seam Provider (Anchor/Resolver/Model/Source/Target), native reference hosting, and cli-gated asynchronous command execution; depends on {adapter,project,transport,…} and never on a concrete adapter, mock, probe, or Cursor crate
 guest                    # the engine guest as a library (wasm32-only) — the `workflow`-world WIT bindings, the WIT-backed seam Provider (Anchor/Resolver/Model/Source/Target over the world's imports), and the guest::export! macro wiring the shared typed transport routers onto wasi:cli/run + wasi:http/incoming-handler; depends on {project,slice,transport,…}; invoked by the root specify cdylib and by the wasm example guest in augentic/specify-adapters
 mock                     # dev-only mock crate (publish = false) — the canonical SDK-native mock adapter core (mock::behaviour over the seam DTOs), the typed operations-trait implementors and exhaustive catalog registry (mock::registry + mock::catalog()), the scripted answer corpus, the host-only Session helpers over the native provider (binding `omnia_testkit::model::Harness`), and the mock::invoke test-suite entry; dev-dep'd (legally cyclically) by the engine/transport suites, the example adapter components, and the root eval composition example
-probe                    # lab-only library (publish = false) — the typed eval case runner (probe::case: Workflow / Build cases over real specify verbs, stable retained sandboxes, gates), grading, telemetry, sandbox helpers (no runtime/catalog/Cursor); feature = "client": the shared cursor composition (probe::client — DevModel, omnia::Telemetry init + omnia::telemetry::flush before exit, argv dispatch) consumed by each repo's eval composition example (examples/eval/ here and in augentic/specify-adapters); target of `cargo make specify` and `cargo make eval` via the root example
+probe                    # lab-only library (publish = false) — the typed eval case runner (probe::case: Workflow / Build cases over real specify verbs, stable retained sandboxes, gates), grading, telemetry, sandbox helpers (no runtime/catalog/Cursor); feature = "client": the shared cursor composition (probe::client — DevModel, the console + optional EVAL_LOG file tracing init, argv dispatch) consumed by each repo's eval composition example (examples/eval/ here and in augentic/specify-adapters); target of `cargo make lab` and `cargo make eval` via the root example
 specify (root crate) # Omnia deployment unit under src/: guest cdylib (wasm32, one guest::export!() over the guest crate, versioned with the binary) + the shipped runtime (one omnia::runtime! invocation embedding the engine bytes via build.rs's SPECIFY_WASM, mounts/resolver as launcher expressions) + the examples/wasm adapter components (adapter::source!/target! over mock::Adapter)
 ```
 
@@ -232,7 +232,7 @@ crates/change/           the change loop — plan author/execute orchestration, 
 crates/mock/             dev-only mock crate — SDK-native mock adapter core, catalog registry, answer corpus, session helpers
 crates/native/           the native host — validated adapter catalog, DynModel, seam provider, reference hosting, cli-gated command execution
 crates/probe/            lab-only library — the typed eval case runner plus the shared cursor client (feature = "client")
-examples/                wasm (Omnia-hosted component seam: mock adapter components + embedded engine, resolver-dynamic adapters — no omnia.toml) and eval (native mock-catalog composition behind cargo make specify / eval)
+examples/                wasm (Omnia-hosted component seam: mock adapter components + embedded engine, resolver-dynamic adapters — no omnia.toml) and eval (native mock-catalog composition behind cargo make lab / eval)
 ```
 
 | Code | Name                     | When                                                                  |
@@ -299,7 +299,7 @@ cargo make check          # fmt + lint + test + test-docs + doc (the pre-commit 
 cargo make test           # cargo nextest run --locked --workspace --all-features --no-tests=pass, under -Dwarnings
 cargo make wasm-run     # the end-to-end wasm example over the WASM seam; operator-invoked, needs CURSOR_API_KEY in examples/.env
 cargo make eval <case>    # the live-model prompt-evaluation rung (one eval case; bare lists them); operator-invoked, needs cursor-agent credentials
-cargo make specify -- ARGS # any specify verb through the native mock shim (the root eval example's command mode)
+cargo make lab -- ARGS # any specify verb through the native mock lab shim (the root eval example's command mode)
 cargo make lint           # cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo make fmt            # nightly cargo fmt --all
 cargo make audit          # cargo-audit; cargo make deny / outdated / deps / vet for the rest

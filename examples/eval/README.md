@@ -33,13 +33,13 @@ and an existing sandbox without it refuses before mutation. Continue or
 debug a retained sandbox explicitly:
 
 ```bash
-cargo make specify -- --project-dir sandbox/auth plan approve
+cargo make lab -- --project-dir sandbox/auth plan approve
 ```
 
-`EVAL_MODEL`, `EVAL_TIMEOUT_SECS`, `RUST_LOG`, and `OTEL_GRPC_URL` are
+`EVAL_MODEL`, `EVAL_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG` are
 documented in [`crates/probe/README.md`](../../crates/probe/README.md);
 `cargo make eval` defaults the timeout to 300s and `RUST_LOG` to
-`info,opentelemetry_sdk=off`.
+`info`.
 
 Cadence: before a release tag, and after any change to the judgment prompts
 (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer
@@ -50,7 +50,7 @@ schemas. Never CI — see [the developer loop](../../docs/contributing/dev-loop.
 Any specify verb against the mock catalog, in-process (no Wasm):
 
 ```bash
-cargo make specify -- --project-dir <dir> slice list
+cargo make lab -- --project-dir <dir> slice list
 cargo run --example eval -- --help
 ```
 

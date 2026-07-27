@@ -3163,6 +3163,7 @@ dependencies = [
  "anyhow",
  "artifacts",
  "clap",
+ "jiff",
  "mock",
  "native",
  "omnia",
@@ -3176,6 +3177,7 @@ dependencies = [
  "tokio",
  "toml",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

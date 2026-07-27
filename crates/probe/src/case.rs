@@ -15,7 +15,7 @@
 //! Each case owns one stable retained sandbox at `<sandbox>/<case>/`.
 //! The runner never infers workflow progress from an existing tree:
 //! rerun from fresh state with `--restart`, or continue explicitly
-//! with `cargo make specify -- --project-dir <sandbox> …`.
+//! with `cargo make lab -- --project-dir <sandbox> …`.
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
@@ -199,7 +199,7 @@ async fn execute(
     if dir.exists() && !restart {
         bail!(
             "sandbox {} already exists; rerun from fresh state with `--restart`, or \
-             continue/debug it explicitly with `cargo make specify -- --project-dir {} …`",
+             continue/debug it explicitly with `cargo make lab -- --project-dir {} …`",
             dir.display(),
             dir.display()
         );
@@ -265,7 +265,7 @@ async fn run_workflow(
         telemetry::report(&telemetry.counts(), plan.entries.len());
         println!(
             "eval case {id}: stopped at Gate 1 (lifecycle pending); continue with \
-             `cargo make specify -- --project-dir {} plan approve`",
+             `cargo make lab -- --project-dir {} plan approve`",
             root.display()
         );
         return Ok(());
@@ -317,8 +317,8 @@ async fn run_build(
 // One `specify` verb through the native command surface, which owns
 // the `specify.command` span.
 async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str]) -> Result<()> {
-    let display = argv.join(" ");
-    eprintln!("==> specify {display}");
+    let command = argv.join(" ");
+    tracing::info!("specify {command}");
     let mut full = vec!["specify".to_string()];
     full.extend(argv.iter().map(ToString::to_string));
     let locations = Locations::explicit(
@@ -329,7 +329,7 @@ async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str])
     let response = native::command::execute(paths, model.clone(), catalog.clone(), full).await?;
     io::stdout().write_all(&response.stdout)?;
     io::stderr().write_all(&response.stderr)?;
-    ensure!(response.exit == 0, "`specify {display}` exited {}", response.exit);
+    ensure!(response.exit == 0, "`specify {command}` exited {}", response.exit);
     Ok(())
 }
 
@@ -433,7 +433,7 @@ fn clone_into(cache: &Path, spec: &CloneSpec) -> Result<()> {
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent)?;
     }
-    eprintln!("==> git clone --depth 1 {} {}", spec.url, dest.display());
+    tracing::info!("git clone --depth 1 {} {}", spec.url, dest.display());
     let status = Command::new("git")
         .args(["clone", "--depth", "1", &spec.url])
         .arg(&dest)

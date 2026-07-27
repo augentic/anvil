@@ -7,7 +7,7 @@
 //! refuses to: the Tokio runtime, `std::env::args` collection, and
 //! the catalog, cases, and sandbox declarations. It is a development
 //! tool, never an install or release artifact. Driven by `cargo make
-//! specify` and `cargo make eval`.
+//! lab` and `cargo make eval`.
 
 #[cfg(target_arch = "wasm32")]
 fn main() {}

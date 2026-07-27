@@ -3,7 +3,7 @@
 The lab-only `probe` library: the typed eval case runner, deterministic
 grading, and telemetry over the native host. The composition example that
 drives it is [`examples/eval/`](../../examples/eval/README.md)
-(`cargo make eval` / `cargo make specify`). Outputs are graded by
+(`cargo make eval` / `cargo make lab`). Outputs are graded by
 deterministic validators — not a model.
 
 ## Quick start
@@ -31,8 +31,8 @@ progress from an existing tree. Continue or debug a retained sandbox
 explicitly through command passthrough:
 
 ```bash
-cargo make specify -- --project-dir sandbox/auth plan approve
-cargo make specify -- --project-dir sandbox/auth plan execute
+cargo make lab -- --project-dir sandbox/auth plan approve
+cargo make lab -- --project-dir sandbox/auth plan execute
 ```
 
 Driver-side knobs (read by `probe::client`):
@@ -41,19 +41,19 @@ Driver-side knobs (read by `probe::client`):
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `EVAL_MODEL=<model-id>`   | Override the model for a run; unset means the cursor backend's default.                                         |
 | `EVAL_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds). Unset → backend default 120. `cargo make eval` sets `300`. |
-| `RUST_LOG=<filter>`       | `tracing` filter for the native composition (`probe::client` initializes `omnia::Telemetry`). Example: `info,opentelemetry_sdk=off`. |
-| `OTEL_GRPC_URL=<url>`     | Optional OTLP gRPC endpoint; unset uses OpenTelemetry defaults (`http://localhost:4317`).                       |
+| `RUST_LOG=<filter>`       | `tracing` filter for the native composition (`probe::client` installs the subscriber). Example: `info,omnia_cursor=debug`. |
+| `EVAL_LOG=<path>`         | Log-file override. When unset, a named eval case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
 
-With `OTEL_GRPC_URL` set, a run emits `eval.case` (this crate),
-`specify.command` (the transport router), the engine orchestration spans
-(`plan.author`, `plan.execute.entry`, `slice.refine` / `slice.build` /
-`slice.merge`, `source.survey` / `source.extract`, `judgment.leg`), and
-`model.request` (the cursor backend) — every span carries only bounded
-labels (case id/kind, command label, slice/adapter ids, judgment leg,
-repair count, effective model id, exit code), never raw argv,
-intent/source values, prompts, or project paths. The client initializes
-`omnia::Telemetry` once and calls `omnia::telemetry::flush` before exit,
-so even a fast `cargo make specify -- slice list` flushes its span.
+A run's spans — `eval.case` (this crate), `specify.command` (the
+transport router), the engine orchestration spans (`plan.author`,
+`plan.execute.entry`, `slice.refine` / `slice.build` / `slice.merge`,
+`source.survey` / `source.extract`, `judgment.leg`), and
+`model.request` (the cursor backend) — carry only bounded labels (case
+id/kind, command label, slice/adapter ids, judgment leg, repair count,
+effective model id, exit code), never raw argv, intent/source values,
+prompts, or project paths. The lab exports no OTLP telemetry: the
+client installs a console subscriber (plus the optional `EVAL_LOG`
+file copy), and OTLP export stays with the shipped runtime binary.
 
 ## Cases
 

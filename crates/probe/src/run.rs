@@ -47,6 +47,13 @@ pub async fn run(
         .await
 }
 
-fn anchored(workspace_root: &Path, path: &Path) -> PathBuf {
+/// The case id argv names, when it parses as an eval invocation
+/// naming one (a bare `eval` lists cases and names none).
+#[cfg(feature = "client")]
+pub fn case_of(args: &[String]) -> Option<String> {
+    Args::try_parse_from(args).ok().and_then(|args| args.case)
+}
+
+pub fn anchored(workspace_root: &Path, path: &Path) -> PathBuf {
     if path.is_absolute() { path.to_path_buf() } else { workspace_root.join(path) }
 }
