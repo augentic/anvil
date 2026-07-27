@@ -72,16 +72,16 @@ pub fn report(counts: &BTreeMap<String, usize>, slices: usize) {
         match leg.as_str() {
             "proposal" => {
                 let repairs = requests.saturating_sub(1);
-                eprintln!("leg proposal: {requests} request(s), {repairs} repair(s)");
+                tracing::info!("leg proposal: {requests} request(s), {repairs} repair(s)");
             }
             "synthesis" => {
                 let repairs = requests.saturating_sub(slices);
-                eprintln!(
+                tracing::info!(
                     "leg synthesis: {requests} request(s) over {slices} slice(s), \
                      {repairs} repair(s)"
                 );
             }
-            other => eprintln!("leg {other}: {requests} request(s)"),
+            other => tracing::info!("leg {other}: {requests} request(s)"),
         }
     }
 }

@@ -195,7 +195,7 @@ specify init <name>
 
 Bare names and local component selectors resolve only through the project component cache. Package selectors resolve only through the global store/OCI path. No sibling checkout, Cargo `target/`, or fallback probe is added.
 
-Native eval (`cargo make eval` / `cargo make specify`) stays on the static catalog and performs no OCI or store install; release publish and launcher pull-on-miss must not become a prerequisite of that loop. The operator-invoked wasm example continues to load locally built components the same way.
+Native eval (`cargo make eval` / `cargo make lab`) stays on the static catalog and performs no OCI or store install; release publish and launcher pull-on-miss must not become a prerequisite of that loop. The operator-invoked wasm example continues to load locally built components the same way.
 
 ## Update model
 
@@ -280,7 +280,7 @@ Exit: an internal developer can publish via Actions with immutable tags and atte
 | Integrity | OCI digest mismatch, local store modification, malformed Wasm, and wrong-axis components fail closed. |
 | Offline reuse | A valid installed package resolves with the registry unavailable. |
 | Local loop | `cargo make adapter <name> && specify adapter add …` continues to support bare-name development. |
-| Native eval | `cargo make eval` / `cargo make specify` still resolve through the static catalog with no registry or store warm-up required. |
+| Native eval | `cargo make eval` / `cargo make lab` still resolve through the static catalog with no registry or store warm-up required. |
 | Fixed first-party route | Project configuration cannot redirect the `specify:` namespace, and init no longer scaffolds `.specify/wasm-pkg.toml`. |
 | One resolver | No raw-file, sibling-checkout, build-tree, or alternate download fallback remains. |
 | Digest record | Every installed store entry's sidecar records the OCI repository and resolved manifest digest. |

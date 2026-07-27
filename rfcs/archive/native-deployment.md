@@ -614,7 +614,7 @@ Each repository owns an unpublished `lab` binary. It creates one Tokio runtime t
 - `eval` runs the shared eval client;
 - `--project-dir` is parsed only here;
 - when placed before `eval`, `--project-dir` intentionally anchors that eval's `sandbox/` instead of relying on process current directory;
-- the binary is the target of `cargo make specify` and `cargo make eval`;
+- the binary is the target of `cargo make lab` and `cargo make eval`;
 - it is never an install or release artifact.
 
 The two repositories intentionally duplicate the small dispatch. The adapters lab also owns the first-party `catalog()` declaration and depends on the concrete adapter crates directly. A shared catalog library appears only when a second consumer needs it.
@@ -813,7 +813,7 @@ Operator-facing workflow verbs and wire outputs do not change in this RFC. Stage
 
 Development tasks retain their names but target the lab:
 
-- `cargo make specify -- ARGS` — lab command passthrough;
+- `cargo make lab -- ARGS` — lab command passthrough;
 - `cargo make eval` — lab eval command;
 - `cargo make eval scenario <id>` — one prompt scenario;
 - `cargo make wasm-run` — Wasm composed example.
@@ -870,7 +870,7 @@ Depends on Stage 1's `AdapterSelector` and `ensure_*`. Does not block Stage 2.
 3. Route workflow phases through the native command API and keep only grading-required project/artifact dependencies.
 4. Inline async dispatch, lab-only project-root parsing, Cursor model construction, and catalog declaration in `crates/lab`.
 5. Remove the emptied `crates/harness`.
-6. Point `cargo make specify` and `cargo make eval` at `-p lab`.
+6. Point `cargo make lab` and `cargo make eval` at `-p lab`.
 
 ### Stage 4 — Adapter repository
 
@@ -906,8 +906,8 @@ In `augentic/specify`:
 ```bash
 cargo make check
 cargo make ci
-cargo make specify -- --help
-cargo make specify -- --version
+cargo make lab -- --help
+cargo make lab -- --version
 cargo make eval
 cargo check --lib -p specify --examples --target wasm32-wasip2
 cargo make wasm-run
@@ -918,8 +918,8 @@ In `augentic/specify-adapters`:
 ```bash
 cargo make check
 cargo make ci
-cargo make specify -- --help
-cargo make specify -- --version
+cargo make lab -- --help
+cargo make lab -- --version
 cargo make eval
 cargo make wasm-run
 ```
@@ -949,7 +949,7 @@ Live-model and composed wasm-run commands remain operator-invoked when credentia
 19. Specify engine integration tests use offline `native` plus mock adapters and caller-held recording-model handles.
 20. The adapter repository's lab owns first-party `catalog()`; this RFC adds no `composition` package.
 21. Both labs remain unpublished and are never documented as install paths.
-22. `cargo make specify`, `cargo make eval`, and prompt scenarios preserve their lab behavior.
+22. `cargo make lab`, `cargo make eval`, and prompt scenarios preserve their lab behavior.
 23. The Wasm engine guest, component manifests, shipped Wasm runtime behavior, and current Wasm release surface remain intact.
 24. Native tests explicitly avoid claiming component ABI, WIT, isolation, digest, or adapter-store coverage.
 25. The native command path is documented as single-flight; eval guards its persistent sandbox against concurrent writers.

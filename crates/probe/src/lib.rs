@@ -12,9 +12,10 @@
 //! drives every case command through the native command API.
 //!
 //! `feature = "client"` adds [`client`] — the shared cursor-backed
-//! composition (the lazily connected [`client::DevModel`],
-//! `omnia::Telemetry` init plus `omnia::telemetry::flush` before exit,
-//! and the argv dispatch) both composition examples delegate to,
+//! composition (the lazily connected [`client::DevModel`], the
+//! process tracing subscriber (console plus an optional `EVAL_LOG`
+//! file copy), and the argv dispatch) both composition examples
+//! delegate to,
 //! leaving each root only the runtime, args collection, and catalog +
 //! cases + sandbox declaration.
 

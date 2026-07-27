@@ -2,7 +2,9 @@
 # Native examples
 # -------------------------------------
 
-[tasks.specify]
+# Native mock-catalog lab shim (command passthrough; not the shipped CLI).
+# Pair with `eval` for case runs: `cargo make lab -- --project-dir <dir> …`.
+[tasks.lab]
 command = "cargo"
 args = ["run", "-q", "-p", "specify", "--example", "eval", "--", "${@}"]
 
@@ -14,7 +16,7 @@ args = ["run", "-q", "-p", "specify", "--example", "eval", "--", "${@}"]
 env_files = [".env"]
 script = '''
   export EVAL_TIMEOUT_SECS="${EVAL_TIMEOUT_SECS:-300}"
-  export RUST_LOG="${RUST_LOG:-info,opentelemetry_sdk=off}"
+  export RUST_LOG="${RUST_LOG:-info}"
   cargo run -p specify --example eval -- eval "$@"
 '''
 

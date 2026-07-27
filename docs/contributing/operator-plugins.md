@@ -36,7 +36,7 @@ cursor-agent --plugin-dir plugins/spec
 
 That loads `plugins/spec/` instead of the marketplace copy. Omit it to use the published marketplace plugin. Then run `/spec:init`, `/spec:plan`, and the other skills in chat as usual.
 
-Skills need a real binary on `PATH` (`cargo make specify` is the eval/mock shim, not this):
+Skills need a real binary on `PATH` (`cargo make lab` is the native lab shim, not this):
 
 ```bash
 cargo install --path . --locked

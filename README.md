@@ -208,7 +208,7 @@ make check   # format, lint, tests, doctests, and docs
 make ci      # full pre-commit gate, including vet and deny
 ```
 
-Use `make eval` only for changes to engine prompts or answer schemas; it requires model credentials. `make specify -- ARGS` is the native mock-catalog lab shim, not the installed operator CLI.
+Use `make eval` only for changes to engine prompts or answer schemas; it requires model credentials. `make lab -- ARGS` is the native mock-catalog lab shim, not the installed operator CLI.
 
 Preview the working-tree Cursor skills against a local CLI:
 
