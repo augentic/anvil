@@ -215,15 +215,15 @@ omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
-omnia = { git = "https://github.com/augentic/omnia.git" }
-omnia-cursor = { git = "https://github.com/augentic/backends.git" }
-omnia-guest = { git = "https://github.com/augentic/omnia.git" }
-omnia-guest-macros = { git = "https://github.com/augentic/omnia.git" }
-omnia-host-macros = { git = "https://github.com/augentic/omnia.git" }
-omnia-testkit = { git = "https://github.com/augentic/omnia.git" }
-omnia-wasi-http = { git = "https://github.com/augentic/omnia.git" }
-omnia-wasi-model = { git = "https://github.com/augentic/omnia.git" }
-omnia-wasi-otel = { git = "https://github.com/augentic/omnia.git" }
+omnia = { git = "https://github.com/augentic/omnia" }
+omnia-cursor = { git = "https://github.com/augentic/backends" }
+omnia-guest = { git = "https://github.com/augentic/omnia" }
+omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
+omnia-host-macros = { git = "https://github.com/augentic/omnia" }
+omnia-testkit = { git = "https://github.com/augentic/omnia" }
+omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
+omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
+omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
 # omnia-cursor = { path = "../backends/crates/cursor" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-testkit = { path = "../omnia/crates/testkit" }
