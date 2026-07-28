@@ -4,7 +4,7 @@
 - **Package:** `emery:vectis@<semver>` in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters/tree/main/targets/vectis)
 - **Purpose:** Cross-platform Crux application development (Rust core, Swift iOS shell, Kotlin Android shell)
 
-**Prerequisite:** greenfield Vectis builds materialize from a local [`vectis-template`](https://github.com/augentic/vectis-template) checkout at `../vectis-template` (relative to the consumer project root) or `VECTIS_TEMPLATE_DIR`. Emery does not clone or refresh that tree.
+**Prerequisite:** greenfield Vectis builds materialize from a local [`vectis-exemplar`](https://github.com/augentic/vectis-exemplar) checkout at `../vectis-exemplar` (relative to the consumer project root) or `VECTIS_EXEMPLAR_DIR`. Emery does not clone or refresh that tree.
 
 ## Operations
 

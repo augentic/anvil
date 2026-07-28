@@ -107,7 +107,7 @@ Depending on which adapter you use, you may need additional tooling.
 - [Rust toolchain](https://rust-lang.org/tools/install/)
 - [Rust Analyzer](https://open-vsx.org/extension/rust-lang/rust-analyzer) Cursor extension
 
-**Template checkout (required for greenfield):** clone [`augentic/vectis-template`](https://github.com/augentic/vectis-template) as a sibling of the consumer project (`../vectis-template`) or set `VECTIS_TEMPLATE_DIR`. Emery does not clone it. Install BoltFFI so shell Makefiles can pack native bindings: `cargo install boltffi_cli` (see the template README).
+**Exemplar checkout (required for greenfield):** clone [`augentic/vectis-exemplar`](https://github.com/augentic/vectis-exemplar) as a sibling of the consumer project (`../vectis-exemplar`) or set `VECTIS_EXEMPLAR_DIR`. Emery does not clone it. Install BoltFFI so shell Makefiles can pack native bindings: `cargo install boltffi_cli` (see the exemplar README).
 
 **For iOS shells:**
 - Xcode command line tools
