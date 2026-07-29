@@ -18,9 +18,9 @@ name = "project"
 workspace = true
 
 [dependencies]
-artifacts.workspace = true
-diagnostics.workspace = true
-error.workspace = true
+emery-artifacts.workspace = true
+emery-diagnostics.workspace = true
+emery-error.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 petgraph.workspace = true
@@ -35,7 +35,7 @@ toml.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-mock.workspace = true
+emery-mock.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }

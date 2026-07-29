@@ -29,7 +29,7 @@ wasip3.workspace = true
 wit-bindgen.workspace = true
 
 [dev-dependencies]
-mock.workspace = true
+emery-mock.workspace = true
 omnia-testkit.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

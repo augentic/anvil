@@ -14,14 +14,14 @@ name = "launcher"
 
 [dependencies]
 anyhow.workspace = true
-artifacts.workspace = true
-diagnostics.workspace = true
-error.workspace = true
+emery-artifacts.workspace = true
+emery-diagnostics.workspace = true
+emery-error.workspace = true
 oci-client.workspace = true
 oci-wasm.workspace = true
 omnia.workspace = true
-project.workspace = true
-transport.workspace = true
+emery-project.workspace = true
+emery-transport.workspace = true
 
 [dev-dependencies]
 axum.workspace = true
