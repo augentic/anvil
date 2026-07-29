@@ -2,54 +2,31 @@
 
 Unreleased
 
+### Compatibility
+
+```text
+engine 0.30.x  ↔  adapters 0.6.x  (WIT emery:adapter@0.1.0, floor ≥ 0.30.0)
+```
+
 ### Added
+
+* Product rename from Specify to **Emery**: shipped binary and Cursor skills are `emery` / `/emery:*`, on-disk state lives under `.emery/`, adapter package sugar is `emery:<name>@<version>`, and first-party components resolve from `ghcr.io/augentic/emery-adapters`.
+* Omnia-hosted runtime: the engine guest is embedded in the binary and booted through `omnia::runtime!`, with a fail-closed adapters-only resolver over the host-owned store and project component cache.
+* Host-owned adapter install: pinned first-party adapters pull-on-miss from GHCR into the global store (digest-gated, with OCI provenance on the sidecar); bare names resolve only the seeded project cache via `emery adapter add` or a local component at init.
+* Gate 1 is the nameless `emery plan approve`; `/emery:execute` confirms approval when needed, then runs `emery plan execute`.
+* Omnia-shaped release lines (`release-X.Y.Z` cut / patch / publish), root `RELEASES.md`, and `cargo binstall` / Homebrew install paths for platform archives.
+* Contributor eval surface: `cargo make lab` / `cargo make eval <case>` over retained `sandbox/<case>/` trees, with optional `EVAL_LOG` file mirroring and leaner synthesis prompts for mid-tier models.
 
 ### Changed
 
-<!-- Release notes generated using configuration in .github/release.yaml at main -->
+* Workspace dependency keys match published `emery-*` crate names; short `use` paths still come from each crate's `[lib] name`.
+* Release binaries matrix ships `aarch64-apple-darwin` only for this line (Linux and Intel macOS legs dropped; Windows remains unavailable until upstream `omnia-wasi-model` compiles there).
+* Quick-start pins move to `contracts@0.6.0` / `intent@0.6.0`; README leads with install and a first change (Cursor Agent or terminal CLI).
+* Vectis greenfield docs point at the local [`vectis-exemplar`](https://github.com/augentic/vectis-exemplar) checkout (`VECTIS_EXEMPLAR_DIR`), not an embedded template.
+* Live-eval env knobs rename to `EVAL_MODEL` / `EVAL_TIMEOUT_SECS`; Omnia crates resolve from public GitHub git dependencies (no private Cargo registry config).
+* Developer Guide link integrity is `mdbook-linkcheck2` via `cargo make links`; per-push WASM boundary CI is removed in favor of the operator-invoked wasm example.
 
-## What's Changed
-* RFC for Omnia migration by @andrewweston in https://github.com/augentic/emery/pull/184
-* Prepare omnia migration RFC by @andrewweston in https://github.com/augentic/emery/pull/185
-* Specify wasm migration by @andrewweston in https://github.com/augentic/emery/pull/186
-* Simplify dev loop by @andrewweston in https://github.com/augentic/emery/pull/187
-* Examples by @andrewweston in https://github.com/augentic/emery/pull/188
-* Prompt eval usability by @andrewweston in https://github.com/augentic/emery/pull/189
-* Prompt testing by @andrewweston in https://github.com/augentic/emery/pull/190
-* Improve live testing by @andrewweston in https://github.com/augentic/emery/pull/191
-* Parallel native build by @andrewweston in https://github.com/augentic/emery/pull/192
-* Simplification by @andrewweston in https://github.com/augentic/emery/pull/193
-* Ergonomics by @andrewweston in https://github.com/augentic/emery/pull/194
-* Omnia-based launcher by @andrewweston in https://github.com/augentic/emery/pull/195
-* simplify wasm example by @andrewweston in https://github.com/augentic/emery/pull/196
-* make eval slightly slimmer for medium models by @andrew-goldie in https://github.com/augentic/emery/pull/197
-* Simplify test surface by @andrewweston in https://github.com/augentic/emery/pull/198
-* Usability by @andrewweston in https://github.com/augentic/emery/pull/199
-* Basic distribution and installation by @andrewweston in https://github.com/augentic/emery/pull/200
-* Getting started by @andrewweston in https://github.com/augentic/emery/pull/201
-* Adopt Omnia-shaped release lines (RFC-77 Phase A) by @andrewweston in https://github.com/augentic/emery/pull/202
-* Bump to 0.29.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/203
-* Backport release-0.28.0 CI matrix fixes (Windows drop, macos-15-intel) by @andrewweston in https://github.com/augentic/emery/pull/204
-* Release workflow by @andrewweston in https://github.com/augentic/emery/pull/205
-* Update installation instructions by @andrewweston in https://github.com/augentic/emery/pull/206
-* update version by @andrewweston in https://github.com/augentic/emery/pull/207
-* Improve telemetry by @andrewweston in https://github.com/augentic/emery/pull/208
-* Improve eval debugging by @andrewweston in https://github.com/augentic/emery/pull/209
-* Eval logging by @andrewweston in https://github.com/augentic/emery/pull/210
-* Rename by @andrewweston in https://github.com/augentic/emery/pull/211
-* Vectis template documentation by @andrew-goldie in https://github.com/augentic/emery/pull/213
-* Cursor backend logging by @andrewweston in https://github.com/augentic/emery/pull/214
-* simplify by @andrewweston in https://github.com/augentic/emery/pull/215
-* Easier to get started by @andrewweston in https://github.com/augentic/emery/pull/216
-* Document updates for rename vectis-template to vectis-emplar by @andrew-goldie in https://github.com/augentic/emery/pull/217
-* Bump to 0.30.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/218
-* Release prep by @andrewweston in https://github.com/augentic/emery/pull/219
-* Bump to 0.30.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/220
-
-## New Contributors
-* @augentic-releases[bot] made their first contribution in https://github.com/augentic/emery/pull/203
-
-**Full Changelog**: https://github.com/augentic/emery/compare/v0.27.2...v0.30.0
+**Full Changelog**: https://github.com/augentic/emery/compare/v0.29.0...v0.30.0
 
 ---
 
