@@ -52,19 +52,10 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
-          release_dir="target/${TARGET}/release"
-          if [[ "${RUNNER_OS}" == "Windows" ]]; then
-            archive="emery-v${VERSION}-${TARGET}.zip"
-            tar -a -cf "${archive}" -C "${release_dir}" emery.exe
-          else
-            archive="emery-v${VERSION}-${TARGET}.tar.gz"
-            tar -czf "${archive}" -C "${release_dir}" emery
-          fi
-          if command -v sha256sum >/dev/null; then
-            sha256sum "${archive}" > "${archive}.sha256"
-          else
-            shasum -a 256 "${archive}" > "${archive}.sha256"
-          fi
+          archive="emery-v${VERSION}-${TARGET}.tar.gz"
+          tar -czf "${archive}" -C "target/${TARGET}/release" emery
+          
+          shasum -a 256 "${archive}" > "${archive}.sha256"
           echo "archive=${archive}" >> "$GITHUB_OUTPUT"
 
       - name: Upload release assets
