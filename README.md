@@ -12,19 +12,15 @@ Emery uses **Source Adapters** (like `intent` or `typescript`) to ingest require
 
 ### Prerequisites
 
-1. [Cursor](https://cursor.com) with the **Augentic** marketplace plugin installed (**Settings → Plugins** → search Augentic → install → restart). That gives you the `/emery:*` skills.
+1. [Cursor](https://cursor.com) with the **Augentic** marketplace plugin installed (**Settings → Plugins** → search Augentic → install → restart). That gives you the `/emery:`* skills.
 2. Optional: the `emery` CLI on `PATH` (the plugin can install it on `/emery:init`):
 
 ```bash
 # Prebuilt binary
-cargo binstall --git https://github.com/augentic/emery emery@0.29.0
-
-# Homebrew
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"
-brew tap augentic/tap && brew install emery
+cargo binstall --git https://github.com/augentic/emery emery@0..0
 
 # Build from source
-cargo install --git https://github.com/augentic/emery --locked
+cargo install --git https://github.com/augentic/emery --tag v0.30.0 --locked
 ```
 
 Verify installation:
@@ -32,6 +28,8 @@ Verify installation:
 ```bash
 emery --version
 ```
+
+
 
 ### First change
 
@@ -89,6 +87,8 @@ When `plan execute` parks, or you want to drive one slice without the drained lo
   - [Resolve spec conflicts](docs/how-to/resolve-spec-conflicts.md)
 - **Troubleshooting:** [GitHub Issues](https://github.com/augentic/emery/issues)
 - **Full Developer Guide:** [emery.augentic.io](https://emery.augentic.io/) · [In-tree book source](docs/SUMMARY.md)
+
+
 
 ## Developing Emery (contributors)
 
