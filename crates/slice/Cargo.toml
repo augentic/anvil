@@ -18,15 +18,15 @@ name = "slice"
 workspace = true
 
 [build-dependencies]
-prose.workspace = true
+emery-prose.workspace = true
 
 [dependencies]
-artifacts.workspace = true
-diagnostics.workspace = true
-error.workspace = true
+emery-artifacts.workspace = true
+emery-diagnostics.workspace = true
+emery-error.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
-project.workspace = true
+emery-project.workspace = true
 regex.workspace = true
 schemars.workspace = true
 serde.workspace = true
@@ -36,7 +36,7 @@ strum.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-mock.workspace = true
+emery-mock.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }

@@ -17,7 +17,7 @@ Emery uses **Source Adapters** (like `intent` or `typescript`) to ingest require
 
 ```bash
 # Prebuilt binary
-cargo binstall --git https://github.com/augentic/emery emery@0.28.0
+cargo binstall --git https://github.com/augentic/emery emery@0.29.0
 
 # Homebrew
 export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"
@@ -35,14 +35,14 @@ emery --version
 
 ### First change
 
-This path uses the **Contracts** target (`contracts@0.5.0`). The pin pulls a published adapter from GHCR; you do not need to clone `emery-adapters`.
+This path uses the **Contracts** target (`contracts@0.6.0`). The pin pulls a published adapter from GHCR; you do not need to clone `emery-adapters`.
 
 **Option A: Cursor Agent**
 In Cursor Agent chat, in a fresh or disposable repository:
 
 ```text
-/emery:init contracts@0.5.0
-/emery:plan first-contract source intent=intent@0.5.0:value:"Author an HTTP API contract for a health endpoint that returns status and version."
+/emery:init contracts@0.6.0
+/emery:plan first-contract source intent=intent@0.6.0:value:"Author an HTTP API contract for a health endpoint that returns status and version."
 /emery:execute
 /emery:finalize first-contract
 ```
@@ -51,9 +51,9 @@ In Cursor Agent chat, in a fresh or disposable repository:
 The same steps run manually:
 
 ```bash
-emery init contracts@0.5.0
+emery init contracts@0.6.0
 emery plan author first-contract \
-  --source intent=intent@0.5.0:value:"Author an HTTP API contract for a health endpoint that returns status and version."
+  --source intent=intent@0.6.0:value:"Author an HTTP API contract for a health endpoint that returns status and version."
 # review change.md, discovery.md, plan.yaml  ← Gate 1
 emery plan approve
 emery plan execute

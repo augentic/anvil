@@ -15,21 +15,21 @@ readme = "../../README.md"
 name = "transport"
 
 [dependencies]
-artifacts.workspace = true
-change.workspace = true
+emery-artifacts.workspace = true
+emery-change.workspace = true
 clap.workspace = true
-error.workspace = true
+emery-error.workspace = true
 omnia-guest.workspace = true
-project.workspace = true
+emery-project.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-slice.workspace = true
+emery-slice.workspace = true
 strum.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-mock.workspace = true
-native.workspace = true
+emery-mock.workspace = true
+emery-native.workspace = true
 omnia-testkit.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }

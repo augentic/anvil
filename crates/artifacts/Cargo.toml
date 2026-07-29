@@ -18,8 +18,8 @@ name = "artifacts"
 workspace = true
 
 [dependencies]
-diagnostics.workspace = true
-error.workspace = true
+emery-diagnostics.workspace = true
+emery-error.workspace = true
 glob.workspace = true
 regex.workspace = true
 schemars.workspace = true

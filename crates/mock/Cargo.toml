@@ -16,13 +16,13 @@ name = "mock"
 workspace = true
 
 [dependencies]
-adapter.workspace = true
+emery-adapter.workspace = true
 omnia-guest.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-native.workspace = true
+emery-native.workspace = true
 omnia-testkit.workspace = true
-project.workspace = true
+emery-project.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 
