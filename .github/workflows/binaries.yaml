@@ -27,12 +27,10 @@ jobs:
         include:
           - target: aarch64-apple-darwin
             os: macos-latest
-          # - target: x86_64-unknown-linux-gnu
-          #   os: ubuntu-latest
-          # - target: x86_64-pc-windows-msvc
-          #   os: windows-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -42,8 +40,6 @@ jobs:
         with:
           key: release-${{ matrix.target }}
 
-      # build.rs embeds the engine via a child wasm32 build when EMERY_WASM
-      # is unset (same path as `cargo install --git`).
       - name: Build
         shell: bash
         run: cargo build --release --locked --target ${{ matrix.target }} --bin emery
