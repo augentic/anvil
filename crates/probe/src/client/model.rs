@@ -9,20 +9,17 @@
 //! connection cell, so each constructed backend connects cursor-agent
 //! at most once (the case runner constructs one per run).
 //!
-//! Driver-side env (read once at construction / first connect):
-//! - `EVAL_MODEL=<model-id>` — fills `Request.model` only when the
-//!   caller left it `None`, so a guest-supplied id always wins. Unset or
-//!   blank means no override.
-//! - `EVAL_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound passed
-//!   to `omnia_cursor::ConnectOptions.timeout`. Unset → backend default
-//!   (120s); the `cargo make eval` tasks raise it for live cases.
+//! Cursor `ConnectOptions::from_env` (via `Client::connect`) reads:
+//! - `CURSOR_MODEL=<model-id>` — default when a request leaves `model`
+//!   unset; blank/unset lets `cursor-agent` choose. A guest-supplied id
+//!   always wins.
+//! - `CURSOR_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound (backend
+//!   default 600s); the `cargo make eval` tasks raise it for live cases.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Duration;
 
 use omnia::Backend as _;
-use omnia_cursor::ConnectOptions;
 use omnia_guest::Model;
 use omnia_guest::model::{Error, Reply, Request};
 use tracing::Instrument as _;
@@ -35,28 +32,17 @@ use crate::telemetry;
 pub struct DevModel {
     /// The project root workspace lends resolve to.
     root: PathBuf,
-    /// Driver-side model-id override from `EVAL_MODEL`.
-    model: Option<String>,
-    /// Per-spawn timeout from `EVAL_TIMEOUT_SECS` (`None` → backend default).
-    timeout: Option<Duration>,
     /// The shared connection, established by the first judgment leg.
     cell: Arc<tokio::sync::OnceCell<Native<omnia_cursor::Client>>>,
 }
 
 impl DevModel {
-    /// A lazily connected cursor backend rooted at `project_dir`,
-    /// reading the optional `EVAL_MODEL` and
-    /// `EVAL_TIMEOUT_SECS` overrides once.
+    /// A lazily connected cursor backend rooted at `project_dir`.
+    /// Model id and timeout come from cursor's `ConnectOptions::from_env`.
     #[must_use]
     pub fn new(project_dir: &Path) -> Self {
         Self {
             root: project_dir.to_path_buf(),
-            model: std::env::var("EVAL_MODEL").ok().filter(|id| !id.trim().is_empty()),
-            timeout: std::env::var("EVAL_TIMEOUT_SECS")
-                .ok()
-                .filter(|raw| !raw.trim().is_empty())
-                .and_then(|raw| raw.trim().parse::<u64>().ok())
-                .map(Duration::from_secs),
             cell: Arc::new(tokio::sync::OnceCell::new()),
         }
     }
@@ -65,10 +51,7 @@ impl DevModel {
         let native = self
             .cell
             .get_or_try_init(|| async {
-                let options = self
-                    .timeout
-                    .map_or_else(ConnectOptions::default, |timeout| ConnectOptions { timeout });
-                let client = omnia_cursor::Client::connect_with(options).await?;
+                let client = omnia_cursor::Client::connect().await?;
                 Ok::<_, anyhow::Error>(Native::new(client, self.root.clone()))
             })
             .await
@@ -84,13 +67,10 @@ impl DevModel {
 }
 
 impl Model for DevModel {
-    async fn create(&self, mut request: Request) -> Result<Reply, Error> {
-        // A guest-supplied model id always wins over the driver override.
-        if request.model.is_none() {
-            request.model = self.model.clone();
-        }
+    async fn create(&self, request: Request) -> Result<Reply, Error> {
         // The `model.request` span records only the bounded leg and
         // effective model id — never request bodies or project paths.
+        // When unset here, cursor may still apply `CURSOR_MODEL`.
         let span = tracing::info_span!(
             "model.request",
             leg = %telemetry::leg(&request),
