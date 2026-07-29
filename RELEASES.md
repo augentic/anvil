@@ -2,19 +2,21 @@
 
 Unreleased
 
+### Compatibility
+
+```text
+engine 0.32.x  ↔  adapters 0.6.x  (WIT emery:adapter@0.1.0, floor ≥ 0.30.0)
+```
+
 ### Added
 
 ### Changed
 
-<!-- Release notes generated using configuration in .github/release.yaml at main -->
+* Publish Release builds platform archives (`x86_64-unknown-linux-gnu`, `aarch64-apple-darwin`) as workflow artifacts first, then attaches them when the GitHub Release is created — fixing empty or missing binary attachments from the previous post-tag binaries job.
+* Release docs and the audit workflow follow the same in-workflow binaries path; the standalone `binaries.yaml` workflow is removed.
+* Quick-start install examples drop the Homebrew block for now and pin `cargo binstall` / `cargo install --tag` examples to a released host version.
 
-## What's Changed
-* Bump to 0.31.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/221
-* Bump to 0.32.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/223
-* Fix artefact publishing by @andrewweston in https://github.com/augentic/emery/pull/222
-
-
-**Full Changelog**: https://github.com/augentic/emery/compare/v0.30.0...v0.32.0
+**Full Changelog**: https://github.com/augentic/emery/compare/v0.31.0...v0.32.0
 
 ---
 
