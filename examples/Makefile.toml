@@ -15,8 +15,8 @@ args = ["run", "-q", "-p", "emery", "--example", "eval", "--", "${@}"]
 [tasks.eval]
 env_files = [".env"]
 script = '''
-  export EVAL_TIMEOUT_SECS="${EVAL_TIMEOUT_SECS:-300}"
-  export RUST_LOG="${RUST_LOG:-info}"
+  export CURSOR_TIMEOUT_SECS="${CURSOR_TIMEOUT_SECS:-300}"
+  export RUST_LOG="${RUST_LOG:-info,opentelemetry=off,opentelemetry_sdk=off}"
   cargo run -p emery --example eval -- eval "$@"
 '''
 
@@ -42,8 +42,8 @@ set -eo pipefail
 
 export EMERY_HOME="$PWD/sandbox/wasm"
 # Omnia's default guest timeout (30s) is too short for a live model.
-export GUEST_TIMEOUT_MS="${GUEST_TIMEOUT_MS:-3600000}"
-# export RUST_LOG="info,opentelemetry_sdk=off,omnia_wasi_http=debug"
+export GUEST_TIMEOUT_MS="3600000"
+export RUST_LOG="${RUST_LOG:-info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off,omnia::telemetry=off,omnia_wasi_http=debug}"
 
 # Fresh sandbox each run; cargo artifacts under target/ stay incremental.
 rm -rf "$EMERY_HOME"

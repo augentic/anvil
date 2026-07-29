@@ -39,8 +39,8 @@ Driver-side knobs (read by `probe::client`):
 
 | Env                       | Effect                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `EVAL_MODEL=<model-id>`   | Override the model for a run; unset means the cursor backend's default.                                         |
-| `EVAL_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds). Unset → backend default 120. `cargo make eval` sets `300`. |
+| `CURSOR_MODEL=<model-id>` | Default model when a request leaves `model` unset; blank/unset lets `cursor-agent` choose. Read by `omnia_cursor::ConnectOptions`. |
+| `CURSOR_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds), read by `omnia_cursor::ConnectOptions`. Unset → backend default 600. `cargo make eval` sets `300`. |
 | `RUST_LOG=<filter>`       | `tracing` filter for the native composition (`probe::client` installs the subscriber). Example: `info,omnia_cursor=debug`. |
 | `EVAL_LOG=<path>`         | Log-file override. When unset, a named eval case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
 

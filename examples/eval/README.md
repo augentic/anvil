@@ -36,7 +36,7 @@ debug a retained sandbox explicitly:
 cargo make lab -- --project-dir sandbox/auth plan approve
 ```
 
-`EVAL_MODEL`, `EVAL_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG` are
+`CURSOR_MODEL`, `CURSOR_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG` are
 documented in [`crates/probe/README.md`](../../crates/probe/README.md);
 `cargo make eval` defaults the timeout to 300s and `RUST_LOG` to
 `info`.

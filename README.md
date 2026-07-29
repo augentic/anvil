@@ -16,11 +16,14 @@ Emery uses **Source Adapters** (like `intent` or `typescript`) to ingest require
 2. Optional: the `emery` CLI on `PATH` (the plugin can install it on `/emery:init`):
 
 ```bash
-# Prebuilt binary
-cargo binstall --git https://github.com/augentic/emery emery@0.30.0
+# from source
+cargo install --git https://github.com/augentic/emery --tag v0.32.0 --locked
+```
 
-# Build from source
-cargo install --git https://github.com/augentic/emery --tag v0.30.0 --locked
+```bash
+# binary
+git clone --depth 1 --branch v0.32.0 https://github.com/augentic/emery /tmp/emery-0.32.0
+cargo binstall --manifest-path /tmp/emery-0.32.0 emery
 ```
 
 Verify installation:

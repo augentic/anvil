@@ -111,11 +111,14 @@ fn log_destination(argv: &[String], root: &Path, sandbox: Option<&Path>) -> Opti
 /// Process tracing init: a console layer plus, when `log` names a
 /// file, an ANSI-free copy of the same `RUST_LOG`-filtered output.
 fn init_tracing(log: Option<PathBuf>) -> anyhow::Result<()> {
-    // The cursor backend's HTTP stack is noisy below its own spans.
+    // HTTP/gRPC stacks and the OTel GlobalSet chatter are noise under the
+    // lab's console subscriber; the shipped runtime owns real export.
     let filter = EnvFilter::from_default_env()
         .add_directive("hyper=off".parse()?)
         .add_directive("h2=off".parse()?)
-        .add_directive("tonic=off".parse()?);
+        .add_directive("tonic=off".parse()?)
+        .add_directive("opentelemetry=off".parse()?)
+        .add_directive("opentelemetry_sdk=off".parse()?);
     let (file, log) = match log {
         Some(path) => {
             let (layer, path) = file_layer(&path)?;
