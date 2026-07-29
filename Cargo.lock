@@ -1099,7 +1099,7 @@ checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
 name = "emery"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -1121,7 +1121,7 @@ dependencies = [
 
 [[package]]
 name = "emery-adapter"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "emery-mock",
  "omnia-guest",
@@ -1138,7 +1138,7 @@ dependencies = [
 
 [[package]]
 name = "emery-artifacts"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "emery-diagnostics",
  "emery-error",
@@ -1154,7 +1154,7 @@ dependencies = [
 
 [[package]]
 name = "emery-change"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1177,7 +1177,7 @@ dependencies = [
 
 [[package]]
 name = "emery-diagnostics"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "base16ct",
  "proptest",
@@ -1191,7 +1191,7 @@ dependencies = [
 
 [[package]]
 name = "emery-error"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "serde-saphyr",
  "thiserror 2.0.19",
@@ -1199,7 +1199,7 @@ dependencies = [
 
 [[package]]
 name = "emery-guest"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "emery-launcher"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -1235,7 +1235,7 @@ dependencies = [
 
 [[package]]
 name = "emery-mock"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "emery-adapter",
  "emery-native",
@@ -1249,7 +1249,7 @@ dependencies = [
 
 [[package]]
 name = "emery-native"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "axum",
  "emery-adapter",
@@ -1268,7 +1268,7 @@ dependencies = [
 
 [[package]]
 name = "emery-probe"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1292,7 +1292,7 @@ dependencies = [
 
 [[package]]
 name = "emery-project"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1316,14 +1316,14 @@ dependencies = [
 
 [[package]]
 name = "emery-prose"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "tempfile",
 ]
 
 [[package]]
 name = "emery-slice"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1346,7 +1346,7 @@ dependencies = [
 
 [[package]]
 name = "emery-transport"
-version = "0.31.0"
+version = "0.32.0"
 dependencies = [
  "clap",
  "emery-artifacts",
