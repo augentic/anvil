@@ -33,5 +33,4 @@ engine 0.30.x  ↔  adapters 0.6.x  (WIT emery:adapter@0.1.0, floor ≥ 0.30.0)
 Release notes for previous releases can be found on the respective release branches of the repository.
 
 <!-- ARCHIVE_START -->
-* [0.30.x](https://github.com/augentic/emery/blob/release-0.30.0/RELEASES.md)
 * [0.28.x](https://github.com/augentic/emery/blob/release-0.28.0/RELEASES.md)
