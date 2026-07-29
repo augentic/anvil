@@ -1,6 +1,8 @@
 name: Audit
 
 # Daily advisory-DB audit of the Rust workspace at the repo root.
+# Advisory findings are surfaced here rather than on the per-push CI gate so a
+# fresh upstream advisory never blocks an unrelated change.
 
 on:
   schedule:
@@ -9,23 +11,9 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   audit:
-    name: cargo audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-audit
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-audit
-
-      - name: Audit dependencies
-        run: cargo audit
+    uses: augentic/.github/.github/workflows/audit.yaml@main
+    secrets: inherit

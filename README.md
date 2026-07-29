@@ -17,7 +17,7 @@ Emery uses **Source Adapters** (like `intent` or `typescript`) to ingest require
 
 ```bash
 # Prebuilt binary
-cargo binstall --git https://github.com/augentic/emery emery@0..0
+cargo binstall --git https://github.com/augentic/emery emery@0.30.0
 
 # Build from source
 cargo install --git https://github.com/augentic/emery --tag v0.30.0 --locked

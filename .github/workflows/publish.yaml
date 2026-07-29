@@ -1,9 +1,10 @@
 name: Publish Release
 
-# Publish a durable release-X.Y.Z line — Omnia shape: shared CI, shared
-# publish (date RELEASES.md, tag, create GitHub Release), then attach
-# platform binaries and publish the emery-* workspace crates to
-# crates.io. Wasm-pkg packages stay manual — see docs/release.md.
+# Publish a durable release-X.Y.Z line — Omnia shape: shared CI, build
+# platform binaries as workflow artifacts, then shared publish (date
+# RELEASES.md, tag, create GitHub Release with those archives attached),
+# and publish the emery-* workspace crates to crates.io. Wasm-pkg
+# packages stay manual — see docs/release.md.
 
 on:
   workflow_dispatch:
@@ -11,14 +12,14 @@ on:
 concurrency:
   group: publish
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   skip:
     name: Skipped
     if: ${{ !startsWith(github.ref_name, 'release-') }}
     runs-on: ubuntu-latest
-    permissions: {}
     steps:
       - run: |
           echo "This workflow only runs on the 'release-*' branches"
@@ -27,31 +28,74 @@ jobs:
   ci:
     name: CI
     if: ${{ startsWith(github.ref_name, 'release-') }}
-    permissions:
-      contents: read
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
+  binaries:
+    needs: [ci]
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }},wasm32-wasip2
+
+      - name: Cargo version
+        id: cargo
+        uses: augentic/.github/.github/actions/cargo-version@main
+
+      - name: Build
+        shell: bash
+        run: cargo build --release --locked --target ${{ matrix.target }} --bin emery
+
+      - name: Package archive
+        id: archive
+        shell: bash
+        env:
+          VERSION: ${{ steps.cargo.outputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          name="emery-v${VERSION}-${TARGET}.tar.gz"
+          tar -czf "${name}" -C "target/${TARGET}/release" emery
+          shasum -a 256 "${name}" > "${name}.sha256"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: archive-${{ matrix.target }}
+          path: |
+            ${{ steps.archive.outputs.name }}
+            ${{ steps.archive.outputs.name }}.sha256
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
   publish:
     name: Publish
-    needs: ci
+    needs: [ci, binaries]
     permissions:
       contents: write
     uses: augentic/.github/.github/workflows/publish.yaml@main
+    with:
+      artifacts: archive-*
 
   crates:
     name: Publish crates
     needs: publish
-    permissions:
-      contents: read
     uses: augentic/.github/.github/workflows/crates.yaml@main
     secrets: inherit
-
-  binaries:
-    name: Publish binaries
-    needs: publish
-    permissions:
-      contents: write
-    uses: ./.github/workflows/binaries.yaml
-    with:
-      version: ${{ needs.publish.outputs.version }}
