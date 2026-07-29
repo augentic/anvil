@@ -1049,13 +1049,13 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ac70aa55017e108007fbaf5aa0f54b021c98f92ff8af59d42eda9da96e3dd4f"
+checksum = "c6232dd377dcc64799954cbd3a9bb882e9cdc1308ccd87b1c098f1fb2eaf82a8"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -1099,7 +1099,7 @@ checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
 name = "emery"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -1121,7 +1121,7 @@ dependencies = [
 
 [[package]]
 name = "emery-adapter"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "emery-mock",
  "omnia-guest",
@@ -1138,7 +1138,7 @@ dependencies = [
 
 [[package]]
 name = "emery-artifacts"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "emery-diagnostics",
  "emery-error",
@@ -1154,7 +1154,7 @@ dependencies = [
 
 [[package]]
 name = "emery-change"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1177,7 +1177,7 @@ dependencies = [
 
 [[package]]
 name = "emery-diagnostics"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "base16ct",
  "proptest",
@@ -1191,7 +1191,7 @@ dependencies = [
 
 [[package]]
 name = "emery-error"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "serde-saphyr",
  "thiserror 2.0.19",
@@ -1199,7 +1199,7 @@ dependencies = [
 
 [[package]]
 name = "emery-guest"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "emery-launcher"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -1235,7 +1235,7 @@ dependencies = [
 
 [[package]]
 name = "emery-mock"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "emery-adapter",
  "emery-native",
@@ -1249,7 +1249,7 @@ dependencies = [
 
 [[package]]
 name = "emery-native"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "axum",
  "emery-adapter",
@@ -1268,7 +1268,7 @@ dependencies = [
 
 [[package]]
 name = "emery-probe"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1292,7 +1292,7 @@ dependencies = [
 
 [[package]]
 name = "emery-project"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1316,14 +1316,14 @@ dependencies = [
 
 [[package]]
 name = "emery-prose"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "tempfile",
 ]
 
 [[package]]
 name = "emery-slice"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "emery-artifacts",
  "emery-diagnostics",
@@ -1346,7 +1346,7 @@ dependencies = [
 
 [[package]]
 name = "emery-transport"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "clap",
  "emery-artifacts",
@@ -4558,9 +4558,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "1.1.3+spec-1.1.0"
+version = "1.1.4+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53c96ecdfa941c8fc4fcaed14f99ada8ebed502eef533015095a07e3301d4c3c"
+checksum = "3aace63f4bbcdfc2c965b059de67119c89c4017a70d633be6c104910f67056f5"
 dependencies = [
  "indexmap",
  "serde_core",
