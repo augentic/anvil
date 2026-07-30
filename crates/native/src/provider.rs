@@ -129,9 +129,8 @@ impl Provider {
         }
     }
 
-    // Every operation method computes the URL first (the ctx borrows it),
-    // then assembles the SDK context through this one place.
-    fn ctx<'a>(&'a self, id: &'a str, url: Option<&'a str>) -> Context<'a> {
+    // Assemble the SDK context for one operation through this one place.
+    fn ctx<'a>(&'a self, id: &'a str, url: Option<String>) -> Context<'a> {
         Context {
             adapter_id: id,
             project_root: self.paths.project_root(),
@@ -228,15 +227,13 @@ impl Model for Provider {
 
 impl Source for Provider {
     async fn survey(&self, id: String) -> Result<Vec<Lead>, seam::Error> {
-        let url = self.mcp_url(&id).await?;
-        let ctx = self.ctx(&id, url.as_deref());
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
         let leads = self.catalog.survey(&self.model, &ctx, &id).await.map_err(convert::error)?;
         Ok(leads.into_iter().map(convert::lead).collect())
     }
 
     async fn extract(&self, id: String, lead: Lead) -> Result<Evidence, seam::Error> {
-        let url = self.mcp_url(&id).await?;
-        let ctx = self.ctx(&id, url.as_deref());
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
         let lead = convert::narrow_lead(lead);
         let evidence =
             self.catalog.extract(&self.model, &ctx, &id, &lead).await.map_err(convert::error)?;
@@ -246,16 +243,14 @@ impl Source for Provider {
 
 impl Target for Provider {
     async fn guidance(&self, id: String) -> Result<String, seam::Error> {
-        let url = self.mcp_url(&id).await?;
-        let ctx = self.ctx(&id, url.as_deref());
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
         self.catalog.guidance(&self.model, &ctx, &id).await.map_err(convert::error)
     }
 
     async fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
-        let url = self.mcp_url(&id).await?;
-        let ctx = self.ctx(&id, url.as_deref());
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
         let inputs: Vec<aseam::Input> = inputs.into_iter().map(convert::narrow_input).collect();
         let tree = convert::narrow_tree(tree);
         let report = self
@@ -269,8 +264,7 @@ impl Target for Provider {
     async fn merge(
         &self, id: String, slice: String, phase: seam::MergePhase, tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
-        let url = self.mcp_url(&id).await?;
-        let ctx = self.ctx(&id, url.as_deref());
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
         let phase = convert::narrow_phase(phase);
         let tree = convert::narrow_tree(tree);
         let report = self

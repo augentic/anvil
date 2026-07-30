@@ -28,7 +28,9 @@ cargo make wasm-clean
 
 Artifacts land under the gitignored `sandbox/wasm/` — the project tree at `sandbox/wasm/project/`, with the store and cache beside it.
 
-`GUEST_TIMEOUT_MS` defaults to one hour (Omnia's per-invocation wall-clock cap; default is 30s). Set `RUST_LOG` yourself when debugging the seam. The runtime may log a non-fatal `no guest exports the http handler; http trigger inert` line per invocation — command mode proceeds without it.
+`GUEST_TIMEOUT_MS` defaults to one hour (Omnia's per-invocation wall-clock cap; default is 30s). Set `RUST_LOG` yourself when debugging the seam.
+
+The runtime's HTTP trigger serves adapter MCP reference shelves on a per-invocation port: the launcher reserves a free loopback port when `HTTP_ADDR` is unset (an operator-set value is respected), so concurrent `emery` invocations never contend. Every judgment dispatch grants the spawned agent `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]` derived from the same inherited `HTTP_ADDR`, and the deployment's `http_fallback` projects that path back onto the routed adapter id so the component's own `wasi:http` handler serves it (the native eval rung hosts the same shelves in-process at `/mcp/<name>`). A path outside that grammar — or a projected guest without the handler export — is a warn + 404, never a dispatch to the engine guest.
 
 ## What it demonstrates
 

@@ -8,6 +8,8 @@ The shipped binary is a resolver-backed dynamic deployment (RFC-70 Stage 3) expr
 
 Every invocation runs in the emery (engine) guest through the shared typed command router — help and version displays, grammar rejections (the shared clap grammar compiles into the engine, so its renderings are the product's by construction), and `adapter add` (the operator's component directory reaches the guest as a read-only preopen named by its own absolute host path) included; envelopes and exit codes pass through verbatim. Removed provisioning and bootstrap surfaces are not advertised as deferred commands.
 
+The deployment also installs the required adapter MCP projection (RFC-70 Stage 2) through the macro's `http_fallback:` key: `launcher::mcp_fallback` maps `/mcp/<axis>/<name>[@<version>]` back onto the routed adapter id, so the loopback URL every judgment dispatch grants (`adapter::seam::mcp_url`) reaches the adapter component's own `wasi:http` handler and its embedded references shelf, faulting the guest in through the same fail-closed resolver when needed. The port is coordinated per invocation: the launcher's once-per-process anchoring reserves a free loopback port when `HTTP_ADDR` is unset (an operator-set value is respected), the runtime's HTTP trigger binds that address, and every adapter guest derives its grant URLs from the same inherited variable — so concurrent `emery` invocations get distinct ports instead of contending on a fixed default. Installing the fallback makes HTTP routing table-driven only — the engine guest never catches adapter MCP traffic — and the projection is fail-closed: a path outside the grammar, an identity nothing supplies, or a component without the `handle()` export answers with a warn + 404, never a mis-routed dispatch. (The native host serves the same shelves in-process at `/mcp/<name>` — no axis segment, because the catalog carries no routing ambiguity.)
+
 The engine is versioned by the binary — the binary *contains* its engine, so no store entry, first-launch download, or version-skew window exists for it. Adapter identities resolve by routed id: the host-owned global store for pinned ids (`<axis>:<name>@<version>`, installed on a miss), the seeded project component cache for unpinned ones (`<axis>:<name>`); distinct pins of one adapter coexist because their routed ids differ. `EMERY_HOME` is the single relocation override — store and cache derive together beneath it (the Cargo model) — captured once per invocation into a carried `Locations` value; nothing below the composition root reads the environment.
 
 ## Core crate dependency graph
@@ -47,11 +49,11 @@ The `--format text|json` flag controls output shape; `EMERY_FORMAT=json` is the 
 
 The exit-code contract is part of the public interface for operators and skill wrappers; `Exit::from(&Error)` in `crates/transport/src/command/output.rs` is the single source of truth:
 
-| Code | Constant                 | Meaning                                                                                                                              |
-| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `0`  | `EXIT_SUCCESS`           | Operation completed successfully                                                                                                     |
-| `1`  | `EXIT_GENERIC_FAILURE`   | I/O error, parse error, or any unclassified failure                                                                                  |
-| `2`  | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors                                                    |
+| Code | Constant                 | Meaning                                                                                                                        |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `0`  | `EXIT_SUCCESS`           | Operation completed successfully                                                                                               |
+| `1`  | `EXIT_GENERIC_FAILURE`   | I/O error, parse error, or any unclassified failure                                                                            |
+| `2`  | `EXIT_VALIDATION_FAILED` | Validation findings, `Error::Validation`, `Error::Argument`, or clap usage errors                                              |
 | `3`  | `EXIT_VERSION_TOO_OLD`   | Binary version is below the `emery` floor in `.emery/project.yaml`, or below an adapter's declared `emery` compatibility floor |
 
 Guest commands inherit the same contract: `omnia_guest::api::command` projects parser, conversion, and operation outcomes into a buffered command response; the WASI seam forwards its exit and the binary passes it through verbatim.

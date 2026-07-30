@@ -28,6 +28,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use project::adapter::RoutedId;
 use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, Locations};
 use transport::command::selectors::{SeedRequest, seed_request};
 
@@ -137,6 +138,7 @@ fn seed_dir(request: &SeedRequest, project_root: &Path) -> Option<PathBuf> {
 fn current() -> &'static Policy {
     static POLICY: OnceLock<Policy> = OnceLock::new();
     POLICY.get_or_init(|| {
+        reserve_http_addr();
         let invoked_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         // Lossy is safe here: non-UTF-8 argv fails the grammar (no
         // seed) and the runtime itself refuses it with a typed error.
@@ -144,6 +146,43 @@ fn current() -> &'static Policy {
             std::env::args_os().skip(1).map(|arg| arg.to_string_lossy().into_owned()).collect();
         Policy::new(&invoked_dir, &argv, Locations::from_env())
     })
+}
+
+/// Reserve this invocation's MCP port: when `HTTP_ADDR` is unset,
+/// bind `127.0.0.1:0`, publish the assigned address through the
+/// process environment, and release the listener for the runtime's
+/// HTTP trigger to re-bind.
+///
+/// One `HTTP_ADDR` value then drives both ends of the loop — the
+/// trigger server binds it and every adapter guest (whose store
+/// inherits the host environment) derives its grant URLs from it —
+/// so concurrent `emery` invocations get distinct ports instead of
+/// contending on the fixed default. An operator-set `HTTP_ADDR` is
+/// respected untouched. The drop-then-rebind window is accepted:
+/// loopback, microseconds, and a collision only costs that
+/// invocation its reference shelves.
+#[expect(
+    unsafe_code,
+    reason = "`set_var` is the only channel that reaches both the trigger server and the \
+              guests' inherited WASI environment; it runs once, at deployment-policy capture, \
+              before anything reads `HTTP_ADDR`"
+)]
+fn reserve_http_addr() {
+    if std::env::var_os("HTTP_ADDR").is_some() {
+        return;
+    }
+    let Ok(addr) =
+        std::net::TcpListener::bind(("127.0.0.1", 0)).and_then(|listener| listener.local_addr())
+    else {
+        // Leave the variable unset: server and grants share the
+        // same compiled default, staying coherent.
+        return;
+    };
+    // SAFETY: evaluated once, at deployment-policy capture inside the
+    // macro's expression evaluation — before backends connect, the
+    // trigger server binds, or any guest store snapshots the
+    // environment; nothing reads `HTTP_ADDR` concurrently.
+    unsafe { std::env::set_var("HTTP_ADDR", addr.to_string()) };
 }
 
 /// Macro expression: host directory of the writable `.` project mount.
@@ -174,4 +213,27 @@ pub fn seed_mount_path() -> PathBuf {
 #[must_use]
 pub fn resolver() -> Resolver {
     current().resolver()
+}
+
+/// Macro expression: the HTTP path→identity projection for adapter
+/// MCP reference shelves.
+///
+/// Every judgment dispatch grants the spawned agent
+/// `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]` (the
+/// adapter SDK's `mcp_url`, on the `HTTP_ADDR` port this
+/// invocation reserved); this projection maps that path back onto
+/// the routed adapter id `<axis>:<name>[@<version>]` — the exact
+/// identity the adapter guest was faulted in under, so the registry
+/// lookup hits and the component's `wasi:http` `handle()` export
+/// serves the shelf. Fail closed: a path outside the routed grammar
+/// is `None`, which Omnia answers with a warn + 404 — a required
+/// shelf that cannot be served is an error, never a catch-all onto
+/// the engine guest.
+#[must_use]
+pub fn mcp_fallback(path: &str) -> Option<omnia::GuestId> {
+    let rest = path.strip_prefix("/mcp/")?;
+    let (axis, rest) = rest.split_once('/')?;
+    let adapter = rest.split('/').next().filter(|segment| !segment.is_empty())?;
+    let routed = RoutedId::parse(&format!("{axis}:{adapter}")).ok()?;
+    Some(omnia::GuestId::from(routed.to_string()))
 }

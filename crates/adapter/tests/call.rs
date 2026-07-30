@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use adapter::seam::{Context, Error, WorkingTree};
+use adapter::seam::{Context, Error, WorkingTree, mcp_url_for};
 use adapter::{Error as ModelError, Format, judgment};
 use omnia_testkit::model::{Harness, mcp_grants};
 use serde::Deserialize;
@@ -14,11 +14,11 @@ struct Answer {
     done: bool,
 }
 
-const fn ctx<'a>(mcp_url: Option<&'a str>, root: &'a Path) -> Context<'a> {
+fn ctx<'a>(mcp_url: Option<&str>, root: &'a Path) -> Context<'a> {
     Context {
         adapter_id: "target:contracts",
         project_root: root,
-        mcp_url,
+        mcp_url: mcp_url.map(str::to_owned),
     }
 }
 
@@ -202,6 +202,55 @@ mod repaired {
         assert!(matches!(result, Err(Error::InvalidRequest(_))));
         assert_eq!(model.requests().len(), 1, "a model failure is never replayed");
     }
+}
+
+// The guest grant surface: the URL mirrors the routed id verbatim on
+// the runtime's `/mcp/` prefix (version pin included, so the HTTP
+// fallback projects it back onto the registered identity), while the
+// grant name strips both axis and pin.
+#[test]
+fn mcp_url_mirrors_the_routed_id() {
+    assert_eq!(mcp_url_for(None, "target:omnia"), "http://127.0.0.1:8080/mcp/target/omnia");
+    assert_eq!(
+        mcp_url_for(None, "source:typescript"),
+        "http://127.0.0.1:8080/mcp/source/typescript"
+    );
+    assert_eq!(
+        mcp_url_for(None, "target:omnia@1.2.3"),
+        "http://127.0.0.1:8080/mcp/target/omnia@1.2.3"
+    );
+}
+
+// The port follows the trigger's `HTTP_ADDR` (any bind form); the
+// connect host stays the IPv4 loopback literal, and an absent or
+// unparseable address falls back to the compiled default the server
+// shares.
+#[test]
+fn mcp_url_derives_the_port_from_the_trigger_address() {
+    for (addr, expected) in [
+        (Some("127.0.0.1:49213"), "http://127.0.0.1:49213/mcp/target/omnia"),
+        (Some("0.0.0.0:8080"), "http://127.0.0.1:8080/mcp/target/omnia"),
+        (Some("[::1]:9000"), "http://127.0.0.1:9000/mcp/target/omnia"),
+        (Some("garbage"), "http://127.0.0.1:8080/mcp/target/omnia"),
+        (Some("host:notaport"), "http://127.0.0.1:8080/mcp/target/omnia"),
+        (None, "http://127.0.0.1:8080/mcp/target/omnia"),
+    ] {
+        assert_eq!(mcp_url_for(addr, "target:omnia"), expected, "addr: {addr:?}");
+    }
+}
+
+#[test]
+fn pinned_grant_strips_the_version() {
+    let url = mcp_url_for(None, "target:contracts@1.0.0");
+    let context = Context {
+        adapter_id: "target:contracts@1.0.0",
+        project_root: Path::new("."),
+        mcp_url: Some(url),
+    };
+    let grants = context.grants();
+    assert_eq!(grants.len(), 1);
+    assert_eq!(grants[0].name, "contracts-references");
+    assert_eq!(grants[0].url, "http://127.0.0.1:8080/mcp/target/contracts@1.0.0");
 }
 
 #[test]

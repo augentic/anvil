@@ -435,6 +435,42 @@ async fn installed_pin_reuses_offline() {
     assert_eq!(bytes, expected);
 }
 
+// ---------------------------------------------------------------------------
+// The MCP HTTP projection: `/mcp/<axis>/<name>[@<version>]` maps back
+// onto the routed adapter id the grant URL was derived from; anything
+// outside the routed grammar is `None` (Omnia answers warn + 404).
+
+#[test]
+fn mcp_fallback_projects_routed_ids() {
+    for (path, id) in [
+        ("/mcp/target/omnia", "target:omnia"),
+        ("/mcp/source/typescript", "source:typescript"),
+        ("/mcp/target/omnia@1.2.3", "target:omnia@1.2.3"),
+        // A trailing subpath belongs to the shelf, not the identity.
+        ("/mcp/source/intent/messages", "source:intent"),
+    ] {
+        let guest = launcher::mcp_fallback(path).expect(path);
+        assert_eq!(guest.as_str(), id, "{path}");
+    }
+}
+
+#[test]
+fn mcp_fallback_rejects_paths_outside_the_grammar() {
+    for path in [
+        "/",
+        "/health",
+        "/mcp",
+        "/mcp/",
+        "/mcp/target",
+        "/mcp/target/",
+        "/mcp/plugin/omnia",
+        "/mcp/target/omnia@1",
+        "/mcp/target/omnia@not-semver",
+    ] {
+        assert!(launcher::mcp_fallback(path).is_none(), "{path} must not project");
+    }
+}
+
 #[tokio::test]
 async fn non_wasm_artifact_is_refused() {
     let sandbox = Sandbox::new();

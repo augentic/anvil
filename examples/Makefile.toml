@@ -48,6 +48,10 @@ export RUST_LOG="${RUST_LOG:-info,opentelemetry=off,opentelemetry_sdk=off,omnia_
 # Fresh sandbox each run; cargo artifacts under target/ stay incremental.
 rm -rf "$EMERY_HOME"
 mkdir -p "$EMERY_HOME/project"
+# The sandbox sits inside this repo's checkout: give the project its own
+# git root so cursor-agent anchors the workspace (and .cursor/mcp.json
+# discovery — the adapter MCP reference grants) at the project, not here.
+git init -q "$EMERY_HOME/project"
 
 TARGET="$PWD/target"
 # Execute commands in the project directory, not the repository root.

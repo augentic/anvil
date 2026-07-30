@@ -133,7 +133,7 @@ pub fn dispatch_metadata<A: crate::Source>() -> AdapterMetadata {
 ///
 /// As the implementor's [`survey`](crate::Source::survey).
 pub async fn dispatch_survey<A: crate::Source>(id: AdapterId) -> Result<Vec<Lead>, Error> {
-    let ctx = crate::seam::Context::guest(&id, None);
+    let ctx = crate::seam::Context::guest(&id);
     A::survey(&crate::WasiModel, &ctx)
         .await
         .map(|leads| leads.into_iter().map(Into::into).collect())
@@ -147,7 +147,7 @@ pub async fn dispatch_extract<A: crate::Source>(
     id: AdapterId, lead: Lead,
 ) -> Result<Evidence, Error> {
     let lead = crate::seam::Lead::from(lead);
-    let ctx = crate::seam::Context::guest(&id, None);
+    let ctx = crate::seam::Context::guest(&id);
     A::extract(&crate::WasiModel, &ctx, &lead).await.map(Into::into).map_err(Into::into)
 }
 

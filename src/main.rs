@@ -37,6 +37,13 @@ cfg_if::cfg_if! {
             ],
             link: ["emery:adapter/source@0.1.0", "emery:adapter/target@0.1.0"],
             resolver: launcher::resolver(),
+            // Required MCP projection: `/mcp/<axis>/<name>[@<version>]`
+            // reaches the adapter guest's own `wasi:http` handler (the
+            // references shelf granted on every judgment leg). With a
+            // fallback installed HTTP routing is table-driven only — the
+            // engine guest never catches adapter MCP traffic, and an
+            // unservable path is a warn + 404.
+            http_fallback: launcher::mcp_fallback,
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
