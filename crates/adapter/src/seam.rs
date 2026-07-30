@@ -101,8 +101,8 @@ pub fn mcp_url(adapter_id: &str) -> Option<String> {
 /// [`mcp_url`] over an explicit trigger address.
 ///
 /// The path mirrors the routed adapter id verbatim (`:` becomes `/`,
-/// the version pin stays), so the deployment's HTTP router maps it
-/// back onto the exact identity this guest was faulted in under and
+/// the version pin stays), so the deployment's `http_paths` hook maps
+/// it back onto the exact identity this guest was faulted in under and
 /// the component's own `wasi:http` handler serves the shelf. Only the
 /// port is taken from `addr`: the host stays the `IPv4` loopback
 /// literal, not `localhost` — an agent whose resolver prefers `::1`

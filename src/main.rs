@@ -39,11 +39,13 @@ cfg_if::cfg_if! {
             resolver: launcher::resolver(),
             // Required MCP route: `/mcp/<axis>/<name>[@<version>]` reaches
             // the adapter guest's own `wasi:http` handler (the references
-            // shelf granted on every judgment leg). With a router installed
+            // shelf granted on every judgment leg). With the hook installed
             // HTTP routing is table-driven only — the engine guest never
-            // catches adapter MCP traffic; a declined path is an ordinary
-            // 404, a claimed shelf that cannot be served is a 500.
-            http_router: launcher::mcp_route,
+            // catches adapter MCP traffic; a declined path or a definitive
+            // resolver miss is an ordinary 404, while a genuine fault on a
+            // claimed shelf (resolution failure, missing handler export)
+            // is an error-logged 500.
+            http_paths: launcher::mcp_route,
             // Pre-bound per-invocation listener (split bind policy); its
             // local address becomes the guest-visible `HTTP_ADDR` the
             // adapter SDK derives grant URLs from.

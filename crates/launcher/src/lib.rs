@@ -8,7 +8,7 @@
 //! deployment needs before boot: the well-known mounts (anchored from
 //! argv and the working directory), the fail-closed guest
 //! [`Resolver`], the pre-bound HTTP trigger listener
-//! ([`http_listener`]), and the MCP reference-shelf router
+//! ([`http_listener`]), and the MCP reference-shelf path hook
 //! ([`mcp_route`]). Every invocation then runs in the guest — help,
 //! version, grammar rejections, and `adapter add` included; argv and
 //! the engine guest's exit code pass through byte-for-byte.
@@ -161,34 +161,24 @@ fn current() -> &'static Policy {
 ///
 /// Split policy: an operator-set `HTTP_ADDR` must bind — an invalid or
 /// occupied address is a startup failure. Without one, bind an
-/// ephemeral loopback port; if even that fails, warn and run without
-/// the HTTP trigger — the CLI keeps working, adapter guests see no
-/// `HTTP_ADDR`, and no MCP grant is offered (never a wrong-port
-/// guess).
+/// ephemeral loopback port. Writing the `http_listener:` key means
+/// supplying a listener, so any bind failure is a startup failure —
+/// there is no run-without-the-trigger fallback.
 ///
 /// # Errors
 ///
 /// Returns an error when an operator-set `HTTP_ADDR` is invalid or
-/// cannot be bound.
-pub fn http_listener() -> anyhow::Result<Option<std::net::TcpListener>> {
+/// cannot be bound, or when the ephemeral loopback bind fails.
+pub fn http_listener() -> anyhow::Result<std::net::TcpListener> {
     use anyhow::Context as _;
 
     if let Some(addr) = std::env::var_os("HTTP_ADDR") {
         let addr = addr.to_string_lossy().into_owned();
-        let listener = std::net::TcpListener::bind(&addr)
-            .with_context(|| format!("binding operator-set HTTP_ADDR `{addr}`"))?;
-        return Ok(Some(listener));
+        return std::net::TcpListener::bind(&addr)
+            .with_context(|| format!("binding operator-set HTTP_ADDR `{addr}`"));
     }
-    match std::net::TcpListener::bind(("127.0.0.1", 0)) {
-        Ok(listener) => Ok(Some(listener)),
-        Err(error) => {
-            eprintln!(
-                "warning: could not reserve an MCP port ({error}); \
-                 adapter reference shelves are disabled for this invocation"
-            );
-            Ok(None)
-        }
-    }
+    std::net::TcpListener::bind(("127.0.0.1", 0))
+        .context("binding an ephemeral loopback port for the MCP reference shelves")
 }
 
 /// Macro expression: host directory of the writable `.` project mount.
@@ -221,20 +211,21 @@ pub fn resolver() -> Resolver {
     current().resolver()
 }
 
-/// Macro expression: the deployment's HTTP router, mapping adapter
-/// MCP reference-shelf paths to guest identities.
+/// Macro expression: the deployment's `http_paths:` hook, mapping
+/// adapter MCP reference-shelf paths to guest identities.
 ///
 /// Every judgment dispatch grants the spawned agent
 /// `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]` (the
 /// adapter SDK's `mcp_url`, on this invocation's pre-bound listener
-/// port); this router maps that path back onto the routed adapter id
+/// port); this hook maps that path back onto the routed adapter id
 /// `<axis>:<name>[@<version>]` — the exact identity the adapter guest
 /// was faulted in under, so the registry lookup hits and the
 /// component's `wasi:http` `handle()` export serves the shelf. Fail
 /// closed: a path outside the routed grammar is `None`, an ordinary
-/// 404 — never a catch-all onto the engine guest — while a claimed
-/// route that cannot be served (a shelf whose adapter fails to
-/// resolve) is Omnia's error-logged 500.
+/// 404 — never a catch-all onto the engine guest — and a definitive
+/// resolver miss on a claimed identity stays a 404, while a genuine
+/// fault (resolution failure, or a routed guest without the
+/// `wasi:http` handler export) is Omnia's error-logged 500.
 #[must_use]
 pub fn mcp_route(path: &str) -> Option<omnia::GuestId> {
     let rest = path.strip_prefix("/mcp/")?;
