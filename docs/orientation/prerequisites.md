@@ -20,12 +20,23 @@ This installs the Emery plugin (the `/emery:*` skill wrappers). Domain code gene
 
 The `emery` binary backs every skill in the Emery plugin. Pick one install route, then verify with `emery --version`.
 
-### Homebrew (recommended on macOS / Linuxbrew)
+### Installer script (recommended)
 
-The [augentic/homebrew-tap](https://github.com/augentic/homebrew-tap) formula installs prebuilt Release archives. While `augentic/emery` is private, export a token that can read that repo:
+The [install script](https://github.com/augentic/emery/blob/main/scripts/install.sh) downloads the prebuilt Release archive for your platform, verifies it against the companion `.sha256`, and installs `emery` into `~/.local/bin` (override with `--dir <path>` or `EMERY_INSTALL_DIR`):
 
 ```bash
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # or a PAT with repo scope
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
+```
+
+Pin an exact release with `sh -s -- --version 0.32.0`. `/emery:init` uses this path when it refreshes the CLI.
+
+If `~/.local/bin` is not on your `PATH`, the script prints the exact `export PATH=…` line to add to your shell profile.
+
+### Homebrew
+
+The [augentic/homebrew-tap](https://github.com/augentic/homebrew-tap) formula installs the same prebuilt Release archives:
+
+```bash
 brew tap augentic/tap
 brew install emery
 ```
@@ -37,10 +48,8 @@ Upgrade later with `brew upgrade emery`.
 Prebuilt archives, no local compile (install [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) first). The root package is `publish = false`, so install from git:
 
 ```bash
-cargo binstall --git https://github.com/augentic/emery emery@0.28.0
+cargo binstall --git https://github.com/augentic/emery emery@0.32.0
 ```
-
-`/emery:init` uses this path when it refreshes the CLI (`--force -y`).
 
 ### From source
 
@@ -74,9 +83,10 @@ emery --version
 Update through the same channel used to install:
 
 ```bash
-brew upgrade emery                                                              # Homebrew
-cargo binstall --git https://github.com/augentic/emery emery@0.28.0 --force   # prebuilt
-cargo install --git https://github.com/augentic/emery --locked --force          # source
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh   # installer script
+brew upgrade emery                                                                         # Homebrew
+cargo binstall --git https://github.com/augentic/emery emery@0.32.0 --force              # prebuilt
+cargo install --git https://github.com/augentic/emery --locked --force                     # source
 ```
 
 `emery init --upgrade` is a separate project re-entry command: it updates the project's Emery pin and preservation-safe scaffold while retaining operator-authored artifacts. It does not update the installed CLI.

@@ -10,13 +10,14 @@ argument-hint: <adapter|workspace>
 
 ## Invocation
 
-1. **Install or refresh the CLI** — invoking this skill is consent to install. Install the prebuilt release via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (overwrites any existing binary; no local compile):
+1. **Install or refresh the CLI** — invoking this skill is consent to install. Install the prebuilt release via the installer script (overwrites any existing binary; no local compile; verifies the Release archive's `.sha256`). The script installs to `~/.local/bin`, which is often absent from `PATH`, so put it on the session's `PATH` first — the subprocess cannot alter the parent shell:
 
 ```bash
-cargo binstall --git https://github.com/augentic/emery emery@0.28.0 --force -y
+export PATH="$HOME/.local/bin:$PATH"
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- --version 0.32.0 -y
 ```
 
-Then run `emery --version` and stop on failure.
+Then run `emery --version` and stop on failure. Run every subsequent `emery` command in this session with that `PATH` export in effect; remind the operator to add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile if the installer printed a PATH note.
 
 2. **Route re-entry** — when `.emery/project.yaml` already exists, `emery init` changes nothing: it exits 0 and prints the literal `emery init --upgrade` re-entry command. Confirm with the operator, then run `emery init --upgrade`.
 3. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: a missing input fails typed (`init-adapter-required` for the adapter; `project-platforms-required` when the target demands `--platforms`, naming the allowed and default sets — `core` is mandatory). Gather conversationally: the adapter (`<adapter>` and `--workspace` are mutually exclusive; the literal argument `workspace` means workspace init), `--platforms <platforms>` when the target adapter declares `platforms.required` (e.g. vectis), and optionally `--name <name>` / `--description "<description>"`.

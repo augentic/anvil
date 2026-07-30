@@ -5,14 +5,14 @@ The `emery` CLI is the foundation every skill builds on. It owns all determinist
 ## Installation
 
 ```bash
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while emery is private
-brew tap augentic/tap && brew install emery
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
 
-# or: cargo binstall --git https://github.com/augentic/emery emery@0.28.0
+# or: brew tap augentic/tap && brew install emery
+# or: cargo binstall --git https://github.com/augentic/emery emery@0.32.0
 # or: cargo install --git https://github.com/augentic/emery --locked
 ```
 
-`/emery:init` installs or refreshes the CLI via `cargo binstall` (prebuilt). See [Prerequisites](../../orientation/prerequisites.md) for every install path and adapter-specific tooling.
+`/emery:init` installs or refreshes the CLI via the same installer script (prebuilt). See [Prerequisites](../../orientation/prerequisites.md) for every install path and adapter-specific tooling.
 
 ## Conventions
 

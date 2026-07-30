@@ -132,10 +132,10 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
 ## Install
 
 ```bash
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while emery is private
-brew tap augentic/tap && brew install emery
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
 
-# or: cargo binstall --git https://github.com/augentic/emery emery@0.28.0
+# or: brew tap augentic/tap && brew install emery
+# or: cargo binstall --git https://github.com/augentic/emery emery@0.32.0
 # or: cargo install --git https://github.com/augentic/emery --locked
 ```
 
