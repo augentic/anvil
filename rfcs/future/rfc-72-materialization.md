@@ -1,10 +1,10 @@
 # Managed Workspace Materialization
 
-> Status: Draft
+> **Status: Deferred.** Pull in after the [Migration Walking Skeleton](../rfc-74-program.md) is in daily use and clone/lease friction demands it. Operator-prepared slots satisfy the skeleton.
 >
 > Owns: cloning and refreshing registry projects, creating writable workspace slots, branch preparation, cleanliness checks, and the lease boundary required by automated multi-repository execution.
 >
-> Depends on: [Migration Intake and Source Selection](rfc-72-migration.md). Optional for the first migration program walking skeleton — operator-prepared slots satisfy the coordinator in [Migration Programs](rfc-74-program.md).
+> Depends on: [RFC-74](../rfc-74-program.md) Part B (intake / source snapshots).
 
 ## Abstract
 
@@ -279,7 +279,7 @@ This preserves evidence integrity during in-place migration.
 
 ### Project initialization and target binding
 
-A newly materialized target may lack `.emery/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [Migration Programs](rfc-74-program.md#applying-approved-topology). An existing configuration remains authoritative.
+A newly materialized target may lack `.emery/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [RFC-74 §Applying approved topology](../rfc-74-program.md#applying-approved-topology). An existing configuration remains authoritative.
 
 One slot carries one target adapter. A repository holding two independent workloads is split into two registry projects — and therefore two slots — before the program schedules it; the materializer never sees a multi-target project.
 
@@ -355,7 +355,7 @@ An in-house team can ship the first migration programs on **operator-prepared sl
 
 **In first delivery**
 
-- No managed materialization required — [RFC-74](rfc-74-program.md) runs against prepared slots.
+- No managed materialization required — [RFC-74](../rfc-74-program.md) runs against prepared slots.
 - Document the operator checklist (clone, branch hygiene, publish) beside the migration program how-to.
 
 **Pull in next for the same team (still local)**
@@ -367,7 +367,7 @@ An in-house team can ship the first migration programs on **operator-prepared sl
 | Stage 3 — program-integrated materialize-next | Sync+lease exist and idle slots need lifecycle |
 | Stage 4 — hosted backend | Roadmap RM-18 |
 
-Program sequencing: [RFC-74 §First delivery](rfc-74-program.md#first-delivery).
+Program sequencing: [RFC-74 §One implementation cut](../rfc-74-program.md#one-implementation-cut).
 
 ## Implementation stages
 
@@ -425,7 +425,7 @@ Operator-prepared slots satisfy first delivery. These stages backfill cloning an
 - Clone, sync, cleanliness classification, lease acquisition and recovery, and topology refresh are crate-level integration tests over local fixture Git repositories and temp directories; no live forge access in CI.
 - Cleanliness and re-entry states form a dense deterministic matrix (clean, expected branch, explained-dirty, unaccounted-dirty, drifted, diverged) asserted at the CLI boundary.
 - Byte-stable topology-lock regeneration is a golden-file assertion following the existing `REGENERATE_GOLDENS` pattern.
-- Coordinator integration (prepare/release around refine, build, merge) is covered with [Migration Programs](rfc-74-program.md); the hosted backend contract is exercised only by its own provider's suite.
+- Coordinator integration (prepare/release around refine, build, merge) is covered with [RFC-74](../rfc-74-program.md); the hosted backend contract is exercised only by its own provider's suite.
 
 ## Open questions
 
