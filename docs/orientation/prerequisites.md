@@ -30,6 +30,8 @@ curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install
 
 Pin an exact release with `sh -s -- --version 0.32.0`. `/emery:init` uses this path when it refreshes the CLI.
 
+If `~/.local/bin` is not on your `PATH`, the script prints the exact `export PATH=…` line to add to your shell profile.
+
 ### Homebrew
 
 The [augentic/homebrew-tap](https://github.com/augentic/homebrew-tap) formula installs the same prebuilt Release archives:

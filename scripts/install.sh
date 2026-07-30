@@ -100,5 +100,8 @@ mv -f "$tmp/$BIN" "$dir/$BIN"
 say "installed $dir/$BIN ($("$dir/$BIN" --version 2>/dev/null || say "emery v$version"))"
 case ":$PATH:" in
   *":$dir:"*) ;;
-  *) say "note: $dir is not on your PATH" ;;
+  *)
+    say "note: $dir is not on your PATH — add it to your shell profile:"
+    say "  export PATH=\"$dir:\$PATH\""
+    ;;
 esac
