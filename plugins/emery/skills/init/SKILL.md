@@ -14,7 +14,7 @@ argument-hint: <adapter|workspace>
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- --version 0.32.0 -y
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- --version 0.33.0 -y
 ```
 
 Then run `emery --version` and stop on failure. Run every subsequent `emery` command in this session with that `PATH` export in effect; remind the operator to add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile if the installer printed a PATH note.

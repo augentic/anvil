@@ -3,7 +3,7 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
-#   curl -fsSL .../install.sh | sh -s -- --version 0.32.0
+#   curl -fsSL .../install.sh | sh -s -- --version 0.33.0
 #
 # Flags:
 #   --version <semver>   exact release version (default: latest GitHub Release)

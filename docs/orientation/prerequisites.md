@@ -28,7 +28,7 @@ The [install script](https://github.com/augentic/emery/blob/main/scripts/install
 curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
 ```
 
-Pin an exact release with `sh -s -- --version 0.32.0`. `/emery:init` uses this path when it refreshes the CLI.
+Pin an exact release with `sh -s -- --version 0.33.0`. `/emery:init` uses this path when it refreshes the CLI.
 
 If `~/.local/bin` is not on your `PATH`, the script prints the exact `export PATH=…` line to add to your shell profile.
 
@@ -48,7 +48,7 @@ Upgrade later with `brew upgrade emery`.
 Prebuilt archives, no local compile (install [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) first). The root package is `publish = false`, so install from git:
 
 ```bash
-cargo binstall --git https://github.com/augentic/emery emery@0.32.0
+cargo binstall --git https://github.com/augentic/emery emery@0.33.0
 ```
 
 ### From source
@@ -85,7 +85,7 @@ Update through the same channel used to install:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh   # installer script
 brew upgrade emery                                                                         # Homebrew
-cargo binstall --git https://github.com/augentic/emery emery@0.32.0 --force              # prebuilt
+cargo binstall --git https://github.com/augentic/emery emery@0.33.0 --force              # prebuilt
 cargo install --git https://github.com/augentic/emery --locked --force                     # source
 ```
 

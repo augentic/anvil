@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install
 
 ```bash
 # from source
-cargo install --git https://github.com/augentic/emery --tag v0.32.0 --locked
+cargo install --git https://github.com/augentic/emery --tag v0.33.0 --locked
 ```
 
 Verify installation:
