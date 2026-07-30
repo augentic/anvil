@@ -4,9 +4,9 @@
 >
 > Owns: on-disk location policy for resolvable artifacts (adapter store entries, digest sidecars, project component cache); the composition-root capture of the relocation environment overrides; removal of Cargo-layout and other co-dev probes from shipped crates.
 >
-> Builds on: [Emery on Omnia](../architecture.md), [RFC-70 Self-Assembling Wasm Deployment](../rfc-70-deployment.md), [Native Emery](native-deployment.md) (archived — implemented). Prior art for the configuration shape: the Omnia backends' `ConnectOptions` pattern (`backends/crates/kafka` — `#[derive(FromEnv)]`, production defaults in code, env vars the only override, resolved once at the composition root).
+> Builds on: [Emery on Omnia](../architecture.md), [RFC-71 Self-Assembling Wasm Deployment](../rfc-71-deployment.md), [Native Emery](native-deployment.md) (archived — implemented). Prior art for the configuration shape: the Omnia backends' `ConnectOptions` pattern (`backends/crates/kafka` — `#[derive(FromEnv)]`, production defaults in code, env vars the only override, resolved once at the composition root).
 >
-> Does not own: adapter identity grammar (`AdapterSelector`), registry discovery (RFC-71), native catalog composition, or Omnia guest linking.
+> Does not own: adapter identity grammar (`AdapterSelector`), registry discovery (RFC-70 Part A), native catalog composition, or Omnia guest linking.
 
 ## Abstract
 
