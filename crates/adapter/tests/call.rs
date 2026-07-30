@@ -206,46 +206,50 @@ mod repaired {
 
 // The guest grant surface: the URL mirrors the routed id verbatim on
 // the runtime's `/mcp/` prefix (version pin included, so the HTTP
-// fallback projects it back onto the registered identity), while the
-// grant name strips both axis and pin.
+// router maps it back onto the registered identity), while the grant
+// name strips both axis and pin.
 #[test]
 fn mcp_url_mirrors_the_routed_id() {
-    assert_eq!(mcp_url_for(None, "target:omnia"), "http://127.0.0.1:8080/mcp/target/omnia");
+    let addr = Some("127.0.0.1:8080");
     assert_eq!(
-        mcp_url_for(None, "source:typescript"),
-        "http://127.0.0.1:8080/mcp/source/typescript"
+        mcp_url_for(addr, "target:omnia").as_deref(),
+        Some("http://127.0.0.1:8080/mcp/target/omnia")
     );
     assert_eq!(
-        mcp_url_for(None, "target:omnia@1.2.3"),
-        "http://127.0.0.1:8080/mcp/target/omnia@1.2.3"
+        mcp_url_for(addr, "source:typescript").as_deref(),
+        Some("http://127.0.0.1:8080/mcp/source/typescript")
+    );
+    assert_eq!(
+        mcp_url_for(addr, "target:omnia@1.2.3").as_deref(),
+        Some("http://127.0.0.1:8080/mcp/target/omnia@1.2.3")
     );
 }
 
 // The port follows the trigger's `HTTP_ADDR` (any bind form); the
-// connect host stays the IPv4 loopback literal, and an absent or
-// unparseable address falls back to the compiled default the server
-// shares.
+// connect host stays the IPv4 loopback literal. An absent or
+// unparseable address yields no URL at all — no listener means no
+// shelf and no grant, never a wrong-port guess.
 #[test]
 fn mcp_url_derives_the_port_from_the_trigger_address() {
     for (addr, expected) in [
-        (Some("127.0.0.1:49213"), "http://127.0.0.1:49213/mcp/target/omnia"),
-        (Some("0.0.0.0:8080"), "http://127.0.0.1:8080/mcp/target/omnia"),
-        (Some("[::1]:9000"), "http://127.0.0.1:9000/mcp/target/omnia"),
-        (Some("garbage"), "http://127.0.0.1:8080/mcp/target/omnia"),
-        (Some("host:notaport"), "http://127.0.0.1:8080/mcp/target/omnia"),
-        (None, "http://127.0.0.1:8080/mcp/target/omnia"),
+        (Some("127.0.0.1:49213"), Some("http://127.0.0.1:49213/mcp/target/omnia")),
+        (Some("0.0.0.0:8080"), Some("http://127.0.0.1:8080/mcp/target/omnia")),
+        (Some("[::1]:9000"), Some("http://127.0.0.1:9000/mcp/target/omnia")),
+        (Some("garbage"), None),
+        (Some("host:notaport"), None),
+        (None, None),
     ] {
-        assert_eq!(mcp_url_for(addr, "target:omnia"), expected, "addr: {addr:?}");
+        assert_eq!(mcp_url_for(addr, "target:omnia").as_deref(), expected, "addr: {addr:?}");
     }
 }
 
 #[test]
 fn pinned_grant_strips_the_version() {
-    let url = mcp_url_for(None, "target:contracts@1.0.0");
+    let url = mcp_url_for(Some("127.0.0.1:8080"), "target:contracts@1.0.0");
     let context = Context {
         adapter_id: "target:contracts@1.0.0",
         project_root: Path::new("."),
-        mcp_url: Some(url),
+        mcp_url: url,
     };
     let grants = context.grants();
     assert_eq!(grants.len(), 1);

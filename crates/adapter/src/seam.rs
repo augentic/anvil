@@ -44,14 +44,14 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     /// Guest-side context rooted at the guest's own `"."` preopen,
-    /// granting the adapter's own references shelf
-    /// ([`mcp_url`]).
+    /// granting the adapter's own references shelf ([`mcp_url`]) when
+    /// the runtime injected an `HTTP_ADDR`.
     #[must_use]
     pub fn guest(adapter_id: &'a str) -> Self {
         Self {
             adapter_id,
             project_root: Path::new("."),
-            mcp_url: Some(mcp_url(adapter_id)),
+            mcp_url: mcp_url(adapter_id),
         }
     }
 
@@ -87,31 +87,30 @@ impl<'a> Context<'a> {
 /// The adapter's own MCP references endpoint on the runtime's HTTP
 /// trigger: `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]`.
 ///
-/// The port comes from the guest's inherited `HTTP_ADDR` — the same
-/// value the trigger server binds, reserved per invocation by the
-/// launcher — so grants and listener cannot drift apart.
+/// The port comes from the guest's `HTTP_ADDR` — injected by the
+/// runtime from the local address of the deployment's pre-bound
+/// listener, so grants and listener cannot drift apart. `None` when
+/// the variable is absent or unparseable: no listener means no shelf,
+/// and no grant is offered — degradation is coherent end to end,
+/// never a wrong-port guess.
 #[must_use]
-pub fn mcp_url(adapter_id: &str) -> String {
+pub fn mcp_url(adapter_id: &str) -> Option<String> {
     mcp_url_for(std::env::var("HTTP_ADDR").ok().as_deref(), adapter_id)
 }
 
 /// [`mcp_url`] over an explicit trigger address.
 ///
 /// The path mirrors the routed adapter id verbatim (`:` becomes `/`,
-/// the version pin stays), so the deployment's HTTP fallback projects
-/// it back onto the exact identity this guest was faulted in under and
+/// the version pin stays), so the deployment's HTTP router maps it
+/// back onto the exact identity this guest was faulted in under and
 /// the component's own `wasi:http` handler serves the shelf. Only the
-/// port is taken from `addr` (default 8080 when absent or
-/// unparseable): the host stays the `IPv4` loopback literal, not
-/// `localhost` — the trigger binds `0.0.0.0`, and an agent whose
-/// resolver prefers `::1` would otherwise fail to connect.
+/// port is taken from `addr`: the host stays the `IPv4` loopback
+/// literal, not `localhost` — an agent whose resolver prefers `::1`
+/// would otherwise fail to connect.
 #[must_use]
-pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> String {
-    let port = addr
-        .and_then(|addr| addr.rsplit_once(':'))
-        .and_then(|(_, port)| port.parse::<u16>().ok())
-        .unwrap_or(8080);
-    format!("http://127.0.0.1:{port}/mcp/{}", adapter_id.replacen(':', "/", 1))
+pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
+    let port = addr?.rsplit_once(':')?.1.parse::<u16>().ok()?;
+    Some(format!("http://127.0.0.1:{port}/mcp/{}", adapter_id.replacen(':', "/", 1)))
 }
 
 /// One slice-artifact input — mirrors the WIT `target.input` variant.

@@ -7,10 +7,11 @@ use std::path::PathBuf;
 
 use error::Error;
 
-use crate::adapter::{AdapterSelector, ComponentMeta};
+use crate::adapter::ComponentMeta;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::{
-    InitOptions, InitResult, resolve_version, resolved_name, upsert_gitignore, validate_platforms,
+    InitOptions, InitResult, binding_value, resolve_version, resolved_name, upsert_gitignore,
+    validate_platforms,
 };
 
 /// canonical refine-time artifact set. Hardcoded — refine synthesises
@@ -48,22 +49,11 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         }
     }
 
-    // Persist the operator's selector as typed (the kind is never
-    // rewritten). A component path is recorded as its canonical
-    // `file://` form so the value outlives the CWD — read from the
-    // cache mirror's provenance sidecar when present, because the
-    // engine guest cannot canonicalize a host path that lives outside
-    // its mounts (the launcher mirrored and stamped it host-side
-    // before the runtime started); canonicalized directly otherwise.
+    // Persist the effective selector: the operation layer already
+    // widened a bare cache-miss name to the embedded first-party
+    // train pin, so the record names the identity that was ensured.
     let adapter_name = ensured.resolved.manifest.name.clone();
-    let adapter_value = match &ensured.selector {
-        AdapterSelector::Component { .. } => ComponentMeta::load(opts.paths, &adapter_name)
-            .map_or_else(
-                || ensured.selector.persist_value(opts.project_dir),
-                |meta| Ok(meta.source),
-            )?,
-        _ => ensured.selector.persist_value(opts.project_dir)?,
-    };
+    let adapter_value = binding_value(ensured, opts.paths, opts.project_dir)?;
     let validated_platforms = validate_platforms(
         opts.platforms,
         ensured.resolved.manifest.platforms.as_ref(),
@@ -81,7 +71,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let cfg = ProjectConfig {
         name,
         description: opts.description.map(str::to_string),
-        adapter: Some(adapter_value),
+        adapter: Some(adapter_value.clone()),
         emery_version: Some(emery_version.clone()),
         rules,
         platforms: validated_platforms,
@@ -99,6 +89,8 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     Ok(InitResult {
         config_path,
         adapter_name,
+        adapter_binding: Some(adapter_value),
+        adapter_binding_rewritten: false,
         cache_present,
         directories_created,
         scaffolded_rule_keys,

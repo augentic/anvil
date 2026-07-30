@@ -14,7 +14,7 @@ use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use project::adapter::Resolver;
+use project::adapter::{AdapterSelector, Resolver};
 use project::config::{Layout, Mutation, ProjectConfig, with_state};
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
@@ -69,7 +69,7 @@ pub struct AuthorOutcome {
 #[tracing::instrument(name = "plan.author", skip_all, fields(plan = %name))]
 pub async fn author<P: Model, S: Source, R: Resolver>(
     caps: super::Capabilities<'_, P, S, (), R>, paths: &ExecutionPaths, now: Timestamp, name: &str,
-    bindings: BTreeMap<String, SourceBinding>,
+    mut bindings: BTreeMap<String, SourceBinding>,
 ) -> Result<AuthorOutcome, Error> {
     // Authoring never dispatches the target seam — the bundle carries
     // the unit placeholder (see `Capabilities::sans_targets`).
@@ -81,10 +81,21 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     } = caps;
     let layout = Layout::new(paths.project_root());
     refuse_workspace(layout)?;
-    // Ensure every binding up front — before the scaffold write and
-    // the survey fan-out — so an unresolvable adapter (missing pin,
-    // `emery_floor`) fails fast with nothing on disk.
-    for binding in bindings.values() {
+    // Widen then ensure every binding up front — before the scaffold
+    // write and the survey fan-out — so an unresolvable adapter
+    // (missing pin, `emery_floor`) fails fast with nothing on disk.
+    // `expand` pins a bare cache-miss name to the deployment's
+    // embedded first-party adapter train (identity elsewhere); the
+    // stamped `version` persists into `plan.yaml`, so the survey
+    // fan-out and every later extract dispatch the pinned routed id.
+    // A cache-seeded binding (`adapter add`) expands to itself and
+    // stays bare.
+    for binding in bindings.values_mut() {
+        if let AdapterSelector::Package { version, .. } =
+            resolver.expand(&binding.selector(), paths)
+        {
+            binding.version = Some(version);
+        }
         resolver.ensure_source(&binding.selector(), paths).await?;
     }
     scaffold(layout, name, bindings)?;

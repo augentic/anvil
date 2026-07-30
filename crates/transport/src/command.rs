@@ -186,7 +186,18 @@ pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
     P: Provider + Anchor + Model + Resolver + Source + Target,
 {
-    let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
+    // The version display carries the embedded first-party adapter
+    // train alongside the host SemVer — the two axes version
+    // independently (RFC-77 D1), so operators can read the train a
+    // bare name auto-pins to without opening source.
+    static VERSION: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{} (adapters {})",
+            env!("CARGO_PKG_VERSION"),
+            project::adapter::FIRST_PARTY_ADAPTER_TRAIN
+        )
+    });
+    let command = clap::Command::new("emery").version(VERSION.as_str()).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
         .completions(
             Completions::new()

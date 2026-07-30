@@ -18,6 +18,8 @@ Relative component paths anchor at `--project-dir`, which also selects the proje
 
 This is the only route into bare-name resolution besides a local component at init: there is no build-tree probe (`target/wasm32-wasip2/release/` is never consulted) and no sibling-checkout probe.
 
+A seeded cache entry also pins the ensure-time behavior of a bare name: `emery init <name>` and `emery plan author` bindings stay bare (and resolve the seed) when the cache hits, and auto-pin to the binary's embedded first-party adapter train (`emery:<name>@<train>`, pulled on miss) when it does not. Cache hits always win — the co-dev seed is never shadowed by a published component. Bare at resolve/dispatch time (the verbs below) remains cache-only and never pulls.
+
 ## emery source resolve
 
 Resolve a source adapter by identity and emit the wire-stable envelope.

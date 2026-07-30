@@ -213,8 +213,9 @@ omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
-# Path patches while the http_fallback / no-CatchAll omnia change is
-# unpublished; restore the git patches once omnia releases.
+# Path patches while the http_router / http_listener omnia change is
+# unpublished; Omnia publishes first, then these revert to the
+# crates-io pins below.
 omnia = { path = "../omnia/crates/omnia" }
 omnia-cursor = { git = "https://github.com/augentic/backends" }
 omnia-guest = { path = "../omnia/crates/omnia-guest" }

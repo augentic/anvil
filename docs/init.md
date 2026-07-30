@@ -29,6 +29,14 @@ runtime pulls it from the fixed registry mapping
 global adapter store. The mapping is compiled in — there is no
 project-local registry configuration.
 
+A bare first-party name (`emery init omnia`) with no seeded project
+component cache entry auto-pins to the binary's embedded adapter
+train (`emery:omnia@<train>`, shown by `emery --version`) and
+installs through the same pull-on-miss path; the pin is persisted on
+`project.yaml.adapter` before first use and echoed in the output. A
+cache-seeded bare name (`emery adapter add`, or a local `.wasm` at
+init) stays bare — the co-dev seed always wins.
+
 ## Workspace — `emery init --workspace`
 
 ```bash
@@ -60,4 +68,8 @@ Running `emery init` in an already-initialized project (one whose
 `.emery/project.yaml` exists) changes nothing and exits 0 with a
 message routing to `emery init --upgrade` — the re-entry flag that
 bumps the `emery` pin, re-resolves the declared adapter, and
-preserves every operator artifact.
+preserves every operator artifact. When the re-ensured binding
+drifts from the record — a bare recorded name whose cache entry was
+since cleared expands to the embedded adapter-train pin — the record
+is rewritten to the effective binding and the rewrite announced in
+the output; a bare record with a live cache seed stays bare.

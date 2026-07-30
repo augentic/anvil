@@ -89,7 +89,12 @@ pub async fn install(
     let image =
         client.pull(&reference, &RegistryAuth::Anonymous).await.map_err(|err| Error::Diag {
             code: "adapter-install-failed",
-            detail: format!("failed to install `emery:{name}@{version}` from {reference}: {err:#}"),
+            detail: format!(
+                "failed to install `emery:{name}@{version}` from {reference}: {err:#}. Check the \
+                 adapter name is spelled correctly and the version is published; seed a local \
+                 component instead with `emery adapter add <path/to/{name}.wasm>`, or pin a \
+                 different published version (`emery:{name}@<semver>`)"
+            ),
         })?;
 
     let invalid = |detail: String| Error::Diag {

@@ -102,6 +102,8 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     Ok(InitResult {
         config_path,
         adapter_name: "workspace".to_string(),
+        adapter_binding: None,
+        adapter_binding_rewritten: false,
         // A workspace binds no adapter, so no component sidecar to
         // inspect.
         cache_present: false,

@@ -136,13 +136,18 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
     }
 }
 
-/// Parse and ensure one adapter binding through the provider's ensure
-/// policy (local-component mirroring; a package pin is installed
-/// host-side during the resolve dispatch).
+/// Parse, widen, and ensure one adapter binding through the provider's
+/// deployment policy: `expand` pins a bare cache-miss name to the
+/// embedded first-party adapter train (identity on deployments with
+/// nothing to widen), then ensure provisions it (local-component
+/// mirroring; a package pin is installed host-side during the resolve
+/// dispatch). The returned selector is the *effective* one — init
+/// persists it, so the record names what was ensured.
 async fn ensure(
     provider: &impl Resolver, value: &str, paths: &ExecutionPaths,
 ) -> Result<EnsuredAdapter, Error> {
-    let selector = AdapterSelector::parse(value)?;
+    let parsed = AdapterSelector::parse(value)?;
+    let selector = provider.expand(&parsed, paths);
     let resolved = provider.ensure_target(&selector, paths).await?;
     Ok(EnsuredAdapter { selector, resolved })
 }
@@ -172,6 +177,10 @@ pub enum InitMode {
 }
 
 /// Success envelope for `emery init`.
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "wire envelope of independent boolean facts; the JSON shape is contract-locked"
+)]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct InitBody {
@@ -181,6 +190,15 @@ pub struct InitBody {
     pub config_path: String,
     /// Resolved adapter name (or `"workspace"` for workspace init).
     pub adapter_name: String,
+    /// The binding value recorded on `project.yaml.adapter` — the
+    /// effective selector after any train expansion (e.g.
+    /// `emery:omnia@0.7.0` for a bare cache-miss `omnia`). Absent for
+    /// workspace init and the no-op re-entry.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub adapter_binding: Option<String>,
+    /// `true` when `--upgrade` rewrote a drifted recorded binding to
+    /// the effective ensured selector.
+    pub adapter_binding_rewritten: bool,
     /// Whether the project component cache tenant already existed.
     pub cache_present: bool,
     /// Directories the scaffold created.
@@ -206,6 +224,8 @@ impl InitBody {
             mode,
             config_path: canonical(&result.config_path),
             adapter_name: result.adapter_name.clone(),
+            adapter_binding: result.adapter_binding.clone(),
+            adapter_binding_rewritten: result.adapter_binding_rewritten,
             cache_present: result.cache_present,
             directories_created: result.directories_created.iter().map(|p| canonical(p)).collect(),
             scaffolded_rule_keys: result.scaffolded_rule_keys.clone(),
@@ -229,6 +249,8 @@ impl InitBody {
             config_path: canonical(&Layout::new(project_dir).config_path()),
             cache_present: !cfg.workspace && ComponentMeta::path(paths, &adapter_name).exists(),
             adapter_name,
+            adapter_binding: None,
+            adapter_binding_rewritten: false,
             directories_created: Vec::new(),
             scaffolded_rule_keys: Vec::new(),
             emery_version: cfg.emery_version.unwrap_or_default(),
@@ -257,7 +279,15 @@ impl Render for InitBody {
                 writeln!(w, "Scaffolded .emery/")?;
             }
         }
-        writeln!(w, "  adapter: {}", self.adapter_name)?;
+        match &self.adapter_binding {
+            Some(binding) => writeln!(w, "  adapter: {binding}")?,
+            None => writeln!(w, "  adapter: {}", self.adapter_name)?,
+        }
+        if self.adapter_binding_rewritten
+            && let Some(binding) = &self.adapter_binding
+        {
+            writeln!(w, "  adapter binding rewritten to {binding}")?;
+        }
         writeln!(w, "  config: {}", self.config_path)?;
         writeln!(w, "  emery: {}", self.emery_version)?;
         if self.context_skip_reason == Some("existing-agents-md") {

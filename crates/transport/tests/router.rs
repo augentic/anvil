@@ -122,6 +122,20 @@ async fn detailed_help() {
 }
 
 #[tokio::test]
+async fn version_carries_adapter_train() {
+    let router = command_router(".");
+    let response = router.execute(["emery", "--version"]).await;
+    assert_eq!(response.exit, 0);
+    let stdout = String::from_utf8_lossy(&response.stdout);
+    let expected = format!(
+        "emery {} (adapters {})",
+        env!("CARGO_PKG_VERSION"),
+        project::adapter::FIRST_PARTY_ADAPTER_TRAIN
+    );
+    assert!(stdout.contains(&expected), "{stdout}");
+}
+
+#[tokio::test]
 async fn argv_zero_replaced() {
     let router = command_router(".");
     let expected = router.execute(["emery", "plan", "transition"]).await;
