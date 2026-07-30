@@ -1,12 +1,12 @@
 # Adapter Publish and Install — Initial Internal Cut
 
-> Status: Draft — implementation not started
+> Status: Implemented (archived). Phases A–D complete; Actions GHCR publish landed; CI no-repush + attestations remain under [RFC-77](../rfc-77-release-process.md) Phase B.
 >
 > Owns: the minimum first-party publish/install loop, automatic adapter download, and a working `cargo install --git` bootstrap for internal developers.
 >
-> Builds on: [RFC-70](rfc-70-deployment.md) Stages 1+3 (landed). First-party slice of [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model).
+> Builds on: [RFC-71](../rfc-71-deployment.md) Stages 1+3 (landed). First-party slice of [RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model).
 >
-> Defers: GitHub Actions publish automation (attestation, CI no-repush), production supply-chain hardening, third-party registries and trust, discovery ([RFC-71](rfc-71-discovery.md)), private-registry credentials, semver ranges, and polished public installers.
+> Defers: GitHub Actions publish automation (attestation, CI no-repush), production supply-chain hardening, third-party registries and trust, discovery ([RFC-70](../rfc-70-program.md) Part A), private-registry credentials, semver ranges, and polished public installers.
 
 ## Intent
 
@@ -336,7 +336,7 @@ This RFC deliberately does **not** solve the complete public distribution proble
 
 ### Alternatives considered
 
-**Embed first-party adapters in the binary (rejected).** With lockstep versioning (D6) and a first-party-only set it would close the internal loop with no registry at all, but it couples every adapter fix to an engine release, inflates each platform binary, and — decisively — proves nothing about the transport and ownership seam this cut exists to establish for [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model).
+**Embed first-party adapters in the binary (rejected).** With lockstep versioning (D6) and a first-party-only set it would close the internal loop with no registry at all, but it couples every adapter fix to an engine release, inflates each platform binary, and — decisively — proves nothing about the transport and ownership seam this cut exists to establish for [RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model).
 
 **Cursor Teams as full bootstrap (closed).** Distribute `/emery:*` via Cursor Teams or the marketplace, and have `/emery:init` download the Emery binary and the adapters it needs when missing. Closed for this cut: skill distribution is orthogonal and already exists (`plugins/emery/`); adapter install is host pull-on-miss once the binary exists; binary install from a skill would either violate the ultrathin skill contract or duplicate the deferred public-installer channel (GitHub Release archives → curl / `cargo-binstall` / Homebrew). Revisit only as a Cursor-side *caller* of that shared installer, not as a second distribution root for adapters or engine bytes. Today's init skill may confirm `cargo binstall --git … emery@<version>` when `emery` is missing; that soft bootstrap stays — it does not grow into a release fetcher.
 
@@ -380,4 +380,4 @@ These are expected follow-ons, not hidden requirements for the internal cut.
 
 Confirm the deliberately narrow D1–D9 cut: internal source install, one public first-party GHCR mapping, **manual** publication via Make tasks, exact pins, launcher pull-on-miss with mandatory manifest-digest recording, and the existing store. GitHub Actions publish automation (CI no-repush, attestations) is Phase E — start only after Phases A–D are satisfactory. Attestation verification, digest pinning, CAS, public installers, third-party trust, and independent release sophistication remain later still.
 
-Related: [RFC-70](rfc-70-deployment.md) · [RFC-71](rfc-71-discovery.md) · [RFC-77](rfc-77-release-process.md) (host/adapter release lines and coordination) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [RFC-75](archive/rfc-75-artifact-locations.md) (archive, locations).
+Related: [RFC-71](../rfc-71-deployment.md) · [RFC-71](rfc-71-discovery.md) · [RFC-77](../rfc-77-release-process.md) (host/adapter release lines and coordination) · [RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model) · [RFC-75](rfc-75-artifact-locations.md) (archive, locations).

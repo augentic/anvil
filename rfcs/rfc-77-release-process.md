@@ -4,9 +4,9 @@
 >
 > Owns: how `augentic/emery` and `augentic/emery-adapters` cut, publish, and patch releases; the three version axes (host, WIT contract, adapter train); coordination order when those axes move together.
 >
-> Builds on: [RFC-76](rfc-76-adapter-install.md) (publish/install loop, exact pins, lockstep first-party adapter SemVer, deferred Actions automation). Complements [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (ecosystem operating model) and the dual-repo seam note in [roadmap.md](roadmap.md#cross-repo-coordination).
+> Builds on: [RFC-76](archive/rfc-76-adapter-install.md) (archived — publish/install loop, exact pins, lockstep first-party adapter SemVer; Actions GHCR publish landed). Complements [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (ecosystem operating model) and the dual-repo seam note in [roadmap.md](roadmap.md#cross-repo-coordination).
 >
-> Defers: Wasmtime-style calendar trains and LTS windows; multi-line long-term support; per-adapter independent SemVer inside the first-party set; SDK crate publication to crates.io (until third-party SDK consumers exist — RM-21); third-party registry release policy; curl installer / automated Homebrew formula bump; attestation and publisher-identity verification (RFC-76 Phase E and later).
+> Defers: Wasmtime-style calendar trains and LTS windows; multi-line long-term support; per-adapter independent SemVer inside the first-party set; SDK crate publication to crates.io (until third-party SDK consumers exist — RM-21); third-party registry release policy; curl installer / automated Homebrew formula bump; CI no-repush hardening and publish-time attestation generation/verification (RFC-76 Phase E remainder).
 
 ## Intent
 
@@ -40,7 +40,7 @@ Product policy already states that crossing a major is a hard cut (no silent ali
 
 - **Omnia** uses shared `augentic/.github` workflows: cut `release-X.Y.Z` from `main` → bump `main` → stabilize and backport on the branch → publish/tag from the branch → patch on the same branch. Manual dispatch; no calendar train; `RELEASES.md` lives per release line.
 - **Emery** uses a PR-from-`main` path (`release/v*` → merge → tag). `patch.yaml` expects `release/*` branches, but `publish.yaml` tags only when a `release/v*` PR merges to `main`. That is not a durable release-line model, so honest patches are awkward.
-- **Adapters** have no release-branch ritual yet; publication is local and manual (RFC-76 Phase E defers Actions automation).
+- **Adapters** now share the same Omnia-shaped `release-X.Y.Z` ritual; GHCR publish runs from Actions (`adapters.yaml` → `cargo make publish`). CI no-repush and publish-time attestations remain Phase B.
 
 ### Prior art considered
 
@@ -62,7 +62,7 @@ Product policy already states that crossing a major is a hard cut (no silent ali
 - `emery-adapters` consumes the engine crates (`adapter`, `native`, `probe`, `prose`) as unpinned git dependencies on emery’s default branch, held only by the committed `Cargo.lock` — the seam gate in D9 has no structural enforcement in `Cargo.toml`.
 - `emery-floor` is not used as a real compatibility signal.
 - There is no short compatibility table operators can read when choosing pins.
-- RFC-76 correctly defers Actions publish automation; this RFC owns the *process* that automation must eventually encode.
+- Actions GHCR publish is wired; this RFC still owns the *process* checklist (floors, WIT gates, compatibility rows) and the remaining Phase B supply-chain steps (CI no-repush, attestations).
 
 ## Decisions
 
@@ -79,7 +79,7 @@ Product policy already states that crossing a major is a hard cut (no silent ali
 | D9 | Gate every adapter train release on a published WIT pin and CI against a released (or RC) engine revision — not only a sibling `main`. | Prevents adapters that only build against unpublished seam changes. |
 | D10 | Document three release shapes and their order (below). | Humans pick a shape; automation later encodes the same checklist. |
 | D11 | Keep hard major-cut / re-init product policy unchanged. | Release branches handle compatible maintenance; hard cuts remain product events, not endless backport obligations. |
-| D12 | Defer Actions automation of adapter GHCR publish and `wkg publish` until the branch ritual is written and used manually (aligns with RFC-76 Phase E). | Process first; CI encodes process second. |
+| D12 | Adapter GHCR publish may ride Actions once the branch ritual exists (RFC-76 Phase E partial); keep `wkg publish` for engine/WIT manual until Phase B. | Process first; CI encodes process second. CI no-repush and attestations stay Phase B. |
 | D13 | Once durable engine release lines exist, `emery-adapters` pins its engine git dependencies by release tag (`tag = "vX.Y.Z"`), not a floating default branch. | D9 becomes enforceable in `Cargo.toml`, not just checklist discipline; the committed sibling `[patch]` block remains the co-development escape hatch. Works against a private repo too — tag pins do not depend on repo visibility. |
 
 ## Three version axes
@@ -159,7 +159,7 @@ Same verbs, independent cadence and SemVer.
 3. Engine git dependencies pinned by release tag (D13) — no floating-branch resolution at publish time, and no active sibling `[patch]` block.
 4. `emery-floor` set to the minimum host that can run this train.
 5. Existing no-repush probe: refuse to replace an existing GHCR version tag.
-6. Once adapter descriptors land ([RFC-71](rfc-71-discovery.md) D3): every published component has a descriptor in the projected index, and the restated fields agree with its `metadata` export.
+6. Once adapter descriptors land ([RFC-70](rfc-70-program.md) A3): every published component has a descriptor in the projected index, and the restated fields agree with its `metadata` export.
 
 ### What stays independent
 
@@ -200,7 +200,7 @@ Keep the table short. Do not build a solver.
 
 ### Phase B — Reduce toil
 
-1. Automate adapter GHCR publish on tag (RFC-76 Phase E: repair workflow, CI no-repush, attestations).
+1. Finish RFC-76 Phase E remainder on adapter GHCR publish: CI no-repush probe and publish-time attestations (`actions/attest-build-provenance`). Actions publish itself is already landed.
 2. Checklist-gate or automate `wkg publish` for engine + WIT.
 3. Publish the compatibility row with every release as a required notes section.
 
@@ -228,9 +228,9 @@ Keep the table short. Do not build a solver.
 
 ## Relationship to RFC-76
 
-RFC-76 owns *how bytes get to GHCR and into the store* (manual publish, pull-on-miss, exact pins, lockstep first-party SemVer). This RFC owns *when and from which git line those bytes are cut*, and how host / WIT / adapter trains coordinate.
+[RFC-76](archive/rfc-76-adapter-install.md) (archived) owns *how bytes get to GHCR and into the store* (manual publish, pull-on-miss, exact pins, lockstep first-party SemVer; Actions GHCR publish landed). This RFC owns *when and from which git line those bytes are cut*, and how host / WIT / adapter trains coordinate.
 
-RFC-76 Phase E (Actions publish automation) should implement the adapter half of Phase B here — not invent a third release model.
+RFC-76's remaining Phase E items (CI no-repush, attestations) are the adapter half of Phase B here — not a third release model.
 
 ## Non-goals
 
@@ -238,7 +238,7 @@ RFC-76 Phase E (Actions publish automation) should implement the adapter half of
 - Introducing semver ranges or a version solver.
 - Publishing workspace crates to crates.io in this cut — deferred until third-party SDK consumers exist (RM-21, Phase C), not rejected. Generic crate names (`adapter`, `native`, `probe`, `prose`) would need `emery-*` renames first.
 - Multi-year support commitments.
-- Third-party publisher release policy (RM-21 / RFC-71 later).
+- Third-party publisher release policy (RM-21 / RFC-70 Part A later).
 - Replacing the hard major-cut / re-init product rule with a migration framework.
 
 ## References
@@ -246,8 +246,8 @@ RFC-76 Phase E (Actions publish automation) should implement the adapter half of
 - [Wasmtime release process](https://docs.wasmtime.dev/contributing-release-process.html)
 - [Wasmtime stability / LTS](https://docs.wasmtime.dev/stability-release.html)
 - Omnia shared workflows: `augentic/.github` `release.yaml` / `patch.yaml` / `publish.yaml`
-- [Emery `docs/release.md`](../docs/release.md) (current operator flow; to be updated when Phase A lands)
-- [RFC-76 Adapter Publish and Install](rfc-76-adapter-install.md)
+- [Emery `docs/release.md`](../docs/release.md) (operator-facing flow; Phase A landed)
+- [RFC-76 Adapter Publish and Install](archive/rfc-76-adapter-install.md) (archived)
 - [RM-21 Adapter ecosystem operating model](roadmap.md#rm-21-adapter-ecosystem-operating-model)
 - VS Code `engines.vscode` compatibility model
 - Terraform plugin protocol versioning (protocol ≠ CLI ≠ provider)
@@ -256,4 +256,4 @@ RFC-76 Phase E (Actions publish automation) should implement the adapter half of
 
 Confirm D1–D13: three independent version axes; Omnia-shaped durable release branches for the host; independent lockstep adapter trains with the same verbs; on-demand cadence; latest-line (optional N−1) support; three explicit coordination shapes; floors and published-WIT gates before adapter publish; tag-pinned engine git dependencies in the adapters tree; Actions automation only after the ritual is used manually.
 
-Related: [RFC-76](rfc-76-adapter-install.md) · [RFC-70](rfc-70-deployment.md) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [docs/release.md](../docs/release.md)
+Related: [RFC-76](archive/rfc-76-adapter-install.md) · [RFC-71](rfc-71-deployment.md) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [docs/release.md](../docs/release.md)

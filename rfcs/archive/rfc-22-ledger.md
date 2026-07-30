@@ -1,6 +1,6 @@
 # RFC-22: Migration Ledger and Slice Mapping
 
-> **Status: Superseded (archived).** Design ownership moved to [Migration Programs and Durable Progress](../rfc-74-program.md). Do not implement this document; historical prior art only.
+> **Status: Superseded (archived).** Design ownership moved to [Migration Walking Skeleton](../rfc-70-program.md). Do not implement this document; historical prior art only.
 >
 > Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue, also archived) and the source-adapter flow in [`engine/docs/standards/workflow.md`](../../docs/standards/workflow.md).
 

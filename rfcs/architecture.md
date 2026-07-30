@@ -112,15 +112,15 @@ The seam is a contract, not a wire protocol: every selected call rides [wRPC](ht
 
 ### Many guests, selected by identity
 
-The binary holds every guest on **one runtime** and picks among them in native code. The registry boots with exactly one static entry — the engine guest, embedded in the binary as component bytes — and every adapter is admitted lazily by exact opaque identity through Emery's fail-closed `GuestResolver` ([RFC-70 §Resolver-backed guest admission](rfc-70-deployment.md#resolver-backed-guest-admission)):
+The binary holds every guest on **one runtime** and picks among them in native code. The registry boots with exactly one static entry — the engine guest, embedded in the binary as component bytes — and every adapter is admitted lazily by exact opaque identity through Emery's fail-closed `GuestResolver` ([RFC-71](rfc-71-deployment.md)):
 
 ```text
 GuestRegistry  (one wasmtime::Engine + one Linker<StoreCtx>)
   "emery"                  -> InstancePre  (the command guest, embedded bytes —
                                               registered statically at boot)
   "source:typescript@0.5.0"  -> InstancePre  ┐  faulted in mid-run by exact routed id —
-  "source:documentation"     -> InstancePre  │  verify-and-load from store (pinned) or
-  "target:omnia@0.5.0"       -> InstancePre  ┘  project cache (unpinned); never downloaded here
+  "source:documentation"     -> InstancePre  │  store (pinned, pull-on-miss) or
+  "target:omnia@0.5.0"       -> InstancePre  ┘  project cache (unpinned / bare)
   (any miss)                 -> GuestResolver (single-flight resolve-validate-register;
                                               unresolvable identities fail the dispatch)
 ```
@@ -133,7 +133,7 @@ Each call selects an `InstancePre` by identity from the registry — resolving i
 The same select-by-identity resolves an **inbound trigger**, not only a guest-to-guest call:
 
 - A CLI command names its guest directly (`omnia <guest>.wasm`), or — on the Emery product path — the runtime forwards raw argv to the statically-registered command guest (the embedded engine)
-- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. Emery's ordinary deployment will use one fixed projection (`/mcp/<name>` → guest id; see [RFC-70 §MCP route projection](rfc-70-deployment.md#mcp-route-projection)) computed from the request path — no authored `[[route.http]]` table. Derived MCP route rows are RFC-70 Stage 2; until then adapters are reached over the CLI seam. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. A static prefix table remains available for hand-authored Omnia deployments (plain Omnia apps / optional file-flag manifests); programmatic path→identity routing is the ordinary product path once Stage 2 lands. Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
+- An HTTP request carries no `adapter-id`, so the host derives the identity from the request and looks it up in the registry above. Emery's ordinary deployment uses one fixed projection (`/mcp/<axis>/<name>[@<version>]` → guest id via `launcher::mcp_route`; see [CLI architecture](../docs/contributing/cli-architecture.md)) — no authored `[[route.http]]` table. Only guests that **export** `wasi:http/incoming-handler` are routable: the host instantiates the matched entry fresh and invokes its handler, so a guest without that export stays reachable solely through the CLI trigger and host-mediated dynamic linking. A static prefix table remains available for hand-authored Omnia deployments (plain Omnia apps / optional file-flag manifests). Either way the dispatch is the same one every other trigger uses: select an `InstancePre` by identity, instantiate on a fresh `Store`, call the typed export, and discard.
 
 ## Lifecycle of an operation
 
@@ -196,17 +196,17 @@ This enables progressive optimisation: as a transformation becomes well-understo
 
 ## CLI bootstrapping
 
-Because "Emery is Omnia compiled with Emery-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `emery` binary is one `omnia::runtime!` command-mode invocation (`src/main.rs` — no handwritten `main`): the engine guest rides the macro's `guests:` key as embedded component bytes, `program:` forwards raw argv, and the mounts and the fail-closed `GuestResolver` are expressions the `launcher` crate evaluates once per process. Every invocation runs in the engine guest — help, version, grammar rejections, and `adapter add` (over its read-only seed preopen) included — with envelopes and exit codes passing through verbatim. The host layer carries no Emery vocabulary; it reads only the macro's deployment keys. See [RFC-70 §Omnia `runtime!` composition](rfc-70-deployment.md#omnia-runtime-composition).
+Because "Emery is Omnia compiled with Emery-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `emery` binary is one `omnia::runtime!` command-mode invocation (`src/main.rs` — no handwritten `main`): the engine guest rides the macro's `guests:` key as embedded component bytes, `program:` forwards raw argv, and the mounts and the fail-closed `GuestResolver` are expressions the `launcher` crate evaluates once per process. Every invocation runs in the engine guest — help, version, grammar rejections, and `adapter add` (over its read-only seed preopen) included — with envelopes and exit codes passing through verbatim. The host layer carries no Emery vocabulary; it reads only the macro's deployment keys. See [RFC-71](rfc-71-deployment.md) and [CLI architecture](../docs/contributing/cli-architecture.md).
 
-The runtime acquires its adapter guests one way — the engine guest's own ensure legs hydrate them into the **global single-file store** at `$HOME/.emery/store` (the whole layout relocatable via `$EMERY_HOME`) or the project component cache, with **resolver-backed admission on first dispatch** ([RFC-70 Stage 3](rfc-70-deployment.md#stage-3--resolver-backed-dynamic-deployment)):
+The runtime admits adapter guests by **resolver-backed admission on first dispatch** ([RFC-71](rfc-71-deployment.md)): pinned identities resolve the **global single-file store** at `$HOME/.emery/store` (relocatable via `$EMERY_HOME`) with launcher pull-on-miss from the fixed first-party GHCR mapping ([RFC-76](archive/rfc-76-adapter-install.md)); bare names and component selectors resolve the project component cache only.
 
-- **Adapter resolution at init**: `emery init` resolves the adapter needed for project scaffolding. There is no separate adapter hydration command.
+- **Adapter resolution at init**: `emery init` ensures the adapter needed for project scaffolding (auto-pin to the embedded adapter train on a bare-name cache miss). There is no separate adapter hydration command.
 - **Engine embedded in the binary**: the engine guest ships as static component bytes inside the binary (`include_bytes!` over the root `build.rs`'s `EMERY_WASM`), registered at boot as the sole `wasi:cli/run` exporter — the binary version *is* the engine version, one knob, no store install and no first-launch fetch. Local engine iteration rebuilds the wasm32 product and the native build re-embeds it.
-- **Deployment policy**: the `launcher` crate's expressions anchor the project root from argv and the working directory, capture the layout once, create the writable project / cache / store mount directories, derive the optional `adapter add` seed preopen, and construct the fail-closed adapters-only `GuestResolver` ([RFC-70](rfc-70-deployment.md)). The resolver downloads nothing: adapters are hydrated by the engine guest's ensure legs and verify-and-loaded at dispatch. Persisted `resolution.json` diagnostics are RFC-70 Stage 2.
+- **Deployment policy**: the `launcher` crate's expressions anchor the project root from argv and the working directory, capture the layout once, create the writable project / cache mount directories, derive the optional `adapter add` seed preopen, construct the fail-closed adapters-only `GuestResolver` with pull-on-miss, and bind the MCP HTTP listener + route hook ([RFC-71](rfc-71-deployment.md)). The global store is host-owned (no guest mount). Persisted `resolution.json` / deployment-doctor diagnostics remain RFC-71 Stage 2.
 
 ## Deferred relatives
 
-[RFC-55](future/rfc-55-working-tree.md) (distributed working trees) and [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles) are deferred, not superseded.
+[RFC-55](future/rfc-55-working-tree.md) (distributed working trees), [RFC-60](future/rfc-60-verify-profiles.md) (verify profiles), and [RFC-72](future/rfc-72-materialization.md) (managed workspace slots — after [RFC-70](rfc-70-program.md)) are deferred, not superseded.
 
 ## Key trade-offs
 
