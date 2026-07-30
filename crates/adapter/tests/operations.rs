@@ -3,8 +3,8 @@
 use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, evidence_tail, leads_tail};
 use adapter::registry::Doc;
 use adapter::seam::{
-    Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
-    WorkingTree,
+    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
+    TargetMetadata, WorkingTree,
 };
 use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
 use omnia_testkit::model::Harness;
@@ -85,7 +85,8 @@ impl Target for Probe {
     }
 
     async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
+        _tree: &WorkingTree,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -131,7 +132,9 @@ async fn target_dispatch() {
         subpath: None,
     };
 
-    let report = Probe::build(&model, &ctx(), "demo", &[], &tree).await.expect("build succeeds");
+    let report = Probe::build(&model, &ctx(), "demo", &[], &BuildContext::default(), &tree)
+        .await
+        .expect("build succeeds");
     assert_eq!(report, Report::success());
     let report = Probe::merge(&model, &ctx(), "demo", MergePhase::Preflight, &tree)
         .await

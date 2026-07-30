@@ -63,22 +63,48 @@ pub struct Evidence {
     pub claims: Vec<Claim>,
 }
 
+/// One slice-artifact payload, mirroring the WIT `payload` variant.
+///
+/// `Path` is the artifact's project-relative location ('/'-separated),
+/// resolvable both in the adapter guest's `"."` preopen and in a lent
+/// agent workspace — never host-absolute. `Body` is the inlined
+/// artifact text for non-lent deployments (RFC-55). The cases are
+/// exclusive: the engine sends `Path` while every deployment lends
+/// the working tree.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Payload {
+    /// Project-relative artifact path ('/'-separated).
+    Path(String),
+    /// Inlined artifact text when the deployment does not lend the tree.
+    Body(String),
+}
+
 /// One slice-artifact input to a build.
 ///
-/// Bodies cross the seam directly; adapters read other context through
-/// their shared-mount preopen.
+/// Paths cross the seam typed; adapters render them verbatim and never
+/// re-derive the engine's slice layout from prose conventions.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Input {
-    /// The slice's `proposal.md` body.
-    Proposal(String),
-    /// The slice's `design.md` body.
-    Design(String),
-    /// The slice's `tasks.md` body.
-    Tasks(String),
-    /// One behavioural spec body (`specs/<domain>/spec.md`).
-    Spec(String),
-    /// Any additional artifact body.
-    Other(String),
+    /// The slice's `proposal.md`.
+    Proposal(Payload),
+    /// The slice's `design.md`.
+    Design(Payload),
+    /// The slice's `tasks.md`.
+    Tasks(Payload),
+    /// One behavioural spec (`specs/<domain>/spec.md`).
+    Spec(Payload),
+    /// Any additional artifact.
+    Other(Payload),
+}
+
+/// Deterministic per-slice facts the engine forwards to a build,
+/// mirroring the WIT `build-context` record.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct BuildContext {
+    /// Kebab-case adapter names of the slice's bound sources, resolved
+    /// from the plan entry's `sources[]` through the plan-level
+    /// bindings map. Empty when the slice has no resolvable plan entry.
+    pub sources: Vec<String>,
 }
 
 /// Names the tree a build operates on.
@@ -144,7 +170,8 @@ pub trait Target: Send + Sync {
 
     /// Build `slice` against the shared project mount.
     fn build(
-        &self, id: String, slice: String, inputs: Vec<Input>, tree: WorkingTree,
+        &self, id: String, slice: String, inputs: Vec<Input>, context: BuildContext,
+        tree: WorkingTree,
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
 
     /// Run one target-specific merge gate (`phase`) around the engine's

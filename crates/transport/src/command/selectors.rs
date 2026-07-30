@@ -146,7 +146,8 @@ impl seam::Target for Grammar {
     }
 
     async fn build(
-        &self, _id: String, _slice: String, _inputs: Vec<Input>, _tree: WorkingTree,
+        &self, _id: String, _slice: String, _inputs: Vec<Input>, _context: seam::BuildContext,
+        _tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
         never_dispatched!()
     }

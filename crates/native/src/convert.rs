@@ -12,7 +12,7 @@ use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severi
 use project::adapter::metadata::Metadata;
 use project::adapter::{BuildInputDeclaration, PlatformsCapability};
 use project::seam::wire::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
-use project::seam::{self, Evidence, Input, Lead};
+use project::seam::{self, BuildContext, Evidence, Input, Lead};
 
 /// Widen an SDK operation error to the engine seam error.
 #[must_use]
@@ -115,12 +115,24 @@ pub const fn narrow_phase(phase: seam::MergePhase) -> aseam::MergePhase {
 /// Narrow a workflow input to the SDK input.
 #[must_use]
 pub fn narrow_input(input: Input) -> aseam::Input {
+    let payload = |body: seam::Payload| match body {
+        seam::Payload::Path(path) => aseam::Payload::Path(path),
+        seam::Payload::Body(text) => aseam::Payload::Body(text),
+    };
     match input {
-        Input::Proposal(body) => aseam::Input::Proposal(body),
-        Input::Design(body) => aseam::Input::Design(body),
-        Input::Tasks(body) => aseam::Input::Tasks(body),
-        Input::Spec(body) => aseam::Input::Spec(body),
-        Input::Other(body) => aseam::Input::Other(body),
+        Input::Proposal(body) => aseam::Input::Proposal(payload(body)),
+        Input::Design(body) => aseam::Input::Design(payload(body)),
+        Input::Tasks(body) => aseam::Input::Tasks(payload(body)),
+        Input::Spec(body) => aseam::Input::Spec(payload(body)),
+        Input::Other(body) => aseam::Input::Other(payload(body)),
+    }
+}
+
+/// Narrow a workflow build context to the SDK context.
+#[must_use]
+pub fn narrow_context(context: BuildContext) -> aseam::BuildContext {
+    aseam::BuildContext {
+        sources: context.sources,
     }
 }
 

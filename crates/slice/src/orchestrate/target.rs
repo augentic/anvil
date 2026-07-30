@@ -8,7 +8,8 @@ use jiff::Timestamp;
 use project::adapter::{AdapterSelector, TargetAdapter};
 use project::config::Layout;
 use project::journal::{self, EventKind};
-use project::seam::{Input, Target, WorkingTree};
+use project::plan::Plan;
+use project::seam::{BuildContext, Input, Payload, Target, WorkingTree};
 
 use super::{seam_failure, target_id};
 use crate::{
@@ -114,9 +115,10 @@ async fn finalize(
     adapter: &TargetAdapter, request: &BuildRequest, tree: WorkingTree,
 ) -> Result<BuildOutcome, Error> {
     let inputs = read_inputs(request)?;
+    let context = build_context(layout, slice)?;
     let id = target_id(adapter);
     let report = seam
-        .build(id.clone(), slice.to_string(), inputs, tree)
+        .build(id.clone(), slice.to_string(), inputs, context, tree)
         .await
         .map_err(|err| seam_failure("build", &id, &err))?;
 
@@ -174,26 +176,86 @@ fn write_request(
     Ok(request)
 }
 
-/// Read the request's resolved artifact bodies into the seam's
-/// [`Input`] variants, in request order (proposal, design, tasks,
-/// specs, additional).
+/// Resolve the request's artifacts into path-form seam [`Input`]s,
+/// in request order (proposal, design, tasks, specs, additional).
+///
+/// Each payload is [`Payload::Path`] with the artifact's
+/// project-relative, '/'-separated path — every deployment lends the
+/// working tree, so the adapter's agent reads the file itself. Paths
+/// are never host-absolute: they resolve both in the adapter guest's
+/// `"."` preopen and in the lent agent workspace.
 fn read_inputs(request: &BuildRequest) -> Result<Vec<Input>, Error> {
     let root = &request.inputs.root;
+    let project_dir = &request.project_dir;
     let artifacts = &request.inputs.artifacts;
+    let resolve = |relative: &str| resolve_artifact(root, project_dir, relative);
     let mut inputs = vec![
-        Input::Proposal(read_artifact(root, &artifacts.proposal)?),
-        Input::Design(read_artifact(root, &artifacts.design)?),
-        Input::Tasks(read_artifact(root, &artifacts.tasks)?),
+        Input::Proposal(resolve(&artifacts.proposal)?),
+        Input::Design(resolve(&artifacts.design)?),
+        Input::Tasks(resolve(&artifacts.tasks)?),
     ];
     for spec in &artifacts.specs {
-        inputs.push(Input::Spec(read_artifact(root, spec)?));
+        inputs.push(Input::Spec(resolve(spec)?));
     }
     for additional in &artifacts.additional {
-        inputs.push(Input::Other(read_artifact(root, additional)?));
+        inputs.push(Input::Other(resolve(additional)?));
     }
     Ok(inputs)
 }
 
-fn read_artifact(root: &Path, relative: &str) -> Result<String, Error> {
-    project::fs::read_text(&root.join(relative))
+/// Resolve one request artifact to its project-relative path payload,
+/// verifying the file exists so a broken slice tree fails here rather
+/// than inside the adapter's judgment leg.
+fn resolve_artifact(root: &Path, project_dir: &Path, relative: &str) -> Result<Payload, Error> {
+    let absolute = root.join(relative);
+    if !absolute.is_file() {
+        return Err(Error::validation_failed(
+            "target-build-input-missing",
+            "every request artifact resolves to a file in the slice tree",
+            format!("build input `{}` does not exist", absolute.display()),
+        ));
+    }
+    let project_relative = absolute.strip_prefix(project_dir).map_err(|_prefix| Error::Diag {
+        code: "target-build-input-outside-project",
+        detail: format!(
+            "build input `{}` resolves outside the project directory `{}`",
+            absolute.display(),
+            project_dir.display()
+        ),
+    })?;
+    let path = project_relative
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/");
+    Ok(Payload::Path(path))
+}
+
+/// Resolve the slice's bound source-adapter names from its plan entry
+/// into the seam [`BuildContext`].
+///
+/// Each entry binding's source key maps through the plan-level
+/// `sources` table to its adapter name; names dedupe in first-bound
+/// order. A missing `plan.yaml`, an absent entry, or an unresolvable
+/// key yields an empty / partial list rather than a refusal — the
+/// context is advisory (targets use it to skip source-conditional
+/// legs), not a gate.
+fn build_context(layout: Layout<'_>, slice: &str) -> Result<BuildContext, Error> {
+    let plan_path = layout.plan_path();
+    if !plan_path.exists() {
+        return Ok(BuildContext::default());
+    }
+    let plan = Plan::load(&plan_path)?;
+    let Some(entry) = plan.entries.iter().find(|e| e.name == slice) else {
+        return Ok(BuildContext::default());
+    };
+    let mut sources = Vec::new();
+    for binding in &entry.sources {
+        if let Some(bound) = plan.sources.get(&binding.source)
+            && !sources.contains(&bound.adapter)
+        {
+            sources.push(bound.adapter.clone());
+        }
+    }
+    Ok(BuildContext { sources })
 }

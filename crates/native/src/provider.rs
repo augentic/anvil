@@ -248,14 +248,16 @@ impl Target for Provider {
     }
 
     async fn build(
-        &self, id: String, slice: String, inputs: Vec<Input>, tree: WorkingTree,
+        &self, id: String, slice: String, inputs: Vec<Input>, context: seam::BuildContext,
+        tree: WorkingTree,
     ) -> Result<BuildReport, seam::Error> {
         let ctx = self.ctx(&id, self.mcp_url(&id).await?);
         let inputs: Vec<aseam::Input> = inputs.into_iter().map(convert::narrow_input).collect();
+        let context = convert::narrow_context(context);
         let tree = convert::narrow_tree(tree);
         let report = self
             .catalog
-            .build(&self.model, &ctx, &id, &slice, &inputs, &tree)
+            .build(&self.model, &ctx, &id, &slice, &inputs, &context, &tree)
             .await
             .map_err(convert::error)?;
         Ok(convert::widen_report(&id, slice, report))

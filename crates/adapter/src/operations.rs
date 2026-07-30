@@ -15,8 +15,8 @@ use omnia_guest::Model;
 use crate::identity::AdapterIdentity;
 use crate::registry::Doc;
 use crate::seam::{
-    Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
-    WorkingTree,
+    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
+    TargetMetadata, WorkingTree,
 };
 
 /// Source adapter contract: `metadata`, prose registry, `survey` / `extract`.
@@ -71,7 +71,8 @@ pub trait Target {
 
     /// Build `slice` against the lent working tree.
     fn build<P: Model>(
-        model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input], tree: &WorkingTree,
+        model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input], context: &BuildContext,
+        tree: &WorkingTree,
     ) -> impl Future<Output = Result<Report, Error>> + Send;
 
     /// Run one phased merge gate.

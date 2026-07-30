@@ -249,27 +249,23 @@ Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one en
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the guest-routed `emery slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its inline `lead` and verbatim `claims` (read from `evidence/<source>.yaml`), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the guest-routed `emery slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree — they are not inlined on the wire), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "kind": "inputs",
   "slice": "identity-service",
   "sources": [
     {
       "source": "docs",
       "lead": "password-reset",
-      "claims": [
-        { "id": "password-reset.request", "kind": "requirement", "statement": "The system lets a registered user request a password reset link by email.", "path": "docs/identity/reset.md#L4" }
-      ]
+      "evidence-path": ".emery/slices/identity-service/evidence/docs.yaml"
     },
     {
       "source": "legacy",
       "lead": "password-reset",
-      "claims": [
-        { "id": "password-reset.expiry", "kind": "example", "output": "expiresAt = createdAt + 24h", "path": "src/users/reset.ts#L88" }
-      ]
+      "evidence-path": ".emery/slices/identity-service/evidence/legacy.yaml"
     }
   ],
   "guidance-brief": "# Guidance brief\n…"

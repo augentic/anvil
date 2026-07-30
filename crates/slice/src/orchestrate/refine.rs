@@ -111,7 +111,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     }
 
     // Assemble the kernel context the judgment leg projects against.
-    let source_inputs = read_source_inputs(&slice_dir, &entry)?;
+    let source_inputs = read_source_inputs(layout, &entry)?;
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();
     let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);

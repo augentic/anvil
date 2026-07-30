@@ -8,7 +8,7 @@ use adapter::phase::{
     report,
 };
 use adapter::seam::{
-    BuildOutput, Context, Finding, Input, Platform, Report, Severity, Status, WorkingTree,
+    BuildOutput, Context, Finding, Input, Payload, Platform, Report, Severity, Status, WorkingTree,
 };
 use omnia_testkit::model::Harness;
 use tempfile::tempdir;
@@ -84,13 +84,16 @@ async fn judgment_legs() {
 fn renderers() {
     assert_eq!(assemble_system(&["first", "second"]), "first\n\n---\n\nsecond");
     assert_eq!(render_inputs(&[]), "(no slice artifacts were provided)");
-    assert_eq!(
-        render_inputs(&[
-            Input::Proposal("proposal body".to_string()),
-            Input::Spec("spec body".to_string()),
-        ]),
-        "### input: proposal\n\nproposal body\n\n### input: spec\n\nspec body"
+    let rendered = render_inputs(&[
+        Input::Proposal(Payload::Path(".emery/slices/demo/proposal.md".to_string())),
+        Input::Spec(Payload::Body("inlined spec body".to_string())),
+    ]);
+    assert!(
+        rendered.starts_with("Slice artifact inputs. Read each path from the working tree"),
+        "the preamble instructs the agent to read the files: {rendered}"
     );
+    assert!(rendered.contains("### input: proposal → .emery/slices/demo/proposal.md"));
+    assert!(rendered.contains("### input: spec\n\ninlined spec body"));
 
     let outcome = render_outcome(
         "core",

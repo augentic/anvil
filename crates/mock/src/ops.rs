@@ -8,8 +8,8 @@
 
 use adapter::registry::Doc;
 use adapter::seam::{
-    Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata, TargetMetadata,
-    WorkingTree,
+    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
+    TargetMetadata, WorkingTree,
 };
 use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
@@ -82,7 +82,8 @@ macro_rules! mock_target {
             }
 
             async fn build<P: Model>(
-                _model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input], tree: &WorkingTree,
+                _model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input],
+                _context: &BuildContext, tree: &WorkingTree,
             ) -> Result<Report, Error> {
                 let root = ctx.tree_root(tree);
                 behaviour::build(&root, ctx.adapter_id, slice, inputs)

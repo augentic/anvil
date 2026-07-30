@@ -1,6 +1,6 @@
 # Substep contract
 
-Four artifacts in fixed order: `proposal → specs → design → tasks`. Each section reads prior sections plus inputs-envelope `Evidence[]` (`lead` + `claims`) and the resolved target `guidance`; later sections never rewrite earlier ones. The persist tail projects kernel-owned fields; the agent never writes `ID:` / `Sources:` / `Status:`, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
+Four artifacts in fixed order: `proposal → specs → design → tasks`. Each section reads prior sections plus each bound source's Evidence document (`lead` + `claims`, read from the working tree at the inputs-envelope `evidence-path`) and the resolved target `guidance`; later sections never rewrite earlier ones. The persist tail projects kernel-owned fields; the agent never writes `ID:` / `Sources:` / `Status:`, `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists.
 
 ## 1. `proposal.md`
 
