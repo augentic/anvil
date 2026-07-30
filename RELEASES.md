@@ -1,6 +1,6 @@
 ## 0.33.0
 
-Unreleased
+Released 2026-07-30
 
 ### Compatibility
 
