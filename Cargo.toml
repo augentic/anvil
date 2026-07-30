@@ -217,7 +217,6 @@ omnia-wasi-otel = "0.35.0"
 # unpublished; Omnia publishes first, then these revert to the
 # crates-io pins below.
 # omnia = { path = "../omnia/crates/omnia" }
-# omnia-cursor = { git = "https://github.com/augentic/backends" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
 # omnia-host-macros = { path = "../omnia/crates/host-macros" }
@@ -226,6 +225,7 @@ omnia-wasi-otel = "0.35.0"
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 omnia = { git = "https://github.com/augentic/omnia" }
+omnia-cursor = { git = "https://github.com/augentic/backends" }
 omnia-guest = { git = "https://github.com/augentic/omnia" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia" }
