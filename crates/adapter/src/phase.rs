@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 use crate::answers::{REPORT_ANSWER_SCHEMA, ReportAnswer};
 use crate::judgment;
-use crate::seam::{Context, Error, Finding, Input, Report, Status};
+use crate::seam::{Context, Error, Finding, Input, Payload, Report, Status};
 
 /// Answer schema for one internal phase leg (not part of the WIT contract).
 pub const PHASE_ANSWER_SCHEMA: &str = r#"{
@@ -79,17 +79,31 @@ pub fn assemble_system(bodies: &[&str]) -> String {
     bodies.join("\n\n---\n\n")
 }
 
-/// Render typed inputs as labeled prompt sections.
+/// Render typed inputs as labeled path or body sections.
+///
+/// Path-form inputs arrive project-relative on the seam and are
+/// rendered verbatim; the preamble instructs the agent to read each
+/// file from the lent working tree before writing code. Body-form
+/// inputs (RFC-55 non-lent deployments) inline the artifact text
+/// under the label with no path.
 #[must_use]
 pub fn render_inputs(inputs: &[Input]) -> String {
     if inputs.is_empty() {
         return "(no slice artifacts were provided)".to_string();
     }
-    inputs
+    let sections = inputs
         .iter()
-        .map(|input| format!("### input: {}\n\n{}", input.label(), input.body()))
+        .map(|input| match input.payload() {
+            Payload::Path(path) => format!("### input: {} → {path}", input.label()),
+            Payload::Body(body) => format!("### input: {}\n\n{body}", input.label()),
+        })
         .collect::<Vec<_>>()
-        .join("\n\n")
+        .join("\n\n");
+    format!(
+        "Slice artifact inputs. Read each path from the working tree before \
+         writing code; a body is inlined under its label only when the \
+         deployment does not lend the tree.\n\n{sections}"
+    )
 }
 
 /// Render one phase leg outcome for the report prompt.

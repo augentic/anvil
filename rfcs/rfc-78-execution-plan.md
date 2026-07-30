@@ -44,9 +44,9 @@ WP1, WP4, WP5, and WP6-design have no mutual dependencies — dispatch them in p
 
 `emery` side (RFC-78 D1):
 
-- `wit/emery.wit`: `variant input` payloads become `record input-body { path: string, body: option<string> }` (labels stay the variant cases). Fold in WP3's build-context in the same edit (see WP3).
+- `wit/emery.wit`: `variant input` payloads become `variant payload { path(string), body(string) }` (labels stay the variant cases). Fold in WP3's build-context in the same edit (see WP3).
 - Mirror in `crates/project/src/seam.rs` and the SDK seam (`crates/adapter/src/seam.rs`); update the guest provider mapping (`crates/guest/src/provider.rs`) and the native provider / `mock` crate.
-- `read_inputs` (`crates/slice/src/orchestrate/target.rs`): emit project-relative paths (join `BuildRequest.inputs.root`-relative names against the root, normalized project-relative), `body: none`. Paths must resolve in the guest's `"."` preopen **and** in the lent agent workspace — never host-absolute.
+- `read_inputs` (`crates/slice/src/orchestrate/target.rs`): emit project-relative paths (join `BuildRequest.inputs.root`-relative names against the root, normalized project-relative) as `payload.path`. Paths must resolve in the guest's `"."` preopen **and** in the lent agent workspace — never host-absolute.
 - Add the path-form renderer to `crates/adapter/src/phase.rs` (`### input: <label> → <path>` + an explicit read-before-writing instruction).
 
 `emery-adapters` side (RFC-78 D1 + D2):

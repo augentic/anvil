@@ -2,7 +2,7 @@
 //! prompt labels, and the model-to-seam error mapping.
 
 use adapter::Error as ModelError;
-use adapter::seam::{Error, Input, Severity};
+use adapter::seam::{Error, Input, Payload, Severity};
 
 #[test]
 fn blocking_severities() {
@@ -14,16 +14,18 @@ fn blocking_severities() {
 
 #[test]
 fn input_labels() {
+    let payload = |path: &str| Payload::Path(path.to_string());
     let inputs = [
-        (Input::Proposal("p".to_string()), "proposal"),
-        (Input::Design("d".to_string()), "design"),
-        (Input::Tasks("t".to_string()), "tasks"),
-        (Input::Spec("s".to_string()), "spec"),
-        (Input::Other("o".to_string()), "other"),
+        (Input::Proposal(payload("p")), "proposal"),
+        (Input::Design(payload("d")), "design"),
+        (Input::Tasks(payload("t")), "tasks"),
+        (Input::Spec(payload("s")), "spec"),
+        (Input::Other(payload("o")), "other"),
     ];
     for (input, label) in &inputs {
         assert_eq!(input.label(), *label);
-        assert_eq!(input.body(), &label[..1], "body survives the label projection");
+        assert_eq!(input.path(), Some(&label[..1]), "path survives the label projection");
+        assert_eq!(input.body(), None, "lent deployments carry no inlined body");
     }
 }
 

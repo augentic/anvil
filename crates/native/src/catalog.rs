@@ -46,6 +46,7 @@ type BuildFn = for<'a> fn(
     &'a Context<'a>,
     &'a str,
     &'a [aseam::Input],
+    &'a aseam::BuildContext,
     &'a aseam::WorkingTree,
 ) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>>;
 type MergeFn = for<'a> fn(
@@ -256,12 +257,18 @@ impl Catalog {
     ///
     /// Returns the adapter's failure, or `invalid-request` when `id`
     /// routes to no linked target.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "internal dispatch shim mirroring the seam build signature; one call site"
+    )]
     pub(crate) async fn build(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str, inputs: &[aseam::Input],
-        tree: &aseam::WorkingTree,
+        context: &aseam::BuildContext, tree: &aseam::WorkingTree,
     ) -> Result<aseam::Report, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { build, .. }) => build(model, ctx, slice, inputs, tree).await,
+            Some(Ops::Target { build, .. }) => {
+                build(model, ctx, slice, inputs, context, tree).await
+            }
             _ => Err(unlinked(id)),
         }
     }
@@ -325,8 +332,8 @@ impl Builder {
             docs: A::docs,
             ops: Ops::Target {
                 guidance: |model, ctx| Box::pin(A::guidance(model, ctx)),
-                build: |model, ctx, slice, inputs, tree| {
-                    Box::pin(A::build(model, ctx, slice, inputs, tree))
+                build: |model, ctx, slice, inputs, context, tree| {
+                    Box::pin(A::build(model, ctx, slice, inputs, context, tree))
                 },
                 merge: |model, ctx, slice, phase, tree| {
                     Box::pin(A::merge(model, ctx, slice, phase, tree))

@@ -164,13 +164,36 @@ interface source {
 interface target {
   use types.{ adapter-id, error, revision };
 
+  /// One slice-artifact payload. `path` is the project-relative
+  /// location ('/'-separated), resolvable both in the adapter guest's
+  /// `"."` preopen and in a lent agent workspace — never host-absolute.
+  /// `body` is the inlined artifact text for non-lent deployments
+  /// (RFC-55). The cases are exclusive: the engine sends `path` while
+  /// every deployment lends the working tree.
+  variant payload {
+    path(string),
+    body(string),
+  }
+
   /// Types of inputs used to build a slice.
   variant input {
-    proposal(string),
-    design(string),
-    tasks(string),
-    spec(string),
-    other(string),
+    proposal(payload),
+    design(payload),
+    tasks(payload),
+    spec(payload),
+    other(payload),
+  }
+
+  /// Deterministic per-slice facts the engine forwards to a build.
+  /// `sources` carries the kebab-case adapter names of the slice's
+  /// bound sources; the engine populates it at dispatch time from the
+  /// plan entry's `sources[]` resolved through the plan-level bindings
+  /// map, so targets can skip source-conditional legs (e.g. omnia's
+  /// capture replay when no `captures` source is bound) without
+  /// reading `plan.yaml` in-guest. Empty when the slice has no
+  /// resolvable plan entry.
+  record build-context {
+    sources: list<string>,
   }
 
   /// Names the tree a build or merge operates on. Every guest in the
@@ -338,7 +361,7 @@ interface target {
   /// changes in place; the judgment leg runs behind the adapter's own
   /// `create` call, with references served from its MCP export. The report
   /// carries only judgment — the resulting delta lives in the tree.
-  build: async func(id: adapter-id, slice: string, inputs: list<input>, tree: working-tree) -> result<report, error>;
+  build: async func(id: adapter-id, slice: string, inputs: list<input>, context: build-context, tree: working-tree) -> result<report, error>;
 
   /// Run one target-specific merge gate around the engine's deterministic
   /// core merge. Dispatched twice per slice merge: `preflight` before the

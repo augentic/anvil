@@ -17,7 +17,9 @@ use project::adapter::{
     ResolvedTarget, Resolver,
 };
 use project::handler::{Anchor, ExecutionPaths};
-use project::seam::{self, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree};
+use project::seam::{
+    self, BuildContext, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree,
+};
 use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::emery::adapter::{source, target, types};
@@ -102,17 +104,22 @@ impl Target for Provider {
     }
 
     fn build(
-        &self, id: String, slice: String, inputs: Vec<Input>, tree: WorkingTree,
+        &self, id: String, slice: String, inputs: Vec<Input>, context: BuildContext,
+        tree: WorkingTree,
     ) -> impl Future<Output = Result<BuildReport, seam::Error>> + Send {
         async move {
             let wire_inputs = inputs.into_iter().map(map_input).collect();
+            let wire_context = target::BuildContext {
+                sources: context.sources,
+            };
             let wire_tree = target::WorkingTree {
                 base: tree.base,
                 subpath: tree.subpath,
             };
-            let report = target::build(id.clone(), slice.clone(), wire_inputs, wire_tree)
-                .await
-                .map_err(map_error)?;
+            let report =
+                target::build(id.clone(), slice.clone(), wire_inputs, wire_context, wire_tree)
+                    .await
+                    .map_err(map_error)?;
             Ok(widen_report(&id, slice, report))
         }
     }
@@ -239,12 +246,16 @@ const fn map_claim_kind(kind: source::ClaimKind) -> artifacts::evidence::ClaimKi
 }
 
 fn map_input(input: Input) -> target::Input {
+    let payload = |body: seam::Payload| match body {
+        seam::Payload::Path(path) => target::Payload::Path(path),
+        seam::Payload::Body(text) => target::Payload::Body(text),
+    };
     match input {
-        Input::Proposal(body) => target::Input::Proposal(body),
-        Input::Design(body) => target::Input::Design(body),
-        Input::Tasks(body) => target::Input::Tasks(body),
-        Input::Spec(body) => target::Input::Spec(body),
-        Input::Other(body) => target::Input::Other(body),
+        Input::Proposal(body) => target::Input::Proposal(payload(body)),
+        Input::Design(body) => target::Input::Design(payload(body)),
+        Input::Tasks(body) => target::Input::Tasks(payload(body)),
+        Input::Spec(body) => target::Input::Spec(payload(body)),
+        Input::Other(body) => target::Input::Other(payload(body)),
     }
 }
 

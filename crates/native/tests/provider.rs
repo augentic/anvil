@@ -199,9 +199,17 @@ async fn build_and_merge_cross_workflow_seam() {
         subpath: None,
     };
 
-    let inputs = vec![seam::Input::Proposal("BODY".to_string())];
+    let inputs = vec![seam::Input::Proposal(seam::Payload::Path(
+        ".emery/slices/demo/proposal.md".to_string(),
+    ))];
     let report = provider
-        .build("target:mock".to_string(), "demo".to_string(), inputs, tree())
+        .build(
+            "target:mock".to_string(),
+            "demo".to_string(),
+            inputs,
+            seam::BuildContext::default(),
+            tree(),
+        )
         .await
         .expect("build dispatches");
     assert_eq!(report.outputs[0].path, "build:demo:1");

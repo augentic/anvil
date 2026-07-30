@@ -53,14 +53,31 @@ impl From<crate::seam::TargetMetadata> for AdapterMetadata {
     }
 }
 
+impl From<Payload> for crate::seam::Payload {
+    fn from(payload: Payload) -> Self {
+        match payload {
+            Payload::Path(path) => Self::Path(path),
+            Payload::Body(body) => Self::Body(body),
+        }
+    }
+}
+
 impl From<Input> for crate::seam::Input {
     fn from(input: Input) -> Self {
         match input {
-            Input::Proposal(body) => Self::Proposal(body),
-            Input::Design(body) => Self::Design(body),
-            Input::Tasks(body) => Self::Tasks(body),
-            Input::Spec(body) => Self::Spec(body),
-            Input::Other(body) => Self::Other(body),
+            Input::Proposal(payload) => Self::Proposal(payload.into()),
+            Input::Design(payload) => Self::Design(payload.into()),
+            Input::Tasks(payload) => Self::Tasks(payload.into()),
+            Input::Spec(payload) => Self::Spec(payload.into()),
+            Input::Other(payload) => Self::Other(payload.into()),
+        }
+    }
+}
+
+impl From<BuildContext> for crate::seam::BuildContext {
+    fn from(context: BuildContext) -> Self {
+        Self {
+            sources: context.sources,
         }
     }
 }
@@ -181,12 +198,13 @@ pub async fn dispatch_guidance<A: crate::Target>(id: AdapterId) -> Result<String
 ///
 /// As the implementor's [`build`](crate::Target::build).
 pub async fn dispatch_build<A: crate::Target>(
-    id: AdapterId, slice: String, inputs: Vec<Input>, tree: WorkingTree,
+    id: AdapterId, slice: String, inputs: Vec<Input>, context: BuildContext, tree: WorkingTree,
 ) -> Result<Report, Error> {
     let inputs: Vec<crate::seam::Input> = inputs.into_iter().map(Into::into).collect();
+    let context = crate::seam::BuildContext::from(context);
     let tree = crate::seam::WorkingTree::from(tree);
     let ctx = crate::seam::Context::guest(&id);
-    A::build(&crate::WasiModel, &ctx, &slice, &inputs, &tree)
+    A::build(&crate::WasiModel, &ctx, &slice, &inputs, &context, &tree)
         .await
         .map(Into::into)
         .map_err(Into::into)
@@ -235,9 +253,10 @@ macro_rules! target {
                 id: $crate::target::AdapterId,
                 slice: String,
                 inputs: Vec<$crate::target::Input>,
+                context: $crate::target::BuildContext,
                 tree: $crate::target::WorkingTree,
             ) -> Result<$crate::target::Report, $crate::target::Error> {
-                $crate::target::dispatch_build::<$adapter>(id, slice, inputs, tree).await
+                $crate::target::dispatch_build::<$adapter>(id, slice, inputs, context, tree).await
             }
 
             async fn merge(

@@ -1,7 +1,9 @@
 //! The exhaustive catalog inventory and the failure profiles, all
 //! exercised through the SDK trait surface (no provider hooks).
 
-use adapter::seam::{Context, Error, Input, MergePhase, Status, WorkingTree};
+use adapter::seam::{
+    BuildContext, Context, Error, Input, MergePhase, Payload, Status, WorkingTree,
+};
 use adapter::{Source, Target};
 use mock::{
     Adapter, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput, catalog,
@@ -81,9 +83,16 @@ async fn target_failures() {
         .expect_err("fail-guidance fails through the trait surface");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-guidance")));
 
-    let err = FailBuild::build(&model, &ctx("target:mock-fail-build"), "s", &[], &tree())
-        .await
-        .expect_err("fail-build fails");
+    let err = FailBuild::build(
+        &model,
+        &ctx("target:mock-fail-build"),
+        "s",
+        &[],
+        &BuildContext::default(),
+        &tree(),
+    )
+    .await
+    .expect_err("fail-build fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-build")));
 
     let err = FailMerge::merge(
@@ -106,10 +115,16 @@ async fn missing_output_reports_unwritten_path() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let _guard = mock::Cwd::enter(tmp.path());
 
-    let report =
-        MissingOutput::build(&model, &ctx("target:mock-missing-output"), "greeting", &[], &tree())
-            .await
-            .expect("missing-output reports success");
+    let report = MissingOutput::build(
+        &model,
+        &ctx("target:mock-missing-output"),
+        "greeting",
+        &[],
+        &BuildContext::default(),
+        &tree(),
+    )
+    .await
+    .expect("missing-output reports success");
     assert_eq!(report.status, Status::Success);
     assert_eq!(report.outputs.len(), 1);
     assert!(!tmp.path().join(&report.outputs[0].path).exists(), "the output is never written");
@@ -122,10 +137,21 @@ async fn build_writes_artifact() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let _guard = mock::Cwd::enter(tmp.path());
 
-    let inputs = [Input::Proposal("# p".to_string()), Input::Spec("## s".to_string())];
-    let report = Adapter::build(&model, &ctx("target:mock"), "greeting", &inputs, &tree())
-        .await
-        .expect("mock builds");
+    let payload = |path: &str| Payload::Path(path.to_string());
+    let inputs = [
+        Input::Proposal(payload(".emery/slices/greeting/proposal.md")),
+        Input::Spec(payload(".emery/slices/greeting/specs/core/spec.md")),
+    ];
+    let report = Adapter::build(
+        &model,
+        &ctx("target:mock"),
+        "greeting",
+        &inputs,
+        &BuildContext::default(),
+        &tree(),
+    )
+    .await
+    .expect("mock builds");
     assert_eq!(report.status, Status::Success);
 
     let artifact = mock::behaviour::build_artifact_path(tmp.path(), "greeting");

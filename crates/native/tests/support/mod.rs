@@ -12,7 +12,7 @@
 
 use adapter::registry::Doc;
 use adapter::seam::{
-    BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, Platform, Report,
+    BuildContext, BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, Platform, Report,
     SourceMetadata, Status, TargetMetadata, WorkingTree,
 };
 use adapter::{AdapterIdentity, Source, Target};
@@ -94,7 +94,8 @@ impl Target for Probe {
     }
 
     async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, slice: &str, inputs: &[Input], _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, slice: &str, inputs: &[Input], _context: &BuildContext,
+        _tree: &WorkingTree,
     ) -> Result<Report, Error> {
         Ok(echo(format!("build:{slice}:{}", inputs.len())))
     }
@@ -138,7 +139,8 @@ impl Target for FailGuidance {
     }
 
     async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
+        _tree: &WorkingTree,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -178,7 +180,8 @@ impl Target for Floored {
     }
 
     async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
+        _tree: &WorkingTree,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -253,7 +256,8 @@ impl Target for Pinned {
     }
 
     async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
+        _tree: &WorkingTree,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -293,7 +297,8 @@ impl Target for BadVersion {
     }
 
     async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
+        _tree: &WorkingTree,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -333,7 +338,8 @@ impl Target for ProbeV2 {
     }
 
     async fn build<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
+        _tree: &WorkingTree,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }

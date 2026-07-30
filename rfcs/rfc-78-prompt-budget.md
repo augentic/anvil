@@ -109,12 +109,12 @@ The same shape repeats in the sibling targets, larger: vectis inlines `render_in
 
 ### D1 — Path-first inputs on lent-workspace legs (WIT `input` record, now)
 
-When the judgment leg lends the workspace — which today is every leg — user prompts should carry **paths and labels**, not full artifact bodies. Change the WIT `input` variant payload to a record carrying `{ path, body: option<string> }` (mirrored in `crates/project/src/seam.rs` and the SDK seam), and add a path-form `phase::render_inputs` to the SDK that renders `### input: proposal → .emery/slices/<slice>/proposal.md` (and so on) with an explicit instruction to read those files from the lent tree before writing code.
+When the judgment leg lends the workspace — which today is every leg — user prompts should carry **paths and labels**, not full artifact bodies. Change the WIT `input` variant payload to an exclusive `variant payload { path(string), body(string) }` (mirrored in `crates/project/src/seam.rs` and the SDK seam), and add a path-form `phase::render_inputs` to the SDK that renders `### input: proposal → .emery/slices/<slice>/proposal.md` (and so on) with an explicit instruction to read those files from the lent tree before writing code.
 
 Nothing blocks doing the WIT change immediately:
 
 - **The break is sanctioned.** The package is `emery:adapter@0.1.0`; pre-1.0 a contract change is a hard cut per repo policy — no compatibility alias, no migration shim. First-party adapters are the whole ecosystem today.
-- **The paths already exist and travel well.** `build_request` assembles project-relative paths under the slice tree; joined against `inputs.root` (itself under the guest's `"."` preopen) the same strings resolve for the adapter guest **and** for the spawned `cursor-agent` whose workspace is the same lent tree. `read_inputs` sends `body: none` while every deployment lends; bodies return for [RFC-55](future/rfc-55-working-tree.md) pathless nodes.
+- **The paths already exist and travel well.** `build_request` assembles project-relative paths under the slice tree; joined against `inputs.root` (itself under the guest's `"."` preopen) the same strings resolve for the adapter guest **and** for the spawned `cursor-agent` whose workspace is the same lent tree. `read_inputs` sends `payload.path` while every deployment lends; `payload.body` returns for [RFC-55](future/rfc-55-working-tree.md) pathless nodes.
 - **Co-development needs no release.** The committed `[patch]` block in the adapters repo resolves the SDK from the sibling `emery` checkout, so both repos' changes build and test together before any tag exists.
 
 The shipping cost is one coordinated release — engine tag, adapter SDK pin bump, `FIRST_PARTY_ADAPTER_TRAIN` bump, republish of the first-party components — which is the existing release-checklist process, not new machinery. In exchange, no interim convention ever exists: adapters render paths from typed inputs, never re-derive `.emery/slices/<slice>/…` from prose or point at a manifest file, and the path-form assertion in tests is against the seam type, not a string convention.
@@ -207,7 +207,7 @@ Keep inline: the guidance brief (it comes from the adapter component, not the tr
 
 ## Risks and invariants
 
-- **Path-only inputs require a real `local-path`.** Lending is invariant today (both kernels hardcode `lend_workspace(true)`), so path-first is safe as the default — but the record's `body: option<string>` is the contract that keeps non-lent deployments ([RFC-55](future/rfc-55-working-tree.md)) expressible. Never ship path-only prompts to a backend that cannot read the tree.
+- **Path-only inputs require a real `local-path`.** Lending is invariant today (both kernels hardcode `lend_workspace(true)`), so path-first is safe as the default — but the exclusive `payload.body` case is the contract that keeps non-lent deployments ([RFC-55](future/rfc-55-working-tree.md)) expressible. Never ship path-only prompts to a backend that cannot read the tree.
 - **Adapters must not hardcode the engine's slice layout.** Paths arrive typed on the seam `input` record; adapters render them verbatim and never re-derive `.emery/slices/<slice>/…` from prose conventions. Paths crossing the seam stay project-relative — a host-absolute path is meaningless in the guest's `"."` preopen and to the lent agent.
 - **Do not inline references to “save” MCP round-trips.** The 64 KB problem was system + artifact duplication; the references shelf must stay lazy.
 - **Verify-repair stays one generation leg — transitionally.** The fat leg is today's only shared verify-repair channel; D3 must not weaken it ad hoc. Its deliberate replacement is [RFC-79](rfc-79-swarm-build.md)'s convergence gate — until that lands, the channel is load-bearing.

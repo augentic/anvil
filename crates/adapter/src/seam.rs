@@ -113,19 +113,35 @@ pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
     Some(format!("http://127.0.0.1:{port}/mcp/{}", adapter_id.replacen(':', "/", 1)))
 }
 
+/// One slice-artifact payload — mirrors the WIT `payload` variant.
+///
+/// `Path` is the artifact's project-relative location ('/'-separated),
+/// resolvable both in the guest's `"."` preopen and in a lent agent
+/// workspace — never host-absolute. `Body` is the inlined artifact
+/// text for non-lent deployments (RFC-55). The cases are exclusive:
+/// the engine sends `Path` while every deployment lends the working
+/// tree.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Payload {
+    /// Project-relative artifact path ('/'-separated).
+    Path(String),
+    /// Inlined artifact text when the deployment does not lend the tree.
+    Body(String),
+}
+
 /// One slice-artifact input — mirrors the WIT `target.input` variant.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Input {
     /// The slice's `proposal.md`.
-    Proposal(String),
+    Proposal(Payload),
     /// The slice's `design.md`.
-    Design(String),
+    Design(Payload),
     /// The slice's `tasks.md`.
-    Tasks(String),
+    Tasks(Payload),
     /// One behavioural spec (`specs/<domain>/spec.md`).
-    Spec(String),
+    Spec(Payload),
     /// Any additional artifact.
-    Other(String),
+    Other(Payload),
 }
 
 impl Input {
@@ -141,17 +157,44 @@ impl Input {
         }
     }
 
-    /// The input's artifact body.
+    /// The input's payload variant.
     #[must_use]
-    pub fn body(&self) -> &str {
+    pub const fn payload(&self) -> &Payload {
         match self {
-            Self::Proposal(body)
-            | Self::Design(body)
-            | Self::Tasks(body)
-            | Self::Spec(body)
-            | Self::Other(body) => body,
+            Self::Proposal(payload)
+            | Self::Design(payload)
+            | Self::Tasks(payload)
+            | Self::Spec(payload)
+            | Self::Other(payload) => payload,
         }
     }
+
+    /// The input's project-relative artifact path, when path-form.
+    #[must_use]
+    pub fn path(&self) -> Option<&str> {
+        match self.payload() {
+            Payload::Path(path) => Some(path.as_str()),
+            Payload::Body(_) => None,
+        }
+    }
+
+    /// The input's inlined artifact text, when body-form.
+    #[must_use]
+    pub fn body(&self) -> Option<&str> {
+        match self.payload() {
+            Payload::Body(body) => Some(body.as_str()),
+            Payload::Path(_) => None,
+        }
+    }
+}
+
+/// Deterministic per-slice facts the engine forwards to a build —
+/// mirrors the WIT `target.build-context` record.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct BuildContext {
+    /// Kebab-case adapter names of the slice's bound sources. Empty
+    /// when the slice has no resolvable plan entry.
+    pub sources: Vec<String>,
 }
 
 /// The tree an operation works on — mirrors the WIT `working-tree` record.
