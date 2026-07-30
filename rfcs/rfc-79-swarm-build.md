@@ -4,7 +4,7 @@
 >
 > Owns: the target-build execution model that replaces the fat sequential legs: decomposition of one build into focused judgment requests, the convergence gate that supersedes the in-prompt verify-repair channel, the backend concurrency substrate (agent pool, workspace policy), and the deployment expression that runs workers on remote nodes.
 >
-> Depends: [RFC-78](rfc-78-prompt-budget.md) (the enabling layer — per-request byte budget, timeout semantics, session model), [RFC-60](future/rfc-60-verify-profiles.md) (**promoted from deferred** — host-owned verify is this RFC's convergence gate), [RFC-55](future/rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the multi-node unlock).
+> Depends: [RFC-78](archive/rfc-78-prompt-budget.md) (the enabling layer — per-request byte budget, timeout semantics, session model), [RFC-60](future/rfc-60-verify-profiles.md) (**promoted from deferred** — host-owned verify is this RFC's convergence gate), [RFC-55](future/rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the multi-node unlock).
 >
 > Related: [RFC-18](future/rfc-18-slm.md) (per-worker model selection is this RFC's hook for cheaper backends), [RFC-80](rfc-80-synthesis-redesign.md) (applies the same decomposition pattern at refine time and consumes this RFC's concurrency substrate).
 
@@ -16,7 +16,7 @@ Emery is in PoC, graduating to trial in ~4 weeks. The swarm is the architecture 
 
 ## Why now (evidence)
 
-From [RFC-78](rfc-78-prompt-budget.md)'s `wasm-omnia-r9k` runs:
+From [RFC-78](archive/rfc-78-prompt-budget.md)'s `wasm-omnia-r9k` runs:
 
 - The five-leg omnia build serializes ~30 minutes of agent wall-clock; the review leg nests an invisible agent team (three specialists + antagonist + remediation) inside **one** completion, where the host cannot observe, bound, or time out any member individually — the run died there.
 - The generation leg is one ~64 KB conversation doing four jobs (crate writer, test writer, guest writer, verify-repair loop), because splitting it without a convergence gate would strand repairs.
@@ -29,7 +29,7 @@ The fat leg's ceiling is structural: it cannot parallelize, cannot mix models, c
 ### Topology
 
 - **The WIT seam does not change.** `target.build` remains one dispatch per slice; the adapter core already owns leg sequencing (`targets/omnia/src/operations.rs` makes five `create` calls today). The swarm is the same pattern with more, smaller, possibly concurrent `create`s issued by the in-guest orchestrator.
-- **The orchestrator is deterministic guest code**, not a lead agent. It partitions work, issues worker requests, runs the convergence loop, and folds typed worker outcomes into the `BuildReport` (completing [RFC-78](rfc-78-prompt-budget.md) D6's report absorption). Judgment stays in the workers; sequencing and arbitration stay compiled-in.
+- **The orchestrator is deterministic guest code**, not a lead agent. It partitions work, issues worker requests, runs the convergence loop, and folds typed worker outcomes into the `BuildReport` (completing [RFC-78](archive/rfc-78-prompt-budget.md) D6's report absorption). Judgment stays in the workers; sequencing and arbitration stay compiled-in.
 - **A worker is one focused judgment request**: a thin role brief (system), only the inputs its task needs (path-first `input` records from RFC-78 D1), an explicit write-ownership manifest, and the shared `PHASE_ANSWER_SCHEMA`-style answer gate. Workers never receive the whole prompt corpus; references stay MCP-lazy.
 
 ### Partitioning
