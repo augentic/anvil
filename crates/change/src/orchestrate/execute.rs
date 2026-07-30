@@ -4,8 +4,10 @@
 //! a typed [`ExecuteOutcome::Stopped`] with a [`StopReason`] and hint.
 //!
 //! Dual-driving is refused by the create-exclusive [`GuestMarker`]
-//! (`<plan-root>/.emery/guest.lock`) held for the run. The loop adds
-//! no journal events of its own — it composes the per-phase cadence.
+//! (`<plan-root>/.emery/guest.lock`) held for the run. The loop
+//! composes the per-phase cadence and, on re-entry after a sticky
+//! postflight stop, appends one control-plane
+//! `plan.merge-postflight.acknowledged` event before continuing.
 
 use std::io::Write as _;
 use std::ops::ControlFlow;
@@ -17,7 +19,7 @@ use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
-use project::journal::{self, EventKind};
+use project::journal::{self, Event, EventKind};
 use project::plan::{LoopStep, NextActionKind, Plan, StatusBody, StopReason, plan_status_body};
 use project::seam::{Source, Target, WorkingTree};
 use tracing::Instrument as _;
@@ -194,27 +196,20 @@ fn dispatch_status(
             phases: phases.to_vec(),
         }),
         NextActionKind::Stop => {
+            // Sticky postflight debt: the first failure already stopped
+            // via the phase Err arm. Re-running execute acknowledges
+            // and continues — no new CLI verb. The ack is control-plane
+            // (clears the sticky stop), so it must not be best-effort:
+            // a swallowed append would leave status projecting the same
+            // stop and spin while holding `guest.lock`.
+            if status.stop.as_ref().map(|s| s.reason) == Some(StopReason::MergePostflightFailed) {
+                return acknowledge_postflight(layout, now, status, phases);
+            }
             // A stop projection always carries a stop body; a missing
             // one (unreachable by construction) degrades to the
             // generic stuck stop rather than panicking.
             let (reason, detail) =
                 status.stop.map_or((StopReason::Stuck, None), |stop| (stop.reason, stop.detail));
-            // Sticky postflight debt: the first failure already stopped
-            // via the phase Err arm. Re-running execute acknowledges
-            // and continues — no new CLI verb.
-            if reason == StopReason::MergePostflightFailed {
-                if let Some(slice) = &status.slice {
-                    journal::emit_best_effort(
-                        layout,
-                        now,
-                        EventKind::PlanMergePostflightAcknowledged {
-                            slice_name: slice.as_str().into(),
-                        },
-                        "plan.execute",
-                    );
-                }
-                return ControlFlow::Continue(None);
-            }
             ControlFlow::Break(ExecuteOutcome::Stopped {
                 reason,
                 detail,
@@ -227,6 +222,43 @@ fn dispatch_status(
         NextActionKind::Build => ControlFlow::Continue(Some(LoopStep::Build)),
         NextActionKind::Merge => ControlFlow::Continue(Some(LoopStep::Merge)),
     }
+}
+
+/// Append `plan.merge-postflight.acknowledged` and continue the loop.
+/// On append failure, re-surface the sticky stop (no spin).
+fn acknowledge_postflight(
+    layout: Layout<'_>, now: Timestamp, status: StatusBody, phases: &[PhaseRun],
+) -> ControlFlow<ExecuteOutcome, Option<LoopStep>> {
+    let Some(slice) = status.slice.as_deref() else {
+        return ControlFlow::Break(ExecuteOutcome::Stopped {
+            reason: StopReason::Stuck,
+            detail: Some(
+                "merge-postflight-failed stop projected without a slice — cannot acknowledge"
+                    .into(),
+            ),
+            hint: StopReason::Stuck.hint(),
+            slice: None,
+            phases: phases.to_vec(),
+        });
+    };
+    let event = Event::new(
+        now,
+        EventKind::PlanMergePostflightAcknowledged {
+            slice_name: slice.into(),
+        },
+    );
+    if let Err(err) = journal::append_one(layout, &event) {
+        return ControlFlow::Break(ExecuteOutcome::Stopped {
+            reason: StopReason::MergePostflightFailed,
+            detail: Some(format!(
+                "failed to journal plan.merge-postflight.acknowledged for `{slice}`: {err}"
+            )),
+            hint: StopReason::MergePostflightFailed.hint(),
+            slice: status.slice,
+            phases: phases.to_vec(),
+        });
+    }
+    ControlFlow::Continue(None)
 }
 
 /// Classify a phase `Err` into the closed stop reason. Postflight is

@@ -88,11 +88,18 @@ pub async fn merge<T: Target>(
     // Target postflight: the slice is already merged and archived, so a
     // failure is a terminal diagnostic — never a rollback. Persist any
     // parseable report (including `status: failure`) before enforcing.
+    // Every post-commit error routes through `postflight_terminal` so
+    // execute classifies sticky `merge-postflight-failed` debt — a bare
+    // `?` on persist would otherwise surface as `merge-conflict`.
     let archive_merge = outcome.archive_path.join("merge");
     match fetch_gate_report(targets, &id, slice, MergePhase::Postflight).await {
         Ok(report) => {
-            persist_gate_report(&archive_merge, MergePhase::Postflight, &report)?;
+            let persist_err =
+                persist_gate_report(&archive_merge, MergePhase::Postflight, &report).err();
             if let Err(err) = enforce_gate(&report, MergePhase::Postflight, slice) {
+                return postflight_terminal(layout, now, slice, &err);
+            }
+            if let Some(err) = persist_err {
                 return postflight_terminal(layout, now, slice, &err);
             }
         }
@@ -115,26 +122,36 @@ pub async fn merge<T: Target>(
 
 /// Journal `slice.merge.postflight-failed` and return the terminal
 /// non-rollback diagnostic.
+///
+/// The journal event is control-plane for sticky plan status (not
+/// lifecycle observability), so the append is strict. A journal I/O
+/// failure still returns `target-merge-postflight-failed` so execute
+/// classifies correctly; the detail names the journal error too.
 fn postflight_terminal(
     layout: Layout<'_>, now: Timestamp, slice: &str, err: &Error,
 ) -> Result<MergeOutcome, Error> {
-    journal::emit_best_effort(
-        layout,
+    let detail = format!(
+        "target postflight merge gate failed for slice `{slice}` after the merge \
+         committed — the baseline, archive, and plan entry `done` stamp stand \
+         (non-rollback); inspect the archive `merge/postflight.yaml` when present \
+         and land a follow-up slice: {err}"
+    );
+    let event = journal::Event::new(
         now,
         EventKind::SliceMergePostflightFailed {
             slice_name: slice.into(),
             reason: err.variant_str().into_owned(),
         },
-        "slice.merge",
     );
+    if let Err(journal_err) = journal::append_one(layout, &event) {
+        return Err(Error::Diag {
+            code: "target-merge-postflight-failed",
+            detail: format!("{detail}; also failed to journal postflight debt: {journal_err}"),
+        });
+    }
     Err(Error::Diag {
         code: "target-merge-postflight-failed",
-        detail: format!(
-            "target postflight merge gate failed for slice `{slice}` after the merge \
-             committed — the baseline, archive, and plan entry `done` stamp stand \
-             (non-rollback); inspect the archive `merge/postflight.yaml` when present \
-             and land a follow-up slice: {err}"
-        ),
+        detail,
     })
 }
 
