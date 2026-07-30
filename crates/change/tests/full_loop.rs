@@ -195,7 +195,9 @@ async fn preflight_parks_built() {
 }
 
 // A failed merge postflight gate is terminal but non-rollback: the
-// committed merge stands.
+// committed merge stands, the failed report is archived, execute stops
+// with `merge-postflight-failed`, and status stays sticky until the
+// next execute acknowledges.
 #[tokio::test]
 async fn postflight_terminal() {
     let session = Session::bare(suite_answers());
@@ -210,7 +212,12 @@ async fn postflight_terminal() {
         run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
             .await
             .expect_err("execute reports the failed postflight gate");
-    assert!(stopped.to_string().contains("target-merge-postflight-failed"), "{stopped}");
+    let stopped = stopped.to_string();
+    assert!(stopped.contains("merge-postflight-failed"), "{stopped}");
+    assert!(
+        !stopped.contains("baseline conflict") && !stopped.contains("in-progress"),
+        "hint must not describe a retryable in-progress merge conflict: {stopped}"
+    );
 
     // Non-rollback: the merge committed before the gate ran — baseline
     // written, slice archived, plan entry `done`.
@@ -222,10 +229,46 @@ async fn postflight_terminal() {
     .expect("parse plan.yaml");
     assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
 
-    // The journal makes the irreversible state explicit.
+    // Failed postflight report persists beside the archive.
+    let archive = fs::read_dir(root.join(".emery/archive"))
+        .expect("archive dir exists")
+        .map(|entry| entry.expect("archive entry").path())
+        .find(|path| {
+            path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.ends_with("-greeting"))
+        })
+        .expect("archived greeting slice");
+    let postflight = fs::read_to_string(archive.join("merge/postflight.yaml"))
+        .expect("failed postflight report beside the archive");
+    assert!(postflight.contains("status: failure"), "{postflight}");
+    let preflight =
+        fs::read_to_string(archive.join("merge/preflight.yaml")).expect("preflight still archived");
+    assert!(preflight.contains("status: success"), "{preflight}");
+
+    // Status stays sticky — not silent drained — until execute acks.
+    let status =
+        run::<plan::handlers::Status, _, _>(session.provider(), plan::handlers::StatusInput {})
+            .await
+            .expect("status after postflight failure");
+    assert_eq!(status.next_action, "stop merge-postflight-failed");
+    assert_eq!(status.current_step, None);
+    assert_eq!(status.resume.as_deref(), Some("emery plan execute"));
+
+    // The journal makes the irreversible state explicit; no ack yet.
     let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
     assert!(journal.contains("slice.merge.postflight-failed"), "{journal}");
     assert!(!journal.contains("slice.merge.succeeded"), "{journal}");
+    assert!(!journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
+
+    // Clear the gate and re-run execute: ack clears the sticky stop and
+    // the single-entry plan drains.
+    fs::remove_file(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER)).expect("remove marker");
+    let resumed =
+        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
+            .await
+            .expect("second execute acknowledges and drains");
+    assert_eq!(resumed.status, "drained");
+    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    assert!(journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
 }
 
 #[tokio::test]

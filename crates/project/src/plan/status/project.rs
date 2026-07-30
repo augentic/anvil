@@ -1,23 +1,27 @@
 //! The status projection: plan entries + the shared execution-state
 //! kernel → one [`StatusBody`].
 
+use std::ops::ControlFlow;
+
 use error::Error;
 
 use super::super::execution::{JournalOverlay, Resolution, resolve_entry};
 use super::super::model::{Entry, Lifecycle, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
+use crate::journal::{self, EventKind};
 
 /// Project the read-only `emery plan status` body.
 ///
-/// Selection: the active `in-progress` entry, else the next eligible
-/// `pending` entry (what `plan next` would claim), else `drained` /
-/// `stop stuck`. The per-entry decision — slot-aware slice lifecycle
-/// plus (for the active entry) the folded claim-window journal facts —
-/// is the shared `resolve_entry` execution kernel; pre-claim
-/// candidates skip the journal overlay (nothing has run under the
-/// current claim; stale same-name events from earlier plans must not
-/// classify).
+/// Selection: the active `in-progress` entry, else sticky
+/// `merge-postflight-failed` when the newest plan-scoped postflight
+/// debt event is unacked, else the next eligible `pending` entry
+/// (what `plan next` would claim), else `drained` / `stop stuck`. The
+/// per-entry decision — slot-aware slice lifecycle plus (for the
+/// active entry) the folded claim-window journal facts — is the shared
+/// `resolve_entry` execution kernel; pre-claim candidates skip the
+/// journal overlay (nothing has run under the current claim; stale
+/// same-name events from earlier plans must not classify).
 ///
 /// `layout` resolves the plan root and the work root: an entry bound
 /// to a materialised workspace slot reads that slot's slice metadata
@@ -42,13 +46,58 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
 
     let resolution = match active {
         Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply)?,
-        None => match plan.next_eligible() {
-            Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Skip)?,
-            None if plan.is_drained() => Resolution::drained(),
-            None => Resolution::stop(StopReason::Stuck),
-        },
+        None => {
+            // Sticky postflight debt: after a non-rollback postflight
+            // failure the entry is already `done`, so nothing is
+            // in-progress — project the stop until execute acknowledges.
+            if let Some(debt) = postflight_debt(layout, plan)? {
+                debt
+            } else {
+                match plan.next_eligible() {
+                    Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Skip)?,
+                    None if plan.is_drained() => Resolution::drained(),
+                    None => Resolution::stop(StopReason::Stuck),
+                }
+            }
+        }
     };
     Ok(assemble(plan, counts, active, resolution))
+}
+
+/// When the chronologically latest among
+/// `{slice.merge.postflight-failed, plan.merge-postflight.acknowledged}`
+/// (restricted to slices named in this plan) is a postflight failure,
+/// project the sticky `merge-postflight-failed` stop for that slice.
+fn postflight_debt(layout: Layout<'_>, plan: &Plan) -> Result<Option<Resolution>, Error> {
+    let mut resolution = None;
+    journal::scan_recent(layout, |event| {
+        match event.kind {
+            EventKind::SliceMergePostflightFailed { slice_name, reason }
+                if plan.entries.iter().any(|e| e.name == slice_name) =>
+            {
+                let entry = plan.entries.iter().find(|e| e.name == slice_name);
+                // Entry presence is gated above; reconstruct the stop
+                // with the plan entry's project binding when found.
+                if let Some(entry) = entry {
+                    resolution = Some(Resolution::stop_for(
+                        StopReason::MergePostflightFailed,
+                        Some(reason),
+                        entry,
+                        Some(LoopStep::Merge),
+                    ));
+                }
+                ControlFlow::Break(())
+            }
+            EventKind::PlanMergePostflightAcknowledged { slice_name }
+                if plan.entries.iter().any(|e| e.name == slice_name) =>
+            {
+                resolution = None;
+                ControlFlow::Break(())
+            }
+            _ => ControlFlow::Continue(()),
+        }
+    })?;
+    Ok(resolution)
 }
 
 fn count(plan: &Plan, status: Status) -> usize {
@@ -96,9 +145,13 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
             StopReason::BuildFailed => Some(LoopStep::Build),
             // `merge-incomplete` parks inside merge: the spec merge
             // landed but the per-entry `done` stamp — merge's last
-            // sub-step — has not.
+            // sub-step — has not. Postflight failure is past merge
+            // (`done` + archived) — no awaited phase.
             StopReason::MergeConflict | StopReason::MergeIncomplete => Some(LoopStep::Merge),
-            StopReason::PlanNotApproved | StopReason::SliceDropped | StopReason::Stuck => None,
+            StopReason::PlanNotApproved
+            | StopReason::MergePostflightFailed
+            | StopReason::SliceDropped
+            | StopReason::Stuck => None,
         }),
     }
 }
@@ -117,6 +170,7 @@ fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
             StopReason::RefineFailed => slice.map(|s| format!("/emery:refine {s}")),
             StopReason::BuildFailed => slice.map(|s| format!("/emery:build {s}")),
             StopReason::MergeConflict => slice.map(|s| format!("/emery:merge {s}")),
+            StopReason::MergePostflightFailed => Some("emery plan execute".to_string()),
             StopReason::MergeIncomplete => slice.map(|s| format!("emery plan transition {s} done")),
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
