@@ -85,7 +85,7 @@ impl Resolution {
         }
     }
 
-    fn stop_for(
+    pub(super) fn stop_for(
         reason: StopReason, detail: Option<String>, entry: &Entry, last_completed: Option<LoopStep>,
     ) -> Self {
         Self {
@@ -164,14 +164,13 @@ pub(super) fn resolve_entry(
     // Failure overlay: stop only when the newest terminal is a failure
     // of the phase the lifecycle is awaiting. A failure of any other
     // phase means the operator already moved the slice past it.
-    if let Some((phase, reason)) = facts.newest_failure
+    // Durable `archive.created` still marks `merged` above (and wins
+    // as `merge-incomplete` for an in-progress entry); postflight debt
+    // for a `done` entry is handled plan-wide by `plan_status_body` so
+    // it is not shadowed into `merge-incomplete` here.
+    if let Some((phase, stop, reason)) = facts.newest_failure
         && phase == awaited
     {
-        let stop = match awaited {
-            NextActionKind::Refine => StopReason::RefineFailed,
-            NextActionKind::Build => StopReason::BuildFailed,
-            _ => StopReason::MergeConflict,
-        };
         return Ok(Resolution::stop_for(stop, Some(reason), entry, last_completed));
     }
 
@@ -201,7 +200,10 @@ struct ClaimFacts {
     merged: bool,
     /// The newest phase terminal is a failure of this phase; `None`
     /// when the newest terminal is a success (or none exists).
-    newest_failure: Option<(NextActionKind, String)>,
+    /// The [`StopReason`] distinguishes merge-conflict from
+    /// merge-postflight-failed when the failure is a merge-phase
+    /// terminal.
+    newest_failure: Option<(NextActionKind, StopReason, String)>,
 }
 
 /// Backward-fold the work root's journal over this entry's claim
@@ -242,7 +244,8 @@ fn claim_window_facts(
                 reason,
             } if &s == slice => {
                 if !terminal_seen {
-                    facts.newest_failure = Some((NextActionKind::Refine, reason));
+                    facts.newest_failure =
+                        Some((NextActionKind::Refine, StopReason::RefineFailed, reason));
                 }
                 terminal_seen = true;
             }
@@ -251,7 +254,8 @@ fn claim_window_facts(
                 reason,
             } if &s == slice => {
                 if !terminal_seen {
-                    facts.newest_failure = Some((NextActionKind::Build, reason));
+                    facts.newest_failure =
+                        Some((NextActionKind::Build, StopReason::BuildFailed, reason));
                 }
                 terminal_seen = true;
             }
@@ -260,7 +264,18 @@ fn claim_window_facts(
                 reason,
             } if &s == slice => {
                 if !terminal_seen {
-                    facts.newest_failure = Some((NextActionKind::Merge, reason));
+                    facts.newest_failure =
+                        Some((NextActionKind::Merge, StopReason::MergeConflict, reason));
+                }
+                terminal_seen = true;
+            }
+            EventKind::SliceMergePostflightFailed {
+                slice_name: s,
+                reason,
+            } if &s == slice => {
+                if !terminal_seen {
+                    facts.newest_failure =
+                        Some((NextActionKind::Merge, StopReason::MergePostflightFailed, reason));
                 }
                 terminal_seen = true;
             }

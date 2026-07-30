@@ -351,6 +351,17 @@ pub enum EventKind {
         /// Slice names, in the agent's `slices[]` response order.
         slice_names: Vec<SliceName>,
     },
+    /// `emery plan execute` acknowledged a sticky
+    /// `merge-postflight-failed` stop and is continuing the queue.
+    /// Clears the plan-wide postflight debt projected by `plan status`
+    /// until the next `slice.merge.postflight-failed`. No new CLI verb —
+    /// re-running execute is the ack.
+    #[serde(rename = "plan.merge-postflight.acknowledged", rename_all = "kebab-case")]
+    PlanMergePostflightAcknowledged {
+        /// Slice whose postflight debt was acknowledged — already
+        /// merged, archived, and stamped `done`.
+        slice_name: SliceName,
+    },
     /// A slice merged into the baseline and its working directory was
     /// archived. This is the durable **outcome-ledger** entry: the
     /// append-only journal records what merged, when, which baseline

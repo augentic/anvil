@@ -4,10 +4,13 @@
 //! a typed [`ExecuteOutcome::Stopped`] with a [`StopReason`] and hint.
 //!
 //! Dual-driving is refused by the create-exclusive [`GuestMarker`]
-//! (`<plan-root>/.emery/guest.lock`) held for the run. The loop adds
-//! no journal events of its own — it composes the per-phase cadence.
+//! (`<plan-root>/.emery/guest.lock`) held for the run. The loop
+//! composes the per-phase cadence and, on re-entry after a sticky
+//! postflight stop, appends one control-plane
+//! `plan.merge-postflight.acknowledged` event before continuing.
 
 use std::io::Write as _;
+use std::ops::ControlFlow;
 use std::path::PathBuf;
 
 use error::Error;
@@ -16,7 +19,8 @@ use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
-use project::plan::{LoopStep, NextActionKind, Plan, StopReason, plan_status_body};
+use project::journal::{self, Event, EventKind};
+use project::plan::{LoopStep, NextActionKind, Plan, StatusBody, StopReason, plan_status_body};
 use project::seam::{Source, Target, WorkingTree};
 use tracing::Instrument as _;
 
@@ -40,8 +44,11 @@ pub enum ExecuteOutcome {
         /// Phases completed by this run, in order.
         phases: Vec<PhaseRun>,
     },
-    /// The loop halted on a stop condition; re-entry safe (the plan
-    /// entry stays `in-progress` on phase failures).
+    /// The loop halted on a stop condition; re-entry safe. Refine /
+    /// build / preflight-merge failures leave the plan entry
+    /// `in-progress`; a postflight failure leaves the entry `done`
+    /// (non-rollback) and projects a sticky stop until the next
+    /// execute acknowledges.
     Stopped {
         /// Why the loop halted.
         reason: StopReason,
@@ -62,10 +69,13 @@ pub enum ExecuteOutcome {
 ///
 /// Gate 1 is enforced by the first status projection: an unapproved
 /// plan projects `stop plan-not-approved` and the loop returns it
-/// before touching plan state. Re-entry is safe — a phase failure
-/// leaves the entry `in-progress` and the journal terminal event in
-/// place, so the next run's status projection resumes (or re-reports
-/// the stop) from the same point.
+/// before touching plan state. Re-entry is safe — a refine / build /
+/// preflight-merge failure leaves the entry `in-progress` and the
+/// journal terminal event in place, so the next run's status
+/// projection resumes (or re-reports the stop) from the same point.
+/// A postflight failure stamps the entry `done` (non-rollback) and
+/// projects a sticky `merge-postflight-failed` stop; re-running
+/// execute emits `plan.merge-postflight.acknowledged` and continues.
 ///
 /// The bound target adapter resolves once, inside the loop's own
 /// setup (after the workspace refusal, before the marker) — its
@@ -101,26 +111,10 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
     loop {
         let plan = Plan::load(&layout.plan_path())?;
         let status = plan_status_body(&plan, layout)?;
-        let step = match status.action {
-            NextActionKind::Drained => return Ok(ExecuteOutcome::Drained { phases }),
-            NextActionKind::Stop => {
-                // A stop projection always carries a stop body; a
-                // missing one (unreachable by construction) degrades
-                // to the generic stuck stop rather than panicking.
-                let (reason, detail) = status
-                    .stop
-                    .map_or((StopReason::Stuck, None), |stop| (stop.reason, stop.detail));
-                return Ok(ExecuteOutcome::Stopped {
-                    reason,
-                    detail,
-                    hint: reason.hint(),
-                    slice: status.slice,
-                    phases,
-                });
-            }
-            NextActionKind::Refine => LoopStep::Refine,
-            NextActionKind::Build => LoopStep::Build,
-            NextActionKind::Merge => LoopStep::Merge,
+        let step = match dispatch_status(layout, now, status, &phases) {
+            ControlFlow::Break(outcome) => return Ok(outcome),
+            ControlFlow::Continue(None) => continue, // postflight ack
+            ControlFlow::Continue(Some(step)) => step,
         };
 
         // Claim: `plan next` before every phase, exactly as the skill
@@ -176,13 +170,10 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
             Err(err) => {
                 // The phase already journalled its failure terminal, so
                 // a re-entrant run's status projection reports the same
-                // stop this return carries. The entry stays
-                // `in-progress` — merge is the only `done` writer.
-                let reason = match step {
-                    LoopStep::Refine => StopReason::RefineFailed,
-                    LoopStep::Build => StopReason::BuildFailed,
-                    LoopStep::Merge => StopReason::MergeConflict,
-                };
+                // stop this return carries. Refine / build / preflight
+                // leave the entry `in-progress`; postflight already
+                // stamped `done` (non-rollback) before failing.
+                let reason = phase_stop_reason(step, &err);
                 return Ok(ExecuteOutcome::Stopped {
                     reason,
                     detail: Some(err.to_string()),
@@ -192,6 +183,94 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                 });
             }
         }
+    }
+}
+
+/// Map a status projection to the next loop step, a terminal outcome,
+/// or a postflight-ack continue (`Continue(None)`).
+fn dispatch_status(
+    layout: Layout<'_>, now: Timestamp, status: StatusBody, phases: &[PhaseRun],
+) -> ControlFlow<ExecuteOutcome, Option<LoopStep>> {
+    match status.action {
+        NextActionKind::Drained => ControlFlow::Break(ExecuteOutcome::Drained {
+            phases: phases.to_vec(),
+        }),
+        NextActionKind::Stop => {
+            // Sticky postflight debt: the first failure already stopped
+            // via the phase Err arm. Re-running execute acknowledges
+            // and continues — no new CLI verb. The ack is control-plane
+            // (clears the sticky stop), so it must not be best-effort:
+            // a swallowed append would leave status projecting the same
+            // stop and spin while holding `guest.lock`.
+            if status.stop.as_ref().map(|s| s.reason) == Some(StopReason::MergePostflightFailed) {
+                return acknowledge_postflight(layout, now, status, phases);
+            }
+            // A stop projection always carries a stop body; a missing
+            // one (unreachable by construction) degrades to the
+            // generic stuck stop rather than panicking.
+            let (reason, detail) =
+                status.stop.map_or((StopReason::Stuck, None), |stop| (stop.reason, stop.detail));
+            ControlFlow::Break(ExecuteOutcome::Stopped {
+                reason,
+                detail,
+                hint: reason.hint(),
+                slice: status.slice,
+                phases: phases.to_vec(),
+            })
+        }
+        NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
+        NextActionKind::Build => ControlFlow::Continue(Some(LoopStep::Build)),
+        NextActionKind::Merge => ControlFlow::Continue(Some(LoopStep::Merge)),
+    }
+}
+
+/// Append `plan.merge-postflight.acknowledged` and continue the loop.
+/// On append failure, re-surface the sticky stop (no spin).
+fn acknowledge_postflight(
+    layout: Layout<'_>, now: Timestamp, status: StatusBody, phases: &[PhaseRun],
+) -> ControlFlow<ExecuteOutcome, Option<LoopStep>> {
+    let Some(slice) = status.slice.as_deref() else {
+        return ControlFlow::Break(ExecuteOutcome::Stopped {
+            reason: StopReason::Stuck,
+            detail: Some(
+                "merge-postflight-failed stop projected without a slice — cannot acknowledge"
+                    .into(),
+            ),
+            hint: StopReason::Stuck.hint(),
+            slice: None,
+            phases: phases.to_vec(),
+        });
+    };
+    let event = Event::new(
+        now,
+        EventKind::PlanMergePostflightAcknowledged {
+            slice_name: slice.into(),
+        },
+    );
+    if let Err(err) = journal::append_one(layout, &event) {
+        return ControlFlow::Break(ExecuteOutcome::Stopped {
+            reason: StopReason::MergePostflightFailed,
+            detail: Some(format!(
+                "failed to journal plan.merge-postflight.acknowledged for `{slice}`: {err}"
+            )),
+            hint: StopReason::MergePostflightFailed.hint(),
+            slice: status.slice,
+            phases: phases.to_vec(),
+        });
+    }
+    ControlFlow::Continue(None)
+}
+
+/// Classify a phase `Err` into the closed stop reason. Postflight is
+/// distinguished from other merge failures by the error discriminant.
+fn phase_stop_reason(step: LoopStep, err: &Error) -> StopReason {
+    match step {
+        LoopStep::Refine => StopReason::RefineFailed,
+        LoopStep::Build => StopReason::BuildFailed,
+        LoopStep::Merge if err.variant_str() == "target-merge-postflight-failed" => {
+            StopReason::MergePostflightFailed
+        }
+        LoopStep::Merge => StopReason::MergeConflict,
     }
 }
 

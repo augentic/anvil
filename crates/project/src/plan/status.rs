@@ -52,10 +52,10 @@ pub enum LoopStep {
 
 /// Closed stop-reason set on [`StopBody::reason`].
 ///
-/// The three loop stops (`refine-failed` / `build-failed` /
-/// `merge-conflict`) carry the stop-conditions reference's structured
-/// strings; the rest are pre-loop or repair conditions the driver
-/// renders the same way.
+/// The loop stops (`refine-failed` / `build-failed` /
+/// `merge-conflict` / `merge-postflight-failed`) carry the
+/// stop-conditions reference's structured strings; the rest are
+/// pre-loop or repair conditions the driver renders the same way.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -68,6 +68,10 @@ pub enum StopReason {
     BuildFailed,
     /// The awaited merge phase last ended in `slice.merge.failed`.
     MergeConflict,
+    /// The target's postflight merge gate failed after commit — the
+    /// entry is already `done` and archived (non-rollback). Sticky
+    /// until `emery plan execute` acknowledges.
+    MergePostflightFailed,
     /// The active entry's slice was dropped without merging.
     SliceDropped,
     /// The slice merged but the entry is still `in-progress` — the
@@ -95,6 +99,12 @@ impl StopReason {
             Self::MergeConflict => {
                 "Resolve the baseline conflict (or drop the slice), then retry /emery:merge. The \
                  plan entry stays in-progress until the merge lands."
+            }
+            Self::MergePostflightFailed => {
+                "The merge already committed and archived; the plan entry is done. Inspect the \
+                 archive merge/postflight.yaml, repair the unclean baseline (hand-fix or a \
+                 follow-up slice via /emery:plan), then re-run emery plan execute to acknowledge \
+                 and continue."
             }
             Self::SliceDropped => {
                 "The slice was dropped; amend or remove the plan entry to unblock the queue."

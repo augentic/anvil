@@ -64,9 +64,27 @@ Execute re-enters at the active `in-progress` entry and skips phases already com
 </section>
 
 
+<section id="merge-postflight-failed" markdown="1">
+
+<h2><span class="num">3</span> When execute stops on merge postflight failure</h2>
+
+A postflight failure is non-rollback: the merge already committed, the slice is archived, and the plan entry is `done`. Do **not** retry `/emery:merge` for that archived slice and do not treat the stop as a baseline conflict.
+
+1. Inspect the archived gate report at `.emery/archive/<date>-<slice>/merge/postflight.yaml`.
+2. Repair the unclean baseline (hand-fix, or author a follow-up slice via `/emery:plan`).
+3. Re-run execute to acknowledge the sticky stop and continue (or finalize when the plan is otherwise drained):
+
+```text
+emery plan execute
+```
+
+`emery plan status` keeps projecting `stop merge-postflight-failed` (`resume: emery plan execute`) until that re-run emits `plan.merge-postflight.acknowledged`.
+</section>
+
+
 <section id="breakout" markdown="1">
 
-<h2><span class="num">3</span> Breakout mid-execute</h2>
+<h2><span class="num">4</span> Breakout mid-execute</h2>
 
 Cancel a running `emery plan execute` session and drive phases yourself:
 
@@ -82,7 +100,7 @@ The execute loop reads on-disk lifecycle state — no resume flags required.
 
 <section id="plan-lock" markdown="1">
 
-<h2><span class="num">4</span> Guest lock</h2>
+<h2><span class="num">5</span> Guest lock</h2>
 
 The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts (`slice refine`, `slice build`, `slice merge run`) do not take the marker — the lifecycle gates (only `refined` builds, only `built` merges) are the correctness fence. If a dead holder left a stale marker, confirm the holder is gone and remove `.emery/guest.lock` by hand.
 </section>
