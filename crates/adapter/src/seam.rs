@@ -171,7 +171,7 @@ impl Input {
 
     /// The input's project-relative artifact path, when path-form.
     #[must_use]
-    pub fn path(&self) -> Option<&str> {
+    pub const fn path(&self) -> Option<&str> {
         match self.payload() {
             Payload::Path(path) => Some(path.as_str()),
             Payload::Body(_) => None,
@@ -180,7 +180,7 @@ impl Input {
 
     /// The input's inlined artifact text, when body-form.
     #[must_use]
-    pub fn body(&self) -> Option<&str> {
+    pub const fn body(&self) -> Option<&str> {
         match self.payload() {
             Payload::Body(body) => Some(body.as_str()),
             Payload::Path(_) => None,

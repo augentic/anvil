@@ -8,8 +8,7 @@ use adapter::phase::{
     report,
 };
 use adapter::seam::{
-    BuildOutput, Context, Finding, Input, Payload, Platform, Report, Severity, Status,
-    WorkingTree,
+    BuildOutput, Context, Finding, Input, Payload, Platform, Report, Severity, Status, WorkingTree,
 };
 use omnia_testkit::model::Harness;
 use tempfile::tempdir;
