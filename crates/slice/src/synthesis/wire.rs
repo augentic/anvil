@@ -21,7 +21,10 @@ use crate::model::SliceModel;
 use crate::synthesis::baseline::BaselineIndex;
 
 /// Wire version stamped on both the input and response envelopes.
-const SYNTHESIS_VERSION: u32 = 1;
+/// v2: `sources[]` entries carry a project-relative `evidence-path`
+/// instead of inlined `claims[]` — the agent reads each Evidence
+/// document from the lent tree.
+const SYNTHESIS_VERSION: u32 = 2;
 
 /// Synthesis response envelope kind.
 ///
@@ -153,8 +156,8 @@ pub struct SynthesisInputs {
     pub kind: InputKind,
     /// Slice name the step synthesises.
     pub slice: String,
-    /// One entry per bound source, carrying its inline `lead` and
-    /// `claims`.
+    /// One entry per bound source, carrying its `lead` and the
+    /// project-relative `evidence-path` to its Evidence document.
     pub sources: Vec<SourceInput>,
     /// The resolved target guidance body. Resolved and read by the
     /// refine orchestration — never by this module.
@@ -214,10 +217,11 @@ impl From<&BaselineIndex> for Vec<DomainDetail> {
 
 /// One bound source's contribution to the synthesis inputs.
 ///
-/// Carries the source's inline `lead` and its `claims` passed through
-/// verbatim from the parsed `evidence/<source>.yaml` so no body field
-/// is lost — the agent reconciles over the full claim bodies. The
-/// document-level `authority` is intentionally not carried.
+/// Carries the source's `lead` and the project-relative
+/// `evidence-path` to its Evidence document in the lent tree — the
+/// agent reads the claim bodies from that file instead of receiving
+/// them inline on the wire. The document-level `authority` is
+/// intentionally not carried.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceInput {
@@ -225,40 +229,41 @@ pub struct SourceInput {
     pub source: String,
     /// The source's discovery lead id (from `evidence/<source>.yaml`).
     pub lead: String,
-    /// The source's claims, passed through verbatim from the parsed
-    /// Evidence document so every per-kind body field survives.
-    pub claims: Vec<JsonValue>,
+    /// Project-relative path to the source's Evidence document
+    /// (`.emery/slices/<slice>/evidence/<source>.yaml`), resolvable in
+    /// the lent tree the agent works in.
+    pub evidence_path: String,
 }
 
 impl SourceInput {
     /// Shape one already-read Evidence document into a
-    /// [`SourceInput`], pulling its `lead` and `claims` and
-    /// dropping everything else (notably the document-level
-    /// `authority`, which the kernel resolves post-response).
+    /// [`SourceInput`], pulling its `lead` and recording
+    /// `evidence_path` as the wire path — the claims stay on disk for
+    /// the agent to read (and the document-level `authority` is
+    /// resolved by the kernel post-response).
     ///
     /// # Errors
     ///
     /// Returns [`Error::YamlDe`] when `raw` is not valid YAML.
-    pub(crate) fn from_yaml(source: &str, raw: &str) -> Result<Self> {
+    pub(crate) fn from_yaml(source: &str, raw: &str, evidence_path: String) -> Result<Self> {
         let doc: JsonValue = serde_saphyr::from_str(raw)?;
         let lead = doc.get("lead").and_then(JsonValue::as_str).unwrap_or_default().to_string();
-        let claims = doc.get("claims").and_then(JsonValue::as_array).cloned().unwrap_or_default();
         Ok(Self {
             source: source.to_string(),
             lead,
-            claims,
+            evidence_path,
         })
     }
 
-    /// Read and shape one `evidence/<source>.yaml` into a
-    /// [`SourceInput`].
+    /// Read one `evidence/<source>.yaml` at `path` into a
+    /// [`SourceInput`] carrying `evidence_path` as its wire path.
     ///
     /// # Errors
     ///
     /// - [`error::Error::Filesystem`] when `path` cannot be read.
     /// - [`error::Error::YamlDe`] when the file is not valid YAML.
-    pub fn from_file(source: &str, path: &Path) -> Result<Self> {
-        Self::from_yaml(source, &project::fs::read_text(path)?)
+    pub fn from_file(source: &str, path: &Path, evidence_path: String) -> Result<Self> {
+        Self::from_yaml(source, &project::fs::read_text(path)?, evidence_path)
     }
 }
 

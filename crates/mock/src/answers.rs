@@ -42,7 +42,7 @@ pub fn greeting_grouping() -> String {
 #[must_use]
 pub fn greeting_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 1,
+        "version": 2,
         "kind": "response",
         "slice": "greeting",
         "model": {

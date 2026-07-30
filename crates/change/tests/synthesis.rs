@@ -18,7 +18,7 @@ use serde_json::json;
 /// kernel resolves documentation over behaviour.
 fn session_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 1,
+        "version": 2,
         "kind": "response",
         "slice": "session-policy",
         "model": {
@@ -53,7 +53,7 @@ fn session_synthesis_answer() -> String {
 /// unanchored requirement (zero claims) the kernel marks `[unknown]`.
 fn reset_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 1,
+        "version": 2,
         "kind": "response",
         "slice": "password-reset",
         "model": {
@@ -118,6 +118,25 @@ async fn divergence_docs_wins() {
     .await
     .expect("refine synthesises the divergent slice");
     assert_eq!(refined.slice, "session-policy");
+
+    // The synthesis prompt is path-first: each source row carries the
+    // project-relative `evidence-path` into the lent tree, and no
+    // claim bodies are inlined in the user message.
+    let requests = session.model().requests();
+    let prompt = &requests.last().expect("synthesis request recorded").messages[0].content;
+    assert!(
+        prompt.contains("\"evidence-path\": \".emery/slices/session-policy/evidence/docs.yaml\""),
+        "{prompt}"
+    );
+    assert!(
+        prompt.contains("\"evidence-path\": \".emery/slices/session-policy/evidence/code.yaml\""),
+        "{prompt}"
+    );
+    assert!(!prompt.contains("\"claims\""), "claims must not be inlined: {prompt}");
+    assert!(
+        !prompt.contains("Sessions expire after 30 minutes of inactivity."),
+        "claim bodies must not be inlined: {prompt}"
+    );
 
     // The kernel resolved the disagreement: divergence, docs winning.
     let model = run::<slice::handlers::ModelShow, _, _>(

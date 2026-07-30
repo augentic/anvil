@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 
 use artifacts::evidence::{AuthorityClass, ClaimKind, Document};
 use error::{Error, Result};
+use project::config::Layout;
 use project::plan::Entry;
 
 use crate::synthesis::wire::SourceInput;
@@ -109,21 +110,34 @@ pub fn read_evidence_dir(slice_dir: &Path) -> Result<Vec<EvidenceDoc>> {
 pub type KernelEvidence = (BTreeMap<String, AuthorityClass>, BTreeMap<(String, String), ClaimKind>);
 
 /// Read each bound source's `evidence/<source>.yaml` into a
-/// [`SourceInput`] for the agent inputs envelope.
+/// [`SourceInput`] for the agent inputs envelope, carrying the
+/// project-relative `evidence-path` the agent reads the claims from.
 ///
 /// # Errors
 ///
 /// Propagates Evidence read and parse failures.
-pub fn read_source_inputs(slice_dir: &Path, entry: &Entry) -> Result<Vec<SourceInput>> {
+pub fn read_source_inputs(layout: Layout<'_>, entry: &Entry) -> Result<Vec<SourceInput>> {
+    let slice_dir = layout.slice_dir(&entry.name);
     entry
         .sources
         .iter()
         .map(|binding| {
             let source = binding.source();
-            let path = evidence_path(slice_dir, source);
-            SourceInput::from_file(source, &path)
+            let path = evidence_path(&slice_dir, source);
+            SourceInput::from_file(source, &path, wire_path(layout, &path))
         })
         .collect()
+}
+
+/// Project-relative, `/`-joined form of `path` — the lent-tree path
+/// the synthesis inputs envelope hands the agent.
+fn wire_path(layout: Layout<'_>, path: &Path) -> String {
+    path.strip_prefix(layout.project_dir())
+        .unwrap_or(path)
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 /// Distil the per-source document-level `authority` map and the

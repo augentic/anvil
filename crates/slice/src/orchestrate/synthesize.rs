@@ -20,8 +20,8 @@ pub struct SynthesizeRequest<'a> {
     /// The slice's recorded target value (e.g. `omnia@1.0.0`); the
     /// guidance dispatch routes the exact recorded identity.
     pub target: &'a str,
-    /// One entry per bound source, carrying its inline `lead` and
-    /// `claims`.
+    /// One entry per bound source, carrying its `lead` and the
+    /// project-relative `evidence-path` to its Evidence document.
     pub sources: &'a [SourceInput],
     /// The slice's bound project baseline surface.
     pub baseline: &'a [Surface],

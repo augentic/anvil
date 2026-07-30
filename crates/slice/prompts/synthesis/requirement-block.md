@@ -83,7 +83,7 @@ Greenfield domains still render flat `### Requirement:` blocks. `emery slice mer
 - **One requirement, one behavioural assertion.** Split compound behaviours into separate blocks.
 - **Verbatim source language where possible.** Quote documentation claims lightly normalised; paraphrase behavioural `excerpt` claims into present-tense system prose.
 - **`Note:` lines carry commentary, never operative requirements.** For `disagreed`, winning value as body + loser as `Note:`; for tied conflict, only `Note:` lines plus an operator-reconciliation prompt.
-- **No invented citations.** Only cite `(source, id, kind)` claims present in the inputs. Never author `Sources:` or `winner` markers.
+- **No invented citations.** Only cite `(source, id, kind)` claims present in the Evidence documents at the inputs' `evidence-path`s. Never author `Sources:` or `winner` markers.
 
 ## Failure modes the parser surfaces
 
