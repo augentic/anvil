@@ -34,7 +34,9 @@ pub struct MergeOutcome {
 ///
 /// A preflight failure aborts with the slice still `built`; a
 /// postflight failure (`target-merge-postflight-failed`) is terminal
-/// but non-rollback — the merge stands.
+/// but non-rollback — the merge stands. A parseable postflight report
+/// is persisted to the archive (including `status: failure`) before
+/// the terminal error returns.
 ///
 /// # Errors
 ///
@@ -84,33 +86,19 @@ pub async fn merge<T: Target>(
     )?;
 
     // Target postflight: the slice is already merged and archived, so a
-    // failure is a terminal diagnostic — never a rollback.
-    match run_gate(targets, &id, slice, MergePhase::Postflight).await {
+    // failure is a terminal diagnostic — never a rollback. Persist any
+    // parseable report (including `status: failure`) before enforcing.
+    let archive_merge = outcome.archive_path.join("merge");
+    match fetch_gate_report(targets, &id, slice, MergePhase::Postflight).await {
         Ok(report) => {
-            persist_gate_report(
-                &outcome.archive_path.join("merge"),
-                MergePhase::Postflight,
-                &report,
-            )?;
+            persist_gate_report(&archive_merge, MergePhase::Postflight, &report)?;
+            if let Err(err) = enforce_gate(&report, MergePhase::Postflight, slice) {
+                return postflight_terminal(layout, now, slice, &err);
+            }
         }
         Err(err) => {
-            journal::emit_best_effort(
-                layout,
-                now,
-                EventKind::SliceMergePostflightFailed {
-                    slice_name: slice.into(),
-                    reason: err.variant_str().into_owned(),
-                },
-                "slice.merge",
-            );
-            return Err(Error::Diag {
-                code: "target-merge-postflight-failed",
-                detail: format!(
-                    "target postflight merge gate failed for slice `{slice}` after the merge \
-                     committed — the baseline, archive, and plan entry `done` stamp stand \
-                     (non-rollback); inspect the diagnostic and land a follow-up slice: {err}"
-                ),
-            });
+            // Seam / dispatch / slice-mismatch — no report to persist.
+            return postflight_terminal(layout, now, slice, &err);
         }
     }
 
@@ -123,6 +111,31 @@ pub async fn merge<T: Target>(
         "slice.merge",
     );
     Ok(outcome)
+}
+
+/// Journal `slice.merge.postflight-failed` and return the terminal
+/// non-rollback diagnostic.
+fn postflight_terminal(
+    layout: Layout<'_>, now: Timestamp, slice: &str, err: &Error,
+) -> Result<MergeOutcome, Error> {
+    journal::emit_best_effort(
+        layout,
+        now,
+        EventKind::SliceMergePostflightFailed {
+            slice_name: slice.into(),
+            reason: err.variant_str().into_owned(),
+        },
+        "slice.merge",
+    );
+    Err(Error::Diag {
+        code: "target-merge-postflight-failed",
+        detail: format!(
+            "target postflight merge gate failed for slice `{slice}` after the merge \
+             committed — the baseline, archive, and plan entry `done` stamp stand \
+             (non-rollback); inspect the archive `merge/postflight.yaml` when present \
+             and land a follow-up slice: {err}"
+        ),
+    })
 }
 
 /// Journal a `slice.merge.failed` terminal on the error arm — the
@@ -144,10 +157,19 @@ fn journal_on_failure<V>(
     result
 }
 
-/// Dispatch one target merge gate and gate its report: slice-name
-/// match, blocking findings, and status.
+/// Dispatch one target merge gate and enforce its report (preflight
+/// path — persist happens after a successful return).
 #[tracing::instrument(name = "slice.merge.gate", skip_all, fields(phase = %phase, target = %id))]
 async fn run_gate<T: Target>(
+    targets: &T, id: &str, slice: &str, phase: MergePhase,
+) -> Result<BuildReport, Error> {
+    let report = fetch_gate_report(targets, id, slice, phase).await?;
+    enforce_gate(&report, phase, slice)?;
+    Ok(report)
+}
+
+/// Fetch one target merge gate report and check the slice-name match.
+async fn fetch_gate_report<T: Target>(
     targets: &T, id: &str, slice: &str, phase: MergePhase,
 ) -> Result<BuildReport, Error> {
     let report = targets
@@ -162,6 +184,11 @@ async fn run_gate<T: Target>(
             format!("report names slice `{}`, but the merge ran for `{slice}`", report.slice),
         ));
     }
+    Ok(report)
+}
+
+/// Enforce blocking findings and report status for one merge gate.
+fn enforce_gate(report: &BuildReport, phase: MergePhase, slice: &str) -> Result<(), Error> {
     report.enforce_no_blocking()?;
     if report.status == BuildStatus::Failure {
         return Err(Error::Diag {
@@ -177,11 +204,12 @@ async fn run_gate<T: Target>(
             ),
         });
     }
-    Ok(report)
+    Ok(())
 }
 
-/// Persist one gate's validated report to `<dir>/<phase>.yaml`, so the
-/// archived slice carries both gate outcomes.
+/// Persist one gate's report to `<dir>/<phase>.yaml`, so the archived
+/// slice carries both gate outcomes — including a postflight
+/// `status: failure` report written before the terminal error returns.
 fn persist_gate_report(dir: &Path, phase: MergePhase, report: &BuildReport) -> Result<(), Error> {
     std::fs::create_dir_all(dir).map_err(Error::Io)?;
     let yaml = project::fs::yaml(report)?;

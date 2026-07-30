@@ -302,6 +302,122 @@ mod failure_overlay {
     }
 }
 
+mod postflight_debt {
+    use super::*;
+
+    #[tokio::test]
+    async fn sticky_stop_until_ack() {
+        // After a non-rollback postflight failure the entry is `done`
+        // — nothing in-progress — so status must stick on
+        // `merge-postflight-failed` rather than projecting drained.
+        let project = Session::scripted("demo", Vec::new());
+        append(
+            project.root(),
+            &[Event::event(
+                ts(10),
+                EventKind::SliceMergePostflightFailed {
+                    slice_name: "a".into(),
+                    reason: "target-merge-postflight-failed".to_string(),
+                },
+            )],
+        );
+        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "stop merge-postflight-failed");
+        assert_eq!(body.slice.as_deref(), Some("a"));
+        assert_eq!(body.current_step, None);
+        assert_eq!(body.last_completed, Some(LoopStep::Merge));
+        assert_eq!(body.resume.as_deref(), Some("emery plan execute"));
+        assert!(
+            body.stop.as_ref().is_some_and(
+                |s| !s.hint.contains("in-progress") && !s.hint.contains("baseline conflict")
+            ),
+            "hint must not describe a retryable merge conflict: {:?}",
+            body.stop.as_ref().map(|s| s.hint)
+        );
+    }
+
+    #[tokio::test]
+    async fn ack_clears_sticky_stop() {
+        let project = Session::scripted("demo", Vec::new());
+        append(
+            project.root(),
+            &[
+                Event::event(
+                    ts(10),
+                    EventKind::SliceMergePostflightFailed {
+                        slice_name: "a".into(),
+                        reason: "target-merge-postflight-failed".to_string(),
+                    },
+                ),
+                Event::event(
+                    ts(20),
+                    EventKind::PlanMergePostflightAcknowledged {
+                        slice_name: "a".into(),
+                    },
+                ),
+            ],
+        );
+        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "drained");
+        assert_eq!(body.resume.as_deref(), Some("/emery:finalize test"));
+    }
+
+    #[tokio::test]
+    async fn sticky_blocks_next_pending() {
+        // Unacked postflight debt must not silently advance to the next
+        // pending entry's refine.
+        let project = Session::scripted("demo", Vec::new());
+        append(
+            project.root(),
+            &[Event::event(
+                ts(10),
+                EventKind::SliceMergePostflightFailed {
+                    slice_name: "a".into(),
+                    reason: "target-merge-postflight-failed".to_string(),
+                },
+            )],
+        );
+        let plan = approved(plan_with_changes(vec![
+            change("a", Status::Done),
+            change("b", Status::Pending),
+        ]));
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "stop merge-postflight-failed");
+        assert_eq!(body.slice.as_deref(), Some("a"));
+    }
+
+    #[tokio::test]
+    async fn ack_then_next_pending() {
+        let project = Session::scripted("demo", Vec::new());
+        append(
+            project.root(),
+            &[
+                Event::event(
+                    ts(10),
+                    EventKind::SliceMergePostflightFailed {
+                        slice_name: "a".into(),
+                        reason: "target-merge-postflight-failed".to_string(),
+                    },
+                ),
+                Event::event(
+                    ts(20),
+                    EventKind::PlanMergePostflightAcknowledged {
+                        slice_name: "a".into(),
+                    },
+                ),
+            ],
+        );
+        let plan = approved(plan_with_changes(vec![
+            change("a", Status::Done),
+            change("b", Status::Pending),
+        ]));
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "refine b");
+    }
+}
+
 mod re_entry {
     use super::*;
 
