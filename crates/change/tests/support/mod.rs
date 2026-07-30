@@ -8,7 +8,95 @@
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
 use change::plan::wire::SourceAssign;
+use error::Error;
+use project::adapter::{
+    AdapterSelector, FIRST_PARTY_NAMESPACE, ResolvedSource, ResolvedTarget, Resolver,
+};
+use project::handler::{Anchor, ExecutionPaths};
+use project::seam::{Evidence, Lead, Source};
 use serde_json::json;
+
+/// A provider wrapper widening bare cache-miss selectors to the
+/// embedded first-party adapter train — the component deployment's
+/// `expand` policy over the session's native provider, which keeps
+/// the identity default by design.
+///
+/// The native catalog accepts only its exact compiled identities, and
+/// the mock adapters carry the `0.0.0` development placeholder — so a
+/// widened `emery:mock*@<train>` pin could never ensure natively.
+/// `ensure_*` therefore narrows a train pin on a `mock*` name back to
+/// the bare catalog identity, letting the author flow proceed while
+/// any other widened name (e.g. the `--intent` sugar's `intent`)
+/// still refuses as unlinked.
+#[derive(Clone)]
+pub struct Expanding<P>(pub P);
+
+impl<P: Anchor> Anchor for Expanding<P> {
+    fn paths(&self) -> &ExecutionPaths {
+        self.0.paths()
+    }
+}
+
+impl<P: omnia_guest::Model> omnia_guest::Model for Expanding<P> {
+    async fn create(
+        &self, request: omnia_guest::model::Request,
+    ) -> Result<omnia_guest::model::Reply, omnia_guest::model::Error> {
+        self.0.create(request).await
+    }
+}
+
+impl<P: Source> Source for Expanding<P> {
+    async fn survey(&self, id: String) -> Result<Vec<Lead>, project::seam::Error> {
+        self.0.survey(id).await
+    }
+
+    async fn extract(&self, id: String, lead: Lead) -> Result<Evidence, project::seam::Error> {
+        self.0.extract(id, lead).await
+    }
+}
+
+impl<P: Resolver> Resolver for Expanding<P> {
+    fn expand(&self, selector: &AdapterSelector, paths: &ExecutionPaths) -> AdapterSelector {
+        project::adapter::expand_bare(selector, paths)
+    }
+
+    fn resolve_source(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedSource, Error> {
+        self.0.resolve_source(selector, paths)
+    }
+
+    fn resolve_target(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedTarget, Error> {
+        self.0.resolve_target(selector, paths)
+    }
+
+    async fn ensure_source(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedSource, Error> {
+        self.0.ensure_source(&narrow(selector), paths).await
+    }
+
+    async fn ensure_target(
+        &self, selector: &AdapterSelector, paths: &ExecutionPaths,
+    ) -> Result<ResolvedTarget, Error> {
+        self.0.ensure_target(&narrow(selector), paths).await
+    }
+}
+
+/// Narrow a widened first-party train pin on a mock catalog identity
+/// back to its bare form for the native ensure.
+fn narrow(selector: &AdapterSelector) -> AdapterSelector {
+    match selector {
+        AdapterSelector::Package { namespace, name, .. }
+            if namespace == FIRST_PARTY_NAMESPACE && name.starts_with("mock") =>
+        {
+            AdapterSelector::Bare { name: name.clone() }
+        }
+        other => other.clone(),
+    }
+}
 
 /// The single `main` binding onto the minimal mock source.
 ///

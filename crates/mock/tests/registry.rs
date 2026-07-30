@@ -34,7 +34,11 @@ fn inventory() {
 }
 
 fn ctx(id: &str) -> Context<'_> {
-    Context::guest(id, None)
+    Context {
+        adapter_id: id,
+        project_root: std::path::Path::new("."),
+        mcp_url: None,
+    }
 }
 
 fn model() -> Scripted {

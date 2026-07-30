@@ -6,8 +6,10 @@
 //! `src/main.rs` embeds the engine guest as static component bytes
 //! and evaluates this crate's expressions for everything the
 //! deployment needs before boot: the well-known mounts (anchored from
-//! argv and the working directory) and the fail-closed guest
-//! [`Resolver`]. Every invocation then runs in the guest — help,
+//! argv and the working directory), the fail-closed guest
+//! [`Resolver`], the pre-bound HTTP trigger listener
+//! ([`http_listener`]), and the MCP reference-shelf path hook
+//! ([`mcp_route`]). Every invocation then runs in the guest — help,
 //! version, grammar rejections, and `adapter add` included; argv and
 //! the engine guest's exit code pass through byte-for-byte.
 //!
@@ -28,6 +30,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use project::adapter::RoutedId;
 use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, Locations};
 use transport::command::selectors::{SeedRequest, seed_request};
 
@@ -146,6 +149,38 @@ fn current() -> &'static Policy {
     })
 }
 
+/// Macro expression: this invocation's pre-bound HTTP trigger
+/// listener, feeding the `/mcp/<axis>/<name>` reference shelves.
+///
+/// One listener drives both ends of the loop — the trigger server
+/// adopts it, and Omnia injects its local address as the guest-visible
+/// `HTTP_ADDR` every adapter guest derives its grant URLs from — so
+/// concurrent `emery` invocations get distinct ports instead of
+/// contending on a fixed default, with no environment mutation and no
+/// drop-then-rebind window.
+///
+/// Split policy: an operator-set `HTTP_ADDR` must bind — an invalid or
+/// occupied address is a startup failure. Without one, bind an
+/// ephemeral loopback port. Writing the `http_listener:` key means
+/// supplying a listener, so any bind failure is a startup failure —
+/// there is no run-without-the-trigger fallback.
+///
+/// # Errors
+///
+/// Returns an error when an operator-set `HTTP_ADDR` is invalid or
+/// cannot be bound, or when the ephemeral loopback bind fails.
+pub fn http_listener() -> anyhow::Result<std::net::TcpListener> {
+    use anyhow::Context as _;
+
+    if let Some(addr) = std::env::var_os("HTTP_ADDR") {
+        let addr = addr.to_string_lossy().into_owned();
+        return std::net::TcpListener::bind(&addr)
+            .with_context(|| format!("binding operator-set HTTP_ADDR `{addr}`"));
+    }
+    std::net::TcpListener::bind(("127.0.0.1", 0))
+        .context("binding an ephemeral loopback port for the MCP reference shelves")
+}
+
 /// Macro expression: host directory of the writable `.` project mount.
 #[must_use]
 pub fn project_root() -> PathBuf {
@@ -174,4 +209,28 @@ pub fn seed_mount_path() -> PathBuf {
 #[must_use]
 pub fn resolver() -> Resolver {
     current().resolver()
+}
+
+/// Macro expression: the deployment's `http_paths:` hook, mapping
+/// adapter MCP reference-shelf paths to guest identities.
+///
+/// Every judgment dispatch grants the spawned agent
+/// `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]` (the
+/// adapter SDK's `mcp_url`, on this invocation's pre-bound listener
+/// port); this hook maps that path back onto the routed adapter id
+/// `<axis>:<name>[@<version>]` — the exact identity the adapter guest
+/// was faulted in under, so the registry lookup hits and the
+/// component's `wasi:http` `handle()` export serves the shelf. Fail
+/// closed: a path outside the routed grammar is `None`, an ordinary
+/// 404 — never a catch-all onto the engine guest — and a definitive
+/// resolver miss on a claimed identity stays a 404, while a genuine
+/// fault (resolution failure, or a routed guest without the
+/// `wasi:http` handler export) is Omnia's error-logged 500.
+#[must_use]
+pub fn mcp_route(path: &str) -> Option<omnia::GuestId> {
+    let rest = path.strip_prefix("/mcp/")?;
+    let (axis, rest) = rest.split_once('/')?;
+    let adapter = rest.split('/').next().filter(|segment| !segment.is_empty())?;
+    let routed = RoutedId::parse(&format!("{axis}:{adapter}")).ok()?;
+    Some(omnia::GuestId::from(routed.to_string()))
 }

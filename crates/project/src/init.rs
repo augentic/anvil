@@ -80,6 +80,15 @@ pub(crate) struct InitResult {
     /// this is the literal `"workspace"` so the JSON envelope stays stable
     /// for downstream consumers.
     pub adapter_name: String,
+    /// The binding value recorded on `project.yaml.adapter` — carries
+    /// the effective (possibly train-expanded) selector so the output
+    /// announces an auto-pin the moment it happens. `None` for
+    /// workspace init (no adapter binding).
+    pub adapter_binding: Option<String>,
+    /// `true` when `--upgrade` rewrote a recorded binding that had
+    /// drifted from the ensured selector (a bare record whose cache
+    /// entry was cleared expands — and pulls — instead of failing).
+    pub adapter_binding_rewritten: bool,
     pub cache_present: bool,
     pub directories_created: Vec<PathBuf>,
     pub scaffolded_rule_keys: Vec<String>,
@@ -128,6 +137,26 @@ pub(crate) fn init(
     // slot) gives `--upgrade` its regenerate-only-when-absent behavior.
     result.context_skip_reason = context::generate(resolver, opts.paths)?;
     Ok(result)
+}
+
+/// The value init records on `project.yaml.adapter` for one ensured
+/// binding: the selector as typed (train expansion already applied at
+/// the operation layer). A component path is recorded as its canonical
+/// `file://` form so the value outlives the CWD — read from the cache
+/// mirror's provenance sidecar when present, because the engine guest
+/// cannot canonicalize a host path that lives outside its mounts (the
+/// launcher mirrored and stamped it host-side before the runtime
+/// started); canonicalized directly otherwise.
+pub(crate) fn binding_value(
+    ensured: &EnsuredAdapter, paths: &ExecutionPaths, project_dir: &Path,
+) -> Result<String, Error> {
+    match &ensured.selector {
+        AdapterSelector::Component { .. } => {
+            crate::adapter::ComponentMeta::load(paths, &ensured.resolved.manifest.name)
+                .map_or_else(|| ensured.selector.persist_value(project_dir), |meta| Ok(meta.source))
+        }
+        _ => ensured.selector.persist_value(project_dir),
+    }
 }
 
 pub(crate) fn resolved_name(project_dir: &Path, explicit: Option<&str>) -> String {

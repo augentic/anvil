@@ -212,7 +212,7 @@ impl Source for Reflect {
 
     async fn survey<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
         Ok(vec![Lead {
-            lead: ctx.mcp_url.unwrap_or("none").to_string(),
+            lead: ctx.mcp_url.as_deref().unwrap_or("none").to_string(),
             synopsis: format!("surveyed by {}", ctx.adapter_id),
             topics: Vec::new(),
         }])

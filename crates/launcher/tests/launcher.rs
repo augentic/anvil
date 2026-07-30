@@ -249,6 +249,13 @@ async fn cold_pinned_miss_offline_is_a_hard_failure() {
     let detail = err.to_string();
     assert!(detail.contains("emery:mock@9.9.9"), "{detail}");
     assert!(detail.contains("mock:9.9.9"), "names the OCI reference: {detail}");
+    // The operator-facing bare-miss surface at init/author lands here
+    // (a bare cache-miss name auto-pins to the train before install),
+    // so the failure carries the recoveries: name check, local seed,
+    // explicit pin.
+    assert!(detail.contains("spelled correctly"), "name-check recovery: {detail}");
+    assert!(detail.contains("emery adapter add"), "local-seed recovery: {detail}");
+    assert!(detail.contains("emery:mock@<semver>"), "explicit-pin recovery: {detail}");
 }
 
 #[tokio::test]
@@ -433,6 +440,42 @@ async fn installed_pin_reuses_offline() {
         .await
         .expect("second resolve is a store hit, no network");
     assert_eq!(bytes, expected);
+}
+
+// ---------------------------------------------------------------------------
+// The MCP HTTP route: `/mcp/<axis>/<name>[@<version>]` maps back
+// onto the routed adapter id the grant URL was derived from; anything
+// outside the routed grammar is `None` (an ordinary 404).
+
+#[test]
+fn mcp_route_maps_routed_ids() {
+    for (path, id) in [
+        ("/mcp/target/omnia", "target:omnia"),
+        ("/mcp/source/typescript", "source:typescript"),
+        ("/mcp/target/omnia@1.2.3", "target:omnia@1.2.3"),
+        // A trailing subpath belongs to the shelf, not the identity.
+        ("/mcp/source/intent/messages", "source:intent"),
+    ] {
+        let guest = launcher::mcp_route(path).expect(path);
+        assert_eq!(guest.as_str(), id, "{path}");
+    }
+}
+
+#[test]
+fn mcp_route_declines_paths_outside_the_grammar() {
+    for path in [
+        "/",
+        "/health",
+        "/mcp",
+        "/mcp/",
+        "/mcp/target",
+        "/mcp/target/",
+        "/mcp/plugin/omnia",
+        "/mcp/target/omnia@1",
+        "/mcp/target/omnia@not-semver",
+    ] {
+        assert!(launcher::mcp_route(path).is_none(), "{path} must decline");
+    }
 }
 
 #[tokio::test]

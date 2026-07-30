@@ -59,6 +59,29 @@ pub enum AdapterSelector {
 /// emery: naming cut — `augentic:` is reserved, not routed).
 pub const FIRST_PARTY_NAMESPACE: &str = "emery";
 
+/// The first-party adapter-train SemVer this binary recommends.
+///
+/// The exact pin a bare first-party name expands to at ensure time
+/// when the project component cache has no seeded entry. Matches the
+/// `emery-adapters` `[workspace.package]` version the release
+/// checklist verified is published at
+/// `ghcr.io/augentic/emery-adapters/<name>:<version>` — bumped
+/// manually alongside that checklist (the host SemVer stays
+/// independent; RFC-77 D1/D3).
+pub const FIRST_PARTY_ADAPTER_TRAIN: &str = "0.7.0";
+
+/// [`FIRST_PARTY_ADAPTER_TRAIN`] as a parsed [`semver::Version`].
+///
+/// # Panics
+///
+/// Panics when the compiled constant is not exact SemVer — a
+/// build-time authoring error, unreachable in a released binary.
+#[must_use]
+pub fn first_party_adapter_train() -> semver::Version {
+    semver::Version::parse(FIRST_PARTY_ADAPTER_TRAIN)
+        .expect("FIRST_PARTY_ADAPTER_TRAIN is exact SemVer")
+}
+
 impl AdapterSelector {
     /// Parse an `<adapter>` argument or recorded adapter value.
     ///

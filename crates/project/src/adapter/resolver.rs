@@ -24,6 +24,16 @@ use crate::handler::ExecutionPaths;
 /// guest-side provisioning. The defaults make `ensure_*` a
 /// side-effect-free resolve for deployments with nothing to provision.
 pub trait Resolver: Send + Sync {
+    /// Widen an unpinned selector to this deployment's effective
+    /// identity before ensure. Default: identity — native catalog
+    /// hosts resolve bare names against the compiled catalog and must
+    /// not invent pins. The component deployment expands a bare name
+    /// with no seeded cache entry to the embedded first-party
+    /// adapter-train pin ([`super::ensure::expand_bare`]).
+    fn expand(&self, selector: &AdapterSelector, _paths: &ExecutionPaths) -> AdapterSelector {
+        selector.clone()
+    }
+
     /// Resolve one source adapter selector.
     ///
     /// # Errors
@@ -44,6 +54,10 @@ pub trait Resolver: Send + Sync {
 
     /// Make `selector` usable under this deployment, then resolve it.
     ///
+    /// Callers that persist the selector must widen it through
+    /// [`Resolver::expand`] first, so the recorded binding names the
+    /// identity that was actually ensured.
+    ///
     /// # Errors
     ///
     /// Deployment provisioning failures (mirror, digest, catalog
@@ -56,6 +70,10 @@ pub trait Resolver: Send + Sync {
     }
 
     /// Make `selector` usable under this deployment, then resolve it.
+    ///
+    /// Callers that persist the selector must widen it through
+    /// [`Resolver::expand`] first, so the recorded binding names the
+    /// identity that was actually ensured.
     ///
     /// # Errors
     ///
@@ -84,6 +102,10 @@ impl Component {
 }
 
 impl Resolver for Component {
+    fn expand(&self, selector: &AdapterSelector, paths: &ExecutionPaths) -> AdapterSelector {
+        super::ensure::expand_bare(selector, paths)
+    }
+
     fn resolve_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {

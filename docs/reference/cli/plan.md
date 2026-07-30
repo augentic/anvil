@@ -23,6 +23,8 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 
 `emery plan author <name> [--source <key>=<adapter>:<path>...] [--intent "<string>"]` scaffolds `plan.yaml` at the repo root with the given kebab-case name before its survey and reconcile legs run. Each `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `already-exists` when `plan.yaml` is already present.
 
+Author widens then ensures every binding up front, before the scaffold write: a bare adapter name with no seeded project-cache entry auto-pins to the binary's embedded first-party adapter train, stamping `version:` on the binding in `plan.yaml` before first use — so the survey fan-out and every later `slice refine` extract dispatch the pinned routed id (the pin installs through the standard pull-on-miss path). The `--intent` sugar's implicit `intent` binding rides the same expansion. A cache-seeded binding (`emery adapter add`) stays bare — the co-dev seed always wins. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
+
 ### emery plan validate
 
 Check structural and referential integrity of the plan, plus the four

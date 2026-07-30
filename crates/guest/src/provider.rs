@@ -41,6 +41,10 @@ impl Anchor for Provider {
 }
 
 impl Resolver for Provider {
+    fn expand(&self, selector: &AdapterSelector, paths: &ExecutionPaths) -> AdapterSelector {
+        project::adapter::expand_bare(selector, paths)
+    }
+
     fn resolve_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {

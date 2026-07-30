@@ -31,7 +31,7 @@ impl From<omnia_guest::model::Error> for Error {
 }
 
 /// Call-scoped environment the shim resolves and hands to every operation.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Context<'a> {
     /// Adapter identity this call was routed by, e.g. `target:contracts`.
     pub adapter_id: &'a str,
@@ -39,27 +39,33 @@ pub struct Context<'a> {
     pub project_root: &'a Path,
     /// The adapter's MCP references endpoint, granted to the spawned
     /// agent so it can fetch `doc://` references lazily.
-    pub mcp_url: Option<&'a str>,
+    pub mcp_url: Option<String>,
 }
 
 impl<'a> Context<'a> {
-    /// Guest-side context rooted at the guest's own `"."` preopen.
+    /// Guest-side context rooted at the guest's own `"."` preopen,
+    /// granting the adapter's own references shelf ([`mcp_url`]) when
+    /// the runtime injected an `HTTP_ADDR`.
     #[must_use]
-    pub fn guest(adapter_id: &'a str, mcp_url: Option<&'a str>) -> Self {
+    pub fn guest(adapter_id: &'a str) -> Self {
         Self {
             adapter_id,
             project_root: Path::new("."),
-            mcp_url,
+            mcp_url: mcp_url(adapter_id),
         }
     }
 
     /// MCP grants offered on every judgment leg: the adapter's own
     /// references, when an endpoint is set. Named `<name>-references`
-    /// after the axis-stripped adapter id.
+    /// after the axis- and version-stripped adapter id, so a pinned
+    /// dispatch (`target:omnia@1.0.0`) grants the same server name as
+    /// an unpinned one.
     #[must_use]
     pub fn grants(&self) -> Vec<McpGrant> {
         let name = self.adapter_id.rsplit(':').next().unwrap_or(self.adapter_id);
+        let name = name.split_once('@').map_or(name, |(stem, _)| stem);
         self.mcp_url
+            .as_deref()
             .map(|url| McpGrant {
                 name: format!("{name}-references"),
                 tools: Vec::new(),
@@ -76,6 +82,35 @@ impl<'a> Context<'a> {
             .as_deref()
             .map_or_else(|| self.project_root.to_path_buf(), |sub| self.project_root.join(sub))
     }
+}
+
+/// The adapter's own MCP references endpoint on the runtime's HTTP
+/// trigger: `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]`.
+///
+/// The port comes from the guest's `HTTP_ADDR` — injected by the
+/// runtime from the local address of the deployment's pre-bound
+/// listener, so grants and listener cannot drift apart. `None` when
+/// the variable is absent or unparseable: no listener means no shelf,
+/// and no grant is offered — degradation is coherent end to end,
+/// never a wrong-port guess.
+#[must_use]
+pub fn mcp_url(adapter_id: &str) -> Option<String> {
+    mcp_url_for(std::env::var("HTTP_ADDR").ok().as_deref(), adapter_id)
+}
+
+/// [`mcp_url`] over an explicit trigger address.
+///
+/// The path mirrors the routed adapter id verbatim (`:` becomes `/`,
+/// the version pin stays), so the deployment's `http_paths` hook maps
+/// it back onto the exact identity this guest was faulted in under and
+/// the component's own `wasi:http` handler serves the shelf. Only the
+/// port is taken from `addr`: the host stays the `IPv4` loopback
+/// literal, not `localhost` — an agent whose resolver prefers `::1`
+/// would otherwise fail to connect.
+#[must_use]
+pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
+    let port = addr?.rsplit_once(':')?.1.parse::<u16>().ok()?;
+    Some(format!("http://127.0.0.1:{port}/mcp/{}", adapter_id.replacen(':', "/", 1)))
 }
 
 /// One slice-artifact input — mirrors the WIT `target.input` variant.

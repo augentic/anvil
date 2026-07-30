@@ -118,6 +118,50 @@ mod resolve {
     }
 }
 
+mod expand {
+    use project::adapter::{
+        AdapterSelector, FIRST_PARTY_NAMESPACE, expand_bare, first_party_adapter_train,
+    };
+
+    use super::*;
+
+    #[test]
+    fn package_passes_through() {
+        let project = Provider::bare();
+        let pin = AdapterSelector::parse("emery:demo@1.2.0").expect("package selector");
+        assert_eq!(expand_bare(&pin, project.paths()), pin);
+    }
+
+    #[test]
+    fn component_passes_through() {
+        let project = Provider::bare();
+        let component = AdapterSelector::parse("./demo.wasm").expect("component selector");
+        assert_eq!(expand_bare(&component, project.paths()), component);
+    }
+
+    #[test]
+    fn bare_cache_hit_stays_bare() {
+        let project = Provider::bare();
+        stage_cached_component(&project, "demo");
+        let bare = AdapterSelector::parse("demo").expect("bare selector");
+        assert_eq!(expand_bare(&bare, project.paths()), bare);
+    }
+
+    #[test]
+    fn bare_cache_miss_expands_to_train_pin() {
+        let project = Provider::bare();
+        let bare = AdapterSelector::parse("demo").expect("bare selector");
+        assert_eq!(
+            expand_bare(&bare, project.paths()),
+            AdapterSelector::Package {
+                namespace: FIRST_PARTY_NAMESPACE.to_string(),
+                name: "demo".to_string(),
+                version: first_party_adapter_train(),
+            }
+        );
+    }
+}
+
 #[test]
 fn platforms_metadata_preserved() {
     let project = Provider::bare();

@@ -37,8 +37,10 @@ pub use core::{
     SourceAdapter, TargetAdapter,
 };
 
-pub use ensure::ComponentMeta;
+pub use ensure::{ComponentMeta, expand_bare};
 pub use operation::{SourceOperation, TargetOperation};
 pub use resolver::Resolver;
 pub use routed::RoutedId;
-pub use selector::{AdapterSelector, FIRST_PARTY_NAMESPACE};
+pub use selector::{
+    AdapterSelector, FIRST_PARTY_ADAPTER_TRAIN, FIRST_PARTY_NAMESPACE, first_party_adapter_train,
+};
