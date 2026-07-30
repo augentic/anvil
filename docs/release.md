@@ -94,10 +94,17 @@ First-party adapter components are **not** built or published by this repo. They
 
 Supported install paths (see [Prerequisites](orientation/prerequisites.md) for detail):
 
+- **Installer script** — [`scripts/install.sh`](../scripts/install.sh) downloads the Release archive for the detected platform, verifies the `.sha256` companion, and installs to `~/.local/bin`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
+```
+
+`/emery:init` bootstraps the CLI through the same script with an exact `--version` pin; bumping that pin in `plugins/emery/skills/init/SKILL.md` (and the version examples in the install docs) is a release-checklist step when a new host version publishes.
+
 - **Homebrew** — [`augentic/homebrew-tap`](https://github.com/augentic/homebrew-tap) formula over these Release archives:
 
 ```bash
-export HOMEBREW_GITHUB_API_TOKEN="$(gh auth token)"   # while emery is private
 brew tap augentic/tap
 brew install emery
 ```
@@ -122,7 +129,8 @@ Bump the Homebrew formula `version` and `sha256` values in `augentic/homebrew-ta
 1. Add a native `matrix.include` entry to the `binaries` job in `.github/workflows/publish.yaml` (`runs-on` must provide that triple without `cross`).
 2. If the target needs system packages (e.g. `musl-tools` for `*-musl`), add an `apt-get install` step gated on `matrix.target == '<new triple>'`.
 3. Update `[package.metadata.binstall]` overrides if the archive format differs from `tgz`.
-4. Document the new target in this file.
+4. Add the `uname -sm` → triple mapping to the platform detection in [`scripts/install.sh`](../scripts/install.sh).
+5. Document the new target in this file.
 
 ## Troubleshooting
 

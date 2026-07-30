@@ -10,10 +10,10 @@ argument-hint: <adapter|workspace>
 
 ## Invocation
 
-1. **Install or refresh the CLI** — invoking this skill is consent to install. Install the prebuilt release via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (overwrites any existing binary; no local compile):
+1. **Install or refresh the CLI** — invoking this skill is consent to install. Install the prebuilt release via the installer script (overwrites any existing binary; no local compile; verifies the Release archive's `.sha256`):
 
 ```bash
-cargo binstall --git https://github.com/augentic/emery emery@0.28.0 --force -y
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- --version 0.32.0 -y
 ```
 
 Then run `emery --version` and stop on failure.
