@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 use super::core::{ResolvedSource, ResolvedTarget};
 use super::resolver::{Component, Resolver as _, component_cache_entry};
-use super::selector::{FIRST_PARTY_NAMESPACE, canonicalize_component, first_party_adapter_train};
+use super::selector::canonicalize_component;
 use super::{AdapterSelector, metadata, selector};
 use crate::handler::ExecutionPaths;
 
@@ -52,34 +52,6 @@ pub fn target(
 ) -> Result<ResolvedTarget, Error> {
     provision(selector, paths, now)?;
     Component::new(runner).resolve_target(selector, paths)
-}
-
-/// Component-deployment widening of an unpinned selector.
-///
-/// A bare name with no seeded project-cache entry expands to the
-/// embedded first-party adapter-train pin
-/// (`emery:<name>@<FIRST_PARTY_ADAPTER_TRAIN>`); everything else —
-/// a cache-hit bare name (the `adapter add` co-dev seed always wins),
-/// an explicit package pin, a local component — passes through
-/// unchanged.
-///
-/// Callers that persist the selector (`emery init`'s target binding,
-/// `plan author`'s source bindings) widen through this kernel before
-/// ensure, so every pulled version is recorded before first use and
-/// resolution stays reproducible across hosts with different embedded
-/// trains.
-#[must_use]
-pub fn expand_bare(selector: &AdapterSelector, paths: &ExecutionPaths) -> AdapterSelector {
-    match selector {
-        AdapterSelector::Bare { name } if !component_cache_entry(paths, name).is_file() => {
-            AdapterSelector::Package {
-                namespace: FIRST_PARTY_NAMESPACE.to_string(),
-                name: name.clone(),
-                version: first_party_adapter_train(),
-            }
-        }
-        other => other.clone(),
-    }
 }
 
 /// Make one selector resolvable on the guest side of the seam: mirror

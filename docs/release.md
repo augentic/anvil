@@ -14,12 +14,7 @@ Three surfaces version independently — never force them to share a number:
 
 Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
 
-The host additionally *embeds* one adapter-train recommendation: `FIRST_PARTY_ADAPTER_TRAIN` in `crates/project/src/adapter/selector.rs` — the exact pin a bare first-party name auto-pins to at init / plan author when the project cache misses (surfaced by `emery --version` as `(adapters <train>)`). The release-coupled deployment config spans **two crates**: that constant in `project` and `FIRST_PARTY_REPOSITORY` (the GHCR prefix) in `launcher`. When the recommended train moves:
-
-1. Bump `FIRST_PARTY_ADAPTER_TRAIN` to the adapters repo's released `[workspace.package]` version.
-2. **Verify every first-party adapter is published at that GHCR tag** (`ghcr.io/augentic/emery-adapters/<name>:<train>`) — a missing tag lands on operators as `adapter-install-failed` at first init, not in CI. An operator-invoked HEAD sweep over the tags (a `cargo make` task or release-pipeline step) closes the gap without a per-push network dependency.
-
-The host SemVer stays independent — bumping the train constant is not a reason to bump the host version, and vice versa.
+The host embeds no adapter-version recommendation: a bare first-party name resolves local-first at run time, provisioning the registry's newest exact-SemVer tag only when nothing local exists (or on an explicit `emery adapter update`). The only release-coupled deployment config in this repo is `FIRST_PARTY_REPOSITORY` (the GHCR prefix) in `launcher`. When an adapter train publishes, **verify every first-party adapter is published at its GHCR tag** (`ghcr.io/augentic/emery-adapters/<name>:<version>`) — a missing or malformed tag lands on operators as `adapter-install-failed` / `adapter-latest-none` at first provisioning, not in CI. An operator-invoked HEAD sweep over the tags (a `cargo make` task or release-pipeline step) closes the gap without a per-push network dependency.
 
 ## Release lines
 

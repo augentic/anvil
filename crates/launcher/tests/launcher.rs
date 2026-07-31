@@ -8,7 +8,9 @@
 //! store miss installs from an OCI registry (tests compose an
 //! in-process read-only registry through `Registry::insecure`; the
 //! shipped binary hard-codes the first-party GHCR base), while
-//! unpinned ids stay verify-and-load over the seeded project cache.
+//! unpinned ids resolve local-first — cache seed, else newest store
+//! version, else the pull-latest provisioning leg — with the refresh
+//! set (`adapter update` / `init`) forcing the registry check.
 //! Every test injects explicit [`Locations`] rooted in a tempdir
 //! through `Policy::new` — the same explicit-layout seam sandboxes
 //! use — so no process environment is read or mutated.
@@ -79,8 +81,9 @@ impl Sandbox {
     }
 
     /// The deployment's resolver, assembled the way the binary does
-    /// it (first-party registry base — safe for tests that never hit
-    /// a pinned store miss).
+    /// it (first-party registry base — safe for tests that never
+    /// reach a registry pull: pinned store hits, cache seeds, and
+    /// store-newest bare resolves).
     fn resolver(&self) -> Resolver {
         self.policy(&["plan", "status"]).resolver()
     }
@@ -264,10 +267,9 @@ async fn cold_pinned_miss_offline_is_a_hard_failure() {
     let detail = err.to_string();
     assert!(detail.contains("emery:mock@9.9.9"), "{detail}");
     assert!(detail.contains("mock:9.9.9"), "names the OCI reference: {detail}");
-    // The operator-facing bare-miss surface at init/author lands here
-    // (a bare cache-miss name auto-pins to the train before install),
-    // so the failure carries the recoveries: name check, local seed,
-    // explicit pin.
+    // The operator-facing pinned-miss surface at init/author lands
+    // here, so the failure carries the recoveries: name check, local
+    // seed, explicit pin.
     assert!(detail.contains("spelled correctly"), "name-check recovery: {detail}");
     assert!(detail.contains("emery adapter add"), "local-seed recovery: {detail}");
     assert!(detail.contains("emery:mock@<semver>"), "explicit-pin recovery: {detail}");
@@ -303,16 +305,22 @@ async fn cache_backed_ids_resolve_the_project_cache() {
 }
 
 #[tokio::test]
-async fn cache_miss_is_a_hard_failure() {
-    // Unpinned ids stay verify-and-load: no install leg exists for
-    // the project component cache.
+async fn bare_total_miss_offline_is_a_hard_failure() {
+    // A bare id with nothing local (no cache seed, no store entry)
+    // reaches the pull-latest provisioning leg; without a reachable
+    // registry the tag listing fails deterministically with the
+    // recovery hints.
     let sandbox = Sandbox::new();
     let err = sandbox
-        .resolver()
+        .offline_resolver()
         .resolve_component("target:mock")
         .await
-        .expect_err("empty cache fails deterministically");
-    assert_eq!(code(&err), "adapter-not-found");
+        .expect_err("an offline total miss fails deterministically");
+    assert_eq!(code(&err), "adapter-latest-failed");
+    let detail = err.to_string();
+    assert!(detail.contains("spelled correctly"), "name-check recovery: {detail}");
+    assert!(detail.contains("emery adapter add"), "local-seed recovery: {detail}");
+    assert!(detail.contains("emery:mock@<semver>"), "explicit-pin recovery: {detail}");
 }
 
 #[tokio::test]
@@ -455,6 +463,153 @@ async fn installed_pin_reuses_offline() {
         .await
         .expect("second resolve is a store hit, no network");
     assert_eq!(bytes, expected);
+}
+
+// ---------------------------------------------------------------------------
+// Local-first bare resolution: cache seed, else newest store version
+// (offline), else pull-latest; the refresh set forces the registry
+// check but never shadows the cache seed.
+
+#[tokio::test]
+async fn bare_total_miss_installs_the_newest_semver() {
+    // Nothing local: the provisioning leg lists the repository's
+    // tags, ignores non-SemVer ones, and installs the maximum.
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    server.publish("mock", "1.0.0", component_bytes("mock 1.0.0"));
+    let newest = component_bytes("mock 2.1.0");
+    server.publish("mock", "2.1.0", newest.clone());
+    server.publish("mock", "latest", component_bytes("mock moving tag"));
+    server.publish("mock", "not-semver", component_bytes("mock junk tag"));
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .resolve_component("target:mock")
+        .await
+        .expect("a bare total miss provisions the newest SemVer");
+    assert_eq!(bytes, newest);
+    assert!(sandbox.store.join("mock@2.1.0.wasm").is_file(), "installed into the store");
+    assert!(!sandbox.store.join("mock@1.0.0.wasm").exists(), "older versions stay uninstalled");
+}
+
+#[tokio::test]
+async fn bare_no_semver_tags_is_latest_none() {
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    server.publish("mock", "latest", component_bytes("mock moving tag"));
+
+    let err = sandbox
+        .resolver_over(server.registry())
+        .resolve_component("target:mock")
+        .await
+        .expect_err("no exact-SemVer tag to provision");
+    assert_eq!(code(&err), "adapter-latest-none");
+}
+
+#[tokio::test]
+async fn bare_store_newest_resolves_offline() {
+    // Something local: the newest installed version resolves with no
+    // registry consultation (the resolver's registry base refuses
+    // connections, so any network attempt would fail the test).
+    let sandbox = Sandbox::new();
+    sandbox.seed_store_adapter("mock", "1.0.0");
+    let newest = sandbox.seed_store_adapter("mock", "2.0.0");
+
+    let bytes = sandbox
+        .offline_resolver()
+        .resolve_component("target:mock")
+        .await
+        .expect("the newest store version resolves offline");
+    assert_eq!(bytes, newest);
+}
+
+#[tokio::test]
+async fn cache_seed_shadows_store_and_registry() {
+    // The co-dev seed always wins: with a cache seed, a newer store
+    // entry and a newer published version are both ignored.
+    let sandbox = Sandbox::new();
+    let seeded = sandbox.seed_cached_component("mock");
+    sandbox.seed_store_adapter("mock", "2.0.0");
+    let server = TestRegistry::serve().await;
+    server.publish("mock", "3.0.0", component_bytes("mock 3.0.0"));
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .resolve_component("target:mock")
+        .await
+        .expect("the cache seed resolves");
+    assert_eq!(bytes, std::fs::read(&seeded).expect("read seed"));
+}
+
+#[tokio::test]
+async fn refresh_installs_newer() {
+    // The explicit update surface: a refreshed name checks the
+    // registry even though a store entry exists, installs the newer
+    // version, and resolves it.
+    let sandbox = Sandbox::new();
+    sandbox.seed_store_adapter("mock", "1.0.0");
+    let server = TestRegistry::serve().await;
+    let newest = component_bytes("mock 2.0.0");
+    server.publish("mock", "2.0.0", newest.clone());
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .refreshing(["mock".to_string()])
+        .resolve_component("target:mock")
+        .await
+        .expect("the refresh installs and resolves the newer version");
+    assert_eq!(bytes, newest);
+    assert!(sandbox.store.join("mock@2.0.0.wasm").is_file(), "installed into the store");
+}
+
+#[tokio::test]
+async fn refresh_without_newer_keeps_the_store_version() {
+    let sandbox = Sandbox::new();
+    let installed = sandbox.seed_store_adapter("mock", "2.0.0");
+    let server = TestRegistry::serve().await;
+    server.publish("mock", "1.0.0", component_bytes("mock 1.0.0"));
+    server.publish("mock", "2.0.0", component_bytes("mock republished 2.0.0"));
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .refreshing(["mock".to_string()])
+        .resolve_component("target:mock")
+        .await
+        .expect("an up-to-date refresh keeps the installed entry");
+    assert_eq!(bytes, installed, "no reinstall over the immutable store entry");
+}
+
+#[tokio::test]
+async fn refresh_offline_is_a_hard_failure() {
+    // An explicit update means checking the registry; offline, that
+    // check fails deterministically instead of silently keeping the
+    // local version.
+    let sandbox = Sandbox::new();
+    sandbox.seed_store_adapter("mock", "1.0.0");
+
+    let err = sandbox
+        .offline_resolver()
+        .refreshing(["mock".to_string()])
+        .resolve_component("target:mock")
+        .await
+        .expect_err("an offline refresh fails deterministically");
+    assert_eq!(code(&err), "adapter-latest-failed");
+}
+
+#[tokio::test]
+async fn refresh_never_shadows_the_cache_seed() {
+    // The cache seed wins even under refresh — and no registry call
+    // happens (the offline base would fail one).
+    let sandbox = Sandbox::new();
+    let seeded = sandbox.seed_cached_component("mock");
+
+    let bytes = sandbox
+        .offline_resolver()
+        .refreshing(["mock".to_string()])
+        .resolve_component("target:mock")
+        .await
+        .expect("the seed resolves without any registry consultation");
+    assert_eq!(bytes, std::fs::read(&seeded).expect("read seed"));
 }
 
 // ---------------------------------------------------------------------------

@@ -55,19 +55,21 @@ pub(crate) fn metadata_cache_path(component: &Path) -> PathBuf {
     component.with_file_name(file_name)
 }
 
-/// Dispatch metadata for a pinned package by exact routed id, with no
-/// component file access and no sidecar cache.
+/// Dispatch metadata by routed id, with no component file access and
+/// no sidecar cache.
 ///
-/// The package-pin resolve leg: dispatch happens *before* any store
-/// file exists on the caller's side of the seam — under the shipped
-/// deployment the host resolver installs a missing pin during this
-/// dispatch (pull-on-miss), so a cold store resolves without a
-/// guest-visible store entry. Pins are immutable, and the dispatch is
-/// one deterministic component call, so no digest-keyed cache applies.
+/// The dispatch-first resolve leg: dispatch happens *before* any
+/// component file is visible on the caller's side of the seam — under
+/// the shipped deployment the host resolver faults the component in
+/// during this dispatch (verify-and-load for a pinned store entry
+/// with pull-on-miss install; local-first resolution with a
+/// pull-latest provisioning leg for a bare cache-miss name), so a
+/// cold store resolves without a guest-visible store entry. There is
+/// no guest-visible file to digest-key, so no cache applies.
 pub(super) fn dispatch(
-    runner: Runner, axis: Axis, name: &str, version: &semver::Version,
+    runner: Runner, axis: Axis, name: &str, version: Option<&semver::Version>,
 ) -> Result<Metadata, Error> {
-    let adapter_id = RoutedId::new(axis, name, Some(version.clone())).to_string();
+    let adapter_id = RoutedId::new(axis, name, version.cloned()).to_string();
     runner(&Request {
         axis,
         adapter_id: &adapter_id,

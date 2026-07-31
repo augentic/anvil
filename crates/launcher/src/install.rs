@@ -6,8 +6,12 @@
 //! artifact (`ghcr.io/augentic/emery-adapters/<name>:<version>`),
 //! validated (single layer, wasm magic, size, manifest layer digest),
 //! written atomically, and recorded in the digest sidecar with its
-//! OCI provenance (repository, manifest digest, layer digest). The
-//! guest never downloads: package installation is native-only.
+//! OCI provenance (repository, manifest digest, layer digest). An
+//! unpinned name with nothing local — or one the operator explicitly
+//! updates — resolves its version first through [`resolve_latest`]
+//! (the repository's newest exact-SemVer tag) and installs through
+//! the same leg. The guest never downloads: package installation is
+//! native-only.
 
 use error::Error;
 use oci_client::Reference;
@@ -59,6 +63,95 @@ impl Registry {
     }
 }
 
+/// One anonymous OCI client over the registry's protocol.
+fn client(registry: &Registry) -> Client {
+    Client::new(ClientConfig {
+        protocol: registry.protocol.clone(),
+        ..ClientConfig::default()
+    })
+}
+
+/// Page size for tag listing.
+const TAGS_PAGE: usize = 100;
+
+/// Resolve the newest published version of `name`: list the
+/// repository's tags, keep the exact-SemVer ones, take the maximum.
+///
+/// The explicit-update and pull-on-miss provisioning legs share this
+/// kernel; normal resolution never reaches it while a local component
+/// (cache seed or store entry) exists.
+///
+/// # Errors
+///
+/// `adapter-latest-failed` when the registry cannot be reached or the
+/// listing fails (offline, unknown repository, auth);
+/// `adapter-latest-none` when the repository serves no exact-SemVer
+/// tag.
+pub async fn resolve_latest(registry: &Registry, name: &str) -> Result<semver::Version, Error> {
+    let repository = format!("{}/{name}", registry.prefix);
+    let reference: Reference = repository.parse().map_err(|err| Error::Diag {
+        code: "adapter-latest-failed",
+        detail: format!("`{name}` does not form a valid OCI repository at {repository}: {err}"),
+    })?;
+
+    let client = client(registry);
+    let mut tags: Vec<String> = Vec::new();
+    let mut last: Option<String> = None;
+    loop {
+        let page = client
+            .list_tags(&reference, &RegistryAuth::Anonymous, Some(TAGS_PAGE), last.as_deref())
+            .await
+            .map_err(|err| Error::Diag {
+                code: "adapter-latest-failed",
+                detail: format!(
+                    "failed to list published versions of `{name}` at {repository}: {err:#}. \
+                     Check the adapter name is spelled correctly and the registry is reachable; \
+                     seed a local component instead with `emery adapter add \
+                     <path/to/{name}.wasm>`, or pin a published version (`emery:{name}@<semver>`)"
+                ),
+            })?;
+        let batch = page.tags.len();
+        // Guard against servers that ignore pagination and re-serve
+        // the same page.
+        if batch == 0 || page.tags.last() == last.as_ref() {
+            break;
+        }
+        last = page.tags.last().cloned();
+        tags.extend(page.tags);
+        if batch < TAGS_PAGE {
+            break;
+        }
+    }
+
+    tags.iter().filter_map(|tag| semver::Version::parse(tag).ok()).max().ok_or_else(|| {
+        Error::Diag {
+            code: "adapter-latest-none",
+            detail: format!(
+                "no published exact-SemVer version of `{name}` found at {repository}; seed a \
+                 local component with `emery adapter add <path/to/{name}.wasm>` or pin a \
+                 published version (`emery:{name}@<semver>`)"
+            ),
+        }
+    })
+}
+
+/// The newest version of `name` already installed in the global
+/// store, from the `<name>@<version>.wasm` entry filenames. `None`
+/// when nothing local exists (or the store root is absent).
+pub fn store_newest(name: &str, paths: &ExecutionPaths) -> Option<semver::Version> {
+    let prefix = format!("{name}@");
+    let entries = std::fs::read_dir(paths.locations().store_root()).ok()?;
+    entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter_map(|file| {
+            file.strip_prefix(&prefix)
+                .and_then(|rest| rest.strip_suffix(".wasm"))
+                .and_then(|version| semver::Version::parse(version).ok())
+        })
+        .max()
+}
+
 /// Pull one pinned package from the registry and install it into the
 /// global store with its digest sidecar (verify-after-write).
 ///
@@ -82,10 +175,7 @@ pub async fn install(
             ),
         })?;
 
-    let client = WasmClient::new(Client::new(ClientConfig {
-        protocol: registry.protocol.clone(),
-        ..ClientConfig::default()
-    }));
+    let client = WasmClient::new(client(registry));
     let image =
         client.pull(&reference, &RegistryAuth::Anonymous).await.map_err(|err| Error::Diag {
             code: "adapter-install-failed",

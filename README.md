@@ -35,7 +35,7 @@ emery --version
 
 ### First change
 
-This path uses the **Contracts** target. A bare adapter name auto-pins to the binary's embedded adapter train (see `emery --version`) and pulls from GHCR; you do not need to clone `emery-adapters`.
+This path uses the **Contracts** target. A bare adapter name resolves local-first and pulls the newest published version from GHCR when nothing local exists; you do not need to clone `emery-adapters`.
 
 **Option A: Cursor Agent**
 In Cursor Agent chat, in a fresh or disposable repository:

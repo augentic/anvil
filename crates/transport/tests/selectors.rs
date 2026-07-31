@@ -1,9 +1,10 @@
 //! Launcher-facing anchoring projection over the shared grammar: the
-//! `adapter add` seed request is the one pre-boot fact argv carries.
-//! Everything else — help, version, rejections, every workflow verb —
-//! runs in the guest, so it projects nothing.
+//! `adapter add` seed request and the adapter refresh set are the
+//! pre-boot facts argv carries. Everything else — help, version,
+//! rejections, every workflow verb — runs in the guest, so it
+//! projects nothing.
 
-use transport::command::selectors::seed_request;
+use transport::command::selectors::{RefreshRequest, refresh_request, seed_request};
 
 fn argv(args: &[&str]) -> Vec<String> {
     args.iter().map(ToString::to_string).collect()
@@ -49,5 +50,58 @@ fn displays_and_rejections_project_no_seed() {
         &["adapter", "add"][..],
     ] {
         assert_eq!(seed_request(&argv(args)), None, "{args:?}");
+    }
+}
+
+mod refresh {
+    use super::*;
+
+    #[test]
+    fn adapter_update_names_the_adapter() {
+        let request = refresh_request(&argv(&["adapter", "update", "omnia"]));
+        assert_eq!(request.names, vec!["omnia".to_string()]);
+        assert!(!request.recorded_adapter);
+    }
+
+    #[test]
+    fn init_bare_name_refreshes() {
+        let request = refresh_request(&argv(&["init", "omnia"]));
+        assert_eq!(request.names, vec!["omnia".to_string()]);
+        assert!(!request.recorded_adapter);
+    }
+
+    #[test]
+    fn init_upgrade_flags_the_recorded_binding() {
+        // The launcher reads `project.yaml` at the anchored root to
+        // widen the set; the projection only flags the intent.
+        let request = refresh_request(&argv(&["init", "--upgrade"]));
+        assert!(request.names.is_empty());
+        assert!(request.recorded_adapter);
+    }
+
+    #[test]
+    fn pins_and_components_never_refresh() {
+        // Pinned versions are immutable; local components refresh
+        // through `adapter add`.
+        for args in [
+            &["init", "emery:omnia@1.0.0"][..],
+            &["init", "./omnia.wasm"][..],
+            &["adapter", "update", "emery:omnia@1.0.0"][..],
+        ] {
+            assert!(refresh_request(&argv(args)).names.is_empty(), "{args:?}");
+        }
+    }
+
+    #[test]
+    fn other_routes_refresh_nothing() {
+        for args in [
+            &["plan", "status"][..],
+            &["adapter", "add", "./demo.wasm"][..],
+            &["slice", "build", "s1"][..],
+            &["--version"][..],
+            &["frobnicate"][..],
+        ] {
+            assert_eq!(refresh_request(&argv(args)), RefreshRequest::default(), "{args:?}");
+        }
     }
 }

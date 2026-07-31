@@ -22,6 +22,7 @@ oci-wasm.workspace = true
 omnia.workspace = true
 emery-project.workspace = true
 emery-transport.workspace = true
+semver.workspace = true
 
 [dev-dependencies]
 axum.workspace = true

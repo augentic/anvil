@@ -109,6 +109,31 @@ async fn handle(State(store): State<Store>, uri: Uri) -> Response<Body> {
     if rest.is_empty() {
         return plain(StatusCode::OK, "{}");
     }
+    // `<repo>/tags/list` — the tag listing behind `resolve_latest`,
+    // derived from the published manifest tags (digest keys excluded).
+    if let Some(repo) = rest.strip_suffix("/tags/list") {
+        let prefix = format!("{repo}/manifests/");
+        let mut tags: Vec<String> = {
+            let contents = store.lock().expect("registry lock");
+            contents
+                .manifests
+                .keys()
+                .filter_map(|key| key.strip_prefix(&prefix))
+                .filter(|tag| !tag.starts_with("sha256:"))
+                .map(ToString::to_string)
+                .collect()
+        };
+        if tags.is_empty() {
+            return plain(StatusCode::NOT_FOUND, "unknown repository");
+        }
+        tags.sort();
+        let body = serde_json::json!({ "name": repo, "tags": tags }).to_string();
+        return Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body))
+            .expect("tags response");
+    }
     let (manifest, blob) = {
         let contents = store.lock().expect("registry lock");
         (contents.manifests.get(rest).cloned(), contents.blobs.get(rest).cloned())

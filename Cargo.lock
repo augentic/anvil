@@ -1222,6 +1222,7 @@ dependencies = [
  "oci-client",
  "oci-wasm",
  "omnia",
+ "semver",
  "serde_json",
  "tempfile",
  "tokio",

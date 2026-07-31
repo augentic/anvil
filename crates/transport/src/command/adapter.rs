@@ -18,3 +18,11 @@ pub struct AddArgs {
     #[arg(long)]
     pub project_dir: Option<PathBuf>,
 }
+
+/// Arguments for `adapter update`.
+#[derive(Debug, Args)]
+pub struct UpdateArgs {
+    /// Bare adapter name to update to the newest published version.
+    #[arg(value_name = "NAME")]
+    pub name: String,
+}

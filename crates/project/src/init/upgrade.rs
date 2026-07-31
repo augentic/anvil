@@ -6,13 +6,10 @@
 //! One runner serves both regular and workspace projects: the
 //! preservation logic is identical, so the dispatcher routes here ahead
 //! of the workspace / regular branch. The recorded adapter binding was
-//! already re-ensured (and resolved) by the operation layer; when the
-//! ensured selector drifted from the record — a bare record whose
-//! cache entry was cleared expands to the embedded first-party train
-//! pin — the record is rewritten to the effective binding (and the
-//! rewrite is surfaced in the output), preserving the record-before-use
-//! invariant. A cache-hit bare record expands to itself, so co-dev
-//! upgrades stay bare.
+//! already re-ensured (and resolved) by the operation layer and is
+//! never rewritten — a bare record stays bare (the deployment resolves
+//! it local-first, refreshing to the newest published version as part
+//! of the upgrade invocation).
 
 use std::fs;
 
@@ -62,23 +59,15 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         false
     };
 
-    // Rewrite a drifted binding to the effective ensured selector —
-    // the operation layer widened a bare cache-miss record to the
-    // embedded train pin before ensuring it.
+    // The recorded binding is reported, never rewritten: a bare
+    // record stays bare under local-first resolution.
     let adapter_binding = match opts.adapter {
         Some(ensured) => Some(binding_value(ensured, opts.paths, opts.project_dir)?),
         None => None,
     };
-    let binding_changed = !cfg.workspace
-        && adapter_binding
-            .as_deref()
-            .is_some_and(|binding| cfg.adapter.as_deref() != Some(binding));
-    if binding_changed {
-        cfg.adapter.clone_from(&adapter_binding);
-    }
 
     let emery_version_changed = cfg.emery_version.as_deref() != Some(target.as_str());
-    let needs_write = emery_version_changed || platforms_changed || binding_changed;
+    let needs_write = emery_version_changed || platforms_changed;
     if emery_version_changed {
         cfg.emery_version = Some(target.clone());
     }
@@ -98,7 +87,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         cache_present: !cfg.workspace && ComponentMeta::path(opts.paths, &adapter_name).exists(),
         adapter_name,
         adapter_binding: if cfg.workspace { None } else { adapter_binding },
-        adapter_binding_rewritten: binding_changed,
         directories_created: Vec::new(),
         scaffolded_rule_keys: Vec::new(),
         emery_version: target,

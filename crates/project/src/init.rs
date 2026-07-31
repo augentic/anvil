@@ -80,15 +80,10 @@ pub(crate) struct InitResult {
     /// this is the literal `"workspace"` so the JSON envelope stays stable
     /// for downstream consumers.
     pub adapter_name: String,
-    /// The binding value recorded on `project.yaml.adapter` — carries
-    /// the effective (possibly train-expanded) selector so the output
-    /// announces an auto-pin the moment it happens. `None` for
+    /// The binding value recorded on `project.yaml.adapter` — the
+    /// selector as typed (a bare name stays bare). `None` for
     /// workspace init (no adapter binding).
     pub adapter_binding: Option<String>,
-    /// `true` when `--upgrade` rewrote a recorded binding that had
-    /// drifted from the ensured selector (a bare record whose cache
-    /// entry was cleared expands — and pulls — instead of failing).
-    pub adapter_binding_rewritten: bool,
     pub cache_present: bool,
     pub directories_created: Vec<PathBuf>,
     pub scaffolded_rule_keys: Vec<String>,
@@ -140,8 +135,9 @@ pub(crate) fn init(
 }
 
 /// The value init records on `project.yaml.adapter` for one ensured
-/// binding: the selector as typed (train expansion already applied at
-/// the operation layer). A component path is recorded as its canonical
+/// binding: the selector as typed (a bare name stays bare — the
+/// deployment resolves it local-first at every use). A component path
+/// is recorded as its canonical
 /// `file://` form so the value outlives the CWD — read from the cache
 /// mirror's provenance sidecar when present, because the engine guest
 /// cannot canonicalize a host path that lives outside its mounts (the

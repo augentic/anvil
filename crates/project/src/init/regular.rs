@@ -49,9 +49,8 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         }
     }
 
-    // Persist the effective selector: the operation layer already
-    // widened a bare cache-miss name to the embedded first-party
-    // train pin, so the record names the identity that was ensured.
+    // Persist the selector as typed: a bare name stays bare — the
+    // deployment resolves it local-first at every use.
     let adapter_name = ensured.resolved.manifest.name.clone();
     let adapter_value = binding_value(ensured, opts.paths, opts.project_dir)?;
     let validated_platforms = validate_platforms(
@@ -90,7 +89,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         config_path,
         adapter_name,
         adapter_binding: Some(adapter_value),
-        adapter_binding_rewritten: false,
         cache_present,
         directories_created,
         scaffolded_rule_keys,

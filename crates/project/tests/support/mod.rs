@@ -100,10 +100,6 @@ impl project::handler::Anchor for Provider {
 }
 
 impl Resolver for Provider {
-    fn expand(&self, selector: &AdapterSelector, paths: &ExecutionPaths) -> AdapterSelector {
-        Resolver::expand(&resolver(), selector, paths)
-    }
-
     fn resolve_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
@@ -140,10 +136,13 @@ const fn test_now() -> jiff::Timestamp {
 /// The deterministic metadata runner behind [`resolver`], as a plain
 /// `fn` for the ensure kernels.
 fn stub_metadata(request: &project::adapter::metadata::Request<'_>) -> Result<Metadata, Error> {
-    // The target-only fixture exports no source world: dispatching it
-    // on the source axis reproduces the dispatch-seam failure a
-    // wrong-axis binding hits (no deployed guest answers the id).
-    if request.adapter_id.starts_with("source:demo-target") {
+    // The target-only fixture exports no source world (and the
+    // source-only fixture no target world): dispatching either on the
+    // wrong axis reproduces the dispatch-seam failure a wrong-axis
+    // binding hits (no deployed guest answers the id).
+    if request.adapter_id.starts_with("source:demo-target")
+        || request.adapter_id.starts_with("target:demo-source")
+    {
         return Err(Error::Diag {
             code: "adapter-metadata-failed",
             detail: format!("no deployed guest exports `{}`", request.adapter_id),
