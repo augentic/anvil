@@ -2695,7 +2695,7 @@ dependencies = [
 [[package]]
 name = "omnia"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2744,7 +2744,7 @@ dependencies = [
 [[package]]
 name = "omnia-guest"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "axum",
@@ -2781,7 +2781,7 @@ dependencies = [
 [[package]]
 name = "omnia-guest-macros"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2791,7 +2791,7 @@ dependencies = [
 [[package]]
 name = "omnia-host-macros"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2801,7 +2801,7 @@ dependencies = [
 [[package]]
 name = "omnia-testkit"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2822,7 +2822,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-blobstore"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2838,7 +2838,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-config"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "omnia",
@@ -2851,7 +2851,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-docstore"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2867,7 +2867,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-http"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "axum",
@@ -2897,7 +2897,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-identity"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -2914,7 +2914,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-keyvalue"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2932,7 +2932,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-messaging"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "futures",
@@ -2951,7 +2951,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-model"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "cap-primitives",
@@ -2972,7 +2972,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-otel"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -2996,7 +2996,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-sql"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -3018,7 +3018,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-websocket"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5858bb418fa9fa02f4bc7aecc54d328f592a7695"
+source = "git+https://github.com/augentic/omnia#1c9762fbee3301f774338904502aafce6025b5aa"
 dependencies = [
  "anyhow",
  "dashmap",

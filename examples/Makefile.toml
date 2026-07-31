@@ -41,8 +41,6 @@ script = '''
 set -eo pipefail
 
 export EMERY_HOME="$PWD/sandbox/wasm"
-# Omnia's default guest timeout (30s) is too short for a live model.
-export GUEST_TIMEOUT_MS="3600000"
 export RUST_LOG="${RUST_LOG:-info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off,omnia::telemetry=off,omnia_wasi_http=debug}"
 
 # Fresh sandbox each run; cargo artifacts under target/ stay incremental.
