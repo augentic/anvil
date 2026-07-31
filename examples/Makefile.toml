@@ -55,14 +55,14 @@ git init -q "$EMERY_HOME/project"
 
 TARGET="$PWD/target"
 # Execute commands in the project directory, not the repository root.
-run() { (cd "$EMERY_HOME/project" && "$TARGET/debug/emery" "$@"); }
+emery() { (cd "$EMERY_HOME/project" && "$TARGET/debug/emery" "$@"); }
 
 # Add source adapter to cache
-run adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"
-run adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
-run init target --name change
+emery adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"
+emery adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
+emery init target --name change
 
-run plan author change --source main="source:value:The greeting service."
-run plan approve
-run plan execute
+emery plan author change --source main="source:value:The greeting service."
+emery plan approve
+emery plan execute
 '''
