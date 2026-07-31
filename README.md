@@ -35,14 +35,19 @@ emery --version
 
 ### First change
 
-This path uses the **Contracts** target (`contracts@0.6.0`). The pin pulls a published adapter from GHCR; you do not need to clone `emery-adapters`.
+This path uses the **Contracts** target. A bare adapter name auto-pins to the binary's embedded adapter train (see `emery --version`) and pulls from GHCR; you do not need to clone `emery-adapters`.
 
 **Option A: Cursor Agent**
 In Cursor Agent chat, in a fresh or disposable repository:
 
 ```text
-/emery:init contracts@0.6.0
-/emery:plan first-contract source intent=intent@0.6.0:value:"Author an HTTP API contract for a health endpoint that returns status and version."
+/emery:init contracts
+/emery:plan first-contract
+```
+
+When prompted, give a one-line intent such as: `Author an HTTP API contract for a health endpoint that returns status and version.` Then:
+
+```text
 /emery:execute
 /emery:finalize first-contract
 ```
@@ -51,9 +56,9 @@ In Cursor Agent chat, in a fresh or disposable repository:
 The same steps run manually:
 
 ```bash
-emery init contracts@0.6.0
+emery init contracts
 emery plan author first-contract \
-  --source intent=intent@0.6.0:value:"Author an HTTP API contract for a health endpoint that returns status and version."
+  --intent "Author an HTTP API contract for a health endpoint that returns status and version."
 # review change.md, discovery.md, plan.yaml  ← Gate 1
 emery plan approve
 emery plan execute
