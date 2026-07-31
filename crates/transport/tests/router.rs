@@ -39,7 +39,7 @@ fn http_parity() {
     let command_types: BTreeSet<TypeId> = command
         .inventory()
         .iter()
-        .filter_map(omnia_guest::api::command::RouteInfo::operation_type_id)
+        .filter_map(omnia_guest::api::command::RouteInfo::operation)
         .collect();
     let http_types: BTreeSet<TypeId> =
         transport::http::router(Invoker::new("emery", provider(".")))
@@ -51,7 +51,7 @@ fn http_parity() {
         .inventory()
         .iter()
         .filter(|route| {
-            route.operation_type_id().is_none_or(|operation| !http_types.contains(&operation))
+            route.operation().is_none_or(|operation| !http_types.contains(&operation))
         })
         .map(|route| route.selector().path().to_vec())
         .collect();
