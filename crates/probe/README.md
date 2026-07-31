@@ -36,12 +36,16 @@ cargo make lab -- --project-dir sandbox/auth plan execute
 
 Driver-side knobs (read by `probe::client`):
 
-| Env                       | Effect                                                                                                          |
+| Knob                      | Effect                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `--debug` / `--quiet`     | Reserved host log flags, peeled anywhere in argv before dispatch (mutually exclusive) — the same contract as the shipped `emery` binary. `--quiet` turns tracing off; `--debug` selects `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins over `RUST_LOG`. |
 | `CURSOR_MODEL=<model-id>` | Default model when a request leaves `model` unset; blank/unset lets `cursor-agent` choose. Read by `omnia_cursor::ConnectOptions`. |
 | `CURSOR_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds), read by `omnia_cursor::ConnectOptions`. Unset → backend default 600. `cargo make eval` sets `300`. |
-| `RUST_LOG=<filter>`       | `tracing` filter for the native composition (`probe::client` installs the subscriber). Example: `info,omnia_cursor=debug`. |
+| `RUST_LOG=<filter>`       | The env escape hatch when no flag is passed. Example: `info,omnia_cursor=debug`. Flagless with `RUST_LOG` unset defaults to `info`. |
 | `EVAL_LOG=<path>`         | Log-file override. When unset, a named eval case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
+
+Console tracing goes to stderr; stdout stays the semantic command
+output.
 
 A run's spans — `eval.case` (this crate), `emery.command` (the
 transport router), the engine orchestration spans (`plan.author`,

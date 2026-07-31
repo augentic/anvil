@@ -16,8 +16,8 @@ args = ["run", "-q", "-p", "emery", "--example", "eval", "--", "${@}"]
 env_files = [".env"]
 script = '''
   export CURSOR_TIMEOUT_SECS="${CURSOR_TIMEOUT_SECS:-300}"
-  # The probe client's subscriber mutes the HTTP/gRPC and OTel chatter itself.
-  export RUST_LOG="${RUST_LOG:-info}"
+  # No RUST_LOG default: the probe client's flagless preset is already
+  # `info` plus its own HTTP/gRPC and OTel mutes.
   cargo run -p emery --example eval -- eval "$@"
 '''
 
@@ -43,10 +43,10 @@ set -eo pipefail
 
 export EMERY_HOME="$PWD/sandbox/wasm"
 # Env-driven host filter (no `--debug`/`--quiet` flag, so `RUST_LOG` applies):
-# the runtime's always-on mutes already cover the OTel targets; `omnia::telemetry=off`
-# suppresses collectorless flush warnings (a preset-only mute on the env path),
-# and `omnia_wasi_http=debug` is this example's seam-debugging choice.
-export RUST_LOG="${RUST_LOG:-info,omnia::telemetry=off,omnia_wasi_http=debug}"
+# the host's direct-command presets already mute the OTel targets and
+# `omnia::telemetry` on every invocation, env-driven included;
+# `omnia_wasi_http=debug` is this example's seam-debugging choice.
+export RUST_LOG="${RUST_LOG:-info,omnia_wasi_http=debug}"
 
 # Fresh sandbox each run; cargo artifacts under target/ stay incremental.
 rm -rf "$EMERY_HOME"

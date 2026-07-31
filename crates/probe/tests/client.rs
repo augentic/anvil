@@ -70,6 +70,48 @@ fn eval_log_mirror() {
 }
 
 #[test]
+fn reserved_log_flags_peel_before_dispatch() {
+    let tmp = TempDir::new().expect("tempdir");
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).expect("mkdir");
+
+    unsetenv("EVAL_LOG");
+    unsetenv("RUST_LOG");
+
+    // `--quiet` ahead of `--project-dir` and repeated after the verb:
+    // both occurrences peel before the grammar (which would reject an
+    // unknown flag) and the `--project-dir` probe (which only inspects
+    // argv[1]) ever see them.
+    let argv = vec![
+        "probe".to_string(),
+        "--quiet".to_string(),
+        "--project-dir".to_string(),
+        project.display().to_string(),
+        "slice".to_string(),
+        "list".to_string(),
+        "--quiet".to_string(),
+    ];
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    runtime.block_on(probe::client::run(argv, mock::catalog(), None, None)).expect("run");
+}
+
+#[test]
+fn reserved_log_flags_conflict() {
+    let argv = vec![
+        "probe".to_string(),
+        "--debug".to_string(),
+        "--quiet".to_string(),
+        "slice".to_string(),
+        "list".to_string(),
+    ];
+    let runtime = tokio::runtime::Runtime::new().expect("runtime");
+    let err = runtime
+        .block_on(probe::client::run(argv, mock::catalog(), None, None))
+        .expect_err("the flags are mutually exclusive");
+    assert!(format!("{err:#}").contains("mutually exclusive"), "{err:#}");
+}
+
+#[test]
 fn eval_log_inferred_per_case() {
     let tmp = TempDir::new().expect("tempdir");
     let sandbox = tmp.path().join("sandbox");
