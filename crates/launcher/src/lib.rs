@@ -11,7 +11,9 @@
 //! ([`http_listener`]), and the MCP reference-shelf path hook
 //! ([`mcp_route`]). Every invocation then runs in the guest — help,
 //! version, grammar rejections, and `adapter add` included; argv and
-//! the engine guest's exit code pass through byte-for-byte.
+//! the engine guest's exit code pass through byte-for-byte, except
+//! the reserved host log flags (`--debug` / `--quiet`), which Omnia
+//! peels before the guest sees argv.
 //!
 //! Pinned routed ids resolve the immutable global store and install a
 //! missing entry from the compiled first-party OCI registry
@@ -27,12 +29,14 @@
 //! default, and one invocation captures the layout exactly once
 //! ([`Policy::new`] over `Locations::from_env`).
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use project::adapter::RoutedId;
+use project::adapter::{AdapterSelector, RoutedId};
+use project::config::ProjectConfig;
 use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, Locations};
-use transport::command::selectors::{SeedRequest, seed_request};
+use transport::command::selectors::{SeedRequest, refresh_request, seed_request};
 
 mod anchor;
 mod install;
@@ -60,6 +64,12 @@ pub struct Policy {
     /// the directory does not exist — the guest then renders
     /// `adapter-component-missing` itself).
     seed_dir: Option<PathBuf>,
+    /// Bare adapter names this invocation explicitly updates — the
+    /// resolver's registry check runs for these even when a store
+    /// entry exists. Derived from argv (`adapter update <name>`,
+    /// `init <bare-name>`) plus the recorded `project.yaml` binding
+    /// for `init --upgrade`.
+    refresh: BTreeSet<String>,
 }
 
 impl Policy {
@@ -73,7 +83,13 @@ impl Policy {
     /// failures are left for the runtime's own preopen error.
     #[must_use]
     pub fn new(invoked_dir: &Path, argv: &[String], locations: Locations) -> Self {
-        let seed = seed_request(argv);
+        // Omnia peels the reserved host log flags before the guest sees
+        // argv; the seed projection parses the guest grammar, so it must
+        // see the same peeled view or a stray `--debug` would fail the
+        // parse and drop the anchoring.
+        let argv: Vec<String> =
+            argv.iter().filter(|arg| *arg != "--debug" && *arg != "--quiet").cloned().collect();
+        let seed = seed_request(&argv);
         let root = anchor::project_root(invoked_dir, seed.as_ref());
         let paths = ExecutionPaths::new(root, locations);
         // The global store is host-owned (no guest mount); the install
@@ -82,7 +98,12 @@ impl Policy {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
-        Self { paths, seed_dir }
+        let refresh = refresh_names(&argv, paths.project_root());
+        Self {
+            paths,
+            seed_dir,
+            refresh,
+        }
     }
 
     /// Host directory of the writable project mount, named `.`.
@@ -115,11 +136,28 @@ impl Policy {
     }
 
     /// The fail-closed adapters-only guest resolver over this
-    /// invocation's captured layout.
+    /// invocation's captured layout and refresh set.
     #[must_use]
     pub fn resolver(&self) -> Resolver {
-        Resolver::new(self.paths.clone())
+        Resolver::new(self.paths.clone(), self.refresh.clone())
     }
+}
+
+/// The bare adapter names one invocation explicitly updates: argv's
+/// refresh projection, widened with the recorded `project.yaml`
+/// binding for `init --upgrade`. Best-effort by design — an unreadable
+/// or non-bare record simply refreshes nothing.
+fn refresh_names(argv: &[String], project_root: &Path) -> BTreeSet<String> {
+    let request = refresh_request(argv);
+    let mut names: BTreeSet<String> = request.names.into_iter().collect();
+    if request.recorded_adapter
+        && let Ok(config) = ProjectConfig::load(project_root)
+        && let Some(adapter) = config.adapter
+        && let Ok(AdapterSelector::Bare { name }) = AdapterSelector::parse(&adapter)
+    {
+        names.insert(name);
+    }
+    names
 }
 
 /// The absolute parent directory of the seed component, resolved the

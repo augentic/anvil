@@ -14,14 +14,12 @@ The engine guest owns the whole authoring flow — plan scaffold, per-source sur
 2. **Author**:
 
 ```bash
-RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off \
-  emery plan author <name> --source <key>=<adapter>:<binding>
+emery plan author <name> --source <key>=<adapter>:<binding>
 # when replacing a pending plan after step 1:
-RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off \
-  emery plan author <name> --force --source <key>=<adapter>:<binding>
+emery plan author <name> --force --source <key>=<adapter>:<binding>
 ```
 
-Authoring is a long-running orchestration — the `RUST_LOG` prefix (and the debug variant) follows the plugin rule's *Tracing and output* contract.
+Authoring is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract.
 
 - `<name>` is the kebab-case change name (the CLI rejects malformed names).
 - Forward each operator-supplied `source <key>=<adapter>:<binding>` positional as one repeated `--source` flag. `<binding>` is a path (`documentation:./design-notes/identity`) or the literal form `value:<literal>` (`intent:value:fix typo in user.rs`).

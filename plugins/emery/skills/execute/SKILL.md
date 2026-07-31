@@ -9,7 +9,7 @@ The engine guest owns the whole drained loop — the Gate 1 stamp (`pending → 
 
 ## Invocation
 
-1. **Status probe** — run `RUST_LOG=off emery plan status` (read-only — never substitute `emery plan next`, a plan-state writer). Branch on the header's `plan: <name> (pending|approved)` line and the `next-action` projection:
+1. **Status probe** — run `emery plan status --quiet` (read-only — never substitute `emery plan next`, a plan-state writer). Branch on the header's `plan: <name> (pending|approved)` line and the `next-action` projection:
    - lifecycle `pending` — continue to step 2 (the first execute will stamp Gate 1).
    - `drained` — surface the output verbatim (its `resume` line already names `/emery:finalize`) and stop.
    - lifecycle `approved` with any dispatch or stop projection — skip to step 3.
@@ -17,15 +17,14 @@ The engine guest owns the whole drained loop — the Gate 1 stamp (`pending → 
 3. **Execute**:
 
 ```bash
-RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off \
-  emery plan execute
+emery plan execute
 ```
 
-The loop is a long-running orchestration — the `RUST_LOG` prefix (and the debug variant) follows the plugin rule's *Tracing and output* contract. Leave `--actor` at its default (`operator`): the stamp relays the operator's explicit confirmation, not the agent's judgment.
+The loop is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract. Leave `--actor` at its default (`operator`): the stamp relays the operator's explicit confirmation, not the agent's judgment.
 
 ## Relay
 
 - Surface the loop's output verbatim. On drain it prints the `approved:` stamp line (first run only), the completed phases, and the canonical `drained — run /emery:finalize <name>` closing line — relay it as-is without adding another pointer.
-- On `plan-execute-stopped` (exit 2), relay the structured error verbatim, then run `RUST_LOG=off emery plan status` and surface its canonical stop card (`stop: <reason>` / `hint:` / `resume:`) — the resume line names the matching breakout (`/emery:refine`, `/emery:build`, `/emery:merge`) or the re-entrant `emery plan execute`.
+- On `plan-execute-stopped` (exit 2), relay the structured error verbatim, then run `emery plan status --quiet` and surface its canonical stop card (`stop: <reason>` / `hint:` / `resume:`) — the resume line names the matching breakout (`/emery:refine`, `/emery:build`, `/emery:merge`) or the re-entrant `emery plan execute`.
 - On any other non-zero exit, surface the structured error verbatim and stop; re-running re-enters cleanly. Workspace plans refuse execution (`plan-execute-workspace-unsupported`) — drive them hand-driven via `emery plan next` and the breakouts.
 - Route every state write through the CLI — never hand-edit `plan.yaml` or stamp lifecycle yourself.

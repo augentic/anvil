@@ -24,16 +24,6 @@ use crate::handler::ExecutionPaths;
 /// guest-side provisioning. The defaults make `ensure_*` a
 /// side-effect-free resolve for deployments with nothing to provision.
 pub trait Resolver: Send + Sync {
-    /// Widen an unpinned selector to this deployment's effective
-    /// identity before ensure. Default: identity — native catalog
-    /// hosts resolve bare names against the compiled catalog and must
-    /// not invent pins. The component deployment expands a bare name
-    /// with no seeded cache entry to the embedded first-party
-    /// adapter-train pin ([`super::ensure::expand_bare`]).
-    fn expand(&self, selector: &AdapterSelector, _paths: &ExecutionPaths) -> AdapterSelector {
-        selector.clone()
-    }
-
     /// Resolve one source adapter selector.
     ///
     /// # Errors
@@ -54,10 +44,6 @@ pub trait Resolver: Send + Sync {
 
     /// Make `selector` usable under this deployment, then resolve it.
     ///
-    /// Callers that persist the selector must widen it through
-    /// [`Resolver::expand`] first, so the recorded binding names the
-    /// identity that was actually ensured.
-    ///
     /// # Errors
     ///
     /// Deployment provisioning failures (mirror, digest, catalog
@@ -70,10 +56,6 @@ pub trait Resolver: Send + Sync {
     }
 
     /// Make `selector` usable under this deployment, then resolve it.
-    ///
-    /// Callers that persist the selector must widen it through
-    /// [`Resolver::expand`] first, so the recorded binding names the
-    /// identity that was actually ensured.
     ///
     /// # Errors
     ///
@@ -102,22 +84,22 @@ impl Component {
 }
 
 impl Resolver for Component {
-    fn expand(&self, selector: &AdapterSelector, paths: &ExecutionPaths) -> AdapterSelector {
-        super::ensure::expand_bare(selector, paths)
-    }
-
     fn resolve_source(
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedSource, Error> {
         let name = selector.name()?;
         if let AdapterSelector::Package { version, .. } = selector {
-            let metadata = metadata::dispatch(self.metadata, Axis::Source, &name, version)?;
+            let metadata = metadata::dispatch(self.metadata, Axis::Source, &name, Some(version))?;
             return source(
                 &name,
                 Some(version.clone()),
                 metadata,
                 store_origin(&name, version, paths),
             );
+        }
+        if dispatch_first(selector, &name, paths) {
+            let metadata = metadata::dispatch(self.metadata, Axis::Source, &name, None)?;
+            return source(&name, None, metadata, bare_origin(Axis::Source, &name));
         }
         let location = locate(Axis::Source, selector, &name, paths)?;
         let metadata =
@@ -130,7 +112,7 @@ impl Resolver for Component {
     ) -> Result<ResolvedTarget, Error> {
         let name = selector.name()?;
         if let AdapterSelector::Package { version, .. } = selector {
-            let metadata = metadata::dispatch(self.metadata, Axis::Target, &name, version)?;
+            let metadata = metadata::dispatch(self.metadata, Axis::Target, &name, Some(version))?;
             return target(
                 &name,
                 Some(version.clone()),
@@ -138,11 +120,26 @@ impl Resolver for Component {
                 store_origin(&name, version, paths),
             );
         }
+        if dispatch_first(selector, &name, paths) {
+            let metadata = metadata::dispatch(self.metadata, Axis::Target, &name, None)?;
+            return target(&name, None, metadata, bare_origin(Axis::Target, &name));
+        }
         let location = locate(Axis::Target, selector, &name, paths)?;
         let metadata =
             metadata::load(self.metadata, &location, Axis::Target, &name, selector.version())?;
         target(&name, selector.version().cloned(), metadata, location.origin())
     }
+}
+
+/// Whether a bare selector must resolve dispatch-first: no seeded
+/// project-cache entry exists, so local-first deployment policy on the
+/// other side of the seam locates the component (the newest installed
+/// store version, with a pull-latest provisioning leg when nothing
+/// local exists). The guest never learns which version the deployment
+/// chose — resolved bare versions stay `None`.
+fn dispatch_first(selector: &AdapterSelector, name: &str, paths: &ExecutionPaths) -> bool {
+    matches!(selector, AdapterSelector::Bare { .. })
+        && !component_cache_entry(paths, name).is_file()
 }
 
 /// The deployment-neutral origin of a package-pin resolve: the global
@@ -157,6 +154,17 @@ fn store_origin(name: &str, version: &semver::Version, paths: &ExecutionPaths) -
     Origin {
         label: "store".to_string(),
         reference: paths.locations().store_entry(name, &version.to_string()).display().to_string(),
+    }
+}
+
+/// The deployment-neutral origin of a bare dispatch-first resolve: the
+/// routed id the deployment resolved local-first. The caller never
+/// sees a component file (the store is host-owned with no guest
+/// mount), so the origin carries the identity, not a path.
+fn bare_origin(axis: Axis, name: &str) -> Origin {
+    Origin {
+        label: "store".to_string(),
+        reference: super::routed::RoutedId::new(axis, name.to_string(), None).to_string(),
     }
 }
 

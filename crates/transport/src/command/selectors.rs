@@ -3,14 +3,17 @@
 //!
 //! Every invocation runs in the guest — help, version, grammar
 //! rejections, and `adapter add` included — so the launcher projects
-//! exactly one pre-boot fact from argv: the `adapter add` seed
-//! request, whose `--project-dir` anchors the project mount and whose
-//! component path earns a read-only preopen (the operator's component
-//! may live outside every other mount). Rather than duplicating the
-//! clap surface, [`seed_request`] parses argv through the *same*
-//! assembled router grammar the engine guest executes. Argv that
-//! fails the grammar projects `None`: the deployment falls back to
-//! cwd-anchored mounts and the guest renders the rejection.
+//! only pre-boot facts from argv: the `adapter add` seed request
+//! ([`seed_request`]), whose `--project-dir` anchors the project
+//! mount and whose component path earns a read-only preopen (the
+//! operator's component may live outside every other mount), and the
+//! adapter refresh set ([`refresh_request`]) naming the bare adapters
+//! an `adapter update` / `init` invocation explicitly updates through
+//! the resolver's registry check. Rather than duplicating the clap
+//! surface, both parse argv through the *same* assembled router
+//! grammar the engine guest executes. Argv that fails the grammar
+//! projects nothing: the deployment falls back to cwd-anchored mounts
+//! and the guest renders the rejection.
 
 use clap::FromArgMatches;
 use omnia_guest::api::invoke::Invoker;
@@ -55,6 +58,71 @@ pub fn seed_request(argv: &[String]) -> Option<SeedRequest> {
         component: add.component,
         project_dir: add.project_dir,
     })
+}
+
+/// The adapter refresh facts one invocation carries: the explicit
+/// update surface the launcher forces a registry check for.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RefreshRequest {
+    /// Bare adapter names argv updates directly (`adapter update
+    /// <name>`, `init <bare-name>`).
+    pub names: Vec<String>,
+    /// `init --upgrade`: the launcher additionally refreshes the
+    /// project's recorded adapter binding (read from `project.yaml`
+    /// at the anchored root) when that binding is bare.
+    pub recorded_adapter: bool,
+}
+
+/// Project the adapter refresh set out of `argv` (without the program
+/// name) through the shared command grammar.
+///
+/// Only the explicit update surface refreshes: `adapter update
+/// <name>` and `init` (`init <bare-name>` refreshes that name; `init
+/// --upgrade` flags the recorded binding). Everything else — and argv
+/// the grammar refuses — projects the empty default, so normal
+/// resolution stays local-first.
+#[must_use]
+pub fn refresh_request(argv: &[String]) -> RefreshRequest {
+    let mut full = Vec::with_capacity(argv.len() + 1);
+    full.push("emery".to_string());
+    full.extend(argv.iter().cloned());
+    let Ok(matches) = grammar().try_get_matches_from(full) else {
+        return RefreshRequest::default();
+    };
+
+    let (path, leaf) = selected(&matches);
+    let segments: Vec<&str> = path.iter().map(String::as_str).collect();
+    match segments.as_slice() {
+        ["adapter", "update"] => {
+            let Ok(update) = super::adapter::UpdateArgs::from_arg_matches(leaf) else {
+                return RefreshRequest::default();
+            };
+            RefreshRequest {
+                names: bare_name(&update.name).into_iter().collect(),
+                recorded_adapter: false,
+            }
+        }
+        ["init"] => {
+            let Ok(init) = super::InitArgs::from_arg_matches(leaf) else {
+                return RefreshRequest::default();
+            };
+            RefreshRequest {
+                names: init.adapter.as_deref().and_then(bare_name).into_iter().collect(),
+                recorded_adapter: init.upgrade,
+            }
+        }
+        _ => RefreshRequest::default(),
+    }
+}
+
+/// The kebab name when `value` parses as a bare adapter selector —
+/// pinned references are immutable and local components refresh
+/// through `adapter add`, so neither joins the refresh set.
+fn bare_name(value: &str) -> Option<String> {
+    match AdapterSelector::parse(value) {
+        Ok(AdapterSelector::Bare { name }) => Some(name),
+        _ => None,
+    }
 }
 
 /// Walk the parsed matches down to the selected leaf route.

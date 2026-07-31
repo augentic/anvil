@@ -73,31 +73,59 @@ mod resolve {
         assert_eq!(body.axis, "targets");
     }
 
+    #[tokio::test]
+    async fn bare_cache_miss_dispatches() {
+        // A bare name with no seeded cache entry resolves
+        // dispatch-first: the deployment locates the component
+        // local-first behind the seam, so the envelope carries no
+        // version (the guest never learns which one settled) and the
+        // origin names the routed id, not a file.
+        let project = Provider::bare();
+
+        let body = run::<project::adapter::handlers::TargetResolve, _, _>(
+            &project,
+            project::adapter::handlers::ResolveInput {
+                value: "demo".to_string(),
+                project_dir: None,
+            },
+        )
+        .await
+        .expect("bare cache-miss adapter resolves dispatch-first");
+
+        assert_eq!(body.name, "demo");
+        assert_eq!(body.version, None, "a bare dispatch-first resolve has no version");
+        assert_eq!(body.location, "store");
+        assert_eq!(body.resolved_path, "target:demo");
+    }
+
     #[test]
     fn dev_build_never_probed() {
         // The retired Cargo probe: an in-repo release artifact at
         // `target/wasm32-wasip2/release/<name>.wasm` must not satisfy
-        // production resolution — only the seeded cache or a pin does.
+        // production resolution — a bare cache miss dispatches the
+        // routed id instead of probing build trees.
         let project = Provider::bare();
         let dev_dir = project.root.join("target/wasm32-wasip2/release");
         std::fs::create_dir_all(&dev_dir).expect("mkdir dev release dir");
         std::fs::write(dev_dir.join("demo.wasm"), "{}").expect("stage dev artifact");
 
-        let err = support::resolver()
+        let resolved = support::resolver()
             .resolve_target(
                 &AdapterSelector::parse("demo").expect("bare selector"),
                 project.paths(),
             )
-            .expect_err("a release-build artifact must not resolve");
-        assert!(err.to_string().contains("adapter-not-found"), "{err}");
-        assert!(err.to_string().contains("adapter add"), "the miss suggests seeding: {err}");
+            .expect("bare cache miss resolves dispatch-first");
+        assert_eq!(
+            resolved.origin.reference, "target:demo",
+            "the dev artifact never backs the resolve"
+        );
     }
 
     #[test]
     fn sibling_checkout_never_probed() {
         // Resolution is project-contained: an artifact in a sibling
         // `emery-adapters` checkout (the retired development probe)
-        // must not resolve a bare name.
+        // must not back a bare-name resolve.
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let outer = tmp.path().canonicalize().expect("canonical tempdir");
         let project_dir = outer.join("project");
@@ -111,54 +139,64 @@ mod resolve {
             CachePlacement::Parent(outer.join("project-cache")),
         );
         let paths = ExecutionPaths::new(&project_dir, locations);
-        let err = support::resolver()
+        let resolved = support::resolver()
             .resolve_target(&AdapterSelector::parse("demo").expect("bare selector"), &paths)
-            .expect_err("sibling artifact must not resolve");
-        assert!(err.to_string().contains("adapter-not-found"), "{err}");
+            .expect("bare cache miss resolves dispatch-first");
+        assert_eq!(
+            resolved.origin.reference, "target:demo",
+            "the sibling artifact never backs the resolve"
+        );
     }
 }
 
-mod expand {
-    use project::adapter::{
-        AdapterSelector, FIRST_PARTY_NAMESPACE, expand_bare, first_party_adapter_train,
-    };
-
+mod update {
     use super::*;
 
-    #[test]
-    fn package_passes_through() {
-        let project = Provider::bare();
-        let pin = AdapterSelector::parse("emery:demo@1.2.0").expect("package selector");
-        assert_eq!(expand_bare(&pin, project.paths()), pin);
+    async fn update(
+        project: &Provider, name: &str,
+    ) -> Result<project::adapter::handlers::ResolveBody, project::handler::Error> {
+        run::<project::adapter::handlers::AdapterUpdate, _, _>(
+            project,
+            project::adapter::handlers::UpdateInput {
+                name: name.to_string(),
+            },
+        )
+        .await
     }
 
-    #[test]
-    fn component_passes_through() {
+    #[tokio::test]
+    async fn bare_target_resolves() {
+        // The handler is axis-neutral over the unique name space:
+        // the target axis answers first, dispatch-first with no
+        // version (the deployment settles the version behind the
+        // seam and reports it on stderr).
         let project = Provider::bare();
-        let component = AdapterSelector::parse("./demo.wasm").expect("component selector");
-        assert_eq!(expand_bare(&component, project.paths()), component);
+        let body = update(&project, "demo").await.expect("bare update resolves");
+        assert_eq!(body.axis, "targets");
+        assert_eq!(body.name, "demo");
+        assert_eq!(body.version, None);
     }
 
-    #[test]
-    fn bare_cache_hit_stays_bare() {
+    #[tokio::test]
+    async fn falls_back_to_the_source_axis() {
+        // A source adapter's name fails the target-axis dispatch (no
+        // deployed guest exports `target:<name>`) and resolves on the
+        // source axis.
         let project = Provider::bare();
-        stage_cached_component(&project, "demo");
-        let bare = AdapterSelector::parse("demo").expect("bare selector");
-        assert_eq!(expand_bare(&bare, project.paths()), bare);
+        let body = update(&project, "demo-source").await.expect("source-axis update resolves");
+        assert_eq!(body.axis, "sources");
+        assert_eq!(body.name, "demo-source");
     }
 
-    #[test]
-    fn bare_cache_miss_expands_to_train_pin() {
+    #[tokio::test]
+    async fn non_bare_values_refused() {
+        // Pins are immutable and local components update through
+        // `adapter add`.
         let project = Provider::bare();
-        let bare = AdapterSelector::parse("demo").expect("bare selector");
-        assert_eq!(
-            expand_bare(&bare, project.paths()),
-            AdapterSelector::Package {
-                namespace: FIRST_PARTY_NAMESPACE.to_string(),
-                name: "demo".to_string(),
-                version: first_party_adapter_train(),
-            }
-        );
+        for value in ["emery:demo@1.0.0", "demo@1.0.0", "./demo.wasm"] {
+            let err = update(&project, value).await.expect_err("non-bare update must refuse");
+            assert_eq!(err.core().variant_str(), "adapter-update-not-bare", "{value}");
+        }
     }
 }
 

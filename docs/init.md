@@ -29,13 +29,15 @@ runtime pulls it from the fixed registry mapping
 global adapter store. The mapping is compiled in — there is no
 project-local registry configuration.
 
-A bare first-party name (`emery init omnia`) with no seeded project
-component cache entry auto-pins to the binary's embedded adapter
-train (`emery:omnia@<train>`, shown by `emery --version`) and
-installs through the same pull-on-miss path; the pin is persisted on
-`project.yaml.adapter` before first use and echoed in the output. A
-cache-seeded bare name (`emery adapter add`, or a local `.wasm` at
-init) stays bare — the co-dev seed always wins.
+A bare first-party name (`emery init omnia`) persists bare on
+`project.yaml.adapter` and resolves local-first: a seeded project
+component cache entry (`emery adapter add`, or a local `.wasm` at
+init) always wins; otherwise init refreshes the name to the newest
+published version (the registry's newest exact-SemVer tag) and
+installs it into the global adapter store. After provisioning, later
+runs use the installed version with no registry check — refresh again
+with `emery adapter update <name>`. The runtime logs the resolved
+version to stderr on each run.
 
 ## Workspace — `emery init --workspace`
 
@@ -68,8 +70,7 @@ Running `emery init` in an already-initialized project (one whose
 `.emery/project.yaml` exists) changes nothing and exits 0 with a
 message routing to `emery init --upgrade` — the re-entry flag that
 bumps the `emery` pin, re-resolves the declared adapter, and
-preserves every operator artifact. When the re-ensured binding
-drifts from the record — a bare recorded name whose cache entry was
-since cleared expands to the embedded adapter-train pin — the record
-is rewritten to the effective binding and the rewrite announced in
-the output; a bare record with a live cache seed stays bare.
+preserves every operator artifact. The recorded binding is never
+rewritten: a bare record stays bare (an upgrade over a bare record
+refreshes it to the newest published version), and a pinned record
+keeps its pin.

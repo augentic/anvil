@@ -82,8 +82,7 @@ mod package {
     }
 }
 
-mod train {
-    use project::adapter::FIRST_PARTY_ADAPTER_TRAIN;
+mod bare {
     use project::handler::Render as _;
 
     use super::*;
@@ -95,26 +94,25 @@ mod train {
     }
 
     #[tokio::test]
-    async fn bare_cache_miss_pins_and_persists() {
-        // A bare first-party name with no seeded cache entry expands
-        // to the embedded adapter-train pin at ensure time; the pin
-        // is persisted (record-before-use) and self-announced in the
-        // rendered output.
+    async fn cache_miss_persists_bare() {
+        // A bare name with no seeded cache entry resolves
+        // dispatch-first — the deployment locates the component
+        // local-first on the other side of the seam — and persists
+        // exactly as typed: no version pin is invented.
         let project = Provider::bare();
         let body = run::<project::init::handlers::Init, _, _>(&project, input("demo"))
             .await
-            .expect("bare cache-miss init auto-pins");
+            .expect("bare cache-miss init resolves dispatch-first");
 
-        let pin = format!("emery:demo@{FIRST_PARTY_ADAPTER_TRAIN}");
-        assert_eq!(body.adapter_binding.as_deref(), Some(pin.as_str()));
-        assert!(rendered(&body).contains(&format!("adapter: {pin}")), "{}", rendered(&body));
+        assert_eq!(body.adapter_binding.as_deref(), Some("demo"));
+        assert!(rendered(&body).contains("adapter: demo"), "{}", rendered(&body));
         let project_yaml =
             fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
-        assert!(project_yaml.contains(&format!("adapter: {pin}")), "{project_yaml}");
+        assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
     }
 
     #[tokio::test]
-    async fn bare_cache_hit_persists_bare() {
+    async fn cache_hit_persists_bare() {
         // The `adapter add` co-dev seed always wins: a cache hit
         // stays bare on disk and in the output.
         let project = Provider::bare();
@@ -124,18 +122,16 @@ mod train {
             .expect("bare cache-hit init stays bare");
 
         assert_eq!(body.adapter_binding.as_deref(), Some("demo"));
-        assert!(!body.adapter_binding_rewritten);
         let project_yaml =
             fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
         assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
     }
 
     #[tokio::test]
-    async fn upgrade_rewrites_bare_record_on_cleared_cache() {
+    async fn upgrade_keeps_bare_record_on_cleared_cache() {
         // `--upgrade` re-ensures the recorded binding: a bare record
-        // whose cache entry was cleared expands to the train pin, and
-        // the record is rewritten (and the rewrite rendered) to keep
-        // record-before-use.
+        // whose cache entry was cleared resolves dispatch-first and
+        // stays bare — no pin is written into the record.
         let project = Provider::bare();
         stage_cached_component(&project, "demo");
         run::<project::init::handlers::Init, _, _>(&project, input("demo"))
@@ -153,25 +149,17 @@ mod train {
             },
         )
         .await
-        .expect("upgrade expands the drifted record");
+        .expect("upgrade re-ensures the bare record dispatch-first");
 
-        let pin = format!("emery:demo@{FIRST_PARTY_ADAPTER_TRAIN}");
-        assert!(body.adapter_binding_rewritten, "the drifted record is rewritten");
-        assert_eq!(body.adapter_binding.as_deref(), Some(pin.as_str()));
-        assert!(
-            rendered(&body).contains(&format!("adapter binding rewritten to {pin}")),
-            "{}",
-            rendered(&body)
-        );
+        assert_eq!(body.adapter_binding.as_deref(), Some("demo"));
         let project_yaml =
             fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
-        assert!(project_yaml.contains(&format!("adapter: {pin}")), "{project_yaml}");
+        assert!(project_yaml.contains("adapter: demo"), "{project_yaml}");
     }
 
     #[tokio::test]
     async fn upgrade_keeps_bare_record_on_cache_hit() {
-        // Co-dev upgrades stay bare: a cache-hit bare record expands
-        // to itself, so nothing is rewritten.
+        // Co-dev upgrades stay bare: the record is never rewritten.
         let project = Provider::bare();
         stage_cached_component(&project, "demo");
         run::<project::init::handlers::Init, _, _>(&project, input("demo"))
@@ -188,7 +176,6 @@ mod train {
         .await
         .expect("upgrade over a live cache seed");
 
-        assert!(!body.adapter_binding_rewritten);
         assert_eq!(body.adapter_binding.as_deref(), Some("demo"));
         let project_yaml =
             fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");

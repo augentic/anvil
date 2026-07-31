@@ -36,10 +36,12 @@ debug a retained sandbox explicitly:
 cargo make lab -- --project-dir sandbox/auth plan execute
 ```
 
-`CURSOR_MODEL`, `CURSOR_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG` are
-documented in [`crates/probe/README.md`](../../crates/probe/README.md);
-`cargo make eval` defaults the timeout to 300s and `RUST_LOG` to
-`info`.
+The reserved `--debug` / `--quiet` host log flags (peeled before
+dispatch, a flag wins over `RUST_LOG`; flagless defaults to `info`) and
+the `CURSOR_MODEL`, `CURSOR_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG`
+env knobs are documented in
+[`crates/probe/README.md`](../../crates/probe/README.md);
+`cargo make eval` defaults the timeout to 300s.
 
 Cadence: before a release tag, and after any change to the judgment prompts
 (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer

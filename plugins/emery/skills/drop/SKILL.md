@@ -11,12 +11,12 @@ argument-hint: "[slice-name] [reason]"
 ## Invocation
 
 ```bash
-RUST_LOG=off emery slice drop <slice-name> --reason "<rationale>"
+emery slice drop <slice-name> --reason "<rationale>" --quiet
 ```
 
-Drop is a short deterministic verb — it runs quiet per the plugin rule's *Tracing and output* contract (the debug variant applies when the operator asks for debug).
+Drop is a short deterministic verb — it runs with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).
 
-- When `[slice-name]` is omitted, run `RUST_LOG=off emery slice list` and let the operator pick with the AskQuestion tool (confirm even when only one exists).
+- When `[slice-name]` is omitted, run `emery slice list --quiet` and let the operator pick with the AskQuestion tool (confirm even when only one exists).
 - When invoked interactively (no `reason` argument), elicit the rationale and confirm the drop with the AskQuestion tool before running; warn first when the slice is `built`, since `/emery:merge` may be the intended action. When `reason` is supplied, skip the confirmations and run directly.
 
 ## Relay

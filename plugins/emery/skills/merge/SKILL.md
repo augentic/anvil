@@ -11,13 +11,12 @@ argument-hint: "[slice-name]"
 ## Invocation
 
 ```bash
-RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off \
-  emery slice merge run <slice-name>
+emery slice merge run <slice-name>
 ```
 
-The committed merge is a long-running orchestration — the `RUST_LOG` prefix (and the debug variant) follows the plugin rule's *Tracing and output* contract; the dry-run flags below run quiet (`RUST_LOG=off`).
+The committed merge is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract; the dry-run flags below run with `--quiet`.
 
-When `[slice-name]` is omitted, run `RUST_LOG=off emery plan status` and use the slice it names for the `merge` action; if the plan projects no merge action, surface the status output and stop. When invoked interactively, confirm with the AskQuestion tool before running (`RUST_LOG=off emery slice merge run <slice-name> --preview` renders the read-only preview when the operator asks to see it first; `RUST_LOG=off emery slice merge run <slice-name> --conflict-check` probes baseline drift — both dry-run flags write nothing).
+When `[slice-name]` is omitted, run `emery plan status --quiet` and use the slice it names for the `merge` action; if the plan projects no merge action, surface the status output and stop. When invoked interactively, confirm with the AskQuestion tool before running (`emery slice merge run <slice-name> --preview --quiet` renders the read-only preview when the operator asks to see it first; `emery slice merge run <slice-name> --conflict-check --quiet` probes baseline drift — both dry-run flags write nothing).
 
 ## Relay
 

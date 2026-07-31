@@ -61,27 +61,27 @@ Breakouts invoke the same guest orchestrations one slice at a time, when the exe
 
 ## Tracing and output
 
-Prefix every `emery` subprocess with an explicit `RUST_LOG` — never rely on the ambient environment. Two normal-mode filters, selected by verb:
+Host tracing is selected by the reserved host log flags — never set `RUST_LOG` on an `emery` subprocess. The host peels `--debug` / `--quiet` anywhere in argv before the guest sees it, so the flags are position-independent and never collide with a verb's own options. Two normal modes, selected by verb:
 
-- **Long-running orchestrations** (`emery plan author`, `emery plan execute`, `emery slice refine`, `emery slice build`, committed `emery slice merge run`) emit live INFO progress on stderr:
-
-```text
-RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off
-```
-
-- **Probes and short deterministic verbs** (`emery --version`, `emery plan status`, `emery slice list`, `emery slice merge run --preview` / `--conflict-check`, `emery slice drop`, `emery plan archive`, `emery init`) stay quiet so the result card is uncluttered:
+- **Long-running orchestrations** (`emery plan author`, `emery plan execute`, `emery slice refine`, `emery slice build`, committed `emery slice merge run`) run bare — the host default emits live INFO progress on stderr with the noisy OTel targets muted:
 
 ```text
-RUST_LOG=off
+emery plan author <name> ...
 ```
 
-**Debug mode**: when the operator explicitly asks for debug (says "debug", or passes `debug` / `--debug` on the slash command), use the long-running filter plus `,omnia_cursor=debug,omnia_wasi_http=debug` for **every** `emery` subprocess in that skill invocation, probes included:
+- **Probes and short deterministic verbs** (`emery --version`, `emery plan status`, `emery slice list`, `emery slice merge run --preview` / `--conflict-check`, `emery slice drop`, `emery plan archive`, `emery init`) pass `--quiet` so the result card is uncluttered:
 
 ```text
-RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off,omnia_cursor=debug,omnia_wasi_http=debug
+emery plan status --quiet
 ```
 
-Never forward `debug` as an `emery` CLI flag — host tracing is `RUST_LOG` only.
+**Debug mode**: when the operator explicitly asks for debug (says "debug", or passes `debug` / `--debug` on the slash command), pass `--debug` on **every** `emery` subprocess in that skill invocation, probes included (it replaces `--quiet` — the two flags are mutually exclusive):
+
+```text
+emery plan author <name> ... --debug
+```
+
+`--debug` turns on the INFO progress filter plus `omnia_cursor` / `omnia_wasi_http` debug tracing; both flags win over any ambient `RUST_LOG`.
 
 Stream roles: the semantic CLI result (text or JSON envelope) is stdout; command failures and live tracing are stderr. Relay the semantic result or structured error once, verbatim; do not repeat or reformat tracing lines in the closing response.
 

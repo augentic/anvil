@@ -12,7 +12,7 @@ Canonical JSON envelope shapes for `emery *` commands that skills shell out to. 
 - Body fields named `ok` / `passed` / `idempotent` are payload fields, not envelope discriminants — they describe the per-command result and do not change the envelope shape.
 - Paths are emitted as plain strings relative to the repo root unless the field name says otherwise (`absolute-path`, `tempdir-path`).
 - All keys are `kebab-case`. Body shapes are pinned by the typed `*Body` DTOs in the CLI workspace and change only with the CLI's own versioning.
-- Stream roles: the semantic result body (text or JSON) is **stdout**; the failure `ErrorBody` and live `RUST_LOG` tracing are **stderr**.
+- Stream roles: the semantic result body (text or JSON) is **stdout**; the failure `ErrorBody` and live host tracing are **stderr**. Tracing verbosity is selected by the reserved host log flags (`--debug` / `--quiet`, peeled before the guest sees argv; see [cli-contract.md](../standards/cli-contract.md)).
 
 ## Shapes
 

@@ -12,7 +12,9 @@
 //! `adapter add` component directory as a read-only self-named
 //! preopen. Every invocation runs in the guest — help, version,
 //! grammar rejections, and `adapter add` included; argv and the
-//! engine guest's exit code pass through byte-for-byte. There is no
+//! engine guest's exit code pass through byte-for-byte, except the
+//! reserved host log flags (`--debug` / `--quiet`), which Omnia peels
+//! into the host log preset before the guest sees argv. There is no
 //! `omnia.toml` and no `run --config` surface: the deployment exists
 //! only in memory, per invocation.
 

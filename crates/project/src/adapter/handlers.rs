@@ -1,6 +1,9 @@
-//! `emery adapter add` plus `emery source resolve` /
-//! `emery target resolve` — seed the project component cache and
-//! resolve adapter components by identity.
+//! The `emery adapter` and axis-resolve operations.
+//!
+//! `adapter add` seeds the project component cache, `adapter update`
+//! refreshes a bare name to the newest published version, and
+//! `source resolve` / `target resolve` resolve adapter components by
+//! identity.
 //!
 //! Project-context-free: every verb takes the project directory from
 //! the input (defaulting to the provider anchor) and none requires
@@ -89,6 +92,60 @@ impl Render for AddBody {
         writeln!(w, "  entry: {}", self.entry)?;
         writeln!(w, "  source: {}", self.source)?;
         Ok(())
+    }
+}
+
+/// Wire input for `adapter update`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct UpdateInput {
+    /// Bare adapter name to update.
+    pub name: String,
+}
+
+/// `emery adapter update <name>` — refresh a bare-named adapter.
+///
+/// Updates the name to the newest published version and reports what
+/// it resolves to.
+///
+/// The network leg is deployment-owned: the launcher derives the
+/// refresh set from argv and runs the registry check when this
+/// handler's resolve dispatches the routed id. The handler itself is
+/// axis-neutral over the unique-across-axes name space: it tries the
+/// target axis first, then the source axis.
+#[derive(Clone, Copy, Debug)]
+pub struct AdapterUpdate;
+
+impl<P: Anchor + Resolver> Operation<P> for AdapterUpdate {
+    type Error = crate::handler::Error;
+    type Input = UpdateInput;
+    type Output = ResolveBody;
+
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let selector = AdapterSelector::parse(&input.name)?;
+        if !matches!(selector, AdapterSelector::Bare { .. }) {
+            return Err(error::Error::Diag {
+                code: "adapter-update-not-bare",
+                detail: format!(
+                    "`adapter update` takes a bare adapter name (`omnia`), not `{}`: pinned \
+                     versions are immutable and local components update through `emery adapter \
+                     add`",
+                    input.name
+                ),
+            }
+            .into());
+        }
+        let paths = context.provider.paths().clone();
+        // Adapter names are unique across axes, so the first axis that
+        // resolves is the adapter's axis; the wrong axis fails at the
+        // dispatch/metadata gate.
+        if let Ok(resolved) = context.provider.resolve_target(&selector, &paths) {
+            return Ok(ResolveBody::from(resolved));
+        }
+        let resolved = context.provider.resolve_source(&selector, &paths)?;
+        Ok(ResolveBody::from(resolved))
     }
 }
 

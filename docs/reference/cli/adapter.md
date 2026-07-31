@@ -1,6 +1,6 @@
 # emery adapter, source resolve, target resolve
 
-The adapter component surface: seed the project component cache and debug adapter resolution by axis.
+The adapter component surface: seed the project component cache, refresh installed adapters, and debug adapter resolution by axis.
 
 ## emery adapter add
 
@@ -16,9 +16,21 @@ The command is **pre-init** and **axis-neutral**: `.emery/` need not exist (seed
 
 Relative component paths anchor at `--project-dir`, which also selects the project the cache is keyed by; when the flag is absent, the project root is the nearest ancestor carrying `.emery/project.yaml`, falling back to the current directory pre-init. The seed runs in the engine guest like every other verb: the shipped binary's deployment policy projects the `adapter add` request from argv pre-boot and preopens the component's parent directory read-only under its absolute host path, so the guest opens the argv path unchanged — the component may live anywhere on the host, outside the project mounts.
 
-This is the only route into bare-name resolution besides a local component at init: there is no build-tree probe (`target/wasm32-wasip2/release/` is never consulted) and no sibling-checkout probe.
+This is the only local-component route into bare-name resolution besides a local component at init: there is no build-tree probe (`target/wasm32-wasip2/release/` is never consulted) and no sibling-checkout probe.
 
-A seeded cache entry also pins the ensure-time behavior of a bare name: `emery init <name>` and `emery plan author` bindings stay bare (and resolve the seed) when the cache hits, and auto-pin to the binary's embedded first-party adapter train (`emery:<name>@<train>`, pulled on miss) when it does not. Cache hits always win — the co-dev seed is never shadowed by a published component. Bare at resolve/dispatch time (the verbs below) remains cache-only and never pulls.
+A seeded cache entry always wins bare-name resolution — the co-dev seed is never shadowed by a published component, including during an explicit update. Without a seed, a bare name resolves local-first: the newest installed store version, else pull-latest provisioning from the fixed first-party registry.
+
+## emery adapter update
+
+Explicitly refresh a bare adapter name to the newest published version.
+
+```bash
+emery adapter update <name> [--project-dir <dir>]
+```
+
+Forces a registry check for the name: the runtime lists the first-party registry's tags (`ghcr.io/augentic/emery-adapters/<name>`), takes the newest exact-SemVer tag, and installs it into the global adapter store when it is newer than (or absent from) what is installed. This is the only routine path that consults the registry for an already-provisioned bare name — day-to-day resolution is local-first and never pulls. A registry failure during an update is the typed `adapter-latest-failed`; a repository with no SemVer tags is `adapter-latest-none`.
+
+A seeded project-cache entry is never shadowed: updating a name whose cache seed exists still resolves the seed (the store may still gain the newer version for other projects). Explicit pins (`emery:<name>@<semver>`) are not update targets — re-pin instead.
 
 ## emery source resolve
 
@@ -28,7 +40,7 @@ Resolve a source adapter by identity and emit the wire-stable envelope.
 emery source resolve <name>
 ```
 
-Resolves the single `.wasm` component: the global store entry for a pinned identity, else the seeded project component cache for a bare name. The `survey` and `extract` prompts are compiled into the adapter guest.
+Resolves the single `.wasm` component: the global store entry for a pinned identity; for a bare name, the seeded project component cache, else the newest installed store version (pull-latest provisioning only when nothing local exists). The `survey` and `extract` prompts are compiled into the adapter guest.
 
 ## emery target resolve
 
@@ -42,7 +54,7 @@ emery target resolve <value>
 
 ## Resolve envelope
 
-Both resolve verbs emit `axis`, `name`, `version` (omitted for an unpinned cache resolve — a seeded component carries no package identity), `resolved-path`, `location` (`store` / `cache` for the component deployment), and `operations`.
+Both resolve verbs emit `axis`, `name`, `version` (omitted for an unpinned resolve — the version settles host-side and is logged to stderr), `resolved-path`, `location` (`store` / `cache` for the component deployment), and `operations`.
 
 ## See also
 

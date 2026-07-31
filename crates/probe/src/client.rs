@@ -12,13 +12,22 @@
 //! client refuses to own — the Tokio runtime, `std::env::args`
 //! collection, and the catalog, cases, and sandbox declarations.
 //!
-//! Driver-side tracing knobs:
-//! - `RUST_LOG` — `tracing` filter (e.g. `info,omnia_cursor=debug`)
+//! Driver-side tracing knobs (mirroring the shipped runtime binary's
+//! host contract):
+//! - `--debug` / `--quiet` — reserved host flags, peeled anywhere in
+//!   argv before the grammar sees them (mutually exclusive; repeats
+//!   are idempotent). `--quiet` turns tracing off; `--debug` selects
+//!   `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins
+//!   over any ambient `RUST_LOG`.
+//! - `RUST_LOG` — the env escape hatch when no flag is passed
+//!   (e.g. `info,omnia_cursor=debug`); flagless with `RUST_LOG` unset
+//!   defaults to `info`. Console tracing goes to stderr — stdout stays
+//!   the semantic command output.
 //! - `EVAL_LOG` — log-file override. When unset, a named eval case
 //!   logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at
 //!   startup) and passthrough commands log to console only. The file
 //!   receives an ANSI-free copy of the console output under the same
-//!   `RUST_LOG` filter; missing parent directories are created
+//!   filter; missing parent directories are created
 
 mod model;
 mod native;
@@ -70,8 +79,15 @@ pub async fn run(
     if argv.get(1).is_some_and(|arg| arg == "--") {
         argv.remove(1);
     }
+    // The reserved host log flags, peeled before the grammar (and the
+    // `--project-dir` probe below) ever see them — the same contract the
+    // shipped runtime binary's direct-command entry applies.
+    let debug = argv.iter().any(|arg| arg == "--debug");
+    let quiet = argv.iter().any(|arg| arg == "--quiet");
+    anyhow::ensure!(!(debug && quiet), "`--debug` and `--quiet` are mutually exclusive");
+    argv.retain(|arg| arg != "--debug" && arg != "--quiet");
     let root = project_root(&mut argv)?;
-    init_tracing(log_destination(&argv, &root, sandbox))?;
+    init_tracing(log_destination(&argv, &root, sandbox), debug, quiet)?;
     dispatch(root, argv, catalog, cases, sandbox).await
 }
 
@@ -108,12 +124,20 @@ fn log_destination(argv: &[String], root: &Path, sandbox: Option<&Path>) -> Opti
     Some(sandbox.join("logs").join(case).join(format!("eval-{stamp}.log")))
 }
 
-/// Process tracing init: a console layer plus, when `log` names a
-/// file, an ANSI-free copy of the same `RUST_LOG`-filtered output.
-fn init_tracing(log: Option<PathBuf>) -> anyhow::Result<()> {
+/// Process tracing init: a stderr console layer plus, when `log`
+/// names a file, an ANSI-free copy of the same filtered output.
+fn init_tracing(log: Option<PathBuf>, debug: bool, quiet: bool) -> anyhow::Result<()> {
+    // The host-flag presets mirror the shipped runtime binary: a flag
+    // wins over the ambient `RUST_LOG`; flagless defaults to INFO.
+    let filter = match (quiet, debug, std::env::var_os("RUST_LOG").is_some()) {
+        (true, ..) => EnvFilter::new("off"),
+        (_, true, _) => EnvFilter::new("info,omnia_cursor=debug,omnia_wasi_http=debug"),
+        (_, _, true) => EnvFilter::from_default_env(),
+        _ => EnvFilter::new("info"),
+    };
     // HTTP/gRPC stacks and the OTel GlobalSet chatter are noise under the
     // lab's console subscriber; the shipped runtime owns real export.
-    let filter = EnvFilter::from_default_env()
+    let filter = filter
         .add_directive("hyper=off".parse()?)
         .add_directive("h2=off".parse()?)
         .add_directive("tonic=off".parse()?)
@@ -126,9 +150,11 @@ fn init_tracing(log: Option<PathBuf>) -> anyhow::Result<()> {
         }
         None => (None, None),
     };
+    // Console tracing goes to stderr: stdout stays the semantic command
+    // output, matching the shipped runtime's stream roles.
     tracing_subscriber::registry()
         .with(filter)
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
         .with(file)
         .try_init()
         .context("installing the tracing subscriber")?;

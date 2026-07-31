@@ -60,7 +60,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 29);
+    assert_eq!(http_types.len(), 30);
 }
 
 #[tokio::test]
@@ -120,17 +120,15 @@ async fn detailed_help() {
 }
 
 #[tokio::test]
-async fn version_carries_adapter_train() {
+async fn version_is_the_host_semver() {
+    // No adapter-train suffix: adapters version independently and
+    // resolve local-first, so the binary reports only its own SemVer.
     let router = command_router(".");
     let response = router.execute(["emery", "--version"]).await;
     assert_eq!(response.exit, 0);
     let stdout = String::from_utf8_lossy(&response.stdout);
-    let expected = format!(
-        "emery {} (adapters {})",
-        env!("CARGO_PKG_VERSION"),
-        project::adapter::FIRST_PARTY_ADAPTER_TRAIN
-    );
-    assert!(stdout.contains(&expected), "{stdout}");
+    let expected = format!("emery {}", env!("CARGO_PKG_VERSION"));
+    assert!(stdout.trim_end().ends_with(&expected), "{stdout}");
 }
 
 #[tokio::test]
