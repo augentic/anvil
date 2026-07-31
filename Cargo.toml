@@ -222,7 +222,6 @@ omnia-testkit = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
-
 # omnia = { path = "../omnia/crates/omnia" }
 # omnia-guest = { path = "../omnia/crates/omnia-guest" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
