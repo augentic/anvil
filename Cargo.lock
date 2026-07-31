@@ -2729,7 +2729,7 @@ dependencies = [
 [[package]]
 name = "omnia-cursor"
 version = "0.29.0"
-source = "git+https://github.com/augentic/backends#a8ac37df4bc22cdf500dbf2baa79c1e24af91a9c"
+source = "git+https://github.com/augentic/omnia-backends#a8ac37df4bc22cdf500dbf2baa79c1e24af91a9c"
 dependencies = [
  "anyhow",
  "fromenv",
