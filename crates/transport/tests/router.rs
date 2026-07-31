@@ -50,9 +50,7 @@ fn http_parity() {
     let transport_only: BTreeSet<Vec<String>> = command
         .inventory()
         .iter()
-        .filter(|route| {
-            route.operation().is_none_or(|operation| !http_types.contains(&operation))
-        })
+        .filter(|route| route.operation().is_none_or(|operation| !http_types.contains(&operation)))
         .map(|route| route.selector().path().to_vec())
         .collect();
     let expected: BTreeSet<Vec<String>> = std::iter::once(&["completions"][..])
