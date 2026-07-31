@@ -1002,10 +1002,6 @@ criteria = "safe-to-deploy"
 version = "1.1.10"
 criteria = "safe-to-deploy"
 
-[[exemptions.time]]
-version = "0.3.54"
-criteria = "safe-to-deploy"
-
 [[exemptions.tinystr]]
 version = "0.8.3"
 criteria = "safe-to-deploy"

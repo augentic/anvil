@@ -103,7 +103,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     NamespaceHelp::new(&["plan"], "Executable plan operations — `plan.yaml` lifecycle"),
     NamespaceHelp::new(
         &["journal"],
-        "Workflow journal at `.emery/journal.jsonl`. `emit` is a guarded front door onto the closed §Observability event taxonomy — it appends one well-formed line, minting no event kinds of its own",
+        "Workflow journal at `.emery/journal.jsonl`. Read-only: `show` projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
     NamespaceHelp::new(&["registry"], "Platform registry at `registry.yaml` (repo root)"),
 ];
@@ -248,15 +248,15 @@ where
         ["source", "survey"],
         source::SurveyArgs,
         ::change::source::Survey,
-        "Run a source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md`",
-        "Run a source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, `leads.md` validation, and the `discovery.md` merge."
+        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md` — `plan author` runs this step itself",
+        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md` — `plan author` runs this step itself; reach for this verb only to re-survey a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, `leads.md` validation, and the `discovery.md` merge."
     );
     route!(
         ["source", "extract"],
         source::ExtractArgs,
         ::slice::source::Extract,
-        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml`",
-        "Run a source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml`.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — `slice refine` runs this step itself",
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — `slice refine` runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
     );
     route!(
         ["target", "resolve"],
@@ -306,19 +306,8 @@ where
         ["slice", "merge", "run"],
         slice::MergeRunArgs,
         ::slice::handlers::MergeRun,
-        "Merge all delta specs for the slice into baseline and archive the slice"
-    );
-    route!(
-        ["slice", "merge", "preview"],
-        slice::MergePreviewArgs,
-        ::slice::handlers::Preview,
-        "Show the merge operations that would be applied, without writing"
-    );
-    route!(
-        ["slice", "merge", "conflict-check"],
-        slice::ConflictCheckArgs,
-        ::slice::handlers::ConflictCheck,
-        "Report `type: modified` baselines modified after this slice's `defined_at`"
+        "Merge all delta specs for the slice into baseline and archive the slice",
+        "Merge all delta specs for the slice into baseline and archive the slice.\n\n`--preview` shows the merge operations that would be applied and `--conflict-check` reports `type: modified` baselines modified after this slice's `defined_at` — both are read-only dry-run modes that write nothing. Re-entry heals a torn merge: when the commit already landed but the per-entry `done` stamp is missing, the run stamps the entry and returns without a second baseline merge."
     );
     route!(
         ["slice", "drop"],
@@ -351,7 +340,7 @@ where
         plan::StatusArgs,
         ::change::plan::handlers::Status,
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`.\n\nProjects `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (slot-aware in workspace mode), and the journal tail. Stop reasons (`plan-not-approved`, `refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` / `slice.merge.postflight-failed` journal events (claim-window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing — `plan next` stays the only writer of per-entry `in-progress`."
+        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`.\n\nProjects `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (slot-aware in workspace mode), and the journal tail. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` / `slice.merge.postflight-failed` journal events (claim-window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing — `plan next` stays the only writer of per-entry `in-progress`."
     );
     route!(
         ["plan", "add"],
@@ -373,45 +362,31 @@ where
         "Remove a pending plan entry while the plan is still replaceable (`lifecycle: pending` and every entry `pending`). Gate 1 curation only — defers a lead without re-surveying `discovery.md`"
     );
     route!(
-        ["plan", "approve"],
-        plan::ApproveArgs,
-        ::change::plan::handlers::Approve,
-        "Stamp Gate 1 — transition the active plan's lifecycle `pending → approved`",
-        "Stamp Gate 1 — transition the active plan's lifecycle `pending → approved`.\n\nNameless: there is exactly one active `plan.yaml`, so no selector is needed. Operator-only — `/emery:plan` MUST NOT call this verb; skill bodies stop at `pending` and print the literal `emery plan approve` command in their closing hint for the operator to run. Approving an already-approved plan is an idempotent no-op (no disk write, no journal event)."
-    );
-    route!(
         ["plan", "transition"],
         plan::TransitionArgs,
         ::change::plan::handlers::Transition,
-        "Apply a validated per-entry status transition",
-        "Apply a validated per-entry status transition.\n\n`<name>` is a plan-entry name and `<target>` is `done` — the per-entry close; the `/emery:merge` skill is the canonical caller. `--undo` walks one rung backwards instead. Plan-level Gate 1 is `emery plan approve`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
+        "Walk one plan entry one rung backwards on per-entry status (`--undo`)",
+        "Walk one plan entry one rung backwards on per-entry status (`--undo`).\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`; the verb refuses to skip rungs and fires one `plan.transition.undone` event per call. Plan-level `approved` is stamped by the first `emery plan execute`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`; per-entry `done` is written only by `slice merge`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
     );
     route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal Gate 1 transition hint.\n\nGuest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint",
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `already-exists` unless `--force` is set; `--force` replaces only a replaceable plan (`lifecycle: pending` and every entry `pending`) and otherwise exits with `plan-author-not-replaceable` (archive first). Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Run the drained execute loop in the engine guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`)",
-        "Run the drained execute loop in the engine guest: claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nGuest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Approve and run the drained execute loop in the engine guest: stamp Gate 1 (`pending → approved`) on first run, then claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`)",
+        "Approve and run the drained execute loop in the engine guest: stamp Gate 1 (`pending → approved`) on first run, then claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nInvoking execute is the Gate 1 approval act: a `pending` plan is stamped `approved` (one `plan.transition.approved` journal event carrying `--actor`) before the loop's first status projection; an already-approved plan stamps nothing. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
         plan::ArchiveArgs,
         ::change::plan::handlers::Archive,
         "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml`"
-    );
-    route!(
-        ["journal", "emit"],
-        journal::EmitArgs,
-        project::journal::handlers::Emit,
-        "Append one event to `.emery/journal.jsonl`",
-        "Append one event to `.emery/journal.jsonl`.\n\n`<event-id>` names a variant in the closed workflow §Observability event taxonomy (e.g. `source.execution.agent`); `--payload` carries that variant's fields as a JSON object. The taxonomy is the payload schema — a single serde round-trip validates both the id and the fields. An unknown id exits `2` with `journal-emit-unknown-event`; a payload that fails the variant's field schema exits `2` with `journal-emit-payload-schema`. On success the CLI stamps a second-precision UTC timestamp and appends exactly one line."
     );
     route!(
         ["journal", "show"],
@@ -521,23 +496,19 @@ convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name });
 convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name });
 convert!(slice::RefineArgs => ::slice::handlers::RefineInput { name });
 convert!(slice::BuildArgs => ::slice::handlers::BuildInput { name });
-convert!(slice::MergeRunArgs => ::slice::handlers::MergeRunInput { name, allow_composition_replace });
-convert!(slice::MergePreviewArgs => ::slice::handlers::PreviewInput { name });
-convert!(slice::ConflictCheckArgs => ::slice::handlers::ConflictCheckInput { name });
+convert!(slice::MergeRunArgs => ::slice::handlers::MergeRunInput { name, allow_composition_replace, preview, conflict_check });
 convert!(slice::DropArgs => ::slice::handlers::DropInput { name, reason });
 convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run });
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
 convert!(plan::NextArgs => ::change::plan::handlers::NextInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { actor });
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
-convert!(plan::ApproveArgs => ::change::plan::handlers::ApproveInput { actor });
-convert!(plan::TransitionArgs => ::change::plan::handlers::TransitionInput { name, target, undo });
-convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent });
+convert!(plan::TransitionArgs => ::change::plan::handlers::TransitionInput { name, undo });
+convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
-convert!(journal::EmitArgs => project::journal::handlers::EmitInput { event, payload });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
 convert!(registry::ValidateArgs => project::registry::handlers::ValidateInput {});
 convert!(registry::AddArgs => project::registry::handlers::AddInput { name, url, adapter, description });

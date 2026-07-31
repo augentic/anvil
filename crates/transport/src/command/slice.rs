@@ -65,18 +65,12 @@ pub struct MergeRunArgs {
     /// routine per-screen edits flow through `delta:` and never need it.
     #[arg(long)]
     pub allow_composition_replace: bool,
-}
-
-/// Arguments for `slice merge preview`.
-#[derive(Debug, clap::Args)]
-pub struct MergePreviewArgs {
-    /// Slice name
-    pub name: String,
-}
-
-/// Arguments for `slice merge conflict-check`.
-#[derive(Debug, clap::Args)]
-pub struct ConflictCheckArgs {
-    /// Slice name
-    pub name: String,
+    /// Show the merge operations that would be applied, without
+    /// writing.
+    #[arg(long, conflicts_with = "conflict_check")]
+    pub preview: bool,
+    /// Report `type: modified` baselines modified after this slice's
+    /// `defined_at`, without writing.
+    #[arg(long)]
+    pub conflict_check: bool,
 }

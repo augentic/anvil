@@ -17,17 +17,17 @@ export PATH="$HOME/.local/bin:$PATH"
 curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- --version 0.32.0 -y
 ```
 
-Then run `emery --version` and stop on failure. Run every subsequent `emery` command in this session with that `PATH` export in effect; remind the operator to add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile if the installer printed a PATH note.
+Then run `RUST_LOG=off emery --version` and stop on failure. Run every subsequent `emery` command in this session with that `PATH` export in effect; remind the operator to add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile if the installer printed a PATH note.
 
-2. **Route re-entry** — when `.emery/project.yaml` already exists, `emery init` changes nothing: it exits 0 and prints the literal `emery init --upgrade` re-entry command. Confirm with the operator, then run `emery init --upgrade`.
+2. **Route re-entry** — when `.emery/project.yaml` already exists, `emery init` changes nothing: it exits 0 and prints the literal `emery init --upgrade` re-entry command. Confirm with the operator, then run `RUST_LOG=off emery init --upgrade`.
 3. **Elicit every required input and pass it as a flag** — the CLI has no interactive prompt mode: a missing input fails typed (`init-adapter-required` for the adapter; `project-platforms-required` when the target demands `--platforms`, naming the allowed and default sets — `core` is mandatory). Gather conversationally: the adapter (`<adapter>` and `--workspace` are mutually exclusive; the literal argument `workspace` means workspace init), `--platforms <platforms>` when the target adapter declares `platforms.required` (e.g. vectis), and optionally `--name <name>` / `--description "<description>"`.
 4. **Invoke**:
 
 ```bash
-emery init <adapter> [--name <name>] [--description "<description>"] [--platforms <platforms>]
+RUST_LOG=off emery init <adapter> [--name <name>] [--description "<description>"] [--platforms <platforms>]
 ```
 
-or `emery init --workspace` for a registry-only workspace.
+or `RUST_LOG=off emery init --workspace` for a registry-only workspace. Init is a short deterministic verb — it runs quiet per the plugin rule's *Tracing and output* contract (the debug variant applies when the operator asks for debug).
 
 ## Relay
 

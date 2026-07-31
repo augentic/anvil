@@ -56,6 +56,7 @@ pub async fn build(
     seam: &impl Target, layout: Layout<'_>, now: Timestamp, slice: &str, adapter: &TargetAdapter,
     tree: WorkingTree,
 ) -> Result<BuildOutcome, Error> {
+    tracing::info!("build started");
     let slice_dir = layout.slice_dir(slice);
     let metadata = SliceMetadata::load(&slice_dir)?;
     let target_name = AdapterSelector::recorded_name(&metadata.target);
@@ -87,7 +88,7 @@ pub async fn build(
     // The `slice.build.*` pair brackets the dispatch *and* the finalize
     // tail: the guest has no prepare/finalize seam for an agent to sit
     // between, so `started` frames the whole operation.
-    journal::bracket(
+    let outcome = journal::bracket(
         layout,
         now,
         "slice.build",
@@ -103,7 +104,9 @@ pub async fn build(
             reason: err.variant_str().into_owned(),
         },
     )
-    .await
+    .await?;
+    tracing::info!(status = ?outcome.status, "build completed");
+    Ok(outcome)
 }
 
 /// Dispatch `seam.build` and run the native finalize tail over the

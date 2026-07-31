@@ -31,7 +31,6 @@ progress from an existing tree. Continue or debug a retained sandbox
 explicitly through command passthrough:
 
 ```bash
-cargo make lab -- --project-dir sandbox/auth plan approve
 cargo make lab -- --project-dir sandbox/auth plan execute
 ```
 
@@ -63,8 +62,8 @@ fresh sandbox. Two kinds exist:
 
 - **`kind = "workflow"`** — the operator rhythm over real verbs:
   `init <target>`, `plan author <change> [--intent] [--source k=v …]`,
-  then (past `--until plan`) `plan approve` and the genuine drained
-  `plan execute`, and (at `--until finalize`) `plan archive`. The default
+  then (past `--until plan`) the genuine drained `plan execute` (whose
+  first run stamps Gate 1), and (at `--until finalize`) `plan archive`. The default
   stop is `execute`; `case.toml`'s `until` sets a case default and
   `--until` overrides per run. An optional `clone = { url, dest }`
   (mutually exclusive with `fixture`) shallow-clones an upstream tree

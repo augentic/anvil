@@ -39,7 +39,7 @@ fn http_parity() {
     let command_types: BTreeSet<TypeId> = command
         .inventory()
         .iter()
-        .filter_map(omnia_guest::api::command::RouteInfo::operation_type_id)
+        .filter_map(omnia_guest::api::command::RouteInfo::operation)
         .collect();
     let http_types: BTreeSet<TypeId> =
         transport::http::router(Invoker::new("emery", provider(".")))
@@ -50,9 +50,7 @@ fn http_parity() {
     let transport_only: BTreeSet<Vec<String>> = command
         .inventory()
         .iter()
-        .filter(|route| {
-            route.operation_type_id().is_none_or(|operation| !http_types.contains(&operation))
-        })
+        .filter(|route| route.operation().is_none_or(|operation| !http_types.contains(&operation)))
         .map(|route| route.selector().path().to_vec())
         .collect();
     let expected: BTreeSet<Vec<String>> = std::iter::once(&["completions"][..])
@@ -62,7 +60,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 33);
+    assert_eq!(http_types.len(), 29);
 }
 
 #[tokio::test]
@@ -93,7 +91,7 @@ async fn detailed_help() {
     assert_eq!(route.exit, 0);
     let route = String::from_utf8_lossy(&route.stdout);
     assert!(route.contains("Read-only projection of the plan's execution state"));
-    assert!(route.contains("Stop reasons (`plan-not-approved`"));
+    assert!(route.contains("Stop reasons (`refine-failed`"));
 
     let namespace = router.execute(["emery", "source", "--help"]).await;
     assert_eq!(namespace.exit, 0);

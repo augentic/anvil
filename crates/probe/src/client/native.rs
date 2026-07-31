@@ -17,7 +17,7 @@ use std::sync::Arc;
 use omnia_guest::model::{
     Effort, Error, Format, Message, Model, Reply, Request, Role, Tool, Usage,
 };
-use omnia_wasi_model::{DirEntry, FutureResult, Reference, ToolHost, VerifyReport, WasiModelCtx};
+use omnia_wasi_model::{DirEntry, FutureResult, Reference, ToolHost, WasiModelCtx};
 
 /// A guest-side [`Model`] over a host-side backend, rooted at the
 /// project directory workspace lends resolve to.
@@ -113,7 +113,6 @@ fn wire_request(request: Request) -> omnia_wasi_model::Request {
         grants: omnia_wasi_model::Grants {
             references: request.references,
             workspace: None,
-            verify: request.verify,
         },
     }
 }
@@ -170,10 +169,6 @@ impl ToolHost for LocalToolHost {
 
     fn write(&self, _path: String, _bytes: Vec<u8>) -> FutureResult<()> {
         refuse("writes")
-    }
-
-    fn verify(&self, _check: String) -> FutureResult<VerifyReport> {
-        refuse("verification")
     }
 
     fn local_path(&self) -> Option<&Path> {

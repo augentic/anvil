@@ -78,25 +78,18 @@ fn reset_synthesis_answer() -> String {
     .expect("synthesis serialises")
 }
 
-async fn author_and_approve(session: &Session) {
+async fn author(session: &Session) {
     run::<plan::handlers::Author, _, _>(
         session.provider(),
         plan::handlers::AuthorInput {
             name: "auth".to_string(),
             sources: support::adversarial_bindings(),
             intent: None,
+            force: false,
         },
     )
     .await
     .expect("author walks to pending");
-    run::<plan::handlers::Approve, _, _>(
-        session.provider(),
-        plan::handlers::ApproveInput {
-            actor: "operator".to_string(),
-        },
-    )
-    .await
-    .expect("the operator stamps Gate 1");
 }
 
 // A documentation-vs-behaviour disagreement resolves as a divergence
@@ -107,7 +100,7 @@ async fn divergence_docs_wins() {
         "mock",
         vec![mock::answers::adversarial_grouping(), session_synthesis_answer()],
     );
-    author_and_approve(&session).await;
+    author(&session).await;
 
     let refined = run::<slice::handlers::Refine, _, _>(
         session.provider(),
@@ -226,7 +219,7 @@ async fn decisions_exact_set() {
     )
     .expect("write baseline decision");
 
-    author_and_approve(&session).await;
+    author(&session).await;
 
     run::<slice::handlers::Refine, _, _>(
         session.provider(),
@@ -281,7 +274,7 @@ async fn evidence_gap_projects_unknown() {
         "mock",
         vec![mock::answers::adversarial_grouping(), reset_synthesis_answer()],
     );
-    author_and_approve(&session).await;
+    author(&session).await;
 
     run::<slice::handlers::Refine, _, _>(
         session.provider(),

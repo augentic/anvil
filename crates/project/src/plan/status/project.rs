@@ -40,10 +40,6 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
     };
     let active = plan.entries.iter().find(|e| e.status == Status::InProgress);
 
-    if plan.lifecycle == Lifecycle::Pending {
-        return Ok(assemble(plan, counts, active, Resolution::stop(StopReason::PlanNotApproved)));
-    }
-
     let resolution = match active {
         Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply)?,
         None => {
@@ -148,10 +144,9 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
             // sub-step — has not. Postflight failure is past merge
             // (`done` + archived) — no awaited phase.
             StopReason::MergeConflict | StopReason::MergeIncomplete => Some(LoopStep::Merge),
-            StopReason::PlanNotApproved
-            | StopReason::MergePostflightFailed
-            | StopReason::SliceDropped
-            | StopReason::Stuck => None,
+            StopReason::MergePostflightFailed | StopReason::SliceDropped | StopReason::Stuck => {
+                None
+            }
         }),
     }
 }
@@ -160,18 +155,29 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 /// `None` when no single command makes progress.
 fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
     let slice = resolution.slice.as_deref();
+    // Gate 1 first: a pending plan's dispatch projections resume
+    // through the approval act (`/emery:execute`), not a phase
+    // breakout — the projected `next-action` still names the phase
+    // the loop will run after the stamp.
+    if plan.lifecycle == Lifecycle::Pending
+        && matches!(
+            resolution.action,
+            NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge
+        )
+    {
+        return Some("/emery:execute".to_string());
+    }
     match resolution.action {
         NextActionKind::Refine => slice.map(|s| format!("/emery:refine {s}")),
         NextActionKind::Build => slice.map(|s| format!("/emery:build {s}")),
         NextActionKind::Merge => slice.map(|s| format!("/emery:merge {s}")),
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::PlanNotApproved => Some("emery plan approve".to_string()),
             StopReason::RefineFailed => slice.map(|s| format!("/emery:refine {s}")),
             StopReason::BuildFailed => slice.map(|s| format!("/emery:build {s}")),
             StopReason::MergeConflict => slice.map(|s| format!("/emery:merge {s}")),
             StopReason::MergePostflightFailed => Some("emery plan execute".to_string()),
-            StopReason::MergeIncomplete => slice.map(|s| format!("emery plan transition {s} done")),
+            StopReason::MergeIncomplete => slice.map(|s| format!("/emery:merge {s}")),
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
     }

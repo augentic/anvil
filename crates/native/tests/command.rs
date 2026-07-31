@@ -44,16 +44,23 @@ fn argv(args: &[&str]) -> Vec<String> {
 async fn executes_a_verb() {
     let (_tmp, root) = project();
     let paths = paths(&root);
+    fs::write(
+        root.join(".emery/journal.jsonl"),
+        "{\"timestamp\":\"2026-01-01T00:00:00Z\",\"event\":\"slice.build.started\",\
+         \"payload\":{\"slice-name\":\"demo\"}}\n",
+    )
+    .expect("stage journal");
     let response = native::command::execute(
         paths,
         model(),
         catalog(),
-        argv(&["journal", "emit", "slice.build.started", "--payload", r#"{"slice-name":"demo"}"#]),
+        argv(&["journal", "show", "--filter", "slice.build"]),
     )
     .await
     .expect("the router assembles");
     assert_eq!(response.exit, 0, "{}", String::from_utf8_lossy(&response.stderr));
-    assert!(root.join(".emery/journal.jsonl").is_file());
+    let stdout = String::from_utf8_lossy(&response.stdout);
+    assert!(stdout.contains("slice.build.started"), "{stdout}");
 }
 
 #[tokio::test]

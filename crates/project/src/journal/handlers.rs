@@ -1,129 +1,19 @@
-//! `emery journal {emit, show}` — the front doors onto the closed
+//! `emery journal show` — the read-only projection over the closed
 //! workflow §Observability event taxonomy.
 //!
-//! `emit` is the guarded write: it deserialises `<event-id>` +
-//! `--payload` into the closed [`EventKind`]
-//! (the taxonomy *is* the per-kind payload schema — there is no
-//! parallel JSON-schema registry), stamps a second-precision UTC
-//! timestamp, and appends exactly one well-formed line to
-//! `.emery/journal.jsonl`. The emitter mints no event kinds of its
-//! own. `show` is the read: a filter/limit projection over the same
-//! file that emits nothing.
+//! Writes route through the internal appenders only: CLI verbs append
+//! their own events as a side effect of the operation (there is no
+//! operator-facing emit verb). `show` is a filter/limit projection
+//! over `.emery/journal.jsonl` that emits nothing.
 
 use std::io::Write;
 
-use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
 
-use super::{Event, EventKind};
+use super::Event;
 use crate::handler::{Anchor, Ctx, Render};
-
-/// Wire input for `journal emit`.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct EmitInput {
-    /// Dotted-kebab event id (e.g. `slice.build.started`).
-    pub event: String,
-    /// JSON object carrying the event's payload fields (as a string);
-    /// omit for events with no payload fields.
-    #[serde(default)]
-    pub payload: Option<String>,
-}
-
-/// `emery journal emit <event-id> [--payload <json>]`.
-///
-/// Reassembles the adjacently-tagged `{ event, payload }` wire shape
-/// and runs a single serde round-trip into [`EventKind`]; the closed
-/// taxonomy is the per-kind payload schema, so that one deserialise
-/// validates both the id and the payload fields. The verb then stamps
-/// a second-precision UTC timestamp (the [`Event`] serde format
-/// truncates `Timestamp::now()` to seconds) and appends exactly one
-/// line to `.emery/journal.jsonl` via the internal batch appender.
-///
-/// Failures: `journal-emit-unknown-event` (exit 2) when `event` is not
-/// a variant in the closed taxonomy; `journal-emit-payload-schema`
-/// (exit 2) when `payload` is not valid JSON or does not satisfy the
-/// named variant's field schema.
-#[derive(Clone, Copy, Debug)]
-pub struct Emit;
-
-impl<P: Anchor> Operation<P> for Emit {
-    type Error = crate::handler::Error;
-    type Input = EmitInput;
-    type Output = EmitBody;
-
-    async fn call(
-        input: Self::Input, context: CallContext<'_, P>,
-    ) -> Result<Self::Output, Self::Error> {
-        let cx = Ctx::load(context.provider)?;
-        let EmitInput { event, payload } = input;
-        // The `--payload` body defaults to an empty object so the single
-        // round-trip below surfaces a `journal-emit-payload-schema`
-        // missing-field failure for variants that require fields.
-        let payload_value: Value = match payload.as_deref() {
-            Some(raw) => serde_json::from_str(raw).map_err(|err| {
-                payload_schema_error(format!("--payload is not valid JSON: {err}"))
-            })?,
-            None => Value::Object(Map::new()),
-        };
-
-        let mut tagged = Map::new();
-        tagged.insert("event".to_string(), Value::String(event.clone()));
-        tagged.insert("payload".to_string(), payload_value);
-
-        let kind: EventKind =
-            serde_json::from_value(Value::Object(tagged)).map_err(|err| classify(&event, &err))?;
-
-        let journal_event = Event::new(cx.now(), kind);
-        super::append_one(cx.layout(), &journal_event)?;
-
-        Ok(EmitBody { event })
-    }
-}
-
-/// Split a failed [`EventKind`] deserialise into the two operator-
-/// facing buckets. An unknown adjacently-tagged variant surfaces as
-/// serde's `unknown variant` error; everything else (missing/invalid
-/// payload field) is a payload-schema failure.
-fn classify(event: &str, err: &serde_json::Error) -> Error {
-    let message = err.to_string();
-    if message.contains("unknown variant") {
-        Error::validation_failed(
-            "journal-emit-unknown-event",
-            "<event-id> must name a variant in the closed journal taxonomy",
-            format!("unknown journal event id `{event}`: {message}"),
-        )
-    } else {
-        payload_schema_error(format!(
-            "payload does not satisfy the `{event}` event schema: {message}"
-        ))
-    }
-}
-
-fn payload_schema_error(detail: String) -> Error {
-    Error::validation_failed(
-        "journal-emit-payload-schema",
-        "--payload must satisfy the named event's field schema",
-        detail,
-    )
-}
-
-/// Success envelope for `journal emit`.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct EmitBody {
-    /// Appended event id.
-    pub event: String,
-}
-
-impl Render for EmitBody {
-    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "Appended journal event '{}'.", self.event)
-    }
-}
 
 /// Wire input for `journal show`.
 #[derive(Debug, Default, Serialize, Deserialize)]

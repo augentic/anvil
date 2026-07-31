@@ -5,7 +5,7 @@
 //!
 //! This is the always-on native home of the widened-verb coverage:
 //! `registry {add,validate,remove}`, `archive prune`,
-//! `init`, and `journal {emit,show}`. The exit-code
+//! `init`, and `journal show`. The exit-code
 //! projection over these failures lives in `crates/transport`
 //! (`Exit::from(&error::Error)`) and is pinned there.
 
@@ -294,79 +294,26 @@ mod init {
 mod journal {
     use super::*;
 
-    #[tokio::test]
-    async fn emit_appends_line() {
-        let project = Session::scripted("mock", Vec::new());
-        let body = run::<project::journal::handlers::Emit, _, _>(
-            project.provider(),
-            project::journal::handlers::EmitInput {
-                event: "slice.build.started".into(),
-                payload: Some(r#"{"slice-name":"billing"}"#.into()),
+    /// Stage one taxonomy event on disk — writes route through the
+    /// internal appenders in production, so the fixture writes the
+    /// same JSONL line those appenders produce.
+    fn stage_event(root: &Path) {
+        let event = project::journal::Event::new(
+            jiff::Timestamp::from_second(1_700_000_000).expect("valid timestamp"),
+            project::journal::EventKind::SliceBuildStarted {
+                slice_name: "billing".into(),
             },
-        )
-        .await
-        .expect("emit succeeds");
-        assert_eq!(body.event, "slice.build.started");
-        let journal =
-            fs::read_to_string(project.root().join(".emery/journal.jsonl")).expect("journal");
-        assert!(
-            journal.contains(r#""event":"slice.build.started""#),
-            "the event landed:\n{journal}"
         );
-    }
-
-    #[tokio::test]
-    async fn emit_unknown_event_refused() {
-        let project = Session::scripted("mock", Vec::new());
-        let err = run::<project::journal::handlers::Emit, _, _>(
-            project.provider(),
-            project::journal::handlers::EmitInput {
-                event: "no.such.event".into(),
-                payload: None,
-            },
-        )
-        .await
-        .expect_err("an id outside the closed taxonomy is refused");
-        assert!(
-            matches!(err.core(), error::Error::Validation { .. }),
-            "an unknown id is the validation failure (exit 2 at the CLI), got {err:?}"
-        );
-    }
-
-    #[tokio::test]
-    async fn emit_bad_payload_refused() {
-        let project = Session::scripted("mock", Vec::new());
-        let err = run::<project::journal::handlers::Emit, _, _>(
-            project.provider(),
-            project::journal::handlers::EmitInput {
-                event: "slice.build.started".into(),
-                payload: Some("{}".into()),
-            },
-        )
-        .await
-        .expect_err("a payload missing the variant's fields is refused");
-        assert!(
-            matches!(err.core(), error::Error::Validation { .. }),
-            "a bad payload is the validation failure (exit 2 at the CLI), got {err:?}"
-        );
-        assert!(
-            !project.root().join(".emery/journal.jsonl").exists(),
-            "a refused emit appends nothing"
-        );
+        let dir = root.join(".emery");
+        fs::create_dir_all(&dir).expect("create .emery");
+        let line = serde_json::to_string(&event).expect("serialize event");
+        fs::write(dir.join("journal.jsonl"), format!("{line}\n")).expect("stage journal");
     }
 
     #[tokio::test]
     async fn show_reads_filtered() {
         let project = Session::scripted("mock", Vec::new());
-        run::<project::journal::handlers::Emit, _, _>(
-            project.provider(),
-            project::journal::handlers::EmitInput {
-                event: "slice.build.started".into(),
-                payload: Some(r#"{"slice-name":"billing"}"#.into()),
-            },
-        )
-        .await
-        .expect("emit succeeds");
+        stage_event(project.root());
         let matched = run::<project::journal::handlers::Show, _, _>(
             project.provider(),
             project::journal::handlers::ShowInput {
@@ -376,7 +323,7 @@ mod journal {
         )
         .await
         .expect("show succeeds");
-        assert_eq!(matched.count, 1, "the emitted event matches its prefix");
+        assert_eq!(matched.count, 1, "the staged event matches its prefix");
         let unmatched = run::<project::journal::handlers::Show, _, _>(
             project.provider(),
             project::journal::handlers::ShowInput {
@@ -386,7 +333,7 @@ mod journal {
         )
         .await
         .expect("a filter with no matches still succeeds");
-        assert_eq!(unmatched.count, 0, "no plan events were emitted");
+        assert_eq!(unmatched.count, 0, "no plan events were staged");
         assert!(project.root().join(".emery/journal.jsonl").is_file(), "the journal persists");
     }
 }

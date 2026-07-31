@@ -93,6 +93,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     target_value: &str,
 ) -> Result<RefineOutcome, Error> {
     let layout = Layout::new(paths.project_root());
+    tracing::info!("refine started");
     let entry = load_entry(layout, slice)?;
     let parent_dir = layout.slices_dir();
     std::fs::create_dir_all(&parent_dir).map_err(Error::Io)?;
@@ -181,6 +182,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     let tags = validate(layout, now, slice)?;
 
     slice_actions::transition(&slice_dir, LifecycleStatus::Refined, now)?;
+    tracing::info!(artifacts = artifacts.len(), "refine completed");
 
     Ok(RefineOutcome {
         slice: slice.to_string(),

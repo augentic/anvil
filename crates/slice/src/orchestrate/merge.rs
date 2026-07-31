@@ -38,6 +38,11 @@ pub struct MergeOutcome {
 /// is persisted to the archive (including `status: failure`) before
 /// the terminal error returns.
 ///
+/// Re-entry heals a torn merge: when the deterministic commit already
+/// landed (the slice tree is archived at lifecycle `merged`) but the
+/// per-entry `done` stamp is missing, the run stamps the entry and
+/// returns without a second baseline merge or gate dispatch.
+///
 /// # Errors
 ///
 /// Completion-gate and preflight failures (slice not `built`,
@@ -52,7 +57,13 @@ pub struct MergeOutcome {
 pub async fn merge<T: Target>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
+    tracing::info!("merge started");
     preflight_completion(layout, slice)?;
+    if let Some(outcome) = heal_torn_merge(layout, slice) {
+        stamp_plan_entry_done(layout, slice)?;
+        tracing::info!("merge completed: torn merge healed, entry stamped done");
+        return Ok(outcome);
+    }
     let slice_dir = layout.slice_dir(slice);
     // The recorded slice target keeps its `name@version` pin: the
     // routed id dispatches the exact identity, never a reduced bare
@@ -117,6 +128,7 @@ pub async fn merge<T: Target>(
         },
         "slice.merge",
     );
+    tracing::info!(decisions = outcome.decisions.len(), "merge completed");
     Ok(outcome)
 }
 
@@ -231,6 +243,47 @@ fn persist_gate_report(dir: &Path, phase: MergePhase, report: &BuildReport) -> R
     std::fs::create_dir_all(dir).map_err(Error::Io)?;
     let yaml = project::fs::yaml(report)?;
     bytes_write(&dir.join(format!("{phase}.yaml")), yaml.as_bytes())
+}
+
+/// Detect a torn merge left by a crash between the deterministic
+/// commit and the per-entry `done` stamp: the slice tree is gone from
+/// `.emery/slices/` and its newest archive reads lifecycle `merged`.
+/// Returns the outcome to hand back after the caller re-stamps the
+/// entry; the baseline fold and archive stand, so no merge work (and
+/// no gate dispatch) re-runs. Detection is best-effort read-only —
+/// any unreadable archive falls through to the normal merge path and
+/// its errors.
+fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
+    if layout.slice_dir(slice).exists() {
+        return None;
+    }
+    let archive_path = latest_archive(&layout.archive_dir(), slice)?;
+    let metadata = project::slice::SliceMetadata::load(&archive_path).ok()?;
+    if metadata.status != project::slice::LifecycleStatus::Merged {
+        return None;
+    }
+    Some(MergeOutcome {
+        merged: vec![],
+        decisions: vec![],
+        archive_path,
+    })
+}
+
+/// The newest `<YYYY-MM-DD>-<slice>` folder under the archive root,
+/// by the date prefix's lexicographic order.
+fn latest_archive(archive_dir: &Path, slice: &str) -> Option<PathBuf> {
+    const DATE_PREFIX_LEN: usize = "0000-00-00-".len();
+    let mut best: Option<String> = None;
+    for entry in std::fs::read_dir(archive_dir).ok()?.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let dated_match = name.len() == DATE_PREFIX_LEN + slice.len()
+            && name.ends_with(slice)
+            && name.as_bytes().get(DATE_PREFIX_LEN - 1) == Some(&b'-');
+        if dated_match && entry.path().is_dir() && best.as_deref() < Some(name.as_str()) {
+            best = Some(name);
+        }
+    }
+    best.map(|name| archive_dir.join(name))
 }
 
 /// Read-only completion preflight, run before the `slice.merge.*`

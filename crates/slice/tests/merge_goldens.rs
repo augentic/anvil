@@ -1,10 +1,28 @@
-//! Merge-engine goldens through the public slice preview operation.
+//! Merge-engine goldens through the public `slice merge run --preview`
+//! operation.
 
 use std::path::{Path, PathBuf};
 
 use mock::invoke::run;
 use mock::session::Session;
-use slice::handlers::{Preview, PreviewInput};
+use slice::handlers::{MergeRun, MergeRunBody, MergeRunInput, PreviewBody};
+
+/// The read-only `--preview` mode of `slice merge run`.
+fn preview_input() -> MergeRunInput {
+    MergeRunInput {
+        name: "golden".to_string(),
+        allow_composition_replace: false,
+        preview: true,
+        conflict_check: false,
+    }
+}
+
+fn unwrap_preview(body: MergeRunBody) -> PreviewBody {
+    match body {
+        MergeRunBody::Preview(preview) => preview,
+        other => panic!("--preview must project the preview body, got {other:?}"),
+    }
+}
 
 const MERGE_CASES: &[&str] = &[
     "spec-single-req",
@@ -55,16 +73,11 @@ async fn merged_outputs() {
         let case = fixtures().join(name);
         stage(&project, &case, "golden");
 
-        let result = run::<Preview, _, _>(
-            project.provider(),
-            PreviewInput {
-                name: "golden".to_string(),
-            },
-        )
-        .await;
+        let result = run::<MergeRun, _, _>(project.provider(), preview_input()).await;
         let error_golden = case.join("expected-merge-errors.txt");
         match result {
             Ok(body) => {
+                let body = unwrap_preview(body);
                 if error_golden.is_file() {
                     assert_golden(&error_golden, "");
                 }
@@ -86,15 +99,10 @@ async fn validation_outputs() {
         let case = fixtures().join(name);
         stage(&project, &case, "FAIL");
 
-        let result = run::<Preview, _, _>(
-            project.provider(),
-            PreviewInput {
-                name: "golden".to_string(),
-            },
-        )
-        .await;
+        let result = run::<MergeRun, _, _>(project.provider(), preview_input()).await;
         let actual = match result {
             Ok(body) => {
+                let body = unwrap_preview(body);
                 assert_eq!(body.specs.len(), 1, "{name}: expected one preview");
                 String::new()
             }

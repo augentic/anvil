@@ -18,27 +18,20 @@ async fn author(
             name: "demo".to_string(),
             sources: support::greeting_binding_for(source_adapter),
             intent: None,
+            force: false,
         },
     )
     .await
-}
-
-async fn approve(session: &Session) {
-    run::<plan::handlers::Approve, _, _>(
-        session.provider(),
-        plan::handlers::ApproveInput {
-            actor: "operator".to_string(),
-        },
-    )
-    .await
-    .expect("the operator stamps Gate 1");
 }
 
 async fn execute_err(session: &Session) -> String {
-    run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-        .await
-        .expect_err("the failing phase parks the loop")
-        .to_string()
+    run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect_err("the failing phase parks the loop")
+    .to_string()
 }
 
 #[tokio::test]
@@ -116,7 +109,7 @@ async fn survey_ensures_pinned_binding_before_dispatch() {
         },
     );
     let plan_path = session.root().join("plan.yaml");
-    project::plan::scaffold(&plan_path, "demo", bindings)
+    project::plan::scaffold(&plan_path, "demo", bindings, false)
         .expect("scaffold")
         .save(&plan_path)
         .expect("save plan.yaml");
@@ -161,6 +154,7 @@ mod train_expansion {
                 name: "demo".to_string(),
                 sources,
                 intent,
+                force: false,
             },
         )
         .await
@@ -249,8 +243,6 @@ async fn extract_failure_parks_refine() {
     let session = Session::scripted("mock", vec![mock::answers::greeting_grouping()]);
 
     author(&session, "mock-fail-extract").await.expect("survey succeeds for this profile");
-    approve(&session).await;
-
     let detail = execute_err(&session).await;
     assert!(detail.contains("refine-failed"), "{detail}");
     assert!(detail.contains("mock extract failure"), "typed detail preserved: {detail}");
@@ -261,8 +253,6 @@ async fn guidance_failure_parks_refine() {
     let session = Session::scripted("mock-fail-guidance", vec![mock::answers::greeting_grouping()]);
 
     author(&session, "mock").await.expect("author succeeds");
-    approve(&session).await;
-
     let detail = execute_err(&session).await;
     assert!(detail.contains("refine-failed"), "{detail}");
     assert!(detail.contains("mock guidance failure"), "typed detail preserved: {detail}");
@@ -276,8 +266,6 @@ async fn build_failure_parks() {
     );
 
     author(&session, "mock").await.expect("author succeeds");
-    approve(&session).await;
-
     let detail = execute_err(&session).await;
     assert!(detail.contains("build-failed"), "{detail}");
     assert!(detail.contains("mock build failure"), "typed detail preserved: {detail}");
@@ -291,8 +279,6 @@ async fn merge_failure_parks_built() {
     );
 
     author(&session, "mock").await.expect("author succeeds");
-    approve(&session).await;
-
     // Refine and build succeed; the merge preflight dispatch itself
     // errors (a typed seam failure, not a failed gate report), so the
     // loop parks with the deterministic commit never attempted.
@@ -315,8 +301,6 @@ async fn missing_output_aborts() {
     );
 
     author(&session, "mock").await.expect("author succeeds");
-    approve(&session).await;
-
     // The mock reports success but never writes its declared
     // output, so the orchestrator's outputs-exist gate aborts.
     let detail = execute_err(&session).await;

@@ -3,9 +3,10 @@
 //! `approved`.
 //!
 //! The legal edges are `Pending → InProgress` (written by
-//! `plan next`, never here) and `InProgress → Done` per entry, plus
-//! `Pending → Approved` plan-level (operator stamp at Gate 1, workflow
-//! §The Plan / §Writer ownership; `/emery:plan` MUST NOT call it).
+//! `plan next`, never here) and `InProgress → Done` per entry (written
+//! by `slice merge`), plus `Pending → Approved` plan-level (the Gate 1
+//! stamp, fired by the first `emery plan execute`; workflow §The Plan /
+//! §Writer ownership).
 
 use error::Error;
 
@@ -13,8 +14,8 @@ use super::model::{Entry, Lifecycle, Plan, Status};
 
 impl Plan {
     /// Transition the named entry to `target` (in practice always
-    /// [`Status::Done`]; `Pending → InProgress` is reserved for
-    /// `Plan::next`).
+    /// [`Status::Done`], written by the merge step; `Pending →
+    /// InProgress` is reserved for `Plan::next`).
     ///
     /// # Errors
     /// `plan-entry-not-found` / `plan-transition` — see module docs.

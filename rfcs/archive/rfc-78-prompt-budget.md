@@ -31,7 +31,7 @@ plan-execute-stopped: … stop build-failed (at-r9k-position-adapter):
 wasi:cli/run exited guest=emery code=2
 ```
 
-`GUEST_TIMEOUT_MS` defaults to one hour in the example Makefile; the **cursor** backend default remains **600s** (`examples/Makefile.toml` carries `CURSOR_TIMEOUT_SECS = "1800"` commented out). Review spent that budget on specialist `Task` subagents (Security / Quality / Correctness on `claude-sonnet-5-thinking-high` under a `cursor-grok-4.5-high-fast` lead) and never returned a phase answer before the host killed the agent — the timeout is flat wall-clock per spawn, with no credit for a stream that is still making progress.
+The **cursor** backend default remains **600s** (`examples/Makefile.toml` carries `CURSOR_TIMEOUT_SECS = "1800"` commented out). Review spent that budget on specialist `Task` subagents (Security / Quality / Correctness on `claude-sonnet-5-thinking-high` under a `cursor-grok-4.5-high-fast` lead) and never returned a phase answer before the host killed the agent — the timeout is flat wall-clock per spawn, with no credit for a stream that is still making progress.
 
 ### Phase wall clock (second run)
 
@@ -100,7 +100,7 @@ The same shape repeats in the sibling targets, larger: vectis inlines `render_in
 3. **Omnia generation** joins five prose documents into one system channel (so verify-repair can re-enter crate/test/guest writers) and appends `render_inputs(inputs)` to the user message — duplicating files already present under `.emery/slices/<slice>/` in the lent tree.
 4. **`guidance.md` is synthesis-facing** (returned by `guidance`, consumed at refine). Build already assumes those idioms live in `design.md` / specs; generation still re-inlines the full guidance document as a “refresher” (~10 KB). `guest.md` (~5 KB) is likewise assembled even in update mode, which skips the guest writer.
 5. **Two legs are cheaper than a spawn.** The replay leg exists to answer `applicable: false` whenever the slice has no `captures` binding — a fact knowable without a model (the plan entry's `sources[]`, readable from the lent tree in-guest). The report leg is a fifth spawn over phase outcomes the adapter already holds as typed `PhaseAnswer`s, paying the full `build.md` system plus the ~18 KB report answer schema.
-6. **Cursor timeout is flat and independent of guest timeout.** Examples raise `GUEST_TIMEOUT_MS` to 1h but leave `CURSOR_TIMEOUT_SECS` at the backend default (600) unless the operator sets it. The backend already parses the stream-json event-by-event, so it has a free progress signal it does not use — review teams get killed mid-work even when the stream shows steady activity.
+6. **Cursor timeout is flat wall-clock.** Examples leave `CURSOR_TIMEOUT_SECS` at the backend default (600) unless the operator sets it. The backend already parses the stream-json event-by-event, so it has a free progress signal it does not use — review teams get killed mid-work even when the stream shows steady activity.
 7. **The synthesis leg duplicates lent-tree evidence the same way the build legs duplicate artifacts.** `SynthesisInputs` embeds every bound source's claims verbatim from `evidence/<source>.yaml` — files that sit in the lent tree and that the deterministic tail reads from disk anyway — and the leg runs under `repaired`, so repairs re-embed that largest payload up to twice more.
 
 ## Proposal
@@ -135,13 +135,12 @@ Additionally, detect create-vs-update mode deterministically in-guest (the scaff
 
 Do not split crate/test/guest into separate model calls **in this RFC** — an ad hoc split trades prompt size for round-trips and abandons the shared verify-repair channel without replacing it. The split is [RFC-79](../rfc-79-swarm-build.md)'s job, and it arrives there together with the convergence gate that supersedes the channel.
 
-### D4 — Timeout semantics: inactivity-based kill plus fail-fast mismatch (backends + examples)
+### D4 — Timeout semantics: inactivity-based kill (backends + examples)
 
-Three parts, in order:
+Two parts, in order:
 
 1. **Hygiene (immediate):** uncomment `CURSOR_TIMEOUT_SECS = "1800"` in `examples/Makefile.toml` and document it for `wasm-omnia-r9k` / `eval omnia-r9k`. Until the rest of D4 lands, treat “cursor timed out after 600s” during review as an operator-config defect, not a silent guest bug.
 2. **Inactivity timeout (backends):** the backend already parses `cursor-agent`'s stream-json events as they arrive; replace the single flat deadline with an **inactivity timeout** (kill after N seconds with no stream events) plus a generous absolute cap. A stalled agent dies fast; a review team that is still streaming specialist output survives. Raising a flat limit alone only masks cost.
-3. **Mismatch fail-fast:** surface a distinct startup hint when the backend timeout is lower than `GUEST_TIMEOUT_MS`, so the two knobs cannot silently disagree.
 
 ### D5 — Session reuse for repair attempts (backends)
 
@@ -196,7 +195,7 @@ Keep inline: the guidance brief (it comes from the adapter component, not the tr
 1. On a lend-workspace omnia generation call, spilled `prompt_len` for a slice the size of `at-r9k-position-adapter` is **≤ ~40 KB** (generation system without guidance + path-form inputs + schema/MCP wrappers), measured the same way `omnia-cursor` logs `prompt_len` today.
 2. Generation still instructs the agent to read proposal / design / tasks / specs from the lent tree and still runs the verify-repair loop in-agent; `targets/omnia/tests/operations.rs` asserts path-form inputs (not inlined bodies), and vectis / contracts assert the same on their inlining legs.
 3. `guidance.md` is absent from the generation system assemble; refine still receives full guidance via the `guidance` operation; update-mode generations omit `guest.md`.
-4. The cursor backend kills on inactivity rather than flat wall-clock (or, until that lands, `wasm-omnia-r9k` docs / Makefile set a cursor timeout that can finish standards review), and a backend timeout lower than `GUEST_TIMEOUT_MS` surfaces a distinct mismatch hint.
+4. The cursor backend kills on inactivity rather than flat wall-clock (or, until that lands, `wasm-omnia-r9k` docs / Makefile set a cursor timeout that can finish standards review).
 5. A slice with no `captures` binding completes an omnia build in **≤ 4 host judgment legs** with no replay spawn; the build report is assembled from typed phase outcomes.
 6. Backend repair attempts resume the leg's session and send only the failed answer + findings, not the full original prompt.
 7. Per-leg assemble byte budgets are asserted in each first-party target's `tests/operations.rs`.
@@ -216,7 +215,7 @@ Keep inline: the guidance brief (it comes from the adapter component, not the tr
 
 - Should the engine judgment kernel (`crates/project/src/judgment.rs`) adopt D5 session-resume for its `repaired` loop in the same change as the backend, or after the backend proves the semantics on target legs?
 - For D6's replay skip: read `plan.yaml` in-guest (no seam change, couples the adapter to the plan file shape) or carry the binding set on the build request (seam addition)?
-- What inactivity window default (D4) balances slow-model thinking pauses against genuinely hung agents — and should the absolute cap simply track `GUEST_TIMEOUT_MS`?
+- What inactivity window default (D4) balances slow-model thinking pauses against genuinely hung agents?
 - For D8: should the guidance brief also move path-first (persist it under the slice tree at refine and reference it), or is a component-sourced ~10 KB inline brief below the threshold worth churning?
 
 ## Appendix — log anchors

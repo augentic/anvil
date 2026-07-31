@@ -119,12 +119,16 @@ pub struct NextArgs {}
 pub struct StatusArgs {}
 
 /// Arguments for `plan execute`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct ExecuteArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct ExecuteArgs {
+    /// Who is driving this invocation — `operator` (default) or
+    /// `agent`. Recorded on the `plan.transition.approved` journal
+    /// event when this run stamps Gate 1 (a `pending` plan approves
+    /// on first execute); self-reported evidence for eval probes,
+    /// not an enforcement gate.
+    #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
+    pub actor: String,
+}
 
 /// Arguments for `plan remove`.
 #[derive(Debug, Args)]
@@ -133,34 +137,18 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
-/// Arguments for `plan approve`.
-#[derive(Debug, Args)]
-pub struct ApproveArgs {
-    /// Who is driving this invocation — `operator` (default) or
-    /// `agent`. Recorded on the `plan.transition.approved`
-    /// journal event so eval probes can grade
-    /// `gate-1-not-auto-stamped` mechanically; self-reported
-    /// evidence, not an enforcement gate.
-    #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
-    pub actor: String,
-}
-
 /// Arguments for `plan transition`.
 #[derive(Debug, Args)]
 pub struct TransitionArgs {
     /// Kebab-case plan-entry name.
     pub name: String,
-    /// Transition target — `done` is the only forward target. Omit
-    /// when `--undo` is set.
-    #[arg(required_unless_present = "undo")]
-    pub target: Option<String>,
-    /// Walk one rung backwards on per-entry status. Legal rungs:
-    /// `done → in-progress`, `in-progress → pending`. The flag
-    /// refuses to skip rungs — undoing a `done` entry to
-    /// `pending` MUST run twice so the journal records each step
-    /// independently. Fires one `plan.transition.undone` event
-    /// per call.
-    #[arg(long = "undo", action = ArgAction::SetTrue, conflicts_with = "target")]
+    /// Walk one rung backwards on per-entry status — the only
+    /// transition mode. Legal rungs: `done → in-progress`,
+    /// `in-progress → pending`. The flag refuses to skip rungs —
+    /// undoing a `done` entry to `pending` MUST run twice so the
+    /// journal records each step independently. Fires one
+    /// `plan.transition.undone` event per call.
+    #[arg(long = "undo", action = ArgAction::SetTrue, required = true)]
     pub undo: bool,
 }
 
@@ -178,6 +166,13 @@ pub struct AuthorArgs {
     /// `--source intent=intent:value:<string>`.
     #[arg(long = "intent", value_name = "STRING")]
     pub intent: Option<String>,
+    /// Replace an existing replaceable plan (`lifecycle: pending`
+    /// and every entry `pending`). Without --force an existing
+    /// `plan.yaml` refuses with `already-exists`; an approved or
+    /// in-flight plan refuses with `plan-author-not-replaceable`
+    /// (archive first).
+    #[arg(long)]
+    pub force: bool,
 }
 
 /// Arguments for `plan archive`.

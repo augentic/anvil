@@ -33,7 +33,7 @@ use write::{commit_opaque, summary, write_baselines};
 /// (or composition) identifier within that class.
 ///
 /// The `Serialize` derive is the wire shape used by `slice merge run`
-/// and `slice merge preview`: `class_name` is a routing tag for the
+/// and `slice merge run --preview`: `class_name` is a routing tag for the
 /// CLI's `filter().map()` step (skipped on the wire), `baseline_path`
 /// flows through `Path::display`, and `result` is flattened so the
 /// envelope exposes only `operations` (the merged text travels to

@@ -60,8 +60,6 @@ pub enum LoopStep {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum StopReason {
-    /// `plan.lifecycle` is still `pending` — Gate 1 has not stamped.
-    PlanNotApproved,
     /// The awaited refine phase last ended in `slice.synthesize.failed`.
     RefineFailed,
     /// The awaited build phase last ended in `slice.build.failed`.
@@ -87,7 +85,6 @@ impl StopReason {
     #[must_use]
     pub const fn hint(self) -> &'static str {
         match self {
-            Self::PlanNotApproved => "Stamp Gate 1 first: emery plan approve.",
             Self::RefineFailed => {
                 "Fix the failure, then retry /emery:refine for the slice. The plan entry stays \
                  in-progress."
@@ -110,8 +107,9 @@ impl StopReason {
                 "The slice was dropped; amend or remove the plan entry to unblock the queue."
             }
             Self::MergeIncomplete => {
-                "The slice is merged but the entry is still in-progress; stamp it with emery \
-                 plan transition <entry> done."
+                "The slice is merged but the entry is still in-progress; re-run /emery:merge \
+                 (or emery plan execute) for the slice — the merge re-entry stamps the missing \
+                 done."
             }
             Self::Stuck => {
                 "Remaining entries wait on unmet dependencies; complete or amend the blocking \
@@ -171,8 +169,7 @@ pub struct StatusBody {
     pub project: Option<String>,
     /// Step the targeted slice is currently at — the awaited
     /// phase, including a phase the loop is stopped on. `None` when no
-    /// slice is targeted (pre-Gate-1, `stuck`, `slice-dropped`,
-    /// `drained`).
+    /// slice is targeted (`stuck`, `slice-dropped`, `drained`).
     pub current_step: Option<LoopStep>,
     /// Most recent step the targeted slice completed, from its
     /// lifecycle (`refined` → `refine`, `built` → `build`, a landed
@@ -180,8 +177,8 @@ pub struct StatusBody {
     /// when no slice is targeted.
     pub last_completed: Option<LoopStep>,
     /// Next valid resume point as a literal command — the phase
-    /// skill for dispatches and retryable stops, the Gate 1 / `done`
-    /// stamp for the stamp-shaped stops, `/emery:finalize` on drained.
+    /// skill for dispatches and retryable stops, `emery plan execute`
+    /// for the re-entrant stops, `/emery:finalize` on drained.
     /// `None` when no single command makes progress (`stuck`,
     /// `slice-dropped`).
     pub resume: Option<String>,

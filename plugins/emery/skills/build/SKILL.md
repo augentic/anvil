@@ -11,10 +11,13 @@ The engine guest owns the whole build flow — request assembly and schema valid
 ## Invocation
 
 ```bash
-emery slice build <slice-name>
+RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off \
+  emery slice build <slice-name>
 ```
 
-When `[slice-name]` is omitted, run `emery plan status` and use the slice it names for the `build` action; if the plan projects no build action, surface the status output and stop.
+The build is a long-running orchestration — the `RUST_LOG` prefix (and the debug variant) follows the plugin rule's *Tracing and output* contract.
+
+When `[slice-name]` is omitted, run `RUST_LOG=off emery plan status` and use the slice it names for the `build` action; if the plan projects no build action, surface the status output and stop.
 
 ## Relay
 

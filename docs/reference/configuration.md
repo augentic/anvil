@@ -103,7 +103,7 @@ slices:
 | ------------------------ | -------- | ----------- |
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `lifecycle`              | Yes      | `pending` or `approved`. Written by `emery plan approve`; `/emery:plan` exits at `pending`. |
+| `lifecycle`              | Yes      | `pending` or `approved`. Stamped by the first `emery plan execute`; `/emery:plan` exits at `pending`. |
 | `sources`                | No       | Map of source → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 

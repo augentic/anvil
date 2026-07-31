@@ -105,37 +105,21 @@ Renders a `DiagnosticReport` on stdout — the neutral finding currency every ch
 
 ### emery slice merge
 
-Three subcommands cover the merge surface.
-
-#### emery slice merge preview
-
-Preview what a merge would do without writing anything.
-
-```bash
-emery slice merge preview <name> [--format json]
-```
-
-Shows which baseline specs would be created, modified, or removed. For Vectis slices, also previews composition delta operations (screen-level `added`/`modified`/`removed`). Rejects flat requirement-block deltas against a non-empty baseline with `merge-delta-headers-required` (prose-only no-op deltas with zero requirement headings remain valid). Used by `/emery:merge` before committing.
-
-#### emery slice merge conflict-check
-
-Detect whether the baseline has changed since the slice was defined.
-
-```bash
-emery slice merge conflict-check <name> [--format json]
-```
-
-Returns a pass/fail result. Checks for both spec conflicts and composition conflicts (Vectis only -- detects when a baseline screen has been modified by another merged slice since this slice was created, using per-screen checksums). If conflicts are detected, the slice's specs may need to be regenerated against the current baseline.
+One subcommand covers the merge surface, with two read-only dry-run flags.
 
 #### emery slice merge run
 
-The terminal merge operation. Commits the delta merge and archives the slice.
+The merge operation. By default it commits the delta merge and archives the slice; either dry-run flag projects instead of committing.
 
 ```bash
-emery slice merge run <name> [--format json]
+emery slice merge run <name> [--preview | --conflict-check] [--format json]
 ```
 
-Performs:
+- `--preview` — read-only projection of what the merge would do: which baseline specs would be created, modified, or removed, plus composition delta operations for Vectis slices (screen-level `added`/`modified`/`removed`). Rejects flat requirement-block deltas against a non-empty baseline with `merge-delta-headers-required` (prose-only no-op deltas with zero requirement headings remain valid). No lifecycle writes.
+- `--conflict-check` — read-only pass/fail probe for baseline drift since the slice was defined. Checks for both spec conflicts and composition conflicts (Vectis only — detects when a baseline screen has been modified by another merged slice since this slice was created, using per-screen checksums). If conflicts are detected, the slice's specs may need to be regenerated against the current baseline. No lifecycle writes.
+- The two dry-run flags are mutually exclusive (argument error, exit 2).
+
+Without a flag, the full merge performs:
 
 1. Applies spec deltas from the slice to the baseline at `.emery/specs/`.
 2. Applies composition deltas (Vectis only) -- merges `composition.yaml` screen-level `added`/`modified`/`removed` operations into the baseline `composition.yaml`, using per-screen SHA-256 checksums (`.composition-checksums.yaml`) for conflict detection.
@@ -143,19 +127,19 @@ Performs:
 4. Transitions the slice to `merged` and stamps the plan entry's per-entry status to `done`.
 5. Moves the slice directory to `.emery/archive/YYYY-MM-DD-<name>/`.
 
-This is the CLI command invoked by `/emery:merge` after preview and conflict-check pass. It is a single atomic operation -- if any step fails, no changes are committed.
+This is the CLI command invoked by `/emery:merge` (which offers the dry-run flags when the operator asks to look first). It is a single atomic operation -- if any step fails, no changes are committed. Re-running it against a torn merge (slice already `merged` and archived, plan entry still `in-progress`) heals the entry's `done` stamp and exits success without re-merging.
 
 **Journal events.** `slice merge run` brackets the merge with `slice.merge.started` then `slice.merge.succeeded` / `slice.merge.failed`, which fire on the merge **validator outcome** — there is no v1 merge envelope or merge report. The durable record stays the append-only `slice.archive.created` outcome ledger written by the archive step.
 
 **No git surface.** `slice merge run` owns no git side effects: the workspace-clone commit leg is skipped explicitly with a `slice.merge.commit-skipped` journal event, and the `slice.archive.created` ledger entry carries no `merge-sha`. Committing and publishing merged baselines is operator-owned.
 
-**Preconditions.** Slice must be in `built` state; `slice merge preview` and `slice merge conflict-check` should pass. When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it preflights the completion gate **before** touching the baseline: a missing entry refuses with `plan-entry-not-found`, and an entry that is not `in-progress` refuses with `slice-merge-entry-not-in-progress` (claim it with `emery plan next` first). Standalone breakouts do not take the guest marker — the lifecycle gates are the correctness fence.
+**Preconditions.** Slice must be in `built` state; `merge run --preview` and `merge run --conflict-check` should pass. When a `plan.yaml` exists at the plan root, `merge run` writes plan state (the per-entry `done` stamp), so it preflights the completion gate **before** touching the baseline: a missing entry refuses with `plan-entry-not-found`, and an entry that is not `in-progress` refuses with `slice-merge-entry-not-in-progress` (claim it with `emery plan next` first). Standalone breakouts do not take the guest marker — the lifecycle gates are the correctness fence.
 
 ## See also
 
 - [/emery:refine](../slice-skills/index.md) -- per-slice refine breakout
 - [/emery:build](../slice-skills/index.md#specbuild) -- skill that drives the guest-routed `slice build`
-- [/emery:merge](../slice-skills/index.md#specmerge) -- skill that orchestrates `slice merge {preview, conflict-check, run}`
+- [/emery:merge](../slice-skills/index.md#specmerge) -- skill that invokes `slice merge run` (with its dry-run flags)
 - [/emery:drop](../slice-skills/index.md#specdrop) -- skill that drops slices
 - [emery plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference

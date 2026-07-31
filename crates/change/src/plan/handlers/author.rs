@@ -31,6 +31,11 @@ pub struct AuthorInput {
     /// `--source intent=intent:value:<string>`.
     #[serde(default)]
     pub intent: Option<String>,
+    /// Replace an existing replaceable plan (`lifecycle: pending`
+    /// and every entry `pending`). Without this flag an existing
+    /// `plan.yaml` refuses with `already-exists`.
+    #[serde(default)]
+    pub force: bool,
 }
 
 /// `emery plan author <name> [--source ...]` →
@@ -52,10 +57,11 @@ impl<P: Anchor + Model + Resolver + Source> Operation<P> for Author {
             name,
             sources,
             intent,
+            force,
         } = input;
         let sources = source_map(sources, intent)?;
         let caps = orchestrate::Capabilities::provider(context.provider).sans_targets();
-        let outcome = orchestrate::author(caps, &cx.paths, cx.now(), &name, sources).await?;
+        let outcome = orchestrate::author(caps, &cx.paths, cx.now(), &name, sources, force).await?;
         Ok(AuthorBody {
             plan: outcome.plan,
             lifecycle: "pending",

@@ -7,12 +7,13 @@
 //!
 //! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
 //! `event`; the append plus dropped-event sidecar in `append`; the
-//! best-effort emit helpers in `emit`; the `emery journal {emit,
-//! show}` operations in [`handlers`]. This root owns the read side
-//! (forward reads, backward recent reads, and the private
-//! filtered `show` projection behind `emery journal show`) and
-//! re-exports the public surface so callers keep importing
-//! `crate::journal::*`.
+//! best-effort emit helpers in `emit`; the `emery journal show`
+//! operation in [`handlers`]. Writes route through the internal
+//! appenders only — CLI verbs append their own events as a side
+//! effect of the operation. This root owns the read side (forward
+//! reads, backward recent reads, and the private filtered `show`
+//! projection behind `emery journal show`) and re-exports the public
+//! surface so callers keep importing `crate::journal::*`.
 //!
 //! [workflow §Observability]: ../../../../docs/standards/workflow.md#observability
 

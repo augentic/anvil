@@ -1,16 +1,16 @@
 # Amend a plan at Gate 1
 
-Inspect and edit a plan after `/emery:plan` and before stamping `approved`.
+Inspect and edit a plan after `/emery:plan` and before executing it.
 
 **Prerequisites:** A plan at `plan.lifecycle: pending`; completed [Quick start](../tutorials/quick-start.md).
 
-Gate 1 is the operator review step between plan authoring and execution. `/emery:plan` exits at `pending`; you stamp `approved` only after the plan looks right.
+Gate 1 is the operator review step between plan authoring and execution. `/emery:plan` exits at `pending`; you run `emery plan execute` (which stamps `approved` on its first run) only after the plan looks right.
 
 ## Which verb when
 
 | Goal | Prefer |
 | --- | --- |
-| Rethink cross-source grouping | Re-run `emery plan author` (replaces all slices) |
+| Rethink cross-source grouping | Re-run `emery plan author --force` (or `/emery:plan`, which confirms) — replaces a pending plan wholesale |
 | Defer a lead out of this change | `emery plan remove <entry>` |
 | Split or merge entries | `emery plan add` + `emery plan amend` + `emery plan remove` — see the [plan command reference](../reference/cli/plan.md) |
 | Divergence stamp, authority override, single-source fix | `emery plan amend <entry>` (the scalpel) |
@@ -60,15 +60,15 @@ See [emery plan](../reference/cli/plan.md) for the full amend surface.
 emery plan validate --format json
 ```
 
-Surface Error-level findings before stamping approved.
+Surface Error-level findings before executing.
 
-## Step 4 — Stamp approved
+## Step 4 — Execute
 
 ```bash
-emery plan approve
+emery plan execute
 ```
 
-Only after this transition will `emery plan execute` start.
+Invoking execute on the reviewed `pending` plan is the Gate 1 stamp — the first run writes `approved`, then drives the slices.
 
 ## Splitting one slice into two
 

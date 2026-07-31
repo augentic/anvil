@@ -50,7 +50,7 @@ Each slice row maps one lead from `discovery.md` to a unit of work.
 
 ## Step 2 — Inspect at Gate 1
 
-Before stamping `approved`, read:
+Before executing (the first `emery plan execute` stamps `approved`), read:
 
 - **`change.md`** — scope and any tentative merge notes
 - **`plan.yaml`** — slice names, source bindings, dependency order
@@ -60,7 +60,6 @@ Amend if needed:
 
 ```bash
 emery plan amend <entry> --add-source <key>=<lead>
-emery plan approve
 ```
 
 See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
@@ -71,7 +70,7 @@ See [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 emery plan execute
 ```
 
-Watch `plan.yaml.slices[].status` move from `pending` to `in-progress` to `done`.
+Invoking execute on the `pending` plan is Gate 1: the first run stamps `approved`, then drives the loop. Watch `plan.yaml.slices[].status` move from `pending` to `in-progress` to `done`.
 
 Only one entry is `in-progress` at a time. `emery plan next` picks the next eligible slice. Each slice gets its own directory under `.emery/slices/<name>/`.
 

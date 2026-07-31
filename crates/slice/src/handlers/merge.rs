@@ -1,10 +1,12 @@
-//! `slice merge run | preview | conflict-check`. Owns the merge-side
-//! JSON DTOs and summarisers; `run` drives the deterministic
-//! [`crate::orchestrate::merge`] kernel.
+//! `slice merge run` (with the `--preview` / `--conflict-check`
+//! dry-run flags). Owns the merge-side JSON DTOs and summarisers; the
+//! default mode drives the deterministic [`crate::orchestrate::merge`]
+//! kernel.
 
 use std::io::Write;
 use std::path::PathBuf;
 
+use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, Render};
@@ -26,17 +28,28 @@ pub struct MergeRunInput {
     /// Authorise a whole-document composition overwrite.
     #[serde(default)]
     pub allow_composition_replace: bool,
+    /// Show the merge operations that would be applied, without
+    /// writing.
+    #[serde(default)]
+    pub preview: bool,
+    /// Report `type: modified` baselines modified after this slice's
+    /// `defined_at`, without writing.
+    #[serde(default)]
+    pub conflict_check: bool,
 }
 
-/// `emery slice merge run <name>` → the merge orchestration: the
-/// target's phased merge gates around the deterministic core merge.
+/// `emery slice merge run <name>` → the merge orchestration.
+///
+/// The default mode runs the target's phased merge gates around the
+/// deterministic core merge; `--preview` and `--conflict-check` are
+/// the read-only dry-run modes — either flag writes nothing.
 #[derive(Clone, Copy, Debug)]
 pub struct MergeRun;
 
 impl<P: Anchor + Target> Operation<P> for MergeRun {
     type Error = project::handler::Error;
     type Input = MergeRunInput;
-    type Output = MergeBody;
+    type Output = MergeRunBody;
 
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
@@ -45,7 +58,25 @@ impl<P: Anchor + Target> Operation<P> for MergeRun {
         let MergeRunInput {
             name,
             allow_composition_replace,
+            preview,
+            conflict_check,
         } = input;
+        if preview && conflict_check {
+            // The CLI grammar's `conflicts_with` guards argv; this
+            // guards the other transports with the same contract.
+            return Err(Error::Argument {
+                flag: "--preview",
+                detail: "--preview and --conflict-check are mutually exclusive dry-run modes"
+                    .to_string(),
+            }
+            .into());
+        }
+        if preview {
+            return Ok(MergeRunBody::Preview(preview_body(&cx, &name)?));
+        }
+        if conflict_check {
+            return Ok(MergeRunBody::Conflicts(conflict_body(&cx, &name)?));
+        }
         let outcome = orchestrate::merge(
             context.provider,
             cx.layout(),
@@ -54,16 +85,77 @@ impl<P: Anchor + Target> Operation<P> for MergeRun {
             allow_composition_replace,
         )
         .await?;
-        Ok(MergeBody {
+        Ok(MergeRunBody::Merged(MergeBody {
             slice: name,
             merged: outcome.merged.into_iter().map(|entry| entry.name).collect(),
             decisions: outcome.decisions,
             archive_path: outcome.archive_path,
-        })
+        }))
     }
 }
 
-/// Success envelope for `slice merge run`.
+/// The read-only preview projection behind `--preview`.
+fn preview_body(cx: &Ctx, name: &str) -> Result<PreviewBody, Error> {
+    let slice_dir = cx.layout().slice_dir(name);
+    let classes = artifact_classes(&cx.project_dir, &slice_dir);
+    let result = slice::preview(&slice_dir, &classes)?;
+
+    // The JSON preview surface keeps its `specs` and `contracts` arrays
+    // by grouping the engine's class-tagged entries by their `class_name`.
+    // The literal output keys live here — alongside the omnia-default
+    // synthesiser — rather than in the engine.
+    let specs: Vec<PreviewEntry> =
+        result.three_way.into_iter().filter(|e| e.class_name == "specs").collect();
+    let contracts: Vec<ContractItem> = result
+        .opaque
+        .iter()
+        .filter(|e| e.class_name == "contracts")
+        .map(|entry| ContractItem {
+            path: entry.relative_path.clone(),
+            action: entry.action,
+        })
+        .collect();
+
+    Ok(PreviewBody {
+        slice_dir,
+        specs,
+        contracts,
+    })
+}
+
+/// The read-only baseline-drift probe behind `--conflict-check`.
+fn conflict_body(cx: &Ctx, name: &str) -> Result<ConflictCheckBody, Error> {
+    let slice_dir = cx.layout().slice_dir(name);
+    let classes = artifact_classes(&cx.project_dir, &slice_dir);
+    let conflicts = conflict_check(&slice_dir, &classes)?;
+    Ok(ConflictCheckBody { slice_dir, conflicts })
+}
+
+/// Success envelope for `slice merge run` — one arm per mode.
+/// Untagged so each mode keeps the wire shape its standalone verb
+/// carried.
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
+pub enum MergeRunBody {
+    /// The default mode's committed merge.
+    Merged(MergeBody),
+    /// The `--preview` dry-run projection.
+    Preview(PreviewBody),
+    /// The `--conflict-check` dry-run probe.
+    Conflicts(ConflictCheckBody),
+}
+
+impl Render for MergeRunBody {
+    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        match self {
+            Self::Merged(body) => body.render(w),
+            Self::Preview(body) => body.render(w),
+            Self::Conflicts(body) => body.render(w),
+        }
+    }
+}
+
+/// Wire body for a committed merge.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MergeBody {
@@ -90,57 +182,7 @@ impl Render for MergeBody {
     }
 }
 
-/// Wire input for `slice merge preview`.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct PreviewInput {
-    /// Slice to preview.
-    pub name: String,
-}
-
-/// `emery slice merge preview <name>` — show the merge operations
-/// that would be applied, without writing.
-#[derive(Clone, Copy, Debug)]
-pub struct Preview;
-
-impl<P: Anchor> Operation<P> for Preview {
-    type Error = project::handler::Error;
-    type Input = PreviewInput;
-    type Output = PreviewBody;
-
-    async fn call(
-        input: Self::Input, context: CallContext<'_, P>,
-    ) -> Result<Self::Output, Self::Error> {
-        let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.layout().slice_dir(&input.name);
-        let classes = artifact_classes(&cx.project_dir, &slice_dir);
-        let result = slice::preview(&slice_dir, &classes)?;
-
-        // The JSON preview surface keeps its `specs` and `contracts` arrays
-        // by grouping the engine's class-tagged entries by their `class_name`.
-        // The literal output keys live here — alongside the omnia-default
-        // synthesiser — rather than in the engine.
-        let specs: Vec<PreviewEntry> =
-            result.three_way.into_iter().filter(|e| e.class_name == "specs").collect();
-        let contracts: Vec<ContractItem> = result
-            .opaque
-            .iter()
-            .filter(|e| e.class_name == "contracts")
-            .map(|entry| ContractItem {
-                path: entry.relative_path.clone(),
-                action: entry.action,
-            })
-            .collect();
-
-        Ok(PreviewBody {
-            slice_dir,
-            specs,
-            contracts,
-        })
-    }
-}
-
-/// Success envelope for `slice merge preview`.
+/// Wire body for the `--preview` dry-run.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PreviewBody {
@@ -188,37 +230,7 @@ pub struct ContractItem {
     pub action: OpaqueAction,
 }
 
-/// Wire input for `slice merge conflict-check`.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct ConflictCheckInput {
-    /// Slice to inspect.
-    pub name: String,
-}
-
-/// `emery slice merge conflict-check <name>` — report `type:
-/// modified` baselines modified after this slice's `defined_at`.
-#[derive(Clone, Copy, Debug)]
-pub struct ConflictCheck;
-
-impl<P: Anchor> Operation<P> for ConflictCheck {
-    type Error = project::handler::Error;
-    type Input = ConflictCheckInput;
-    type Output = ConflictCheckBody;
-
-    async fn call(
-        input: Self::Input, context: CallContext<'_, P>,
-    ) -> Result<Self::Output, Self::Error> {
-        let cx = Ctx::load(context.provider)?;
-        let slice_dir = cx.layout().slice_dir(&input.name);
-        let classes = artifact_classes(&cx.project_dir, &slice_dir);
-        let conflicts = conflict_check(&slice_dir, &classes)?;
-
-        Ok(ConflictCheckBody { slice_dir, conflicts })
-    }
-}
-
-/// Success envelope for `slice merge conflict-check`.
+/// Wire body for the `--conflict-check` dry-run.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ConflictCheckBody {

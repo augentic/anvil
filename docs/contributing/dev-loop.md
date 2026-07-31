@@ -9,7 +9,7 @@ cargo make eval auth --restart               # run the live prompt-evaluation ru
 
 ## 1. `cargo make test` — the default edit loop
 
-Runs `cargo nextest --workspace` over the workspace crates (including `mock` and `native`). The engine suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `native` provider and its scripted model doubles, so the complete `init → author → approve → execute` loop is proven here without a component or a model call.
+Runs `cargo nextest --workspace` over the workspace crates (including `mock` and `native`). The engine suites (`full_loop`, `reconciliation`, `synthesis`, `judgment`, `adapter_seam`, …) drive the real operations through the `mock` catalog behind the offline `native` provider and its scripted model doubles, so the complete `init → author → execute` loop is proven here without a component or a model call.
 
 Nothing on this rung compiles Wasmtime. An ordinary workflow change should never need to leave it.
 
@@ -27,7 +27,7 @@ set -a && source .env && set +a && cargo make eval auth --restart
 
 Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). Composition surface: [`examples/eval/README.md`](../../examples/eval/README.md); case/grading mechanics: [`crates/probe/README.md`](../../crates/probe/README.md).
 
-Each case keeps one stable retained sandbox at `sandbox/<case>/` (composition-owned root beside the wasm example's `sandbox/wasm/`), on success and failure alike. `--restart` is the only runner-owned reset; an existing sandbox without `--restart` refuses before mutation. Continue or debug a retained sandbox explicitly with `cargo make lab -- --project-dir sandbox/auth <verb…>` (e.g. `plan approve` after `--until plan`).
+Each case keeps one stable retained sandbox at `sandbox/<case>/` (composition-owned root beside the wasm example's `sandbox/wasm/`), on success and failure alike. `--restart` is the only runner-owned reset; an existing sandbox without `--restart` refuses before mutation. Continue or debug a retained sandbox explicitly with `cargo make lab -- --project-dir sandbox/auth <verb…>` (e.g. `plan execute` after `--until plan`).
 
 ## The WASM seam
 

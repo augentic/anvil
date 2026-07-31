@@ -19,8 +19,7 @@ pub use self::build::{Build, BuildBody, BuildInput};
 pub use self::lifecycle::{Drop, DropBody, DropInput};
 pub use self::list::{List, ListBody, ListEntry, ListInput};
 pub use self::merge::{
-    ConflictCheck, ConflictCheckBody, ConflictCheckInput, MergeBody, MergeRun, MergeRunInput,
-    Preview, PreviewBody, PreviewInput,
+    ConflictCheckBody, MergeBody, MergeRun, MergeRunBody, MergeRunInput, PreviewBody,
 };
 pub use self::model::{ModelShow, ModelShowInput};
 pub use self::provenance::{Provenance, ProvenanceInput};
