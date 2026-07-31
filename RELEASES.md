@@ -2,27 +2,29 @@
 
 Unreleased
 
+### Compatibility
+
+```text
+engine 0.34.x  ↔  adapters 0.8.x  (WIT emery:adapter@0.1.0, floor ≥ 0.34.0)
+```
+
+Hard cut for operator surface: `emery plan approve` is gone; Gate 1 is the first `emery plan execute`. Update skills, scripts, and docs that still call approve or the old merge/journal subcommands.
+
 ### Added
+
+* `emery plan author --force` — replace a replaceable pending plan (`lifecycle: pending` and every entry `pending`); otherwise `already-exists` / `plan-author-not-replaceable`.
+* Merge re-entry healing when commit/archive succeeded but the plan entry never reached `done`; `plan execute` auto-dispatches merge on `merge-incomplete` stops.
 
 ### Changed
 
-<!-- Release notes generated using configuration in .github/release.yaml at main -->
+* **Gate 1 is `emery plan execute`.** The standalone `emery plan approve` verb is removed. First execute on a `pending` plan stamps `approved` (idempotent), journals `plan.transition.approved` with `--actor` (default `operator`), then runs the drained loop. `/emery:execute` wraps the same verb behind confirmation; `/emery:plan` exits at `pending` and prints the literal execute command.
+* `emery plan transition` is `--undo` only — forward `done` is owned solely by `emery slice merge`.
+* Journal drops `emit`; every journal write remains an orchestration side effect. `emery journal show` is unchanged.
+* `emery slice merge run` absorbs `--preview` and `--conflict-check` (dedicated merge subcommands removed from CLI/HTTP).
+* `emery plan status` no longer stops on `plan-not-approved`; pending plans still project the next phase with `resume: /emery:execute`.
+* Quick start and skill wrappers use bare adapter names and plain `--intent` strings instead of pinned `intent=…:value:…` plan bindings.
 
-## What's Changed
-* Bump to 0.33.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/224
-* Cursor usability improvements by @andrewweston in https://github.com/augentic/emery/pull/225
-* Mcp server by @andrewweston in https://github.com/augentic/emery/pull/226
-* Update RFCs by @andrewweston in https://github.com/augentic/emery/pull/227
-* Persist failed merge postflight reports by @andrew-goldie in https://github.com/augentic/emery/pull/228
-* RFC 78 - Prompt budget by @andrewweston in https://github.com/augentic/emery/pull/229
-* Add curl installer by @andrewweston in https://github.com/augentic/emery/pull/230
-* simplify emery plan args by @andrewweston in https://github.com/augentic/emery/pull/232
-* Bump to 0.34.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/231
-* simplify Makefile by @andrewweston in https://github.com/augentic/emery/pull/233
-* Usability by @andrewweston in https://github.com/augentic/emery/pull/234
-
-
-**Full Changelog**: https://github.com/augentic/emery/compare/v0.32.0...v0.34.0
+**Full Changelog**: https://github.com/augentic/emery/compare/v0.33.0...v0.34.0
 
 ---
 
