@@ -217,6 +217,21 @@ fn missing_seed_directory_degenerates_to_the_project_root() {
     assert_eq!(policy.seed_dir(), sandbox.root);
 }
 
+#[test]
+fn reserved_log_flags_do_not_break_the_seed_projection() {
+    // Omnia peels `--debug` / `--quiet` before the guest sees argv; the
+    // policy sees raw process argv, so it must apply the same peel or
+    // the seed grammar parse would fail and drop the anchoring.
+    let sandbox = Sandbox::new();
+    let built = sandbox.root.parent().expect("sandbox base").join("flagged");
+    std::fs::create_dir_all(&built).expect("mkdir build dir");
+    std::fs::write(built.join("demo.wasm"), b"component").expect("write component");
+
+    let component = built.join("demo.wasm").display().to_string();
+    let policy = sandbox.policy(&["--debug", "adapter", "add", &component, "--quiet"]);
+    assert_eq!(policy.seed_dir(), built);
+}
+
 // ---------------------------------------------------------------------------
 // Adapter legs: store hits and cache-backed ids are verify-and-load;
 // pinned store misses go through the pull-on-miss install leg.

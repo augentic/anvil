@@ -11,7 +11,9 @@
 //! ([`http_listener`]), and the MCP reference-shelf path hook
 //! ([`mcp_route`]). Every invocation then runs in the guest — help,
 //! version, grammar rejections, and `adapter add` included; argv and
-//! the engine guest's exit code pass through byte-for-byte.
+//! the engine guest's exit code pass through byte-for-byte, except
+//! the reserved host log flags (`--debug` / `--quiet`), which Omnia
+//! peels before the guest sees argv.
 //!
 //! Pinned routed ids resolve the immutable global store and install a
 //! missing entry from the compiled first-party OCI registry
@@ -73,7 +75,13 @@ impl Policy {
     /// failures are left for the runtime's own preopen error.
     #[must_use]
     pub fn new(invoked_dir: &Path, argv: &[String], locations: Locations) -> Self {
-        let seed = seed_request(argv);
+        // Omnia peels the reserved host log flags before the guest sees
+        // argv; the seed projection parses the guest grammar, so it must
+        // see the same peeled view or a stray `--debug` would fail the
+        // parse and drop the anchoring.
+        let argv: Vec<String> =
+            argv.iter().filter(|arg| *arg != "--debug" && *arg != "--quiet").cloned().collect();
+        let seed = seed_request(&argv);
         let root = anchor::project_root(invoked_dir, seed.as_ref());
         let paths = ExecutionPaths::new(root, locations);
         // The global store is host-owned (no guest mount); the install

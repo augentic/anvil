@@ -11,13 +11,12 @@ The engine guest owns the whole refine flow — slice create (re-entry safe), th
 ## Invocation
 
 ```bash
-RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off \
-  emery slice refine <slice-name>
+emery slice refine <slice-name>
 ```
 
-Refine is a long-running orchestration — the `RUST_LOG` prefix (and the debug variant) follows the plugin rule's *Tracing and output* contract.
+Refine is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract.
 
-When `[slice-name]` is omitted, run `RUST_LOG=off emery plan status` and use the slice it names for the `refine` action; if the plan projects no refine action, surface the status output and stop.
+When `[slice-name]` is omitted, run `emery plan status --quiet` and use the slice it names for the `refine` action; if the plan projects no refine action, surface the status output and stop.
 
 ## Relay
 
