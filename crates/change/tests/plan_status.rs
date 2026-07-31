@@ -457,12 +457,13 @@ mod re_entry {
     async fn pending_projects_like_approved() {
         // Gate 1 lives on the first `plan execute` now, so a pending
         // plan projects the same next action an approved one would —
-        // status never parks on the lifecycle.
+        // status never parks on the lifecycle. The resume point is the
+        // approval act, not a phase breakout that would skip Gate 1.
         let project = Session::scripted("demo", Vec::new());
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine a");
-        assert_eq!(body.resume.as_deref(), Some("/emery:refine a"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
     }
 
     #[tokio::test]

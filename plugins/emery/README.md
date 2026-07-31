@@ -4,6 +4,8 @@ Emery routes workflow state changes through `/emery:*` wrappers over the `emery`
 
 Every skill is an ultrathin invoke-and-relay wrapper: it elicits any missing arguments, invokes the corresponding `emery` command, and relays the output verbatim. Workflow sequencing, artifact synthesis, and validation all live in the CLI's guest orchestrations.
 
+Display ownership is split three ways: the CLI's rendered output owns facts and navigation (phase lines, stop cards, resume commands, the canonical drained line); skills own only argument elicitation and the confirmation gates (plan replace, Gate 1, merge, drop, publication); live tracing is a stderr side channel — each skill prefixes its `emery` subprocesses with an explicit `RUST_LOG` (INFO progress for the long-running orchestrations, quiet for probes, `omnia_cursor` / `omnia_wasi_http` debug on request) per the plugin rule's *Tracing and output* contract, and never repeats tracing lines or composes replacement summaries. Repository publication (commit, push, review, merge) stays operator-owned outside Emery.
+
 ## Skills
 
 | Skill | Command | Description |

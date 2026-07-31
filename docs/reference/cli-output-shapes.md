@@ -4,14 +4,15 @@ Canonical JSON envelope shapes for `emery *` commands that skills shell out to. 
 
 ## Conventions
 
-- `--format json` responses are a **flat envelope**: every successful body is a single JSON object whose first key is `envelope-version` and whose remaining keys are the command-specific body fields **at the same level** — there is no `ok` discriminant and no `data` wrapper. Example: `{"envelope-version": 6, "action": "create", "plan": {...}, "entry": {...}}`.
+- `--format json` responses are a **flat body**: every successful body is a single JSON object carrying the command-specific fields **at the top level** — there is no `ok` discriminant, no `data` wrapper, and no top-level envelope-version stamp. Example: `{"action": "create", "plan": {...}, "entry": {...}}`. (Judgment wire envelopes such as the reconciliation request carry their own in-body `version` field; that is payload, not a transport stamp.)
 - Failures keep the same flat shape with three extra top-level keys:
   - `error` — a **kebab-case discriminant string** (e.g. `"plan-has-outstanding-work"`). The discriminant is grep-stable and forms part of the public contract; see [`AGENTS.md`](../../AGENTS.md#exit-codes) for the catalogue.
   - `message` — humanised one-liner suitable for direct rendering.
   - `exit-code` — the integer the binary returns.
 - Body fields named `ok` / `passed` / `idempotent` are payload fields, not envelope discriminants — they describe the per-command result and do not change the envelope shape.
 - Paths are emitted as plain strings relative to the repo root unless the field name says otherwise (`absolute-path`, `tempdir-path`).
-- All keys are `kebab-case`. The `envelope-version` integer bumps on any breaking change to a body shape; current version is `6`.
+- All keys are `kebab-case`. Body shapes are pinned by the typed `*Body` DTOs in the CLI workspace and change only with the CLI's own versioning.
+- Stream roles: the semantic result body (text or JSON) is **stdout**; the failure `ErrorBody` and live `RUST_LOG` tracing are **stderr**.
 
 ## Shapes
 
@@ -78,6 +79,41 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 }
 ```
 
+### `emery plan author`
+
+The guest-routed authoring orchestration: survey per bound source, reconcile leads into `slices[]`, persist the Gate 1 prose, validate, exit at `lifecycle: pending`. `hint` is the literal Gate 1 closing line the `/emery:plan` skill relays.
+
+```json
+{
+  "plan": "identity-revamp",
+  "lifecycle": "pending",
+  "surveyed": [
+    { "source": "docs", "adapter": "documentation", "leads": ["identity-api"] }
+  ],
+  "slices": ["identity-contracts", "identity-service"],
+  "hint": "Plan `identity-revamp` is at `pending`. Review it, then run `emery plan execute` to approve and drive the slices (executing is the Gate 1 stamp)."
+}
+```
+
+### `emery plan execute`
+
+The drained loop's success body — a stop surfaces on the error envelope instead (`error: "plan-execute-stopped"`, exit 2), so a driver tells a parked loop from a drained one without parsing prose. `gate1-stamped` is `true` only when this invocation performed the Gate 1 stamp (`pending → approved`); re-entry on an already-approved plan reports `false`. `phases[]` lists the phases this run completed, in order. Text mode prints `approved: <plan> (actor: <actor>)` when this run stamped, the phase lines, and closes with the canonical `drained — run /emery:finalize <plan>` line.
+
+```json
+{
+  "status": "drained",
+  "plan": "identity-revamp",
+  "gate1-stamped": true,
+  "phases": [
+    { "slice": "identity-contracts", "step": "refine" },
+    { "slice": "identity-contracts", "step": "build" },
+    { "slice": "identity-contracts", "step": "merge" }
+  ]
+}
+```
+
+On `plan-execute-stopped`, the `/emery:execute` skill follows up with a quiet `emery plan status` to render the canonical stop card (`stop: <reason>` / `hint:` / `resume:`).
+
 ### Lead-reconciliation request envelope {#plan-reconcile-request}
 
 The reconcile leg inside the guest-routed `emery plan author` assembles the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
@@ -131,7 +167,7 @@ The one-rung reverse walk (`--undo` is the only mode). The `previous` / `current
 
 ### `emery plan status`
 
-Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). The verb never writes: `plan next` stays the only `in-progress` writer.
+Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). On a `pending` plan the dispatch projections keep their `next-action` but `resume` names `/emery:execute` — the operator path runs through Gate 1, not a phase breakout. The verb never writes: `plan next` stays the only `in-progress` writer.
 
 ```json
 {
@@ -215,23 +251,14 @@ Sweeps a closed plan into `.emery/archive/plans/`. The `archived` field is the d
 
 ### `emery slice merge run`
 
-Folds the slice's spec deltas into the baseline. `merged-specs[]` carries one entry per spec file touched, each listing the requirement-level operations applied (`added`, `modified`, `removed`).
+Folds the slice's spec deltas into the baseline. The committed-merge body carries the merged baseline spec names, the promoted `DEC-NNNN` Decision Record ids, and the archived slice location; the `--preview` / `--conflict-check` dry-run modes keep their own bodies.
 
 ```json
 {
-  "merged-specs": [
-    {
-      "baseline-path": "<TEMPDIR>/.emery/specs/login/spec.md",
-      "name": "login",
-      "operations": [
-        {
-          "id": "REQ-001",
-          "kind": "added",
-          "name": "User can log in"
-        }
-      ]
-    }
-  ]
+  "slice": "login",
+  "merged": ["login"],
+  "decisions": ["DEC-0001"],
+  "archive-path": "<TEMPDIR>/.emery/archive/2026-07-31-login"
 }
 ```
 

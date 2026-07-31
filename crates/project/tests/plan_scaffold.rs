@@ -22,10 +22,7 @@ fn fresh_scaffolds() {
 #[test]
 fn existing_refused_without_force() {
     let (_tmp, path) = tmp_plan();
-    scaffold(&path, "demo", BTreeMap::new(), false)
-        .expect("fresh")
-        .save(&path)
-        .expect("save");
+    scaffold(&path, "demo", BTreeMap::new(), false).expect("fresh").save(&path).expect("save");
 
     let err = scaffold(&path, "other", BTreeMap::new(), false).expect_err("refuses overwrite");
     match err {
@@ -40,10 +37,7 @@ fn existing_refused_without_force() {
 #[test]
 fn force_replaces_pending() {
     let (_tmp, path) = tmp_plan();
-    scaffold(&path, "demo", BTreeMap::new(), false)
-        .expect("fresh")
-        .save(&path)
-        .expect("save");
+    scaffold(&path, "demo", BTreeMap::new(), false).expect("fresh").save(&path).expect("save");
 
     let replaced =
         scaffold(&path, "renamed", BTreeMap::new(), true).expect("force replaces pending");
@@ -58,10 +52,7 @@ fn force_replaces_pending() {
 #[test]
 fn force_refuses_approved() {
     let (_tmp, path) = tmp_plan();
-    scaffold(&path, "demo", BTreeMap::new(), false)
-        .expect("fresh")
-        .save(&path)
-        .expect("save");
+    scaffold(&path, "demo", BTreeMap::new(), false).expect("fresh").save(&path).expect("save");
 
     let mut plan = Plan::load(&path).expect("load");
     plan.lifecycle = Lifecycle::Approved;

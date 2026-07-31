@@ -41,6 +41,11 @@ pub struct PhaseRun {
 pub enum ExecuteOutcome {
     /// Every entry is `done` — the only clean exit.
     Drained {
+        /// Plan name from `plan.yaml.name`.
+        plan: String,
+        /// Whether this invocation performed the Gate 1 stamp
+        /// (`pending → approved`); `false` on re-entry.
+        gate1_stamped: bool,
         /// Phases completed by this run, in order.
         phases: Vec<PhaseRun>,
     },
@@ -109,13 +114,16 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
     let _marker = GuestMarker::acquire(layout, now)?;
     // Gate 1: invoking execute is the approval act. Stamp before the
     // first status projection; no-op when already approved.
-    project::plan::stamp_approved(layout, now, actor)?;
+    let gate1_stamped = project::plan::stamp_approved(layout, now, actor)?;
+    if gate1_stamped {
+        tracing::info!(actor = %actor, "gate 1 stamped: plan approved");
+    }
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {
         let plan = Plan::load(&layout.plan_path())?;
         let status = plan_status_body(&plan, layout)?;
-        let step = match dispatch_status(layout, now, status, &phases) {
+        let step = match dispatch_status(layout, now, status, gate1_stamped, &phases) {
             ControlFlow::Break(outcome) => return Ok(outcome),
             ControlFlow::Continue(None) => continue, // postflight ack
             ControlFlow::Continue(Some(step)) => step,
@@ -137,6 +145,7 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
         };
         let slice = claim.slice.clone();
 
+        tracing::info!(slice = %slice, phase = %step, "phase started");
         let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
         let result: Result<(), Error> = match step {
             LoopStep::Refine => {
@@ -170,7 +179,10 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
         };
 
         match result {
-            Ok(()) => phases.push(PhaseRun { slice, step }),
+            Ok(()) => {
+                tracing::info!(slice = %slice, phase = %step, "phase completed");
+                phases.push(PhaseRun { slice, step });
+            }
             Err(err) => {
                 // The phase already journalled its failure terminal, so
                 // a re-entrant run's status projection reports the same
@@ -178,6 +190,7 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                 // leave the entry `in-progress`; postflight already
                 // stamped `done` (non-rollback) before failing.
                 let reason = phase_stop_reason(step, &err);
+                tracing::info!(slice = %slice, phase = %step, reason = %reason, "phase stopped");
                 return Ok(ExecuteOutcome::Stopped {
                     reason,
                     detail: Some(err.to_string()),
@@ -193,10 +206,13 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
 /// Map a status projection to the next loop step, a terminal outcome,
 /// or a postflight-ack continue (`Continue(None)`).
 fn dispatch_status(
-    layout: Layout<'_>, now: Timestamp, status: StatusBody, phases: &[PhaseRun],
+    layout: Layout<'_>, now: Timestamp, status: StatusBody, gate1_stamped: bool,
+    phases: &[PhaseRun],
 ) -> ControlFlow<ExecuteOutcome, Option<LoopStep>> {
     match status.action {
         NextActionKind::Drained => ControlFlow::Break(ExecuteOutcome::Drained {
+            plan: status.plan,
+            gate1_stamped,
             phases: phases.to_vec(),
         }),
         NextActionKind::Stop => {

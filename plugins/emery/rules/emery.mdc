@@ -59,6 +59,32 @@ Breakouts invoke the same guest orchestrations one slice at a time, when the exe
 - **/emery:merge**: Fold a slice's deltas into the baseline and archive it (`emery slice merge run`).
 - **/emery:drop**: Abandon a slice without merging (`emery slice drop`).
 
+## Tracing and output
+
+Prefix every `emery` subprocess with an explicit `RUST_LOG` — never rely on the ambient environment. Two normal-mode filters, selected by verb:
+
+- **Long-running orchestrations** (`emery plan author`, `emery plan execute`, `emery slice refine`, `emery slice build`, committed `emery slice merge run`) emit live INFO progress on stderr:
+
+```text
+RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off
+```
+
+- **Probes and short deterministic verbs** (`emery --version`, `emery plan status`, `emery slice list`, `emery slice merge run --preview` / `--conflict-check`, `emery slice drop`, `emery plan archive`, `emery init`) stay quiet so the result card is uncluttered:
+
+```text
+RUST_LOG=off
+```
+
+**Debug mode**: when the operator explicitly asks for debug (says "debug", or passes `debug` / `--debug` on the slash command), use the long-running filter plus `,omnia_cursor=debug,omnia_wasi_http=debug` for **every** `emery` subprocess in that skill invocation, probes included:
+
+```text
+RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off,omnia_cursor=debug,omnia_wasi_http=debug
+```
+
+Never forward `debug` as an `emery` CLI flag — host tracing is `RUST_LOG` only.
+
+Stream roles: the semantic CLI result (text or JSON envelope) is stdout; command failures and live tracing are stderr. Relay the semantic result or structured error once, verbatim; do not repeat or reformat tracing lines in the closing response.
+
 ## Troubleshooting
 
 ### Project not initialized

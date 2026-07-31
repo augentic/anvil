@@ -81,6 +81,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     } = caps;
     let layout = Layout::new(paths.project_root());
     refuse_workspace(layout)?;
+    tracing::info!("plan authoring started");
     // Widen then ensure every binding up front — before the scaffold
     // write and the survey fan-out — so an unresolvable adapter
     // (missing pin, `emery_floor`) fails fast with nothing on disk.
@@ -132,6 +133,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let outcome = with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
         plan.propose_from(response, &discovery, &topology).map(Mutation::changed)
     })?;
+    tracing::info!(slices = outcome.slice_names.len(), "plan written");
 
     // Only after the write commits: emit the reconcile event.
     let event = Event::new(

@@ -62,8 +62,15 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
         let caps = orchestrate::Capabilities::provider(context.provider);
         let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree, actor).await?;
         match outcome {
-            ExecuteOutcome::Drained { phases } => Ok(ExecuteBody {
+            ExecuteOutcome::Drained {
+                plan,
+                gate1_stamped,
+                phases,
+            } => Ok(ExecuteBody {
                 status: "drained",
+                plan,
+                gate1_stamped,
+                actor,
                 phases: phases
                     .into_iter()
                     .map(|run| ExecutePhase {
@@ -104,6 +111,15 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
 pub struct ExecuteBody {
     /// Always `drained` — a stop surfaces on the error envelope.
     pub status: &'static str,
+    /// Plan name from `plan.yaml.name`.
+    pub plan: String,
+    /// Whether this invocation performed the Gate 1 stamp
+    /// (`pending → approved`); `false` on re-entry.
+    pub gate1_stamped: bool,
+    /// Actor recorded on the Gate 1 stamp — display only (the text
+    /// `approved:` line); the JSON envelope carries `gate1-stamped`.
+    #[serde(skip)]
+    pub actor: journal::Actor,
     /// Completed phases in run order.
     pub phases: Vec<ExecutePhase>,
 }
@@ -120,9 +136,12 @@ pub struct ExecutePhase {
 
 impl Render for ExecuteBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        if self.gate1_stamped {
+            writeln!(w, "approved: {} (actor: {})", self.plan, self.actor)?;
+        }
         for phase in &self.phases {
             writeln!(w, "{} {}", phase.step, phase.slice)?;
         }
-        writeln!(w, "drained")
+        writeln!(w, "{}", project::plan::drained_line(&self.plan))
     }
 }

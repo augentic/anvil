@@ -6,7 +6,7 @@ use std::ops::ControlFlow;
 use error::Error;
 
 use super::super::execution::{JournalOverlay, Resolution, resolve_entry};
-use super::super::model::{Entry, Plan, Status};
+use super::super::model::{Entry, Lifecycle, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
 use crate::journal::{self, EventKind};
@@ -155,6 +155,18 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 /// `None` when no single command makes progress.
 fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
     let slice = resolution.slice.as_deref();
+    // Gate 1 first: a pending plan's dispatch projections resume
+    // through the approval act (`/emery:execute`), not a phase
+    // breakout — the projected `next-action` still names the phase
+    // the loop will run after the stamp.
+    if plan.lifecycle == Lifecycle::Pending
+        && matches!(
+            resolution.action,
+            NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge
+        )
+    {
+        return Some("/emery:execute".to_string());
+    }
     match resolution.action {
         NextActionKind::Refine => slice.map(|s| format!("/emery:refine {s}")),
         NextActionKind::Build => slice.map(|s| format!("/emery:build {s}")),

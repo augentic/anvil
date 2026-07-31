@@ -11,12 +11,15 @@ The engine guest owns the whole refine flow — slice create (re-entry safe), th
 ## Invocation
 
 ```bash
-emery slice refine <slice-name>
+RUST_LOG=info,opentelemetry=off,opentelemetry_sdk=off,omnia_wasi_otel=off \
+  emery slice refine <slice-name>
 ```
 
-When `[slice-name]` is omitted, run `emery plan status` and use the slice it names for the `refine` action; if the plan projects no refine action, surface the status output and stop.
+Refine is a long-running orchestration — the `RUST_LOG` prefix (and the debug variant) follows the plugin rule's *Tracing and output* contract.
+
+When `[slice-name]` is omitted, run `RUST_LOG=off emery plan status` and use the slice it names for the `refine` action; if the plan projects no refine action, surface the status output and stop.
 
 ## Relay
 
-- Surface the CLI output verbatim, including any synthesis-tag counts (`[unknown]` / `[conflict]` / `[divergence]` are review signals, never a park) and the closing hint.
+- Surface the CLI output verbatim — the persisted artifacts and any synthesis-tag counts (`[unknown]` / `[conflict]` / `[divergence]` are review signals, never a park).
 - On non-zero exit, surface the structured error verbatim and stop. Never hand-edit slice artifacts to force progress — the synthesis kernel owns `model.yaml` and the rendered `ID:` / `Sources:` / `Status:` lines.

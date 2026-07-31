@@ -71,6 +71,8 @@ async fn author_approve_execute_drains() {
     .await
     .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
+    assert_eq!(executed.plan, "demo");
+    assert!(executed.gate1_stamped, "first execute performs the Gate 1 stamp");
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
     assert_eq!(
@@ -170,6 +172,15 @@ async fn execute_stamps_gate1_once() {
     .await
     .expect("first execute stamps and drains");
     assert_eq!(executed.status, "drained");
+    assert!(executed.gate1_stamped);
+
+    // Text rendering: the stamp line appears exactly when this run
+    // stamped, and drained closes with the canonical finalize line.
+    let mut out = Vec::new();
+    project::handler::Render::render(&executed, &mut out).expect("render");
+    let text = String::from_utf8(out).expect("utf8");
+    assert!(text.contains("approved: demo (actor: agent)"), "{text}");
+    assert!(text.contains("drained \u{2014} run /emery:finalize demo"), "{text}");
 
     let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
@@ -191,6 +202,12 @@ async fn execute_stamps_gate1_once() {
     .await
     .expect("re-entrant execute is a no-op");
     assert_eq!(resumed.status, "drained");
+    assert!(!resumed.gate1_stamped, "re-entry on an approved plan stamps nothing");
+    let mut out = Vec::new();
+    project::handler::Render::render(&resumed, &mut out).expect("render");
+    let text = String::from_utf8(out).expect("utf8");
+    assert!(!text.contains("approved:"), "no stamp line on re-entry: {text}");
+    assert!(text.contains("drained \u{2014} run /emery:finalize demo"), "{text}");
     let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
     assert_eq!(
         journal.lines().filter(|l| l.contains("plan.transition.approved")).count(),

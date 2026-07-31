@@ -57,9 +57,11 @@ pub struct MergeOutcome {
 pub async fn merge<T: Target>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
+    tracing::info!("merge started");
     preflight_completion(layout, slice)?;
     if let Some(outcome) = heal_torn_merge(layout, slice) {
         stamp_plan_entry_done(layout, slice)?;
+        tracing::info!("merge completed: torn merge healed, entry stamped done");
         return Ok(outcome);
     }
     let slice_dir = layout.slice_dir(slice);
@@ -126,6 +128,7 @@ pub async fn merge<T: Target>(
         },
         "slice.merge",
     );
+    tracing::info!(decisions = outcome.decisions.len(), "merge completed");
     Ok(outcome)
 }
 
