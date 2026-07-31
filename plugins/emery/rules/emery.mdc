@@ -47,7 +47,7 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata
 
 /emery:execute                     (Gate 1 on explicit operator confirmation, then the guest-routed
                                    refine -> build -> merge loop; CLI equivalent:
-                                   emery plan approve + emery plan execute)
+                                   emery plan execute — its first run stamps `approved`)
 
 /emery:finalize <name>             (confirm publication, archive plan)
 ```

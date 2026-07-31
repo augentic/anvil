@@ -65,7 +65,7 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
 <div class="rhythm-label">Gate 1</div>
 <h4 class="rhythm-title">Human approval</h4>
 
-Operator stamps `approved`. Nothing executes until this transition.
+Operator approves by running `emery plan execute` (its first run stamps `approved`). Nothing executes until then.
 </div>
 
 
@@ -94,7 +94,7 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 </div>
 
 
-`/emery:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator stamps the review step explicitly: `emery plan approve` (Gate 1). The guest-routed `emery plan execute` then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
+`/emery:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator approves by running the guest-routed `emery plan execute` (Gate 1 — its first run stamps `approved`), which then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
 
 A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `emery plan execute` runs the same single-slice rhythm.
 
@@ -171,7 +171,7 @@ A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how
 The default rhythm:
 
 > [!NOTE]
-> **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan approve` (Gate 1) → `emery plan execute` → `/emery:finalize <name>`
+> **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan execute` (Gate 1 + loop) → `/emery:finalize <name>`
 
 Breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`) run one phase by hand when execute parks or you want manual control.
 

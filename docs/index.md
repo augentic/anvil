@@ -47,7 +47,7 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
     <div class="rhythm-num">02</div>
     <div class="rhythm-label">Review</div>
     <div class="rhythm-title">Lock the scope</div>
-    <p>The operator stamps the plan <code>approved</code>; the agent does not approve its own scope.</p>
+    <p>The operator approves the plan by starting execution; the agent does not approve its own scope.</p>
   </div>
   <div class="rhythm-step">
     <div class="rhythm-num">03</div>
@@ -112,11 +112,9 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
 /emery:plan fix-typo source intent="fix typo in user.rs"
   --> writes change.md + plan.yaml + discovery.md, exits at pending
 
-emery plan approve
-  --> operator review step (Gate 1)
-
 emery plan execute
-  --> /emery:refine + /emery:build + /emery:merge per slice until drained
+  --> operator review step (Gate 1): first run stamps approved,
+      then /emery:refine + /emery:build + /emery:merge per slice until drained
 
 /emery:finalize fix-typo
   --> publish outside Emery, archive plan

@@ -67,11 +67,12 @@ pub enum ExecuteOutcome {
 /// Run the drained execute loop: claim → refine → build → merge per
 /// entry until `plan status` projects `drained` or a stop.
 ///
-/// Gate 1 is enforced by the first status projection: an unapproved
-/// plan projects `stop plan-not-approved` and the loop returns it
-/// before touching plan state. Re-entry is safe — a refine / build /
-/// preflight-merge failure leaves the entry `in-progress` and the
-/// journal terminal event in place, so the next run's status
+/// Invoking execute is the Gate 1 approval act: a `pending` plan is
+/// stamped `approved` (one `plan.transition.approved` journal event
+/// carrying `actor`) before the first status projection; an already
+/// `approved` plan stamps nothing. Re-entry is safe — a refine /
+/// build / preflight-merge failure leaves the entry `in-progress` and
+/// the journal terminal event in place, so the next run's status
 /// projection resumes (or re-reports the stop) from the same point.
 /// A postflight failure stamps the entry `done` (non-rollback) and
 /// projects a sticky `merge-postflight-failed` stop; re-running
@@ -99,13 +100,16 @@ pub enum ExecuteOutcome {
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
-    tree: &WorkingTree,
+    tree: &WorkingTree, actor: journal::Actor,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     refuse_workspace_routing(layout)?;
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
     let _marker = GuestMarker::acquire(layout, now)?;
+    // Gate 1: invoking execute is the approval act. Stamp before the
+    // first status projection; no-op when already approved.
+    project::plan::stamp_approved(layout, now, actor)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {
@@ -204,6 +208,12 @@ fn dispatch_status(
             // stop and spin while holding `guest.lock`.
             if status.stop.as_ref().map(|s| s.reason) == Some(StopReason::MergePostflightFailed) {
                 return acknowledge_postflight(layout, now, status, phases);
+            }
+            // Torn merge (commit landed, `done` stamp missing): the
+            // merge phase's re-entry heals it by stamping the entry,
+            // so dispatch merge instead of parking the loop.
+            if status.stop.as_ref().map(|s| s.reason) == Some(StopReason::MergeIncomplete) {
+                return ControlFlow::Continue(Some(LoopStep::Merge));
             }
             // A stop projection always carries a stop body; a missing
             // one (unreachable by construction) degrades to the

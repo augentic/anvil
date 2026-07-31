@@ -45,7 +45,8 @@ impl Event {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "event", content = "payload")]
 pub enum EventKind {
-    /// Gate 1 cleared — `emery plan approve`.
+    /// Gate 1 cleared — the first `emery plan execute` stamped
+    /// `pending → approved` (invoking execute is the approval act).
     #[serde(rename = "plan.transition.approved", rename_all = "kebab-case")]
     PlanTransitionApproved {
         /// Governing plan.
@@ -118,8 +119,8 @@ pub enum EventKind {
     },
     /// The `source extract` finalize tail validated and
     /// persisted one source-bound Evidence document. One event per
-    /// `(source, slice)` pair. CLI-owned — the `/emery:refine` skill
-    /// never emits this via `emery journal emit`.
+    /// `(source, slice)` pair. CLI-owned — appended by the extract
+    /// orchestration itself, never by a skill.
     #[serde(rename = "slice.extract.completed", rename_all = "kebab-case")]
     SliceExtractCompleted {
         /// Affected slice.
@@ -340,8 +341,8 @@ pub enum EventKind {
     },
     /// The `plan author` reconcile kernel validated the agent
     /// reconciliation response and wrote `plan.yaml.slices[]`. One indivisible event
-    /// per successful invocation — the `/emery:plan` skill never calls
-    /// `emery journal emit` here.
+    /// per successful invocation — appended by the reconcile kernel
+    /// itself, never by a skill.
     #[serde(rename = "plan.reconcile.completed", rename_all = "kebab-case")]
     PlanReconcileCompleted {
         /// Governing plan.
@@ -397,7 +398,7 @@ pub enum EventKind {
 /// Closed `actor` enum on [`EventKind::PlanTransitionApproved`] —
 /// who drove the Gate-1 stamp.
 ///
-/// Self-reported through `emery plan approve --actor` (default
+/// Self-reported through `emery plan execute --actor` (default
 /// `operator`), so the value is grading evidence for eval probes
 /// (`gate-1-not-auto-stamped`), not an enforcement surface. Defaults
 /// to [`Actor::Operator`] both at the flag and at deserialisation so

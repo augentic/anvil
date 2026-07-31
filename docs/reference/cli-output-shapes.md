@@ -109,35 +109,23 @@ Success summary after the reconcile kernel projects the agent **response** onto 
 }
 ```
 
-### `emery plan approve`
-
-The nameless Gate 1 stamp. The `previous` / `current` pair pins the lifecycle move; an already-approved plan echoes `approved → approved` (the idempotent no-op).
-
-```json
-{
-  "current": "approved",
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  },
-  "previous": "pending"
-}
-```
-
 ### `emery plan transition`
 
-Per-entry transitions only (`kind: "entry"`, or `kind: "undo"` with the `undo: { from, to }` pair). The `previous` / `current` pair pins the legal transition rung that fired.
+The one-rung reverse walk (`--undo` is the only mode). The `previous` / `current` pair pins the rung that fired, and the `undo: { from, to }` pair carries the same move as typed discriminants.
 
 ```json
 {
-  "current": "done",
-  "kind": "entry",
+  "current": "in-progress",
   "name": "identity-service",
   "plan": {
     "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
   },
-  "previous": "in-progress"
+  "previous": "done",
+  "undo": {
+    "from": "done",
+    "to": "in-progress"
+  }
 }
 ```
 

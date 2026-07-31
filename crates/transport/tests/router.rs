@@ -62,7 +62,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 33);
+    assert_eq!(http_types.len(), 29);
 }
 
 #[tokio::test]
@@ -93,7 +93,7 @@ async fn detailed_help() {
     assert_eq!(route.exit, 0);
     let route = String::from_utf8_lossy(&route.stdout);
     assert!(route.contains("Read-only projection of the plan's execution state"));
-    assert!(route.contains("Stop reasons (`plan-not-approved`"));
+    assert!(route.contains("Stop reasons (`refine-failed`"));
 
     let namespace = router.execute(["emery", "source", "--help"]).await;
     assert_eq!(namespace.exit, 0);

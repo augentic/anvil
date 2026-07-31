@@ -67,10 +67,15 @@ async fn merge_promotes_and_supersedes() {
         slice::handlers::MergeRunInput {
             name: "demo".to_string(),
             allow_composition_replace: false,
+            preview: false,
+            conflict_check: false,
         },
     )
     .await
     .expect("standalone merge succeeds");
+    let slice::handlers::MergeRunBody::Merged(body) = body else {
+        panic!("default merge run mode commits: {body:?}");
+    };
 
     assert_eq!(body.decisions, ["DEC-0002"]);
     assert!(baseline.join("DEC-0002-new-choice.md").is_file());

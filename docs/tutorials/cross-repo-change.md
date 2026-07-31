@@ -38,12 +38,15 @@ Before planning or execution, use your normal repository tooling to create each 
 
 Emery does not clone, refresh, or prepare workspace slots. Plan artifacts stay at the workspace; project-bound phase work runs in the matching materialized slot.
 
-## Step 4 — Execute with workspace routing
+## Step 4 — Drive slices with workspace routing
+
+Workspace plans refuse the automated loop (`plan-execute-workspace-unsupported`); drive them hand-driven instead — Gate 1 is your decision to start claiming entries:
 
 ```bash
-emery plan approve
-emery plan execute
+emery plan next
 ```
+
+then run `/emery:refine`, `/emery:build`, and `/emery:merge` per slice until the plan drains.
 
 When a slice targets a project slot, refine/build/merge run inside that checkout. Commits and branch management remain operator-owned.
 

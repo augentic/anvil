@@ -58,20 +58,20 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 | Skill            | Role                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
 | `/emery:plan`     | Wrap `emery plan author`: survey each bound source, reconcile `slices[]`, validate; exit at `pending` |
-| `emery plan execute` | Drive the plan through the Layer 1 loop (guest-routed verb, wrapped by `/emery:execute`); refuses unless plan is `approved` |
+| `emery plan execute` | Gate 1 plus the drive: the first run on a `pending` plan stamps `approved`, then runs the Layer 1 loop (guest-routed verb, wrapped by `/emery:execute`) |
 | `/emery:finalize` | Confirm operator-owned publication is complete, then archive the plan                                |
 
-The plan is the change's table of contents. `/emery:plan` produces it by invoking `emery plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `emery plan approve` command in its closing hint. The operator stamps Gate 1 explicitly — `/emery:plan` never writes `approved` itself.
+The plan is the change's table of contents. `/emery:plan` produces it by invoking `emery plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `emery plan execute` command in its closing hint. The operator stamps Gate 1 by running that verb — `/emery:plan` never runs it itself.
 
-`emery plan execute` consumes the approved plan by claiming the next eligible entry, running the Layer 1 loop, and updating per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
+`emery plan execute` claims the next eligible entry, runs the Layer 1 loop, and updates per-entry status; its first run on a `pending` plan stamps `approved` before the loop starts. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
 
-The matching CLI surface is **`emery plan {create, author, execute, add, amend, remove, transition, next, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Emery.
+The matching CLI surface is **`emery plan {author, execute, add, amend, remove, transition, next, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Emery.
 
 ### Gate 1: the operator review seam
 
-The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships. `/emery:plan` writes `pending`; the operator writes `approved`. `emery plan execute` refuses on anything other than `approved`. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `emery plan add`, `emery plan remove`, or `emery plan amend <entry>` (or re-run `emery plan author` to re-reconcile wholesale) before any per-slice work runs.
+The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships. `/emery:plan` writes `pending`; the operator approves by invoking `emery plan execute` — the first run is the stamp. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `emery plan add`, `emery plan remove`, or `emery plan amend <entry>` (or re-run `emery plan author` to re-reconcile wholesale) before any per-slice work runs.
 
-The framework does not ship a single "do everything" command. Teams that want one-command flow compose plan, approve, and execute in their own shell wrapper, accepting that the wrapper opts out of Gate 1. The seam is observable on disk (`plan.lifecycle == approved`) so automation can opt-in cleanly.
+The framework does not ship a separate approve verb: executing is approving. The operator-facing pause lives in `/emery:execute`'s explicit confirmation, and the seam is observable on disk (`plan.lifecycle == approved`) so automation can branch on it cleanly.
 
 ## The layers compose
 
@@ -79,7 +79,7 @@ A key design principle: higher layers invoke lower layers, but lower layers are 
 
 This means you can always drop down a layer:
 
-- If `/emery:plan` produces a plan you want to adjust, use **re-propose** or `emery plan add` / `emery plan remove` for grouping and deferral, and `emery plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then stamp `approved` when ready.
+- If `/emery:plan` produces a plan you want to adjust, use **re-propose** or `emery plan add` / `emery plan remove` for grouping and deferral, and `emery plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then run `emery plan execute` when ready.
 - If `emery plan execute` parks on a slice, finish it manually with `/emery:build` and `/emery:merge`, then re-run `emery plan execute` to pick up the next entry.
 - If publication is incomplete, finish the repository's normal branch and review workflow before running `/emery:finalize`.
 - If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.emery/slices/<name>/metadata.yaml` directly — they are plain YAML files.

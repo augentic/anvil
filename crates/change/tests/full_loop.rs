@@ -1,5 +1,5 @@
-//! The native loop end to end: scaffold → `plan author` → the
-//! operator's `approved` stamp → `plan execute`, driven through the
+//! The native loop end to end: scaffold → `plan author` →
+//! `plan execute` (whose first run stamps Gate 1), driven through the
 //! same transport-neutral operations the shipped guest dispatches,
 //! against the linked mock catalog — the *real* orchestrations,
 //! validation tails, and journal cadence run in-process with only the
@@ -23,9 +23,10 @@ fn suite_answers() -> Vec<String> {
     vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
 }
 
-/// Scaffold a project bound to the mock target and author + approve
-/// the single-slice plan — the shared preamble of every loop test.
-async fn scaffold_author_approve(session: &Session) {
+/// Scaffold a project bound to the mock target and author the
+/// single-slice plan (left `pending` — the first execute stamps
+/// Gate 1) — the shared preamble of every loop test.
+async fn scaffold_author(session: &Session) {
     let scaffolded = run::<project::init::handlers::Init, _, _>(
         session.provider(),
         project::init::handlers::InitInput {
@@ -52,16 +53,7 @@ async fn scaffold_author_approve(session: &Session) {
     assert_eq!(authored.slices, ["greeting"]);
     assert_eq!(authored.surveyed.len(), 1);
     assert_eq!(authored.surveyed[0].leads, ["greeting"]);
-    assert!(authored.hint.contains("emery plan approve"), "{}", authored.hint);
-
-    run::<plan::handlers::Approve, _, _>(
-        session.provider(),
-        plan::handlers::ApproveInput {
-            actor: "operator".to_string(),
-        },
-    )
-    .await
-    .expect("the operator stamps Gate 1");
+    assert!(authored.hint.contains("emery plan execute"), "{}", authored.hint);
 }
 
 #[tokio::test]
@@ -69,12 +61,14 @@ async fn author_approve_execute_drains() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&session).await;
+    scaffold_author(&session).await;
 
-    let executed =
-        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-            .await
-            .expect("execute drains the plan");
+    let executed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
@@ -151,21 +145,76 @@ async fn author_approve_execute_drains() {
     session.model().assert_exhausted();
 }
 
+// The first execute stamps Gate 1 (`pending → approved`) with the
+// self-reported `--actor`, journals it exactly once, and a re-entrant
+// execute never double-fires the event.
+#[tokio::test]
+async fn execute_stamps_gate1_once() {
+    let session = Session::bare(suite_answers());
+    let root = session.root().to_path_buf();
+
+    scaffold_author(&session).await;
+    let plan: change::Plan = serde_saphyr::from_str(
+        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
+    )
+    .expect("parse plan.yaml");
+    assert_eq!(plan.lifecycle.to_string(), "pending");
+
+    let executed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput {
+            actor: "agent".to_string(),
+        },
+    )
+    .await
+    .expect("first execute stamps and drains");
+    assert_eq!(executed.status, "drained");
+
+    let plan: change::Plan = serde_saphyr::from_str(
+        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
+    )
+    .expect("parse plan.yaml");
+    assert_eq!(plan.lifecycle.to_string(), "approved");
+
+    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    let approved: Vec<&str> =
+        journal.lines().filter(|l| l.contains("plan.transition.approved")).collect();
+    assert_eq!(approved.len(), 1, "{journal}");
+    assert!(approved[0].contains("\"actor\":\"agent\""), "{}", approved[0]);
+
+    // Re-entry on the drained, already-approved plan stamps nothing.
+    let resumed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("re-entrant execute is a no-op");
+    assert_eq!(resumed.status, "drained");
+    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    assert_eq!(
+        journal.lines().filter(|l| l.contains("plan.transition.approved")).count(),
+        1,
+        "no second plan.transition.approved event"
+    );
+}
+
 // A failed merge preflight gate parks the slice at `built`.
 #[tokio::test]
 async fn preflight_parks_built() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&session).await;
+    scaffold_author(&session).await;
 
     // Trip the mock's failed preflight merge gate.
     fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
 
-    let stopped =
-        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-            .await
-            .expect_err("execute parks on the failed preflight gate");
+    let stopped = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect_err("execute parks on the failed preflight gate");
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
 
     // Nothing merged: the slice stays `built`, no baseline, no archive.
@@ -182,15 +231,22 @@ async fn preflight_parks_built() {
         slice::handlers::MergeRunInput {
             name: "greeting".to_string(),
             allow_composition_replace: false,
+            preview: false,
+            conflict_check: false,
         },
     )
     .await
     .expect("breakout merge resumes");
+    let slice::handlers::MergeRunBody::Merged(merged) = merged else {
+        panic!("default merge run mode commits: {merged:?}");
+    };
     assert_eq!(merged.slice, "greeting");
-    let resumed =
-        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-            .await
-            .expect("second execute drains");
+    let resumed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("second execute drains");
     assert_eq!(resumed.status, "drained");
 }
 
@@ -203,15 +259,17 @@ async fn postflight_terminal() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&session).await;
+    scaffold_author(&session).await;
 
     // Trip the mock's failed postflight merge gate.
     fs::write(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
 
-    let stopped =
-        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-            .await
-            .expect_err("execute reports the failed postflight gate");
+    let stopped = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect_err("execute reports the failed postflight gate");
     let stopped = stopped.to_string();
     assert!(stopped.contains("merge-postflight-failed"), "{stopped}");
     assert!(
@@ -262,10 +320,12 @@ async fn postflight_terminal() {
     // Clear the gate and re-run execute: ack clears the sticky stop and
     // the single-entry plan drains.
     fs::remove_file(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER)).expect("remove marker");
-    let resumed =
-        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-            .await
-            .expect("second execute acknowledges and drains");
+    let resumed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("second execute acknowledges and drains");
     assert_eq!(resumed.status, "drained");
     let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
     assert!(journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
@@ -276,15 +336,17 @@ async fn build_parks_then_resumes() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
 
-    scaffold_author_approve(&session).await;
+    scaffold_author(&session).await;
 
     // Trip the mock's failed-report mode for the first build.
     fs::write(root.join(behaviour::FAIL_BUILD_MARKER), "").expect("write fail marker");
 
-    let stopped =
-        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-            .await
-            .expect_err("first execute parks on the failed build");
+    let stopped = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect_err("first execute parks on the failed build");
     assert!(stopped.to_string().contains("build-failed"), "{stopped}");
 
     // Clear the failure and resume through the breakout build.
@@ -299,10 +361,12 @@ async fn build_parks_then_resumes() {
     .expect("breakout build resumes");
     assert_eq!(rebuilt.slice, "greeting");
 
-    let resumed =
-        run::<plan::handlers::Execute, _, _>(session.provider(), plan::handlers::ExecuteInput {})
-            .await
-            .expect("second execute drains");
+    let resumed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("second execute drains");
     assert_eq!(resumed.status, "drained");
     assert_eq!(
         resumed.phases.iter().map(|phase| phase.step).collect::<Vec<_>>(),

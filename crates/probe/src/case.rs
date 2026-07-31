@@ -4,8 +4,8 @@
 //! holding one `case.toml` (and usually a sibling `fixture/`; a
 //! workflow case may instead `clone` an upstream tree into a
 //! gitignored `fixture/` cache on first run). Two shapes exist: a [`Workflow`] case drives the operator rhythm
-//! (`init` → `plan author` [→ `plan approve` → `plan execute`
-//! [→ `plan archive`]]) and a [`Build`] case invokes
+//! (`init` → `plan author` [→ `plan execute` (whose first run stamps
+//! Gate 1) [→ `plan archive`]]) and a [`Build`] case invokes
 //! `slice build <slice>` once against a committed refined fixture.
 //! Every command runs through [`native::command::execute`] — the same
 //! public surface operators use — so request assembly, report
@@ -124,7 +124,8 @@ pub struct Build {
 pub enum WorkflowUntil {
     /// Stop after `plan author`, leaving Gate 1 `pending`.
     Plan,
-    /// Author, approve, then run the genuine drained `plan execute`.
+    /// Author, then run the genuine drained `plan execute` (whose
+    /// first run stamps Gate 1).
     #[default]
     Execute,
     /// Execute, then `plan archive`.
@@ -265,13 +266,12 @@ async fn run_workflow(
         telemetry::report(&telemetry.counts(), plan.entries.len());
         println!(
             "eval case {id}: stopped at Gate 1 (lifecycle pending); continue with \
-             `cargo make lab -- --project-dir {} plan approve`",
+             `cargo make lab -- --project-dir {} plan execute`",
             root.display()
         );
         return Ok(());
     }
 
-    invoke(root, model, catalog, &["plan", "approve"]).await?;
     invoke(root, model, catalog, &["plan", "execute"]).await?;
 
     let plan = sandbox::read_plan(root)?;

@@ -265,7 +265,6 @@ async fn stage_refined_fixture(root: &Path) {
         &["plan", "author", "demo", "--source", "main=mock:value:The greeting service."],
     )
     .await;
-    invoke(root, &model, &["plan", "approve"]).await;
     invoke(root, &model, &["slice", "refine", "greeting"]).await;
 }
 

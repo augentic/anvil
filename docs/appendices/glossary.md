@@ -8,7 +8,7 @@ Canonical definitions for terms used throughout Emery.
 A versioned Emery extension. Emery splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Action**
-A grammar leaf in the `emery` CLI — the executable command path (`slice build`, `journal emit`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
+A grammar leaf in the `emery` CLI — the executable command path (`slice build`, `journal show`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
 
 **Active slice**
 The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `emery plan next` writes `in-progress`; `/emery:refine` and the breakouts resolve the active slice before doing per-slice work.
@@ -85,7 +85,7 @@ The lifecycle target that abandons a slice without merging its specs into the ba
 The per-source result of `extract`. A structured document with `claims:` persisted to `.emery/slices/<slice>/evidence/<source>.yaml`. Parsed and validated through the typed `artifacts::evidence::Document`. Top-level `authority:` is required.
 
 **Execute**
-The guest-routed driver loop (`emery plan execute`) that claims each entry and runs refine → build → merge until the plan drains. Refuses unless the plan is `approved`. Resumes from on-disk state — no `--continue` flag.
+The guest-routed driver loop (`emery plan execute`) that claims each entry and runs refine → build → merge until the plan drains. Its first run on a `pending` plan stamps `approved` (Gate 1). Resumes from on-disk state — no `--continue` flag.
 
 **Extract**
 The slice-time operation declared by a source adapter. Reads one `Lead` plus the bound source and returns `Evidence` content the CLI persists.
@@ -98,7 +98,7 @@ The closure skill (`/emery:finalize`) that verifies the plan is drained, confirm
 ## G
 
 **Gate 1**
-The operator-stamped lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Emery ships. Written by `emery plan approve`; `/emery:plan` exits at `pending` and prints the literal command in its closing hint.
+The operator review step between plan authoring and execution, realised as the lifecycle transition `plan.lifecycle: pending → approved`. The only review gate Emery ships. Stamped by the first `emery plan execute` — invoking execute is the approval act; `/emery:plan` exits at `pending` and prints the literal command in its closing hint.
 
 **Gate (quality)**
 One of the two engine test rungs and its cadence: repository correctness (`cargo make ci`, every push) or prompt evaluation (`cargo make eval`, operator-invoked). The WASM seam has no automated gate — it is exercised by the operator-run wasm example (`cargo make wasm-run`). Distinct from the operator's plan Gate 1. See [Quality gates](../contributing/quality-gates.md).
@@ -148,7 +148,7 @@ An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. T
 ## P
 
 **Plan**
-The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored), and `lifecycle`. Written through `emery plan {create, add, amend, transition, next, archive}` only.
+The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings), `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored), and `lifecycle`. Written through `emery plan {author, add, amend, transition, next, archive}` and the merge stamp only.
 
 **Plugin** (adapter vocabulary)
 The shared shape for either adapter role. Loader `crates/project/src/adapter/`; metadata comes from the component's `metadata` export (no adapter manifest file). Source and target adapters share the same resolver; the axis decides which WIT operations the component exports. The vocabulary noun "plugin" survives where source + target authors share an audience tag. Distinct from [Cursor plugins](#c) under `plugins/` (the IDE distribution surface for `/emery:*` skill wrappers).

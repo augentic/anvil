@@ -1,5 +1,5 @@
-//! `plan execute` — the drained refine → build → merge loop over the
-//! approved plan.
+//! `plan execute` — the Gate 1 stamp plus the drained refine → build →
+//! merge loop over the plan.
 
 use std::io::Write;
 
@@ -9,22 +9,39 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
+use project::journal;
 use project::plan::LoopStep;
 use project::seam::{Source, Target, WorkingTree};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome};
 
-/// Wire input for `plan execute` (no fields).
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "serde deserialises the wire `{}` object into a braced struct only"
-)]
-pub struct ExecuteInput {}
+/// Wire input for `plan execute`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ExecuteInput {
+    /// Who is driving this invocation — `operator` (default) or
+    /// `agent`. Recorded on the `plan.transition.approved` journal
+    /// event when this run stamps Gate 1.
+    #[serde(default = "default_actor")]
+    pub actor: String,
+}
 
-/// `emery plan execute` → the internal execute orchestration — the drained
-/// refine → build → merge loop over the approved plan.
+fn default_actor() -> String {
+    "operator".to_string()
+}
+
+impl Default for ExecuteInput {
+    fn default() -> Self {
+        Self {
+            actor: default_actor(),
+        }
+    }
+}
+
+/// `emery plan execute` → the internal execute orchestration — the
+/// Gate 1 stamp (`pending → approved`, invoking execute is the
+/// approval act) plus the drained refine → build → merge loop.
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
@@ -34,12 +51,16 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
     type Output = ExecuteBody;
 
     async fn call(
-        _input: Self::Input, context: CallContext<'_, P>,
+        input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
+        let actor: journal::Actor = input.actor.parse().map_err(|detail| Error::Argument {
+            flag: "--actor",
+            detail,
+        })?;
         let tree = WorkingTree::live();
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree).await?;
+        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree, actor).await?;
         match outcome {
             ExecuteOutcome::Drained { phases } => Ok(ExecuteBody {
                 status: "drained",

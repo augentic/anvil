@@ -15,7 +15,7 @@ Emery's layered design is explained in [The Layered Stack](../explanation/layere
 
 Two stored states. The plan lifecycle does not move further during execution — "currently executing" and "drained" are computed from per-entry status.
 
-`/emery:plan` writes `pending`. The operator stamps `approved` — this is **Gate 1**, the only review seam Emery ships. `/emery:plan` never writes `approved` itself. `emery plan execute` refuses to start unless the plan is `approved`.
+`/emery:plan` writes `pending`. The operator approves by running `emery plan execute` — this is **Gate 1**, the only review seam Emery ships; the first run stamps `approved` before the loop starts. `/emery:plan` never runs it itself.
 
 ## Per-entry lifecycle
 
@@ -47,7 +47,7 @@ Each slice's `metadata.yaml` tracks an independent lifecycle:
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
 | `/emery:plan` exits at validate                   | plan: `pending` (initial)         | `emery plan author` (scaffold leg)             |
-| Operator stamps Gate 1                            | plan: `pending → approved`        | `emery plan approve`                           |
+| Operator runs the first `emery plan execute` (Gate 1) | plan: `pending → approved`        | the `emery plan execute` orchestration          |
 | `emery plan next` picks next pending row       | per-entry: `pending → in-progress` | `emery plan next`                              |
 | `/emery:refine` creates slice                      | slice: (none) → `refining`         | the `emery slice refine` orchestration          |
 | `/emery:refine` completes synthesis                | slice: `refining → refined`        | the `emery slice refine` orchestration          |

@@ -4,7 +4,7 @@ Emery proves engine correctness from this repository alone: native integration t
 
 ## Gate 1 — repository correctness (every push)
 
-`cargo make ci` owns formatting, lints, schemas, crate and binary integration, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native engine suites inside it prove the complete `init → author → approve → execute` loop through the mock adapter over the offline native provider and scripted models.
+`cargo make ci` owns formatting, lints, schemas, crate and binary integration, and the mdBook links gate (Developer Guide link integrity, `cargo make links`). The native engine suites inside it prove the complete `init → author → execute` loop through the mock adapter over the offline native provider and scripted models.
 
 This gate is model-free and self-contained: no sibling checkout, no adapter component build, no Wasmtime in the test compile path.
 
@@ -16,7 +16,7 @@ Cadence is documented convention, not automation: before a release tag, and afte
 
 ## The WASM seam (operator-invoked)
 
-There is no automated WASM gate. The facts only the component boundary can prove — WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam — are exercised by the operator-invoked wasm example: `cargo make wasm-run` builds the engine guest and the per-axis mock components, then invokes the shipped binary directly — the binary embeds the engine bytes and boots it for every command, seeding the mock source through in-guest `adapter add` and admitting the mock target as a local component at `init`, into a sandboxed cache the fail-closed resolver serves adapter dispatches from (see [`examples/wasm/README.md`](../../examples/wasm/README.md)) — and runs the full `init → author → approve → execute` loop against a live model. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam, and before a release tag. For a model-free signal, compile-check the guests: `cargo check --lib -p emery --examples --target wasm32-wasip2`.
+There is no automated WASM gate. The facts only the component boundary can prove — WIT bindings, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens, the component cache, and the typed error lift across the seam — are exercised by the operator-invoked wasm example: `cargo make wasm-run` builds the engine guest and the per-axis mock components, then invokes the shipped binary directly — the binary embeds the engine bytes and boots it for every command, seeding the mock source through in-guest `adapter add` and admitting the mock target as a local component at `init`, into a sandboxed cache the fail-closed resolver serves adapter dispatches from (see [`examples/wasm/README.md`](../../examples/wasm/README.md)) — and runs the full `init → author → execute` loop against a live model. Run it when a change crosses a WIT, dispatch, hosting, or preopen seam, and before a release tag. For a model-free signal, compile-check the guests: `cargo check --lib -p emery --examples --target wasm32-wasip2`.
 
 ## Placement decision
 

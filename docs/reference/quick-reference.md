@@ -48,7 +48,7 @@ The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional s
 Plan lifecycle (two stored states):
 
 ```text
-pending --(operator stamps Gate 1)--> approved
+pending --(first plan execute stamps Gate 1)--> approved
 ```
 
 Per-entry status:
@@ -79,7 +79,7 @@ emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + su
 emery plan add <entry> --sources <key>=<lead> --project <name>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 emery plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
-emery plan approve                                     # Gate 1; operator-only (lock-exempt)
+emery plan execute                                     # Gate 1 on first run (stamps approved) + the drained loop
 emery plan status                                      # read-only next-action projection
 emery plan next                                        # active in-progress, or pick next pending
 emery plan archive
@@ -88,7 +88,7 @@ emery plan archive
 emery slice list                                       # read-only: every slice with status + target
 emery slice refine <name>                              # guest-routed: create + extract + synthesis + refined
 emery slice validate <name>
-emery slice merge run <name>                           # also: merge preview / merge conflict-check
+emery slice merge run <name>                           # dry-runs: --preview / --conflict-check
 emery slice drop <name> [--reason "..."]
 
 # Maintenance & bootstrap

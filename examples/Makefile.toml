@@ -61,6 +61,5 @@ emery adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
 emery init target --name change
 
 emery plan author change --source main="source:value:The greeting service."
-emery plan approve
 emery plan execute
 '''

@@ -27,7 +27,7 @@ Three rules keep this predictable:
 
 This is why a one-source, one-lead change and a twelve-slice migration use exactly the same machinery — the only difference is how many leads `survey` produced.
 
-You review and adjust the proposed slices at **Gate 1** before stamping the plan `approved`.
+You review and adjust the proposed slices at **Gate 1** before running `emery plan execute` — its first run stamps the plan `approved`.
 
 ## Slice time: evidence becomes a spec
 

@@ -33,7 +33,7 @@ and an existing sandbox without it refuses before mutation. Continue or
 debug a retained sandbox explicitly:
 
 ```bash
-cargo make lab -- --project-dir sandbox/auth plan approve
+cargo make lab -- --project-dir sandbox/auth plan execute
 ```
 
 `CURSOR_MODEL`, `CURSOR_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG` are

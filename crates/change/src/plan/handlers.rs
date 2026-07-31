@@ -2,7 +2,6 @@
 
 mod add;
 mod amend;
-mod approve;
 mod archive;
 mod author;
 mod entry;
@@ -23,7 +22,6 @@ use serde::Serialize;
 
 pub use self::add::{Add, AddInput};
 pub use self::amend::{Amend, AmendInput};
-pub use self::approve::{Approve, ApproveBody, ApproveInput};
 pub use self::archive::{Archive, ArchiveBody, ArchiveInput, ArchivedPlan};
 pub use self::author::{Author, AuthorBody, AuthorInput, AuthorSurvey};
 pub use self::entry::EntryBody;
@@ -31,7 +29,7 @@ pub use self::execute::{Execute, ExecuteBody, ExecuteInput, ExecutePhase};
 pub use self::next::{Next, NextInput};
 pub use self::remove::{Remove, RemoveInput};
 pub use self::status::{Status, StatusInput};
-pub use self::transition::{Transition, TransitionBody, TransitionInput, TransitionKind, UndoPair};
+pub use self::transition::{Transition, TransitionBody, TransitionInput, UndoPair};
 pub use self::validate::{Validate, ValidateInput};
 
 // ---- Shared helpers used across submodules ----

@@ -440,7 +440,7 @@ mod re_entry {
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, Some(LoopStep::Merge));
         assert_eq!(body.last_completed, Some(LoopStep::Merge));
-        assert_eq!(body.resume.as_deref(), Some("emery plan transition a done"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:merge a"));
     }
 
     #[tokio::test]
@@ -454,12 +454,15 @@ mod re_entry {
     }
 
     #[tokio::test]
-    async fn gate_one_approved_stamp() {
+    async fn pending_projects_like_approved() {
+        // Gate 1 lives on the first `plan execute` now, so a pending
+        // plan projects the same next action an approved one would —
+        // status never parks on the lifecycle.
         let project = Session::scripted("demo", Vec::new());
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
         let body = status(&project, &plan).await;
-        assert_eq!(body.current_step, None);
-        assert_eq!(body.resume.as_deref(), Some("emery plan approve"));
+        assert_eq!(body.next_action, "refine a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:refine a"));
     }
 
     #[tokio::test]

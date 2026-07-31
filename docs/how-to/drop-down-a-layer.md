@@ -20,15 +20,11 @@ Emery organises work in three layers above the CLI substrate. See [The layered s
 
 ## When you want full manual control
 
-Drive one slice without the execute loop — the breakout verbs need no driver lock (mutual exclusion is guest-owned by the `plan execute` marker; the lifecycle gates fence breakouts). The Gate 1 stamp comes first:
+Drive one slice without the execute loop — the breakout verbs need no driver lock (mutual exclusion is guest-owned by the `plan execute` marker; the lifecycle gates fence breakouts). Hand-driven plans need no approve stamp — claiming the first entry is your Gate 1 decision:
 
 ```bash
-emery plan approve                      # exempt from the lock
-# hold .emery/plan.lock for the driver's lifetime
-bash -c '
-  emery plan next
-  # /emery:refine <slice>, /emery:build <slice>, /emery:merge <slice>
-'
+emery plan next
+# /emery:refine <slice>, /emery:build <slice>, /emery:merge <slice>
 ```
 
 Repeat `emery plan next` between slices when the plan has multiple entries; `emery plan status` (read-only, never lock-gated) shows the next action at any point.

@@ -13,11 +13,10 @@ use crate::name::{PlanName, SliceName};
 ///
 /// workflow collapses the per-entry state machine to three states:
 /// `pending` (default after `plan add` / `plan amend`), `in-progress`
-/// (written only by `plan next`), and `done` (written by
-/// `plan transition <name> done` — the final per-entry transition,
-/// stamped by `/emery:merge`). Build failures and merge conflicts leave
-/// the active entry `in-progress`; v1 has no per-entry `blocked`,
-/// `failed`, or `skipped` state.
+/// (written only by `plan next`), and `done` (written by `slice merge`
+/// — the final per-entry transition). Build failures and merge
+/// conflicts leave the active entry `in-progress`; v1 has no per-entry
+/// `blocked`, `failed`, or `skipped` state.
 ///
 /// The enum is `Copy + Eq + Hash` so it can appear in `HashSet`s,
 /// `match` guards, and hash-keyed lookups without clones. Transition
@@ -55,10 +54,11 @@ pub enum Status {
 /// (workflow §Workflow vocabulary).
 ///
 /// Two stored states only — `pending` (default after `plan author`
-/// scaffolds the plan) and `approved` (operator-stamped at Gate 1 via
-/// `emery plan approve`). "Currently
-/// executing" and "drained" are computed from per-entry [`Status`] at
-/// read time via the plan's internal execution-state predicates.
+/// scaffolds the plan) and `approved` (stamped at Gate 1 by the first
+/// `emery plan execute` — invoking execute is the approval act).
+/// "Currently executing" and "drained" are computed from per-entry
+/// [`Status`] at read time via the plan's internal execution-state
+/// predicates.
 #[derive(
     Debug,
     Clone,
@@ -79,7 +79,7 @@ pub enum Lifecycle {
     /// Default after `plan author`; awaits operator review at Gate 1.
     #[default]
     Pending,
-    /// Operator has stamped Gate 1 — `emery plan execute` is now legal.
+    /// Gate 1 cleared — the first `emery plan execute` stamped it.
     Approved,
 }
 

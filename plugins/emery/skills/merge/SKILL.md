@@ -14,7 +14,7 @@ argument-hint: "[slice-name]"
 emery slice merge run <slice-name>
 ```
 
-When `[slice-name]` is omitted, run `emery plan status` and use the slice it names for the `merge` action; if the plan projects no merge action, surface the status output and stop. When invoked interactively, confirm with the AskQuestion tool before running (`emery slice merge preview <slice-name>` renders the read-only preview when the operator asks to see it first; `emery slice merge conflict-check <slice-name>` probes baseline drift).
+When `[slice-name]` is omitted, run `emery plan status` and use the slice it names for the `merge` action; if the plan projects no merge action, surface the status output and stop. When invoked interactively, confirm with the AskQuestion tool before running (`emery slice merge run <slice-name> --preview` renders the read-only preview when the operator asks to see it first; `emery slice merge run <slice-name> --conflict-check` probes baseline drift — both dry-run flags write nothing).
 
 ## Relay
 

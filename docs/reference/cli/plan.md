@@ -7,13 +7,12 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 | Verb | When to use |
 |------|-------------|
 | `author` | Guest-routed authoring orchestration: scaffold `plan.yaml` (refuses to overwrite an existing plan), survey every bound source, reconcile leads into `slices[]`, validate, exit at `pending` with the Gate 1 hint. Invoked by `/emery:plan`. |
-| [`execute`](#emery-plan-execute) | Guest-routed driver loop over an approved plan: claim → refine → build → merge per entry until `drained` or a stop (exit 2, `plan-execute-stopped`). Holds the `.emery/guest.lock` marker. |
+| [`execute`](#emery-plan-execute) | Guest-routed driver loop and Gate 1: the first run on a `pending` plan stamps `approved`, then claims → refines → builds → merges per entry until `drained` or a stop (exit 2, `plan-execute-stopped`). Holds the `.emery/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan in `pending` state. |
 | [`amend`](#emery-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#emery-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
 | [reconciliation](#lead-reconciliation-inside-emery-plan-author) | The reconcile leg inside `emery plan author`: validates the agent grouping and replaces `slices[]` on a replaceable plan. |
-| [`approve`](#emery-plan-approve) | Stamp Gate 1 on the single active plan (`pending → approved`). Nameless and operator-only; idempotent on an already-approved plan. |
-| [`transition`](#emery-plan-transition) | Close a merged entry (`emery plan transition <entry-name> done`) or walk one rung backwards (`--undo`). Per-entry status is `pending | in-progress | done` only. |
+| [`transition`](#emery-plan-transition) | Walk a plan entry's status one rung backwards (`--undo` is the only mode). Per-entry status is `pending | in-progress | done` only; forward writes belong to `plan next` and `slice merge run`. |
 | [`validate`](#emery-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `emery plan execute` reports `stuck`. |
 | [`next`](#emery-plan-next) | Report the next eligible entry (used by the execute loop and ad-hoc operators). |
 | [`status`](#emery-plan-status) | Read-only projection of the plan's execution state into a deterministic `next-action` (`refine|build|merge <slice>` / `stop <reason>` / `drained`). |
@@ -54,17 +53,17 @@ Exit code: `0` when no blocking finding fires (suggestions are non-fatal); `2` w
 
 ### emery plan execute
 
-Drive an approved plan through refine → build → merge per entry under the guest lock.
+Stamp Gate 1 when needed, then drive the plan through refine → build → merge per entry under the guest lock.
 
 ```bash
-emery plan execute
+emery plan execute [--actor operator|agent]
 ```
 
-The loop claims the next eligible entry, runs the refine, build, and merge orchestrations, and repeats until `emery plan status` projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). It refuses unless the plan lifecycle is `approved`, and it holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime — a second driver session exits with `guest-marker-held`.
+Invoking execute on a `pending` plan is the approval act: the loop first stamps `pending → approved` and journals `plan.transition.approved` with the closed `actor` enum (`--actor`, default `operator`); the stamp is idempotent on an already-approved plan (no disk write, no journal event). It then claims the next eligible entry, runs the refine, build, and merge orchestrations, and repeats until `emery plan status` projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). It holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime — a second driver session exits with `guest-marker-held`.
 
 **Workspace routing is unsupported.** The loop runs single-project plans only: a workspace plan root (`workspace: true` in `project.yaml`) or any `project`-scoped plan entry refuses with `plan-execute-workspace-unsupported` (exit 2) before any adapter lookup or plan state is touched. Drive workspace plans hand-driven instead — `emery plan next`, then the `/emery:refine` → `/emery:build` → `/emery:merge` breakouts. The read-only `emery plan status` stays slot-aware and never refuses.
 
-Stops render the `emery plan status` projection verbatim: the closed reason (`plan-not-approved`, `refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`), the failure detail from the journal, a one-line hint, and the literal resume command. Re-running `emery plan execute` after a refine / build / preflight-merge stop resumes from the same active entry. After `merge-postflight-failed`, the entry is already `done` (non-rollback); re-running execute acknowledges the sticky stop (`plan.merge-postflight.acknowledged`) and continues the queue — or drains when no pending entries remain.
+Stops render the `emery plan status` projection verbatim: the closed reason (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`), the failure detail from the journal, a one-line hint, and the literal resume command. Re-running `emery plan execute` after a refine / build / preflight-merge stop resumes from the same active entry. After `merge-postflight-failed`, the entry is already `done` (non-rollback); re-running execute acknowledges the sticky stop (`plan.merge-postflight.acknowledged`) and continues the queue — or drains when no pending entries remain.
 
 ### emery plan next
 
@@ -94,9 +93,9 @@ The projection reads three surfaces: `plan.yaml` entries, the candidate slice's 
 | `stop <reason>` | Halt the loop; the `stop` sub-body carries the closed reason, optional journal `detail`, and a one-line operator hint. |
 | `drained` | No `pending` or `in-progress` entries remain — text mode renders the literal `drained — run /emery:finalize <name>` string. |
 
-Stop reasons are a closed set: `plan-not-approved` (Gate 1 not stamped), `refine-failed` / `build-failed` / `merge-conflict` (the awaited phase's most recent journal terminal — `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` — is a failure, scoped to the active entry's claim window), `merge-postflight-failed` (the target's postflight gate failed after commit — entry is `done` and archived; sticky until `emery plan execute` acknowledges), `slice-dropped`, `merge-incomplete` (the merge landed but the entry's `done` stamp is missing), and `stuck` (pending entries blocked on unmet dependencies).
+Stop reasons are a closed set: `refine-failed` / `build-failed` / `merge-conflict` (the awaited phase's most recent journal terminal — `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` — is a failure, scoped to the active entry's claim window), `merge-postflight-failed` (the target's postflight gate failed after commit — entry is `done` and archived; sticky until `emery plan execute` acknowledges), `slice-dropped`, `merge-incomplete` (the merge landed but the entry's `done` stamp is missing — re-running `/emery:merge` or `emery plan execute` heals the torn stamp), and `stuck` (pending entries blocked on unmet dependencies). A `pending` plan projects the same next action as an approved one — Gate 1 is stamped by execute itself, not gated in status.
 
-With `--format json` the body carries `plan`, `lifecycle`, `counts` (`pending` / `in-progress` / `done`), `active`, `next-action` (the rendered string), `action` (the closed verb), `slice`, `project`, the optional `stop` sub-body, and the re-entry fields: `current-step` / `last-completed` (the candidate slice's position in the `refine → build → merge` loop, `null` outside a dispatchable slice) and `resume` — the literal command or skill invocation that makes progress (`/emery:build a`, `emery plan approve`, …), `null` when no single command does (`stuck`, `slice-dropped`). Text mode renders `resume:` as the final line.
+With `--format json` the body carries `plan`, `lifecycle`, `counts` (`pending` / `in-progress` / `done`), `active`, `next-action` (the rendered string), `action` (the closed verb), `slice`, `project`, the optional `stop` sub-body, and the re-entry fields: `current-step` / `last-completed` (the candidate slice's position in the `refine → build → merge` loop, `null` outside a dispatchable slice) and `resume` — the literal command or skill invocation that makes progress (`/emery:build a`, `/emery:merge a`, …), `null` when no single command does (`stuck`, `slice-dropped`). Text mode renders `resume:` as the final line.
 
 ### emery plan add
 
@@ -161,26 +160,15 @@ Validation codes (all exit 2):
 
 Both envelopes are owned by the typed wire DTOs in [`crates/project/src/plan/propose.rs`](../../../crates/project/src/plan/propose.rs) (closed `kind: request | response`); the response's judgment-answer schema is generated from them by `project::answers::proposal`. See [CLI output shapes](../cli-output-shapes.md) for the envelope bodies.
 
-### emery plan approve
-
-Stamp Gate 1 on the single active plan.
-
-```bash
-emery plan approve
-```
-
-Nameless — there is exactly one active `plan.yaml`, so no selector is needed. Operator-only: `/emery:plan` never runs it, and `/emery:execute` runs it only behind an explicit operator confirmation. Approving an already-approved plan is an idempotent no-op (no disk write, no journal event); a fresh stamp records the closed `actor` enum (`--actor`, default `operator`) on the `plan.transition.approved` journal event.
-
 ### emery plan transition
 
-Close a merged plan entry, or walk its status one rung backwards.
+Walk a plan entry's status one rung backwards.
 
 ```bash
-emery plan transition <entry> done
 emery plan transition <entry> --undo
 ```
 
-`done` closes the entry after `/emery:merge` folded the slice; `--undo` walks one rung backwards (`done → in-progress`, then `in-progress → pending` on a second call), firing one `plan.transition.undone` event per rung.
+`--undo` is the only mode: it walks one rung backwards (`done → in-progress`, then `in-progress → pending` on a second call), firing one `plan.transition.undone` event per rung. Forward writes have no transition surface — `emery slice merge run` stamps `done` (and re-stamps it when healing a torn merge).
 
 Per-entry `pending` is written by `emery plan add` / `plan amend`; `in-progress` is written only by `emery plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 

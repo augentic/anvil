@@ -128,18 +128,14 @@ Sources: 1. Leads: 1.
 The skill exits at `plan.lifecycle: pending` and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Run `emery plan approve` to stamp Gate 1, then `emery plan execute` to drive the slices.
+Plan `fix-typo` is at `pending`. Review it, then run `emery plan execute` to approve and drive the slices (executing is the Gate 1 stamp).
 ```
 
 #### Operator review step (Gate 1)
 
-Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Emery calls it **Gate 1**. `/emery:plan` never stamps `approved` itself; you do:
+Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Emery calls it **Gate 1**. `/emery:plan` never starts execution itself; invoking `emery plan execute` is your approval act — its first run stamps `approved`.
 
-```bash
-emery plan approve
-```
-
-Alternatively, run `/emery:execute`: it asks for this confirmation explicitly, stamps Gate 1 on your behalf, then continues straight into the execute loop below.
+Alternatively, run `/emery:execute`: it asks for this confirmation explicitly, then continues straight into the execute loop below.
 
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 </div>
