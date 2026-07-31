@@ -18,6 +18,7 @@ async fn author(
             name: "demo".to_string(),
             sources: support::greeting_binding_for(source_adapter),
             intent: None,
+            force: false,
         },
     )
     .await
@@ -108,7 +109,7 @@ async fn survey_ensures_pinned_binding_before_dispatch() {
         },
     );
     let plan_path = session.root().join("plan.yaml");
-    project::plan::scaffold(&plan_path, "demo", bindings)
+    project::plan::scaffold(&plan_path, "demo", bindings, false)
         .expect("scaffold")
         .save(&plan_path)
         .expect("save plan.yaml");
@@ -153,6 +154,7 @@ mod train_expansion {
                 name: "demo".to_string(),
                 sources,
                 intent,
+                force: false,
             },
         )
         .await

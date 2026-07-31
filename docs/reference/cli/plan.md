@@ -6,7 +6,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 
 | Verb | When to use |
 |------|-------------|
-| `author` | Guest-routed authoring orchestration: scaffold `plan.yaml` (refuses to overwrite an existing plan), survey every bound source, reconcile leads into `slices[]`, validate, exit at `pending` with the Gate 1 hint. Invoked by `/emery:plan`. |
+| `author` | Guest-routed authoring orchestration: scaffold `plan.yaml` (refuses an existing plan unless `--force` replaces a pending one), survey every bound source, reconcile leads into `slices[]`, validate, exit at `pending` with the Gate 1 hint. Invoked by `/emery:plan`. |
 | [`execute`](#emery-plan-execute) | Guest-routed driver loop and Gate 1: the first run on a `pending` plan stamps `approved`, then claims → refines → builds → merges per entry until `drained` or a stop (exit 2, `plan-execute-stopped`). Holds the `.emery/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan in `pending` state. |
 | [`amend`](#emery-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
@@ -20,7 +20,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 
 ## Subcommands
 
-`emery plan author <name> [--source <key>=<adapter>:<path>...] [--intent "<string>"]` scaffolds `plan.yaml` at the repo root with the given kebab-case name before its survey and reconcile legs run. Each `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `already-exists` when `plan.yaml` is already present.
+`emery plan author <name> [--source <key>=<adapter>:<path>...] [--intent "<string>"] [--force]` scaffolds `plan.yaml` at the repo root with the given kebab-case name before its survey and reconcile legs run. Each `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `already-exists` when `plan.yaml` is already present unless `--force` is set; `--force` replaces only a replaceable plan (`lifecycle: pending` and every entry `pending`) and otherwise exits with `plan-author-not-replaceable` — archive first (`emery plan archive`). `/emery:plan` confirms before passing `--force`.
 
 Author widens then ensures every binding up front, before the scaffold write: a bare adapter name with no seeded project-cache entry auto-pins to the binary's embedded first-party adapter train, stamping `version:` on the binding in `plan.yaml` before first use — so the survey fan-out and every later `slice refine` extract dispatch the pinned routed id (the pin installs through the standard pull-on-miss path). The `--intent` sugar's implicit `intent` binding rides the same expansion. A cache-seeded binding (`emery adapter add`) stays bare — the co-dev seed always wins. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
 
@@ -109,7 +109,7 @@ Creates the entry in `pending` state.
 
 ### emery plan amend
 
-Edit non-status fields on an existing **entry** (one positional — the slice name; there is a single active `plan.yaml`). Use for divergence stamps, authority overrides, and surgical source/project/depends-on edits. For grouping changes prefer re-running `emery plan author` (wholesale re-reconcile); for deferral use `emery plan remove`.
+Edit non-status fields on an existing **entry** (one positional — the slice name; there is a single active `plan.yaml`). Use for divergence stamps, authority overrides, and surgical source/project/depends-on edits. For grouping changes prefer re-running `emery plan author --force` (wholesale replace of a pending plan); for deferral use `emery plan remove`.
 
 ```bash
 emery plan amend <entry> [--project <name>] [--description "<text>"] [--depends-on <entry>...]

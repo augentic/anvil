@@ -166,6 +166,13 @@ pub struct AuthorArgs {
     /// `--source intent=intent:value:<string>`.
     #[arg(long = "intent", value_name = "STRING")]
     pub intent: Option<String>,
+    /// Replace an existing replaceable plan (`lifecycle: pending`
+    /// and every entry `pending`). Without --force an existing
+    /// `plan.yaml` refuses with `already-exists`; an approved or
+    /// in-flight plan refuses with `plan-author-not-replaceable`
+    /// (archive first).
+    #[arg(long)]
+    pub force: bool,
 }
 
 /// Arguments for `plan archive`.

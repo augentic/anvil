@@ -94,7 +94,7 @@ The headline rules:
 The default rhythm is `/emery:plan` → operator runs `emery plan execute` (its first run stamps `approved` — Gate 1) → `/emery:finalize`; `/emery:execute` carries the middle step behind an explicit Gate 1 confirmation. The operator surface, in the order it appears in a project's life:
 
 - `/emery:init` — scaffold `.emery/`, run once per project.
-- `/emery:plan` — wrap the guest-routed `emery plan author`: survey each bound source, reconcile leads into `slices[]`, author the Gate 1 prose, validate. Exits at `plan.lifecycle: pending` and prints the literal `emery plan execute` command.
+- `/emery:plan` — wrap the guest-routed `emery plan author`: survey each bound source, reconcile leads into `slices[]`, author the Gate 1 prose, validate. Exits at `plan.lifecycle: pending` and prints the literal `emery plan execute` command. An existing `plan.yaml` requires operator confirmation and `--force` (replaceable pending plans only; archive first otherwise).
 - `emery plan execute` — the guest-routed drained loop and **Gate 1**: invoking it on a `pending` plan is the approval act — it stamps `pending → approved` (idempotent, journaling `plan.transition.approved` with the closed `--actor` enum, default `operator`), then runs refine → build → merge per entry until every per-entry `status` is `done` or a stop condition halts it. `/emery:plan` never runs it; `/emery:execute` wraps it behind an explicit operator confirmation.
 - `/emery:refine` — breakout: wrap `emery slice refine` for one slice (extract per bound source, synthesis, validation, the `refined` transition).
 - `/emery:build` — breakout: wrap `emery slice build` for one slice.

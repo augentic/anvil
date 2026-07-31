@@ -85,6 +85,7 @@ async fn author(session: &Session) {
             name: "auth".to_string(),
             sources: support::adversarial_bindings(),
             intent: None,
+            force: false,
         },
     )
     .await

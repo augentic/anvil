@@ -58,8 +58,8 @@ pub struct AuthorOutcome {
 /// - `plan-author-workspace-unsupported` (exit 2) when the plan root is
 ///   a workspace — the skill's workspace routing has no in-guest
 ///   counterpart, mirroring the execute loop's refusal.
-/// - `change-name-not-kebab` / `already-exists` from the scaffold
-///   kernel's gates.
+/// - `change-name-not-kebab` / `already-exists` /
+///   `plan-author-not-replaceable` from the scaffold kernel's gates.
 /// - survey fan-out failures from [`super::survey_all`] (earlier
 ///   sources stay merged — the native partial-progress posture).
 /// - the judgment leg's model / schema / kernel / gate-prose failures
@@ -69,7 +69,7 @@ pub struct AuthorOutcome {
 #[tracing::instrument(name = "plan.author", skip_all, fields(plan = %name))]
 pub async fn author<P: Model, S: Source, R: Resolver>(
     caps: super::Capabilities<'_, P, S, (), R>, paths: &ExecutionPaths, now: Timestamp, name: &str,
-    mut bindings: BTreeMap<String, SourceBinding>,
+    mut bindings: BTreeMap<String, SourceBinding>, force: bool,
 ) -> Result<AuthorOutcome, Error> {
     // Authoring never dispatches the target seam — the bundle carries
     // the unit placeholder (see `Capabilities::sans_targets`).
@@ -98,7 +98,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
         }
         resolver.ensure_source(&binding.selector(), paths).await?;
     }
-    scaffold(layout, name, bindings)?;
+    scaffold(layout, name, bindings, force)?;
     let surveyed = super::survey_all(sources, resolver, paths, now).await?;
 
     let discovery = Discovery::load(&layout.discovery_path())?;
@@ -182,15 +182,16 @@ fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
 }
 
 /// The plan scaffold via the shared [`project::plan::scaffold`]
-/// kernel, plus the immediate atomic save. No auto-approval and no
+/// kernel, plus the immediate atomic save. `force` opts into
+/// replacing a replaceable existing plan. No auto-approval and no
 /// `--authority-override` surface — Gate 1 stamping stays
 /// operator-only and override pre-seeding needs slice rows that do
 /// not exist yet.
 fn scaffold(
-    layout: Layout<'_>, name: &str, bindings: BTreeMap<String, SourceBinding>,
+    layout: Layout<'_>, name: &str, bindings: BTreeMap<String, SourceBinding>, force: bool,
 ) -> Result<(), Error> {
     let plan_path = layout.plan_path();
-    project::plan::scaffold(&plan_path, name, bindings)?.save(&plan_path)
+    project::plan::scaffold(&plan_path, name, bindings, force)?.save(&plan_path)
 }
 
 /// Resolve the project topology the request embeds, minus the

@@ -69,7 +69,7 @@ The matching CLI surface is **`emery plan {author, execute, add, amend, remove, 
 
 ### Gate 1: the operator review seam
 
-The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships. `/emery:plan` writes `pending`; the operator approves by invoking `emery plan execute` — the first run is the stamp. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `emery plan add`, `emery plan remove`, or `emery plan amend <entry>` (or re-run `emery plan author` to re-reconcile wholesale) before any per-slice work runs.
+The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships. `/emery:plan` writes `pending`; the operator approves by invoking `emery plan execute` — the first run is the stamp. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `emery plan add`, `emery plan remove`, or `emery plan amend <entry>` (or re-run `emery plan author --force` / `/emery:plan` to replace a pending plan wholesale) before any per-slice work runs.
 
 The framework does not ship a separate approve verb: executing is approving. The operator-facing pause lives in `/emery:execute`'s explicit confirmation, and the seam is observable on disk (`plan.lifecycle == approved`) so automation can branch on it cleanly.
 

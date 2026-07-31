@@ -30,6 +30,7 @@ async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            force: false,
         },
     )
     .await

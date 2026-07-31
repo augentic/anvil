@@ -10,7 +10,7 @@ Gate 1 is the operator review step between plan authoring and execution. `/emery
 
 | Goal | Prefer |
 | --- | --- |
-| Rethink cross-source grouping | Re-run `emery plan author` (replaces all slices) |
+| Rethink cross-source grouping | Re-run `emery plan author --force` (or `/emery:plan`, which confirms) — replaces a pending plan wholesale |
 | Defer a lead out of this change | `emery plan remove <entry>` |
 | Split or merge entries | `emery plan add` + `emery plan amend` + `emery plan remove` — see the [plan command reference](../reference/cli/plan.md) |
 | Divergence stamp, authority override, single-source fix | `emery plan amend <entry>` (the scalpel) |

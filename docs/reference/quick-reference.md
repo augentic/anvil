@@ -75,7 +75,7 @@ emery source resolve <name>                            # validate a source adapt
 emery target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits at pending
+emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits at pending (--force replaces a pending plan)
 emery plan add <entry> --sources <key>=<lead> --project <name>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 emery plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)

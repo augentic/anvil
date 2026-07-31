@@ -373,7 +373,7 @@ where
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
         "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint.\n\nGuest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `already-exists` unless `--force` is set; `--force` replaces only a replaceable plan (`lifecycle: pending` and every entry `pending`) and otherwise exits with `plan-author-not-replaceable` (archive first). Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
@@ -507,7 +507,7 @@ convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on,
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
 convert!(plan::TransitionArgs => ::change::plan::handlers::TransitionInput { name, undo });
-convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent });
+convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
 convert!(registry::ValidateArgs => project::registry::handlers::ValidateInput {});
