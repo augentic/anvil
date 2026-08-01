@@ -1,10 +1,10 @@
 # Style
 
-Cross-cutting code-quality rules every Rust change in this workspace honours. These complement the broader rules in [coding-standards.md](./coding-standards.md).
+Cross-cutting code-quality rules every Rust change in this workspace honours, complementing the broader rules in [coding-standards.md](./coding-standards.md). The external baseline is the [Pragmatic Rust Guidelines](https://microsoft.github.io/rust-guidelines/guidelines/index.html); each section below is a house delta layered on top, and where one disagrees with the baseline, this document wins.
 
 ## Naming by context
 
-A type lives in `crates/<crate>/<module>/<file>.rs`; that path is four words of free context. Don't prefix the type with module-name fragments. Private and `pub(crate)` symbols rarely need disambiguation; re-exports that cross crate boundaries may.
+The baseline's M-SHORT-NAMES, sharpened: a type lives in `crates/<crate>/<module>/<file>.rs`, and that path is four words of free context. Don't prefix the type with module-name fragments. Private and `pub(crate)` symbols rarely need disambiguation; re-exports that cross crate boundaries may.
 
 ```rust
 // crates/project/src/registry/workspace/push/forge.rs
@@ -45,7 +45,7 @@ ctx.emit_with(&resolved, |w, r| write_resolved(w, r))?;
 
 ## No traits for testability alone
 
-Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` (drive via the `CmdRunner` callable alias in `project::cmd`) or the filesystem. When a stable in-tree boundary already exists — for example `AtomicYaml` in `project::config`, shared by `Plan`, `Project`, and `Registry` for `.emery/` YAML state — implement that instead of inventing a sibling trait pair.
+House rule — generic advice about abstracting dependencies for mockability does not apply here. Don't introduce a trait whose only non-test impl is `RealX`. The right test boundary is the lowest external surface — `std::process::Command` (drive via the `CmdRunner` callable alias in `project::cmd`) or the filesystem. When a stable in-tree boundary already exists — for example `AtomicYaml` in `project::config`, shared by `Plan`, `Project`, and `Registry` for `.emery/` YAML state — implement that instead of inventing a sibling trait pair.
 
 ```rust
 // BAD — trait pair that exists so MockProjectStore can swap in.

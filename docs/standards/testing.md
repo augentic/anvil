@@ -1,6 +1,6 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over public crate and binary boundaries, one self-contained mock adapter supplying both `emery:adapter` axes, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a test.
+Integration-first test posture: `cargo nextest` over public crate and binary boundaries, one self-contained mock adapter supplying both `emery:adapter` axes, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. This posture deliberately diverges from generic unit-test-first guidance; it overrides any external baseline. Read this before adding a test.
 
 ## Posture
 

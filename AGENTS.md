@@ -164,6 +164,7 @@ The eight `/emery:*` skills are ultrathin invoke-and-relay wrappers (see [Skill 
 
 ## Related coding standards
 
+- The external Rust baseline is the [Pragmatic Rust Guidelines](https://microsoft.github.io/rust-guidelines/guidelines/index.html); [docs/standards/](docs/standards/) carries only the house deltas, project contracts, and explicit overrides layered on top (overrides win).
 - CLI binary and crate conventions (errors, DTOs, hint colocation, brevity) live in [the Rust workspace section below](#the-rust-workspace-emery-cli) and [docs/standards/](docs/standards/). Skills that shell out to `emery` rely on the kebab-case `error` discriminants documented there.
 - Markdown changes follow [documentation authoring standards](docs/standards/doc-authoring.md). Do not hard-wrap prose solely for column width; preserve semantically meaningful breaks in frontmatter, tables, lists, blockquotes, and fenced code.
 
