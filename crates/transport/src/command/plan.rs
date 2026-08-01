@@ -119,7 +119,7 @@ pub struct NextArgs {}
 pub struct StatusArgs {}
 
 /// Arguments for `plan execute`.
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Copy, Debug, Args)]
 pub struct ExecuteArgs {
     /// Who is driving this invocation — `operator` (default) or
     /// `agent`. Recorded on the `plan.transition.approved` journal
@@ -127,7 +127,7 @@ pub struct ExecuteArgs {
     /// on first execute); self-reported evidence for eval probes,
     /// not an enforcement gate.
     #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
-    pub actor: String,
+    pub actor: project::journal::Actor,
 }
 
 /// Arguments for `plan remove`.

@@ -70,7 +70,7 @@ fn eval_log_mirror() {
 }
 
 #[test]
-fn reserved_log_flags_peel_before_dispatch() {
+fn log_flags_peel_before_dispatch() {
     let tmp = TempDir::new().expect("tempdir");
     let project = tmp.path().join("project");
     std::fs::create_dir_all(&project).expect("mkdir");

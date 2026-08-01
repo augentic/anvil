@@ -76,7 +76,7 @@ mod patched_constraints {
     }
 
     #[test]
-    fn claim_id_conditionally_required() {
+    fn claim_id_conditional() {
         let schema = project::answers::evidence();
         let condition = schema.pointer("/$defs/Claim/if").expect("if clause on Claim");
         assert_eq!(

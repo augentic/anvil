@@ -54,3 +54,16 @@ fn missing_sidecar_is_fail_closed() {
         .expect_err("an entry without a sidecar is unverifiable");
     assert_eq!(failure, StoreVerifyError::MissingSidecar);
 }
+
+#[test]
+fn unreadable_is_not_mismatch() {
+    // A missing (or unreadable) entry is an I/O refusal, not a digest
+    // drift — the two recoveries differ.
+    let store = tempfile::tempdir().expect("store root");
+    let entry = store.path().join("demo-target@1.2.0.wasm");
+    let meta = store.path().join("demo-target@1.2.0.meta");
+    write_store_meta(&meta, "sha256:recorded", None).expect("write sidecar");
+    let failure =
+        verify_store_entry(&entry, &meta).expect_err("a missing entry cannot be verified");
+    assert!(matches!(failure, StoreVerifyError::Unreadable(_)), "{failure:?}");
+}

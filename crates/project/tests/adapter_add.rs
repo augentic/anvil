@@ -32,7 +32,7 @@ fn stage(provider: &Provider, relative: &str, bytes: &[u8]) {
 }
 
 #[tokio::test]
-async fn pre_init_target_seed_then_bare_init() {
+async fn target_seed_then_bare_init() {
     // No `.emery/` exists yet: the seed lands in the out-of-tree
     // cache, and the subsequent bare init resolves it as the project
     // target without any development build present.
@@ -61,7 +61,7 @@ async fn pre_init_target_seed_then_bare_init() {
 }
 
 #[tokio::test]
-async fn source_seed_resolves_bare_binding() {
+async fn source_seed_resolves_bare() {
     // Axis-neutral seeding: the same cache entry satisfies a bare
     // source resolve — the binding supplies the axis, not the seed.
     let project = Provider::bare();

@@ -15,7 +15,7 @@
 //! [`Anchor::project_root`] instead of loading `crate::handler::Ctx`.
 
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use error::Error;
 use omnia_guest::api::invoke::CallContext;
@@ -149,10 +149,10 @@ async fn ensure(
     Ok(EnsuredAdapter { selector, resolved })
 }
 
-/// Display a path as the canonical absolute form when it exists; fall
-/// back to the lossy display when it does not.
-fn canonical(p: &Path) -> String {
-    std::fs::canonicalize(p).map_or_else(|_| p.display().to_string(), |c| c.display().to_string())
+/// A path in its canonical absolute form when it exists; the path as
+/// given when it does not.
+fn canonical(p: &Path) -> PathBuf {
+    std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
 }
 
 /// Best-effort display name for a recorded adapter value — the
@@ -179,8 +179,8 @@ pub enum InitMode {
 pub struct InitBody {
     /// What this run did.
     pub mode: InitMode,
-    /// Display path of the written `project.yaml`.
-    pub config_path: String,
+    /// Canonical path of the written `project.yaml`.
+    pub config_path: PathBuf,
     /// Resolved adapter name (or `"workspace"` for workspace init).
     pub adapter_name: String,
     /// The binding value recorded on `project.yaml.adapter` — the
@@ -191,7 +191,7 @@ pub struct InitBody {
     /// Whether the project component cache tenant already existed.
     pub cache_present: bool,
     /// Directories the scaffold created.
-    pub directories_created: Vec<String>,
+    pub directories_created: Vec<PathBuf>,
     /// Rule keys scaffolded into the project.
     pub scaffolded_rule_keys: Vec<String>,
     /// The `emery` version pinned on `project.yaml`.
@@ -252,7 +252,11 @@ impl Render for InitBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         match self.mode {
             InitMode::AlreadyInitialized => {
-                writeln!(w, "Already initialized ({}); nothing changed.", self.config_path)?;
+                writeln!(
+                    w,
+                    "Already initialized ({}); nothing changed.",
+                    self.config_path.display()
+                )?;
                 writeln!(w, "Run `emery init --upgrade` to bump the emery pin.")?;
                 return Ok(());
             }
@@ -270,7 +274,7 @@ impl Render for InitBody {
             Some(binding) => writeln!(w, "  adapter: {binding}")?,
             None => writeln!(w, "  adapter: {}", self.adapter_name)?,
         }
-        writeln!(w, "  config: {}", self.config_path)?;
+        writeln!(w, "  config: {}", self.config_path.display())?;
         writeln!(w, "  emery: {}", self.emery_version)?;
         if self.context_skip_reason == Some("existing-agents-md") {
             writeln!(w, "AGENTS.md already present; skipping context generate")?;

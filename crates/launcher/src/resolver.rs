@@ -16,7 +16,9 @@
 //! global store entry; a store miss triggers the host-owned
 //! pull-on-miss install from the first-party OCI registry
 //! ([`crate::install`]), then resolves the freshly installed entry
-//! through the same verify-on-read gate. Malformed identities fail
+//! through the same verify-on-read gate. An entry that fails that
+//! gate (a torn install, drifted bytes) is unlinked and reinstalled
+//! once before failing closed. Malformed identities fail
 //! deterministically. Every settled identity is logged to stderr with
 //! the host version — the run's version audit trail.
 
@@ -98,6 +100,8 @@ impl Resolver {
     }
 
     /// Pinned identity: the immutable store entry, installed on miss.
+    /// An entry that fails store verification (a torn install, drifted
+    /// bytes) is unlinked and reinstalled once before failing closed.
     async fn resolve_pinned(
         &self, routed: &RoutedId, version: semver::Version,
     ) -> Result<Vec<u8>, Error> {
@@ -106,7 +110,13 @@ impl Resolver {
             install::install(&self.registry, &routed.name, &version_str, &self.paths).await?;
         }
         let selector = package(&routed.name, version.clone());
-        let location = locate::locate(routed.axis, &selector, &routed.name, &self.paths)?;
+        let location = match locate::locate(routed.axis, &selector, &routed.name, &self.paths) {
+            Err(err) if unverifiable(&err) => {
+                self.heal(&routed.name, &version_str, err).await?;
+                locate::locate(routed.axis, &selector, &routed.name, &self.paths)?
+            }
+            other => other?,
+        };
         log_use(routed, Some(&version), "store");
         Ok(std::fs::read(location.path())?)
     }
@@ -145,7 +155,16 @@ impl Resolver {
 
         if let Some(version) = install::store_newest(name, &self.paths) {
             let selector = package(name, version.clone());
-            let location = locate::locate(routed.axis, &selector, name, &self.paths)?;
+            // An explicit refresh may reinstall an unverifiable
+            // equal-version entry; without one the store-only path
+            // stays fail-closed.
+            let location = match locate::locate(routed.axis, &selector, name, &self.paths) {
+                Err(err) if self.refresh.contains(name) && unverifiable(&err) => {
+                    self.heal(name, &version.to_string(), err).await?;
+                    locate::locate(routed.axis, &selector, name, &self.paths)?
+                }
+                other => other?,
+            };
             log_use(routed, Some(&version), "store");
             return Ok(std::fs::read(location.path())?);
         }
@@ -158,6 +177,39 @@ impl Resolver {
         log_use(routed, Some(&latest), "installed from registry");
         Ok(std::fs::read(location.path())?)
     }
+
+    /// Unlink an unverifiable store entry and reinstall its pin — the
+    /// recovery for a torn install or drifted bytes. When the entry
+    /// cannot be unlinked or the reinstall fails (offline, tag gone),
+    /// the original verification refusal stands and the failed attempt
+    /// is logged to stderr.
+    async fn heal(&self, name: &str, version: &str, refused: Error) -> Result<(), Error> {
+        let locations = self.paths.locations();
+        for stale in [locations.store_entry(name, version), locations.store_meta(name, version)] {
+            match std::fs::remove_file(&stale) {
+                Ok(()) => {}
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+                Err(_) => return Err(refused),
+            }
+        }
+        if let Err(err) = install::install(&self.registry, name, version, &self.paths).await {
+            eprintln!(
+                "emery {}: reinstalling unverifiable `{name}@{version}` failed: {err}",
+                env!("CARGO_PKG_VERSION"),
+            );
+            return Err(refused);
+        }
+        Ok(())
+    }
+}
+
+/// Whether a locate failure is a store-verification refusal
+/// (`adapter-sidecar-missing` / `adapter-digest-mismatch`) the install
+/// leg can heal by reinstalling the pin. Misses and I/O failures are
+/// not healable.
+fn unverifiable(err: &Error) -> bool {
+    matches!(err, Error::Diag { code, .. }
+        if *code == "adapter-sidecar-missing" || *code == "adapter-digest-mismatch")
 }
 
 /// The first-party package selector for one `name@version` identity.

@@ -61,7 +61,7 @@ async fn force_replaces_pending() {
     assert!(!before.entries.is_empty(), "first author wrote slices");
 
     let replaced = author(&session, true).await.expect("force re-authors");
-    assert_eq!(replaced.lifecycle, "pending");
+    assert_eq!(replaced.lifecycle, Lifecycle::Pending);
     assert_eq!(replaced.slices, ["greeting"]);
 
     let after = Plan::load(&plan_path).expect("plan after force");
@@ -85,7 +85,7 @@ async fn force_replaces_approved() {
     plan.save(&plan_path).expect("stamp approved");
 
     let replaced = author(&session, true).await.expect("force re-authors approved");
-    assert_eq!(replaced.lifecycle, "pending");
+    assert_eq!(replaced.lifecycle, Lifecycle::Pending);
     assert_eq!(replaced.slices, ["greeting"]);
 
     let after = Plan::load(&plan_path).expect("plan after force");

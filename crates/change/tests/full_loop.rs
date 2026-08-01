@@ -50,7 +50,7 @@ async fn scaffold_author(session: &Session) {
     )
     .await
     .expect("author walks to pending");
-    assert_eq!(authored.lifecycle, "pending");
+    assert_eq!(authored.lifecycle, project::plan::Lifecycle::Pending);
     assert_eq!(authored.slices, ["greeting"]);
     assert_eq!(authored.surveyed.len(), 1);
     assert_eq!(authored.surveyed[0].leads, ["greeting"]);
@@ -166,7 +166,7 @@ async fn execute_stamps_gate1_once() {
     let executed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput {
-            actor: "agent".to_string(),
+            actor: project::journal::Actor::Agent,
         },
     )
     .await

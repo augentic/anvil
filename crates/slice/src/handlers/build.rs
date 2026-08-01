@@ -42,12 +42,18 @@ impl<P: Anchor + Resolver + Target> Operation<P> for Build {
             WorkingTree::live(),
         )
         .await?;
-        Ok(BuildBody {
+        Ok(BuildBody::from(outcome))
+    }
+}
+
+impl From<orchestrate::BuildOutcome> for BuildBody {
+    fn from(outcome: orchestrate::BuildOutcome) -> Self {
+        Self {
             slice: outcome.slice,
             target: outcome.target,
             status: outcome.status,
             findings: outcome.findings,
-        })
+        }
     }
 }
 

@@ -132,7 +132,8 @@ impl WorkingTree {
 /// Which side of the deterministic core merge a `merge` dispatch runs
 /// on, mirroring the WIT `merge-phase` enum. The engine's merge stays
 /// deterministic; the target's judgment brackets it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, strum::Display)]
+#[strum(serialize_all = "kebab-case")]
 pub enum MergePhase {
     /// Before the deterministic commit: a blocking finding aborts the
     /// merge with the slice still `built`.
@@ -140,15 +141,6 @@ pub enum MergePhase {
     /// After the commit and archive: a blocking finding is a terminal
     /// diagnostic, never a rollback.
     Postflight,
-}
-
-impl std::fmt::Display for MergePhase {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::Preflight => "preflight",
-            Self::Postflight => "postflight",
-        })
-    }
 }
 
 /// Plan-time discovery and slice-time extraction for a source adapter.

@@ -17,6 +17,6 @@ mod survey;
 
 pub use project::seam::Capabilities;
 
-pub use self::author::author;
+pub use self::author::{AuthorOutcome, author};
 pub use self::execute::{ExecuteOutcome, execute};
 pub use self::survey::{SurveyedSource, survey, survey_all};

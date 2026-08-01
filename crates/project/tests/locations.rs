@@ -30,7 +30,7 @@ fn store_formulas() {
 }
 
 #[test]
-fn parent_placement_keys_by_project() {
+fn parent_keys_by_project() {
     let locations = explicit();
     let a = locations.project_cache_dir(Path::new("/some/project/a"));
     let b = locations.project_cache_dir(Path::new("/some/project/b"));
@@ -44,7 +44,7 @@ fn parent_placement_keys_by_project() {
 }
 
 #[test]
-fn project_placement_is_already_resolved() {
+fn project_placement_resolved() {
     let locations = Locations::explicit(
         PathBuf::from("/store"),
         CachePlacement::Project(PathBuf::from("/cache")),

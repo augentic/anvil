@@ -44,7 +44,7 @@ fn dual_axis_shelf_mounts_once() {
 // operation carrying reference documents and routes the shelf URL into
 // the adapter context; shutdown awaits the server task.
 #[tokio::test]
-async fn online_grant_routing_and_shutdown() {
+async fn grant_routing_and_shutdown() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let catalog = Catalog::builder().source::<Reflect>().build().expect("valid catalog");
     let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Online);

@@ -117,7 +117,7 @@ fn code(err: &error::Error) -> &str {
 // directory; the writable mount directories are created pre-run.
 
 #[test]
-fn mounts_are_the_well_known_locations() {
+fn mounts_are_well_known() {
     let sandbox = Sandbox::new();
     let policy = sandbox.policy(&["registry", "validate"]);
 
@@ -133,7 +133,7 @@ fn mounts_are_the_well_known_locations() {
 }
 
 #[test]
-fn anchors_at_the_project_root_ancestor() {
+fn anchors_at_project_root() {
     let sandbox = Sandbox::new();
     let emery = sandbox.root.join(".emery");
     std::fs::create_dir_all(&emery).expect("mkdir .emery");
@@ -153,7 +153,7 @@ fn anchors_at_the_project_root_ancestor() {
 }
 
 #[test]
-fn unparseable_argv_anchors_at_the_walked_directory() {
+fn unparseable_argv_anchors_cwd() {
     // Argv the grammar refuses still boots: the guest renders the
     // rejection, so the policy must stay total and anchor at the
     // working directory.
@@ -169,7 +169,7 @@ fn unparseable_argv_anchors_at_the_walked_directory() {
 // unchanged.
 
 #[test]
-fn seed_preopen_grants_the_component_directory() {
+fn seed_grants_component_dir() {
     let sandbox = Sandbox::new();
     let built = sandbox.root.parent().expect("sandbox base").join("built");
     std::fs::create_dir_all(&built).expect("mkdir build dir");
@@ -182,7 +182,7 @@ fn seed_preopen_grants_the_component_directory() {
 }
 
 #[test]
-fn relative_seed_resolves_against_the_project_root() {
+fn relative_seed_from_root() {
     let sandbox = Sandbox::new();
     let nested = sandbox.root.join("dist");
     std::fs::create_dir_all(&nested).expect("mkdir dist");
@@ -193,7 +193,7 @@ fn relative_seed_resolves_against_the_project_root() {
 }
 
 #[test]
-fn seed_project_dir_anchors_the_project_mount() {
+fn seed_project_dir_anchors() {
     let sandbox = Sandbox::new();
     let elsewhere = sandbox.root.parent().expect("sandbox base").join("other-project");
     std::fs::write(sandbox.root.join("demo.wasm"), b"component").expect("write component");
@@ -212,7 +212,7 @@ fn seed_project_dir_anchors_the_project_mount() {
 }
 
 #[test]
-fn missing_seed_directory_degenerates_to_the_project_root() {
+fn missing_seed_dir_degenerates() {
     // A typo'd component directory must not fail the boot-time preopen
     // open: the guest renders `adapter-component-missing` itself.
     let sandbox = Sandbox::new();
@@ -221,7 +221,7 @@ fn missing_seed_directory_degenerates_to_the_project_root() {
 }
 
 #[test]
-fn reserved_log_flags_do_not_break_the_seed_projection() {
+fn log_flags_keep_seed_projection() {
     // Omnia peels `--debug` / `--quiet` before the guest sees argv; the
     // policy sees raw process argv, so it must apply the same peel or
     // the seed grammar parse would fail and drop the anchoring.
@@ -253,7 +253,7 @@ async fn store_adapter_verify_and_load() {
 }
 
 #[tokio::test]
-async fn cold_pinned_miss_offline_is_a_hard_failure() {
+async fn cold_pin_offline_fails() {
     // A pinned store miss triggers the install leg; without a
     // reachable registry it fails deterministically, naming the
     // package identity and the OCI reference.
@@ -276,7 +276,7 @@ async fn cold_pinned_miss_offline_is_a_hard_failure() {
 }
 
 #[tokio::test]
-async fn simultaneous_versions_resolve_distinctly() {
+async fn versions_resolve_distinctly() {
     let sandbox = Sandbox::new();
     let one = sandbox.seed_store_adapter("mock", "1.0.0");
     let two = sandbox.seed_store_adapter("mock", "2.0.0");
@@ -288,7 +288,7 @@ async fn simultaneous_versions_resolve_distinctly() {
 }
 
 #[tokio::test]
-async fn cache_backed_ids_resolve_the_project_cache() {
+async fn cache_backed_ids_resolve() {
     let sandbox = Sandbox::new();
     let target = sandbox.seed_cached_component("mock");
     let source = sandbox.seed_cached_component("mock-source");
@@ -305,7 +305,7 @@ async fn cache_backed_ids_resolve_the_project_cache() {
 }
 
 #[tokio::test]
-async fn bare_total_miss_offline_is_a_hard_failure() {
+async fn bare_miss_offline_fails() {
     // A bare id with nothing local (no cache seed, no store entry)
     // reaches the pull-latest provisioning leg; without a reachable
     // registry the tag listing fails deterministically with the
@@ -324,13 +324,16 @@ async fn bare_total_miss_offline_is_a_hard_failure() {
 }
 
 #[tokio::test]
-async fn adapter_missing_sidecar_is_refused() {
+async fn missing_sidecar_refused() {
+    // An unverifiable entry triggers one unlink-and-reinstall; with
+    // the registry unreachable the heal fails and the original
+    // verification refusal stands.
     let sandbox = Sandbox::new();
     std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"mock without provenance")
         .expect("write unverifiable adapter entry");
 
     let err = sandbox
-        .resolver()
+        .offline_resolver()
         .resolve_component("target:mock@1.0.0")
         .await
         .expect_err("sidecar-less store entry");
@@ -338,22 +341,22 @@ async fn adapter_missing_sidecar_is_refused() {
 }
 
 #[tokio::test]
-async fn adapter_digest_drift_is_refused() {
+async fn digest_drift_refused() {
     let sandbox = Sandbox::new();
     sandbox.seed_store_adapter("mock", "1.0.0");
     std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"tampered adapter bytes")
         .expect("tamper with store entry");
 
     let err = sandbox
-        .resolver()
+        .offline_resolver()
         .resolve_component("target:mock@1.0.0")
         .await
-        .expect_err("tampered store entry");
+        .expect_err("tampered store entry, heal offline");
     assert_eq!(code(&err), "adapter-digest-mismatch");
 }
 
 #[tokio::test]
-async fn engine_identities_are_not_resolvable() {
+async fn engine_ids_not_resolvable() {
     // The engine guest is embedded and registered statically at boot;
     // its package identity never reaches the resolver, and asking for
     // it fails like any other identity outside the routed grammar.
@@ -367,7 +370,7 @@ async fn engine_identities_are_not_resolvable() {
 }
 
 #[tokio::test]
-async fn malformed_ids_fail_deterministically() {
+async fn malformed_ids_fail() {
     let sandbox = Sandbox::new();
     sandbox.seed_cached_component("mock");
     let resolver = sandbox.resolver();
@@ -392,7 +395,7 @@ fn component_bytes(tag: &str) -> Vec<u8> {
 }
 
 #[tokio::test]
-async fn cold_miss_installs_and_records_provenance() {
+async fn cold_miss_install_provenance() {
     let sandbox = Sandbox::new();
     let server = TestRegistry::serve().await;
     let expected = component_bytes("mock 1.0.0");
@@ -425,7 +428,7 @@ async fn cold_miss_installs_and_records_provenance() {
 }
 
 #[tokio::test]
-async fn both_axes_install_from_one_store() {
+async fn both_axes_share_one_store() {
     // The store carries no axis segment: a source pin and a target
     // pin install through the identical leg.
     let sandbox = Sandbox::new();
@@ -444,6 +447,72 @@ async fn both_axes_install_from_one_store() {
         resolver.resolve_component("target:omnia@0.5.0").await.expect("target cold miss"),
         target
     );
+}
+
+#[tokio::test]
+async fn torn_install_heals() {
+    // A component without its sidecar (the tear the sidecar-first
+    // ordering makes unreachable going forward) is unlinked and
+    // reinstalled on the next pinned resolve.
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    let expected = component_bytes("mock 1.0.0");
+    server.publish("mock", "1.0.0", expected.clone());
+    std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"torn install remnant")
+        .expect("write torn entry");
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .resolve_component("target:mock@1.0.0")
+        .await
+        .expect("the unverifiable entry heals through reinstall");
+    assert_eq!(bytes, expected);
+    diagnostics::cache::verify_store_entry(
+        &sandbox.store.join("mock@1.0.0.wasm"),
+        &sandbox.store.join("mock@1.0.0.meta"),
+    )
+    .expect("the healed entry verifies");
+}
+
+#[tokio::test]
+async fn drifted_pin_reinstalls() {
+    let sandbox = Sandbox::new();
+    sandbox.seed_store_adapter("mock", "1.0.0");
+    std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"tampered adapter bytes")
+        .expect("tamper with store entry");
+    let server = TestRegistry::serve().await;
+    let expected = component_bytes("mock 1.0.0");
+    server.publish("mock", "1.0.0", expected.clone());
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .resolve_component("target:mock@1.0.0")
+        .await
+        .expect("the drifted entry heals through reinstall");
+    assert_eq!(bytes, expected);
+}
+
+#[tokio::test]
+async fn meta_orphan_installs() {
+    // The inverse tear — sidecar landed, component didn't — is an
+    // ordinary store miss: the install overwrites the orphan sidecar.
+    let sandbox = Sandbox::new();
+    let server = TestRegistry::serve().await;
+    let expected = component_bytes("mock 1.0.0");
+    server.publish("mock", "1.0.0", expected.clone());
+    diagnostics::cache::write_store_meta(
+        &sandbox.store.join("mock@1.0.0.meta"),
+        "sha256:stale-orphan",
+        None,
+    )
+    .expect("write orphan sidecar");
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .resolve_component("target:mock@1.0.0")
+        .await
+        .expect("the orphan sidecar is overwritten by a fresh install");
+    assert_eq!(bytes, expected);
 }
 
 #[tokio::test]
@@ -471,7 +540,7 @@ async fn installed_pin_reuses_offline() {
 // check but never shadows the cache seed.
 
 #[tokio::test]
-async fn bare_total_miss_installs_the_newest_semver() {
+async fn bare_miss_installs_newest() {
     // Nothing local: the provisioning leg lists the repository's
     // tags, ignores non-SemVer ones, and installs the maximum.
     let sandbox = Sandbox::new();
@@ -493,7 +562,7 @@ async fn bare_total_miss_installs_the_newest_semver() {
 }
 
 #[tokio::test]
-async fn bare_no_semver_tags_is_latest_none() {
+async fn no_semver_tags_latest_none() {
     let sandbox = Sandbox::new();
     let server = TestRegistry::serve().await;
     server.publish("mock", "latest", component_bytes("mock moving tag"));
@@ -507,7 +576,7 @@ async fn bare_no_semver_tags_is_latest_none() {
 }
 
 #[tokio::test]
-async fn bare_store_newest_resolves_offline() {
+async fn store_newest_offline() {
     // Something local: the newest installed version resolves with no
     // registry consultation (the resolver's registry base refuses
     // connections, so any network attempt would fail the test).
@@ -524,7 +593,7 @@ async fn bare_store_newest_resolves_offline() {
 }
 
 #[tokio::test]
-async fn cache_seed_shadows_store_and_registry() {
+async fn cache_seed_shadows_all() {
     // The co-dev seed always wins: with a cache seed, a newer store
     // entry and a newer published version are both ignored.
     let sandbox = Sandbox::new();
@@ -563,7 +632,7 @@ async fn refresh_installs_newer() {
 }
 
 #[tokio::test]
-async fn refresh_without_newer_keeps_the_store_version() {
+async fn refresh_keeps_current() {
     let sandbox = Sandbox::new();
     let installed = sandbox.seed_store_adapter("mock", "2.0.0");
     let server = TestRegistry::serve().await;
@@ -580,7 +649,28 @@ async fn refresh_without_newer_keeps_the_store_version() {
 }
 
 #[tokio::test]
-async fn refresh_offline_is_a_hard_failure() {
+async fn refresh_heals_poisoned_store() {
+    // An explicit update on an unverifiable equal-version entry
+    // unlinks and reinstalls it rather than failing closed.
+    let sandbox = Sandbox::new();
+    sandbox.seed_store_adapter("mock", "1.0.0");
+    std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"tampered adapter bytes")
+        .expect("tamper with store entry");
+    let server = TestRegistry::serve().await;
+    let expected = component_bytes("mock 1.0.0");
+    server.publish("mock", "1.0.0", expected.clone());
+
+    let bytes = sandbox
+        .resolver_over(server.registry())
+        .refreshing(["mock".to_string()])
+        .resolve_component("target:mock")
+        .await
+        .expect("the refresh heals the poisoned entry");
+    assert_eq!(bytes, expected);
+}
+
+#[tokio::test]
+async fn refresh_offline_fails() {
     // An explicit update means checking the registry; offline, that
     // check fails deterministically instead of silently keeping the
     // local version.
@@ -597,7 +687,7 @@ async fn refresh_offline_is_a_hard_failure() {
 }
 
 #[tokio::test]
-async fn refresh_never_shadows_the_cache_seed() {
+async fn refresh_keeps_cache_seed() {
     // The cache seed wins even under refresh — and no registry call
     // happens (the offline base would fail one).
     let sandbox = Sandbox::new();
@@ -632,7 +722,7 @@ fn mcp_route_maps_routed_ids() {
 }
 
 #[test]
-fn mcp_route_declines_paths_outside_the_grammar() {
+fn mcp_route_declines_others() {
     for path in [
         "/",
         "/health",

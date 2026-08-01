@@ -191,7 +191,7 @@ async fn extract_crosses_workflow_seam() {
 // The build and merge legs thread slice, inputs, and phase; the probe
 // echoes them through the report's single output path.
 #[tokio::test]
-async fn build_and_merge_cross_workflow_seam() {
+async fn build_merge_cross_seam() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
     let tree = || seam::WorkingTree {

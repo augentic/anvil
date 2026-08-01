@@ -7,7 +7,7 @@
 
 use std::path::{Path, PathBuf};
 
-use diagnostics::{Diagnostic, is_blocking};
+use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, is_blocking};
 use error::{Error, Result};
 use serde::{Deserialize, Serialize};
 
@@ -137,6 +137,27 @@ pub struct BuildReport {
 }
 
 impl BuildReport {
+    /// Stamp the caller-owned envelope fields onto adapter-reported
+    /// content: the wire version plus the target name derived from
+    /// the routed id (`target:` prefix stripped). The one stamping
+    /// every host (native provider, engine guest shim) applies at the
+    /// seam.
+    #[must_use]
+    pub fn stamped(
+        id: &str, slice: String, status: BuildStatus, findings: Vec<Diagnostic>,
+        outputs: Vec<BuildOutput>, ui_surface: Option<UiSurface>,
+    ) -> Self {
+        Self {
+            version: BUILD_VERSION,
+            slice,
+            target: id.strip_prefix("target:").unwrap_or(id).to_string(),
+            status,
+            findings,
+            outputs,
+            ui_surface,
+        }
+    }
+
     /// Reject a [`BuildStatus::Success`] report carrying any blocking
     /// finding.
     ///
@@ -242,4 +263,29 @@ impl BuildReport {
 /// `true` when the directory contains at least one entry.
 fn dir_has_entries(dir: &Path) -> bool {
     std::fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_some())
+}
+
+/// One model-assisted build finding, as both hosts stamp it at the
+/// seam.
+///
+/// An absent adapter rule id falls back to `target-build-finding` for
+/// the title/fingerprint inputs, the as-authored id is preserved on
+/// the diagnostic, and the fingerprint is recomputed over the final
+/// shape. The folded `detail` prose serves as title, impact, and
+/// remediation.
+#[must_use]
+pub fn build_finding(rule_id: Option<String>, detail: String, severity: Severity) -> Diagnostic {
+    let mut diagnostic = Diagnostic::finding(
+        rule_id.clone().unwrap_or_else(|| "target-build-finding".to_string()),
+        detail.clone(),
+        detail,
+        severity,
+        DiagnosticKind::Violation,
+        DiagnosticSource::ModelAssisted,
+        Artifact::Code,
+        None,
+    );
+    diagnostic.rule_id = rule_id;
+    diagnostic.fingerprint = diagnostics::fingerprint(&diagnostic);
+    diagnostic
 }

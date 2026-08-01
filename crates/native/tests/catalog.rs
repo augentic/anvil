@@ -73,7 +73,7 @@ mod validation {
     }
 
     #[test]
-    fn dual_axis_same_identity_allowed() {
+    fn dual_axis_identity_allowed() {
         // Fixture's intentional dual-axis `mock` shape stays legal.
         Catalog::builder()
             .source::<Probe>()

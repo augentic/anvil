@@ -8,9 +8,10 @@
 //! `specs/<domain>/spec.md`, the Decision Record sidecar render into
 //! `decisions/<slug>.md` (exact-set replacement, so stale generated
 //! records never survive a re-refine), the `metadata.touched_specs`
-//! refresh, and the atomic batch persist. Everything is staged in
-//! memory before the first write, so a failure leaves prior artifacts
-//! intact.
+//! refresh, and the batch persist. Everything is staged in memory
+//! before the first write, so a failure before the batch leaves prior
+//! artifacts intact; each write in the batch is individually atomic,
+//! and stale decision records are removed only after the batch lands.
 
 use std::path::{Path, PathBuf};
 
@@ -76,18 +77,21 @@ pub fn persist_synthesized(
     let metadata_yaml = artifacts::atomic::serialise_yaml(&metadata)?;
     staged.push(staged_file(slice_dir, "metadata.yaml", metadata_yaml.into_bytes()));
 
-    // Exact-set replacement: the response's `decisions[]` is the
-    // whole set, so any previously generated record not in it is
-    // removed before the batch persist (an empty response clears the
-    // directory).
-    replace_decisions_dir(slice_dir, &artifacts.decisions)?;
-
-    // Persist every staged artifact in one batch.
+    // Persist every staged artifact (each write is individually
+    // atomic; a failure mid-loop leaves earlier files updated and
+    // later ones untouched).
     let mut written = Vec::with_capacity(staged.len());
     for file in &staged {
         artifacts::atomic::bytes_write(&file.abs, &file.bytes)?;
         written.push(file.rel.clone());
     }
+
+    // Exact-set replacement: the response's `decisions[]` is the
+    // whole set, so any previously generated record not in it is
+    // removed once the batch has landed (an empty response clears the
+    // directory). Removal runs last so a failure earlier in persist
+    // never drops a record without its replacement set on disk.
+    replace_decisions_dir(slice_dir, &artifacts.decisions)?;
 
     Ok(written)
 }

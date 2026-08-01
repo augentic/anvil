@@ -5,8 +5,10 @@
 //! store entry is absent is pulled anonymously as a standard Wasm OCI
 //! artifact (`ghcr.io/augentic/emery-adapters/<name>:<version>`),
 //! validated (single layer, wasm magic, size, manifest layer digest),
-//! written atomically, and recorded in the digest sidecar with its
-//! OCI provenance (repository, manifest digest, layer digest). An
+//! and written atomically — the digest sidecar (with its OCI
+//! provenance: repository, manifest digest, layer digest) first, the
+//! component last, so a torn install never leaves an unverifiable
+//! component behind. An
 //! unpinned name with nothing local — or one the operator explicitly
 //! updates — resolves its version first through [`resolve_latest`]
 //! (the repository's newest exact-SemVer tag) and installs through
@@ -215,6 +217,12 @@ pub async fn install(
     }
     let manifest =
         image.manifest.as_ref().ok_or_else(|| invalid("no manifest returned".to_string()))?;
+    if manifest.layers.len() != 1 {
+        return Err(invalid(format!(
+            "manifest declares {} layers, expected exactly one",
+            manifest.layers.len()
+        )));
+    }
     let layer_digest = format!("sha256:{}", diagnostics::digest::sha256_hex(bytes));
     if manifest.layers[0].digest != layer_digest {
         return Err(invalid(format!(
@@ -227,19 +235,22 @@ pub async fn install(
         .clone()
         .ok_or_else(|| invalid("no resolved manifest digest returned".to_string()))?;
 
+    // Sidecar first, component last: resolution keys "installed" on
+    // the component file, so a tear between the two writes leaves at
+    // most an orphan sidecar the next install overwrites — never an
+    // unverifiable component. The entry's content digest is the layer
+    // digest (the store entry is the layer bytes).
     let locations = paths.locations();
     std::fs::create_dir_all(locations.store_root())?;
     let entry = locations.store_entry(name, version);
-    artifacts::atomic::bytes_write(&entry, bytes)?;
-
-    let tree_digest = diagnostics::cache::file_content_digest(&entry);
+    let meta = locations.store_meta(name, version);
     let provenance = diagnostics::cache::OciProvenance {
         repository,
         manifest_digest,
-        layer_digest,
+        layer_digest: layer_digest.clone(),
     };
-    let meta = locations.store_meta(name, version);
-    diagnostics::cache::write_store_meta(&meta, &tree_digest, Some(&provenance))?;
+    diagnostics::cache::write_store_meta(&meta, &layer_digest, Some(&provenance))?;
+    artifacts::atomic::bytes_write(&entry, bytes)?;
     diagnostics::cache::verify_store_entry(&entry, &meta).map_err(|failure| Error::Diag {
         code: "adapter-digest-mismatch",
         detail: format!("store entry {} failed verify-after-write: {failure:?}", entry.display()),

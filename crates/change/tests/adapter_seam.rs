@@ -48,7 +48,7 @@ async fn survey_failure_aborts_author() {
 }
 
 #[tokio::test]
-async fn unknown_adapter_fails_ensure_before_scaffold() {
+async fn unknown_fails_before_scaffold() {
     let session = Session::scripted("mock", Vec::new());
 
     // Ensure runs over every binding before the plan scaffold write, so
@@ -61,7 +61,7 @@ async fn unknown_adapter_fails_ensure_before_scaffold() {
 }
 
 #[tokio::test]
-async fn mismatched_pin_refused_before_scaffold() {
+async fn mismatched_pin_refused() {
     let session = Session::scripted("mock", Vec::new());
 
     // `<name>@<semver>` parses into the first-party package pin
@@ -76,7 +76,7 @@ async fn mismatched_pin_refused_before_scaffold() {
 }
 
 #[tokio::test]
-async fn placeholder_pin_refused_before_scaffold() {
+async fn placeholder_pin_refused() {
     let session = Session::scripted("mock", Vec::new());
 
     // The mock source compiles with the `0.0.0` development
@@ -92,7 +92,7 @@ async fn placeholder_pin_refused_before_scaffold() {
 }
 
 #[tokio::test]
-async fn survey_ensures_pinned_binding_before_dispatch() {
+async fn survey_ensures_pinned_binding() {
     let session = Session::scripted("mock", Vec::new());
 
     // A pinned binding already on disk (the plan schema has carried
@@ -129,7 +129,7 @@ async fn survey_ensures_pinned_binding_before_dispatch() {
 }
 
 #[tokio::test]
-async fn malformed_adapter_token_refused_at_parse() {
+async fn malformed_token_parse_refused() {
     let session = Session::scripted("mock", Vec::new());
 
     // A non-semver `@` suffix is neither a bare name nor a first-party
@@ -159,7 +159,7 @@ mod bare_bindings {
     }
 
     #[tokio::test]
-    async fn every_bare_binding_stays_unversioned() {
+    async fn bare_bindings_stay_unversioned() {
         // Uniform over the desugared binding map: neither bare
         // binding gains a version.
         let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
@@ -183,7 +183,7 @@ mod bare_bindings {
     }
 
     #[tokio::test]
-    async fn intent_sugar_fails_fast_when_unlinked() {
+    async fn intent_sugar_unlinked_fails() {
         // `--intent` desugars to a bare `intent` binding ensured
         // before the scaffold write; the native catalog links no
         // `intent` adapter, so ensure refuses with nothing on disk.

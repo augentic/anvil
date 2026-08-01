@@ -144,7 +144,7 @@ fn codes(diagnostics: &[diagnostics::Diagnostic]) -> Vec<&str> {
 // A slot-local cache-only binding derives topology fine (the slot's
 // own cache resolves it) but cannot dispatch by routed id — flagged.
 #[test]
-fn slot_local_cache_binding_is_flagged() {
+fn slot_cache_binding_flagged() {
     let workspace = Workspace::new("mock");
     let slot_paths = workspace.paths().with_root(workspace.root.join("workspace/billing"));
     Workspace::seed_cache(&slot_paths, "mock");
@@ -164,7 +164,7 @@ fn slot_local_cache_binding_is_flagged() {
 // A binding seeded into the deployment project's cache dispatches by
 // its unversioned routed id — not flagged.
 #[test]
-fn deployment_cache_binding_is_resolvable() {
+fn deployment_binding_resolves() {
     let workspace = Workspace::new("mock");
     let slot_paths = workspace.paths().with_root(workspace.root.join("workspace/billing"));
     Workspace::seed_cache(&slot_paths, "mock");

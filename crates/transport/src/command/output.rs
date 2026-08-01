@@ -105,7 +105,7 @@ impl From<&Error> for Exit {
 /// Failure envelope used by the transport projectors for every error
 /// variant.
 ///
-/// The shape is now payload-free: `error` carries the variant
+/// The shape is payload-free: `error` carries the variant
 /// discriminant (the `code` for `Error::Validation`), `message` the
 /// rendered detail, and `exit-code` the numeric exit. The error body
 /// carries no per-finding rows — handlers render

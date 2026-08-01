@@ -71,17 +71,17 @@ pub struct AddBody {
     /// Kebab-case adapter name the cache entry resolves as.
     pub name: String,
     /// The seeded project component cache entry.
-    pub entry: String,
+    pub entry: PathBuf,
     /// The canonical operator-supplied component the entry mirrors.
-    pub source: String,
+    pub source: PathBuf,
 }
 
 impl From<ensure::Seeded> for AddBody {
     fn from(seeded: ensure::Seeded) -> Self {
         Self {
             name: seeded.name,
-            entry: seeded.entry.display().to_string(),
-            source: seeded.source.display().to_string(),
+            entry: seeded.entry,
+            source: seeded.source,
         }
     }
 }
@@ -89,8 +89,8 @@ impl From<ensure::Seeded> for AddBody {
 impl Render for AddBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         writeln!(w, "Seeded `{}` into the project component cache", self.name)?;
-        writeln!(w, "  entry: {}", self.entry)?;
-        writeln!(w, "  source: {}", self.source)?;
+        writeln!(w, "  entry: {}", self.entry.display())?;
+        writeln!(w, "  source: {}", self.source.display())?;
         Ok(())
     }
 }

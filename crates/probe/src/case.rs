@@ -17,10 +17,10 @@
 //! rerun from fresh state with `--restart`, or continue explicitly
 //! with `cargo make lab -- --project-dir <sandbox> …`.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::io::{self, Write as _};
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
@@ -29,130 +29,19 @@ use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use project::config::Layout;
 use project::plan::{Lifecycle, Status};
 use project::slice::{LifecycleStatus, SliceMetadata};
-use serde::Deserialize;
 use tracing::Instrument as _;
 
 use crate::telemetry::{self, Telemetry};
 use crate::{fs as evalfs, grade, sandbox};
 
+mod spec;
+
+pub use spec::{Build, Case, CloneSpec, Workflow, WorkflowUntil, load, parse};
+use spec::{list, validate_entry};
+
 /// Builds one live model backend per case run, rooted at that run's
 /// sandbox tree.
 pub type ModelFactory = Arc<dyn Fn(&Path) -> Result<DynModel> + Send + Sync>;
-
-/// One eval case, parsed from `case.toml` by its `kind` tag.
-#[derive(Debug)]
-pub enum Case {
-    /// A source-to-target workflow over the operator verbs.
-    Workflow(Workflow),
-    /// One `slice build` against a committed refined fixture.
-    Build(Build),
-}
-
-// The closed `kind` tag; parsed first so each shape can carry
-// `deny_unknown_fields` (serde's internal tagging cannot).
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-enum Kind {
-    Workflow,
-    Build,
-}
-
-/// A workflow case: `init` and `plan author` always run; `until`
-/// selects how far past Gate 1 the run continues.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct Workflow {
-    /// Target adapter passed to `emery init`.
-    pub target: String,
-    /// Change name passed to `plan author`.
-    pub change: String,
-    /// Optional operator intent passed to `plan author`.
-    #[serde(default)]
-    pub intent: Option<String>,
-    /// Source bindings passed to `plan author` (`key = "adapter:…"`).
-    #[serde(default)]
-    pub sources: BTreeMap<String, String>,
-    /// Tree copied into the fresh sandbox, relative to `case.toml`;
-    /// absent means the sibling `fixture/` directory (when present).
-    #[serde(default)]
-    pub fixture: Option<PathBuf>,
-    /// Upstream tree shallow-cloned on miss into the sibling
-    /// `fixture/` cache; mutually exclusive with `fixture`.
-    #[serde(default)]
-    pub clone: Option<CloneSpec>,
-    /// Default stop rung; `--until` overrides per run.
-    #[serde(default)]
-    pub until: WorkflowUntil,
-}
-
-/// One `git clone --depth 1` populating the sibling `fixture/` cache.
-///
-/// For source trees that cannot ship as committed fixtures (e.g. an
-/// `UNLICENSED` upstream): the case directory carries a `.gitignore`
-/// over `fixture/`, so the tree never enters the repository. The
-/// clone happens once, on miss, with `.git` stripped; every run then
-/// copies the cached tree into the sandbox like any other fixture.
-/// Refresh the snapshot by deleting the cached tree.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct CloneSpec {
-    /// Git URL passed verbatim to `git clone`.
-    pub url: String,
-    /// Sandbox-relative destination directory.
-    pub dest: PathBuf,
-}
-
-/// A build case: the fixture carries the exact refined state
-/// `emery slice build` consumes, including valid project and slice
-/// metadata — the runner never stamps lifecycle state.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct Build {
-    /// The refined slice `slice build` runs for.
-    pub slice: String,
-    /// Tree copied into the fresh sandbox, relative to `case.toml`;
-    /// absent means the sibling `fixture/` directory (when present).
-    #[serde(default)]
-    pub fixture: Option<PathBuf>,
-    /// Sandbox-relative paths that must hold a file after the build.
-    pub expect: Vec<String>,
-}
-
-/// How far a [`Workflow`] case runs.
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, clap::ValueEnum)]
-#[serde(rename_all = "kebab-case")]
-pub enum WorkflowUntil {
-    /// Stop after `plan author`, leaving Gate 1 `pending`.
-    Plan,
-    /// Author, then run the genuine drained `plan execute` (whose
-    /// first run stamps Gate 1).
-    #[default]
-    Execute,
-    /// Execute, then `plan archive`.
-    Finalize,
-}
-
-impl WorkflowUntil {
-    /// Kebab-case rung label for run output and span attributes.
-    #[must_use]
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Plan => "plan",
-            Self::Execute => "execute",
-            Self::Finalize => "finalize",
-        }
-    }
-}
-
-impl Case {
-    // Kebab-case kind label for run output and span attributes.
-    const fn label(&self) -> &'static str {
-        match self {
-            Self::Workflow(_) => "workflow",
-            Self::Build(_) => "build",
-        }
-    }
-}
 
 /// Run one case by id over the supplied native catalog and model
 /// factory, or list every case when `id` is absent.
@@ -333,96 +222,6 @@ async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str])
     Ok(())
 }
 
-/// Parse and validate one `case.toml` body.
-///
-/// # Errors
-///
-/// Returns a missing or unknown `kind`, per-shape parse failures
-/// (including unknown keys), and every shape validation failure.
-pub fn parse(body: &str) -> Result<Case> {
-    let mut table: toml::Table = toml::from_str(body).context("parsing case.toml")?;
-    let kind = table
-        .remove("kind")
-        .context("case.toml requires `kind = \"workflow\"` or `kind = \"build\"`")?;
-    let kind: Kind = kind.try_into().context("unknown case `kind`")?;
-    let case = match kind {
-        Kind::Workflow => {
-            Case::Workflow(toml::Value::Table(table).try_into().context("workflow case")?)
-        }
-        Kind::Build => Case::Build(toml::Value::Table(table).try_into().context("build case")?),
-    };
-    validate(&case)?;
-    Ok(case)
-}
-
-/// Parse and validate the case at `<root>/<id>/case.toml`.
-///
-/// # Errors
-///
-/// Returns a malformed id, a missing `case.toml` (naming the known
-/// cases), and every [`parse`] failure.
-pub fn load(root: &Path, id: &str) -> Result<Case> {
-    let mut components = Path::new(id).components();
-    ensure!(
-        matches!((components.next(), components.next()), (Some(Component::Normal(_)), None)),
-        "case ids are flat directory names"
-    );
-    let path = root.join(id).join("case.toml");
-    if !path.is_file() {
-        bail!(
-            "no case.toml at {}; known cases: {}",
-            path.display(),
-            ids(root).unwrap_or_default().join(", ")
-        );
-    }
-    parse(&fs::read_to_string(&path)?).with_context(|| format!("parsing {}", path.display()))
-}
-
-fn validate(case: &Case) -> Result<()> {
-    match case {
-        Case::Workflow(workflow) => {
-            ensure!(!workflow.target.trim().is_empty(), "empty target adapter");
-            ensure!(!workflow.change.trim().is_empty(), "empty change name");
-            ensure!(
-                workflow.intent.is_some() || !workflow.sources.is_empty(),
-                "a workflow case requires `intent` or at least one `[sources]` binding"
-            );
-            if let Some(clone) = &workflow.clone {
-                ensure!(
-                    workflow.fixture.is_none(),
-                    "`fixture` and `clone` are mutually exclusive — `clone` populates \
-                     the sibling `fixture/` itself"
-                );
-                ensure!(!clone.url.trim().is_empty(), "empty clone url");
-                validate_entry(&clone.dest.to_string_lossy()).context("clone `dest`")?;
-            }
-        }
-        Case::Build(build) => {
-            ensure!(!build.slice.trim().is_empty(), "empty slice name");
-            ensure!(
-                !build.expect.is_empty(),
-                "build cases must declare at least one `expect` artifact — a success \
-                 report that produced nothing would otherwise pass as a silent no-op"
-            );
-            for rel in &build.expect {
-                validate_entry(rel).with_context(|| format!("expect entry `{rel}`"))?;
-            }
-        }
-    }
-    Ok(())
-}
-
-fn validate_entry(rel: &str) -> Result<()> {
-    ensure!(!rel.trim().is_empty(), "empty expect entry");
-    let path = Path::new(rel);
-    ensure!(path.is_relative(), "absolute paths are not allowed");
-    ensure!(
-        path.components().all(|component| matches!(component, Component::Normal(_))),
-        "path components must be plain names (no `..` or `.`)"
-    );
-    Ok(())
-}
-
 // Populate the case's gitignored `fixture/` cache on miss: one
 // shallow clone with `.git` stripped, reused by every later run.
 fn clone_into(cache: &Path, spec: &CloneSpec) -> Result<()> {
@@ -508,26 +307,4 @@ fn holds_a_file(root: &Path, dir: &Path, visited: &mut HashSet<PathBuf>) -> bool
             path.is_file() || (path.is_dir() && holds_a_file(root, &path, visited))
         })
     })
-}
-
-fn list(root: &Path) -> Result<()> {
-    let ids = ids(root)?;
-    ensure!(!ids.is_empty(), "no cases under {}", root.display());
-    println!("cases (run with `eval <id>`):");
-    for id in ids {
-        println!("  {id}");
-    }
-    Ok(())
-}
-
-fn ids(root: &Path) -> Result<Vec<String>> {
-    let entries = fs::read_dir(root).with_context(|| format!("reading {}", root.display()))?;
-    let mut ids: Vec<String> = entries
-        .filter_map(std::result::Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.join("case.toml").is_file())
-        .filter_map(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
-        .collect();
-    ids.sort();
-    Ok(ids)
 }

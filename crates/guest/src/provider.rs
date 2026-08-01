@@ -9,7 +9,7 @@ use std::future::Future;
 use std::sync::LazyLock;
 
 use artifacts::evidence::AuthorityClass;
-use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
+use diagnostics::{Diagnostic, Severity};
 use error::Error;
 use project::adapter::metadata::{Metadata, Request};
 use project::adapter::{
@@ -17,10 +17,11 @@ use project::adapter::{
     ResolvedTarget, Resolver,
 };
 use project::handler::{Anchor, ExecutionPaths};
+use project::seam::wire::build_finding;
 use project::seam::{
     self, BuildContext, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree,
 };
-use slice::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
+use slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::emery::adapter::{source, target, types};
 
@@ -257,16 +258,15 @@ fn map_input(input: Input) -> target::Input {
 
 /// Add caller-owned envelope fields required by the build-report schema.
 fn widen_report(id: &str, slice: String, report: target::Report) -> BuildReport {
-    BuildReport {
-        version: BUILD_VERSION,
+    BuildReport::stamped(
+        id,
         slice,
-        target: id.strip_prefix("target:").unwrap_or(id).to_string(),
-        status: match report.status {
+        match report.status {
             target::Status::Success => BuildStatus::Success,
             target::Status::Failure => BuildStatus::Failure,
         },
-        findings: report.findings.into_iter().map(widen_finding).collect(),
-        outputs: report
+        report.findings.into_iter().map(widen_finding).collect(),
+        report
             .outputs
             .into_iter()
             .map(|output| BuildOutput {
@@ -274,27 +274,14 @@ fn widen_report(id: &str, slice: String, report: target::Report) -> BuildReport 
                 path: output.path,
             })
             .collect(),
-        ui_surface: report.ui_surface.map(|surface| UiSurface {
+        report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
-    }
+    )
 }
 
-/// Restore a canonical fingerprint after preserving an absent rule id.
 fn widen_finding(finding: target::Finding) -> Diagnostic {
-    let mut diagnostic = Diagnostic::finding(
-        finding.rule_id.clone().unwrap_or_else(|| "target-build-finding".to_string()),
-        finding.detail.clone(),
-        finding.detail,
-        map_severity(finding.severity),
-        DiagnosticKind::Violation,
-        DiagnosticSource::ModelAssisted,
-        Artifact::Code,
-        None,
-    );
-    diagnostic.rule_id = finding.rule_id;
-    diagnostic.fingerprint = diagnostics::fingerprint(&diagnostic);
-    diagnostic
+    build_finding(finding.rule_id, finding.detail, map_severity(finding.severity))
 }
 
 const fn map_severity(severity: target::Severity) -> Severity {
