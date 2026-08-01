@@ -6,6 +6,17 @@ Unreleased
 
 ### Changed
 
+<!-- Release notes generated using configuration in .github/release.yaml at main -->
+
+## What's Changed
+* Bump to 0.35.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/235
+* Operator simplifications by @andrewweston in https://github.com/augentic/emery/pull/236
+* Bump to 0.36.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/237
+* CLI ergonomics by @andrewweston in https://github.com/augentic/emery/pull/238
+
+
+**Full Changelog**: https://github.com/augentic/emery/compare/v0.34.0...v0.36.0
+
 ---
 
 Release notes for previous releases can be found on the respective release branches of the repository.
