@@ -80,14 +80,10 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
     }
     if let Some((k, v)) = s.split_once('=') {
         if v.contains('=') {
-            return Err(format!(
-                "source binding `{s}` must be <key>=<lead> with at most one `=`"
-            ));
+            return Err(format!("source binding `{s}` must be <key>=<lead> with at most one `=`"));
         }
         if k.is_empty() || v.is_empty() {
-            return Err(format!(
-                "source binding key and lead must both be non-empty, got `{s}`"
-            ));
+            return Err(format!("source binding key and lead must both be non-empty, got `{s}`"));
         }
         Ok(BindingArg {
             key: k.to_string(),

@@ -136,7 +136,10 @@ pub fn slice_not_found(slice_dir: &Path) -> Error {
     };
     Error::Diag {
         code: "slice-not-found",
-        detail: format!("no slice named `{name}` under {} ({inventory})", parent_display(slice_dir)),
+        detail: format!(
+            "no slice named `{name}` under {} ({inventory})",
+            parent_display(slice_dir)
+        ),
     }
 }
 

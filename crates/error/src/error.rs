@@ -105,16 +105,24 @@ impl Error {
             Self::NotInitialized => Some(
                 "run `emery init <adapter>` (or `emery init --workspace` for a registry-only workspace) to scaffold .emery/ first",
             ),
-            Self::ArtifactNotFound { kind: "plan.yaml", .. } => Some(
+            Self::ArtifactNotFound {
+                kind: "plan.yaml", ..
+            } => Some(
                 "author a plan first: run /emery:plan, or `emery plan author <name> --intent \"...\"`",
             ),
             Self::Diag { code, .. } => match *code {
                 "plan-has-outstanding-work" => Some(
                     "complete or drop the listed entries, or rerun with --force to archive anyway",
                 ),
-                "slice-not-found" => Some("run `emery slice list` to see every slice and its status"),
-                "plan-entry-not-found" => Some("run `emery plan status` to see the plan's entries and the next action"),
-                "plan-source-unknown" => Some("bind the source at plan time (`emery plan author --source <key>=<adapter>:<path>`) or pass one of the bound keys"),
+                "slice-not-found" => {
+                    Some("run `emery slice list` to see every slice and its status")
+                }
+                "plan-entry-not-found" => {
+                    Some("run `emery plan status` to see the plan's entries and the next action")
+                }
+                "plan-source-unknown" => Some(
+                    "bind the source at plan time (`emery plan author --source <key>=<adapter>:<path>`) or pass one of the bound keys",
+                ),
                 "slice-lifecycle" => Some(
                     "run `emery slice list` for each slice's current status, then drive the missing phase: `emery slice refine|build|merge <slice>`",
                 ),

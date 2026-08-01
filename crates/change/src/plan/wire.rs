@@ -309,4 +309,3 @@ pub(crate) fn parse_divergence(raw: &str) -> Result<Divergence> {
         }),
     }
 }
-

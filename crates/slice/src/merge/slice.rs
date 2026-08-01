@@ -226,10 +226,7 @@ pub fn commit(
     if metadata.status != LifecycleStatus::Built {
         return Err(Error::Diag {
             code: "slice-lifecycle",
-            detail: format!(
-                "cannot merge: slice is `{}`, expected `built`",
-                metadata.status
-            ),
+            detail: format!("cannot merge: slice is `{}`, expected `built`", metadata.status),
         });
     }
 

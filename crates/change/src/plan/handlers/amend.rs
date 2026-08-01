@@ -107,10 +107,8 @@ impl<P: Anchor> Operation<P> for Amend {
         let divergence = divergence.as_deref().map(parse_divergence).transpose()?;
         // Overrides are scoped to the entry being amended — the shared
         // mutation engine keys by (slice, kind), so widen here.
-        let override_sets: Vec<(String, ClaimKind, String)> = authority_override
-            .iter()
-            .map(|a| (name.clone(), a.kind, a.source.clone()))
-            .collect();
+        let override_sets: Vec<(String, ClaimKind, String)> =
+            authority_override.iter().map(|a| (name.clone(), a.kind, a.source.clone())).collect();
         let override_clears: Vec<(String, ClaimKind)> =
             clear_authority_override.iter().map(|kind| (name.clone(), *kind)).collect();
         let override_clear_all: Vec<String> =
