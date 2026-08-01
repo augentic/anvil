@@ -11,7 +11,7 @@ Gate 1 is the operator review step between plan authoring and execution. `/emery
 | Goal | Prefer |
 | --- | --- |
 | Rethink cross-source grouping | Re-run `emery plan author --force` (or `/emery:plan`, which confirms) — replaces a pending plan wholesale |
-| Defer a lead out of this change | `emery plan remove <entry>` |
+| Defer a [lead](../appendices/glossary.md#l) out of this change | `emery plan remove <entry>` |
 | Split or merge entries | `emery plan add` + `emery plan amend` + `emery plan remove` — see the [plan command reference](../reference/cli/plan.md) |
 | Divergence stamp, authority override, single-source fix | `emery plan amend <entry>` (the scalpel) |
 
@@ -19,7 +19,7 @@ There is one active `plan.yaml` per project. `emery plan amend` takes **one posi
 
 ## Step 1 — Read the plan artifacts
 
-Open these files at `.emery/` (workspace mode: workspace):
+Open these files at the project root (workspace mode: the workspace root):
 
 | File | Check |
 | ---- | ----- |
@@ -46,7 +46,7 @@ emery plan amend <entry> --divergence likely
 emery plan amend <entry> --divergence accepted
 
 # Override authority for a claim kind on this entry
-emery plan amend <entry> --authority-override <entry> <kind>=<source>
+emery plan amend <entry> --authority-override <kind>=<source>
 
 # Defer an entry's lead(s) without re-surveying discovery.md
 emery plan remove <entry>

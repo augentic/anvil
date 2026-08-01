@@ -14,6 +14,7 @@
 - Mounts + optional read-only `adapter add` seed preopen from `crates/launcher`
 - Exact routed identities (`source:<name>@<version>`, `target:<name>`, …) resolve from store / project cache
 - MCP `/mcp/<axis>/<name>[@<version>]` projection via `launcher::mcp_route` + per-invocation `http_listener`
+- Engine precompile: `build.rs` AOT-serializes the wasm32 engine to `$OUT_DIR/emery.bin` (host-triple wasmtime artifact); startup deserializes instead of JIT-compiling the engine — adapters remain raw wasm and keep the `jit` feature in the host
 
 Live description: [CLI architecture](../docs/contributing/cli-architecture.md), [AGENTS.md § launcher](../AGENTS.md#the-rust-workspace-emery-cli).
 
@@ -23,7 +24,7 @@ Stage 1's pre-run adapter enumeration is **superseded and deleted**. Do not resu
 
 1. `resolution.json` (or equivalent) recording the effective resolved deployment for an invocation
 2. Digest pin checks / doctor surface: `deployment show|doctor` (or equivalent read-only verbs)
-3. Optional precompile polish beyond today's scaffold
+3. Adapter precompile (local AOT cache or per-triple publication) toward a `jit`-less host — the engine half landed above
 
 ## Non-goals (unchanged)
 

@@ -2690,7 +2690,7 @@ dependencies = [
 [[package]]
 name = "omnia"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2724,7 +2724,7 @@ dependencies = [
 [[package]]
 name = "omnia-cursor"
 version = "0.29.0"
-source = "git+https://github.com/augentic/omnia-backends#0297ecd19ce813b701f589e6dfb5421fa8935a30"
+source = "git+https://github.com/augentic/omnia-backends#cd156c6111a79978255baa0cd9dbfca5c3c85a00"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -2739,7 +2739,7 @@ dependencies = [
 [[package]]
 name = "omnia-guest"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "axum",
@@ -2775,7 +2775,7 @@ dependencies = [
 [[package]]
 name = "omnia-guest-macros"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2785,7 +2785,7 @@ dependencies = [
 [[package]]
 name = "omnia-host-macros"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2795,7 +2795,7 @@ dependencies = [
 [[package]]
 name = "omnia-testkit"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2816,7 +2816,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-blobstore"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2832,7 +2832,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-config"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "omnia",
@@ -2845,7 +2845,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-docstore"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2861,7 +2861,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-http"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "axum",
@@ -2876,6 +2876,7 @@ dependencies = [
  "omnia",
  "omnia-wasi-keyvalue",
  "reqwest 0.13.4",
+ "rustls",
  "serde",
  "serde_json",
  "tokio",
@@ -2890,7 +2891,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-identity"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -2907,7 +2908,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-keyvalue"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2925,7 +2926,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-messaging"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "futures",
@@ -2941,7 +2942,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-model"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "cap-primitives",
@@ -2962,7 +2963,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-otel"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "futures",
@@ -2983,7 +2984,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-sql"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "fromenv",
@@ -3001,7 +3002,7 @@ dependencies = [
 [[package]]
 name = "omnia-wasi-websocket"
 version = "0.35.0"
-source = "git+https://github.com/augentic/omnia#5363c8643a9fc295ffb0a519e8b57e6d758e8a0c"
+source = "git+https://github.com/augentic/omnia#4d408b0323dfab944872d5acee90ee675570bb26"
 dependencies = [
  "anyhow",
  "dashmap",
@@ -3051,19 +3052,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "opentelemetry-http"
-version = "0.32.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5683015d09e2df236ef005b17f6f196f0d5f6313c4fa43a7b6a53b52776e4331"
-dependencies = [
- "async-trait",
- "bytes",
- "http",
- "opentelemetry",
- "reqwest 0.13.4",
-]
-
-[[package]]
 name = "opentelemetry-otlp"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3071,11 +3059,9 @@ checksum = "9966929966d17620d7c316c643ba62631826e10021409357772d5eea84f62c35"
 dependencies = [
  "http",
  "opentelemetry",
- "opentelemetry-http",
  "opentelemetry-proto",
  "opentelemetry_sdk",
  "prost",
- "reqwest 0.13.4",
  "thiserror 2.0.19",
  "tokio",
  "tonic",
@@ -3673,8 +3659,6 @@ checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
 dependencies = [
  "base64 0.22.1",
  "bytes",
- "encoding_rs",
- "futures-channel",
  "futures-core",
  "futures-util",
  "h2",
@@ -3686,7 +3670,6 @@ dependencies = [
  "hyper-util",
  "js-sys",
  "log",
- "mime",
  "percent-encoding",
  "pin-project-lite",
  "quinn",

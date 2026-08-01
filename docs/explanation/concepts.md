@@ -148,7 +148,7 @@ A **target adapter** is the output role. It consumes `spec.md` + `design.md` and
 
 Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export. See [Anatomy of an adapter](adapter-anatomy.md).
 
-You pick the target at scaffolding time (`/emery:init <target>`). You bind sources per change (`/emery:plan <name> source legacy=./repo source docs=./design-notes`).
+You pick the target at scaffolding time (`/emery:init <target>`). You bind sources per change (`/emery:plan <name> source legacy=typescript:./repo source docs=documentation:./design-notes`).
 
 ## Evidence, provenance, authority
 

@@ -9,7 +9,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | Verb | When to use |
 |------|-------------|
 | [`list`](#emery-slice-list) | Read-only listing of every slice under `.emery/slices/` with its lifecycle status and target. |
-| [synthesis](#synthesis-inside-emery-slice-refine) | The synthesis leg inside `emery slice refine`: turns the slice's `Evidence[]` into the canonical artifacts and the typed `model.yaml` via the projection kernel. |
+| [`refine`](#emery-slice-refine) | Refine one plan entry's slice to `refined`: slice create, extract per bound source, synthesis, validation, and the `refined` transition in one guest orchestration. |
 | [`model`](#emery-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#emery-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
 | [`build`](#emery-slice-build) | Build the slice through its bound target adapter: the guest orchestration assembles the build request, drives the target's build operation, validates the report, and gates the `built` transition. |
@@ -29,16 +29,21 @@ emery slice list [--format json]
 
 Read-only: one line per slice (`<name>  <status>  <target>`), sorted by name; directories without a `metadata.yaml` are skipped. JSON returns `slices[]` with `name`, `status`, and `target` per entry.
 
-### Synthesis (inside `emery slice refine`)
+### emery slice refine
 
-The synthesis engine turns the slice's `Evidence[]` plus the bound target's `guidance` prompt into the canonical artifacts and the typed `model.yaml`. It runs as the judgment leg inside the guest-routed `emery slice refine` (and the `plan execute` loop).
+Refine one named plan entry's slice to `refined` — the verb behind the [`/emery:refine`](../slice-skills/index.md#emeryrefine) breakout and the phase the `plan execute` loop runs per entry.
 
-- The **inputs** leg assembles the **inputs** envelope — each bound source's `lead` plus the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree, not from the prompt), plus the resolved target guidance body (wire field `guidance-brief`). Authority is **not** included (the kernel resolves it after the response). Read-only: writes nothing and emits a `slice.synthesize.agent` journal event.
-- The **persist** tail is the **only artifact writer**. It emits `slice.synthesize.started`, schema-gates the response (`synthesis.schema.json`, `kind: response`, with its `model` validated against `model.schema.json`), resolves authority from the on-disk Evidence and any per-slice `authority-override`, runs the CLI-owned **projection kernel** (baseline-aware `REQ` id assignment — slice-global for new domains, continuing from baseline max for additive requirements in modified domains; honour `baseline-id` for modifications; derive `status` and per-claim `winner` markers; render highest-authority-first `Sources:` lists; write inline provenance; stamp the `version` / `slice` / `project` header), renders `## ADDED` / `## MODIFIED` delta sections (modified domains) or flat blocks (new domains) with `ID:` / `Sources:` / `Status:` lines into each `specs/<domain>/spec.md`, auto-scans `metadata.touched_specs`, runs the drift validators, then atomically persists `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. On success it emits `slice.synthesize.completed`; on any failure it emits `slice.synthesize.failed`, leaves the prior artifacts intact, and the slice stays `refining`.
+```bash
+emery slice refine <name> [--format json]
+```
 
-The agent authors the response — per-requirement `(source, id, kind)` claims, an `agreement` verdict, prose (`title`, `statement`, `scenarios`, `notes`), and the prose-only `proposal.md` / `design.md` / `tasks.md` bodies plus spec bodies without provenance lines. It does **not** author `REQ` ids, `status`, `winner` markers, or rendered `Sources:` lists; the kernel ignores and re-derives any it supplies (normalize, never reject). The synthesis step is always agent-dispatched — there is no tool path. There is no `provenance.yaml` write; provenance is carried inline in `model.yaml`.
+Guest-routed: one orchestration owns slice create (re-entry safe), the per-binding `extract` fan-out, the synthesis judgment leg, the persist tail, validation, and the `refined` transition. It acts on the named slice directly against a `pending` or `in-progress` plan entry, never advances per-entry status, and refuses a `done` entry.
 
-This is the synthesis step inside [`/emery:refine`](../slice-skills/index.md#specrefine). See [CLI output shapes](../cli-output-shapes.md#synthesis-envelopes) for the envelope shapes.
+Exit codes: `0` success (slice at `refined`); `2` for blocking validation findings; non-zero on an extract or synthesis failure — the persist tail leaves prior artifacts intact and the slice stays `refining`.
+
+JSON output: see the [synthesis envelopes](../cli-output-shapes.md#synthesis-envelopes) and the synthesis persist summary.
+
+**Synthesis internals (summary).** The synthesis leg turns the slice's `Evidence[]` plus the bound target's `guidance` prompt into the canonical artifacts and the typed `model.yaml`. The agent authors the prose and per-requirement claims; the CLI-owned projection kernel alone derives `REQ` ids, `status`, `winner` markers, and the rendered `Sources:` lists (anything the agent supplies is ignored and re-derived), then atomically persists `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md` / `model.yaml`. Provenance is carried inline in `model.yaml` — there is no `provenance.yaml`. For the full authority-resolution and reconciliation story, see [From sources to slices](../../explanation/reconciliation.md).
 
 ### emery slice model
 
@@ -75,7 +80,11 @@ emery slice build <name> [--format json]
 
 The orchestration resolves the target from the slice's bound project, assembles the typed build request, writes `.emery/slices/<name>/build/request.yaml`, emits `target.execution.agent`, drives the adapter guest's `build` brief (including any in-guest build prelude, e.g. vectis asset materialization and host-prereq gates), then in its finalize tail emits `slice.build.started`, gates the typed report (slice-name match, blocking findings), rejects a `status: success` report carrying any blocking finding (`target-build-success-with-blocking-finding`), gates the `refined -> built` transition, and journals `slice.build.succeeded` (or `slice.build.failed` with a short `reason`). A `required` adapter-declared input absent from the slice tree aborts with `target-build-input-missing`.
 
-This is the verb invoked by [`/emery:build`](../slice-skills/index.md#specbuild) — the finalize tail owns the `built` transition gate. See [CLI output shapes](../cli-output-shapes.md#emery-slice-build) for the envelope shapes.
+Exit codes: `0` success (slice at `built`); `2` for the `target-build-*` aborts and report-gate refusals.
+
+JSON output: the [`emery slice build` envelope](../cli-output-shapes.md#emery-slice-build).
+
+This is the verb invoked by [`/emery:build`](../slice-skills/index.md#emerybuild) — the finalize tail owns the `built` transition gate.
 
 ### emery slice drop
 
@@ -138,9 +147,9 @@ This is the CLI command invoked by `/emery:merge` (which offers the dry-run flag
 ## See also
 
 - [/emery:refine](../slice-skills/index.md) -- per-slice refine breakout
-- [/emery:build](../slice-skills/index.md#specbuild) -- skill that drives the guest-routed `slice build`
-- [/emery:merge](../slice-skills/index.md#specmerge) -- skill that invokes `slice merge` (with its dry-run flags)
-- [/emery:drop](../slice-skills/index.md#specdrop) -- skill that drops slices
+- [/emery:build](../slice-skills/index.md#emerybuild) -- skill that drives the guest-routed `slice build`
+- [/emery:merge](../slice-skills/index.md#emerymerge) -- skill that invokes `slice merge` (with its dry-run flags)
+- [/emery:drop](../slice-skills/index.md#emerydrop) -- skill that drops slices
 - [emery plan](plan.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata

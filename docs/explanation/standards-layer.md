@@ -12,6 +12,8 @@ Emery separates three concerns that often collapse in agentic delivery stacks. K
 
 Workflow **mutates** `.emery/` state through a closed set of CLI verbs. Artifacts **record** what a slice means to build and merge. Engineering standards **constrain** how work is done — they do not transition plans, slices, or changes.
 
+This triad is orthogonal to [the layered stack](layered-stack.md): the stack cuts Emery by *invocation level* (configuration, one slice, a whole change), while the triad cuts it by *concern* — every layer of the stack touches workflow, artifacts, and standards.
+
 
 ## Authoring standards vs engineering standards
 

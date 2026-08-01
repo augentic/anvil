@@ -2,6 +2,8 @@
 
 Emery is organised in three layers above the `emery` CLI substrate. Each layer is independently useful, and each builds on the one below it. The CLI is not itself a layer; it is the deterministic medium through which every layer enforces correctness.
 
+This stack is orthogonal to the [workflow / artifacts / engineering-standards triad](standards-layer.md): the stack cuts Emery by *invocation level*, the triad by *concern* — do not map layers onto triad rows.
+
 <div class="pipeline">
 
 ![Three-layer stack](../assets/diagrams/layered-stack/three-layers.svg)
@@ -11,7 +13,7 @@ Emery is organised in three layers above the `emery` CLI substrate. Each layer i
 
 ## Layer 0: Configuration and adapters
 
-Layer 0 is the static project configuration plus the adapter manifests every higher layer reads. It declares **what** a project is — which target adapter receives its slices, which source adapters supply evidence, what schemas are in scope, what tools are available — without describing **how** any change is planned or executed.
+Layer 0 is the static project configuration plus the adapter components every higher layer resolves. It declares **what** a project is — which target adapter receives its slices, which source adapters supply evidence, what schemas are in scope, what tools are available — without describing **how** any change is planned or executed.
 
 The configuration surfaces:
 
@@ -23,7 +25,7 @@ The configuration surfaces:
 The CLI verbs that read or change Layer 0 state:
 
 - **`emery init <target>`** / **`emery init --workspace`** — one-time scaffold of `.emery/`, writes `project.yaml`.
-- **`emery source resolve <name>`** / **`emery target resolve <value>`** — load and validate an adapter manifest. The adapter loader (`crates/project/src/adapter/`) routes by axis.
+- **`emery source resolve <name>`** / **`emery target resolve <value>`** — resolve an adapter and validate its metadata (there is no manifest file — metadata comes from the component's `metadata` export). The adapter loader (`crates/project/src/adapter/`) routes by axis.
 
 Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 
@@ -63,15 +65,13 @@ Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize
 
 The plan is the change's table of contents. `/emery:plan` produces it by invoking `emery plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `emery plan execute` command in its closing hint. The operator stamps Gate 1 by running that verb — `/emery:plan` never runs it itself.
 
-`emery plan execute` claims the next eligible entry, runs the Layer 1 loop, and updates per-entry status; its first run on a `pending` plan stamps `approved` before the loop starts. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
+`emery plan execute` claims the next eligible entry, runs the Layer 1 loop, and updates per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
 
-The matching CLI surface is **`emery plan {author, execute, add, amend, remove, transition, next, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Emery.
+The matching CLI surface is **`emery plan {author, execute, add, amend, remove, undo, next, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Emery.
 
 ### Gate 1: the operator review seam
 
-The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships. `/emery:plan` writes `pending`; the operator approves by invoking `emery plan execute` — the first run is the stamp. This gives operators a deliberate point to inspect `plan.yaml`, read `change.md`, and curate entries with `emery plan add`, `emery plan remove`, or `emery plan amend <entry>` (or re-run `emery plan author --force` / `/emery:plan` to replace a pending plan wholesale) before any per-slice work runs.
-
-The framework does not ship a separate approve verb: executing is approving. The operator-facing pause lives in `/emery:execute`'s explicit confirmation, and the seam is observable on disk (`plan.lifecycle == approved`) so automation can branch on it cleanly.
+The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships — there is no separate approve verb; invoking execute is the approval act, observable on disk as `plan.lifecycle: approved`. [Core concepts](concepts.md) owns the full Gate 1 story; [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md) covers the curation verbs available during the pause.
 
 ## The layers compose
 

@@ -32,7 +32,7 @@ A `[divergence]` already has an automatic winner (the higher-authority source); 
 3. If the *wrong* source won, pin the source you want via a per-slice authority override or amend the plan's sources, then re-run `/emery:refine` so the kernel re-resolves and re-renders the block:
 
 ```bash
-emery plan amend <entry> --authority-override <entry> <kind>=<source>
+emery plan amend <entry> --authority-override <kind>=<source>
 ```
 
 Authority order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)). The override surface key must already appear in the slice's `sources[]` — an orphan key is rejected by `emery slice validate` with `slice-authority-override-orphan-source`.
@@ -47,7 +47,7 @@ A `[conflict]` is a tie at the top authority class, so no source automatically w
    - Amend the plan to drop or re-bind the misleading source.
 
 ```bash
-emery plan amend <entry> --authority-override <entry> <kind>=<source>
+emery plan amend <entry> --authority-override <kind>=<source>
 ```
 
 3. Re-run `/emery:refine` so the kernel re-resolves the tie and re-renders `Sources:` / `Status:` and the headline tag.
@@ -62,5 +62,5 @@ Do **not** hand-edit `Status:` to `agreed` or strip the `[conflict]` tag — tha
 ## See also
 
 - [Glossary](../appendices/glossary.md) — Conflict, Divergence, Authority
-- [/emery:refine](../reference/slice-skills/index.md#specrefine) — synthesis and validation
+- [/emery:refine](../reference/slice-skills/index.md#emeryrefine) — synthesis and validation
 - [Artifact format](../reference/artifact-format.md) — requirement block shape

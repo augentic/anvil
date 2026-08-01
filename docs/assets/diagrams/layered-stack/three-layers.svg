@@ -17,7 +17,7 @@
   <path d="M260 216 L260 236" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="40" y="236" width="440" height="110" rx="10" fill="#ede9d0" stroke="#c9b766" stroke-width="1.5"/>
   <text x="56" y="260" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#888">LAYER 0 &#8212; Configuration + adapters</text>
-  <text x="56" y="284" font-family="ui-monospace, monospace" font-size="11" fill="#555">project.yaml &#8594; adapters/sources/* &#8594; adapters/targets/*</text>
+  <text x="56" y="284" font-family="ui-monospace, monospace" font-size="11" fill="#555">project.yaml &#8594; source adapters &#8594; target adapters</text>
   <text x="56" y="304" font-family="ui-monospace, monospace" font-size="11" fill="#555">emery init &#8594; emery source/target resolve</text>
   <text x="56" y="324" font-family="ui-monospace, monospace" font-size="11" fill="#555">schemas/ &#8594; AGENTS.md Emery block</text>
   <text x="40" y="368" font-family="ui-monospace, monospace" font-size="11" fill="#888">Higher layers invoke lower layers; lower layers are unaware of what sits above.</text>

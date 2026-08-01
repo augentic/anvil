@@ -16,11 +16,11 @@ Slice skills operate on a single slice inside `.emery/slices/<name>/`. They cove
 
 | Skill | Purpose | Reads | Writes |
 | ----- | ------- | ----- | ------ |
-| [/emery:init](#specinit) | One-time project setup | — | `.emery/`, `project.yaml`, cache, `AGENTS.md` |
-| [/emery:refine](#specrefine) | Extract per source, synthesize artifacts | Plan bindings, discovery, sources | Slice artifacts, Evidence, `model.yaml` |
-| [/emery:build](#specbuild) | Validate artifacts, implement tasks | Slice artifacts, target build prompts | Source code, task checkmarks |
-| [/emery:merge](#specmerge) | Apply slice deltas to baseline, archive slice | Slice specs, baseline | Updated baseline, archived slice, per-entry `done` |
-| [/emery:drop](#specdrop) | Discard a slice without merging | Slice metadata | Archived slice (dropped) |
+| [/emery:init](#emeryinit) | One-time project setup | — | `.emery/`, `project.yaml`, cache, `AGENTS.md` |
+| [/emery:refine](#emeryrefine) | Extract per source, synthesize artifacts | Plan bindings, discovery, sources | Slice artifacts, Evidence, `model.yaml` |
+| [/emery:build](#emerybuild) | Validate artifacts, implement tasks | Slice artifacts, target build prompts | Source code, task checkmarks |
+| [/emery:merge](#emerymerge) | Apply slice deltas to baseline, archive slice | Slice specs, baseline | Updated baseline, archived slice, per-entry `done` |
+| [/emery:drop](#emerydrop) | Discard a slice without merging | Slice metadata | Archived slice (dropped) |
 
 ## /emery:init
 
@@ -48,7 +48,7 @@ See also: [Lifecycle](../lifecycle.md) — merged state and archiving · [Direct
 
 ## /emery:drop
 
-Discard a slice without merging specs into the baseline. The alternative to [/emery:merge](#specmerge). Canonical body: [`/emery:drop`](../../../plugins/emery/skills/drop/SKILL.md).
+Discard a slice without merging specs into the baseline. The alternative to [/emery:merge](#emerymerge). Canonical body: [`/emery:drop`](../../../plugins/emery/skills/drop/SKILL.md).
 
 See also: [Lifecycle](../lifecycle.md) — the dropped state.
 

@@ -16,8 +16,8 @@
 - [Overview](tutorials/index.md)
 - [Quick start](tutorials/quick-start.md)
 - [Your first multi-slice change](tutorials/first-change.md)
+- [Drive a slice by hand](tutorials/drive-a-slice-by-hand.md)
 - [Cross-repo changes](tutorials/cross-repo-change.md)
-- [Legacy migration at scale](tutorials/legacy-migration-at-scale.md)
 
 ---
 
@@ -27,8 +27,13 @@
 - [Drop down a layer](how-to/drop-down-a-layer.md)
 - [Drive a slice manually](how-to/drive-slice-manually.md)
 - [Amend a plan at Gate 1](how-to/amend-plan-at-gate-1.md)
+- [Undo a plan entry](how-to/undo-a-plan-entry.md)
+- [Drop a slice](how-to/drop-a-slice.md)
 - [Resolve spec conflicts](how-to/resolve-spec-conflicts.md)
+- [Interpret validate findings](how-to/interpret-validate-findings.md)
 - [Bind multiple sources](how-to/bind-multiple-sources.md)
+- [Recover from a stale guest lock](how-to/recover-from-a-stale-guest-lock.md)
+- [Upgrade adapters](how-to/upgrade-adapters.md)
 
 ---
 
@@ -39,6 +44,7 @@
 - [The layered stack](explanation/layered-stack.md)
 - [Artifacts in depth](explanation/artifacts.md)
 - [From sources to slices](explanation/reconciliation.md)
+- [Legacy migration at scale](explanation/legacy-migration.md)
 - [Anatomy of an adapter](explanation/adapter-anatomy.md)
 - [Component factoring (Vectis)](explanation/components.md)
 
@@ -65,6 +71,7 @@
   - [Vectis WASI tools](reference/cli/vectis.md)
   - [CLI output shapes](reference/cli-output-shapes.md)
 - [Plugins](reference/plugins/index.md)
+- [Adapter contract](reference/adapter-contract.md)
 - [Source adapters](reference/sources/index.md)
 - [Target adapters](reference/targets/index.md)
   - [Omnia](reference/targets/omnia.md)

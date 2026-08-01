@@ -1,10 +1,10 @@
 # Target Adapters
 
-> Target adapters declare the output side of the source/target split (see [Anatomy of an adapter](../../explanation/adapter-anatomy.md) for the full contract). The first-party targets (`omnia`, `vectis`, `contracts`) are authored at [`targets/<name>/`](https://github.com/augentic/emery-adapters/tree/main/targets) in the adapters repo and published as `emery:<name>@<semver>` components. The source-side counterparts are documented under [Source adapters](../sources/index.md).
+> Target adapters declare the output side of the source/target split (see the [Adapter contract](../adapter-contract.md) for the full authoring contract). The first-party targets (`omnia`, `vectis`, `contracts`) are authored at [`targets/<name>/`](https://github.com/augentic/emery-adapters/tree/main/targets) in the adapters repo and published as `emery:<name>@<semver>` components. The source-side counterparts are documented under [Source adapters](../sources/index.md).
 
-## What is a target adapter?
+## Operations
 
-A **target adapter** is the output role in the Emery plugin model. It describes how the core `refine → build → merge` slice loop produces an outcome domain's artefacts. Three operations:
+For what a target adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [Anatomy of an adapter](../../explanation/adapter-anatomy.md). The contract facts — three operations:
 
 - `guidance` — idiom guidance consumed by core synthesis. Read into context when `/emery:refine` writes `spec.md` / `design.md`. Empty `guidance` is valid.
 - `build` — implementation drive: consume **only** the build request's `inputs` manifest (rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. Driven by `emery slice build` — see [`emery slice build`](../cli/slice.md#emery-slice-build).
@@ -20,7 +20,7 @@ There is no manifest file. Identity is the guest crate's `(name, version)` — t
 | --------------- | -------- | ------- |
 | `emery-floor` | no       | Exact-semver minimum host-CLI version; resolve aborts with `adapter-cli-too-old` (exit 3) when the running binary is older. |
 | `inputs`        | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `emery slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
-| `platforms`     | no       | `{ required, allowed, default }` platforms capability; see [Anatomy of an adapter](../../explanation/adapter-anatomy.md). |
+| `platforms`     | no       | `{ required, allowed, default }` platforms capability; see the [Adapter contract](../adapter-contract.md#identity-and-metadata). |
 
 Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration or host-dispatched helper.
 
@@ -42,7 +42,7 @@ The dependency graph is one-way; `emery-core` never depends on the plugin loader
 emery (binary)
    └─ workflow
         ├─ emery-tool
-        └─ plugin loader (adapters/sources/ + adapters/targets/)
+        └─ plugin loader (source + target adapter components)
               └─ error
 ```
 
@@ -63,6 +63,6 @@ The metadata shape is the WIT `metadata` record on the `target` interface (`wit/
 
 ## See also
 
-- [Anatomy of an adapter](../../explanation/adapter-anatomy.md) — full source/target contract.
+- [Adapter contract](../adapter-contract.md) — full source/target contract.
 - [Registry](../registry.md) — workspace topology that routes slices to target projects.
 - Per-target reference: [Omnia](omnia.md), [Vectis](vectis.md), [Contracts](contracts.md).

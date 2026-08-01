@@ -75,7 +75,7 @@ See [Directory layout](../reference/directory-layout.md) for the full tree.
 Describe what you want in one line:
 
 ```text
-/emery:plan fix-typo source intent="fix typo in user.rs"
+/emery:plan fix-typo source intent=intent:value:"fix typo in user.rs"
 ```
 
 `/emery:plan` writes three plan-time artifacts:
@@ -109,7 +109,7 @@ slices:
     status: pending
 ```
 
-**`discovery.md`** — what sources surveyd:
+**`discovery.md`** — what sources surveyed:
 
 ```markdown
 ## Summary

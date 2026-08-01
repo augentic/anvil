@@ -109,7 +109,7 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
 ```text
 /emery:init omnia
 
-/emery:plan fix-typo source intent="fix typo in user.rs"
+/emery:plan fix-typo source intent=intent:value:"fix typo in user.rs"
   --> writes change.md + plan.yaml + discovery.md, exits at pending
 
 emery plan execute

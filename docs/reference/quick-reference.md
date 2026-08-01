@@ -14,7 +14,7 @@
 The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional sources at plan time:
 
 ```text
-/emery:plan <name> source legacy=./vendor/monolith source docs=./design-notes
+/emery:plan <name> source legacy=typescript:./vendor/monolith source docs=documentation:./design-notes
 ```
 
 ## All skills
@@ -71,7 +71,7 @@ refining --> refined --> built --> merged
 # Project setup
 emery init <target>                                    # single-project scaffold (positional target adapter)
 emery init --workspace                                       # registry-only workspace
-emery source resolve <name>                            # validate a source adapter manifest
+emery source resolve <name>                            # resolve a source adapter and report its settled identity
 emery target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
@@ -99,15 +99,15 @@ A pin newer than the binary is exit `3` (update the binary through its install c
 
 ## Adapters
 
-Target adapters live under `adapters/targets/<name>/`:
+First-party adapters live in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters). Target adapters live under `targets/<name>/`:
 
-| Adapter   | URL                                                       | Target                |
-| --------- | --------------------------------------------------------- | --------------------- |
-| Omnia     | `https://github.com/augentic/emery/adapters/targets/omnia`       | Rust WASM             |
-| Vectis    | `https://github.com/augentic/emery/adapters/targets/vectis`      | Crux cross-platform   |
-| Contracts | `https://github.com/augentic/emery/adapters/targets/contracts`   | API contracts         |
+| Adapter   | URL                                                                | Target                |
+| --------- | ------------------------------------------------------------------ | --------------------- |
+| Omnia     | `https://github.com/augentic/emery-adapters/tree/main/targets/omnia`     | Rust WASM             |
+| Vectis    | `https://github.com/augentic/emery-adapters/tree/main/targets/vectis`    | Crux cross-platform   |
+| Contracts | `https://github.com/augentic/emery-adapters/tree/main/targets/contracts` | API contracts         |
 
-First-party source adapters live under `adapters/sources/<name>/`: `intent`, `documentation`, `typescript`, `screenshots`.
+First-party source adapters live under `sources/<name>/`: `intent`, `documentation`, `typescript`, `screenshots`, `captures`.
 
 ## Directory structure
 
@@ -115,19 +115,22 @@ First-party source adapters live under `adapters/sources/<name>/`: `intent`, `do
 <project-root>/
 ├── AGENTS.md             # generated agent guidance with operator-editable prose outside fences
 ├── registry.yaml         # workspace catalogue (workspace mode only)
+├── change.md             # operator brief (per active change)
+├── plan.yaml             # change plan
+├── discovery.md          # plan-time lead inventory
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
+├── workspace/            # workspace slots (workspace mode only; gitignored)
 └── .emery/
     ├── project.yaml      # project config (target, sources, workspace, emery-version)
-    ├── change.md         # operator brief (per active change)
-    ├── plan.yaml         # change plan
-    ├── discovery.md      # plan-time lead inventory
     ├── guest.lock        # create-exclusive marker held by guest orchestrations (second driver gets guest-marker-held)
-    ├── cache/           # cached adapter manifests + prompts ({sources,targets}/)
+    ├── scratch/          # transient per-run working state (gitignored)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
     ├── specs/            # merged baseline
-    ├── workspace/        # workspace slots (workspace mode only)
+    ├── journal.jsonl     # append-only event log and outcome ledger
     └── archive/          # finalized plans and merged or dropped slices
 ```
+
+The regenerable adapter cache lives outside the working tree under the Emery home (`$EMERY_HOME/cache/<project-id>/`, default `~/.emery`). See [Directory layout](directory-layout.md) for the full tree.
 
 ## Install
 

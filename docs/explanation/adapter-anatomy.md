@@ -3,16 +3,16 @@
 Emery has two adapter roles with a shared shape. **Source adapters** turn external material (operator intent, written documentation, legacy code, screenshots) into structured `Evidence`. **Target adapters** turn that evidence into code by guiding core synthesis and driving build / merge. The role you are authoring decides which operations you implement; the on-disk shape is the same.
 
 > [!NOTE]
-> This page is the authoring contract — manifest fields, claim kinds, sandboxing, and authority resolution in detail. If you just want to understand *how an adapter fits into a change* (a legacy-code source surveys a lead, extracts evidence, and a target turns the resulting spec into code), read [From sources to slices](reconciliation.md) first. For the per-adapter field tables, see the [Source adapters](../reference/sources/index.md) and [Target adapters](../reference/targets/index.md) references.
+> This page explains the roles and how they fit together. The precise authoring contract — metadata fields, claim kinds, the sandbox table, resolver mechanics, and the author checklist — lives in the [Adapter contract](../reference/adapter-contract.md) reference. If you just want to understand *how an adapter fits into a change* (a legacy-code source surveys a lead, extracts evidence, and a target turns the resulting spec into code), read [From sources to slices](reconciliation.md) first.
 
 <div class="audience-grid">
   <div class="audience">
     <div class="who">Source author</div>
-    <div class="path"><a href="#source-adapter-contract">survey + extract</a> → <a href="#sandboxing">Sandboxing</a></div>
+    <div class="path"><a href="#two-roles-one-shared-shape">Roles</a> → <a href="../reference/adapter-contract.md#source-adapter-contract">survey + extract contract</a></div>
   </div>
   <div class="audience">
     <div class="who">Target author</div>
-    <div class="path"><a href="#target-adapter-contract">guidance + build + merge</a></div>
+    <div class="path"><a href="#two-roles-one-shared-shape">Roles</a> → <a href="../reference/adapter-contract.md#target-adapter-contract">guidance + build + merge contract</a></div>
   </div>
   <div class="audience">
     <div class="who">Operator</div>
@@ -24,94 +24,30 @@ Emery has two adapter roles with a shared shape. **Source adapters** turn extern
 
 | Axis     | Role   | Operations                   | Default examples                                       | Lives under                |
 | -------- | ------ | ---------------------------- | ------------------------------------------------------ | -------------------------- |
-| `source` | input  | `survey`, `extract`          | `intent`, `documentation`, `typescript`, `screenshots` | `adapters/sources/<name>/` |
-| `target` | output | `guidance`, `build`, `merge` | `omnia`, `vectis`, `contracts`                         | `adapters/targets/<name>/` |
+| `source` | input  | `survey`, `extract`          | `intent`, `documentation`, `typescript`, `screenshots` | `sources/<name>/` |
+| `target` | output | `guidance`, `build`, `merge` | `omnia`, `vectis`, `contracts`                         | `targets/<name>/` |
 
 Both ship as a single WebAssembly component exporting the matching axis interface from the closed WIT contract (`wit/emery.wit`) — one component, no manifest file. The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same component contract, same prose layout in the authoring repo. The axis decides the operations, which derive from the WIT contract rather than being declared on the wire.
 
 The WIT package also defines an additive combined `adapter` world (`export source; export target;`) so one component can serve both axes. It exists for self-contained testing — Emery's own mock adapter uses it — and imposes no obligation on external adapters: source-only and target-only components remain the published shape.
 
-Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class they emit (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice via `emery plan amend <entry> --authority-override <entry> <claim-kind>=<source>` and then re-run `/emery:refine`; the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). See [Authority resolution](#authority-resolution).
+## How the roles meet the loop
 
-## Identity and metadata
+A source adapter participates twice: `survey` at plan time (one [lead](../appendices/glossary.md#l) per slice-sized unit into `discovery.md`) and `extract` at slice time (one `Evidence` document per bound source). A target adapter participates three times per slice: its `guidance` prompt is read into synthesis context at refine, its `build` operation generates the code, and its `merge` operation gates the landing. The engine owns everything between — lifecycle, artifact schemas, synthesis, and state transitions — so an adapter contributes specialist behaviour without ever driving the workflow.
 
-There is no manifest file. Identity and metadata split:
-
-- **Identity** — the `(name, version)` pair. The kebab-case `name` is unique per axis; the exact-semver `version` is the guest crate's `Cargo.toml` version, published as `emery:<name>@<semver>` (`wkg publish`). Resolution keys on the identity, and synthesized refs render `name@<semver>`.
-- **Metadata** — the WIT `metadata` record returned by the component's deterministic `metadata` export: an optional `emery` host-CLI compatibility floor (an exact-semver minimum platform version, enforced at resolve time and aborting with `adapter-cli-too-old` on exit 3 when the running binary is older; absent means no floor) plus, for targets, the optional `inputs[]` and `platforms` capability. The host dispatches `metadata` at resolve time and caches the answer against the component's digest.
-
-The operation set is **not** declared on the wire — it derives from the closed WIT contract (`wit/emery.wit`) per axis: sources expose `survey` / `extract`, targets expose `guidance` / `build` / `merge`. Each operation's prompt body and any deterministic helper behaviour ship compiled into the component; the prompt markdown stays authored under `prose/prompts/` in the adapter's guest crate. Path-based `detect[]` auto-detection is deferred — operators bind sources explicitly (`source legacy=./repo`).
-
-## Source adapter contract
-
-A source adapter participates in two places in the lifecycle.
-
-**`survey(Source) → Lead[]`** runs inside the guest-routed `emery plan author` (and standalone `emery source survey`). It reads the operator-bound source path or value and emits one block per slice-sized **raw lead** under `## Lead inventory` in `discovery.md`. Each block carries a stable `lead` and the scalar `source` that surfaced it; identity is the `(source, lead)` pair. Re-surveying the same source replaces that source's blocks by `(source, lead)` and never merges across sources — cross-source unification is the reconcile leg inside `emery plan author`. The lead grammar:
-
-```markdown
-### legacy-monolith:user-registration
-
-- lead: user-registration
-- source: legacy-monolith
-- synopsis: Registration endpoint accepting email + password with email-format validation.
+```text
+/emery:plan    →  source.survey     (leads into discovery.md)
+/emery:refine  →  source.extract    (evidence/<source>.yaml)
+               →  target.guidance   (idiom guidance for synthesis)
+/emery:build   →  target.build      (code generation)
+/emery:merge   →  target.merge      (preflight/postflight landing gates)
 ```
 
-**`extract(Lead, Source) → Evidence`** runs inside the guest-routed `emery slice refine` (and standalone `emery source extract`). It returns a structured document the CLI persists to `.emery/slices/<slice>/evidence/<source>.yaml`:
-
-```yaml
-authority: behaviour
-lead: user-registration
-claims:
-  - kind: excerpt
-    id: users.register.email-validation
-    path: src/users/register.ts#L12-L87
-```
-
-Claims have a closed `kind` enum (`intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`); new kinds require an RFC update. Top-level `authority:` is required per `Evidence`. The document's `(slice, source)` identity is path-borne (slice directory + `<source>.yaml` filename) and its adapter resolves from `plan.yaml.sources.<source>.adapter`, so neither is written in-document. `id` is required on `requirement` and `criterion` for deterministic reconciliation. Claim `path:` carries an optional GitHub-style anchor (`<path>`, `<path>#L<n>`, or `<path>#L<start>-L<end>`).
-
-### Sandboxing
-
-Source adapter operations run under the WASI Preview 2 posture: Wasm modules with directory preopens, no inherited host environment, no runtime network access, fixed working directory. The host pre-opens four runtime roots per call:
-
-| Root              | Mode       | Contents                                                                                                                                                                                                                                                                                                          |
-| ----------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                                                                                                                                                                                                                                               |
-| `$CAPABILITY_DIR` | read-only  | The adapter's capability shelf (out-of-tree, when present) — reference material distributed beside the component.                                                                                                                                                                                                 |
-| `$SCRATCH_DIR`    | write-only | Per-operation scratch lane under the transient working-state root, structurally outside the cache tree: `extract` → `.emery/scratch/<adapter>/<slice>/`; `survey` (plan-time, no slice) → `.emery/scratch/<adapter>/survey/`. Recreated empty at `prepare` time — only what this run writes can be finalized. |
-| `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.                                                                                                                                                                                                                                    |
-
-Access outside these roots is denied. Symlinks are resolved during canonicalization; a symlink inside `$SOURCE_DIR` pointing outside it is denied even if its textual path looks contained. A denied access surfaces as structured error `source-extract-path-denied` (or `source-survey-path-denied`) and the slice stays `refining`. Resolution paths: rebind the source via `emery plan amend` to include the needed root, or drop the source.
-
-Each source operation runs as one guest orchestration: it builds the sandbox above, scaffolds the output target, emits `source.execution.agent`, drives the adapter guest's compiled-in prompt against the prepared directory, then validates the output before it becomes visible (lead set / Evidence schema), merges it into `discovery.md` (`survey`) or persists `evidence/<source>.yaml` (`extract`), and journals the completion event. Results are never cached — each run re-executes the prompt.
-
-## Target adapter contract
-
-Target adapters do not own `spec.md` or `design.md` synthesis. They contribute three operations:
-
-- **`guidance`** — idiom guidance consumed by core synthesis. The prompt shapes how `proposal.md` / `spec.md` / `design.md` / `tasks.md` are written for slices that target this adapter. Empty `guidance` is valid; the prompt body is read into synthesis context, not executed.
-- **`build`** — implementation drive: consume **only** the build request's `inputs` manifest (the rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. `emery slice build` owns request assembly, report validation, and the `built` transition gate; the target's build prompts own only code generation.
-- **`merge`** — phased landing gate: requires lifecycle `built` and is dispatched twice per merge by the closed WIT `merge-phase` enum. **Preflight** runs the target's staged checks before the engine's deterministic commit (a blocking finding aborts with the slice still `built`); **postflight** re-runs the target's validators over the merged baseline (a blocking finding is a terminal diagnostic — the merge stands). Each gate returns a report in the build-report shape, schema-gated and persisted by `emery slice merge`; the gate never performs lifecycle transitions, baseline spec merging, or archive moves.
-
-A target adapter MAY declare an optional `inputs[]` in its `metadata` answer — a flat list of `{ path, required }` entries naming the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into the request's `inputs.artifacts.additional[]`, and a missing `required` path aborts the build with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. See the [target adapter reference](../reference/targets/index.md#manifest-shape) and [`emery slice build`](../reference/cli/slice.md#emery-slice-build).
-
-Target-specific structured outputs are produced by `build` alongside the code they accompany; they are not Emery artifacts and do not need a fourth capability. Each slice binds a `project` in `plan.yaml`; the target adapter is resolved on demand from that project (it is not stored per slice). v1 supports one target per project.
-
-## Resolver and cache
-
-<div class="pipeline">
-
-![Source and target adapter axes](../assets/diagrams/adapter-anatomy/adapter-axes.svg)
-
-<p class="pipeline-caption">Sources survey/extract into evidence; core synthesis reads target guidance; target build/merge lands code.</p>
-</div>
-
-The adapter resolver (`crates/project/src/adapter/`) routes by binding axis. There is no `if name == "intent"` branch in core — the first-party adapters are published components (`emery:intent`, `emery:documentation`, `emery:typescript`, `emery:screenshots`, `emery:captures`, `emery:omnia`, `emery:vectis`, `emery:contracts`) that resolve through the same code path as a third-party adapter: a pinned identity resolves the global single-file store entry (`<store-root>/<name>@<version>.wasm`, verify-on-read), a bare name resolves local-first — the seeded project component cache (`<project-cache>/components/<name>.wasm`, populated by `emery adapter add` or a local component at init), else the newest installed store version, else pull-latest provisioning; there is no sibling-checkout or build-tree probe.
-
-CLI entry points: `emery source resolve <name>` and `emery target resolve <value>` locate the component and report its resolved path, location, and version. `emery plan add`, `emery plan amend <entry> --add-source / --remove-source`, and the reconcile leg inside `emery plan author` write slice bindings into `plan.yaml`.
+For the exact operation signatures, the lead and claim grammars, the sandbox posture, and the resolver mechanics, see the [Adapter contract](../reference/adapter-contract.md).
 
 ## Authority resolution
 
-When two claims of the same kind disagree, core synthesis walks three steps in order. Per-slice overrides land on `plan.yaml` at Gate 1 via `emery plan amend <entry> --authority-override <entry> <claim-kind>=<source>`. (A per-Evidence per-kind `authority-overrides:` surface on each `evidence/*.yaml` file is deferred to a future RFC.) Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md).
+Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class their evidence carries (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice at Gate 1 via `emery plan amend <entry> --authority-override <claim-kind>=<source>` and then re-run `/emery:refine`; the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md); the operator-facing walk-through is in [From sources to slices](reconciliation.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>
@@ -155,15 +91,6 @@ When two claims of the same kind disagree, core synthesis walks three steps in o
   </p>
 </div>
 
-## Authoring checklist
-
-1. **Pick the axis.** Source if your adapter reads external material and writes `Evidence`; target if your adapter consumes `spec.md` + `design.md` and writes code.
-2. **Create the guest crate.** `adapters/sources/<name>/` or `adapters/targets/<name>/` in the adapters repo: a `Cargo.toml` (its `version` is the adapter identity) and a `prose/prompts/` subdirectory (plus `prose/references/` and, where needed, `prose/rules/`).
-3. **Implement the operations.** The operation set is closed per axis by the WIT contract — sources implement `survey` / `extract`, targets implement `guidance` / `build` / `merge`.
-4. **Write the prompts.** Each operation prompt is a markdown file compiled into the adapter guest. Source `survey` writes `discovery.md` blocks; source `extract` returns `Evidence` content; target `guidance` is idiom guidance read into synthesis context; target `build` and `merge` drive code generation and landing.
-5. **Ship helper behaviour in the guest.** Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration.
-6. **Validate.** Build with `cargo make release` in the adapters repo, then `emery source resolve <name>` / `emery target resolve <name>` exercises resolution and the metadata dispatch.
-
 ## Adapter manifests vs Cursor plugin manifests
 
 Cursor and `emery` are different runtimes. They share no fields, no loader, and no discovery path.
@@ -172,3 +99,9 @@ Cursor and `emery` are different runtimes. They share no fields, no loader, and 
 - **The adapter component** lives in [`augentic/emery-adapters`](https://github.com/augentic/emery-adapters) and is resolved by the `emery` CLI through the provider's `adapter::Resolver` capability; the shipped WASI provider delegates to `resolver::Component`, and metadata is the component's own `metadata` answer. Cursor never consults it.
 
 Neither system references the other, neither loader probes for the other, and neither cache is shared. If you are answering "is there a JSON config for adapters?": no — adapters have no manifest file at all; `plugin.json` is Cursor's, not Emery's.
+
+## See also
+
+- [Adapter contract](../reference/adapter-contract.md) — the precise authoring contract: identity, metadata, operations, sandboxing, resolver, checklist
+- [From sources to slices](reconciliation.md) — how leads and evidence become slices and specs
+- [Source adapters](../reference/sources/index.md) / [Target adapters](../reference/targets/index.md) — per-adapter catalogs

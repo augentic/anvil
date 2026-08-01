@@ -61,6 +61,6 @@ Both resolve verbs emit `axis`, `name`, `version` (omitted for an unpinned resol
 
 ## See also
 
-- [Anatomy of an adapter](../../explanation/adapter-anatomy.md) — source vs target contract
+- [Adapter contract](../adapter-contract.md) — the full source vs target authoring contract
 - [Directory layout](../directory-layout.md) — the store, cache, and `EMERY_HOME`
 - [Target adapters](../targets/index.md) — first-party target adapters

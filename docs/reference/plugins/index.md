@@ -22,15 +22,15 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | ------ | ------ | ------- | --------- |
 | **Emery** | `/emery:` | Workflow wrappers: `init`, `plan`, `execute`, `refine`, `build`, `merge`, `finalize`, `drop` | [Slice Skills](../slice-skills/index.md), [Change Skills](../change-skills/index.md) |
 
-The Omnia and Vectis target adapters are not Cursor plugins — they live under [`adapters/targets/`](../targets/index.md) and contribute their `guidance`, `build`, and `merge` operations to the workflow. See [Omnia target](../targets/omnia.md) and [Vectis target](../targets/vectis.md).
+The Omnia and Vectis target adapters are not Cursor plugins — they live under [`targets/` in the adapters repo](../targets/index.md) and contribute their `guidance`, `build`, and `merge` operations to the workflow. See [Omnia target](../targets/omnia.md) and [Vectis target](../targets/vectis.md).
 
 ## How plugins compose with target adapters
 
 The **Emery** plugin provides the operator slash commands. **Target adapters** own `guidance`, `build`, and `merge` — the build prompts drive implementation work directly:
 
-- **Omnia target** drives crate, test, guest, and review phases inline from [`adapters/targets/omnia/prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/omnia/prose/prompts/build.md).
-- **Vectis target** drives composition, core, iOS, and Android phases inline from [`adapters/targets/vectis/prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/build.md).
-- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside [`adapters/targets/contracts/prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/contracts/prose/prompts/build.md).
+- **Omnia target** drives crate, test, guest, and review phases inline from [`targets/omnia/prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/omnia/prose/prompts/build.md).
+- **Vectis target** drives composition, core, iOS, and Android phases inline from [`targets/vectis/prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/build.md).
+- **Contracts target** runs OpenAPI, AsyncAPI, and JSON Schema sub-flows inside [`targets/contracts/prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/contracts/prose/prompts/build.md).
 
 ## Artifact flow
 
