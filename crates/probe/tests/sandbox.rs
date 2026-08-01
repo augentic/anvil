@@ -5,7 +5,7 @@ use probe::sandbox;
 use tempfile::TempDir;
 
 #[test]
-fn single_writer_excludes_a_second_eval() {
+fn single_writer_excludes_second() {
     let tmp = TempDir::new().expect("tempdir");
     let sandbox = tmp.path().join("sandbox");
 

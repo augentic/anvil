@@ -122,6 +122,47 @@ pub enum SpecKind {
     Modified,
 }
 
+/// The `slice-not-found` failure for an absent slice directory: the
+/// detail names the missing slice and lists its siblings so a typo'd
+/// name reads as a typo, not a corrupt tree.
+#[must_use]
+pub fn slice_not_found(slice_dir: &Path) -> Error {
+    let name = slice_dir.file_name().map(|n| n.to_string_lossy()).unwrap_or_default();
+    let siblings = slice_dir.parent().map(sibling_slices).unwrap_or_default();
+    let inventory = if siblings.is_empty() {
+        "no slices exist".to_string()
+    } else {
+        format!("available: {}", siblings.join(", "))
+    };
+    Error::Diag {
+        code: "slice-not-found",
+        detail: format!(
+            "no slice named `{name}` under {} ({inventory})",
+            parent_display(slice_dir)
+        ),
+    }
+}
+
+/// Sorted directory names under `slices_dir` — best-effort: an
+/// unreadable root yields the empty inventory rather than masking the
+/// not-found failure.
+fn sibling_slices(slices_dir: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(slices_dir) else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(Result::ok)
+        .filter(|e| e.path().is_dir())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort_unstable();
+    names
+}
+
+fn parent_display(slice_dir: &Path) -> String {
+    slice_dir.parent().map_or_else(|| slice_dir.display().to_string(), |p| p.display().to_string())
+}
+
 impl SliceMetadata {
     /// Convenience helper: `<slice_dir>/metadata.yaml`.
     #[must_use]
@@ -133,14 +174,20 @@ impl SliceMetadata {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::ArtifactNotFound`] (`kind = "metadata.yaml"`)
-    /// when the file is absent — the canonical "not a slice directory"
-    /// signal that `emery slice list` and the execute loop rely on.
-    /// [`Error::YamlDe`] surfaces serde-saphyr deserialisation failures
-    /// (malformed YAML, unknown enum tags, type mismatches);
-    /// [`Error::Io`] propagates filesystem read errors past the
-    /// existence probe (permissions, mid-flight truncation).
+    /// Returns the `slice-not-found` diagnostic ([`slice_not_found`])
+    /// when the slice directory itself is absent — the operator-typo
+    /// signal, listing the sibling slices. Returns
+    /// [`Error::ArtifactNotFound`] (`kind = "metadata.yaml"`) when the
+    /// directory exists but the file is absent — the "not a slice
+    /// directory" signal. [`Error::YamlDe`] surfaces serde-saphyr
+    /// deserialisation failures (malformed YAML, unknown enum tags,
+    /// type mismatches); [`Error::Io`] propagates filesystem read
+    /// errors past the existence probe (permissions, mid-flight
+    /// truncation).
     pub fn load(slice_dir: &Path) -> Result<Self, Error> {
+        if !slice_dir.is_dir() {
+            return Err(slice_not_found(slice_dir));
+        }
         let path = Self::path(slice_dir);
         if !path.exists() {
             return Err(Error::ArtifactNotFound {

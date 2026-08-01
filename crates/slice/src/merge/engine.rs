@@ -9,6 +9,8 @@ use artifacts::spec::{
 use error::Error;
 use serde::Serialize;
 
+use crate::merge::count_requirement_headings;
+
 /// Result of a successful [`merge`] call.
 ///
 /// `output` is the merged baseline text (pinned byte-for-byte by the
@@ -283,10 +285,6 @@ fn assemble_output(
     let mut output = parts.join("\n\n");
     output.push('\n');
     output
-}
-
-fn count_requirement_headings(text: &str) -> usize {
-    text.lines().filter(|line| line.trim_start().starts_with(REQ_HEADING)).count()
 }
 
 /// Replace only the first occurrence of `needle`; an empty `needle`

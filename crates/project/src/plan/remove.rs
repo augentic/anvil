@@ -31,10 +31,7 @@ impl Plan {
         }
 
         if !self.entries.iter().any(|e| e.name == name) {
-            return Err(Error::Diag {
-                code: "plan-entry-not-found",
-                detail: format!("no slice named '{name}' in plan"),
-            });
+            return Err(self.entry_not_found(name));
         }
 
         let referencers: Vec<&str> = self

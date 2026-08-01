@@ -230,7 +230,7 @@ fn mcp_url_mirrors_the_routed_id() {
 // unparseable address yields no URL at all — no listener means no
 // shelf and no grant, never a wrong-port guess.
 #[test]
-fn mcp_url_derives_the_port_from_the_trigger_address() {
+fn mcp_url_port_from_trigger() {
     for (addr, expected) in [
         (Some("127.0.0.1:49213"), Some("http://127.0.0.1:49213/mcp/target/omnia")),
         (Some("0.0.0.0:8080"), Some("http://127.0.0.1:8080/mcp/target/omnia")),
@@ -244,7 +244,7 @@ fn mcp_url_derives_the_port_from_the_trigger_address() {
 }
 
 #[test]
-fn pinned_grant_strips_the_version() {
+fn pinned_grant_strips_version() {
     let url = mcp_url_for(Some("127.0.0.1:8080"), "target:contracts@1.0.0");
     let context = Context {
         adapter_id: "target:contracts@1.0.0",

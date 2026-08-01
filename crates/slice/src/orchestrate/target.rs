@@ -22,9 +22,13 @@ use crate::{
 /// finding count.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildOutcome {
+    /// Slice that was built.
     pub slice: String,
+    /// Target adapter identifier from the report.
     pub target: String,
+    /// Report status.
     pub status: BuildStatus,
+    /// Finding count on the report.
     pub findings: usize,
 }
 

@@ -3,17 +3,18 @@
 
 use std::path::{Path, PathBuf};
 
-use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
 use project::config::{Layout, Mutation, with_state};
 use project::journal::{self, EventKind};
 use project::plan::{Plan, Status};
-use project::seam::{MergePhase, Target, WorkingTree};
+use project::seam::{MergePhase, Target};
 
-use super::seam_failure;
 use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, slice as slice_merge};
-use crate::{BuildReport, BuildStatus};
+
+mod gate;
+
+use gate::{enforce_gate, fetch_gate_report, persist_gate_report, run_gate};
 
 /// The result of a completed guest [`merge`].
 #[derive(Debug, Clone)]
@@ -26,7 +27,7 @@ pub struct MergeOutcome {
     pub archive_path: PathBuf,
 }
 
-/// Merge one built slice (`emery slice merge run`).
+/// Merge one built slice (`emery slice merge`).
 ///
 /// Runs target preflight gate → deterministic `slice_merge::commit`
 /// → plan entry `done` → target postflight gate, with each gate's
@@ -186,65 +187,6 @@ fn journal_on_failure<V>(
     result
 }
 
-/// Dispatch one target merge gate and enforce its report (preflight
-/// path — persist happens after a successful return).
-#[tracing::instrument(name = "slice.merge.gate", skip_all, fields(phase = %phase, target = %id))]
-async fn run_gate<T: Target>(
-    targets: &T, id: &str, slice: &str, phase: MergePhase,
-) -> Result<BuildReport, Error> {
-    let report = fetch_gate_report(targets, id, slice, phase).await?;
-    enforce_gate(&report, phase, slice)?;
-    Ok(report)
-}
-
-/// Fetch one target merge gate report and check the slice-name match.
-async fn fetch_gate_report<T: Target>(
-    targets: &T, id: &str, slice: &str, phase: MergePhase,
-) -> Result<BuildReport, Error> {
-    let report = targets
-        .merge(id.to_string(), slice.to_string(), phase, WorkingTree::live())
-        .await
-        .map_err(|err| seam_failure("merge", id, &err))?;
-
-    if report.slice != slice {
-        return Err(Error::validation_failed(
-            "target-merge-report-slice-mismatch",
-            "the merge gate report's slice matches the slice being merged",
-            format!("report names slice `{}`, but the merge ran for `{slice}`", report.slice),
-        ));
-    }
-    Ok(report)
-}
-
-/// Enforce blocking findings and report status for one merge gate.
-fn enforce_gate(report: &BuildReport, phase: MergePhase, slice: &str) -> Result<(), Error> {
-    report.enforce_no_blocking()?;
-    if report.status == BuildStatus::Failure {
-        return Err(Error::Diag {
-            code: match phase {
-                MergePhase::Preflight => "target-merge-preflight-failed",
-                MergePhase::Postflight => "target-merge-postflight-failed",
-            },
-            detail: format!(
-                "target `{}` reported a failed {phase} merge gate for slice `{slice}` ({} \
-                 finding(s))",
-                report.target,
-                report.findings.len()
-            ),
-        });
-    }
-    Ok(())
-}
-
-/// Persist one gate's report to `<dir>/<phase>.yaml`, so the archived
-/// slice carries both gate outcomes — including a postflight
-/// `status: failure` report written before the terminal error returns.
-fn persist_gate_report(dir: &Path, phase: MergePhase, report: &BuildReport) -> Result<(), Error> {
-    std::fs::create_dir_all(dir).map_err(Error::Io)?;
-    let yaml = project::fs::yaml(report)?;
-    bytes_write(&dir.join(format!("{phase}.yaml")), yaml.as_bytes())
-}
-
 /// Detect a torn merge left by a crash between the deterministic
 /// commit and the per-entry `done` stamp: the slice tree is gone from
 /// `.emery/slices/` and its newest archive reads lifecycle `merged`.
@@ -298,10 +240,7 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     }
     let plan = Plan::load(&layout.plan_path())?;
     let Some(entry) = plan.entries.iter().find(|e| e.name == slice) else {
-        return Err(Error::Diag {
-            code: "plan-entry-not-found",
-            detail: format!("no slice named '{slice}' in plan"),
-        });
+        return Err(plan.entry_not_found(slice));
     };
     if entry.status != Status::InProgress {
         return Err(Error::validation_failed(

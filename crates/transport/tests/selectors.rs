@@ -38,7 +38,7 @@ fn other_routes_project_no_seed() {
 }
 
 #[test]
-fn displays_and_rejections_project_no_seed() {
+fn displays_project_no_seed() {
     // Help, version, and grammar failures all render in the guest;
     // the projection stays total and answers `None`.
     for args in [
@@ -46,7 +46,7 @@ fn displays_and_rejections_project_no_seed() {
         &["plan", "--help"][..],
         &["--version"][..],
         &["frobnicate"][..],
-        &["plan", "transition"][..],
+        &["plan", "undo"][..],
         &["adapter", "add"][..],
     ] {
         assert_eq!(seed_request(&argv(args)), None, "{args:?}");
@@ -57,7 +57,7 @@ mod refresh {
     use super::*;
 
     #[test]
-    fn adapter_update_names_the_adapter() {
+    fn update_names_the_adapter() {
         let request = refresh_request(&argv(&["adapter", "update", "omnia"]));
         assert_eq!(request.names, vec!["omnia".to_string()]);
         assert!(!request.recorded_adapter);
@@ -71,7 +71,7 @@ mod refresh {
     }
 
     #[test]
-    fn init_upgrade_flags_the_recorded_binding() {
+    fn upgrade_flags_recorded_binding() {
         // The launcher reads `project.yaml` at the anchored root to
         // widen the set; the projection only flags the intent.
         let request = refresh_request(&argv(&["init", "--upgrade"]));
@@ -80,7 +80,7 @@ mod refresh {
     }
 
     #[test]
-    fn pins_and_components_never_refresh() {
+    fn pins_components_no_refresh() {
         // Pinned versions are immutable; local components refresh
         // through `adapter add`.
         for args in [

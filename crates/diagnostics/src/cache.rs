@@ -36,14 +36,19 @@ pub fn project_id(project_dir: &Path) -> String {
 /// form. A store entry is a single component file, so the entry digest
 /// is the file's byte digest.
 ///
-/// Infallible by design, mirroring the other helpers — an unreadable
-/// file digests as empty rather than poisoning the caller, since a
-/// healthy read-only store entry never trips that path.
+/// For files the caller just wrote or already holds open; an
+/// unreadable file digests as empty. The verify gate never routes
+/// through here — [`verify_store_entry`] reads the entry itself and
+/// reports an unreadable one as [`StoreVerifyError::Unreadable`].
 #[must_use]
 pub fn file_content_digest(file: &Path) -> String {
-    let bytes = std::fs::read(file).unwrap_or_default();
+    bytes_digest(&std::fs::read(file).unwrap_or_default())
+}
+
+/// The `sha256:<hex>` digest of a byte slice.
+fn bytes_digest(bytes: &[u8]) -> String {
     let mut hasher = Hasher::new();
-    hasher.update(&bytes);
+    hasher.update(bytes);
     format!("sha256:{}", hasher.finalize_hex())
 }
 
@@ -91,13 +96,16 @@ pub struct DigestMismatch {
 
 /// Why [`verify_store_entry`] refused a store entry.
 ///
-/// Fail-closed on both arms: an entry without a readable sidecar is as
-/// unverifiable as one whose digest drifted — the resolver is the last
+/// Fail-closed on every arm: an entry that cannot be verified is as
+/// refused as one whose digest drifted — the resolver is the last
 /// gate before the runtime executes the bytes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StoreVerifyError {
     /// No sidecar exists (or it cannot be parsed) beside the entry.
     MissingSidecar,
+    /// The entry itself cannot be read (missing file, permissions);
+    /// carries the I/O failure text.
+    Unreadable(String),
     /// The recorded and recomputed digests differ.
     Mismatch(DigestMismatch),
 }
@@ -123,7 +131,20 @@ pub fn write_store_meta(
     };
     let body =
         serde_saphyr::to_string(&meta).map_err(|err| std::io::Error::other(err.to_string()))?;
-    std::fs::write(meta_path, body)
+    // Temp-then-rename in the same directory so a concurrent
+    // verify-on-read never observes a partial sidecar.
+    let mut tmp = meta_path.as_os_str().to_owned();
+    tmp.push(format!(".tmp-{}", std::process::id()));
+    let tmp = std::path::PathBuf::from(tmp);
+    let written = std::fs::File::create(&tmp).and_then(|mut file| {
+        std::io::Write::write_all(&mut file, body.as_bytes())?;
+        file.sync_all()
+    });
+    let result = written.and_then(|()| std::fs::rename(&tmp, meta_path));
+    if result.is_err() {
+        drop(std::fs::remove_file(&tmp));
+    }
+    result
 }
 
 /// Read the recorded tree digest from the verify-on-read sidecar at
@@ -148,21 +169,24 @@ pub fn read_store_provenance(meta_path: &Path) -> Option<OciProvenance> {
 /// Verify a store entry against its recorded digest (verify-on-read).
 ///
 /// Reads the recorded digest from the sidecar at `meta_path` and
-/// recomputes [`file_content_digest`] over the component file at
-/// `entry`. Fail-closed: a missing or unparseable sidecar refuses the
-/// entry ([`StoreVerifyError::MissingSidecar`]) — every install writes
-/// a sidecar, so an entry without one is unverifiable, not legacy.
+/// recomputes the content digest over the component file at `entry`.
+/// Fail-closed: a missing or unparseable sidecar refuses the entry
+/// ([`StoreVerifyError::MissingSidecar`]) — every install writes a
+/// sidecar, so an entry without one is unverifiable, not legacy.
 ///
 /// # Errors
 ///
 /// [`StoreVerifyError::MissingSidecar`] when no sidecar can be read;
-/// [`StoreVerifyError::Mismatch`] when the recorded and recomputed
-/// digests differ.
+/// [`StoreVerifyError::Unreadable`] when the entry itself cannot be
+/// read; [`StoreVerifyError::Mismatch`] when the recorded and
+/// recomputed digests differ.
 pub fn verify_store_entry(entry: &Path, meta_path: &Path) -> Result<(), StoreVerifyError> {
     let Some(recorded) = read_store_meta(meta_path) else {
         return Err(StoreVerifyError::MissingSidecar);
     };
-    let actual = file_content_digest(entry);
+    let bytes =
+        std::fs::read(entry).map_err(|err| StoreVerifyError::Unreadable(err.to_string()))?;
+    let actual = bytes_digest(&bytes);
     if actual == recorded {
         Ok(())
     } else {

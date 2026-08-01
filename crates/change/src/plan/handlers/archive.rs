@@ -78,14 +78,11 @@ pub struct ArchivedPlan {
 
 impl Render for ArchiveBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        match &self.archived_plans_dir {
-            Some(dir) => writeln!(
-                w,
-                "Archived plan to {}. Working directory moved to {}.",
-                self.archived.display(),
-                dir.display()
-            ),
-            None => writeln!(w, "Archived plan to {}.", self.archived.display()),
+        writeln!(w, "archived plan `{}`", self.plan.name)?;
+        writeln!(w, "  archived: {}", self.archived.display())?;
+        if let Some(dir) = &self.archived_plans_dir {
+            writeln!(w, "  working directory: {}", dir.display())?;
         }
+        Ok(())
     }
 }

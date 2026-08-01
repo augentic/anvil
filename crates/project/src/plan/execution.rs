@@ -113,7 +113,15 @@ pub(super) fn resolve_entry(
 
     let lifecycle = match SliceMetadata::load(&slice_dir) {
         Ok(metadata) => Some(metadata.status),
-        Err(Error::ArtifactNotFound { .. }) => None,
+        // Both "no slice directory yet" and "directory without
+        // metadata.yaml" mean the phase has not created the slice.
+        Err(
+            Error::ArtifactNotFound { .. }
+            | Error::Diag {
+                code: "slice-not-found",
+                ..
+            },
+        ) => None,
         Err(err) => return Err(err),
     };
 

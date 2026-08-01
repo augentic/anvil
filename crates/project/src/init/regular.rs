@@ -78,8 +78,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     };
 
     let config_path = layout.config_path();
-    let serialised = serde_saphyr::to_string(&cfg)?;
-    fs::write(&config_path, serialised)?;
+    artifacts::atomic::yaml_write(&config_path, &cfg)?;
 
     upsert_gitignore(opts.project_dir)?;
 

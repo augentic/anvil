@@ -68,7 +68,8 @@ pub struct DropBody {
 
 impl Render for DropBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "{}: dropped and archived to {}", self.name, self.archive_path.display())?;
+        writeln!(w, "dropped `{}`", self.name)?;
+        writeln!(w, "  archived: {}", self.archive_path.display())?;
         if let Some(r) = &self.drop_reason {
             writeln!(w, "  reason: {r}")?;
         }

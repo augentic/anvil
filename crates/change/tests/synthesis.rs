@@ -174,7 +174,7 @@ async fn divergence_docs_wins() {
 
 /// [`session_synthesis_answer`] plus one accepted Decision Record
 /// superseding the baseline `DEC-0001`.
-fn session_synthesis_with_decision() -> String {
+fn synthesis_with_decision() -> String {
     let mut answer: serde_json::Value =
         serde_json::from_str(&session_synthesis_answer()).expect("answer parses");
     answer["artifacts"]["decisions"] = json!([{
@@ -201,7 +201,7 @@ async fn decisions_exact_set() {
         "mock",
         vec![
             mock::answers::adversarial_grouping(),
-            session_synthesis_with_decision(),
+            synthesis_with_decision(),
             session_synthesis_answer(),
         ],
     );

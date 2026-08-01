@@ -5,6 +5,7 @@
 //! mirroring its command's wire input.
 
 use ::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
+use artifacts::evidence::ClaimKind;
 use clap::{ArgAction, Args};
 
 /// Parse the locked `--source` argv grammar into a [`SourceAssign`]:
@@ -61,8 +62,9 @@ fn source_assign(s: &str) -> Result<SourceAssign, String> {
     })
 }
 
-/// Parse the `--sources` / `--add-source` argv forms (workflow
-/// §`Slice.sources`) into a [`BindingArg`]:
+/// Parse the `plan add --source` / `plan amend --sources` /
+/// `--add-source` argv forms (workflow §`Slice.sources`) into a
+/// [`BindingArg`]:
 ///
 /// - `<key>=<lead>` — structured binding; both sides are non-empty.
 /// - `<key>` — bare-string shorthand; sugar for
@@ -70,17 +72,18 @@ fn source_assign(s: &str) -> Result<SourceAssign, String> {
 ///
 /// Malformed inputs (empty key, empty lead, dangling `=`, more than
 /// one `=`) produce a `String` error that clap surfaces as a standard
-/// usage diagnostic (exit code 2).
+/// usage diagnostic (exit code 2). The messages stay flag-neutral —
+/// clap prefixes the offending flag itself.
 fn binding_arg(s: &str) -> Result<BindingArg, String> {
     if s.is_empty() {
-        return Err("--sources value must be non-empty".to_string());
+        return Err("source binding must be non-empty".to_string());
     }
     if let Some((k, v)) = s.split_once('=') {
         if v.contains('=') {
-            return Err(format!("--sources value `{s}` must be <key>=<lead> with at most one `=`"));
+            return Err(format!("source binding `{s}` must be <key>=<lead> with at most one `=`"));
         }
         if k.is_empty() || v.is_empty() {
-            return Err(format!("--sources key and lead must both be non-empty, got `{s}`"));
+            return Err(format!("source binding key and lead must both be non-empty, got `{s}`"));
         }
         Ok(BindingArg {
             key: k.to_string(),
@@ -119,7 +122,7 @@ pub struct NextArgs {}
 pub struct StatusArgs {}
 
 /// Arguments for `plan execute`.
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Copy, Debug, Args)]
 pub struct ExecuteArgs {
     /// Who is driving this invocation — `operator` (default) or
     /// `agent`. Recorded on the `plan.transition.approved` journal
@@ -127,7 +130,7 @@ pub struct ExecuteArgs {
     /// on first execute); self-reported evidence for eval probes,
     /// not an enforcement gate.
     #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
-    pub actor: String,
+    pub actor: project::journal::Actor,
 }
 
 /// Arguments for `plan remove`.
@@ -137,19 +140,11 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
-/// Arguments for `plan transition`.
+/// Arguments for `plan undo`.
 #[derive(Debug, Args)]
-pub struct TransitionArgs {
+pub struct UndoArgs {
     /// Kebab-case plan-entry name.
     pub name: String,
-    /// Walk one rung backwards on per-entry status — the only
-    /// transition mode. Legal rungs: `done → in-progress`,
-    /// `in-progress → pending`. The flag refuses to skip rungs —
-    /// undoing a `done` entry to `pending` MUST run twice so the
-    /// journal records each step independently. Fires one
-    /// `plan.transition.undone` event per call.
-    #[arg(long = "undo", action = ArgAction::SetTrue, required = true)]
-    pub undo: bool,
 }
 
 /// Arguments for `plan author`.
@@ -166,11 +161,9 @@ pub struct AuthorArgs {
     /// `--source intent=intent:value:<string>`.
     #[arg(long = "intent", value_name = "STRING")]
     pub intent: Option<String>,
-    /// Replace an existing replaceable plan (`lifecycle: pending`
-    /// and every entry `pending`). Without --force an existing
-    /// `plan.yaml` refuses with `already-exists`; an approved or
-    /// in-flight plan refuses with `plan-author-not-replaceable`
-    /// (archive first).
+    /// Replace an existing plan unconditionally, whatever its
+    /// lifecycle or entry statuses. Without --force an existing
+    /// `plan.yaml` refuses with `plan-already-exists`.
     #[arg(long)]
     pub force: bool,
 }
@@ -189,16 +182,16 @@ pub struct ArchiveArgs {
 pub struct AddArgs {
     /// Kebab-case plan entry (slice) name for the new row under `plan.yaml.slices[]`.
     pub name: String,
-    /// Ordering dependencies (repeatable). Every value is a change name in the plan.
-    /// Pass `--depends-on` (with no value) to clear the field; omit the flag to
-    /// leave it unchanged.
-    #[arg(long = "depends-on", action = ArgAction::Append)]
+    /// Ordering dependencies (repeatable or comma-separated). Every
+    /// value is another plan-entry name.
+    #[arg(long = "depends-on", action = ArgAction::Append, value_delimiter = ',')]
     pub depends_on: Vec<String>,
-    /// Per-slice source binding (repeatable). Wire form is
+    /// Per-slice source binding (repeatable; one binding per
+    /// occurrence, matching `plan author --source`). Wire form is
     /// `<key>=<lead>`; bare `<key>` is accepted as
     /// shorthand for `{ key: <key>, lead: <slice.name> }`
     /// per workflow §`Slice.sources`.
-    #[arg(long = "sources", action = ArgAction::Append, value_parser = binding_arg)]
+    #[arg(long = "source", action = ArgAction::Append, value_parser = binding_arg)]
     pub sources: Vec<BindingArg>,
     /// Free-text scoping hint for the define step
     #[arg(long)]
@@ -250,11 +243,11 @@ pub struct AmendArgs {
     /// exists on the slice.
     #[arg(long = "remove-source", action = ArgAction::Append)]
     pub remove_source: Vec<String>,
-    /// Set the slice's `divergence` field (workflow §Plan-time
-    /// reconciliation; divergence and writer-ownership contract). Accepts `likely`, `accepted`, or
-    /// `rejected` — the CLI is the single writer of this field
-    /// across every value of the closed enum, so use
-    /// `emery plan amend <plan> <slice> --divergence likely`
+    /// Set the entry's `divergence` field (workflow §Plan-time
+    /// reconciliation; divergence and writer-ownership contract).
+    /// Accepts `likely`, `accepted`, or `rejected` — the CLI is the
+    /// single writer of this field across every value of the closed
+    /// enum, so use `emery plan amend <entry> --divergence likely`
     /// (or `--divergence accepted|rejected`) instead of editing
     /// `plan.yaml` by hand. `none` (absent) is the implicit
     /// default; omit this flag to leave the field unchanged.
@@ -271,50 +264,30 @@ pub struct AmendArgs {
     /// flag to leave it unchanged.
     #[arg(long, num_args = 0.., value_delimiter = ',')]
     pub context: Option<Vec<String>>,
-    /// Set a per-slice `authority-override` entry (per-slice authority override).
-    /// Two positional values per occurrence: the slice name and
-    /// a `<claim-kind>=<source>` assignment. Repeatable;
-    /// later occurrences override earlier ones on the same
-    /// `(slice, kind)` tuple. If the same `(slice, kind)` also
-    /// appears in `--clear-authority-override`, the clear
-    /// wins (clears apply after sets). Validated against the
-    /// closed [`ClaimKind`](artifacts::evidence::ClaimKind) enum
-    /// at parse time; orphan source
-    /// keys are caught by `emery slice validate`.
-    #[arg(
-        long = "authority-override",
-        value_names = ["SLICE", "KIND=KEY"],
-        num_args = 2,
-        action = ArgAction::Append,
-    )]
-    pub authority_override: Vec<String>,
-    /// Remove a single `(slice, kind)` entry from the
-    /// per-slice `authority-override` map (per-slice authority override). Two
-    /// positional values per occurrence: the slice name and
-    /// the claim kind (closed enum, kebab-case). Repeatable;
-    /// no-op when the entry was already absent. Applied after
-    /// `--authority-override` sets so a same-invocation set +
+    /// Set a per-slice `authority-override` entry on the entry being
+    /// amended. Wire form is `<claim-kind>=<source>` — the same
+    /// single-value grammar as `plan add --authority-override`; both
+    /// sides are kebab-case and the kind is checked against the closed
+    /// [`ClaimKind`](artifacts::evidence::ClaimKind) enum at parse
+    /// time. Repeatable; later occurrences win on the same kind. If
+    /// the same kind also appears in `--clear-authority-override`,
+    /// the clear wins (clears apply after sets). Orphan source keys
+    /// are caught by `emery slice validate`.
+    #[arg(long = "authority-override", action = ArgAction::Append)]
+    pub authority_override: Vec<KindAssign>,
+    /// Remove a single claim kind from the amended entry's
+    /// `authority-override` map (closed enum, kebab-case).
+    /// Repeatable; no-op when the entry was already absent. Applied
+    /// after `--authority-override` sets so a same-invocation set +
     /// clear pair resolves to the cleared state.
-    #[arg(
-        long = "clear-authority-override",
-        value_names = ["SLICE", "KIND"],
-        num_args = 2,
-        action = ArgAction::Append,
-    )]
-    pub clear_authority_override: Vec<String>,
-    /// Wipe the entire per-slice `authority-override` map on
-    /// the named slice (per-slice authority override). Repeatable for multiple
-    /// slices. Applied last, after `--authority-override` sets
-    /// and `--clear-authority-override` clears. One
+    #[arg(long = "clear-authority-override", value_name = "KIND", action = ArgAction::Append)]
+    pub clear_authority_override: Vec<ClaimKind>,
+    /// Wipe the amended entry's entire `authority-override` map.
+    /// Applied last, after `--authority-override` sets and
+    /// `--clear-authority-override` clears. One
     /// `plan.amend.authority-override` event with `action: clear`
-    /// fires per kind that was actually present in the map
-    /// before the wipe (no events when the map was already
-    /// empty).
-    #[arg(
-        long = "clear-authority-overrides",
-        value_name = "SLICE",
-        num_args = 1,
-        action = ArgAction::Append,
-    )]
-    pub clear_authority_overrides: Vec<String>,
+    /// fires per kind that was actually present in the map before the
+    /// wipe (no events when the map was already empty).
+    #[arg(long = "clear-authority-overrides", action = ArgAction::SetTrue)]
+    pub clear_authority_overrides: bool,
 }

@@ -129,9 +129,9 @@ pub fn all_tasks_use_checkbox(tasks: &Progress, content: &str) -> bool {
         let Some(rest) = trimmed.strip_prefix('-') else {
             continue;
         };
-        // Require at least one whitespace between `-` and a non-space payload
-        // (mirrors the previous `^\s*-\s+\S` regex). Plain `-` separators or
-        // `-foo` are not bullets.
+        // A bullet requires at least one whitespace between `-` and a
+        // non-space payload; plain `-` separators or `-foo` are not
+        // bullets.
         let after_ws = rest.trim_start_matches(|c: char| c.is_whitespace());
         if after_ws.len() == rest.len() || after_ws.is_empty() {
             continue;

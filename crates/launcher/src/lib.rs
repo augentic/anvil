@@ -1,6 +1,5 @@
 //! Deployment policy for the shipped `emery` binary: the macro-facing
-//! mount and resolver expressions behind a dynamic Omnia deployment
-//! (RFC-71 Stage 3).
+//! mount and resolver expressions behind a dynamic Omnia deployment.
 //!
 //! There is no host front door. The `omnia::runtime!` invocation in
 //! `src/main.rs` embeds the engine guest as static component bytes

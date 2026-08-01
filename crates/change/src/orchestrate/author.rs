@@ -58,8 +58,8 @@ pub struct AuthorOutcome {
 /// - `plan-author-workspace-unsupported` (exit 2) when the plan root is
 ///   a workspace — the skill's workspace routing has no in-guest
 ///   counterpart, mirroring the execute loop's refusal.
-/// - `change-name-not-kebab` / `already-exists` /
-///   `plan-author-not-replaceable` from the scaffold kernel's gates.
+/// - `change-name-not-kebab` / `plan-already-exists` from the scaffold
+///   kernel's gates.
 /// - survey fan-out failures from [`super::survey_all`] (earlier
 ///   sources stay merged — the native partial-progress posture).
 /// - the judgment leg's model / schema / kernel / gate-prose failures
@@ -177,7 +177,7 @@ fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
 
 /// The plan scaffold via the shared [`project::plan::scaffold`]
 /// kernel, plus the immediate atomic save. `force` opts into
-/// replacing a replaceable existing plan. No auto-approval and no
+/// recreating any existing plan. No auto-approval and no
 /// `--authority-override` surface — Gate 1 stamping stays
 /// operator-only and override pre-seeding needs slice rows that do
 /// not exist yet.

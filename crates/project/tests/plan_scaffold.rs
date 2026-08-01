@@ -27,10 +27,10 @@ fn existing_refused_without_force() {
     let err = scaffold(&path, "other", BTreeMap::new(), false).expect_err("refuses overwrite");
     match err {
         Error::Diag { code, detail } => {
-            assert_eq!(code, "already-exists");
+            assert_eq!(code, "plan-already-exists");
             assert!(detail.contains("--force"), "{detail}");
         }
-        other => panic!("expected already-exists Diag, got {other}"),
+        other => panic!("expected plan-already-exists Diag, got {other}"),
     }
 }
 
@@ -50,7 +50,7 @@ fn force_replaces_pending() {
 }
 
 #[test]
-fn force_refuses_approved() {
+fn force_replaces_approved() {
     let (_tmp, path) = tmp_plan();
     scaffold(&path, "demo", BTreeMap::new(), false).expect("fresh").save(&path).expect("save");
 
@@ -58,12 +58,12 @@ fn force_refuses_approved() {
     plan.lifecycle = Lifecycle::Approved;
     plan.save(&path).expect("save approved");
 
-    let err = scaffold(&path, "demo", BTreeMap::new(), true).expect_err("approved not replaceable");
-    match err {
-        Error::Validation { code, detail } => {
-            assert_eq!(code, "plan-author-not-replaceable");
-            assert!(detail.contains("archive"), "{detail}");
-        }
-        other => panic!("expected plan-author-not-replaceable, got {other}"),
-    }
+    let replaced =
+        scaffold(&path, "renamed", BTreeMap::new(), true).expect("force replaces approved");
+    assert_eq!(replaced.name.as_str(), "renamed");
+    replaced.save(&path).expect("save");
+
+    let loaded = Plan::load(&path).expect("load");
+    assert_eq!(loaded.name.as_str(), "renamed");
+    assert_eq!(loaded.lifecycle, Lifecycle::Pending);
 }

@@ -17,26 +17,14 @@ use serde::{Deserialize, Serialize};
 use crate::orchestrate::{self, ExecuteOutcome};
 
 /// Wire input for `plan execute`.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ExecuteInput {
     /// Who is driving this invocation — `operator` (default) or
     /// `agent`. Recorded on the `plan.transition.approved` journal
     /// event when this run stamps Gate 1.
-    #[serde(default = "default_actor")]
-    pub actor: String,
-}
-
-fn default_actor() -> String {
-    "operator".to_string()
-}
-
-impl Default for ExecuteInput {
-    fn default() -> Self {
-        Self {
-            actor: default_actor(),
-        }
-    }
+    #[serde(default)]
+    pub actor: journal::Actor,
 }
 
 /// `emery plan execute` → the internal execute orchestration — the
@@ -54,13 +42,9 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let actor: journal::Actor = input.actor.parse().map_err(|detail| Error::Argument {
-            flag: "--actor",
-            detail,
-        })?;
         let tree = WorkingTree::live();
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree, actor).await?;
+        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree, input.actor).await?;
         match outcome {
             ExecuteOutcome::Drained {
                 plan,
@@ -70,7 +54,7 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
                 status: "drained",
                 plan,
                 gate1_stamped,
-                actor,
+                actor: input.actor,
                 phases: phases
                     .into_iter()
                     .map(|run| ExecutePhase {
@@ -79,28 +63,32 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
                     })
                     .collect(),
             }),
-            // A stop is the loop's typed halt — surface it on the
-            // error envelope (exit 2 / 422) so a driver can tell a
-            // parked loop from a drained one without parsing prose.
+            // A stop is the loop's typed halt — the canonical plan
+            // status card (`stop:` / `hint:` / `resume:`) rides the
+            // stdout channel while the payload-free
+            // `plan-execute-stopped` envelope keeps stderr (exit 2 /
+            // 422), so a driver gets the structured next action
+            // without a follow-up `emery plan status` call.
             ExecuteOutcome::Stopped {
                 reason,
                 detail,
-                hint,
                 slice,
                 ..
-            } => Err(Error::validation_failed(
-                "plan-execute-stopped",
-                "the execute loop drains the plan",
-                match (slice, detail) {
-                    (Some(slice), Some(detail)) => {
-                        format!("stop {reason} ({slice}): {detail} — {hint}")
-                    }
-                    (Some(slice), None) => format!("stop {reason} ({slice}) — {hint}"),
-                    (None, Some(detail)) => format!("stop {reason}: {detail} — {hint}"),
-                    (None, None) => format!("stop {reason} — {hint}"),
-                },
-            )
-            .into()),
+            } => {
+                let source = Error::validation_failed(
+                    "plan-execute-stopped",
+                    "the execute loop drains the plan",
+                    match (slice, detail) {
+                        (Some(slice), Some(detail)) => format!("stop {reason} ({slice}): {detail}"),
+                        (Some(slice), None) => format!("stop {reason} ({slice})"),
+                        (None, Some(detail)) => format!("stop {reason}: {detail}"),
+                        (None, None) => format!("stop {reason}"),
+                    },
+                );
+                let plan = project::plan::Plan::load(&cx.layout().plan_path())?;
+                let status = project::plan::plan_status_body(&plan, cx.layout())?;
+                Err(project::handler::Error::stopped(status, source))
+            }
         }
     }
 }

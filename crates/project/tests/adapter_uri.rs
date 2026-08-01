@@ -35,7 +35,7 @@ mod package {
     use super::*;
 
     #[tokio::test]
-    async fn cold_pin_resolves_without_store() {
+    async fn cold_pin_without_store() {
         // Package metadata dispatches by routed id before any store
         // read — under the shipped deployment the host resolver
         // installs a missing pin during that dispatch, so a cold
@@ -128,7 +128,7 @@ mod bare {
     }
 
     #[tokio::test]
-    async fn upgrade_keeps_bare_record_on_cleared_cache() {
+    async fn upgrade_bare_cleared_cache() {
         // `--upgrade` re-ensures the recorded binding: a bare record
         // whose cache entry was cleared resolves dispatch-first and
         // stays bare — no pin is written into the record.
@@ -158,7 +158,7 @@ mod bare {
     }
 
     #[tokio::test]
-    async fn upgrade_keeps_bare_record_on_cache_hit() {
+    async fn upgrade_bare_cache_hit() {
         // Co-dev upgrades stay bare: the record is never rewritten.
         let project = Provider::bare();
         stage_cached_component(&project, "demo");

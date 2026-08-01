@@ -57,7 +57,7 @@ fn good_links_pass() {
 }
 
 #[test]
-fn fenced_code_casts_are_not_links() {
+fn fenced_casts_are_not_links() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let tree = tmp.path().join("prompts");
     write(&tree, "a.md", "see [b](b.md)\n\n```swift\nprocessEffects([UInt8](effects))\n```\n");

@@ -1,6 +1,6 @@
 # Testing
 
-Integration-first test posture: `cargo nextest` over public crate and binary boundaries, one self-contained mock adapter supplying both `emery:adapter` axes, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. Read this before adding a test.
+Integration-first test posture: `cargo nextest` over public crate and binary boundaries, one self-contained mock adapter supplying both `emery:adapter` axes, and structural goldens where bytes are the contract. The unit layer is deliberately thin — integration owns every CLI-reachable behavior and `cargo llvm-cov` is the brake on deletion. This posture deliberately diverges from generic unit-test-first guidance; it overrides any external baseline. Read this before adding a test.
 
 ## Posture
 
@@ -120,5 +120,5 @@ Binaries not listed here assert structurally and carry no regenerable goldens.
 
 ## Test-side gotchas
 
-- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration verbs (`emery slice refine` / `build` / `merge` / `drop`) or `emery plan transition` when a test needs a stamped phase outcome.
+- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration verbs (`emery slice refine` / `build` / `merge` / `drop`) or `emery plan undo` when a test needs a stamped phase outcome.
 - The live test retains its temporary project tree on failure and prints the path at start — inspect it rather than re-running blind.

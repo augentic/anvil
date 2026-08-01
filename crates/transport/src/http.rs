@@ -122,7 +122,7 @@ where
         .route("/plan/{name}/add", post!(::change::plan::handlers::Add))
         .route("/plan/{name}/amend", post!(::change::plan::handlers::Amend))
         .route("/plan/{name}/remove", post!(::change::plan::handlers::Remove))
-        .route("/plan/{name}/transition", post!(::change::plan::handlers::Transition))
+        .route("/plan/{name}/undo", post!(::change::plan::handlers::Undo))
         .route("/plan/{name}/author", post!(::change::plan::handlers::Author))
         .route("/plan/execute", post!(::change::plan::handlers::Execute))
         .route("/plan/archive", post!(::change::plan::handlers::Archive))

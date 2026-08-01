@@ -89,9 +89,9 @@ pub struct PruneBody {
 
 impl Render for PruneBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let verb = if self.dry_run { "Would prune" } else { "Pruned" };
+        let verb = if self.dry_run { "would prune" } else { "pruned" };
         if self.pruned.is_empty() {
-            return writeln!(w, "Nothing to prune.");
+            return writeln!(w, "nothing to prune");
         }
         writeln!(w, "{verb} {} archived slice(s):", self.pruned.len())?;
         for name in &self.pruned {

@@ -7,7 +7,7 @@
 //! transition, the `slice.build.*` bracket), and merge dispatches the
 //! target's phased merge gates (preflight / postflight) around the
 //! deterministic core commit. `emery source extract`, `emery slice
-//! build`, and `emery slice merge run` route here through the guest;
+//! build`, and `emery slice merge` route here through the guest;
 //! the change loop (`emery plan execute`) drives the same entry
 //! points per plan entry.
 //!
@@ -28,4 +28,4 @@ pub use self::extract::{ExtractOutcome, extract};
 pub use self::merge::merge;
 pub use self::refine::{RefineOutcome, refine, refine_breakout};
 pub use self::synthesize::synthesize;
-pub use self::target::build;
+pub use self::target::{BuildOutcome, build};

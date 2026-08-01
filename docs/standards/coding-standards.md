@@ -1,6 +1,6 @@
 # Coding standards
 
-Style rules every Rust change in this workspace honours. Enforced by clippy (`cargo make lint`) and review. When a rule fights you, add the case to the rule with a before/after — don't carve out a local exception.
+The external baseline is the [Pragmatic Rust Guidelines](https://microsoft.github.io/rust-guidelines/guidelines/index.html) (and the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/) they build on): follow it for anything this document and [style.md](./style.md) do not address. Every section below is a house delta — a project contract, a sharper rule, or an explicit override — and where a section disagrees with the baseline, this document wins. Enforced by clippy (`cargo make lint`) and review. When a rule fights you, add the case to the rule with a before/after — don't carve out a local exception.
 
 ## Lints
 
@@ -8,13 +8,13 @@ Workspace lints live in `Cargo.toml`. Defaults are aggressive — clippy `all`/`
 
 Visibility on internal items follows clippy's `redundant_pub_crate` (nursery) rather than rustc's `unreachable_pub`: prefer bare `pub` and let the parent module's privacy do the constraining. The two lints are mutually exclusive — enabling both would loop. `unreachable_pub` stays at its allow-by-default, and any `#[expect(unreachable_pub, …)]` carve-out is a rot signal, not a tool you reach for.
 
-When you must silence a lint, use `#[expect(<lint>, reason = "…")]` at the **smallest possible scope**. `#[expect]` is preferred over `#[allow]` everywhere except module-level waivers: a dead `#[expect]` is a build failure, so the suppression cannot rot. `#![allow(...)]` at the crate or module root is still the right tool when the lint legitimately applies to every item below. Doc idents such as `GitHub`, `MiB`, `OAuth`, `OpenTelemetry`, `SemVer`, `WebAssembly`, and `YAML` live in `clippy.toml` `doc-valid-idents`.
+Doc idents such as `GitHub`, `MiB`, `OAuth`, `OpenTelemetry`, `SemVer`, `WebAssembly`, and `YAML` live in `clippy.toml` `doc-valid-idents`. Suppression rules are in [Lint suppression posture](#lint-suppression-posture) below.
 
 `taplo.toml` formats `Cargo.toml` files. Dependency arrays under `*-dependencies` and `dependencies` reorder alphabetically; preserve that on edit.
 
 ## Lint suppression posture
 
-Site-local suppressions are `#[expect(<lint>, reason = "…")]`, not `#[allow]` — a dead `#[expect]` is a build failure, so the suppression cannot rot. Module-level waivers stay `#![allow(<lint>, reason = "…")]` because lint-rot detection at the module root is not useful (the waiver typically covers many sites). Identical `reason = "…"` strings across three or more files mean you should promote a single `#![allow]` to the parent module — the file-level repetition is noise, not signal.
+Site-local suppressions are `#[expect(<lint>, reason = "…")]` at the **smallest possible scope**, not `#[allow]` — a dead `#[expect]` is a build failure, so the suppression cannot rot (the baseline's M-LINT-OVERRIDE-EXPECT). The house additions: module-level waivers stay `#![allow(<lint>, reason = "…")]` because lint-rot detection at the module root is not useful (the waiver typically covers many sites), and identical `reason = "…"` strings across three or more files mean you should promote a single `#![allow]` to the parent module — the file-level repetition is noise, not signal.
 
 ```rust
 // BAD — site-local #[allow]
@@ -187,13 +187,13 @@ A dedicated typed variant remains correct for entries that already meet the crit
 
 ## `#[non_exhaustive]`
 
-Every public `enum` or `struct` that may grow gets `#[non_exhaustive]`. The exception is structurally complete types (`enum Format { Json, Text }`); document the choice in a doc-line. This keeps adding a variant from being a SemVer break.
+**Deliberate override of general library guidance, including the baseline's.** Public enums and structs are exhaustive by default: the workspace treats adding a variant as an ordinary pre-1.0 SemVer-minor event, and exhaustive matching at every consumer is the compile-time drift check the closed taxonomies (journal events, exit codes, lifecycle states) rely on. Reach for `#[non_exhaustive]` only when a type is genuinely open-ended *and* external consumers must keep compiling across additions; document that choice in a doc-line.
 
 ## YAML, JSON, and atomic writes
 
 YAML (de)serialization goes through `serde-saphyr`, not `serde_yaml_ng` or the deprecated `serde_yaml`. `serde-saphyr` has no `Value` type; for dynamic YAML access deserialize into `serde_json::Value`. Deser and ser errors ride directly on `error::Error::YamlDe(serde_saphyr::Error)` and `Error::YamlSer(serde_saphyr::ser::Error)` — both `#[error(transparent)]` `#[from]` variants — so `?` on a raw `serde_saphyr` result still propagates, the kebab discriminant on the wire stays `yaml` for either side, and call sites that don't care which API tripped match on either variant. Library crates return `Result<…, error::Error>` rather than re-exposing `serde_saphyr::*::Error` types in their own public signatures.
 
-Writes that must not be observed mid-update use the shared atomic helpers in `slice::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (`plan.yaml`, `registry.yaml`, `change.md`, `tasks.md`, `metadata.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
+Writes that must not be observed mid-update use the shared atomic helpers in `artifacts::atomic` (`yaml_write` / `bytes_write`). `fs::write` is fine for single-shot scratch files but never for files that other live processes read (`plan.yaml`, `registry.yaml`, `change.md`, `tasks.md`, `metadata.yaml`). See [architecture.md §"Atomic writes"](./architecture.md#atomic-writes) for the rationale.
 
 ## Module layout
 

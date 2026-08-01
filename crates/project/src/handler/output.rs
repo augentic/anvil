@@ -36,8 +36,6 @@ pub type ReportRow = fn(&mut dyn Write, &Diagnostic) -> std::io::Result<()>;
 /// JSON serialises the wire envelope (`{ version, summary, findings }`)
 /// verbatim; text renders a PASS/FAIL banner plus one `row`-formatted
 /// line per finding. Ids are assigned sequentially at construction.
-/// `empty`, when set, replaces the banner entirely for a finding-free
-/// report (e.g. `Plan OK`).
 #[derive(Debug, Serialize)]
 pub struct ReportBody {
     /// The wire report (`{ version, summary, findings }`).
@@ -45,15 +43,13 @@ pub struct ReportBody {
     report: DiagnosticReport,
     #[serde(skip)]
     row: ReportRow,
-    #[serde(skip)]
-    empty: Option<&'static str>,
 }
 
 impl ReportBody {
     /// Assemble the wire report from raw findings: renumber ids, fold
-    /// the summary, and attach the text-rendering hooks.
+    /// the summary, and attach the text-rendering hook.
     #[must_use]
-    pub fn new(mut findings: Vec<Diagnostic>, empty: Option<&'static str>, row: ReportRow) -> Self {
+    pub fn new(mut findings: Vec<Diagnostic>, row: ReportRow) -> Self {
         renumber(&mut findings);
         Self {
             report: DiagnosticReport {
@@ -62,7 +58,6 @@ impl ReportBody {
                 findings,
             },
             row,
-            empty,
         }
     }
 
@@ -75,11 +70,6 @@ impl ReportBody {
 
 impl Render for ReportBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        if self.report.findings.is_empty()
-            && let Some(line) = self.empty
-        {
-            return writeln!(w, "{line}");
-        }
         let banner = if has_blocking(&self.report.findings) { "FAIL" } else { "PASS" };
         writeln!(w, "{banner}")?;
         for finding in &self.report.findings {

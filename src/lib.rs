@@ -2,9 +2,8 @@
 //!
 //! Everything — the `workflow`-world WIT bindings, the seam provider,
 //! and the transport wiring — lives in the `guest` crate; this cdylib
-//! is one macro invocation so downstream deployments (the change
-//! example in `augentic/emery-adapters`) build the identical guest
-//! without vendoring sources.
+//! is one macro invocation over it and is embedded into the shipped
+//! binary by `build.rs` (`EMERY_WASM`).
 #![cfg(target_arch = "wasm32")]
 
 guest::export!();

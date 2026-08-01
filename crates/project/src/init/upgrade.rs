@@ -11,8 +11,6 @@
 //! it local-first, refreshing to the newest published version as part
 //! of the upgrade invocation).
 
-use std::fs;
-
 use error::Error;
 
 use crate::adapter::ComponentMeta;
@@ -72,8 +70,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         cfg.emery_version = Some(target.clone());
     }
     if needs_write {
-        let serialised = serde_saphyr::to_string(&cfg)?;
-        fs::write(&config_path, serialised)?;
+        artifacts::atomic::yaml_write(&config_path, &cfg)?;
     }
 
     let adapter_name = if cfg.workspace {

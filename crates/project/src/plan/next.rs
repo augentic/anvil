@@ -50,7 +50,7 @@ impl Plan {
     ///
     /// This is the **only** writer of per-entry `InProgress` per
     /// workflow §CLI surface — `plan add` / `amend` write `Pending`
-    /// only, and `plan transition` writes `Done` only.
+    /// only, and `slice merge` writes `Done` only.
     ///
     /// Returns `None` when the plan is drained (no active and no
     /// eligible pending entry).
@@ -95,6 +95,8 @@ pub enum NextReason {
 #[derive(Debug, Serialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct NextBody {
+    /// Plan name from `plan.yaml.name`.
+    pub plan: String,
     /// Name of the freshly advanced `pending → in-progress` entry.
     pub next: Option<String>,
     /// Selection reason when no entry advanced (or the active entry was
@@ -146,16 +148,19 @@ pub fn plan_next_body(
     // entry before selecting a new pending entry, and reports drained
     // only when no active or pending entries remain."
     let was_executing = plan.is_executing();
+    let plan_name = plan.name.to_string();
     let advanced = plan.advance_next()?;
     Ok(match advanced {
         None => {
             let reason = if plan.is_drained() { NextReason::Drained } else { NextReason::Stuck };
             NextBody {
+                plan: plan_name,
                 reason: Some(reason),
                 ..NextBody::default()
             }
         }
         Some(entry) if was_executing => NextBody {
+            plan: plan_name,
             reason: Some(NextReason::InProgress),
             active: Some(entry.name.to_string()),
             ..NextBody::default()
@@ -163,6 +168,7 @@ pub fn plan_next_body(
         Some(entry) => {
             let target = crate::target_policy::best_effort_next(resolver, config, paths, entry);
             NextBody {
+                plan: plan_name,
                 next: Some(entry.name.to_string()),
                 project: entry.project.clone(),
                 target,
@@ -223,20 +229,26 @@ pub fn claim_next(
 }
 
 /// Text rendering for `plan next`: the active or newly claimed entry
-/// name, or the drained / blocked explanation.
+/// (labelled, with its project/target context), or the drained /
+/// blocked explanation.
 impl crate::handler::Render for NextBody {
     fn render(&self, w: &mut dyn std::io::Write) -> std::io::Result<()> {
         if let Some(active) = &self.active {
-            writeln!(w, "Active change in progress: {active}")
-        } else if let Some(name) = &self.next {
-            writeln!(w, "{name}")
-        } else if self.reason == Some(NextReason::Drained) {
-            writeln!(w, "Plan drained — no per-entry pending or in-progress remains.")
-        } else {
-            writeln!(
-                w,
-                "No eligible changes \u{2014} remaining entries are waiting on unmet dependencies."
-            )
+            return writeln!(w, "active: {active} (plan entry already in-progress)");
         }
+        if let Some(name) = &self.next {
+            writeln!(w, "next: {name}")?;
+            if let Some(project) = &self.project {
+                writeln!(w, "  project: {project}")?;
+            }
+            if let Some(target) = &self.target {
+                writeln!(w, "  target: {target}")?;
+            }
+            return Ok(());
+        }
+        if self.reason == Some(NextReason::Drained) {
+            return writeln!(w, "{}", super::status::drained_line(&self.plan));
+        }
+        writeln!(w, "no eligible entries \u{2014} remaining entries wait on unmet dependencies")
     }
 }

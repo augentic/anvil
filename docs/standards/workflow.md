@@ -76,7 +76,7 @@ Closed enum `intent > documentation > behaviour`. v1 resolution order per `(sour
 
 ## Execution model
 
-`pending → approved` plan-level (Gate 1; operator-only, stamped by the first `emery plan execute`). Per-entry: `pending → in-progress → done`. `done` is absorbing in v1; the operator-reversed flow lives behind `emery plan transition --undo`.
+`pending → approved` plan-level (Gate 1; operator-only, stamped by the first `emery plan execute`). Per-entry: `pending → in-progress → done`. `done` is absorbing in v1; the operator-reversed flow lives behind `emery plan undo`.
 
 ## Refinement
 
@@ -127,7 +127,7 @@ Plan artifacts (`plan.yaml` / `change.md` / `discovery.md`) resolve at the invok
 
 ## Writer ownership
 
-Per-entry status writes route to exactly one CLI verb each — `plan add` / `plan amend` write `pending`, `plan next` writes `in-progress`, `slice merge run` writes `done` directly (and re-stamps it when healing a torn merge). Plan-level `approved` is operator-only and written solely by the first `emery plan execute` on a `pending` plan: invoking execute is the approval act — the operator runs it directly, or `/emery:execute` runs it on the operator's explicit confirmation (`--actor` stays `operator`). The only backward walk is `plan transition <entry> --undo`, one rung per call.
+Per-entry status writes route to exactly one CLI verb each — `plan add` / `plan amend` write `pending`, `plan next` writes `in-progress`, `slice merge` writes `done` directly (and re-stamps it when healing a torn merge). Plan-level `approved` is operator-only and written solely by the first `emery plan execute` on a `pending` plan: invoking execute is the approval act — the operator runs it directly, or `/emery:execute` runs it on the operator's explicit confirmation (`--actor` stays `operator`). The only backward walk is `plan undo <entry>`, one rung per call.
 
 Driver mutual exclusion is guest-owned: the `plan execute` orchestrator holds the `.emery/guest.lock` marker for the loop's lifetime and refuses a concurrent driver with `guest-marker-held`. It is the only concurrency fence — there is no native lock wrapper.
 

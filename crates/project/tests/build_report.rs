@@ -17,7 +17,7 @@ fn wire_round_trip() {
 }
 
 #[test]
-fn rejects_unknown_and_malformed_fields() {
+fn rejects_unknown_fields() {
     let mut value: serde_json::Value = serde_json::from_str(REPORT).expect("fixture JSON");
     value["surprise"] = serde_json::json!(true);
     assert!(serde_json::from_value::<BuildReport>(value.clone()).is_err(), "closed shape");

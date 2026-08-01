@@ -246,7 +246,7 @@
       "type": "object"
     },
     "DiagnosticKind": {
-      "description": "Orthogonal nature axis for a [`Diagnostic`].\n\nDistinguishes a deterministic defect from a deterministically\nraised request for judgment. Defaults to [`Self::Violation`] so a\ndiagnostic that omits the wire field deserialises as a defect, and\nso the [`is_blocking`] predicate keeps its pre-axis behaviour.",
+      "description": "Orthogonal nature axis for a [`Diagnostic`].\n\nDistinguishes a deterministic defect from a deterministically\nraised request for judgment. Defaults to [`Self::Violation`] so a\ndiagnostic that omits the wire field deserialises as a defect and\nstays subject to the [`is_blocking`] predicate.",
       "oneOf": [
         {
           "const": "violation",

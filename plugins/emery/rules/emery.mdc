@@ -56,20 +56,20 @@ Breakouts invoke the same guest orchestrations one slice at a time, when the exe
 
 - **/emery:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined` (`emery slice refine`).
 - **/emery:build**: Build one slice through its target adapter (`emery slice build`).
-- **/emery:merge**: Fold a slice's deltas into the baseline and archive it (`emery slice merge run`).
+- **/emery:merge**: Fold a slice's deltas into the baseline and archive it (`emery slice merge`).
 - **/emery:drop**: Abandon a slice without merging (`emery slice drop`).
 
 ## Tracing and output
 
 Host tracing is selected by the reserved host log flags — never set `RUST_LOG` on an `emery` subprocess. The host peels `--debug` / `--quiet` anywhere in argv before the guest sees it, so the flags are position-independent and never collide with a verb's own options. Two normal modes, selected by verb:
 
-- **Long-running orchestrations** (`emery plan author`, `emery plan execute`, `emery slice refine`, `emery slice build`, committed `emery slice merge run`) run bare — the host default emits live INFO progress on stderr with the noisy OTel targets muted:
+- **Long-running orchestrations** (`emery plan author`, `emery plan execute`, `emery slice refine`, `emery slice build`, committed `emery slice merge`) run bare — the host default emits live INFO progress on stderr with the noisy OTel targets muted:
 
 ```text
 emery plan author <name> ...
 ```
 
-- **Probes and short deterministic verbs** (`emery --version`, `emery plan status`, `emery slice list`, `emery slice merge run --preview` / `--conflict-check`, `emery slice drop`, `emery plan archive`, `emery init`) pass `--quiet` so the result card is uncluttered:
+- **Probes and short deterministic verbs** (`emery --version`, `emery plan status`, `emery slice list`, `emery slice merge --preview` / `--conflict-check`, `emery slice drop`, `emery plan archive`, `emery init`) pass `--quiet` so the result card is uncluttered:
 
 ```text
 emery plan status --quiet

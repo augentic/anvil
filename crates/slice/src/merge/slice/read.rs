@@ -5,13 +5,14 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use artifacts::spec::{REQ_HEADING, has_delta_headers};
+use artifacts::spec::has_delta_headers;
 use error::Error;
 use jiff::Timestamp;
 
 use super::parse::system_time_to_utc;
 use super::{BaselineConflict, OpaqueAction, OpaqueEntry, PreviewEntry};
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
+use crate::merge::count_requirement_headings;
 use crate::merge::engine::merge;
 use crate::merge::validate::validate_baseline;
 
@@ -258,10 +259,6 @@ pub(super) fn overwrite_gate(
 
 fn read_optional_file(path: &Path) -> Result<Option<String>, Error> {
     if path.is_file() { project::fs::read_text(path).map(Some) } else { Ok(None) }
-}
-
-fn count_requirement_headings(text: &str) -> usize {
-    text.lines().filter(|line| line.trim_start().starts_with(REQ_HEADING)).count()
 }
 
 /// Walk every [`MergeStrategy::OpaqueReplace`] class's `staged_dir`

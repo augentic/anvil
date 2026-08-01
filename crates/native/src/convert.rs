@@ -8,10 +8,10 @@
 
 use adapter::seam as aseam;
 use artifacts::evidence::AuthorityClass;
-use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
+use diagnostics::{Diagnostic, Severity};
 use project::adapter::metadata::Metadata;
 use project::adapter::{BuildInputDeclaration, PlatformsCapability};
-use project::seam::wire::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
+use project::seam::wire::{BuildOutput, BuildReport, BuildStatus, UiSurface, build_finding};
 use project::seam::{self, BuildContext, Evidence, Input, Lead};
 
 /// Widen an SDK operation error to the engine seam error.
@@ -140,16 +140,15 @@ pub fn narrow_context(context: BuildContext) -> aseam::BuildContext {
 /// same stamping the engine's guest shim applies to a WIT report.
 #[must_use]
 pub fn widen_report(id: &str, slice: String, report: aseam::Report) -> BuildReport {
-    BuildReport {
-        version: BUILD_VERSION,
+    BuildReport::stamped(
+        id,
         slice,
-        target: id.strip_prefix("target:").unwrap_or(id).to_string(),
-        status: match report.status {
+        match report.status {
             aseam::Status::Success => BuildStatus::Success,
             aseam::Status::Failure => BuildStatus::Failure,
         },
-        findings: report.findings.into_iter().map(finding).collect(),
-        outputs: report
+        report.findings.into_iter().map(finding).collect(),
+        report
             .outputs
             .into_iter()
             .map(|output| BuildOutput {
@@ -157,27 +156,14 @@ pub fn widen_report(id: &str, slice: String, report: aseam::Report) -> BuildRepo
                 path: output.path,
             })
             .collect(),
-        ui_surface: report.ui_surface.map(|surface| UiSurface {
+        report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
-    }
+    )
 }
 
-// The folded `detail` prose serves as title, impact, and remediation.
 fn finding(finding: aseam::Finding) -> Diagnostic {
-    let mut diagnostic = Diagnostic::finding(
-        finding.rule_id.clone().unwrap_or_else(|| "target-build-finding".to_string()),
-        finding.detail.clone(),
-        finding.detail,
-        severity(finding.severity),
-        DiagnosticKind::Violation,
-        DiagnosticSource::ModelAssisted,
-        Artifact::Code,
-        None,
-    );
-    diagnostic.rule_id = finding.rule_id;
-    diagnostic.fingerprint = diagnostics::fingerprint(&diagnostic);
-    diagnostic
+    build_finding(finding.rule_id, finding.detail, severity(finding.severity))
 }
 
 const fn severity(severity: aseam::Severity) -> Severity {

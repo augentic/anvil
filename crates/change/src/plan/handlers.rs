@@ -9,7 +9,7 @@ mod execute;
 mod next;
 mod remove;
 mod status;
-mod transition;
+mod undo;
 mod validate;
 
 use std::path::{Path, PathBuf};
@@ -29,7 +29,7 @@ pub use self::execute::{Execute, ExecuteBody, ExecuteInput, ExecutePhase};
 pub use self::next::{Next, NextInput};
 pub use self::remove::{Remove, RemoveInput};
 pub use self::status::{Status, StatusInput};
-pub use self::transition::{Transition, TransitionBody, TransitionInput, UndoPair};
+pub use self::undo::{Undo, UndoBody, UndoInput, UndoPair};
 pub use self::validate::{Validate, ValidateInput};
 
 // ---- Shared helpers used across submodules ----

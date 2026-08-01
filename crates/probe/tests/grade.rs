@@ -7,7 +7,7 @@ use probe::grade;
 use tempfile::TempDir;
 
 #[test]
-fn provenance_accepts_evidenced_and_unknown() {
+fn accepts_evidenced_and_unknown() {
     grade::provenance(&[
         req("Login", "REQ-001", vec!["docs".into()], Some(RequirementStatus::Agreed)),
         req("Reset", "REQ-002", vec![], Some(RequirementStatus::Unknown)),
@@ -34,7 +34,7 @@ fn provenance_refuses_missing_id() {
 }
 
 #[test]
-fn provenance_refuses_evidenced_without_sources() {
+fn refuses_evidenced_no_sources() {
     let err =
         grade::provenance(&[req("Login", "REQ-001", vec![], Some(RequirementStatus::Agreed))])
             .expect_err("evidenced without sources refuses");

@@ -8,7 +8,7 @@ use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, Render};
 use serde::{Deserialize, Serialize};
 
-use crate::SliceMetadata;
+use crate::{LifecycleStatus, SliceMetadata};
 
 /// Wire input for `slice list` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -43,7 +43,7 @@ impl<P: Anchor> Operation<P> for List {
                 let name = dir.file_name().unwrap_or_default().to_string_lossy().into_owned();
                 slices.push(ListEntry {
                     name,
-                    status: metadata.status.to_string(),
+                    status: metadata.status,
                     target: metadata.target,
                 });
             }
@@ -68,7 +68,7 @@ pub struct ListEntry {
     /// Slice directory name.
     pub name: String,
     /// Lifecycle status from `metadata.yaml`.
-    pub status: String,
+    pub status: LifecycleStatus,
     /// Recorded target value (e.g. `omnia@1.0.0`).
     pub target: String,
 }

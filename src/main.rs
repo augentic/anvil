@@ -1,5 +1,4 @@
-//! The shipped `emery` executable: one `omnia::runtime!` invocation
-//! (RFC-71 Stage 3).
+//! The shipped `emery` executable: one `omnia::runtime!` invocation.
 //!
 //! The engine guest is embedded as static component bytes (`build.rs`
 //! resolves `EMERY_WASM`) and routed as the sole static

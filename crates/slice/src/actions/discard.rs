@@ -18,7 +18,7 @@ use crate::{LifecycleStatus, SliceMetadata};
 ///
 /// # Errors
 ///
-/// `Error::Diag` with `code = "lifecycle"` if the slice is already
+/// `Error::Diag` with `code = "slice-lifecycle"` if the slice is already
 /// terminal; otherwise propagates whatever `transition` and `archive`
 /// surface.
 pub fn discard(

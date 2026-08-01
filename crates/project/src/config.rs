@@ -85,13 +85,7 @@ impl ProjectConfig {
     /// - [`Error::CliTooOld`] if the pinned `emery` version floor is
     ///   newer than this binary's version.
     pub fn load(project_dir: &Path) -> Result<Self, Error> {
-        Self::load_with_current(project_dir, env!("CARGO_PKG_VERSION"))
-    }
-
-    /// Version-injectable body of [`ProjectConfig::load`]; `current` is
-    /// the running binary's version. Split out so the `CliTooOld` floor
-    /// check keeps unit coverage against arbitrary versions.
-    fn load_with_current(project_dir: &Path, current: &str) -> Result<Self, Error> {
+        let current = env!("CARGO_PKG_VERSION");
         let path = Layout::new(project_dir).config_path();
         let text = match std::fs::read_to_string(&path) {
             Ok(text) => text,

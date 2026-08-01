@@ -110,7 +110,7 @@ async fn target_failures() {
 // The dishonest success: a success report declaring an output that was
 // never written, for the caller's outputs-exist gate.
 #[tokio::test]
-async fn missing_output_reports_unwritten_path() {
+async fn missing_output_names_path() {
     let model = model();
     let tmp = tempfile::tempdir().expect("tempdir");
     let _guard = mock::Cwd::enter(tmp.path());

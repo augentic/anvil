@@ -240,8 +240,9 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
 ///
 /// # Errors
 ///
-/// `adapter-not-found` when no probe hits; `adapter-digest-mismatch`
-/// when a store entry fails verify-on-read.
+/// `adapter-not-found` when no probe hits; `adapter-sidecar-missing` /
+/// `adapter-digest-mismatch` / `adapter-store-unreadable` when a store
+/// entry fails verify-on-read.
 pub fn locate(
     axis: Axis, selector: &AdapterSelector, name: &str, paths: &ExecutionPaths,
 ) -> Result<AdapterLocation, Error> {
@@ -267,7 +268,18 @@ pub fn locate(
                     code: "adapter-sidecar-missing",
                     detail: format!(
                         "store entry {} has no digest sidecar; unverifiable components are \
-                         refused — reinstall `emery:{name}@{version}` to record one",
+                         refused — re-resolving the pin reinstalls `emery:{name}@{version}` \
+                         and records one",
+                        entry.display(),
+                    ),
+                });
+            }
+            Err(diagnostics::cache::StoreVerifyError::Unreadable(io)) => {
+                return Err(Error::Diag {
+                    code: "adapter-store-unreadable",
+                    detail: format!(
+                        "adapter `{name}@{version}` (axis `{axis}`) store entry at {} cannot be \
+                         read for verification: {io}",
                         entry.display(),
                     ),
                 });

@@ -100,8 +100,12 @@ pub fn change_with_deps(
 /// Panics when `err` is not a report-carrying failure.
 #[must_use]
 pub fn report_rule_ids(err: &project::handler::Error) -> Vec<String> {
-    let project::handler::Error::Report { body, .. } = err else {
-        panic!("expected report error, got {err:?}");
+    let project::handler::Error::Report {
+        body: project::handler::FailureBody::Findings(body),
+        ..
+    } = err
+    else {
+        panic!("expected findings report error, got {err:?}");
     };
     body.report().findings.iter().filter_map(|finding| finding.rule_id.clone()).collect()
 }

@@ -95,9 +95,17 @@ pub(crate) fn source_map(
     } in sources
     {
         if map.contains_key(&key) {
+            let detail = if key == "intent" {
+                format!(
+                    "duplicate key `{key}` in --source arguments; note `--intent <string>` is \
+                     sugar for `--source intent=intent:value:<string>` — pass one or the other"
+                )
+            } else {
+                format!("duplicate key `{key}` in --source arguments")
+            };
             return Err(Error::Diag {
                 code: "plan-source-duplicate-key",
-                detail: format!("duplicate key `{key}` in --source arguments"),
+                detail,
             });
         }
         let (adapter, version) = parse_source_adapter(&key, &adapter)?;
@@ -238,7 +246,7 @@ fn binding_from_arg(
     })
 }
 
-/// Rewrite a `--sources <key>=<value>` lead token to the canonical
+/// Rewrite a `<key>=<lead>` binding's lead token to the canonical
 /// `lead` id discovered in `discovery.md`.
 ///
 /// When `discovery` is `None` (no `discovery.md` on disk), the token
@@ -251,7 +259,7 @@ fn resolve_lead_token(token: &str, discovery: Option<&Discovery>) -> Result<Stri
         Ok(lead) => Ok(lead.lead.clone()),
         Err(DiscoveryResolveError::Unknown { token }) => Err(Error::validation_failed(
             "discovery-lead-unknown",
-            "--sources <key>=<value> must resolve to a lead in discovery.md",
+            "source bindings (`<key>=<lead>`) must resolve to a lead in discovery.md",
             format!(
                 "no lead in discovery.md has an id matching `{token}`; inspect discovery.md \
                  directly to review the inventory"
@@ -300,52 +308,4 @@ pub(crate) fn parse_divergence(raw: &str) -> Result<Divergence> {
             ),
         }),
     }
-}
-
-/// Chunk an interleaved pair payload into typed `(slice, T)` pairs.
-///
-/// The payload is a `Vec<String>` of `<slice>` and `<value>` values
-/// (the clap `num_args = 2` shape). The value half is parsed via `T`'s
-/// `FromStr` impl, so the closed enum (`ClaimKind`) and the composite
-/// assign ([`KindAssign`]) share one implementation.
-///
-/// # Errors
-///
-/// `Error::Argument` on an empty slice name or an unparseable value
-/// half.
-pub(crate) fn parse_slice_pair_args<T>(
-    raw: &[String], flag: &'static str,
-) -> Result<Vec<(String, T)>>
-where
-    T: FromStr<Err = String>,
-{
-    let mut out = Vec::with_capacity(raw.len() / 2);
-    for chunk in raw.chunks_exact(2) {
-        let slice = chunk[0].clone();
-        if slice.is_empty() {
-            return Err(Error::Argument {
-                flag,
-                detail: format!("{flag} <slice> must be non-empty"),
-            });
-        }
-        let value: T =
-            chunk[1].parse().map_err(|detail: String| Error::Argument { flag, detail })?;
-        out.push((slice, value));
-    }
-    Ok(out)
-}
-
-/// Parse `--authority-override <slice> <kind>=<source>` repeats
-/// into the typed `(slice, kind, source)` tuple
-/// `project::plan::authority_override::mutate` expects.
-///
-/// # Errors
-///
-/// `Error::Argument` on a malformed pair (see
-/// [`parse_slice_pair_args`]).
-pub(crate) fn parse_override_assigns(raw: &[String]) -> Result<Vec<(String, ClaimKind, String)>> {
-    Ok(parse_slice_pair_args::<KindAssign>(raw, "--authority-override")?
-        .into_iter()
-        .map(|(slice, a)| (slice, a.kind, a.source))
-        .collect())
 }

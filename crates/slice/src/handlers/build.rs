@@ -42,12 +42,18 @@ impl<P: Anchor + Resolver + Target> Operation<P> for Build {
             WorkingTree::live(),
         )
         .await?;
-        Ok(BuildBody {
+        Ok(BuildBody::from(outcome))
+    }
+}
+
+impl From<orchestrate::BuildOutcome> for BuildBody {
+    fn from(outcome: orchestrate::BuildOutcome) -> Self {
+        Self {
             slice: outcome.slice,
             target: outcome.target,
             status: outcome.status,
             findings: outcome.findings,
-        })
+        }
     }
 }
 
@@ -67,6 +73,11 @@ pub struct BuildBody {
 
 impl Render for BuildBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "built {} against {} ({} finding(s))", self.slice, self.target, self.findings)
+        writeln!(
+            w,
+            "built `{}` against {} ({} finding(s))",
+            self.slice, self.target, self.findings
+        )?;
+        writeln!(w, "  next: emery slice merge {}", self.slice)
     }
 }

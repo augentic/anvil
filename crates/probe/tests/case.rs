@@ -215,7 +215,7 @@ mod expected {
 
     #[cfg(unix)]
     #[test]
-    fn escaping_symlink_never_satisfies() {
+    fn escaping_symlink_fails() {
         let outer = TempDir::new().expect("outer tempdir");
         fs::write(outer.path().join("secret.yaml"), "outside\n").expect("write outside");
         let tmp = TempDir::new().expect("tempdir");
@@ -345,7 +345,7 @@ async fn build_case_reaches_built() {
 }
 
 #[tokio::test]
-async fn workflow_until_plan_leaves_gate_pending() {
+async fn until_plan_leaves_gate_pending() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -385,7 +385,7 @@ async fn workflow_until_plan_leaves_gate_pending() {
 }
 
 #[tokio::test]
-async fn clone_populates_the_fixture_cache_once() {
+async fn clone_populates_cache_once() {
     let tmp = TempDir::new().expect("tempdir");
     let upstream = tmp.path().join("upstream");
     stage_upstream_repo(&upstream);
@@ -437,7 +437,7 @@ async fn clone_populates_the_fixture_cache_once() {
 }
 
 #[tokio::test]
-async fn existing_sandbox_refuses_without_restart() {
+async fn existing_sandbox_refuses() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -466,7 +466,7 @@ async fn existing_sandbox_refuses_without_restart() {
 }
 
 #[tokio::test]
-async fn explicit_missing_fixture_is_focused() {
+async fn missing_fixture_is_focused() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -493,7 +493,7 @@ async fn explicit_missing_fixture_is_focused() {
 // Guards against PathBuf-typed fixture handling: relative fixtures
 // resolve from the case directory.
 #[tokio::test]
-async fn relative_fixture_resolves_from_case_dir() {
+async fn relative_fixture_from_case_dir() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(

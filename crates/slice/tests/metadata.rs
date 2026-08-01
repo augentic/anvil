@@ -32,9 +32,15 @@ mod list {
         .await
         .expect("list succeeds");
 
-        let listed: Vec<(&str, &str)> =
-            body.slices.iter().map(|e| (e.name.as_str(), e.status.as_str())).collect();
-        assert_eq!(listed, vec![("alpha", "refining"), ("beta", "refined")]);
+        let listed: Vec<(&str, slice::LifecycleStatus)> =
+            body.slices.iter().map(|e| (e.name.as_str(), e.status)).collect();
+        assert_eq!(
+            listed,
+            vec![
+                ("alpha", slice::LifecycleStatus::Refining),
+                ("beta", slice::LifecycleStatus::Refined)
+            ]
+        );
     }
 }
 

@@ -38,15 +38,15 @@ use crate::name::{PlanName, SliceName};
 #[strum(serialize_all = "kebab-case")]
 pub enum Status {
     /// Not yet started. Written by `plan add` / `plan amend` (forward)
-    /// and `plan transition <entry> --undo` (reverse from
-    /// `InProgress`).
+    /// and `plan undo <entry>` (reverse from `InProgress`).
     Pending,
     /// Currently being executed. Written by `plan next` (forward)
-    /// and `plan transition <entry> --undo` (reverse from `Done`).
+    /// and `plan undo <entry>` (reverse from `Done`).
     InProgress,
     /// Completed successfully. Written by `slice merge` (forward
-    /// only — `--undo` walks back to `InProgress` so the slice can be
-    /// re-built and re-merged without inventing a `Reopened` state).
+    /// only — `plan undo` walks back to `InProgress` so the slice can
+    /// be re-built and re-merged without inventing a `Reopened`
+    /// state).
     Done,
 }
 
@@ -203,5 +203,42 @@ impl Plan {
     #[must_use]
     pub(crate) fn is_drained(&self) -> bool {
         self.entries.iter().all(|e| e.status == Status::Done)
+    }
+
+    /// The shared `plan-entry-not-found` failure for `name`: the
+    /// detail lists the plan's entry names so a typo'd entry reads as
+    /// a typo, not a missing plan.
+    #[must_use]
+    pub fn entry_not_found(&self, name: &str) -> error::Error {
+        let available: Vec<&str> = self.entries.iter().map(|e| e.name.as_str()).collect();
+        let inventory = if available.is_empty() {
+            "the plan has no entries".to_string()
+        } else {
+            format!("available: {}", available.join(", "))
+        };
+        error::Error::Diag {
+            code: "plan-entry-not-found",
+            detail: format!("no plan entry named `{name}` ({inventory})"),
+        }
+    }
+
+    /// The shared `plan-source-unknown` failure for `source`: the
+    /// detail lists the plan's bound source keys and reminds the
+    /// operator that `verb` resolves keys, not adapter names.
+    #[must_use]
+    pub fn source_not_found(&self, verb: &str, source: &str) -> error::Error {
+        let keys: Vec<&str> = self.sources.keys().map(String::as_str).collect();
+        let inventory = if keys.is_empty() {
+            "the plan binds no sources".to_string()
+        } else {
+            format!("bound keys: {}", keys.join(", "))
+        };
+        error::Error::Diag {
+            code: "plan-source-unknown",
+            detail: format!(
+                "no source `{source}` in plan.yaml.sources ({inventory}); `{verb}` resolves its \
+                 argument against the plan's source keys, not the adapter name"
+            ),
+        }
     }
 }

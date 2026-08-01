@@ -32,10 +32,9 @@ impl Plan {
     /// Errors when no entry matches `name` or when post-amend
     /// validation fails.
     pub fn amend(&mut self, name: &str, patch: EntryPatch) -> Result<(), Error> {
-        let idx = self.entries.iter().position(|c| c.name == name).ok_or_else(|| Error::Diag {
-            code: "plan-entry-not-found",
-            detail: format!("no slice named '{name}' in plan"),
-        })?;
+        let Some(idx) = self.entries.iter().position(|c| c.name == name) else {
+            return Err(self.entry_not_found(name));
+        };
 
         let snapshot = self.entries[idx].clone();
 

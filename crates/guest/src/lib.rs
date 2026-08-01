@@ -9,9 +9,9 @@
 //! The crate is `wasm32`-only: native builds see an empty crate.
 //!
 //! A deployment's guest crate is one invocation: `guest::export!();`.
-//! The engine's root `emery` cdylib is the canonical caller; the
-//! wasm example in `augentic/emery-adapters` builds the identical
-//! guest from this crate rather than vendoring these sources.
+//! The engine's root `emery` cdylib is the sole caller — the wasm
+//! examples here and in `augentic/emery-adapters` drive that shipped
+//! binary rather than building their own guest.
 #![cfg(target_arch = "wasm32")]
 
 mod bindings {

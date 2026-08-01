@@ -37,7 +37,13 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Refine {
         let cx = Ctx::load(context.provider)?;
         let caps = orchestrate::Capabilities::provider(context.provider);
         let outcome = orchestrate::refine_breakout(caps, &cx.paths, cx.now(), &input.name).await?;
-        Ok(RefineBody {
+        Ok(RefineBody::from(outcome))
+    }
+}
+
+impl From<orchestrate::RefineOutcome> for RefineBody {
+    fn from(outcome: orchestrate::RefineOutcome) -> Self {
+        Self {
             slice: outcome.slice,
             artifacts: outcome.artifacts,
             extracted: outcome
@@ -50,7 +56,7 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Refine {
                 conflict: outcome.tags.conflict,
                 divergence: outcome.tags.divergence,
             },
-        })
+        }
     }
 }
 

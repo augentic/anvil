@@ -103,7 +103,7 @@ pub fn refresh_request(argv: &[String]) -> RefreshRequest {
             }
         }
         ["init"] => {
-            let Ok(init) = super::InitArgs::from_arg_matches(leaf) else {
+            let Ok(init) = super::routes::InitArgs::from_arg_matches(leaf) else {
                 return RefreshRequest::default();
             };
             RefreshRequest {

@@ -102,7 +102,7 @@ The execute loop reads on-disk lifecycle state — no resume flags required.
 
 <h2><span class="num">5</span> Guest lock</h2>
 
-The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts (`slice refine`, `slice build`, `slice merge run`) do not take the marker — the lifecycle gates (only `refined` builds, only `built` merges) are the correctness fence. If a dead holder left a stale marker, confirm the holder is gone and remove `.emery/guest.lock` by hand.
+The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts (`slice refine`, `slice build`, `slice merge`) do not take the marker — the lifecycle gates (only `refined` builds, only `built` merges) are the correctness fence. If a dead holder left a stale marker, confirm the holder is gone and remove `.emery/guest.lock` by hand.
 </section>
 
 

@@ -6,13 +6,13 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 
 | Verb | When to use |
 |------|-------------|
-| `author` | Guest-routed authoring orchestration: scaffold `plan.yaml` (refuses an existing plan unless `--force` replaces a pending one), survey every bound source, reconcile leads into `slices[]`, validate, exit at `pending` with the Gate 1 hint. Invoked by `/emery:plan`. |
+| `author` | Guest-routed authoring orchestration: scaffold `plan.yaml` (refuses an existing plan unless `--force` recreates it), survey every bound source, reconcile leads into `slices[]`, validate, exit at `pending` with the Gate 1 hint. Invoked by `/emery:plan`. |
 | [`execute`](#emery-plan-execute) | Guest-routed driver loop and Gate 1: the first run on a `pending` plan stamps `approved`, then claims → refines → builds → merges per entry until `drained` or a stop (exit 2, `plan-execute-stopped`). Holds the `.emery/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan in `pending` state. |
 | [`amend`](#emery-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`remove`](#emery-plan-remove) | Drop a pending entry while the plan is still replaceable (Gate 1 deferral). |
 | [reconciliation](#lead-reconciliation-inside-emery-plan-author) | The reconcile leg inside `emery plan author`: validates the agent grouping and replaces `slices[]` on a replaceable plan. |
-| [`transition`](#emery-plan-transition) | Walk a plan entry's status one rung backwards (`--undo` is the only mode). Per-entry status is `pending | in-progress | done` only; forward writes belong to `plan next` and `slice merge run`. |
+| [`undo`](#emery-plan-undo) | Walk a plan entry's status one rung backwards. Per-entry status is `pending | in-progress | done` only; forward writes belong to `plan next` and `slice merge`. |
 | [`validate`](#emery-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants) plus three health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`). First triage step when `emery plan execute` reports `stuck`. |
 | [`next`](#emery-plan-next) | Report the next eligible entry (used by the execute loop and ad-hoc operators). |
 | [`status`](#emery-plan-status) | Read-only projection of the plan's execution state into a deterministic `next-action` (`refine|build|merge <slice>` / `stop <reason>` / `drained`). |
@@ -20,7 +20,7 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` v
 
 ## Subcommands
 
-`emery plan author <name> [--source <key>=<adapter>:<path>...] [--intent "<string>"] [--force]` scaffolds `plan.yaml` at the repo root with the given kebab-case name before its survey and reconcile legs run. Each `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `already-exists` when `plan.yaml` is already present unless `--force` is set; `--force` replaces only a replaceable plan (`lifecycle: pending` and every entry `pending`) and otherwise exits with `plan-author-not-replaceable` — archive first (`emery plan archive`). `/emery:plan` confirms before passing `--force`.
+`emery plan author <name> [--source <key>=<adapter>:<path>...] [--intent "<string>"] [--force]` scaffolds `plan.yaml` at the repo root with the given kebab-case name before its survey and reconcile legs run. Each `--source` carries the structured binding shape: an explicit kebab-case `<adapter>` followed by a colon and either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Refuses with `plan-already-exists` when `plan.yaml` is already present unless `--force` is set; `--force` recreates the plan unconditionally, whatever its lifecycle or entry statuses (no archive — the previous `plan.yaml` is simply overwritten). `/emery:plan` confirms before passing `--force`.
 
 Author ensures every binding up front, before the scaffold write. Bare adapter names persist bare in `plan.yaml` (no auto version stamp): a cache-seeded binding (`emery adapter add`) resolves the seed, and an unseeded bare name resolves local-first (newest installed store version, else pull-latest provisioning) — the resolved version is logged to stderr, and the survey fan-out plus every later `slice refine` extract dispatch the same local resolution. Explicit `emery:<name>@<semver>` pins stamp `version:` on the binding and install through the standard pull-on-miss path. The `--intent` sugar's implicit `intent` binding rides the same rules. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
 
@@ -160,15 +160,15 @@ Validation codes (all exit 2):
 
 Both envelopes are owned by the typed wire DTOs in [`crates/project/src/plan/propose.rs`](../../../crates/project/src/plan/propose.rs) (closed `kind: request | response`); the response's judgment-answer schema is generated from them by `project::answers::proposal`. See [CLI output shapes](../cli-output-shapes.md) for the envelope bodies.
 
-### emery plan transition
+### emery plan undo
 
 Walk a plan entry's status one rung backwards.
 
 ```bash
-emery plan transition <entry> --undo
+emery plan undo <entry>
 ```
 
-`--undo` is the only mode: it walks one rung backwards (`done → in-progress`, then `in-progress → pending` on a second call), firing one `plan.transition.undone` event per rung. Forward writes have no transition surface — `emery slice merge run` stamps `done` (and re-stamps it when healing a torn merge).
+The verb walks one rung backwards (`done → in-progress`, then `in-progress → pending` on a second call), firing one `plan.transition.undone` event per rung. Forward writes have no undo surface — `emery slice merge` stamps `done` (and re-stamps it when healing a torn merge).
 
 Per-entry `pending` is written by `emery plan add` / `plan amend`; `in-progress` is written only by `emery plan next`. v1 has no per-entry `failed`, `blocked`, or `skipped` — build failures and merge conflicts leave the active entry `in-progress`.
 

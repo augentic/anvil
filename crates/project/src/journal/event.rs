@@ -59,7 +59,7 @@ pub enum EventKind {
         actor: Actor,
     },
     /// Operator walked one rung backwards on per-entry status via
-    /// `emery plan transition <entry> --undo`. One event per rung
+    /// `emery plan undo <entry>`. One event per rung
     /// (`done → in-progress` and `in-progress → pending` each fire
     /// individually) so the journal records every step the operator
     /// took and replay traces line up with the forward-direction

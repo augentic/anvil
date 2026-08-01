@@ -46,10 +46,10 @@ The full set of Layer 1 skills:
 | -------------- | ------------------------------------------------------------------------------------------ |
 | `/emery:refine` | Wrap `emery slice refine`: extract per bound source, synthesis, validation, `refined`    |
 | `/emery:build`  | Wrap `emery slice build`: the target adapter's build operation and the `built` gate      |
-| `/emery:merge`  | Wrap `emery slice merge run`: baseline delta merge, archive; only writer of per-entry `done` |
+| `/emery:merge`  | Wrap `emery slice merge`: baseline delta merge, archive; only writer of per-entry `done` |
 | `/emery:drop`   | Wrap `emery slice drop`: discard a slice without merging                                 |
 
-The matching CLI surface is the **`emery slice ...`** family: `slice refine`, `slice build`, `slice merge run`, `slice drop`, plus the read-only `slice list` and `slice validate`. The skills are one-to-one wrappers over it.
+The matching CLI surface is the **`emery slice ...`** family: `slice refine`, `slice build`, `slice merge`, `slice drop`, plus the read-only `slice list` and `slice validate`. The skills are one-to-one wrappers over it.
 
 ## Layer 2: Planning and driving a change
 

@@ -19,8 +19,7 @@ use serde::{Deserialize, Serialize};
 use super::entry::{Action, EntryBody};
 use super::{check_project, plan_ref};
 use crate::plan::wire::{
-    BindingArg, bindings_from_args, load_discovery, parse_divergence, parse_override_assigns,
-    parse_slice_pair_args,
+    BindingArg, KindAssign, bindings_from_args, load_discovery, parse_divergence,
 };
 
 /// Wire input for `plan amend`. Option-typed fields distinguish
@@ -59,15 +58,15 @@ pub struct AmendInput {
     /// Replace context paths; `None` leaves them unchanged.
     #[serde(default)]
     pub context: Option<Vec<String>>,
-    /// Interleaved `<slice> <kind>=<key>` authority-override set pairs.
+    /// `<kind>=<source>` authority-override sets on the amended entry.
     #[serde(default)]
-    pub authority_override: Vec<String>,
-    /// Interleaved `<slice> <kind>` authority-override clear pairs.
+    pub authority_override: Vec<KindAssign>,
+    /// Claim kinds cleared from the amended entry's override map.
     #[serde(default)]
-    pub clear_authority_override: Vec<String>,
-    /// Slices whose whole authority-override map is wiped.
+    pub clear_authority_override: Vec<ClaimKind>,
+    /// Wipe the amended entry's whole authority-override map.
     #[serde(default)]
-    pub clear_authority_overrides: Vec<String>,
+    pub clear_authority_overrides: bool,
 }
 
 /// `emery plan amend <name> [flags]` — edit non-status fields on an
@@ -106,12 +105,14 @@ impl<P: Anchor> Operation<P> for Amend {
         }
 
         let divergence = divergence.as_deref().map(parse_divergence).transpose()?;
-        let override_sets = parse_override_assigns(&authority_override)?;
-        let override_clears: Vec<(String, ClaimKind)> = parse_slice_pair_args::<ClaimKind>(
-            &clear_authority_override,
-            "--clear-authority-override",
-        )?;
-        let override_clear_all: Vec<String> = clear_authority_overrides;
+        // Overrides are scoped to the entry being amended — the shared
+        // mutation engine keys by (slice, kind), so widen here.
+        let override_sets: Vec<(String, ClaimKind, String)> =
+            authority_override.iter().map(|a| (name.clone(), a.kind, a.source.clone())).collect();
+        let override_clears: Vec<(String, ClaimKind)> =
+            clear_authority_override.iter().map(|kind| (name.clone(), *kind)).collect();
+        let override_clear_all: Vec<String> =
+            if clear_authority_overrides { vec![name.clone()] } else { Vec::new() };
         let plan_path = cx.layout().plan_path();
         let discovery = load_discovery(cx.layout())?;
         let now = cx.now();

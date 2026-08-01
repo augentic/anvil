@@ -86,16 +86,14 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         platforms: Vec::new(),
     };
     let config_path = layout.config_path();
-    let serialised = serde_saphyr::to_string(&cfg)?;
-    fs::write(&config_path, serialised)?;
+    artifacts::atomic::yaml_write(&config_path, &cfg)?;
 
     let registry = Registry {
         version: 1,
         projects: Vec::new(),
     };
     let registry_path = Registry::path(opts.project_dir);
-    let registry_yaml = serde_saphyr::to_string(&registry)?;
-    fs::write(&registry_path, registry_yaml)?;
+    artifacts::atomic::yaml_write(&registry_path, &registry)?;
 
     upsert_gitignore(opts.project_dir)?;
 

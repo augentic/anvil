@@ -10,12 +10,12 @@ The engine guest owns the whole authoring flow — plan scaffold, per-source sur
 
 ## Invocation
 
-1. **Replace gate** — when `plan.yaml` already exists at the plan root, confirm with the AskQuestion tool that the operator wants to replace the pending plan (rewrites `plan.yaml`, `change.md`, and the discovery preamble). Without an explicit affirmative, stop without running anything. On affirmative, pass `--force` in step 2. Skip this step when `plan.yaml` is absent. An approved or in-flight plan cannot be replaced — surface `plan-author-not-replaceable` and point at `emery plan archive` instead of retrying with `--force`.
+1. **Replace gate** — when `plan.yaml` already exists at the plan root, confirm with the AskQuestion tool that the operator wants to replace it (rewrites `plan.yaml`, `change.md`, and the discovery preamble — the existing plan is recreated whatever its lifecycle or entry statuses, and is not archived). Without an explicit affirmative, stop without running anything. On affirmative, pass `--force` in step 2. Skip this step when `plan.yaml` is absent.
 2. **Author**:
 
 ```bash
 emery plan author <name> --source <key>=<adapter>:<binding>
-# when replacing a pending plan after step 1:
+# when replacing an existing plan after step 1:
 emery plan author <name> --force --source <key>=<adapter>:<binding>
 ```
 

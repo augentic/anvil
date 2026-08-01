@@ -58,7 +58,7 @@ impl Plan {
         if self.entries.iter().any(|c| c.name == change.name) {
             return Err(Error::Diag {
                 code: "plan-entry-duplicate-name",
-                detail: format!("plan already contains a change named '{}'", change.name),
+                detail: format!("plan already contains an entry named `{}`", change.name),
             });
         }
 

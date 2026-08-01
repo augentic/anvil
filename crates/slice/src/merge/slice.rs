@@ -32,8 +32,8 @@ use write::{commit_opaque, summary, write_baselines};
 /// engine having to know any per-domain vocabulary. `name` is the spec
 /// (or composition) identifier within that class.
 ///
-/// The `Serialize` derive is the wire shape used by `slice merge run`
-/// and `slice merge run --preview`: `class_name` is a routing tag for the
+/// The `Serialize` derive is the wire shape used by `slice merge`
+/// and `slice merge --preview`: `class_name` is a routing tag for the
 /// CLI's `filter().map()` step (skipped on the wire), `baseline_path`
 /// flows through `Path::display`, and `result` is flattened so the
 /// envelope exposes only `operations` (the merged text travels to
@@ -84,7 +84,7 @@ impl std::ops::Deref for MergeCommit {
 /// One-line human summary of a merged entry's operations, e.g.
 /// `2 added, 1 modified` or `created baseline with 4 requirement(s)`.
 ///
-/// Shared by the `slice merge run` output and the
+/// Shared by the `slice merge` output and the
 /// `slice.archive.created` outcome-ledger summary (both the native
 /// verb and the guest merge orchestrator), so the ledger text never
 /// drifts between the two paths.
@@ -225,8 +225,8 @@ pub fn commit(
     let mut metadata = SliceMetadata::load(slice_dir)?;
     if metadata.status != LifecycleStatus::Built {
         return Err(Error::Diag {
-            code: "lifecycle",
-            detail: format!("expected Built, found {:?}", metadata.status),
+            code: "slice-lifecycle",
+            detail: format!("cannot merge: slice is `{}`, expected `built`", metadata.status),
         });
     }
 

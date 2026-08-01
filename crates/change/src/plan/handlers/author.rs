@@ -8,6 +8,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
+use project::plan::Lifecycle;
 use project::seam::Source;
 use serde::{Deserialize, Serialize};
 
@@ -31,9 +32,9 @@ pub struct AuthorInput {
     /// `--source intent=intent:value:<string>`.
     #[serde(default)]
     pub intent: Option<String>,
-    /// Replace an existing replaceable plan (`lifecycle: pending`
-    /// and every entry `pending`). Without this flag an existing
-    /// `plan.yaml` refuses with `already-exists`.
+    /// Replace an existing plan unconditionally, whatever its
+    /// lifecycle or entry statuses. Without this flag an existing
+    /// `plan.yaml` refuses with `plan-already-exists`.
     #[serde(default)]
     pub force: bool,
 }
@@ -62,21 +63,7 @@ impl<P: Anchor + Model + Resolver + Source> Operation<P> for Author {
         let sources = source_map(sources, intent)?;
         let caps = orchestrate::Capabilities::provider(context.provider).sans_targets();
         let outcome = orchestrate::author(caps, &cx.paths, cx.now(), &name, sources, force).await?;
-        Ok(AuthorBody {
-            plan: outcome.plan,
-            lifecycle: "pending",
-            surveyed: outcome
-                .surveyed
-                .into_iter()
-                .map(|surveyed| AuthorSurvey {
-                    source: surveyed.source,
-                    adapter: surveyed.adapter,
-                    leads: surveyed.leads,
-                })
-                .collect(),
-            slices: outcome.slices,
-            hint: outcome.hint,
-        })
+        Ok(AuthorBody::from(outcome))
     }
 }
 
@@ -86,14 +73,26 @@ impl<P: Anchor + Model + Resolver + Source> Operation<P> for Author {
 pub struct AuthorBody {
     /// Change name.
     pub plan: String,
-    /// Always `pending` — Gate 1 stays operator-owned.
-    pub lifecycle: &'static str,
+    /// Always [`Lifecycle::Pending`] — Gate 1 stays operator-owned.
+    pub lifecycle: Lifecycle,
     /// Surveyed sources in plan-binding order.
     pub surveyed: Vec<AuthorSurvey>,
     /// Authored slice names.
     pub slices: Vec<String>,
     /// The literal Gate 1 transition command.
     pub hint: String,
+}
+
+impl From<orchestrate::AuthorOutcome> for AuthorBody {
+    fn from(outcome: orchestrate::AuthorOutcome) -> Self {
+        Self {
+            plan: outcome.plan,
+            lifecycle: Lifecycle::Pending,
+            surveyed: outcome.surveyed.into_iter().map(AuthorSurvey::from).collect(),
+            slices: outcome.slices,
+            hint: outcome.hint,
+        }
+    }
 }
 
 /// One surveyed source in the authoring fan-out.
@@ -106,6 +105,16 @@ pub struct AuthorSurvey {
     pub adapter: String,
     /// Lead ids the survey produced.
     pub leads: Vec<String>,
+}
+
+impl From<orchestrate::SurveyedSource> for AuthorSurvey {
+    fn from(surveyed: orchestrate::SurveyedSource) -> Self {
+        Self {
+            source: surveyed.source,
+            adapter: surveyed.adapter,
+            leads: surveyed.leads,
+        }
+    }
 }
 
 impl Render for AuthorBody {
