@@ -20,7 +20,7 @@ There is no automated WASM gate. The facts only the component boundary can prove
 
 ## Placement decision
 
-When adding coverage:
+When adding coverage, the default write path is crate or wire integration — a `src` unit test is the exception, never the starting point:
 
 1. Put a private dense matrix in a kernel unit test only when integration is impractical.
 2. Put one-crate public behavior in that crate's integration suite.

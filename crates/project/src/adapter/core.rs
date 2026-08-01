@@ -296,6 +296,12 @@ pub(super) fn check_requires_emery(
     Ok(())
 }
 
+// Keep (CLI-unreachable defensive branch): `current` is always the
+// binary's own `env!("CARGO_PKG_VERSION")` in production, which is
+// always parseable — no CLI input can reach the permissive
+// unparseable-version arm. The reachable floor behavior
+// (`adapter-cli-too-old`, `adapter-floor-malformed`) is owned by
+// `crates/project/tests/adapter.rs` and `crates/native/tests/provider.rs`.
 #[cfg(test)]
 mod tests {
     use super::*;

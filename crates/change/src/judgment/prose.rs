@@ -38,6 +38,11 @@ pub fn propose() -> &'static str {
     doc("propose.md")
 }
 
+// Keep (private embed-table kernel): the generated `DOCS` table has no
+// public projection — "an embedded prompt assembles nowhere" is
+// unobservable at any CLI or crate boundary, so integration cannot own
+// this invariant. Link integrity is enforced separately at embed time
+// by the `prose` build crate.
 #[cfg(test)]
 mod tests {
     use super::*;

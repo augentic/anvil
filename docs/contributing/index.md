@@ -50,6 +50,7 @@ Developer Guide link integrity is the book's job — `cargo make links` runs `md
 ## What to read next
 
 - [Quality gates](quality-gates.md) — test rungs, assertion ownership, and release cadence
+- [Testing standards](../standards/testing.md) — the integration-first posture, the three layers, the triage buckets, and the coverage brake (`cargo make cov`)
 - [The developer loop](dev-loop.md) — the two local rungs: `cargo make test` (native), `cargo make eval` (prompt evaluation) — plus the operator-run wasm example (`cargo make wasm-run`) for the WASM seam
 - [Lifecycle](../reference/lifecycle.md) and [synthesis prompts](../../crates/slice/prompts/synthesize.md) — workflow state, evidence reconciliation, authority, and cache behavior
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) — how adapters declare brief pipelines

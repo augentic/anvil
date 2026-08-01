@@ -52,6 +52,17 @@ Rules of thumb:
 - **Re-home, don't 1:1 port.** When deleting a unit test removes the only coverage of a CLI-reachable behavior, add a *small number* of representative integration cases — never a case-per-cell port (the subprocess pool is the scarce budget).
 - **Don't promote pure-library tests into the binary harness.** A test that never spawns the binary belongs in the crate that owns the code (this is a policy violation the harness comment cannot excuse).
 
+### Triage buckets
+
+Applied to every existing (or proposed) `src` `#[cfg(test)]` / `tests.rs`, one bucket per behavior cluster — the same taxonomy `emery-adapters` uses:
+
+- **Delete** — the observable behavior is already asserted by an integration test, or the test is tautological, mock-heavy, or an internal snapshot that gives no boundary signal.
+- **Collapse (stay unit)** — a dense pure `(input → output/code)` matrix becomes one table-driven `#[test]` with a block per case; coverage-neutral by construction.
+- **Re-home** — behavior reachable through a public seam lands in `crates/<name>/tests/` (or `crates/transport/tests/` for wire behavior).
+- **Keep** — a genuinely unreachable defensive branch or private kernel with no public projection, carrying a one-line comment naming which clause it survives under.
+
+**Re-home is not a 1:1 port.** Re-homed coverage is a scenario contract: arrange through the real entry (a CLI verb, a crate `pub` fn, `mock::invoke`, a temp scaffold), act once, and assert at the seam — exit code, JSON `error` discriminant, filesystem artifact shape, journal event — never private struct fields re-exposed for the test. A small number of representative scenarios replaces the matrix; the dense edges either stay collapsed in `src` or are dropped as redundant.
+
 ### Reaching the behavior: design against the public surface
 
 Before writing a unit test, decide whether integration can reach the behavior. Ask three questions, then check visibility:
@@ -71,7 +82,7 @@ Before writing a unit test, decide whether integration can reach the behavior. A
 `cargo llvm-cov` line/region coverage on still-live code is the safety net — not edge-matrix preservation. Before and after a reduction, run the coverage gate over the crate you touched:
 
 ```bash
-cargo llvm-cov nextest -p <crate> --summary-only
+CRATE=<crate> cargo make cov   # cargo llvm-cov nextest -p <crate> --summary-only
 ```
 
 A `TOTAL` drop on lines that are still live means real coverage was lost: backfill it with an integration assertion (preferred) or revert that specific deletion. A reduction lands only when coverage holds (a pure collapse of redundant cases is coverage-neutral by construction). Use `cargo llvm-cov nextest` (not bare `cargo test`/`cargo llvm-cov`): nextest's process isolation is what makes the CWD/env-mutating suites pass, and it is the runner CI uses.
