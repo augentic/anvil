@@ -27,6 +27,12 @@ omnia-wasi-otel.workspace = true
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 emery-guest.workspace = true
 
+# `build.rs` AOT-compiles the engine guest to a wasmtime-serialized artifact;
+# the build script always runs on the host, so this compiles Cranelift into
+# the build script only (the wasm32 child build's early return never uses it).
+[build-dependencies]
+omnia.workspace = true
+
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 emery-adapter.workspace = true
 emery-mock.workspace = true
@@ -202,7 +208,15 @@ emery-prose = { path = "crates/prose" }
 emery-slice = { path = "crates/slice" }
 emery-transport = { path = "crates/transport" }
 
-omnia = "0.35.0"
+# `cli` (the host `omnia run` grammar) is unused — the shipped binary is a
+# `program:` direct-command deployment; `otlp` (gRPC exporters) is dropped for
+# a leaner host — fmt/EnvFilter tracing remains. `jit` stays: resolver-loaded
+# adapter components are raw wasm and JIT-compile at admission. Note: today
+# `omnia-cursor` still depends on `omnia` with default features, so feature
+# unification re-enables `cli`/`otlp` in the unified build until
+# omnia-backends trims its own dependency; the build-dependency resolves
+# separately and already gets `jit` only.
+omnia = { version = "0.35.0", default-features = false, features = ["jit"] }
 omnia-cursor = "0.29.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"

@@ -77,6 +77,14 @@ env = { RUSTDOCFLAGS = "-Dwarnings" }
 command = "mdbook"
 args = ["build", "docs"]
 
+# Coverage brake for unit-test reductions (docs/standards/testing.md).
+# Usage: CRATE=project cargo make cov
+# Operator-invoked, never part of `ci`.
+[tasks.cov]
+workspace = false
+script = "cargo llvm-cov nextest -p ${CRATE} --summary-only"
+install_crate = "cargo-llvm-cov"
+
 [tasks.miri]
 script = '''
 cargo +nightly miri setup

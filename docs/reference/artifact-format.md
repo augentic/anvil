@@ -10,6 +10,7 @@ This is the definitive reference for the structure and conventions of Emery arti
 - [Tasks document](#tasks-document)
 - [Decision Records (design "why")](#decision-records-design-why)
 - [Composition document (Vectis only)](#composition-document-vectis-only)
+- [Component catalog and parts (Vectis only)](#component-catalog-and-parts-vectis-only)
 - [Contract artifacts (API "shape")](#contract-artifacts-api-shape)
 - [Validation checklists](#validation-checklists)
 
@@ -254,7 +255,7 @@ Keep proposals concise (one to two pages). Focus on the "why" not the "how" — 
 - Reference specs for what needs to be built, design for how to build it.
 - Each task should be verifiable -- you know when it is done.
 
-Tasks are implemented by the active target adapter's `build` operation (`adapters/targets/<target>/prose/prompts/build.md`), which carries the specialist orchestration (crate / test / guest / review for omnia, core / shells / composition for vectis, format-dispatched author-import-verify for contracts) inline. Tasks do not route to standalone Cursor skills.
+Tasks are implemented by the active target adapter's `build` operation (`targets/<target>/prose/prompts/build.md` in the adapters repo), which carries the specialist orchestration (crate / test / guest / review for omnia, core / shells / composition for vectis, format-dispatched author-import-verify for contracts) inline. Tasks do not route to standalone Cursor skills.
 
 ## Decision Records (design "why")
 
@@ -378,6 +379,54 @@ delta:
 - `event` values follow PascalCase: `EventName` or `EventName(arg1, arg2)`.
 
 For the full schema definition and item vocabulary, see the [Vectis composition schema](https://schemas.emery.dev/vectis/composition.schema.json).
+
+## Component catalog and parts (Vectis only)
+
+Two sibling design-system files govern shared UI components. `.emery/design-system/components.yaml` is the agent-written **resolved catalog** — the vectis build's in-guest bind step is its only writer; the operator edits it only to reject or rename entries. `.emery/design-system/parts.yaml` is an optional hand-authored **input** that pre-defines known shared parts. Both sit beside `tokens.yaml` and `assets.yaml`; in workspace mode both live at `<coordinator-root>/workspace/<project>/.emery/design-system/`. The motivation and operator workflow are in [Component catalog](../explanation/components.md).
+
+### Catalog format (`components.yaml`)
+
+```yaml
+version: 1
+components:
+  tab-bar:
+    status: confirmed
+    description: "Bottom navigation across primary sections."
+    fingerprint: "<64-char lowercase hex>"   # optional; the structural identity bound to this slug
+```
+
+- **`status`** — `confirmed` (build factors shared code) or `rejected` (suppresses catalog-drift warnings for that slug).
+- **`description`** — optional note.
+- **`fingerprint`** — optional lowercase SHA-256 hex (`^[0-9a-f]{64}$`) of the component's normalized structural skeleton. The bind step writes it so a later report echoes the bound slug for an already-named cluster (run-to-run binding stability). Hand-authored / pre-inference entries omit it.
+- Slugs: kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
+
+### Parts format (`parts.yaml`)
+
+```yaml
+version: 1
+parts:
+  tab-bar:
+    description: "Bottom navigation across primary sections."
+    group:                  # schema-compliant composition `group` fragment
+      active-when: "$route"
+      items:
+        - icon-button: { bind: "home",     event: "Navigate(Home)" }
+        - icon-button: { bind: "search",   event: "Navigate(Search)" }
+        - icon-button: { bind: "settings", event: "Navigate(Settings)" }
+```
+
+- **`group`** — required; a schema-compliant composition `group` fragment. Identity is its normalized structural skeleton (the same `build_group_skeleton` output that drives inference), so the `bind` / `event` / `*-when` *values* are illustrative and stripped before fingerprinting — paste a representative real group.
+- **`description`** — optional; carried into the resolved catalog entry.
+- Slugs: kebab-case, same grammar as the catalog.
+
+A part carries two authorities over inference: **naming** (the operator's slug wins for that structure) and **promotion** (a matched part is factored as shared even below the occurrence threshold). Parts whose skeleton matches at least one baseline group are projected into `components.yaml` as `status: confirmed`; parts that match nothing are listed in the non-blocking `part-unmatched` report. `parts.yaml` is schema-validated on read (`parts.schema.json`); beyond schema conformance there are no coherence gates — a mis-authored part resolves deterministically (operator slug wins, `rejected` suppression holds) and the operator repairs the file if the outcome is wrong.
+
+### Validation
+
+| Surface | Finding | Meaning |
+| --- | --- | --- |
+| `emery slice validate` | `slice-catalog-drift` | Evidence has `component: <slug>` not in catalog or `rejected`. Absent catalog = no-op. |
+| vectis in-guest composition validation | Catalog cross-reference | Every `component:` in `composition.yaml` must be `confirmed`. |
 
 ## Contract artifacts (API "shape")
 

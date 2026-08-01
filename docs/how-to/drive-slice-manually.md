@@ -18,7 +18,7 @@ Resume or run one slice phase when `emery plan execute` parks or when you want o
 <div class="when">
 <strong>When to use.</strong>
 
-Use this guide when execute stops on build or merge failure, when you cancel a running execute session, or when you want to drive refine → build → merge phases yourself. Complete the [Quick start](../tutorials/quick-start.md) first.
+Use this guide when execute [parks](../appendices/glossary.md#p) on a build or merge failure, when you cancel a running execute session, or when you want to drive refine → build → merge phases yourself as [breakouts](../appendices/glossary.md#b). Complete the [Quick start](../tutorials/quick-start.md) first.
 </div>
 
 
@@ -72,7 +72,7 @@ A postflight failure is non-rollback: the merge already committed, the slice is 
 
 1. Inspect the archived gate report at `.emery/archive/<date>-<slice>/merge/postflight.yaml`.
 2. Repair the unclean baseline (hand-fix, or author a follow-up slice via `/emery:plan`).
-3. Re-run execute to acknowledge the sticky stop and continue (or finalize when the plan is otherwise drained):
+3. Re-run execute to acknowledge the sticky stop and continue (or finalize when the plan is otherwise [drained](../appendices/glossary.md#d)):
 
 ```text
 emery plan execute
@@ -102,7 +102,7 @@ The execute loop reads on-disk lifecycle state — no resume flags required.
 
 <h2><span class="num">5</span> Guest lock</h2>
 
-The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts (`slice refine`, `slice build`, `slice merge`) do not take the marker — the lifecycle gates (only `refined` builds, only `built` merges) are the correctness fence. If a dead holder left a stale marker, confirm the holder is gone and remove `.emery/guest.lock` by hand.
+The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker (see [Guest](../appendices/glossary.md#g)) for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts do not take the marker. For stale-marker recovery, see [Recover from a stale guest lock](recover-from-a-stale-guest-lock.md).
 </section>
 
 
@@ -115,5 +115,6 @@ The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` mar
 - [emery plan execute](../reference/cli/plan.md#emery-plan-execute) — stop conditions and re-entry
 - [Drop down a layer](drop-down-a-layer.md) — full manual Layer 2 control
 - [Slice skills](../reference/slice-skills/index.md) — refine, build, merge reference
+- [Glossary](../appendices/glossary.md) — parked, drained, breakout, guest
 </div>
 

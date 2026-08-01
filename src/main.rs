@@ -1,7 +1,9 @@
 //! The shipped `emery` executable: one `omnia::runtime!` invocation.
 //!
-//! The engine guest is embedded as static component bytes (`build.rs`
-//! resolves `EMERY_WASM`) and routed as the sole static
+//! The engine guest is embedded as static component bytes — `build.rs`
+//! ahead-of-time compiles it to the serialized wasmtime artifact at
+//! `$OUT_DIR/emery.bin`, so startup deserializes the engine instead
+//! of JIT-compiling it — and routed as the sole static
 //! `wasi:cli/run` exporter; every adapter guest is faulted in mid-run
 //! by exact routed id through the fail-closed launcher resolver,
 //! which installs a missing package pin from the first-party OCI
@@ -29,7 +31,9 @@ cfg_if::cfg_if! {
             program: "emery",
             guests: [{
                 id: "emery",
-                source: include_bytes!(env!("EMERY_WASM")),
+                // Build-time serialized engine artifact (adapters stay
+                // raw wasm and JIT-compile at admission).
+                source: include_bytes!(concat!(env!("OUT_DIR"), "/emery.bin")),
             }],
             mounts: [
                 { name: ".", path: launcher::project_root(), writable: true },

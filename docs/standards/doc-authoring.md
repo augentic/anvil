@@ -283,6 +283,17 @@ Copy the exemplar chapter for each Diátaxis type when authoring or migrating pa
 | **Reference**       | [`reference/cli/plan.md`](../reference/cli/plan.md)                   | intro, verb cheat-sheet table, synopsis blocks, see-also               |
 | **Section landing** | [`tutorials/index.md`](../tutorials/index.md)                         | hero, card-grid, see-also                                              |
 
+### CLI verb template
+
+Each `### emery <group> <verb>` section on a CLI reference page carries these elements, in order (verify every fact against `crates/transport/src/command/` and `Exit::from` in `output.rs`):
+
+1. **Role line** — one sentence naming what the verb does and who invokes it (skill, loop, or operator).
+2. **Synopsis fence** — a `bash` fence with the full argument/flag grammar.
+3. **Arguments/flags table** — omit when the verb takes nothing beyond `<name>` and `--format`.
+4. **Exit codes line** — `0` plus the non-zero codes the verb can produce, naming their kebab-case error discriminants.
+5. **JSON output** — one line linking the verb's envelope in [CLI output shapes](../reference/cli-output-shapes.md); inline only when the body is trivial.
+6. **Behaviour prose** — everything else, after the mechanical elements. Orchestration internals belong in explanation pages; link rather than retell.
+
 ## Palette and theme picker
 
 Light / dark mode is driven by mdbook's theme picker (the paintbrush icon in the menu bar). The relevant CSS variable buckets live at the top of [`emery-docs.css`](../assets/theme/emery-docs.css):

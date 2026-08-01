@@ -44,6 +44,18 @@ Plan and execute three dependent slices from documentation.
 </a>
 
 
+<a class="card" href="drive-a-slice-by-hand.md">
+<div class="card-head">
+<h3 class="card-title">Drive a slice by hand</h3>
+<span class="card-time">~30 min</span>
+</div>
+<div class="card-body">
+
+Run refine, build, and merge one phase at a time without the execute loop.
+</div>
+</a>
+
+
 <a class="card" href="cross-repo-change.md">
 <div class="card-head">
 <h3 class="card-title">Cross-repo changes</h3>
@@ -52,18 +64,6 @@ Plan and execute three dependent slices from documentation.
 <div class="card-body">
 
 Coordinate a change across workspace project slots.
-</div>
-</a>
-
-
-<a class="card" href="legacy-migration-at-scale.md">
-<div class="card-head">
-<h3 class="card-title">Legacy migration at scale</h3>
-<span class="card-time">~15 min read</span>
-</div>
-<div class="card-body">
-
-Learn how legacy code enters the workflow.
 </div>
 </a>
 
@@ -77,6 +77,7 @@ After the quick start, skim [Core concepts](../explanation/concepts.md) for voca
 <strong>See also</strong>
 
 - [How-to guides](../how-to/index.md) — task recipes for common operator situations
+- [Legacy migration at scale](../explanation/legacy-migration.md) — how legacy code enters the workflow
 - [What is Emery?](../orientation/index.md) — mental model without hands-on steps
 </div>
 

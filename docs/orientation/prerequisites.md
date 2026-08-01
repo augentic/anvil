@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs the Emery plugin (the `/emery:*` skill wrappers). Domain code generation for Omnia and Vectis lives in target adapters under [`adapters/targets/`](https://github.com/augentic/emery-adapters/tree/main/targets/), not in Cursor skills.
+This installs the Emery plugin (the `/emery:*` skill wrappers). Domain code generation for Omnia and Vectis lives in target adapters under [`targets/` in `augentic/emery-adapters`](https://github.com/augentic/emery-adapters/tree/main/targets/), not in Cursor skills.
 
 ## The `emery` CLI
 

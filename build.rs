@@ -1,12 +1,13 @@
-//! Builds and embeds the wasm32 engine component the shipped binary
-//! boots.
+//! Builds, ahead-of-time compiles, and embeds the wasm32 engine
+//! component the shipped binary boots.
 //!
-//! Emits `EMERY_WASM` for the `include_bytes!` in `src/main.rs`.
-//! Resolution order: an explicit `EMERY_WASM` environment override
-//! (the release pipeline), else a child `cargo build --lib --target
-//! wasm32-wasip2` into an isolated target directory under `OUT_DIR`
-//! so plain `cargo install --git … --locked` produces a bootable
-//! binary. There is no placeholder fallback: a native binary either
+//! A child `cargo build --lib --target wasm32-wasip2` into an
+//! isolated target directory under `OUT_DIR` produces the raw engine
+//! component (so plain `cargo install --git … --locked` produces a
+//! bootable binary), which is then serialized to a native wasmtime
+//! artifact at `$OUT_DIR/emery.bin` for the `include_bytes!` in
+//! `src/main.rs` — startup deserializes instead of JIT-compiling the
+//! engine. There is no placeholder fallback: a native binary either
 //! embeds a real engine or fails to build with a direct instruction.
 
 use std::path::PathBuf;
@@ -27,28 +28,42 @@ fn main() {
         return;
     }
 
-    println!("cargo:rerun-if-env-changed=EMERY_WASM");
-
-    let engine = std::env::var_os("EMERY_WASM").map_or_else(build_engine, |explicit| {
-        // Anchor a relative override at the manifest dir: the release
-        // pipeline passes a workspace-relative path so it resolves
-        // both natively and inside a `cross` container, and the
-        // embedded include_bytes! needs an absolute path anyway.
-        let mut path = PathBuf::from(explicit);
-        if path.is_relative() {
-            let manifest_dir =
-                PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo env"));
-            path = manifest_dir.join(path);
-        }
-        assert!(path.is_file(), "EMERY_WASM is set but {} is not a file", path.display());
-        path
-    });
+    let engine = build_engine();
 
     let len = std::fs::metadata(&engine).map(|meta| meta.len()).unwrap_or_default();
     assert!(len > 0, "engine component at {} is empty; refusing to embed it", engine.display());
 
-    println!("cargo:rerun-if-changed={}", engine.display());
-    println!("cargo:rustc-env=EMERY_WASM={}", engine.display());
+    precompile(&engine);
+}
+
+/// Ahead-of-time compile the raw engine component into the serialized
+/// wasmtime artifact at `$OUT_DIR/emery.bin` that `src/main.rs`
+/// embeds.
+///
+/// The engine configuration mirrors the runtime loader: the same
+/// `RuntimeOptions` env-driven compile-affecting settings (`MAX_FUEL`,
+/// `BRANCH_HINTING`, `MEMORY_RESERVATION`, `MEMORY_GUARD_SIZE`,
+/// `DEBUG_SYMBOLS`, `GENERATE_ADDRESS_MAP`) must match between this
+/// build and the running binary or deserialization rejects the
+/// artifact at startup. Cargo's `TARGET` pins the code to the
+/// binary's triple, so cross-compiled binaries embed a loadable
+/// artifact rather than one for the build host.
+fn precompile(raw: &std::path::Path) {
+    let options = omnia::RuntimeOptions::load_env().expect("runtime options from the build env");
+    let mut config = omnia::wasmtime::Config::from(&options);
+    let triple = std::env::var("TARGET").expect("cargo env");
+    config.target(&triple).unwrap_or_else(|err| {
+        panic!("wasmtime cannot compile for target {triple}: {err}");
+    });
+
+    let engine = omnia::wasmtime::Engine::new(&config).expect("wasmtime engine for AOT compile");
+    let component = omnia::wasmtime::component::Component::from_file(&engine, raw)
+        .unwrap_or_else(|err| panic!("compiling engine component {}: {err}", raw.display()));
+    let serialized = component.serialize().expect("serializing the compiled engine component");
+
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.bin");
+    std::fs::write(&out, serialized)
+        .unwrap_or_else(|err| panic!("writing {}: {err}", out.display()));
 }
 
 /// Compile the engine guest cdylib for `wasm32-wasip2` with a child

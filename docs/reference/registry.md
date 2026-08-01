@@ -4,7 +4,7 @@ The registry is a first-party Emery component — it owns project membership and
 
 ## What is the registry?
 
-The registry owns *project membership and location* — the declared list of projects and their repository locations — **and** the local *materialised view* of those projects under top-level `workspace/`. It is not a plugin: it has commands, libraries, and files, but it does not participate in the source/target adapter manifest protocol.
+The registry owns *project membership and location* — the declared list of projects and their repository locations — **and** the local *materialised view* of those projects under top-level `workspace/`. It is not a plugin: it has commands, libraries, and files, but it does not participate in the source/target adapter contract.
 
 The registry does **not** author a project's target adapter or description for plan-time topology — `adapter` and `description` are authored in each project's `.emery/project.yaml`, and the project's *derived* routing identity (`surface[]` / `recent[]`) is projected from that project's own baseline into the committed `.emery/topology.lock`. Regenerating that lock and materializing slots are operator-owned. The registry's `adapter` field survives only as an optional greenfield scaffold seed for surrounding repository tooling.
 
@@ -97,6 +97,6 @@ The registry is topology plus the declaration behind operator-owned local materi
 
 ## See also
 
-- [Target Adapters](targets/index.md) — target adapter manifest protocol.
+- [Target Adapters](targets/index.md) — target adapter metadata and operations.
 - [Anatomy of an adapter](../explanation/adapter-anatomy.md) — the source/target split.
 - [`emery registry`](cli/registry.md) and [Workspace topology](cli/workspace.md) — registry commands and operator-owned workspace setup.

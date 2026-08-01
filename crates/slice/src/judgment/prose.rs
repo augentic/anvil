@@ -58,11 +58,14 @@ fn section(label: &str, body: &str) -> String {
     format!("<!-- reference: {label} -->\n\n{body}")
 }
 
-// The corpus contract is private to this crate (the module is
-// `pub(crate)`), so it is checked here against the private kernel
-// rather than widened for an integration suite. Link resolution is
-// enforced twice elsewhere: at embed time by the `prose` build crate
-// and by the embed-time link check in `crates/prose`.
+// Keep (private embed-table kernel): the corpus contract is private to
+// this crate (the module is `pub(crate)`), so `DOCS` /
+// `SYNTHESIS_SECTIONS` have no public projection — "assembles nowhere"
+// and citation order are unobservable at any CLI or crate boundary.
+// Checked here against the private kernel rather than widened for an
+// integration suite. Link resolution is enforced twice elsewhere: at
+// embed time by the `prose` build crate and by the embed-time link
+// check in `crates/prose`.
 #[cfg(test)]
 mod tests {
     use super::*;

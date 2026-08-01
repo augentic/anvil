@@ -694,10 +694,6 @@ criteria = "safe-to-deploy"
 version = "0.32.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.opentelemetry-http]]
-version = "0.32.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.opentelemetry-otlp]]
 version = "0.32.0"
 criteria = "safe-to-deploy"

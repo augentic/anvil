@@ -65,17 +65,16 @@ cargo install --git https://github.com/augentic/emery --locked
 
 The native build must produce the wasm32 engine before `include_bytes!` runs. The minimum stable-Cargo implementation is:
 
-1. retain `EMERY_WASM` as the release/CI override;
-2. when building the native binary without that override, have `build.rs` invoke the same Cargo executable for `--lib --target wasm32-wasip2`;
-3. use an isolated target directory under `OUT_DIR` to avoid the parent Cargo target lock — set `CARGO_TARGET_DIR` explicitly for the child, never merely unset it, which still deadlocks for users with `build.target-dir` in their Cargo config;
-4. sanitize the inherited Cargo environment for the child (`CARGO_*`, `RUSTFLAGS`, `RUSTUP_TOOLCHAIN`) and propagate `--locked` so the install command's promise holds through the recursion;
-5. guard the wasm32 child build from recursively building another engine;
-6. embed the resulting non-empty component;
-7. fail with a direct instruction (`rustup target add wasm32-wasip2`) if the target is unavailable or the child build fails.
+1. have `build.rs` invoke the same Cargo executable for `--lib --target wasm32-wasip2` (a release/CI env override pointing at a prebuilt engine existed in the initial cut and was later removed as unused — release legs run the same child build);
+2. use an isolated target directory under `OUT_DIR` to avoid the parent Cargo target lock — set `CARGO_TARGET_DIR` explicitly for the child, never merely unset it, which still deadlocks for users with `build.target-dir` in their Cargo config;
+3. sanitize the inherited Cargo environment for the child (`CARGO_*`, `RUSTFLAGS`, `RUSTUP_TOOLCHAIN`) and propagate `--locked` so the install command's promise holds through the recursion;
+4. guard the wasm32 child build from recursively building another engine;
+5. embed the resulting non-empty component;
+6. fail with a direct instruction (`rustup target add wasm32-wasip2`) if the target is unavailable or the child build fails.
 
 These constraints are the accumulated scar tissue of Substrate's `wasm-builder`, the longest-lived implementation of this pattern; deviate from them knowingly or not at all.
 
-This is intentionally an internal bootstrap, not the final public installer. It adds build time and requires the wasm target. The existing release workflow remains the preferred way to produce distributable platform binaries, and it may continue to supply `EMERY_WASM` directly.
+This is intentionally an internal bootstrap, not the final public installer. It adds build time and requires the wasm target. The existing release workflow remains the preferred way to produce distributable platform binaries.
 
 Do not check a generated engine component into git, silently retain the empty placeholder in an installed binary, or download the engine at first launch. Replacing the Emery binary must continue to replace its engine atomically.
 

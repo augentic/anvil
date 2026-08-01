@@ -16,11 +16,11 @@ Emery organises work in three layers above the CLI substrate. See [The layered s
 
 1. Read the stop hint from `emery plan execute` (failing task, log path, or conflict paths).
 2. Fix the underlying issue in code or specs.
-3. Resume with `emery plan execute` or run the parked phase manually — see [Drive a slice manually](drive-slice-manually.md).
+3. Resume with `emery plan execute` or run the [parked](../appendices/glossary.md#p) phase manually — see [Drive a slice manually](drive-slice-manually.md).
 
 ## When you want full manual control
 
-Drive one slice without the execute loop — the breakout verbs need no driver lock (mutual exclusion is guest-owned by the `plan execute` marker; the lifecycle gates fence breakouts). Hand-driven plans need no approve stamp — claiming the first entry is your Gate 1 decision:
+Drive one slice without the execute loop. The [breakout](../appendices/glossary.md#b) verbs need no driver lock — mutual exclusion is owned by the `plan execute` marker, and the lifecycle gates (only `refined` builds, only `built` merges) fence breakouts. A hand-driven plan never runs `emery plan execute`, so its lifecycle stays `pending`; review `change.md` and `plan.yaml` before claiming the first entry:
 
 ```bash
 emery plan next
@@ -35,7 +35,7 @@ If publication or archive is blocked, complete publication through the repositor
 
 ```bash
 git push -u origin HEAD
-emery plan archive <name>
+emery plan archive
 ```
 
 See [emery plan](../reference/cli/plan.md) and [Workspace topology](../reference/cli/workspace.md).
@@ -43,4 +43,5 @@ See [emery plan](../reference/cli/plan.md) and [Workspace topology](../reference
 ## See also
 
 - [Drive a slice manually](drive-slice-manually.md) — breakout after execute parks
+- [Recover from a stale guest lock](recover-from-a-stale-guest-lock.md) — when execute refuses with `guest-marker-held`
 - [Lifecycle](../reference/lifecycle.md) — legal transitions the CLI enforces

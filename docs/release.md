@@ -56,7 +56,7 @@ Publish composes four jobs (plus the release-branch skip gate):
 3. **`publish`.** Shared `augentic/.github` publish: date `RELEASES.md`, push `vX.Y.Z`, create the GitHub Release with notes and the `archive-*` workflow artifacts attached.
 4. **`crates`.** Shared `augentic/.github` `crates.yaml`: `cargo publish --workspace --locked` over the publishable `emery-*` packages (needs the org `CARGO_REGISTRY_TOKEN`). Until the omnia stack the workspace patches is itself on crates.io, this job fails on dependency resolution — expected, and no other artifact depends on it.
 
-Each leg runs native `cargo build --release --locked --target <triple> --bin emery`. `build.rs` embeds the engine via a child `wasm32-wasip2` build when `EMERY_WASM` is unset (same path as `cargo install --git`). Supported targets (Homebrew + `cargo-binstall`; no `cross`):
+Each leg runs native `cargo build --release --locked --target <triple> --bin emery`. `build.rs` embeds the engine via a child `wasm32-wasip2` build and then ahead-of-time compiles it for the leg's target triple (same path as `cargo install --git`); compile-affecting runtime settings (`MAX_FUEL`, `BRANCH_HINTING`, `MEMORY_RESERVATION`, `MEMORY_GUARD_SIZE`, `DEBUG_SYMBOLS`, `GENERATE_ADDRESS_MAP`) default-match between build and run — an operator override at run time that diverges from the build rejects the embedded artifact at startup. Supported targets (Homebrew + `cargo-binstall`; no `cross`):
 
 - `x86_64-unknown-linux-gnu` on `ubuntu-latest`
 - `x86_64-apple-darwin` on `macos-15-intel` (last hosted x86_64 macOS runner; retired August 2027)
