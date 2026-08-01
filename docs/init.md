@@ -36,7 +36,7 @@ init) always wins; otherwise init refreshes the name to the newest
 published version (the registry's newest exact-SemVer tag) and
 installs it into the global adapter store. After provisioning, later
 runs use the installed version with no registry check — refresh again
-with `emery adapter update <name>`. The runtime logs the resolved
+with `emery adapter upgrade <name>`. The runtime logs the resolved
 version to stderr on each run.
 
 ## Workspace — `emery init --workspace`

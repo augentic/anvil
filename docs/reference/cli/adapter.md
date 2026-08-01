@@ -1,6 +1,6 @@
 # emery adapter, source resolve, target resolve
 
-The adapter component surface: seed the project component cache, refresh installed adapters, and debug adapter resolution by axis.
+The adapter component surface: seed the project component cache, upgrade installed adapters, and debug adapter resolution by axis.
 
 ## emery adapter add
 
@@ -18,19 +18,22 @@ Relative component paths anchor at `--project-dir`, which also selects the proje
 
 This is the only local-component route into bare-name resolution besides a local component at init: there is no build-tree probe (`target/wasm32-wasip2/release/` is never consulted) and no sibling-checkout probe.
 
-A seeded cache entry always wins bare-name resolution — the co-dev seed is never shadowed by a published component, including during an explicit update. Without a seed, a bare name resolves local-first: the newest installed store version, else pull-latest provisioning from the fixed first-party registry.
+A seeded cache entry always wins bare-name resolution — the co-dev seed is never shadowed by a published component, including during an explicit upgrade. Without a seed, a bare name resolves local-first: the newest installed store version, else pull-latest provisioning from the fixed first-party registry.
 
-## emery adapter update
+## emery adapter upgrade
 
-Explicitly refresh a bare adapter name to the newest published version.
+Explicitly refresh a bare adapter name — or every bare binding in the project — to the newest published version.
 
 ```bash
-emery adapter update <name> [--project-dir <dir>]
+emery adapter upgrade <name> [--project-dir <dir>]
+emery adapter upgrade --all [--project-dir <dir>]
 ```
 
-Forces a registry check for the name: the runtime lists the first-party registry's tags (`ghcr.io/augentic/emery-adapters/<name>`), takes the newest exact-SemVer tag, and installs it into the global adapter store when it is newer than (or absent from) what is installed. This is the only routine path that consults the registry for an already-provisioned bare name — day-to-day resolution is local-first and never pulls. A registry failure during an update is the typed `adapter-latest-failed`; a repository with no SemVer tags is `adapter-latest-none`.
+Forces a registry check for each name: the runtime lists the first-party registry's tags (`ghcr.io/augentic/emery-adapters/<name>`), takes the newest exact-SemVer tag, and installs it into the global adapter store when it is newer than (or absent from) what is installed. This is the only routine path that consults the registry for an already-provisioned bare name — day-to-day resolution is local-first and never pulls. A registry failure during an upgrade is the typed `adapter-latest-failed`; a repository with no SemVer tags is `adapter-latest-none`.
 
-A seeded project-cache entry is never shadowed: updating a name whose cache seed exists still resolves the seed (the store may still gain the newer version for other projects). Explicit pins (`emery:<name>@<semver>`) are not update targets — re-pin instead.
+`<name>` and `--all` are mutually exclusive, and one is required. `--all` collects every **bare** adapter binding the project records — the `project.yaml` target plus each `plan.yaml.sources.<key>` adapter — and upgrades them all in one invocation; pinned bindings are skipped, and an empty set (nothing bare bound) succeeds with `no bare adapter bindings to upgrade`. `--all` requires an initialized project (`.emery/project.yaml`); the named form does not.
+
+A seeded project-cache entry is never shadowed: upgrading a name whose cache seed exists still resolves the seed (the store may still gain the newer version for other projects). Explicit pins (`emery:<name>@<semver>`) are not upgrade targets — re-pin instead.
 
 ## emery source resolve
 

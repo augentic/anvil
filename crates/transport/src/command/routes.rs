@@ -35,7 +35,7 @@ pub(super) struct InitArgs {
     /// Comma-separated target platforms.
     #[arg(long, conflicts_with = "workspace")]
     platforms: Option<String>,
-    /// Re-enter initialization to update the Emery version pin.
+    /// Re-enter initialization to bump the Emery version pin.
     #[arg(long, conflicts_with_all = ["adapter", "workspace", "name", "description"])]
     pub(super) upgrade: bool,
 }
@@ -58,7 +58,7 @@ impl NamespaceHelp {
 const NAMESPACE_HELP: &[NamespaceHelp] = &[
     NamespaceHelp::new(
         &["adapter"],
-        "Adapter component operations. `add` seeds a local `.wasm` component into the project component cache — pre-init, axis-neutral — so bare bindings (project target, plan sources) resolve it; `update` refreshes a bare name to the newest published version (the explicit update act — normal resolution is local-first and never checks the registry while something local exists)",
+        "Adapter component operations. `add` seeds a local `.wasm` component into the project component cache — pre-init, axis-neutral — so bare bindings (project target, plan sources) resolve it; `upgrade` refreshes a bare name (or every bare project binding with `--all`) to the newest published version (the explicit upgrade act — normal resolution is local-first and never checks the registry while something local exists)",
     ),
     NamespaceHelp::new(
         &["source"],
@@ -139,11 +139,11 @@ where
         "Seed a local `.wasm` component into the project component cache.\n\nMirrors the component to `<project-cache>/components/<name>.wasm` (the kebab name derives from the filename) and stamps a per-component provenance sidecar. Pre-init and axis-neutral: `.emery/` need not exist and the component's exports are not inspected — the bare binding that later resolves the name (project target or plan source) supplies the expected axis. Re-seeding the same name replaces the entry; the explicit command is the approval act."
     );
     route!(
-        ["adapter", "update"],
-        adapter::UpdateArgs,
-        project::adapter::handlers::AdapterUpdate,
-        "Update a bare-named adapter to the newest published version",
-        "Update a bare-named adapter to the newest published version.\n\nThe explicit update act: normal resolution is local-first (project cache seed, else the newest installed store version) and never checks the registry while something local exists. This verb forces the registry check — the deployment lists the published exact-SemVer versions, installs the newest into the global store, and the verb reports what the name now resolves to. A project cache seed always wins and is reported as such; update it by re-running `emery adapter add`. Pinned versions (`emery:<name>@<semver>`) are immutable and are refused here."
+        ["adapter", "upgrade"],
+        adapter::UpgradeArgs,
+        project::adapter::handlers::AdapterUpgrade,
+        "Upgrade a bare-named adapter (or every bare project binding with `--all`) to the newest published version",
+        "Upgrade a bare-named adapter (or every bare project binding with `--all`) to the newest published version.\n\nThe explicit upgrade act: normal resolution is local-first (project cache seed, else the newest installed store version) and never checks the registry while something local exists. This verb forces the registry check — the deployment lists the published exact-SemVer versions, installs the newest into the global store, and the verb reports what each name now resolves to. `--all` collects every bare binding the project records (`project.yaml` target plus `plan.yaml` sources). A project cache seed always wins and is reported as such; refresh it by re-running `emery adapter add`. Pinned versions (`emery:<name>@<semver>`) are immutable and are refused here."
     );
     route!(
         ["source", "resolve"],
@@ -355,7 +355,7 @@ macro_rules! convert {
 }
 
 convert!(adapter::AddArgs => project::adapter::handlers::AddInput { component, project_dir });
-convert!(adapter::UpdateArgs => project::adapter::handlers::UpdateInput { name });
+convert!(adapter::UpgradeArgs => project::adapter::handlers::UpgradeInput { name, all, project_dir });
 convert!(source::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(target::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan });
