@@ -1,6 +1,6 @@
 # Managed Workspace Materialization
 
-> **Status: Deferred.** Pull in after the [Migration Walking Skeleton](../rfc-70-program.md) is in daily use and clone/lease friction demands it. Operator-prepared slots satisfy the skeleton.
+> **Status: Deferred.** Pull in after the [Migration Walking Skeleton](../rfc-70-program.md) is in daily use and clone/lease friction demands it — or when multi-member changesets ([RFC-82](../rfc-82-cross-repo-changesets.md)) make operator-prepared slots the bottleneck. Operator-prepared slots satisfy the skeleton and RFC-82's first cut.
 >
 > Owns: cloning and refreshing registry projects, creating writable workspace slots, branch preparation, cleanliness checks, and the lease boundary required by automated multi-repository execution.
 >
