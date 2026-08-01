@@ -1,4 +1,4 @@
-## 0.37.0
+## 0.38.0
 
 Unreleased
 
@@ -11,6 +11,7 @@ Unreleased
 Release notes for previous releases can be found on the respective release branches of the repository.
 
 <!-- ARCHIVE_START -->
+* [0.38.x](https://github.com/augentic/emery/blob/release-0.38.0/RELEASES.md)
 * [0.37.x](https://github.com/augentic/emery/blob/release-0.37.0/RELEASES.md)
 * [0.36.x](https://github.com/augentic/emery/blob/release-0.36.0/RELEASES.md)
 * [0.35.x](https://github.com/augentic/emery/blob/release-0.35.0/RELEASES.md)
