@@ -6,6 +6,19 @@ Unreleased
 
 ### Changed
 
+<!-- Release notes generated using configuration in .github/release.yaml at main -->
+
+## What's Changed
+* Bump to 0.36.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/237
+* CLI ergonomics by @andrewweston in https://github.com/augentic/emery/pull/238
+* Registry - RFC-82 by @andrewweston in https://github.com/augentic/emery/pull/240
+* Bump to 0.37.0 by @augentic-releases[bot] in https://github.com/augentic/emery/pull/239
+* CLI upgrade verbs by @andrewweston in https://github.com/augentic/emery/pull/241
+* Fix update bug by @andrewweston in https://github.com/augentic/emery/pull/242
+
+
+**Full Changelog**: https://github.com/augentic/emery/compare/v0.35.0...v0.37.0
+
 ---
 
 Release notes for previous releases can be found on the respective release branches of the repository.
