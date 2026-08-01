@@ -98,7 +98,7 @@ impl Policy {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
-        let refresh = refresh_names(&argv, invoked_dir, paths.project_root());
+        let refresh = refresh_names(&argv, paths.project_root());
         Self {
             paths,
             seed_dir,
@@ -110,6 +110,13 @@ impl Policy {
     #[must_use]
     pub fn project_root(&self) -> &Path {
         self.paths.project_root()
+    }
+
+    /// Bare adapter names this invocation forces a registry check for
+    /// (`adapter upgrade` / `init` refresh surface).
+    #[must_use]
+    pub const fn refresh(&self) -> &BTreeSet<String> {
+        &self.refresh
     }
 
     /// Host directory of the writable cache mount, named
@@ -149,7 +156,7 @@ impl Policy {
 /// for `adapter upgrade --all`. Best-effort by design — an unreadable
 /// or non-bare record simply refreshes nothing (the guest handler
 /// renders the diagnostic).
-fn refresh_names(argv: &[String], invoked_dir: &Path, project_root: &Path) -> BTreeSet<String> {
+fn refresh_names(argv: &[String], project_root: &Path) -> BTreeSet<String> {
     let request = refresh_request(argv);
     let mut names: BTreeSet<String> = request.names.into_iter().collect();
     if request.recorded_adapter
@@ -161,11 +168,12 @@ fn refresh_names(argv: &[String], invoked_dir: &Path, project_root: &Path) -> BT
     }
     if request.all_bindings {
         // Same anchoring as the in-guest kernel: an explicit
-        // `--project-dir` wins (relative values anchor at the
-        // invocation directory), else the walked project root.
+        // `--project-dir` wins (relative values join the mounted
+        // project root — guest `with_root` against `.`), else the
+        // walked project root itself.
         let root = request.project_dir.map_or_else(
             || project_root.to_path_buf(),
-            |dir| if dir.is_absolute() { dir } else { invoked_dir.join(dir) },
+            |dir| if dir.is_absolute() { dir } else { project_root.join(dir) },
         );
         if let Ok(bindings) = project::adapter::upgrade::targets(&root) {
             names.extend(bindings);

@@ -153,6 +153,39 @@ fn anchors_at_project_root() {
 }
 
 #[test]
+fn upgrade_project_dir_anchors() {
+    // Relative `--project-dir` joins the mounted (walked) project
+    // root — the same base guest `with_root` uses against `.` — not
+    // the invocation directory. Invoking from a subdirectory with
+    // `--project-dir .` must still widen the refresh set from the
+    // walked project's bare bindings.
+    let sandbox = Sandbox::new();
+    let emery = sandbox.root.join(".emery");
+    std::fs::create_dir_all(&emery).expect("mkdir .emery");
+    std::fs::write(
+        emery.join("project.yaml"),
+        format!(
+            "name: fixture\nadapter: mock\nemery: {}\nrules: {{}}\n",
+            env!("CARGO_PKG_VERSION")
+        ),
+    )
+    .expect("write project.yaml");
+    let nested = sandbox.root.join("src/deeply/nested");
+    std::fs::create_dir_all(&nested).expect("mkdir nested dir");
+
+    let policy = Policy::new(
+        &nested,
+        &argv(&["adapter", "upgrade", "--all", "--project-dir", "."]),
+        sandbox.locations.clone(),
+    );
+    assert_eq!(policy.project_root(), sandbox.root);
+    assert!(
+        policy.refresh().contains("mock"),
+        "refresh set must include the walked project's bare binding"
+    );
+}
+
+#[test]
 fn unparseable_argv_anchors_cwd() {
     // Argv the grammar refuses still boots: the guest renders the
     // rejection, so the policy must stay total and anchor at the
