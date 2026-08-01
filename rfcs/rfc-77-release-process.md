@@ -4,7 +4,7 @@
 >
 > Owns: how `augentic/emery` and `augentic/emery-adapters` cut, publish, and patch releases; the three version axes (host, WIT contract, adapter train); coordination order when those axes move together.
 >
-> Builds on: [RFC-76](archive/rfc-76-adapter-install.md) (archived — publish/install loop, exact pins, lockstep first-party adapter SemVer; Actions GHCR publish landed). Complements [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (ecosystem operating model) and the dual-repo seam note in [roadmap.md](roadmap.md#cross-repo-coordination).
+> Builds on: [RFC-76](archive/rfc-76-adapter-install.md) (archived — publish/install loop, exact pins, lockstep first-party adapter SemVer; Actions GHCR publish landed). Complements [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (ecosystem operating model), the dual-repo seam note in [roadmap.md](roadmap.md#cross-repo-coordination), and [RFC-82](rfc-82-cross-repo-changesets.md) (the WIT-breaking shape's ordered landing is the first in-house cross-repo changeset).
 >
 > Defers: Wasmtime-style calendar trains and LTS windows; multi-line long-term support; per-adapter independent SemVer inside the first-party set; SDK crate publication to crates.io (until third-party SDK consumers exist — RM-21); third-party registry release policy; curl installer / automated Homebrew formula bump; CI no-repush hardening and publish-time attestation generation/verification (RFC-76 Phase E remainder).
 
@@ -176,6 +176,8 @@ Every release chooses exactly one shape:
 | **Adapter-only** | prompts, rules, target behavior; seam unchanged | adapters cut → publish; engine unchanged |
 
 Never release adapters against an unpublished WIT or an unreleased engine commit that changed the seam.
+
+The WIT-breaking shape's ordered landing across `augentic/emery` and `augentic/emery-adapters` is a cross-repo changeset ([RFC-82](rfc-82-cross-repo-changesets.md)): declared order, `Emery-Change` PR markers, verification at finalize. RFC-82 turns this table's checklist discipline into a verifiable record; it changes nothing about the shapes or their order.
 
 ### Compatibility table
 

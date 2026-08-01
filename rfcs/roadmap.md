@@ -43,6 +43,8 @@ Realising the architecture spans four repositories, coordinated only through ver
 
 One Emery-owned seam is versioned across the boundary: `emery:adapter` (this repo → adapters). Land a published `emery:adapter` pin before the adapter components that consume it, and treat the seam as a contract so neither repo blocks the other. The Omnia runtime — including the `wasi-model` host interface — is consumed as an ordinary upstream dependency.
 
+That decoupling governs steady state. The transition moment when a seam itself must move — [RFC-77](rfc-77-release-process.md)'s WIT-breaking shape — is an ordered multi-repo landing, and that landing is a cross-repo changeset ([RFC-82](rfc-82-cross-repo-changesets.md)): derived from the plan, marked on the forge, tracked and verified by Emery, published by the operator.
+
 ## Sequenced Roadmap
 
 Items are identified as `RM-NN`. Earlier items unblock later ones unless noted otherwise. Command examples are target surfaces unless the item explicitly says the command is already implemented.
@@ -58,7 +60,7 @@ Target experience: an operator hands Emery a repository list; Emery profiles eac
 #### Deferred until trigger conditions or prerequisites
 
 - [RFC-46a](future/rfc-46a-web-asset.md) — web asset materialization; deferred until a web shell scaffold exists.
-- [RFC-72](future/rfc-72-materialization.md) — managed workspace materialization; deferred until clone/lease friction after RFC-70.
+- [RFC-72](future/rfc-72-materialization.md) — managed workspace materialization; deferred until clone/lease friction after RFC-70, or until multi-member changesets ([RFC-82](rfc-82-cross-repo-changesets.md)) make operator-prepared slots the bottleneck.
 - RM-12 / RM-13 — catalog import and read-oriented MCP.
 
 ---
@@ -129,6 +131,7 @@ emery registry diff <source>
 
 **Goal:** Support branch transport, PR/MR creation, and finalize beyond GitHub CLI.
 **Adapter covers:** remote discovery, auth checks, branch existence, push permissions, PR/MR create-or-update, CI/mergeability status, merged-state verification, and provider links.
+**First read-only consumer:** changeset verification ([RFC-82](rfc-82-cross-repo-changesets.md) D10) reads member PR state and merged-state through this adapter, replacing its interim `gh` probe.
 **Target surface:**
 
 ```bash
@@ -162,6 +165,7 @@ emery execute resume <run-id>
 
 **Goal:** Drive multi-repo initiatives from live catalog-backed registry projections.
 **First profile:** the migration walking skeleton ([RFC-70](rfc-70-program.md); [RFC-72](future/rfc-72-materialization.md) later) is the first concrete initiative shape; RM-20 generalises the noun only after that profile proves the coordination semantics.
+**Coordination semantics:** one change spanning many repositories is a cross-repo changeset ([RFC-82](rfc-82-cross-repo-changesets.md)) — plan-derived members, `Emery-Change` markers, publication order from `depends-on`, verification at finalize. RM-20 layers initiative scoping over that record; it does not define a second coordination model.
 
 #### RM-21: Adapter ecosystem operating model
 

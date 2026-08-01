@@ -194,7 +194,7 @@ Do **not** land Part A alone "for later" or Part C against hand-typed bindings â
 ## Non-goals
 
 - Replacing Gate 1 / slice lifecycle with a second lifecycle authority
-- Moving publication / PR merge into Emery
+- Moving publication / PR merge into Emery â€” unchanged by [RFC-82](rfc-82-cross-repo-changesets.md), whose changeset surface *tracks and verifies* publication but never performs it
 - Multi-target projects, or inferring a repository split without operator approval
 - Auto-executing an arbitrary package from the network
 - Replacing `plan.yaml` source bindings for ordinary single-repo work
