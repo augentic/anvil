@@ -70,8 +70,12 @@ async fn force_replaces_pending() {
 }
 
 #[tokio::test]
-async fn force_refuses_approved() {
-    let session = Session::scripted("mock", vec![mock::answers::greeting_grouping()]);
+async fn force_replaces_approved() {
+    // Two author runs → two reconcile answers.
+    let session = Session::scripted(
+        "mock",
+        vec![mock::answers::greeting_grouping(), mock::answers::greeting_grouping()],
+    );
     init(&session).await;
     author(&session, false).await.expect("first author");
 
@@ -80,7 +84,11 @@ async fn force_refuses_approved() {
     plan.lifecycle = Lifecycle::Approved;
     plan.save(&plan_path).expect("stamp approved");
 
-    let err = author(&session, true).await.expect_err("approved not replaceable");
-    let detail = err.to_string();
-    assert!(detail.contains("plan-author-not-replaceable"), "{detail}");
+    let replaced = author(&session, true).await.expect("force re-authors approved");
+    assert_eq!(replaced.lifecycle, "pending");
+    assert_eq!(replaced.slices, ["greeting"]);
+
+    let after = Plan::load(&plan_path).expect("plan after force");
+    assert_eq!(after.lifecycle, Lifecycle::Pending);
+    assert_eq!(after.entries.len(), 1);
 }

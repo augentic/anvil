@@ -31,8 +31,8 @@ pub struct AuthorInput {
     /// `--source intent=intent:value:<string>`.
     #[serde(default)]
     pub intent: Option<String>,
-    /// Replace an existing replaceable plan (`lifecycle: pending`
-    /// and every entry `pending`). Without this flag an existing
+    /// Replace an existing plan unconditionally, whatever its
+    /// lifecycle or entry statuses. Without this flag an existing
     /// `plan.yaml` refuses with `already-exists`.
     #[serde(default)]
     pub force: bool,
