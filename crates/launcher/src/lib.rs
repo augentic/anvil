@@ -63,11 +63,12 @@ pub struct Policy {
     /// the directory does not exist — the guest then renders
     /// `adapter-component-missing` itself).
     seed_dir: Option<PathBuf>,
-    /// Bare adapter names this invocation explicitly updates — the
+    /// Bare adapter names this invocation explicitly upgrades — the
     /// resolver's registry check runs for these even when a store
-    /// entry exists. Derived from argv (`adapter update <name>`,
-    /// `init <bare-name>`) plus the recorded `project.yaml` binding
-    /// for `init --upgrade`.
+    /// entry exists. Derived from argv (`adapter upgrade <name>` /
+    /// `--all`, `init <bare-name>`) plus the recorded `project.yaml`
+    /// binding for `init --upgrade` and the project's bare bindings
+    /// for `adapter upgrade --all`.
     refresh: BTreeSet<String>,
 }
 
@@ -97,7 +98,7 @@ impl Policy {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
-        let refresh = refresh_names(&argv, paths.project_root());
+        let refresh = refresh_names(&argv, invoked_dir, paths.project_root());
         Self {
             paths,
             seed_dir,
@@ -142,11 +143,13 @@ impl Policy {
     }
 }
 
-/// The bare adapter names one invocation explicitly updates: argv's
+/// The bare adapter names one invocation explicitly upgrades: argv's
 /// refresh projection, widened with the recorded `project.yaml`
-/// binding for `init --upgrade`. Best-effort by design — an unreadable
-/// or non-bare record simply refreshes nothing.
-fn refresh_names(argv: &[String], project_root: &Path) -> BTreeSet<String> {
+/// binding for `init --upgrade` and with every bare project binding
+/// for `adapter upgrade --all`. Best-effort by design — an unreadable
+/// or non-bare record simply refreshes nothing (the guest handler
+/// renders the diagnostic).
+fn refresh_names(argv: &[String], invoked_dir: &Path, project_root: &Path) -> BTreeSet<String> {
     let request = refresh_request(argv);
     let mut names: BTreeSet<String> = request.names.into_iter().collect();
     if request.recorded_adapter
@@ -155,6 +158,18 @@ fn refresh_names(argv: &[String], project_root: &Path) -> BTreeSet<String> {
         && let Ok(AdapterSelector::Bare { name }) = AdapterSelector::parse(&adapter)
     {
         names.insert(name);
+    }
+    if request.all_bindings {
+        // Same anchoring as the in-guest kernel: an explicit
+        // `--project-dir` wins (relative values anchor at the
+        // invocation directory), else the walked project root.
+        let root = request.project_dir.map_or_else(
+            || project_root.to_path_buf(),
+            |dir| if dir.is_absolute() { dir } else { invoked_dir.join(dir) },
+        );
+        if let Ok(bindings) = project::adapter::upgrade::targets(&root) {
+            names.extend(bindings);
+        }
     }
     names
 }

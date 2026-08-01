@@ -8,8 +8,8 @@
 //! mount and whose component path earns a read-only preopen (the
 //! operator's component may live outside every other mount), and the
 //! adapter refresh set ([`refresh_request`]) naming the bare adapters
-//! an `adapter update` / `init` invocation explicitly updates through
-//! the resolver's registry check. Rather than duplicating the clap
+//! an `adapter upgrade` / `init` invocation explicitly refreshes
+//! through the resolver's registry check. Rather than duplicating the clap
 //! surface, both parse argv through the *same* assembled router
 //! grammar the engine guest executes. Argv that fails the grammar
 //! projects nothing: the deployment falls back to cwd-anchored mounts
@@ -61,26 +61,33 @@ pub fn seed_request(argv: &[String]) -> Option<SeedRequest> {
 }
 
 /// The adapter refresh facts one invocation carries: the explicit
-/// update surface the launcher forces a registry check for.
+/// upgrade surface the launcher forces a registry check for.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RefreshRequest {
-    /// Bare adapter names argv updates directly (`adapter update
+    /// Bare adapter names argv refreshes directly (`adapter upgrade
     /// <name>`, `init <bare-name>`).
     pub names: Vec<String>,
     /// `init --upgrade`: the launcher additionally refreshes the
     /// project's recorded adapter binding (read from `project.yaml`
     /// at the anchored root) when that binding is bare.
     pub recorded_adapter: bool,
+    /// `adapter upgrade --all`: the launcher widens the set with every
+    /// bare binding the project records (`project.yaml` target plus
+    /// `plan.yaml` sources).
+    pub all_bindings: bool,
+    /// The `adapter upgrade --project-dir` value, when supplied;
+    /// relative values anchor at the invocation directory.
+    pub project_dir: Option<std::path::PathBuf>,
 }
 
 /// Project the adapter refresh set out of `argv` (without the program
 /// name) through the shared command grammar.
 ///
-/// Only the explicit update surface refreshes: `adapter update
-/// <name>` and `init` (`init <bare-name>` refreshes that name; `init
-/// --upgrade` flags the recorded binding). Everything else — and argv
-/// the grammar refuses — projects the empty default, so normal
-/// resolution stays local-first.
+/// Only the explicit upgrade surface refreshes: `adapter upgrade
+/// <name>` / `--all` and `init` (`init <bare-name>` refreshes that
+/// name; `init --upgrade` flags the recorded binding). Everything
+/// else — and argv the grammar refuses — projects the empty default,
+/// so normal resolution stays local-first.
 #[must_use]
 pub fn refresh_request(argv: &[String]) -> RefreshRequest {
     let mut full = Vec::with_capacity(argv.len() + 1);
@@ -93,13 +100,15 @@ pub fn refresh_request(argv: &[String]) -> RefreshRequest {
     let (path, leaf) = selected(&matches);
     let segments: Vec<&str> = path.iter().map(String::as_str).collect();
     match segments.as_slice() {
-        ["adapter", "update"] => {
-            let Ok(update) = super::adapter::UpdateArgs::from_arg_matches(leaf) else {
+        ["adapter", "upgrade"] => {
+            let Ok(upgrade) = super::adapter::UpgradeArgs::from_arg_matches(leaf) else {
                 return RefreshRequest::default();
             };
             RefreshRequest {
-                names: bare_name(&update.name).into_iter().collect(),
+                names: upgrade.name.as_deref().and_then(bare_name).into_iter().collect(),
                 recorded_adapter: false,
+                all_bindings: upgrade.all,
+                project_dir: upgrade.project_dir,
             }
         }
         ["init"] => {
@@ -109,6 +118,8 @@ pub fn refresh_request(argv: &[String]) -> RefreshRequest {
             RefreshRequest {
                 names: init.adapter.as_deref().and_then(bare_name).into_iter().collect(),
                 recorded_adapter: init.upgrade,
+                all_bindings: false,
+                project_dir: None,
             }
         }
         _ => RefreshRequest::default(),

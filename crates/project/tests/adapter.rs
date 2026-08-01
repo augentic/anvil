@@ -149,20 +149,42 @@ mod resolve {
     }
 }
 
-mod update {
+mod upgrade {
+    use project::adapter::handlers::{AdapterUpgrade, UpgradeBody, UpgradeInput};
+
     use super::*;
 
-    async fn update(
-        project: &Provider, name: &str,
-    ) -> Result<project::adapter::handlers::ResolveBody, project::handler::Error> {
-        run::<project::adapter::handlers::AdapterUpdate, _, _>(
-            project,
-            project::adapter::handlers::UpdateInput {
-                name: name.to_string(),
-            },
+    async fn upgrade(
+        project: &Provider, input: UpgradeInput,
+    ) -> Result<UpgradeBody, project::handler::Error> {
+        run::<AdapterUpgrade, _, _>(project, input).await
+    }
+
+    fn named(name: &str) -> UpgradeInput {
+        UpgradeInput {
+            name: Some(name.to_string()),
+            all: false,
+            project_dir: None,
+        }
+    }
+
+    const fn all() -> UpgradeInput {
+        UpgradeInput {
+            name: None,
+            all: true,
+            project_dir: None,
+        }
+    }
+
+    /// Stage `.emery/project.yaml` with the given adapter binding.
+    fn stage_project(provider: &Provider, adapter: &str) {
+        let emery = provider.root.join(".emery");
+        std::fs::create_dir_all(&emery).expect("mkdir .emery");
+        std::fs::write(
+            emery.join("project.yaml"),
+            format!("name: demo-project\nadapter: {adapter}\n"),
         )
-        .await
-        .map(|body| body.0)
+        .expect("write project.yaml");
     }
 
     #[tokio::test]
@@ -172,10 +194,11 @@ mod update {
         // version (the deployment settles the version behind the
         // seam and reports it on stderr).
         let project = Provider::bare();
-        let body = update(&project, "demo").await.expect("bare update resolves");
-        assert_eq!(body.axis, "targets");
-        assert_eq!(body.name, "demo");
-        assert_eq!(body.version, None);
+        let body = upgrade(&project, named("demo")).await.expect("bare upgrade resolves");
+        assert_eq!(body.adapters.len(), 1);
+        assert_eq!(body.adapters[0].axis, "targets");
+        assert_eq!(body.adapters[0].name, "demo");
+        assert_eq!(body.adapters[0].version, None);
     }
 
     #[tokio::test]
@@ -184,20 +207,70 @@ mod update {
         // deployed guest exports `target:<name>`) and resolves on the
         // source axis.
         let project = Provider::bare();
-        let body = update(&project, "demo-source").await.expect("source-axis update resolves");
-        assert_eq!(body.axis, "sources");
-        assert_eq!(body.name, "demo-source");
+        let body =
+            upgrade(&project, named("demo-source")).await.expect("source-axis upgrade resolves");
+        assert_eq!(body.adapters[0].axis, "sources");
+        assert_eq!(body.adapters[0].name, "demo-source");
     }
 
     #[tokio::test]
     async fn non_bare_values_refused() {
-        // Pins are immutable and local components update through
+        // Pins are immutable and local components refresh through
         // `adapter add`.
         let project = Provider::bare();
         for value in ["emery:demo@1.0.0", "demo@1.0.0", "./demo.wasm"] {
-            let err = update(&project, value).await.expect_err("non-bare update must refuse");
-            assert_eq!(err.core().variant_str(), "adapter-update-not-bare", "{value}");
+            let err =
+                upgrade(&project, named(value)).await.expect_err("non-bare upgrade must refuse");
+            assert_eq!(err.core().variant_str(), "adapter-upgrade-not-bare", "{value}");
         }
+    }
+
+    #[tokio::test]
+    async fn all_collects_bare_bindings() {
+        // `--all` walks the project's recorded bindings: the
+        // `project.yaml` target plus every `plan.yaml.sources.<key>`
+        // adapter — keeping bare names and skipping pins.
+        let project = Provider::bare();
+        stage_project(&project, "demo");
+        std::fs::write(
+            project.root.join("plan.yaml"),
+            "name: demo-plan\n\
+             sources:\n\
+             \x20 brief:\n\
+             \x20   adapter: demo-source\n\
+             \x20   value: operator brief\n\
+             \x20 pinned:\n\
+             \x20   adapter: demo\n\
+             \x20   version: 9.9.9\n\
+             \x20   path: src/\n\
+             slices: []\n",
+        )
+        .expect("write plan.yaml");
+
+        let body = upgrade(&project, all()).await.expect("--all resolves the bare bindings");
+        let names: Vec<&str> = body.adapters.iter().map(|a| a.name.as_str()).collect();
+        assert_eq!(names, ["demo", "demo-source"], "sorted bare set; the pin is skipped");
+        assert_eq!(body.adapters[0].axis, "targets");
+        assert_eq!(body.adapters[1].axis, "sources");
+    }
+
+    #[tokio::test]
+    async fn all_empty_when_nothing_bare() {
+        // A pinned project binding and no plan leave nothing to
+        // upgrade: exit 0 with an empty set, not an error.
+        let project = Provider::bare();
+        stage_project(&project, "emery:demo@1.0.0");
+        let body = upgrade(&project, all()).await.expect("--all over pins succeeds empty");
+        assert!(body.adapters.is_empty());
+    }
+
+    #[tokio::test]
+    async fn all_requires_a_project() {
+        // The collection walks recorded bindings, so `--all` outside
+        // an initialized project is `not-initialized`.
+        let project = Provider::bare();
+        let err = upgrade(&project, all()).await.expect_err("--all needs project.yaml");
+        assert_eq!(err.core().variant_str(), "not-initialized");
     }
 }
 

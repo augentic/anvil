@@ -168,9 +168,41 @@ pub fn render_failure(format: Format, error: &Error) -> (Vec<u8>, u8) {
 }
 
 pub fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<()> {
-    writeln!(w, "error: {}", body.message)?;
+    let (red, reset) = error_style();
+    writeln!(w, "{red}error: {}{reset}", body.message)?;
     if let Some(hint) = body.hint {
         writeln!(w, "hint: {hint}")?;
     }
     Ok(())
+}
+
+/// ANSI red for the `error:` line, so failures stand out from the
+/// surrounding host tracing. Text mode is the human surface (skills
+/// consume `--format json`, which never routes here), and `NO_COLOR`
+/// (any non-empty value), a missing `TERM`, and `TERM=dumb` all opt
+/// out.
+///
+/// Detection differs by deployment: natively the process stderr is
+/// probed directly, while the engine guest's WASI host wires stderr
+/// to a plain stream with no terminal probe (`is_terminal` is always
+/// false in-guest), so under wasm32 the terminal check is skipped and
+/// the env guards alone decide.
+fn error_style() -> (&'static str, &'static str) {
+    let opted_out = std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
+        || !std::env::var_os("TERM").is_some_and(|term| !term.is_empty() && term != "dumb");
+    if opted_out || !stderr_terminal() {
+        return ("", "");
+    }
+    ("\x1b[1;31m", "\x1b[0m")
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn stderr_terminal() -> bool {
+    use std::io::IsTerminal as _;
+    std::io::stderr().is_terminal()
+}
+
+#[cfg(target_arch = "wasm32")]
+const fn stderr_terminal() -> bool {
+    true
 }

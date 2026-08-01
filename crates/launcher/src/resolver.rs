@@ -9,8 +9,8 @@
 //! co-dev seed always wins), else the newest version already in the
 //! global store, else — only when nothing local exists — the
 //! pull-latest provisioning leg (list the registry's exact-SemVer
-//! tags, install the maximum). An explicit update (`emery adapter
-//! update`, `emery init`) puts the name in the invocation's refresh
+//! tags, install the maximum). An explicit upgrade (`emery adapter
+//! upgrade`, `emery init`) puts the name in the invocation's refresh
 //! set, which forces the registry check ahead of the store probe. A
 //! pinned routed id (`<axis>:<name>@<version>`) maps to the immutable
 //! global store entry; a store miss triggers the host-owned
@@ -37,7 +37,7 @@ use crate::install::{self, Registry};
 pub struct Resolver {
     paths: ExecutionPaths,
     registry: Registry,
-    /// Bare names the invocation explicitly updates: the registry
+    /// Bare names the invocation explicitly upgrades: the registry
     /// check runs ahead of the store probe for these (the cache seed
     /// still wins).
     refresh: BTreeSet<String>,
@@ -70,7 +70,7 @@ impl Resolver {
 
     /// Mark bare names for an explicit registry refresh — the
     /// integration seam mirroring what [`crate::Policy::new`] derives
-    /// from argv (`adapter update`, `init`).
+    /// from argv (`adapter upgrade`, `init`).
     #[must_use]
     pub fn refreshing(mut self, names: impl IntoIterator<Item = String>) -> Self {
         self.refresh.extend(names);

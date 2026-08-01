@@ -10,7 +10,7 @@
 //! shipped binary hard-codes the first-party GHCR base), while
 //! unpinned ids resolve local-first — cache seed, else newest store
 //! version, else the pull-latest provisioning leg — with the refresh
-//! set (`adapter update` / `init`) forcing the registry check.
+//! set (`adapter upgrade` / `init`) forcing the registry check.
 //! Every test injects explicit [`Locations`] rooted in a tempdir
 //! through `Policy::new` — the same explicit-layout seam sandboxes
 //! use — so no process environment is read or mutated.

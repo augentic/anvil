@@ -34,6 +34,7 @@ pub(crate) mod operation;
 pub mod resolver;
 mod routed;
 mod selector;
+pub mod upgrade;
 
 pub(crate) use core::PlatformsSurface;
 pub use core::{

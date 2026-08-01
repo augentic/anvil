@@ -1,14 +1,15 @@
 //! The `emery adapter` and axis-resolve operations.
 //!
-//! `adapter add` seeds the project component cache, `adapter update`
-//! refreshes a bare name to the newest published version, and
-//! `source resolve` / `target resolve` resolve adapter components by
-//! identity.
+//! `adapter add` seeds the project component cache, `adapter upgrade`
+//! refreshes a bare name (or, with `--all`, every bare project
+//! binding) to the newest published version, and `source resolve` /
+//! `target resolve` resolve adapter components by identity.
 //!
-//! Project-context-free: every verb takes the project directory from
-//! the input (defaulting to the provider anchor) and none requires
-//! `.emery/project.yaml` to exist, so `adapter add` can run before
-//! `init` and the verbs never load `crate::handler::Ctx`.
+//! Project-context-light: every verb takes the project directory from
+//! the input (defaulting to the provider anchor) and none loads
+//! `crate::handler::Ctx`. Only `adapter upgrade --all` requires
+//! `.emery/project.yaml` (it enumerates the recorded bindings);
+//! `adapter add` still runs before `init`.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -95,18 +96,26 @@ impl Render for AddBody {
     }
 }
 
-/// Wire input for `adapter update`.
+/// Wire input for `adapter upgrade`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct UpdateInput {
-    /// Bare adapter name to update.
-    pub name: String,
+pub struct UpgradeInput {
+    /// Bare adapter name to upgrade; `None` when `all` is set.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Upgrade every bare adapter binding recorded by the project
+    /// (`project.yaml` target plus `plan.yaml` sources).
+    #[serde(default)]
+    pub all: bool,
+    /// Project directory the `--all` collection anchors at; `None`
+    /// anchors at the provider root.
+    #[serde(default)]
+    pub project_dir: Option<PathBuf>,
 }
 
-/// `emery adapter update <name>` — refresh a bare-named adapter.
-///
-/// Updates the name to the newest published version and reports what
-/// it resolves to.
+/// `emery adapter upgrade <name>` / `--all` — refresh bare-named
+/// adapters to the newest published version and report what each name
+/// now resolves to.
 ///
 /// The network leg is deployment-owned: the launcher derives the
 /// refresh set from argv and runs the registry check when this
@@ -114,80 +123,116 @@ pub struct UpdateInput {
 /// axis-neutral over the unique-across-axes name space: it tries the
 /// target axis first, then the source axis.
 #[derive(Clone, Copy, Debug)]
-pub struct AdapterUpdate;
+pub struct AdapterUpgrade;
 
-impl<P: Anchor + Resolver> Operation<P> for AdapterUpdate {
+impl<P: Anchor + Resolver> Operation<P> for AdapterUpgrade {
     type Error = crate::handler::Error;
-    type Input = UpdateInput;
-    type Output = UpdateBody;
+    type Input = UpgradeInput;
+    type Output = UpgradeBody;
 
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        let selector = AdapterSelector::parse(&input.name)?;
-        if !matches!(selector, AdapterSelector::Bare { .. }) {
-            return Err(error::Error::Diag {
-                code: "adapter-update-not-bare",
-                detail: format!(
-                    "`adapter update` takes a bare adapter name (`omnia`), not `{}`: pinned \
-                     versions are immutable and local components update through `emery adapter \
-                     add`",
-                    input.name
-                ),
+        let paths = input.project_dir.clone().map_or_else(
+            || context.provider.paths().clone(),
+            |dir| context.provider.paths().with_root(dir),
+        );
+        let names: Vec<String> = match (input.name, input.all) {
+            (Some(value), false) => {
+                let AdapterSelector::Bare { name } = AdapterSelector::parse(&value)? else {
+                    return Err(error::Error::Diag {
+                        code: "adapter-upgrade-not-bare",
+                        detail: format!(
+                            "`adapter upgrade` takes a bare adapter name (`omnia`), not \
+                             `{value}`: pinned versions are immutable and local components \
+                             refresh through `emery adapter add`"
+                        ),
+                    }
+                    .into());
+                };
+                vec![name]
             }
-            .into());
+            (None, true) => super::upgrade::targets(paths.project_root())?.into_iter().collect(),
+            _ => {
+                return Err(error::Error::Diag {
+                    code: "adapter-upgrade-arguments",
+                    detail: "pass exactly one of a bare adapter name or --all".to_string(),
+                }
+                .into());
+            }
+        };
+        let mut adapters = Vec::with_capacity(names.len());
+        for name in names {
+            let selector = AdapterSelector::Bare { name };
+            // Adapter names are unique across axes, so the first axis
+            // that resolves is the adapter's axis; the wrong axis
+            // fails at the dispatch/metadata gate.
+            let body = match context.provider.resolve_target(&selector, &paths) {
+                Ok(resolved) => ResolveBody::from(resolved),
+                Err(_) => ResolveBody::from(context.provider.resolve_source(&selector, &paths)?),
+            };
+            adapters.push(body);
         }
-        let paths = context.provider.paths().clone();
-        // Adapter names are unique across axes, so the first axis that
-        // resolves is the adapter's axis; the wrong axis fails at the
-        // dispatch/metadata gate.
-        if let Ok(resolved) = context.provider.resolve_target(&selector, &paths) {
-            return Ok(UpdateBody(ResolveBody::from(resolved)));
-        }
-        let resolved = context.provider.resolve_source(&selector, &paths)?;
-        Ok(UpdateBody(ResolveBody::from(resolved)))
+        Ok(UpgradeBody { adapters })
     }
 }
 
-/// Success envelope for `adapter update` — the resolved identity in
-/// the shared [`ResolveBody`] wire shape, with an update-specific text
-/// rendering that states what the refresh settled on.
+/// Success envelope for `adapter upgrade`.
+///
+/// Carries the resolved identity per upgraded adapter in the shared
+/// [`ResolveBody`] wire shape (one element for the named form), with
+/// an upgrade-specific text rendering that states what each refresh
+/// settled on.
 #[derive(Debug, Serialize)]
-#[serde(transparent)]
-pub struct UpdateBody(pub ResolveBody);
+#[serde(rename_all = "kebab-case")]
+pub struct UpgradeBody {
+    /// Resolved identities, in name order.
+    pub adapters: Vec<ResolveBody>,
+}
 
-impl Render for UpdateBody {
+impl Render for UpgradeBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        let body = &self.0;
-        // A seeded cache entry always wins over published versions, so
-        // an update settles back on the seed — say so instead of
-        // implying a refresh happened.
-        if body.location == "cache" {
-            writeln!(
-                w,
-                "`{}` still resolves the seeded cache entry — a cache seed shadows published \
-                 versions",
-                body.name
-            )?;
-            writeln!(w, "  entry: {}", body.resolved_path)?;
-            writeln!(
-                w,
-                "  hint: re-seed with `emery adapter add <path.wasm>` or delete the cache entry \
-                 to track published releases"
-            )?;
+        if self.adapters.is_empty() {
+            writeln!(w, "no bare adapter bindings to upgrade")?;
             return Ok(());
         }
-        match &body.version {
-            Some(version) => writeln!(
-                w,
-                "`{}` resolves {} ({}) — the newest published version",
-                body.name, version, body.location
-            )?,
-            None => writeln!(w, "`{}` resolves via {}", body.name, body.location)?,
+        for body in &self.adapters {
+            render_upgraded(w, body)?;
         }
-        writeln!(w, "  path: {}", body.resolved_path)?;
         Ok(())
     }
+}
+
+/// One adapter's upgrade outcome line block.
+fn render_upgraded(w: &mut dyn Write, body: &ResolveBody) -> std::io::Result<()> {
+    // A seeded cache entry always wins over published versions, so
+    // an upgrade settles back on the seed — say so instead of
+    // implying a refresh happened.
+    if body.location == "cache" {
+        writeln!(
+            w,
+            "`{}` still resolves the seeded cache entry — a cache seed shadows published \
+             versions",
+            body.name
+        )?;
+        writeln!(w, "  entry: {}", body.resolved_path)?;
+        writeln!(
+            w,
+            "  hint: re-seed with `emery adapter add <path.wasm>` or delete the cache entry to \
+             track published releases"
+        )?;
+        return Ok(());
+    }
+    match &body.version {
+        Some(version) => writeln!(
+            w,
+            "`{}` resolves {} ({}) — the newest published version",
+            body.name, version, body.location
+        )?,
+        None => writeln!(w, "`{}` resolves via {}", body.name, body.location)?,
+    }
+    writeln!(w, "  path: {}", body.resolved_path)?;
+    Ok(())
 }
 
 /// Wire input for `source resolve` / `target resolve`.

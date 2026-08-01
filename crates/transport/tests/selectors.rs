@@ -57,10 +57,29 @@ mod refresh {
     use super::*;
 
     #[test]
-    fn update_names_the_adapter() {
-        let request = refresh_request(&argv(&["adapter", "update", "omnia"]));
+    fn upgrade_names_the_adapter() {
+        let request = refresh_request(&argv(&["adapter", "upgrade", "omnia"]));
         assert_eq!(request.names, vec!["omnia".to_string()]);
         assert!(!request.recorded_adapter);
+        assert!(!request.all_bindings);
+    }
+
+    #[test]
+    fn upgrade_all_flags_bindings() {
+        // `--all` names nothing itself; the launcher widens the set
+        // with the project's recorded bare bindings.
+        let request = refresh_request(&argv(&["adapter", "upgrade", "--all"]));
+        assert!(request.names.is_empty());
+        assert!(request.all_bindings);
+        assert_eq!(request.project_dir, None);
+    }
+
+    #[test]
+    fn upgrade_all_project_dir() {
+        let request =
+            refresh_request(&argv(&["adapter", "upgrade", "--all", "--project-dir", "/tmp/proj"]));
+        assert!(request.all_bindings);
+        assert_eq!(request.project_dir, Some(std::path::PathBuf::from("/tmp/proj")));
     }
 
     #[test]
@@ -86,7 +105,7 @@ mod refresh {
         for args in [
             &["init", "emery:omnia@1.0.0"][..],
             &["init", "./omnia.wasm"][..],
-            &["adapter", "update", "emery:omnia@1.0.0"][..],
+            &["adapter", "upgrade", "emery:omnia@1.0.0"][..],
         ] {
             assert!(refresh_request(&argv(args)).names.is_empty(), "{args:?}");
         }
