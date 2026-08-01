@@ -76,7 +76,8 @@ pub struct RefreshRequest {
     /// `plan.yaml` sources).
     pub all_bindings: bool,
     /// The `adapter upgrade --project-dir` value, when supplied;
-    /// relative values anchor at the invocation directory.
+    /// relative values join the mounted project root (guest
+    /// `with_root` against `.`).
     pub project_dir: Option<std::path::PathBuf>,
 }
 
