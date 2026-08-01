@@ -213,7 +213,7 @@ pub struct AddBody {
 
 impl Render for AddBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "Added `{}` to {}", self.added.name, self.path.display())?;
+        writeln!(w, "added `{}` to {}", self.added.name, self.path.display())?;
         writeln!(w, "registry now declares {} project(s)", self.registry.projects.len())
     }
 }
@@ -308,7 +308,7 @@ pub struct RemoveBody {
 
 impl Render for RemoveBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "Removed `{}` from {}", self.removed, self.path.display())?;
+        writeln!(w, "removed `{}` from {}", self.removed, self.path.display())?;
         for warning in &self.warnings {
             writeln!(w, "warning: {warning}")?;
         }

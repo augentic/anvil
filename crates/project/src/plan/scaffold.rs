@@ -21,8 +21,8 @@ use crate::name::is_kebab;
 /// # Errors
 ///
 /// - `change-name-not-kebab` when `name` is not kebab-case.
-/// - `already-exists` when `plan_path` already exists and `force` is
-///   false.
+/// - `plan-already-exists` when `plan_path` already exists and `force`
+///   is false.
 /// - whatever `Plan::init` surfaces.
 pub fn scaffold(
     plan_path: &Path, name: &str, sources: BTreeMap<String, SourceBinding>, force: bool,
@@ -38,7 +38,7 @@ pub fn scaffold(
     }
     if plan_path.exists() && !force {
         return Err(Error::Diag {
-            code: "already-exists",
+            code: "plan-already-exists",
             detail: format!(
                 "refusing to overwrite existing plan at {}; \
                  pass --force to replace it",

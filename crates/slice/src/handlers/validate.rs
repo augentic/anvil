@@ -49,7 +49,7 @@ impl<P: Anchor> Operation<P> for Validate {
                 synthesis_tags,
             } => {
                 let blocking = has_blocking(&findings);
-                let body = ReportBody::new(findings, None, write_finding_row);
+                let body = ReportBody::new(findings, write_finding_row);
 
                 if blocking {
                     Err(project::handler::Error::report(
@@ -75,7 +75,7 @@ impl<P: Anchor> Operation<P> for Validate {
 fn fail_with(code: &'static str, findings: Vec<Diagnostic>) -> project::handler::Error {
     let count = findings.len();
     project::handler::Error::report(
-        ReportBody::new(findings, None, write_finding_row),
+        ReportBody::new(findings, write_finding_row),
         code,
         "slice must satisfy structural invariants",
         format!("{count} blocking finding(s)"),

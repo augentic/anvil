@@ -148,7 +148,7 @@ fn sibling_slices(slices_dir: &Path) -> Vec<String> {
         return Vec::new();
     };
     let mut names: Vec<String> = entries
-        .filter_map(std::result::Result::ok)
+        .filter_map(Result::ok)
         .filter(|e| e.path().is_dir())
         .map(|e| e.file_name().to_string_lossy().into_owned())
         .collect();

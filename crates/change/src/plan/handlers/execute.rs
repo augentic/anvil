@@ -63,28 +63,32 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
                     })
                     .collect(),
             }),
-            // A stop is the loop's typed halt — surface it on the
-            // error envelope (exit 2 / 422) so a driver can tell a
-            // parked loop from a drained one without parsing prose.
+            // A stop is the loop's typed halt — the canonical plan
+            // status card (`stop:` / `hint:` / `resume:`) rides the
+            // stdout channel while the payload-free
+            // `plan-execute-stopped` envelope keeps stderr (exit 2 /
+            // 422), so a driver gets the structured next action
+            // without a follow-up `emery plan status` call.
             ExecuteOutcome::Stopped {
                 reason,
                 detail,
-                hint,
                 slice,
                 ..
-            } => Err(Error::validation_failed(
-                "plan-execute-stopped",
-                "the execute loop drains the plan",
-                match (slice, detail) {
-                    (Some(slice), Some(detail)) => {
-                        format!("stop {reason} ({slice}): {detail} — {hint}")
-                    }
-                    (Some(slice), None) => format!("stop {reason} ({slice}) — {hint}"),
-                    (None, Some(detail)) => format!("stop {reason}: {detail} — {hint}"),
-                    (None, None) => format!("stop {reason} — {hint}"),
-                },
-            )
-            .into()),
+            } => {
+                let source = Error::validation_failed(
+                    "plan-execute-stopped",
+                    "the execute loop drains the plan",
+                    match (slice, detail) {
+                        (Some(slice), Some(detail)) => format!("stop {reason} ({slice}): {detail}"),
+                        (Some(slice), None) => format!("stop {reason} ({slice})"),
+                        (None, Some(detail)) => format!("stop {reason}: {detail}"),
+                        (None, None) => format!("stop {reason}"),
+                    },
+                );
+                let plan = project::plan::Plan::load(&cx.layout().plan_path())?;
+                let status = project::plan::plan_status_body(&plan, cx.layout())?;
+                Err(project::handler::Error::stopped(status, source))
+            }
         }
     }
 }

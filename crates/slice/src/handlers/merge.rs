@@ -1,4 +1,4 @@
-//! `slice merge run` (with the `--preview` / `--conflict-check`
+//! `slice merge` (with the `--preview` / `--conflict-check`
 //! dry-run flags). Owns the merge-side JSON DTOs and summarisers; the
 //! default mode drives the deterministic [`crate::orchestrate::merge`]
 //! kernel.
@@ -19,7 +19,7 @@ use crate::merge::{
 };
 use crate::orchestrate;
 
-/// Wire input for `slice merge run`.
+/// Wire input for `slice merge`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MergeRunInput {
@@ -38,7 +38,7 @@ pub struct MergeRunInput {
     pub conflict_check: bool,
 }
 
-/// `emery slice merge run <name>` → the merge orchestration.
+/// `emery slice merge <name>` → the merge orchestration.
 ///
 /// The default mode runs the target's phased merge gates around the
 /// deterministic core merge; `--preview` and `--conflict-check` are
@@ -131,7 +131,7 @@ fn conflict_body(cx: &Ctx, name: &str) -> Result<ConflictCheckBody, Error> {
     Ok(ConflictCheckBody { slice_dir, conflicts })
 }
 
-/// Success envelope for `slice merge run` — one arm per mode.
+/// Success envelope for `slice merge` — one arm per mode.
 /// Untagged so each mode keeps the wire shape its standalone verb
 /// carried.
 #[derive(Debug, Serialize)]
@@ -197,7 +197,7 @@ pub struct PreviewBody {
 impl Render for PreviewBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         if self.specs.is_empty() {
-            writeln!(w, "No delta specs to merge.")?;
+            writeln!(w, "no delta specs to merge")?;
         } else {
             for entry in &self.specs {
                 writeln!(w, "{}: {}", entry.name, summarise_operations(&entry.result.operations))?;
@@ -207,7 +207,7 @@ impl Render for PreviewBody {
             }
         }
         if !self.contracts.is_empty() {
-            writeln!(w, "\nContract changes:")?;
+            writeln!(w, "\ncontract changes:")?;
             for c in &self.contracts {
                 let (sigil, label) = match c.action {
                     OpaqueAction::Added => ("+", "added"),
@@ -243,7 +243,7 @@ pub struct ConflictCheckBody {
 impl Render for ConflictCheckBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         if self.conflicts.is_empty() {
-            return writeln!(w, "No baseline conflicts.");
+            return writeln!(w, "no baseline conflicts");
         }
         for c in &self.conflicts {
             writeln!(

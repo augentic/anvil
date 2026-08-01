@@ -107,8 +107,10 @@ impl From<&Error> for Exit {
 ///
 /// The shape is payload-free: `error` carries the variant
 /// discriminant (the `code` for `Error::Validation`), `message` the
-/// rendered detail, and `exit-code` the numeric exit. The error body
-/// carries no per-finding rows — handlers render
+/// rendered detail, `exit-code` the numeric exit, and `hint` the
+/// optional recovery guidance (present in text and JSON alike — agent
+/// consumers need the recovery route as much as humans do). The error
+/// body carries no per-finding rows — handlers render
 /// `diagnostics::DiagnosticReport` on stdout before
 /// returning the payload-free error.
 ///
@@ -120,7 +122,7 @@ pub struct ErrorBody {
     pub(crate) error: std::borrow::Cow<'static, str>,
     pub(crate) message: String,
     pub(crate) exit_code: u8,
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     hint: Option<&'static str>,
 }
 

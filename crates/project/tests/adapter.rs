@@ -162,6 +162,7 @@ mod update {
             },
         )
         .await
+        .map(|body| body.0)
     }
 
     #[tokio::test]

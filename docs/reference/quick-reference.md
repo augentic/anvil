@@ -88,7 +88,7 @@ emery plan archive
 emery slice list                                       # read-only: every slice with status + target
 emery slice refine <name>                              # guest-routed: create + extract + synthesis + refined
 emery slice validate <name>
-emery slice merge run <name>                           # dry-runs: --preview / --conflict-check
+emery slice merge <name>                           # dry-runs: --preview / --conflict-check
 emery slice drop <name> [--reason "..."]
 
 # Maintenance & bootstrap

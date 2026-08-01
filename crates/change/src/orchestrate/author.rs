@@ -58,7 +58,7 @@ pub struct AuthorOutcome {
 /// - `plan-author-workspace-unsupported` (exit 2) when the plan root is
 ///   a workspace — the skill's workspace routing has no in-guest
 ///   counterpart, mirroring the execute loop's refusal.
-/// - `change-name-not-kebab` / `already-exists` from the scaffold
+/// - `change-name-not-kebab` / `plan-already-exists` from the scaffold
 ///   kernel's gates.
 /// - survey fan-out failures from [`super::survey_all`] (earlier
 ///   sources stay merged — the native partial-progress posture).

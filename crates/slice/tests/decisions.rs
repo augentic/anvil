@@ -8,8 +8,12 @@ use mock::session::Session;
 
 /// Rule ids carried by a failing validate operation's report.
 fn report_rule_ids(err: &project::handler::Error) -> Vec<String> {
-    let project::handler::Error::Report { body, .. } = err else {
-        panic!("expected report error, got {err:?}");
+    let project::handler::Error::Report {
+        body: project::handler::FailureBody::Findings(body),
+        ..
+    } = err
+    else {
+        panic!("expected findings report error, got {err:?}");
     };
     body.report().findings.iter().filter_map(|finding| finding.rule_id.clone()).collect()
 }
@@ -74,7 +78,7 @@ async fn merge_promotes_and_supersedes() {
     .await
     .expect("standalone merge succeeds");
     let slice::handlers::MergeRunBody::Merged(body) = body else {
-        panic!("default merge run mode commits: {body:?}");
+        panic!("default merge mode commits: {body:?}");
     };
 
     assert_eq!(body.decisions, ["DEC-0002"]);

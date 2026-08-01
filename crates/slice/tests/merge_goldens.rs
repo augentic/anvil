@@ -1,4 +1,4 @@
-//! Merge-engine goldens through the public `slice merge run --preview`
+//! Merge-engine goldens through the public `slice merge --preview`
 //! operation.
 
 use std::path::{Path, PathBuf};
@@ -7,7 +7,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use slice::handlers::{MergeRun, MergeRunBody, MergeRunInput, PreviewBody};
 
-/// The read-only `--preview` mode of `slice merge run`.
+/// The read-only `--preview` mode of `slice merge`.
 fn preview_input() -> MergeRunInput {
     MergeRunInput {
         name: "golden".to_string(),

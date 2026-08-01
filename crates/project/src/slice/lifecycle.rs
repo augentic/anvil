@@ -41,8 +41,8 @@ impl LifecycleStatus {
     /// `{Refining, Refined, Built} → Dropped`.
     ///
     /// # Errors
-    /// `Error::Diag { code = "lifecycle", .. }` when not reachable;
-    /// detail carries the rejected edge verbatim.
+    /// `Error::Diag { code = "slice-lifecycle", .. }` when not
+    /// reachable; detail carries the rejected edge verbatim.
     pub fn transition(self, target: Self) -> Result<Self, Error> {
         use LifecycleStatus::{Built, Dropped, Merged, Refined, Refining};
         if matches!(
@@ -55,8 +55,8 @@ impl LifecycleStatus {
             Ok(target)
         } else {
             Err(Error::Diag {
-                code: "lifecycle",
-                detail: format!("expected valid transition from {self:?}, found {target:?}"),
+                code: "slice-lifecycle",
+                detail: format!("cannot transition slice from `{self}` to `{target}`"),
             })
         }
     }

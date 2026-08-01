@@ -34,7 +34,7 @@ pub struct AuthorInput {
     pub intent: Option<String>,
     /// Replace an existing plan unconditionally, whatever its
     /// lifecycle or entry statuses. Without this flag an existing
-    /// `plan.yaml` refuses with `already-exists`.
+    /// `plan.yaml` refuses with `plan-already-exists`.
     #[serde(default)]
     pub force: bool,
 }

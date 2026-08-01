@@ -73,7 +73,6 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
         "Slice lifecycle operations — one `refine → build → merge` loop",
     ),
     NamespaceHelp::new(&["slice", "model"], "Read-only viewer over a slice's `model.yaml`"),
-    NamespaceHelp::new(&["slice", "merge"], "Spec-merge operations for a slice"),
     NamespaceHelp::new(
         &["archive"],
         "Slice-archive cache maintenance. The archived slice folders under `.emery/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
@@ -212,8 +211,8 @@ where
         "Build a slice through its bound target adapter's `build` operation and gate the `built` transition.\n\nResolves the target from the slice's `metadata.yaml`, then drives the collapsed build orchestration in the engine guest: request assembly and schema gate, the target-seam dispatch, the report gates (`target-build-*` aborts), the `slice.build.*` events, and the `Refined → Built` transition. The target guest owns only code generation."
     );
     route!(
-        ["slice", "merge", "run"],
-        slice::MergeRunArgs,
+        ["slice", "merge"],
+        slice::MergeArgs,
         ::slice::handlers::MergeRun,
         "Merge all delta specs for the slice into baseline and archive the slice",
         "Merge all delta specs for the slice into baseline and archive the slice.\n\n`--preview` shows the merge operations that would be applied and `--conflict-check` reports `type: modified` baselines modified after this slice's `defined_at` — both are read-only dry-run modes that write nothing. Re-entry heals a torn merge: when the commit already landed but the per-entry `done` stamp is missing, the run stamps the entry and returns without a second baseline merge."
@@ -271,18 +270,18 @@ where
         "Remove a pending plan entry while the plan is still replaceable (`lifecycle: pending` and every entry `pending`). Gate 1 curation only — defers a lead without re-surveying `discovery.md`"
     );
     route!(
-        ["plan", "transition"],
-        plan::TransitionArgs,
-        ::change::plan::handlers::Transition,
-        "Walk one plan entry one rung backwards on per-entry status (`--undo`)",
-        "Walk one plan entry one rung backwards on per-entry status (`--undo`).\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`; the verb refuses to skip rungs and fires one `plan.transition.undone` event per call. Plan-level `approved` is stamped by the first `emery plan execute`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`; per-entry `done` is written only by `slice merge`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
+        ["plan", "undo"],
+        plan::UndoArgs,
+        ::change::plan::handlers::Undo,
+        "Walk one plan entry one rung backwards on per-entry status",
+        "Walk one plan entry one rung backwards on per-entry status.\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`; the verb refuses to skip rungs — undoing a `done` entry to `pending` runs twice — and fires one `plan.transition.undone` event per call. Plan-level `approved` is stamped by the first `emery plan execute`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`; per-entry `done` is written only by `slice merge`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
     );
     route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
         "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its lifecycle or entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its lifecycle or entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
@@ -367,7 +366,7 @@ convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name });
 convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name });
 convert!(slice::RefineArgs => ::slice::handlers::RefineInput { name });
 convert!(slice::BuildArgs => ::slice::handlers::BuildInput { name });
-convert!(slice::MergeRunArgs => ::slice::handlers::MergeRunInput { name, allow_composition_replace, preview, conflict_check });
+convert!(slice::MergeArgs => ::slice::handlers::MergeRunInput { name, allow_composition_replace, preview, conflict_check });
 convert!(slice::DropArgs => ::slice::handlers::DropInput { name, reason });
 convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run });
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
@@ -377,7 +376,7 @@ convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { actor });
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
-convert!(plan::TransitionArgs => ::change::plan::handlers::TransitionInput { name, undo });
+convert!(plan::UndoArgs => ::change::plan::handlers::UndoInput { name });
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });

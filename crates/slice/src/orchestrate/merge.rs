@@ -27,7 +27,7 @@ pub struct MergeOutcome {
     pub archive_path: PathBuf,
 }
 
-/// Merge one built slice (`emery slice merge run`).
+/// Merge one built slice (`emery slice merge`).
 ///
 /// Runs target preflight gate → deterministic `slice_merge::commit`
 /// → plan entry `done` → target postflight gate, with each gate's
@@ -240,10 +240,7 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     }
     let plan = Plan::load(&layout.plan_path())?;
     let Some(entry) = plan.entries.iter().find(|e| e.name == slice) else {
-        return Err(Error::Diag {
-            code: "plan-entry-not-found",
-            detail: format!("no slice named '{slice}' in plan"),
-        });
+        return Err(plan.entry_not_found(slice));
     };
     if entry.status != Status::InProgress {
         return Err(Error::validation_failed(

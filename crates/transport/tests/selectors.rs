@@ -46,7 +46,7 @@ fn displays_project_no_seed() {
         &["plan", "--help"][..],
         &["--version"][..],
         &["frobnicate"][..],
-        &["plan", "transition"][..],
+        &["plan", "undo"][..],
         &["adapter", "add"][..],
     ] {
         assert_eq!(seed_request(&argv(args)), None, "{args:?}");

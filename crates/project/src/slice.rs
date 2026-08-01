@@ -11,5 +11,5 @@ pub mod metadata;
 pub mod outcome;
 
 pub use lifecycle::LifecycleStatus;
-pub use metadata::{Outcome, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec};
+pub use metadata::{Outcome, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec, slice_not_found};
 pub use outcome::Kind as OutcomeKind;

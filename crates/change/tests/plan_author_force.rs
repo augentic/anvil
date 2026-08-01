@@ -43,7 +43,7 @@ async fn existing_refused_without_force() {
 
     let err = author(&session, false).await.expect_err("second author refuses");
     let detail = err.to_string();
-    assert!(detail.contains("already-exists"), "{detail}");
+    assert!(detail.contains("plan-already-exists"), "{detail}");
 }
 
 #[tokio::test]

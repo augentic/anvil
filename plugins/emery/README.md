@@ -15,7 +15,7 @@ Display ownership is split three ways: the CLI's rendered output owns facts and 
 | [execute](skills/execute/SKILL.md) | `/emery:execute` | Confirm Gate 1, then drive the drained per-slice loop (`emery plan execute` — its first run stamps `approved`) |
 | [refine](skills/refine/SKILL.md) | `/emery:refine` | Extract, synthesize, validate, and transition one slice to `refined` (`emery slice refine`) |
 | [build](skills/build/SKILL.md) | `/emery:build` | Build one slice through its target adapter (`emery slice build`) |
-| [merge](skills/merge/SKILL.md) | `/emery:merge` | Fold one slice's deltas into the baseline and archive it (`emery slice merge run`) |
+| [merge](skills/merge/SKILL.md) | `/emery:merge` | Fold one slice's deltas into the baseline and archive it (`emery slice merge`) |
 | [drop](skills/drop/SKILL.md) | `/emery:drop` | Discard a slice without merging (`emery slice drop`) |
 | [finalize](skills/finalize/SKILL.md) | `/emery:finalize` | Push branches, then archive the plan (PRs operator-owned, outside Emery) |
 

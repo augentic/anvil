@@ -119,7 +119,7 @@ pub struct AdapterUpdate;
 impl<P: Anchor + Resolver> Operation<P> for AdapterUpdate {
     type Error = crate::handler::Error;
     type Input = UpdateInput;
-    type Output = ResolveBody;
+    type Output = UpdateBody;
 
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
@@ -142,10 +142,51 @@ impl<P: Anchor + Resolver> Operation<P> for AdapterUpdate {
         // resolves is the adapter's axis; the wrong axis fails at the
         // dispatch/metadata gate.
         if let Ok(resolved) = context.provider.resolve_target(&selector, &paths) {
-            return Ok(ResolveBody::from(resolved));
+            return Ok(UpdateBody(ResolveBody::from(resolved)));
         }
         let resolved = context.provider.resolve_source(&selector, &paths)?;
-        Ok(ResolveBody::from(resolved))
+        Ok(UpdateBody(ResolveBody::from(resolved)))
+    }
+}
+
+/// Success envelope for `adapter update` — the resolved identity in
+/// the shared [`ResolveBody`] wire shape, with an update-specific text
+/// rendering that states what the refresh settled on.
+#[derive(Debug, Serialize)]
+#[serde(transparent)]
+pub struct UpdateBody(pub ResolveBody);
+
+impl Render for UpdateBody {
+    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let body = &self.0;
+        // A seeded cache entry always wins over published versions, so
+        // an update settles back on the seed — say so instead of
+        // implying a refresh happened.
+        if body.location == "cache" {
+            writeln!(
+                w,
+                "`{}` still resolves the seeded cache entry — a cache seed shadows published \
+                 versions",
+                body.name
+            )?;
+            writeln!(w, "  entry: {}", body.resolved_path)?;
+            writeln!(
+                w,
+                "  hint: re-seed with `emery adapter add <path.wasm>` or delete the cache entry \
+                 to track published releases"
+            )?;
+            return Ok(());
+        }
+        match &body.version {
+            Some(version) => writeln!(
+                w,
+                "`{}` resolves {} ({}) — the newest published version",
+                body.name, version, body.location
+            )?,
+            None => writeln!(w, "`{}` resolves via {}", body.name, body.location)?,
+        }
+        writeln!(w, "  path: {}", body.resolved_path)?;
+        Ok(())
     }
 }
 

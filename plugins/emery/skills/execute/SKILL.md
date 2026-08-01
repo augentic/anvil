@@ -25,6 +25,6 @@ The loop is a long-running orchestration — it runs bare (or with `--debug` whe
 ## Relay
 
 - Surface the loop's output verbatim. On drain it prints the `approved:` stamp line (first run only), the completed phases, and the canonical `drained — run /emery:finalize <name>` closing line — relay it as-is without adding another pointer.
-- On `plan-execute-stopped` (exit 2), relay the structured error verbatim, then run `emery plan status --quiet` and surface its canonical stop card (`stop: <reason>` / `hint:` / `resume:`) — the resume line names the matching breakout (`/emery:refine`, `/emery:build`, `/emery:merge`) or the re-entrant `emery plan execute`.
+- On `plan-execute-stopped` (exit 2), the loop already prints the canonical stop card (`stop: <reason>` / `hint:` / `resume:`) on stdout beside the error envelope — relay both verbatim; the resume line names the matching breakout (`/emery:refine`, `/emery:build`, `/emery:merge`) or the re-entrant `emery plan execute`. No follow-up `emery plan status` call is needed.
 - On any other non-zero exit, surface the structured error verbatim and stop; re-running re-enters cleanly. Workspace plans refuse execution (`plan-execute-workspace-unsupported`) — drive them hand-driven via `emery plan next` and the breakouts.
 - Route every state write through the CLI — never hand-edit `plan.yaml` or stamp lifecycle yourself.

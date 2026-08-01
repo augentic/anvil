@@ -67,7 +67,7 @@ fn http_parity() {
 async fn globals_and_completions() {
     let router = command_router(".");
 
-    let help = router.execute(["emery", "slice", "merge", "run", "--help"]).await;
+    let help = router.execute(["emery", "slice", "merge", "--help"]).await;
     assert_eq!(help.exit, 0);
     assert!(String::from_utf8_lossy(&help.stdout).contains("--allow-composition-replace"));
 
@@ -79,7 +79,7 @@ async fn globals_and_completions() {
     assert!(completion_help.contains("Pipe into your shell's completion directory"));
     assert!(completion_help.contains("output tracks the live clap surface"));
 
-    let invalid = router.execute(["emery", "--format", "json", "plan", "transition"]).await;
+    let invalid = router.execute(["emery", "--format", "json", "plan", "undo"]).await;
     assert_eq!(invalid.exit, 2);
 }
 
@@ -134,14 +134,14 @@ async fn version_is_the_host_semver() {
 #[tokio::test]
 async fn argv_zero_replaced() {
     let router = command_router(".");
-    let expected = router.execute(["emery", "plan", "transition"]).await;
-    let forwarded = router.execute(["emery:engine@0.1.0", "plan", "transition"]).await;
+    let expected = router.execute(["emery", "plan", "undo"]).await;
+    let forwarded = router.execute(["emery:engine@0.1.0", "plan", "undo"]).await;
 
     assert_eq!(expected.exit, 2);
     assert_eq!(forwarded.exit, expected.exit);
     assert_eq!(forwarded.stderr, expected.stderr);
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
-    assert!(stderr.contains("Usage: emery plan transition"));
+    assert!(stderr.contains("Usage: emery plan undo"));
     assert!(!stderr.contains("emery:engine@0.1.0"));
 }
 
@@ -220,11 +220,11 @@ const fn cases() -> [Case; 9] {
         },
         Case {
             name: "usage",
-            argv: &["emery", "plan", "transition"],
+            argv: &["emery", "plan", "undo"],
             fixture: Fixture::Project,
             exit: 2,
             stdout: "",
-            stderr: "Usage: emery plan transition",
+            stderr: "Usage: emery plan undo",
             json_channels: false,
         },
         Case {

@@ -14,6 +14,17 @@ Canonical JSON envelope shapes for `emery *` commands that skills shell out to. 
 - All keys are `kebab-case`. Body shapes are pinned by the typed `*Body` DTOs in the CLI workspace and change only with the CLI's own versioning.
 - Stream roles: the semantic result body (text or JSON) is **stdout**; the failure `ErrorBody` and live host tracing are **stderr**. Tracing verbosity is selected by the reserved host log flags (`--debug` / `--quiet`, peeled before the guest sees argv; see [cli-contract.md](../standards/cli-contract.md)).
 
+## Text-mode style
+
+Every `Render` impl follows one convention so operators can scan any command's output the same way:
+
+- **Result line first, lowercase, verb-first**: `created plan entry `foo` (status: pending)`, `dropped `checkout``, `archived plan `demo``. Reports keep their `PASS` / `FAIL` banner — the one uppercase exception, shared by `plan validate` and `slice validate`.
+- **Detail lines are indented `label: value` pairs** with kebab-case labels: `  plan: .emery/plan.yaml`, `  archived: .emery/archive/slices/…`, `  reason: superseded`.
+- **Names in backticks**, paths bare: `merged `checkout``, `  plan: <path>`.
+- **No trailing periods** on result or detail lines.
+- **`hint:` is recovery guidance** (what to fix); **`resume:` is the literal next command** (what to run). A line is one or the other, never both.
+- **Every empty state prints a lowercase line** (`no events`, `no slices`, `nothing to prune`, `no delta specs to merge`) — silence is never the empty rendering.
+
 ## Shapes
 
 The examples below are hand-curated illustrations of the happy path for each command; the accept/reject variant set is exercised by the integration suites under `crates/*/tests/`. When a command grows a new variant, copy the relevant output in here (trimmed if necessary) and add a sentence describing when the variant fires.
@@ -72,6 +83,7 @@ Returns the next entry the executor should pick up, or a `reason` describing why
   "active": null,
   "description": null,
   "next": "b",
+  "plan": "demo",
   "project": "default",
   "reason": null,
   "sources": [],
@@ -112,7 +124,7 @@ The drained loop's success body — a stop surfaces on the error envelope instea
 }
 ```
 
-On `plan-execute-stopped`, the `/emery:execute` skill follows up with a quiet `emery plan status` to render the canonical stop card (`stop: <reason>` / `hint:` / `resume:`).
+On `plan-execute-stopped`, stdout carries the canonical plan-status stop card beside the stderr envelope — the same `StatusBody` shape `emery plan status` projects (text renders `stop: <reason>` / `hint:` / `resume:`; JSON carries the structured body), so drivers need no follow-up `emery plan status` call.
 
 ### Lead-reconciliation request envelope {#plan-reconcile-request}
 
@@ -145,9 +157,9 @@ Success summary after the reconcile kernel projects the agent **response** onto 
 }
 ```
 
-### `emery plan transition`
+### `emery plan undo`
 
-The one-rung reverse walk (`--undo` is the only mode). The `previous` / `current` pair pins the rung that fired, and the `undo: { from, to }` pair carries the same move as typed discriminants.
+The one-rung reverse walk. The `previous` / `current` pair pins the rung that fired, and the `undo: { from, to }` pair carries the same move as typed discriminants.
 
 ```json
 {
@@ -249,7 +261,7 @@ Sweeps a closed plan into `.emery/archive/plans/`. The `archived` field is the d
 }
 ```
 
-### `emery slice merge run`
+### `emery slice merge`
 
 Folds the slice's spec deltas into the baseline. The committed-merge body carries the merged baseline spec names, the promoted `DEC-NNNN` Decision Record ids, and the archived slice location; the `--preview` / `--conflict-check` dry-run modes keep their own bodies.
 

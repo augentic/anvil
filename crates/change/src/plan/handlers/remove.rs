@@ -35,13 +35,12 @@ impl<P: Anchor> Operation<P> for Remove {
         let name = input.name;
         let plan_path = require_file(&cx)?;
         let body = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
-            let removed =
-                plan.entries.iter().find(|e| e.name == name).cloned().ok_or_else(|| {
-                    error::Error::Diag {
-                        code: "plan-entry-not-found",
-                        detail: format!("no slice named '{name}' in plan"),
-                    }
-                })?;
+            let removed = plan
+                .entries
+                .iter()
+                .find(|e| e.name == name)
+                .cloned()
+                .ok_or_else(|| plan.entry_not_found(&name))?;
             plan.remove(&name)?;
             Ok(Mutation::changed(EntryBody {
                 plan: plan_ref(plan, &plan_path),

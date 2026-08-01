@@ -22,8 +22,8 @@ impl Plan {
     /// # Errors
     ///
     /// `plan-has-outstanding-work` on non-`Done` entries without
-    /// `force`, `already-exists` on a destination collision, plus load
-    /// and move I/O failures.
+    /// `force`, `plan-archive-target-exists` on a destination
+    /// collision, plus load and move I/O failures.
     pub fn archive(
         path: &Path, change_brief_path: &Path, archive_dir: &Path, force: bool, now: Timestamp,
     ) -> Result<(PathBuf, Option<PathBuf>), Error> {

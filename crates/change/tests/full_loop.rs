@@ -256,7 +256,7 @@ async fn preflight_parks_built() {
     .await
     .expect("breakout merge resumes");
     let slice::handlers::MergeRunBody::Merged(merged) = merged else {
-        panic!("default merge run mode commits: {merged:?}");
+        panic!("default merge mode commits: {merged:?}");
     };
     assert_eq!(merged.slice, "greeting");
     let resumed = run::<plan::handlers::Execute, _, _>(

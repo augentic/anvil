@@ -66,6 +66,10 @@ pub struct ShowBody {
 
 impl Render for ShowBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        if self.events.is_empty() {
+            // Empty states always say so; there is no JSONL to pipe.
+            return writeln!(w, "no events");
+        }
         for event in &self.events {
             let line = serde_json::to_string(event).map_err(std::io::Error::other)?;
             writeln!(w, "{line}")?;

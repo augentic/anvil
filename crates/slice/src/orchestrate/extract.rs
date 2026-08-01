@@ -34,8 +34,8 @@ pub struct ExtractOutcome {
 ///
 /// # Errors
 ///
-/// `source-unknown` for an unbound source key, adapter ensure/resolve
-/// failures (missing pin, `emery_floor`), seam and
+/// `plan-source-unknown` for an unbound source key, adapter
+/// ensure/resolve failures (missing pin, `emery_floor`), seam and
 /// `evidence-schema` validation failures from the adapter's extract
 /// leg, plus plan-load and persistence I/O failures.
 #[tracing::instrument(
@@ -49,13 +49,10 @@ pub async fn extract(
 ) -> Result<ExtractOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
-    let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {
-        code: "source-unknown",
-        detail: format!(
-            "no source `{source}` in plan.yaml.sources; `emery source extract` resolves \
-             its argument against the plan's source keys, not the adapter name"
-        ),
-    })?;
+    let binding = plan
+        .sources
+        .get(source)
+        .ok_or_else(|| plan.source_not_found("emery source extract", source))?;
     let seam_lead = resolve_seam_lead(layout, source, lead)?;
 
     // Ensure/resolve before dispatch: the binding's pin and the

@@ -54,9 +54,9 @@ pub struct ModelShowArgs {
     pub name: String,
 }
 
-/// Arguments for `slice merge run`.
+/// Arguments for `slice merge`.
 #[derive(Debug, clap::Args)]
-pub struct MergeRunArgs {
+pub struct MergeArgs {
     /// Slice name
     pub name: String,
     /// Authorise a whole-document (`screens:`) slice composition to

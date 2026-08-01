@@ -20,11 +20,10 @@ impl Plan {
     /// # Errors
     /// `plan-entry-not-found` / `plan-transition` — see module docs.
     pub fn transition(&mut self, name: &str, target: Status) -> Result<(), Error> {
-        let entry: &mut Entry =
-            self.entries.iter_mut().find(|c| c.name == name).ok_or_else(|| Error::Diag {
-                code: "plan-entry-not-found",
-                detail: format!("no slice named '{name}' in plan"),
-            })?;
+        let Some(idx) = self.entries.iter().position(|c| c.name == name) else {
+            return Err(self.entry_not_found(name));
+        };
+        let entry: &mut Entry = &mut self.entries[idx];
         let current = entry.status;
         if matches!(
             (current, target),
@@ -35,7 +34,7 @@ impl Plan {
         } else {
             Err(Error::Diag {
                 code: "plan-transition",
-                detail: format!("cannot transition from {current:?} to {target:?}"),
+                detail: format!("cannot transition entry `{name}` from `{current}` to `{target}`"),
             })
         }
     }
@@ -52,7 +51,7 @@ impl Plan {
         } else {
             Err(Error::Diag {
                 code: "plan-lifecycle-transition",
-                detail: format!("cannot transition plan lifecycle from {current:?} to {target:?}"),
+                detail: format!("cannot transition plan lifecycle from `{current}` to `{target}`"),
             })
         }
     }
@@ -76,11 +75,10 @@ impl Plan {
     /// - `plan-transition-undo` when the entry is already at
     ///   `Pending` (nothing to undo).
     pub fn transition_undo(&mut self, name: &str) -> Result<(Status, Status), Error> {
-        let entry: &mut Entry =
-            self.entries.iter_mut().find(|c| c.name == name).ok_or_else(|| Error::Diag {
-                code: "plan-entry-not-found",
-                detail: format!("no slice named '{name}' in plan"),
-            })?;
+        let Some(idx) = self.entries.iter().position(|c| c.name == name) else {
+            return Err(self.entry_not_found(name));
+        };
+        let entry: &mut Entry = &mut self.entries[idx];
         let from = entry.status;
         let to = match from {
             Status::Done => Status::InProgress,

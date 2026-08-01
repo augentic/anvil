@@ -102,11 +102,35 @@ impl Error {
     #[must_use]
     pub fn hint(&self) -> Option<&'static str> {
         match self {
+            Self::NotInitialized => Some(
+                "run `emery init <adapter>` (or `emery init --workspace` for a registry-only workspace) to scaffold .emery/ first",
+            ),
+            Self::ArtifactNotFound { kind: "plan.yaml", .. } => Some(
+                "author a plan first: run /emery:plan, or `emery plan author <name> --intent \"...\"`",
+            ),
             Self::Diag { code, .. } => match *code {
                 "plan-has-outstanding-work" => Some(
-                    "complete or drop the listed entries, or rerun with --force to archive anyway.",
+                    "complete or drop the listed entries, or rerun with --force to archive anyway",
                 ),
-                "init-requires-adapter-or-workspace" => Some(
+                "slice-not-found" => Some("run `emery slice list` to see every slice and its status"),
+                "plan-entry-not-found" => Some("run `emery plan status` to see the plan's entries and the next action"),
+                "plan-source-unknown" => Some("bind the source at plan time (`emery plan author --source <key>=<adapter>:<path>`) or pass one of the bound keys"),
+                "slice-lifecycle" => Some(
+                    "run `emery slice list` for each slice's current status, then drive the missing phase: `emery slice refine|build|merge <slice>`",
+                ),
+                "plan-transition" => Some(
+                    "per-entry status has dedicated writers: `emery plan next` claims `in-progress`, `emery slice merge` stamps `done`, and `emery plan undo <entry>` walks backwards one rung",
+                ),
+                "plan-already-exists" => Some(
+                    "rerun with --force to replace the plan, or continue the existing one (`emery plan status`)",
+                ),
+                "slice-already-exists" => Some(
+                    "continue the existing slice (`emery slice list` shows its status) or abandon it with `emery slice drop <slice>`",
+                ),
+                _ => None,
+            },
+            Self::Validation { code, .. } => match code.as_ref() {
+                "init-adapter-required" => Some(
                     "`emery init <adapter>` for a regular project, or `emery init --workspace` for a workspace.\nsee: docs/init.md",
                 ),
                 _ => None,

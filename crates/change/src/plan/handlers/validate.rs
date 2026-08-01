@@ -40,7 +40,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let results = plan_full_report(context.provider, &plan, &cx.paths);
 
         let has_errors = has_blocking(&results);
-        let body = ReportBody::new(results, Some("Plan OK"), write_row);
+        let body = ReportBody::new(results, write_row);
         if has_errors {
             Err(project::handler::Error::report(
                 body,

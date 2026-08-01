@@ -27,10 +27,10 @@ fn existing_refused_without_force() {
     let err = scaffold(&path, "other", BTreeMap::new(), false).expect_err("refuses overwrite");
     match err {
         Error::Diag { code, detail } => {
-            assert_eq!(code, "already-exists");
+            assert_eq!(code, "plan-already-exists");
             assert!(detail.contains("--force"), "{detail}");
         }
-        other => panic!("expected already-exists Diag, got {other}"),
+        other => panic!("expected plan-already-exists Diag, got {other}"),
     }
 }
 

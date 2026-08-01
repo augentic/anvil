@@ -1,22 +1,22 @@
 ---
 name: emery-merge
-description: Merge a built slice by invoking `emery slice merge run` and relaying its output. Use when landing one slice as a breakout after `/emery:build` succeeds; the `emery plan execute` loop runs the same verb itself. Not when the slice is still `refining` / `refined`, or has already merged.
+description: Merge a built slice by invoking `emery slice merge` and relaying its output. Use when landing one slice as a breakout after `/emery:build` succeeds; the `emery plan execute` loop runs the same verb itself. Not when the slice is still `refining` / `refined`, or has already merged.
 argument-hint: "[slice-name]"
 ---
 
 # Merge Skill
 
-`emery slice merge run` owns the whole landing — the target's preflight gate, baseline conflict detection, the deterministic delta merge, Decision Record promotion, the `merged` transition, the archive move, the target's postflight gate, the `slice.archive.created` ledger entry, and the per-entry `done` stamp (it is the sole writer of `done`). This skill only resolves the slice name, confirms, invokes the verb, and relays its output.
+`emery slice merge` owns the whole landing — the target's preflight gate, baseline conflict detection, the deterministic delta merge, Decision Record promotion, the `merged` transition, the archive move, the target's postflight gate, the `slice.archive.created` ledger entry, and the per-entry `done` stamp (it is the sole writer of `done`). This skill only resolves the slice name, confirms, invokes the verb, and relays its output.
 
 ## Invocation
 
 ```bash
-emery slice merge run <slice-name>
+emery slice merge <slice-name>
 ```
 
 The committed merge is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract; the dry-run flags below run with `--quiet`.
 
-When `[slice-name]` is omitted, run `emery plan status --quiet` and use the slice it names for the `merge` action; if the plan projects no merge action, surface the status output and stop. When invoked interactively, confirm with the AskQuestion tool before running (`emery slice merge run <slice-name> --preview --quiet` renders the read-only preview when the operator asks to see it first; `emery slice merge run <slice-name> --conflict-check --quiet` probes baseline drift — both dry-run flags write nothing).
+When `[slice-name]` is omitted, run `emery plan status --quiet` and use the slice it names for the `merge` action; if the plan projects no merge action, surface the status output and stop. When invoked interactively, confirm with the AskQuestion tool before running (`emery slice merge <slice-name> --preview --quiet` renders the read-only preview when the operator asks to see it first; `emery slice merge <slice-name> --conflict-check --quiet` probes baseline drift — both dry-run flags write nothing).
 
 ## Relay
 

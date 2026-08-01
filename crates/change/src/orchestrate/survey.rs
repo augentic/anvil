@@ -56,10 +56,11 @@ pub async fn survey_all(
 ///
 /// # Errors
 ///
-/// `source-unknown` for an unbound source key, an `--plan` argument
-/// error when the guard fails, adapter ensure/resolve failures
-/// (missing pin, `emery_floor`), seam and schema-gate failures from
-/// the adapter's survey leg, plus plan-load and merge I/O failures.
+/// `plan-source-unknown` for an unbound source key, an `--plan`
+/// argument error when the guard fails, adapter ensure/resolve
+/// failures (missing pin, `emery_floor`), seam and schema-gate
+/// failures from the adapter's survey leg, plus plan-load and merge
+/// I/O failures.
 pub async fn survey(
     seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
     source: &str, plan_guard: Option<&str>,
@@ -77,13 +78,10 @@ pub async fn survey(
             ),
         });
     }
-    let binding = plan.sources.get(source).ok_or_else(|| Error::Diag {
-        code: "source-unknown",
-        detail: format!(
-            "no source `{source}` in plan.yaml.sources; `emery source survey` resolves \
-             its argument against the plan's source keys, not the adapter name"
-        ),
-    })?;
+    let binding = plan
+        .sources
+        .get(source)
+        .ok_or_else(|| plan.source_not_found("emery source survey", source))?;
     survey_one(seam, resolver, paths, now, source, binding).await
 }
 
