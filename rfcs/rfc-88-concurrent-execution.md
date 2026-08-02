@@ -1,0 +1,131 @@
+# RFC-88: Concurrent Execution
+
+> Status: Draft — step 4 of the platform-migration series ([next-stage.md](next-stage.md))
+>
+> Owns: the concurrent judgment execution model *within* one slice: decomposition of one target build into focused convergent worker requests, the host-owned convergence gate, write-ownership partitioning, the backend concurrency substrate (agent pool, workspace policy, distributed workers), and the same pattern applied at refine and plan time (parallel survey / extract fan-outs, the synthesis playbook shelf, artifacts-to-tree).
+>
+> Absorbs: [RFC-79 Swarm Build](archive/rfc-79-swarm-build.md) and [RFC-80 Synthesis Redesign](archive/rfc-80-synthesis-redesign.md) — one concurrency model, applied at build time and refine time.
+>
+> Depends: [RFC-78](archive/rfc-78-prompt-budget.md) (the enabling layer — per-request byte budget, timeout semantics, session model), [RFC-87](rfc-87-verify-profiles.md) (host-owned verify is the convergence gate), [RFC-86](rfc-86-working-trees.md) (per-worker materialized trees — the Stage C unlock).
+>
+> Related: [RFC-89](rfc-89-node-sync.md) (concurrency *across* slices and nodes — that RFC schedules; this one executes), [RFC-18](future/rfc-18-slm.md) (per-worker model selection is this RFC's hook for cheaper backends).
+
+## Intent
+
+Replace the large single-conversation judgment legs with a **swarm**: many smaller, focused requests that converge on a verified result. One fat generation leg holding crate / test / guest writers together exists today for exactly one reason — it is the only shared verify-repair channel. This RFC replaces that channel with an explicit convergence architecture at build time, then applies the same decomposition posture to the other serial walls: plan-time survey, refine-time extract, and the synthesis leg's payload shape.
+
+Focused requests bound each agent's blast radius, make every worker individually observable and timeout-able, open per-worker model selection, and — because the whole framework is Omnia-backed — extend without redesign into a distributed service where workers are nodes connected only by content-addressed values ([RFC-86](rfc-86-working-trees.md)).
+
+## Why now (evidence)
+
+From [RFC-78](archive/rfc-78-prompt-budget.md)'s `wasm-omnia-r9k` runs:
+
+- The five-leg omnia build serializes ~30 minutes of agent wall-clock; the review leg nests an invisible agent team inside **one** completion, where the host cannot observe, bound, or time out any member — the run died there.
+- The generation leg is one ~64 KB conversation doing four jobs (crate writer, test writer, guest writer, verify-repair loop); verify (cargo build / clippy / test) runs as prompt text inside the agent loop — unobservable, unbounded, unshareable.
+- Synthesis is the worst-observed wall-clock phase (11 and 54 minutes across the two runs): a ~50 KB inlined playbook per attempt, artifact bodies riding the schema-gated JSON answer (regenerated wholesale on every repair), and survey / extract fan-outs serialized only because the backend cannot isolate concurrent completions.
+
+The fat leg's ceiling is structural: it cannot parallelize, cannot mix models, cannot bound sub-work, and its cost grows with slice size rather than task size.
+
+## The model
+
+### Topology
+
+- **The WIT seam does not change.** `target.build` remains one dispatch per slice; the swarm is the adapter core's existing leg sequencing with more, smaller, possibly concurrent `create`s.
+- **The orchestrator is deterministic guest code**, never a lead agent. It partitions work, issues worker requests, runs the convergence loop, and folds typed outcomes into the `BuildReport`. Judgment stays in the workers; sequencing and arbitration stay compiled-in.
+- **A worker is one focused judgment request**: a thin role brief, only the inputs its task needs (path-first records per RFC-78 D1), an explicit write-ownership manifest, and a typed answer gate. Workers never receive the whole prompt corpus; references stay MCP-lazy.
+
+### Partitioning
+
+- **Writer roles first**: crate writer, test writer, guest writer — today's co-tenants of the fat leg become separate workers.
+- **`tasks.md` is the finer partition source**: the refined slice's task list already decomposes the build into steps with implicit file ownership; the orchestrator maps task groups to workers and derives each manifest from them.
+- **Review specialists become first-class workers** (Security / Correctness / Quality / antagonist), replacing the nested in-agent team — each individually budgeted, observable, and timeout-able.
+
+Two workers never share write ownership of a path. Ownership conflicts are an orchestrator-time error, not a merge problem.
+
+### Convergence
+
+The in-prompt verify-repair channel is replaced by a **host-owned convergence gate** over [RFC-87](rfc-87-verify-profiles.md):
+
+1. Workers complete focused writes and answer with typed outcomes — no cargo commands in worker prompts.
+2. The orchestrator requests closed verify profiles through the host; the host runs them sandboxed and returns normalized findings.
+3. Findings route back **to the owning worker** (by manifest) as focused repair requests — session resume + findings delta per RFC-78 D5, never a fresh full prompt.
+4. Rounds are bounded by an explicit convergence budget; exhaustion is a typed `failure` report with residual findings attached.
+
+### Concurrency substrate (backend, staged)
+
+- **Stage A — sequential swarm, single lent tree.** No backend change: workers run one at a time, ownership enforced by the orchestrator, verify serialized between rounds. Lands observability, model selection, and bounded blast radius.
+- **Stage B — concurrent swarm, single tree, partitioned writes.** Requires per-spawn MCP config isolation, per-worker prompt spills, and an agent pool with a concurrency cap. Verify remains serialized; disjoint ownership keeps workers from conflicting. The refine/plan fan-outs below consume Stage B as-is.
+- **Stage C — distributed swarm, per-worker trees.** [RFC-86](rfc-86-working-trees.md) materializes a tree per worker from a `revision`; workers produce `changeset`s; the orchestrator composes them by dependency-layering before the convergence gate. Workers become location-independent — the seam [RFC-89](rfc-89-node-sync.md) distributes.
+
+### Agent pool and per-worker policy
+
+- The backend grows from "spawn one agent per completion" to a **pool**: bounded concurrent spawns, per-worker inactivity timeout, per-worker session scoped to its repair chain, pool-level cancellation. Implementation (Rust process-pool vs SDK sidecar) decided by Stage B evidence.
+- **Per-worker model selection**: the request's `model` field already crosses the backend; the orchestrator may bind writers, specialists, and repair rounds to different tiers — the concrete hook [RFC-18](future/rfc-18-slm.md) needs.
+
+## Decisions
+
+| # | Decision | Consequence |
+| - | -------- | ----------- |
+| D1 | **In-guest deterministic orchestrator.** Partition → dispatch → converge → fold in the adapter core; shared scaffolding (brief assembly, manifests, outcome folding) in the adapter SDK so omnia, vectis, and contracts share one orchestrator shape. WIT untouched. | The swarm is adapter-internal; `emery slice build` behavior is unchanged from the CLI's perspective. |
+| D2 | **Convergence gate over RFC-87 verify profiles.** Closed profile names, host-owned argv, sandboxed execution, normalized findings mapped to owning workers. | Cargo command text leaves worker prompts entirely; verify output normalizes once; the budget is host policy, not prompt prose. Stage A ships with D2, not before it. |
+| D3 | **Write-ownership partitioning.** Every worker carries an explicit manifest; overlaps are rejected before dispatch; out-of-manifest writes are blocking findings. | The invariant that makes Stages B and C — and [RFC-89](rfc-89-node-sync.md) D10's plan-level manifests — safe. |
+| D4 | **Backend concurrency staged A → B → C.** Stage A needs nothing; Stage B isolates concurrent completions in one workspace; Stage C binds per-worker trees and changeset extraction. | Each stage ships value alone; nothing in D1–D5 may assume process-locality beyond the stage it ships in. |
+| D5 | **Host-visible review swarm.** Specialists as first-class workers with typed findings, individual budgets and timeouts; the antagonist gated on specialist outcomes; remediation as routed repairs through the same gate. | No nested invisible agent team; the failure mode that killed the r9k run is structurally removed. |
+| D6 | **Distributed deployment expression.** Values (`revision` / `changeset`) are the only connective tissue between orchestrator and Stage C workers; a worker's node is a scheduling decision. | The cloud-hosted service is this architecture with a remote pool bound in — not a fork of it. |
+| D7 | **Engine references shelf: the synthesis playbook goes lazy.** Extend the launcher route table with an engine shelf (e.g. `/mcp/engine/synthesis`) serving the embedded playbook corpus through the existing `list_docs` / `read_doc` contract; engine judgment legs gain the MCP grant. The synthesis system prompt shrinks to `synthesize.md` plus the measured always-inline subset. | Most of ~50 KB saved per synthesis attempt, ×1–3 under repair — the same lazy posture adapter legs already have. |
+| D8 | **Synthesis artifacts move to the lent tree; the answer becomes an outcome record.** The agent writes artifacts into a staging directory; the answer shrinks to a typed outcome record; the deterministic tail gates the staged tree (validate-before-visible), promotes on a clean gate, and issues repairs with findings only — the agent edits staged files in place. | A synthesis repair becomes an edit round, not a full regeneration; the answer schema becomes a gate the host can actually enforce. Largest single item; lands behind the live eval gate, after D7. |
+| D9 | **Parallel survey / extract fan-outs** (over Stage B): `survey_all` dispatches all bound sources concurrently and merges into `discovery.md` in binding order; refine's extract fan-out likewise, with per-source evidence files as the natural disjoint write set. | Concurrency is a dispatch property, never an output property: merged outputs stay byte-identical to the serial order. Plan-time surveys are the first consumer. |
+| D10 | **Decomposed synthesis is a deferred decision.** Partitioning synthesis per domain risks trading wall-clock for quality where quality is the product — cross-domain reconciliation (conflict / divergence, provenance coherence) is synthesis's core judgment. Re-evaluate with eval evidence once D7–D9 land. | The pattern stays available; the commitment waits for measurement. |
+
+## Non-goals
+
+- Changing the WIT `target` interface, the `BuildReport` contract, or the synthesis authority model (`[conflict]` / `[divergence]` / `[unknown]`, provenance) — this RFC moves bytes, channels, and dispatch, not semantics.
+- Cross-slice and cross-node scheduling — [RFC-89](rfc-89-node-sync.md).
+- Model backend replacement ([RFC-18](future/rfc-18-slm.md)) — only the per-worker selection hook is created here.
+- A lead-agent orchestrator. A judgment leg deciding what other judgment legs to run re-creates the fat leg one level up.
+
+## Ownership
+
+| Decision | Repo |
+| -------- | ---- |
+| D1 orchestrator + SDK scaffolding | `augentic/emery` (`crates/adapter`) + `augentic/emery-adapters` |
+| D2 verify activation | `augentic/omnia` (`wasi-model` verify) + `augentic/emery` policy |
+| D3 ownership manifests | `augentic/emery-adapters` (+ SDK types in `augentic/emery`) |
+| D4 pool / workspace stages | `augentic/backends` (Stage C with the RFC-86 backend) |
+| D5 review swarm | `augentic/emery-adapters` |
+| D6 distribution invariants | all three, enforced in review |
+| D7 engine shelf + grants | `augentic/emery` (`crates/guest`, `crates/launcher`, `crates/project`) |
+| D8 staged artifacts + outcome record | `augentic/emery` (`crates/slice` persist / answers / prompts) |
+| D9 parallel fan-outs | `augentic/emery` (`crates/change`, `crates/slice`), gated on Stage B |
+
+## Acceptance criteria
+
+1. An omnia build for a slice the size of `at-r9k-position-adapter` completes as focused worker requests, each with a spilled prompt ≤ ~15 KB, and no worker prompt contains cargo command text.
+2. Verify runs only through closed RFC-87 profiles; findings route to the owning worker; convergence-budget exhaustion produces a typed `failure` report with residual findings.
+3. Review specialists are individually observable and timeout-able; no nested in-agent team remains in the omnia review path.
+4. Overlapping ownership manifests are rejected before dispatch; an out-of-manifest write surfaces as a blocking finding.
+5. Stage B: two workers run concurrently against one tree with isolated MCP config and no shared-file races; pool cancellation reaps all in-flight workers.
+6. Stage C (gated on RFC-86): one worker builds against a materialized tree on a node with no shared mount, returns a `changeset`, and the orchestrator's composition passes the convergence gate.
+7. The synthesis system prompt carries `synthesize.md` plus the measured always-inline subset, with the rest fetched lazily from the engine shelf; the synthesis answer is an outcome record and artifact bodies never cross the answer channel; staged artifacts are never visible slice state before the gate passes.
+8. With Stage B available, `plan author` over N sources dispatches surveys concurrently and `discovery.md` is byte-identical to the serial run's.
+9. `cargo make ci` green in touched repos; goldens regenerated with D8; live eval (`omnia-r9k` / `orders-contracts`) shows quality parity after each of D7 and D8, evaluated separately.
+
+## Risks and invariants
+
+- **The convergence gate must exist before the split.** A swarm without host-owned verify is the fat leg's verify-repair loop deleted, not replaced.
+- **Verify is a security boundary** (RFC-87 verbatim): the swarm multiplies how often verify runs; it must not widen what verify accepts.
+- **Ownership is exclusive and checked.** Concurrency safety comes from partition discipline, not merge cleverness.
+- **Deterministic orchestration.** Budget, ordering, and routing are compiled-in policy, auditable in the journal.
+- **Values-only distribution.** Stage C workers share nothing but `revision` / `changeset`; any design needing a shared live handle across nodes is out of contract.
+- **Quality is the product.** Synthesis changes (D7–D8) ship behind the live eval gate; D10 stays a decision, not a plan, until evidence exists.
+- **Per-worker budget assertions** (RFC-78 D7) extend to the swarm: brief sizes are locked in adapter tests.
+
+## Open questions
+
+- Can the Omnia host service concurrent in-flight `create` calls from one guest (async WIT dispatch), or does Stage B interleave at the host? Confirm first — it bounds real fan-out.
+- Partition granularity: writer roles first, or straight to `tasks.md`-derived units? (Recommendation: roles for Stage A, tasks once convergence is proven.)
+- Convergence budget shape: global rounds, per-worker rounds, or finding-count-weighted?
+- How does slice-level parallelism ([RFC-89](rfc-89-node-sync.md) D8) compose with worker-level parallelism against one backend pool?
+- Which playbook sections are always-inline vs shelf? (Measure fetch patterns; the answer-shape contract is the likely inline floor.)
+- D8 staging location (`.emery/slices/<slice>/.staging/` vs tempdir) and its interaction with standalone `emery slice validate`.
+- Which model tiers do writer / specialist / repair workers default to, and where does that policy live?

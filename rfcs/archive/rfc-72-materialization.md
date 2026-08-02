@@ -1,10 +1,10 @@
 # Managed Workspace Materialization
 
-> **Status: Deferred.** Pull in after the [Migration Walking Skeleton](../rfc-70-program.md) is in daily use and clone/lease friction demands it — or when multi-member changesets ([RFC-82](../rfc-82-cross-repo-changesets.md)) make operator-prepared slots the bottleneck. Operator-prepared slots satisfy the skeleton and RFC-82's first cut.
+> **Status: Superseded by [RFC-86 Working Trees](../rfc-86-working-trees.md)**, which merges this RFC's slot policy and lease with RFC-55's value↔tree mechanics. Retained for the original policy detail (registry modes, cleanliness matrix, CLI surface, staging). Previous status: Deferred — pull in after the [Migration Program](../rfc-85-migration-program.md) is in daily use and clone/lease friction demands it, or when multi-member changesets ([RFC-91](../rfc-91-cross-repo-changesets.md)) make operator-prepared slots the bottleneck.
 >
 > Owns: cloning and refreshing registry projects, creating writable workspace slots, branch preparation, cleanliness checks, and the lease boundary required by automated multi-repository execution.
 >
-> Depends on: [RFC-70](../rfc-70-program.md) Part B (intake / source snapshots).
+> Depends on: [RFC-70](../rfc-85-migration-program.md) Part B (intake / source snapshots).
 
 ## Abstract
 
@@ -128,7 +128,7 @@ The capability returns:
 
 The local provider implements the capability with Git and filesystem operations. A hosted provider may implement it with ephemeral clones or worktrees.
 
-This capability is intended to converge on the architecture's host-materialized working tree ([RFC-55](future/rfc-55-working-tree.md)): a tree materialized from a content-addressed base revision, mutated in place, with the change-set extracted by the host. This RFC adds the policy layer — registry modes, branch and cleanliness rules, and the lease. When RFC-55's git-aware filesystem backend lands, the local provider becomes a thin policy layer over it, and the hosted provider is the same policy over the backend a cluster node already uses. The dual deployment posture rides entirely on the provider: the workflow consumes one contract in both.
+This capability is intended to converge on the architecture's host-materialized working tree ([RFC-55](rfc-55-working-tree.md)): a tree materialized from a content-addressed base revision, mutated in place, with the change-set extracted by the host. This RFC adds the policy layer — registry modes, branch and cleanliness rules, and the lease. When RFC-55's git-aware filesystem backend lands, the local provider becomes a thin policy layer over it, and the hosted provider is the same policy over the backend a cluster node already uses. The dual deployment posture rides entirely on the provider: the workflow consumes one contract in both.
 
 Slice and change orchestrations consume the returned working-tree value.
 
@@ -279,7 +279,7 @@ This preserves evidence integrity during in-place migration.
 
 ### Project initialization and target binding
 
-A newly materialized target may lack `.emery/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [RFC-70 §Applying approved topology](../rfc-70-program.md#applying-approved-topology). An existing configuration remains authoritative.
+A newly materialized target may lack `.emery/project.yaml`. Proposing and applying project initialization — name, exact target adapter, platforms, and mode — is owned by [RFC-70 §Applying approved topology](../rfc-85-migration-program.md#applying-approved-topology). An existing configuration remains authoritative.
 
 One slot carries one target adapter. A repository holding two independent workloads is split into two registry projects — and therefore two slots — before the program schedules it; the materializer never sees a multi-target project.
 
@@ -355,7 +355,7 @@ An in-house team can ship the first migration programs on **operator-prepared sl
 
 **In first delivery**
 
-- No managed materialization required — [RFC-70](../rfc-70-program.md) runs against prepared slots.
+- No managed materialization required — [RFC-70](../rfc-85-migration-program.md) runs against prepared slots.
 - Document the operator checklist (clone, branch hygiene, publish) beside the migration program how-to.
 
 **Pull in next for the same team (still local)**
@@ -367,7 +367,7 @@ An in-house team can ship the first migration programs on **operator-prepared sl
 | Stage 3 — program-integrated materialize-next | Sync+lease exist and idle slots need lifecycle |
 | Stage 4 — hosted backend | Roadmap RM-18 |
 
-Program sequencing: [RFC-70 §One implementation cut](../rfc-70-program.md#one-implementation-cut).
+Program sequencing: [RFC-70 §One implementation cut](../rfc-85-migration-program.md#one-implementation-cut).
 
 ## Implementation stages
 
@@ -425,7 +425,7 @@ Operator-prepared slots satisfy first delivery. These stages backfill cloning an
 - Clone, sync, cleanliness classification, lease acquisition and recovery, and topology refresh are crate-level integration tests over local fixture Git repositories and temp directories; no live forge access in CI.
 - Cleanliness and re-entry states form a dense deterministic matrix (clean, expected branch, explained-dirty, unaccounted-dirty, drifted, diverged) asserted at the CLI boundary.
 - Byte-stable topology-lock regeneration is a golden-file assertion following the existing `REGENERATE_GOLDENS` pattern.
-- Coordinator integration (prepare/release around refine, build, merge) is covered with [RFC-70](../rfc-70-program.md); the hosted backend contract is exercised only by its own provider's suite.
+- Coordinator integration (prepare/release around refine, build, merge) is covered with [RFC-70](../rfc-85-migration-program.md); the hosted backend contract is exercised only by its own provider's suite.
 
 ## Open questions
 

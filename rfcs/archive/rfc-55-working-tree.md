@@ -1,6 +1,6 @@
 # RFC-55: Working-Tree Materialization — the git-aware `wasi:filesystem` backend
 
-> **Status: Deferred.** Every guest runs against the shared `[[mount]]` preopens of the operator's live project tree, so materialized working trees are not needed until a multi-node deployment exists. The `revision` / `changeset` types stay in `emery:adapter` as this RFC's forward hook. Owns: the value↔tree boundary
+> **Status: Superseded by [RFC-86 Working Trees](../rfc-86-working-trees.md)**, which merges this RFC's value↔tree mechanics with RFC-72's slot policy and lease. Retained for the original backend detail. Previous status: Deferred — every guest runs against the shared `[[mount]]` preopens of the operator's live project tree; the `revision` / `changeset` types stay in `emery:adapter` as this RFC's forward hook. Owns: the value↔tree boundary
 
 ## Abstract
 

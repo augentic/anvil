@@ -1,12 +1,12 @@
-# Migration Walking Skeleton
+# RFC-85: Migration Program
 
-> Status: Draft — nothing landed
+> Status: Draft — nothing landed. Formerly RFC-70; renumbered as step 1 of the platform-migration series ([next-stage.md](next-stage.md)).
 >
 > Owns: one implementation cut — adapter descriptors, durable source intake, and a serial migration program coordinator.
 >
 > Absorbs: archived [descriptor](archive/rfc-71-discovery.md) and [intake](archive/rfc-72-migration.md) drafts. Supersedes: [archive/rfc-21-catalogue.md](archive/rfc-21-catalogue.md), [archive/rfc-22-ledger.md](archive/rfc-22-ledger.md).
 >
-> Depends on: [RFC-71](rfc-71-deployment.md) install (already landed). Defers: [RFC-72](future/rfc-72-materialization.md) (managed slots — operator-prepared slots suffice first).
+> Depends on: [RFC-71](rfc-71-deployment.md) install (already landed). Defers: [RFC-86](rfc-86-working-trees.md) (managed slots and leases — operator-prepared slots suffice first).
 
 ## Intent
 
@@ -123,7 +123,7 @@ Engine-side, deterministic, model-free — it must run *before* any adapter is c
 | B5 | First cut recommends one source adapter per profiled input. | Multi-binding auto-composition stays deferred (hand-declare still works). |
 | B6 | Approved bindings install through existing pull-on-miss. | Intake adds no download path or registry. |
 | B7 | Approved bindings lower into `plan.yaml.sources` via `emery plan author` with an `@key` selector. | Gate 1 still reviews the authored plan. |
-| B8 | Source snapshots are immutable, out of tree, and never the target slot. | Evidence integrity when a repo is both source and target ([RFC-72](future/rfc-72-materialization.md)). |
+| B8 | Source snapshots are immutable, out of tree, and never the target slot. | Evidence integrity when a repo is both source and target ([RFC-86](rfc-86-working-trees.md)). |
 | B9 | Plan-time survey stays serial in this cut. | Matches Part C's repository-at-a-time coordinator; `--jobs` deferred. |
 
 ---
@@ -181,7 +181,7 @@ Do **not** land Part A alone "for later" or Part C against hand-typed bindings �
 
 ## Deferred (after the skeleton is in daily use)
 
-- [RFC-72](future/rfc-72-materialization.md) — managed clone / lease / sync
+- [RFC-86](rfc-86-working-trees.md) — managed clone / lease / sync
 - Rich `progress.yaml`
 - Parallelism across repositories
 - Forge / hosted runner integration
@@ -194,7 +194,7 @@ Do **not** land Part A alone "for later" or Part C against hand-typed bindings �
 ## Non-goals
 
 - Replacing Gate 1 / slice lifecycle with a second lifecycle authority
-- Moving publication / PR merge into Emery — unchanged by [RFC-82](rfc-82-cross-repo-changesets.md), whose changeset surface *tracks and verifies* publication but never performs it
+- Moving publication / PR merge into Emery — unchanged by [RFC-91](rfc-91-cross-repo-changesets.md), whose changeset surface *tracks and verifies* publication but never performs it
 - Multi-target projects, or inferring a repository split without operator approval
 - Auto-executing an arbitrary package from the network
 - Replacing `plan.yaml` source bindings for ordinary single-repo work

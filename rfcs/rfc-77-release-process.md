@@ -4,7 +4,7 @@
 >
 > Owns: how `augentic/emery` and `augentic/emery-adapters` cut, publish, and patch releases; the three version axes (host, WIT contract, adapter train); coordination order when those axes move together.
 >
-> Builds on: [RFC-76](archive/rfc-76-adapter-install.md) (archived — publish/install loop, exact pins, lockstep first-party adapter SemVer; Actions GHCR publish landed). Complements [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (ecosystem operating model), the dual-repo seam note in [roadmap.md](roadmap.md#cross-repo-coordination), and [RFC-82](rfc-82-cross-repo-changesets.md) (the WIT-breaking shape's ordered landing is the first in-house cross-repo changeset).
+> Builds on: [RFC-76](archive/rfc-76-adapter-install.md) (archived — publish/install loop, exact pins, lockstep first-party adapter SemVer; Actions GHCR publish landed). Complements [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) (ecosystem operating model), the dual-repo seam note in [roadmap.md](roadmap.md#cross-repo-coordination), and [RFC-91](rfc-91-cross-repo-changesets.md) (the WIT-breaking shape's ordered landing is the first in-house cross-repo changeset).
 >
 > Defers: Wasmtime-style calendar trains and LTS windows; multi-line long-term support; per-adapter independent SemVer inside the first-party set; SDK crate publication to crates.io (until third-party SDK consumers exist — RM-21); third-party registry release policy; curl installer / automated Homebrew formula bump; CI no-repush hardening and publish-time attestation generation/verification (RFC-76 Phase E remainder).
 
@@ -159,7 +159,7 @@ Same verbs, independent cadence and SemVer.
 3. Engine git dependencies pinned by release tag (D13) — no floating-branch resolution at publish time, and no active sibling `[patch]` block.
 4. `emery-floor` set to the minimum host that can run this train.
 5. Existing no-repush probe: refuse to replace an existing GHCR version tag.
-6. Once adapter descriptors land ([RFC-70](rfc-70-program.md) A3): every published component has a descriptor in the projected index, and the restated fields agree with its `metadata` export.
+6. Once adapter descriptors land ([RFC-85](rfc-85-migration-program.md) A3): every published component has a descriptor in the projected index, and the restated fields agree with its `metadata` export.
 
 ### What stays independent
 
@@ -177,7 +177,7 @@ Every release chooses exactly one shape:
 
 Never release adapters against an unpublished WIT or an unreleased engine commit that changed the seam.
 
-The WIT-breaking shape's ordered landing across `augentic/emery` and `augentic/emery-adapters` is a cross-repo changeset ([RFC-82](rfc-82-cross-repo-changesets.md)): declared order, `Emery-Change` PR markers, verification at finalize. RFC-82 turns this table's checklist discipline into a verifiable record; it changes nothing about the shapes or their order.
+The WIT-breaking shape's ordered landing across `augentic/emery` and `augentic/emery-adapters` is a cross-repo changeset ([RFC-91](rfc-91-cross-repo-changesets.md)): declared order, `Emery-Change` PR markers, verification at finalize. RFC-91 turns this table's checklist discipline into a verifiable record; it changes nothing about the shapes or their order.
 
 ### Compatibility table
 
@@ -240,7 +240,7 @@ RFC-76's remaining Phase E items (CI no-repush, attestations) are the adapter ha
 - Introducing semver ranges or a version solver.
 - Publishing workspace crates to crates.io in this cut — deferred until third-party SDK consumers exist (RM-21, Phase C), not rejected. Generic crate names (`adapter`, `native`, `probe`, `prose`) would need `emery-*` renames first.
 - Multi-year support commitments.
-- Third-party publisher release policy (RM-21 / RFC-70 Part A later).
+- Third-party publisher release policy (RM-21 / RFC-85 Part A later).
 - Replacing the hard major-cut / re-init product rule with a migration framework.
 
 ## References
