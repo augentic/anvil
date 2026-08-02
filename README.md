@@ -10,6 +10,8 @@ Emery uses **Source Adapters** (like `intent` or `typescript`) to ingest require
 
 ## Quick start
 
+Starting fresh? Follow the steps below. Migrating an existing codebase? See [Migrate a legacy service](docs/tutorials/migrate-a-legacy-service.md) · [hosted](https://emery.augentic.io/tutorials/migrate-a-legacy-service.html).
+
 ### Prerequisites
 
 1. [Cursor](https://cursor.com) with the **Augentic** marketplace plugin installed (**Settings → Plugins** → search Augentic → install → restart). That gives you the `/emery:`* skills.

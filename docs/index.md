@@ -75,6 +75,15 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
       <p>Install prerequisites, initialize a project, and drive your first docs-backed change.</p>
     </div>
   </a>
+  <a class="card" href="tutorials/migrate-a-legacy-service.md">
+    <div class="card-head">
+      <h3 class="card-title">Migrate an existing codebase</h3>
+      <span class="card-time">Tutorial</span>
+    </div>
+    <div class="card-body">
+      <p>Bind a legacy TypeScript service as a source and drive it to a generated Omnia service.</p>
+    </div>
+  </a>
   <a class="card" href="reference/quick-reference.md">
     <div class="card-head">
       <h3 class="card-title">Look up a command</h3>

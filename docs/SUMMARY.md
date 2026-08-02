@@ -15,6 +15,7 @@
 
 - [Overview](tutorials/index.md)
 - [Quick start](tutorials/quick-start.md)
+- [Migrate a legacy service](tutorials/migrate-a-legacy-service.md)
 - [Your first multi-slice change](tutorials/first-change.md)
 - [Drive a slice by hand](tutorials/drive-a-slice-by-hand.md)
 - [Cross-repo changes](tutorials/cross-repo-change.md)
