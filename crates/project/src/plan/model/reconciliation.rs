@@ -35,11 +35,11 @@ pub enum Divergence {
     /// `emery plan amend --divergence likely`, on
     /// materially-disagreeing lead synopses.
     Likely,
-    /// Operator-stamped at Gate 1 — divergence acknowledged and
-    /// accepted into the plan.
+    /// Operator-recorded during plan review — divergence acknowledged
+    /// and accepted into the plan.
     Accepted,
-    /// Operator-stamped at Gate 1 — divergence rejected; the plan
-    /// must be re-proposed before Gate 1 review.
+    /// Operator-recorded during plan review — divergence rejected; the
+    /// plan must be re-proposed before execution.
     Rejected,
 }
 

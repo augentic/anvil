@@ -13,7 +13,7 @@
     {
       "name": "emery",
       "source": "emery",
-      "description": "Skills for the Emery workflow: `/emery:init` scaffolds a project, `/emery:plan` authors the change-level plan, `/emery:execute` confirms Gate 1 and drives the drained execute loop, the per-slice breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`) drive one slice at a time, and `/emery:finalize` closes the change."
+      "description": "Skills for the Emery workflow: `/emery:init` scaffolds a project, `/emery:plan` authors the change-level plan, `/emery:execute` drives the execute loop to completion, `/emery:status` reports where the plan stands, the per-slice breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`) drive one slice at a time, and `/emery:finalize` closes the change."
     }
   ]
 }

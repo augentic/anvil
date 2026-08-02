@@ -24,8 +24,8 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Control</div>
-    <div class="proof-value">Gate 1</div>
-    <div class="proof-copy">The operator reviews and stamps the plan before <code>emery plan execute</code> can run.</div>
+    <div class="proof-value">Review</div>
+    <div class="proof-copy">The operator reviews the plan; running <code>emery plan execute</code> is the approval.</div>
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Trace</div>
@@ -110,10 +110,10 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
 /emery:init omnia
 
 /emery:plan fix-typo source intent=intent:value:"fix typo in user.rs"
-  --> writes change.md + plan.yaml + discovery.md, exits at pending
+  --> writes change.md + plan.yaml + discovery.md, exits for review
 
 emery plan execute
-  --> operator review step (Gate 1): first run stamps approved,
+  --> running it is the operator's approval,
       then /emery:refine + /emery:build + /emery:merge per slice until drained
 
 /emery:finalize fix-typo

@@ -105,13 +105,13 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
 )]
 pub struct ValidateArgs {}
 
-/// Arguments for `plan next`.
+/// Arguments for `plan advance`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
     clippy::empty_structs_with_brackets,
     reason = "clap's `Args` derive requires a braced struct"
 )]
-pub struct NextArgs {}
+pub struct AdvanceArgs {}
 
 /// Arguments for `plan status`.
 #[derive(Clone, Copy, Debug, Args)]
@@ -123,15 +123,11 @@ pub struct StatusArgs {}
 
 /// Arguments for `plan execute`.
 #[derive(Clone, Copy, Debug, Args)]
-pub struct ExecuteArgs {
-    /// Who is driving this invocation — `operator` (default) or
-    /// `agent`. Recorded on the `plan.transition.approved` journal
-    /// event when this run stamps Gate 1 (a `pending` plan approves
-    /// on first execute); self-reported evidence for eval probes,
-    /// not an enforcement gate.
-    #[arg(long = "actor", value_name = "ACTOR", default_value = "operator")]
-    pub actor: project::journal::Actor,
-}
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "clap's `Args` derive requires a braced struct"
+)]
+pub struct ExecuteArgs {}
 
 /// Arguments for `plan remove`.
 #[derive(Debug, Args)]
@@ -140,11 +136,27 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
+/// Parse the `--to` undo target: only the two reverse-reachable
+/// statuses are legal (`done` is forward-only, written by `slice
+/// merge`).
+fn undo_to(raw: &str) -> Result<project::plan::Status, String> {
+    match raw {
+        "pending" => Ok(project::plan::Status::Pending),
+        "in-progress" => Ok(project::plan::Status::InProgress),
+        other => Err(format!("unknown undo target `{other}`; expected `pending` or `in-progress`")),
+    }
+}
+
 /// Arguments for `plan undo`.
 #[derive(Debug, Args)]
 pub struct UndoArgs {
     /// Kebab-case plan-entry name.
     pub name: String,
+    /// Walk rung by rung until the entry reaches this status
+    /// (`pending` or `in-progress`); one `plan.transition.undone`
+    /// journal event fires per rung. Omitted means one rung.
+    #[arg(long = "to", value_name = "STATUS", value_parser = undo_to)]
+    pub to: Option<project::plan::Status>,
 }
 
 /// Arguments for `plan author`.
@@ -155,15 +167,24 @@ pub struct AuthorArgs {
     /// Named source binding, repeatable:
     /// `--source <key>=<adapter>:<path>` or
     /// `--source <key>=<adapter>:value:<literal>`.
+    ///
+    /// `<key>` is a label you choose (kebab-case): it becomes the slot
+    /// name in `plan.yaml.sources` that plan entries and evidence files
+    /// reference. `<adapter>` is the source adapter name (for example
+    /// `typescript`, `documentation`, `intent`). Only the first `:`
+    /// splits adapter from binding, so URLs like
+    /// `git@github.com:org/repo.git` pass through unchanged.
+    ///
+    /// Example: `--source legacy=typescript:./legacy`
     #[arg(long = "source", value_parser = source_assign)]
     pub sources: Vec<SourceAssign>,
     /// Operator intent as a literal string — pure sugar for
     /// `--source intent=intent:value:<string>`.
     #[arg(long = "intent", value_name = "STRING")]
     pub intent: Option<String>,
-    /// Replace an existing plan unconditionally, whatever its
-    /// lifecycle or entry statuses. Without --force an existing
-    /// `plan.yaml` refuses with `plan-already-exists`.
+    /// Replace an existing plan unconditionally, whatever its entry
+    /// statuses. Without --force an existing `plan.yaml` refuses
+    /// with `plan-already-exists`.
     #[arg(long)]
     pub force: bool,
 }

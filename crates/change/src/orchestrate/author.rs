@@ -1,10 +1,10 @@
 //! The plan-authoring orchestrator behind `/emery:plan`: scaffold →
-//! survey fan-out → reconciliation judgment → persist → Gate 1 prose →
+//! survey fan-out → reconciliation judgment → persist → review prose →
 //! `plan validate` doctor sweep.
 //!
-//! The run exits with the plan at `pending` and the outcome carrying
-//! the literal Gate 1 transition hint — the orchestrator never writes
-//! `approved` (Gate 1 stays operator-only).
+//! The run exits with the plan authored and the outcome carrying the
+//! literal execute hint — the orchestrator never runs the plan
+//! (execution stays operator-only).
 
 use std::collections::BTreeMap;
 
@@ -29,8 +29,8 @@ use project::seam::Source;
 use super::SurveyedSource;
 use crate::judgment::propose::{self, GateContext};
 
-/// The result of a completed [`author`]: the plan at `pending` with
-/// its proposed slices, plus the literal Gate 1 hint for the operator.
+/// The result of a completed [`author`]: the authored plan with its
+/// proposed slices, plus the literal execute hint for the operator.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorOutcome {
     /// The authored plan's name.
@@ -40,15 +40,15 @@ pub struct AuthorOutcome {
     /// Proposed slice names written to `plan.yaml.slices[]`, in the
     /// agent's response order.
     pub slices: Vec<String>,
-    /// The literal closing hint the `/emery:plan` skill prints — Gate 1
-    /// stays operator-only, so the orchestrator relays the command
-    /// instead of running it.
+    /// The literal closing hint the `/emery:plan` skill prints —
+    /// execution stays operator-only, so the orchestrator relays the
+    /// command instead of running it.
     pub hint: String,
 }
 
 /// Author one plan end-to-end: scaffold → survey fan-out → reconcile →
-/// project slices → persist Gate 1 prose → validate → exit at
-/// `pending`.
+/// project slices → persist review prose → validate → exit for
+/// operator review.
 ///
 /// `bindings` is the desugared `--source` / `--intent` map (the shape
 /// the scaffold kernel hands `Plan::init`).
@@ -149,11 +149,11 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     })
 }
 
-/// The literal Gate 1 closing hint the `/emery:plan` skill prints.
+/// The literal closing hint the `/emery:plan` skill prints.
 fn gate_hint(name: &str) -> String {
     format!(
-        "Plan `{name}` is at `pending`. Review it, then run `emery plan execute` \
-         to approve and drive the slices (executing is the Gate 1 stamp)."
+        "Plan `{name}` is authored. Review it, then run `emery plan execute` \
+         to drive the slices (running it is your approval)."
     )
 }
 
@@ -177,10 +177,8 @@ fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
 
 /// The plan scaffold via the shared [`project::plan::scaffold`]
 /// kernel, plus the immediate atomic save. `force` opts into
-/// recreating any existing plan. No auto-approval and no
-/// `--authority-override` surface — Gate 1 stamping stays
-/// operator-only and override pre-seeding needs slice rows that do
-/// not exist yet.
+/// recreating any existing plan. No `--authority-override` surface —
+/// override pre-seeding needs slice rows that do not exist yet.
 fn scaffold(
     layout: Layout<'_>, name: &str, bindings: BTreeMap<String, SourceBinding>, force: bool,
 ) -> Result<(), Error> {
@@ -220,13 +218,13 @@ fn check_gate(
 fn gate_missing() -> Error {
     Error::validation_failed(
         "plan-author-gate-missing",
-        "the reconciliation answer carries the Gate 1 prose",
+        "the reconciliation answer carries the review prose",
         "add the `gate` object (`change`, `discovery-summary`, `discovery-source-inventory`) \
          alongside `slices[]`",
     )
 }
 
-/// Persist the Gate 1 prose: `change.md` framed under the
+/// Persist the review prose: `change.md` framed under the
 /// deterministic `# Change — <name>` heading, and the `discovery.md`
 /// preamble through the validated [`Discovery::set_preamble`] writer
 /// (the lead inventory rides through untouched).

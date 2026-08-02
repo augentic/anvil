@@ -1,5 +1,5 @@
 //! `emery plan remove` — drop one pending plan entry while the plan
-//! is still replaceable (Gate 1 curation).
+//! is still replaceable (pre-execution curation).
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;

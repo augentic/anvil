@@ -20,14 +20,14 @@ Emery organises work in three layers above the CLI substrate. See [The layered s
 
 ## When you want full manual control
 
-Drive one slice without the execute loop. The [breakout](../appendices/glossary.md#b) verbs need no driver lock — mutual exclusion is owned by the `plan execute` marker, and the lifecycle gates (only `refined` builds, only `built` merges) fence breakouts. A hand-driven plan never runs `emery plan execute`, so its lifecycle stays `pending`; review `change.md` and `plan.yaml` before claiming the first entry:
+Drive one slice without the execute loop. The [breakout](../appendices/glossary.md#b) verbs need no driver lock — mutual exclusion is owned by the `plan execute` marker, and the lifecycle gates (only `refined` builds, only `built` merges) fence breakouts. Review `change.md` and `plan.yaml` before advancing the first entry:
 
 ```bash
-emery plan next
+emery plan advance
 # /emery:refine <slice>, /emery:build <slice>, /emery:merge <slice>
 ```
 
-Repeat `emery plan next` between slices when the plan has multiple entries; `emery plan status` (read-only, never lock-gated) shows the next action at any point.
+Repeat `emery plan advance` between slices when the plan has multiple entries; `emery plan status` (read-only, never lock-gated) shows the next action at any point.
 
 ## When finalize is blocked
 

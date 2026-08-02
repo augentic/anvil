@@ -39,11 +39,8 @@ async fn structural_findings() {
 
     for (expected, body) in cases {
         let project = Session::scripted("demo", Vec::new());
-        fs::write(
-            project.root().join("plan.yaml"),
-            format!("name: validation\nlifecycle: pending\n{body}"),
-        )
-        .expect("stage plan");
+        fs::write(project.root().join("plan.yaml"), format!("name: validation\n{body}"))
+            .expect("stage plan");
 
         let err = run::<change::plan::handlers::Validate, _, _>(
             project.provider(),

@@ -1,5 +1,5 @@
-//! `plan author` — the collapsed `/emery:plan` flow exiting at
-//! `lifecycle: pending`.
+//! `plan author` — the collapsed `/emery:plan` flow. Exits after
+//! authoring; the operator reviews the plan, then starts execution.
 
 use std::io::Write;
 
@@ -8,7 +8,6 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::plan::Lifecycle;
 use project::seam::Source;
 use serde::{Deserialize, Serialize};
 
@@ -32,16 +31,16 @@ pub struct AuthorInput {
     /// `--source intent=intent:value:<string>`.
     #[serde(default)]
     pub intent: Option<String>,
-    /// Replace an existing plan unconditionally, whatever its
-    /// lifecycle or entry statuses. Without this flag an existing
-    /// `plan.yaml` refuses with `plan-already-exists`.
+    /// Replace an existing plan unconditionally, whatever its entry
+    /// statuses. Without this flag an existing `plan.yaml` refuses
+    /// with `plan-already-exists`.
     #[serde(default)]
     pub force: bool,
 }
 
 /// `emery plan author <name> [--source ...]` →
-/// the internal author orchestration — the collapsed `/emery:plan` flow exiting
-/// at `lifecycle: pending`.
+/// the internal author orchestration — the collapsed `/emery:plan`
+/// flow, exiting with the literal execute hint.
 #[derive(Clone, Copy, Debug)]
 pub struct Author;
 
@@ -67,19 +66,17 @@ impl<P: Anchor + Model + Resolver + Source> Operation<P> for Author {
     }
 }
 
-/// Success envelope for the `plan author` exit at `pending`.
+/// Success envelope for the `plan author` exit.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AuthorBody {
     /// Change name.
     pub plan: String,
-    /// Always [`Lifecycle::Pending`] — Gate 1 stays operator-owned.
-    pub lifecycle: Lifecycle,
     /// Surveyed sources in plan-binding order.
     pub surveyed: Vec<AuthorSurvey>,
     /// Authored slice names.
     pub slices: Vec<String>,
-    /// The literal Gate 1 transition command.
+    /// The literal execute command that starts the plan.
     pub hint: String,
 }
 
@@ -87,7 +84,6 @@ impl From<orchestrate::AuthorOutcome> for AuthorBody {
     fn from(outcome: orchestrate::AuthorOutcome) -> Self {
         Self {
             plan: outcome.plan,
-            lifecycle: Lifecycle::Pending,
             surveyed: outcome.surveyed.into_iter().map(AuthorSurvey::from).collect(),
             slices: outcome.slices,
             hint: outcome.hint,

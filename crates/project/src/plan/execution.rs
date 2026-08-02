@@ -1,5 +1,5 @@
 //! The in-memory execution-state projection: one candidate plan
-//! entry, its work-root slice tree, and the folded claim-window
+//! entry, its work-root slice tree, and the folded active-window
 //! journal facts become the next-step decision (refine / build /
 //! merge / stop).
 //!
@@ -8,7 +8,7 @@
 //! here is persisted — the projection folds durable state (the plan
 //! entry, live slice metadata, journal events) on every call.
 //!
-//! Journal facts are folded over the entry's **claim window**: the
+//! Journal facts are folded over the entry's **active window**: the
 //! events newer than the entry's most recent `plan.entry.advanced` /
 //! `plan.transition.undone`. Within the window, durable merge
 //! evidence (`slice.merge.succeeded` / `slice.archive.created`)
@@ -30,10 +30,10 @@ use crate::journal::{self, EventKind};
 use crate::name::{PlanName, SliceName};
 use crate::slice::{LifecycleStatus, SliceMetadata};
 
-/// Whether the claim-window journal overlay applies to the candidate
-/// entry. Only the active `in-progress` entry carries a claim window
+/// Whether the active-window journal overlay applies to the candidate
+/// entry. Only the active `in-progress` entry carries an active window
 /// (`plan.entry.advanced`) that scopes phase-terminal events to the
-/// current plan; pre-claim candidates skip the overlay so stale
+/// current plan; not-yet-advanced candidates skip the overlay so stale
 /// same-name events from earlier plans cannot classify.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum JournalOverlay {
@@ -103,7 +103,7 @@ impl Resolution {
 }
 
 /// Project one candidate entry: slot-aware slice lifecycle first,
-/// then (for the active entry) the folded claim-window journal facts.
+/// then (for the active entry) the folded active-window journal facts.
 pub(super) fn resolve_entry(
     plan: &Plan, entry: &Entry, layout: Layout<'_>, overlay: JournalOverlay,
 ) -> Result<Resolution, Error> {
@@ -126,8 +126,8 @@ pub(super) fn resolve_entry(
     };
 
     let facts = match overlay {
-        JournalOverlay::Apply => claim_window_facts(work_layout, &plan.name, &entry.name)?,
-        JournalOverlay::Skip => ClaimFacts::default(),
+        JournalOverlay::Apply => active_window_facts(work_layout, &plan.name, &entry.name)?,
+        JournalOverlay::Skip => WindowFacts::default(),
     };
 
     // A merge that completed without the entry's `done` stamp is a torn
@@ -200,9 +200,9 @@ pub(super) fn resolve_work_root(layout: Layout<'_>, entry: &Entry) -> PathBuf {
     layout.project_dir().to_path_buf()
 }
 
-/// The folded journal facts for one entry's claim window.
+/// The folded journal facts for one entry's active window.
 #[derive(Default)]
-struct ClaimFacts {
+struct WindowFacts {
     /// Durable merge evidence (`slice.merge.succeeded` /
     /// `slice.archive.created`) exists anywhere in the window.
     merged: bool,
@@ -214,18 +214,19 @@ struct ClaimFacts {
     newest_failure: Option<(NextActionKind, StopReason, String)>,
 }
 
-/// Backward-fold the work root's journal over this entry's claim
+/// Backward-fold the work root's journal over this entry's active
 /// window: events newer than the newest `plan.entry.advanced` /
 /// `plan.transition.undone` for the `(plan, slice)` pair, stopping at
 /// that boundary (or the head of the journal).
-fn claim_window_facts(
+fn active_window_facts(
     work_layout: Layout<'_>, plan_name: &PlanName, slice: &SliceName,
-) -> Result<ClaimFacts, Error> {
-    let mut facts = ClaimFacts::default();
+) -> Result<WindowFacts, Error> {
+    let mut facts = WindowFacts::default();
     let mut terminal_seen = false;
     journal::scan_recent(work_layout, |event| {
         match event.kind {
-            // The claim boundary: nothing older belongs to this claim.
+            // The window boundary: nothing older belongs to this
+            // activation.
             EventKind::PlanEntryAdvanced {
                 plan_name: p,
                 slice_name: s,

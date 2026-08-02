@@ -1,7 +1,7 @@
 //! Closed journal event taxonomy and wire DTOs.
 //!
 //! Wire format is locked: event ids are dotted kebab-case
-//! (`plan.transition.approved`), payload field names are kebab-case
+//! (`plan.entry.advanced`), payload field names are kebab-case
 //! (`plan-name`, `slice-name`, …), and the closed `from` / `to`
 //! enum is `none | likely | accepted | rejected`. Rust variant
 //! names stay `snake_case` and reach the wire through
@@ -45,25 +45,12 @@ impl Event {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "event", content = "payload")]
 pub enum EventKind {
-    /// Gate 1 cleared — the first `emery plan execute` stamped
-    /// `pending → approved` (invoking execute is the approval act).
-    #[serde(rename = "plan.transition.approved", rename_all = "kebab-case")]
-    PlanTransitionApproved {
-        /// Governing plan.
-        plan_name: PlanName,
-        /// Who drove the stamp. Self-reported via `--actor`
-        /// (default `operator`); evidence for eval probes, never
-        /// enforcement. `#[serde(default)]` keeps pre-actor journal
-        /// lines parseable as `operator`.
-        #[serde(default)]
-        actor: Actor,
-    },
     /// Operator walked one rung backwards on per-entry status via
     /// `emery plan undo <entry>`. One event per rung
     /// (`done → in-progress` and `in-progress → pending` each fire
     /// individually) so the journal records every step the operator
     /// took and replay traces line up with the forward-direction
-    /// `plan.transition.approved` / `slice.transition.*` cadence.
+    /// `slice.transition.*` cadence.
     #[serde(rename = "plan.transition.undone", rename_all = "kebab-case")]
     PlanTransitionUndone {
         /// Governing plan.
@@ -75,7 +62,7 @@ pub enum EventKind {
         /// Status the entry holds after the undo.
         to: crate::plan::Status,
     },
-    /// `emery plan next` advanced one entry `pending → in-progress`
+    /// `emery plan advance` advanced one entry `pending → in-progress`
     /// (the sole writer of per-entry `in-progress`). Fires only when
     /// an entry actually advanced — returning the already-active entry
     /// or reporting drained/stuck emits nothing, so the *absence* of
@@ -318,7 +305,7 @@ pub enum EventKind {
         target: String,
     },
     /// per-slice authority override — operator set or cleared a per-slice
-    /// `authority-override` map at Gate 1. CLI-driven via
+    /// `authority-override` map during plan review. CLI-driven via
     /// `emery plan add --authority-override`,
     /// `emery plan amend --authority-override`, or the matching
     /// `--clear-*` flags.
@@ -393,37 +380,6 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         decisions: Vec<String>,
     },
-}
-
-/// Closed `actor` enum on [`EventKind::PlanTransitionApproved`] —
-/// who drove the Gate-1 stamp.
-///
-/// Self-reported through `emery plan execute --actor` (default
-/// `operator`), so the value is grading evidence for eval probes
-/// (`gate-1-not-auto-stamped`), not an enforcement surface. Defaults
-/// to [`Actor::Operator`] both at the flag and at deserialisation so
-/// journal lines written before the field existed keep parsing.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum Actor {
-    /// A human operator ran the verb (the default).
-    #[default]
-    Operator,
-    /// An agent ran the verb on the operator's behalf.
-    Agent,
-}
-
-impl std::str::FromStr for Actor {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "operator" => Ok(Self::Operator),
-            "agent" => Ok(Self::Agent),
-            other => Err(format!("unknown actor `{other}`; expected `operator` or `agent`")),
-        }
-    }
 }
 
 /// Closed `action` enum on [`EventKind::PlanAmendAuthorityOverride`].

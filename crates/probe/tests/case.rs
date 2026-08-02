@@ -10,7 +10,7 @@ use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use omnia_testkit::model::Harness;
 use probe::ModelFactory;
 use probe::case::{self, Case, WorkflowUntil};
-use project::plan::{Lifecycle, Status};
+use project::plan::Status;
 use project::slice::{LifecycleStatus, SliceMetadata};
 use tempfile::TempDir;
 
@@ -345,7 +345,7 @@ async fn build_case_reaches_built() {
 }
 
 #[tokio::test]
-async fn until_plan_leaves_gate_pending() {
+async fn until_plan_leaves_entries_pending() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -371,17 +371,13 @@ async fn until_plan_leaves_gate_pending() {
     let root = sandbox.join("greeting");
     let plan = project::plan::Plan::load(&project::config::Layout::new(&root).plan_path())
         .expect("plan.yaml");
-    assert_eq!(plan.lifecycle, Lifecycle::Pending, "Gate 1 stays pending");
     assert!(!plan.entries.is_empty(), "the authored plan carries entries");
     assert!(
         plan.entries.iter().all(|entry| entry.status == Status::Pending),
         "no entry advanced: {:?}",
         plan.entries
     );
-    assert!(
-        !journal(&root).contains("plan.transition.approved"),
-        "no approval event was journaled"
-    );
+    assert!(!journal(&root).contains("plan.entry.advanced"), "no entry advanced before execution");
 }
 
 #[tokio::test]

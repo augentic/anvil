@@ -34,7 +34,8 @@ pub struct ProposeOutcome {
     /// one per `(lead, decision)` pair whose `topics[]` intersect on the
     /// slice's bound project. Non-blocking — they surface a lead whose
     /// topic is already governed by an accepted decision so the agent can
-    /// confirm alignment before Gate 1. Empty until both leads and
+    /// confirm alignment before the operator reviews the plan. Empty
+    /// until both leads and
     /// decisions carry topics.
     pub topic_overlaps: Vec<Diagnostic>,
 }
@@ -64,7 +65,7 @@ impl Plan {
             return Err(Error::validation_failed(
                 "plan-reconcile-plan-not-replaceable",
                 "lead reconciliation requires a replaceable plan",
-                "lifecycle is approved or any entry is in-progress or done",
+                "an entry is in-progress or done",
             ));
         }
 
@@ -125,7 +126,8 @@ impl Plan {
 ///
 /// The CLI never groups on topics; this surfaces a lead whose topic is
 /// already governed by an accepted decision so the agent can confirm the
-/// slice aligns (or flags a contradiction) before Gate 1. Non-blocking
+/// slice aligns (or flags a contradiction) before the operator reviews
+/// the plan. Non-blocking
 /// `kind: review`; degrades to an empty vec until both surveyed leads and
 /// baseline decisions carry topics.
 fn topic_overlaps(
@@ -303,7 +305,7 @@ fn bind_projects<'a>(
 ///
 /// A slice binds only a `project`; the target adapter (`name[@vN]`) is
 /// derived here from the bound project's [`ProjectRef::target`]. This is
-/// the single read-time resolver every consumer (`emery plan next`,
+/// the single read-time resolver every consumer (`emery plan advance`,
 /// slice `metadata.yaml` population, the build request) routes through,
 /// so `plan.yaml` never needs to store the denormalised target.
 ///

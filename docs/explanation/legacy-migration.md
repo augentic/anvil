@@ -12,7 +12,7 @@ At plan time, bind a code source alongside or instead of documentation:
 
 The source adapter's `survey` operation scans the bound tree and emits slice-sized **[leads](../appendices/glossary.md#l)** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis reconciles into `spec.md`. The `typescript` adapter covers TypeScript today; language siblings follow the same pattern.
 
-Multi-slice migrations look like any other multi-slice plan: one operator review step ([Gate 1](../appendices/glossary.md#g)), then `emery plan execute` drives each slice through refine → build → merge. Scale changes the plan row count, not the machinery.
+Multi-slice migrations look like any other multi-slice plan: one operator review step, then `emery plan execute` drives each slice through refine → build → merge. Scale changes the plan row count, not the machinery.
 
 ## Why authority matters in migrations
 

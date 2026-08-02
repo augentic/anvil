@@ -59,8 +59,8 @@ The same steps run manually:
 emery init contracts
 emery plan author first-contract \
   --intent "Author an HTTP API contract for a health endpoint that returns status and version."
-# review change.md, discovery.md, plan.yaml  ← Gate 1
-emery plan execute   # first run stamps approved, then drives the loop
+# review change.md, discovery.md, plan.yaml
+emery plan execute   # running it is the approval; drives the loop
 emery plan status     # must be drained
 emery plan archive    # after you publish via git
 ```
@@ -70,12 +70,12 @@ What you should see after execute: slice artifacts under `.emery/slices/…`, ge
 ## How it works: The rhythm
 
 ```text
-/emery:init  →  /emery:plan  →  Gate 1 (review)  →  /emery:execute  →  /emery:finalize
-                                         │
-                                         └─ per slice: refine → build → merge
+/emery:init  →  /emery:plan  →  review  →  /emery:execute  →  /emery:finalize
+                                    │
+                                    └─ per slice: refine → build → merge
 ```
 
-Gate 1 is the operator review step: nothing runs until you invoke `emery plan execute` — its first run stamps the plan `approved`. A one-slice change uses the same steps as a twelve-slice migration. Code generation lives in target adapters, not in Cursor skills.
+The pause after planning is the operator review step: nothing runs until you invoke `emery plan execute` — running it is your approval of the plan. A one-slice change uses the same steps as a twelve-slice migration. Code generation lives in target adapters, not in Cursor skills.
 
 When `plan execute` parks, or you want to drive one slice without the drained loop, you can use the breakout skills: `/emery:refine`, `/emery:build`, `/emery:merge`, and `/emery:drop` (or their CLI equivalents).
 
@@ -87,7 +87,7 @@ When `plan execute` parks, or you want to drive one slice without the drained lo
 - **Installation:** [Prerequisites](docs/orientation/prerequisites.md)
 - **How-tos:**
   - [Drive a slice manually](docs/how-to/drive-slice-manually.md)
-  - [Amend a plan at Gate 1](docs/how-to/amend-plan-at-gate-1.md)
+  - [Amend a plan before executing](docs/how-to/amend-a-plan.md)
   - [Drop down a layer](docs/how-to/drop-down-a-layer.md) (when automation fails)
   - [Bind multiple sources](docs/how-to/bind-multiple-sources.md)
   - [Resolve spec conflicts](docs/how-to/resolve-spec-conflicts.md)

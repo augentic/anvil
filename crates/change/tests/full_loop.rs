@@ -1,5 +1,5 @@
 //! The native loop end to end: scaffold → `plan author` →
-//! `plan execute` (whose first run stamps Gate 1), driven through the
+//! `plan execute` (running it is the approval), driven through the
 //! same transport-neutral operations the shipped guest dispatches,
 //! against the linked mock catalog — the *real* orchestrations,
 //! validation tails, and journal cadence run in-process with only the
@@ -24,8 +24,8 @@ fn suite_answers() -> Vec<String> {
 }
 
 /// Scaffold a project bound to the mock target and author the
-/// single-slice plan (left `pending` — the first execute stamps
-/// Gate 1) — the shared preamble of every loop test.
+/// single-slice plan (left for operator review — running execute is
+/// the approval) — the shared preamble of every loop test.
 async fn scaffold_author(session: &Session) {
     let scaffolded = run::<project::init::handlers::Init, _, _>(
         session.provider(),
@@ -49,8 +49,7 @@ async fn scaffold_author(session: &Session) {
         },
     )
     .await
-    .expect("author walks to pending");
-    assert_eq!(authored.lifecycle, project::plan::Lifecycle::Pending);
+    .expect("author exits for review");
     assert_eq!(authored.slices, ["greeting"]);
     assert_eq!(authored.surveyed.len(), 1);
     assert_eq!(authored.surveyed[0].leads, ["greeting"]);
@@ -72,7 +71,6 @@ async fn author_approve_execute_drains() {
     .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
     assert_eq!(executed.plan, "demo");
-    assert!(executed.gate1_stamped, "first execute performs the Gate 1 stamp");
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
     assert_eq!(
@@ -148,53 +146,40 @@ async fn author_approve_execute_drains() {
     session.model().assert_exhausted();
 }
 
-// The first execute stamps Gate 1 (`pending → approved`) with the
-// self-reported `--actor`, journals it exactly once, and a re-entrant
-// execute never double-fires the event.
+// Executing is approving: nothing is stamped or journaled for the
+// approval, and a re-entrant execute on the drained plan is a no-op.
 #[tokio::test]
-async fn execute_stamps_gate1_once() {
+async fn execute_reentry_noop() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
 
     scaffold_author(&session).await;
-    let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
-    )
-    .expect("parse plan.yaml");
-    assert_eq!(plan.lifecycle.to_string(), "pending");
 
     let executed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            actor: project::journal::Actor::Agent,
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
-    .expect("first execute stamps and drains");
+    .expect("first execute drains");
     assert_eq!(executed.status, "drained");
-    assert!(executed.gate1_stamped);
 
-    // Text rendering: the stamp line appears exactly when this run
-    // stamped, and drained closes with the canonical finalize line.
+    // Text rendering closes with the canonical finalize line, with no
+    // approval ceremony anywhere.
     let mut out = Vec::new();
     project::handler::Render::render(&executed, &mut out).expect("render");
     let text = String::from_utf8(out).expect("utf8");
-    assert!(text.contains("approved: demo (actor: agent)"), "{text}");
+    assert!(!text.contains("approved"), "no approval line: {text}");
     assert!(text.contains("drained \u{2014} run /emery:finalize demo"), "{text}");
 
-    let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
-    )
-    .expect("parse plan.yaml");
-    assert_eq!(plan.lifecycle.to_string(), "approved");
-
+    // No approval field ever reaches disk: `plan.yaml` carries no
+    // lifecycle key and the journal carries no approval event.
+    let raw = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
+    assert!(!raw.contains("lifecycle"), "{raw}");
     let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
-    let approved: Vec<&str> =
-        journal.lines().filter(|l| l.contains("plan.transition.approved")).collect();
-    assert_eq!(approved.len(), 1, "{journal}");
-    assert!(approved[0].contains("\"actor\":\"agent\""), "{}", approved[0]);
+    assert!(!journal.contains("plan.transition.approved"), "{journal}");
 
-    // Re-entry on the drained, already-approved plan stamps nothing.
+    // Re-entry on the drained plan is a no-op: drained again, no
+    // phases re-run.
     let resumed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
@@ -202,18 +187,11 @@ async fn execute_stamps_gate1_once() {
     .await
     .expect("re-entrant execute is a no-op");
     assert_eq!(resumed.status, "drained");
-    assert!(!resumed.gate1_stamped, "re-entry on an approved plan stamps nothing");
+    assert!(resumed.phases.is_empty(), "{:?}", resumed.phases);
     let mut out = Vec::new();
     project::handler::Render::render(&resumed, &mut out).expect("render");
     let text = String::from_utf8(out).expect("utf8");
-    assert!(!text.contains("approved:"), "no stamp line on re-entry: {text}");
     assert!(text.contains("drained \u{2014} run /emery:finalize demo"), "{text}");
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
-    assert_eq!(
-        journal.lines().filter(|l| l.contains("plan.transition.approved")).count(),
-        1,
-        "no second plan.transition.approved event"
-    );
 }
 
 // A failed merge preflight gate parks the slice at `built`.

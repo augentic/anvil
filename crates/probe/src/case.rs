@@ -4,8 +4,8 @@
 //! holding one `case.toml` (and usually a sibling `fixture/`; a
 //! workflow case may instead `clone` an upstream tree into a
 //! gitignored `fixture/` cache on first run). Two shapes exist: a [`Workflow`] case drives the operator rhythm
-//! (`init` → `plan author` [→ `plan execute` (whose first run stamps
-//! Gate 1) [→ `plan archive`]]) and a [`Build`] case invokes
+//! (`init` → `plan author` [→ `plan execute` [→ `plan archive`]])
+//! and a [`Build`] case invokes
 //! `slice build <slice>` once against a committed refined fixture.
 //! Every command runs through [`native::command::execute`] — the same
 //! public surface operators use — so request assembly, report
@@ -27,7 +27,7 @@ use std::sync::Arc;
 use anyhow::{Context as _, Result, bail, ensure};
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use project::config::Layout;
-use project::plan::{Lifecycle, Status};
+use project::plan::Status;
 use project::slice::{LifecycleStatus, SliceMetadata};
 use tracing::Instrument as _;
 
@@ -146,15 +146,18 @@ async fn run_workflow(
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
     ensure!(
-        plan.lifecycle == Lifecycle::Pending,
-        "plan author must leave Gate 1 pending, found `{:?}`",
-        plan.lifecycle
+        plan.entries.iter().all(|entry| entry.status == Status::Pending),
+        "plan author must leave every entry pending: {:?}",
+        plan.entries
     );
+    let slices_dir = Layout::new(root).slices_dir();
+    let no_slices = fs::read_dir(&slices_dir).map_or(true, |mut entries| entries.next().is_none());
+    ensure!(no_slices, "plan author must not create slices — execution belongs to `plan execute`");
 
     if until == WorkflowUntil::Plan {
         telemetry::report(&telemetry.counts(), plan.entries.len());
         println!(
-            "eval case {id}: stopped at Gate 1 (lifecycle pending); continue with \
+            "eval case {id}: stopped after plan author; continue with \
              `cargo make lab -- --project-dir {} plan execute`",
             root.display()
         );

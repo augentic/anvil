@@ -1,28 +1,26 @@
 # Lifecycle
 
-Emery carries three stacked lifecycles. The plan lifecycle gates execution; the per-entry lifecycle drives the loop; the slice lifecycle stamps each per-slice phase. All transitions are enforced by the `emery` CLI — skills never write state directly.
+Emery carries two stacked lifecycles. The per-entry lifecycle drives the loop; the slice lifecycle stamps each per-slice phase. All transitions are enforced by the `emery` CLI — skills never write state directly.
 
 <div class="pipeline">
 
 ![Lifecycle state machines](../assets/diagrams/lifecycle/state-machines.svg)
 
-<p class="pipeline-caption">Plan pending→approved; per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
+<p class="pipeline-caption">Per-entry pending→in-progress→done; slice refining→refined→built→merged (or dropped).</p>
 </div>
 
 Emery's layered design is explained in [The Layered Stack](../explanation/layered-stack.md).
 
-## Plan lifecycle
+## Plan review
 
-Two stored states. The plan lifecycle does not move further during execution — "currently executing" and "drained" are computed from per-entry status.
-
-`/emery:plan` writes `pending`. The operator approves by running `emery plan execute` — this is **Gate 1**, the only review seam Emery ships; the first run stamps `approved` before the loop starts. `/emery:plan` never runs it itself.
+The plan itself carries no stored lifecycle. The pause between `/emery:plan` and `emery plan execute` is the operator review seam — running execute is the approval, and nothing is stamped or recorded. "Currently executing" and "drained" are computed from per-entry status.
 
 ## Per-entry lifecycle
 
 Each row under `plan.yaml.slices[]` carries its own status:
 
 - `pending` is written by the reconcile leg inside `emery plan author` (the default slice writer, which replaces all rows on a replaceable plan), `emery plan add`, and `emery plan amend`.
-- `in-progress` is written only by `emery plan next`. `plan next` returns the existing `in-progress` entry before selecting a new `pending` row.
+- `in-progress` is written only by `emery plan advance`. `plan advance` returns the existing `in-progress` entry before selecting a new `pending` row.
 - `done` is written only by `emery slice merge` after a successful merge.
 - Build failures and merge conflicts leave the active entry `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.
 
@@ -46,9 +44,7 @@ Each slice's `metadata.yaml` tracks an independent lifecycle:
 
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
-| `/emery:plan` exits at validate                   | plan: `pending` (initial)         | `emery plan author` (scaffold leg)             |
-| Operator runs the first `emery plan execute` (Gate 1) | plan: `pending → approved`        | the `emery plan execute` orchestration          |
-| `emery plan next` picks next pending row       | per-entry: `pending → in-progress` | `emery plan next`                              |
+| `emery plan advance` picks next pending row       | per-entry: `pending → in-progress` | `emery plan advance`                              |
 | `/emery:refine` creates slice                      | slice: (none) → `refining`         | the `emery slice refine` orchestration          |
 | `/emery:refine` completes synthesis                | slice: `refining → refined`        | the `emery slice refine` orchestration          |
 | `/emery:build` completes tasks                     | slice: `refined → built`           | the `emery slice build` orchestration           |

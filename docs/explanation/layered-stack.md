@@ -55,23 +55,23 @@ The matching CLI surface is the **`emery slice ...`** family: `slice refine`, `s
 
 ## Layer 2: Planning and driving a change
 
-Layer 2 carries every change through one rhythm: plan, Gate 1, execute, finalize. There is no separate "single-slice mode" — N=1 uses the same rhythm as N=12, with `intent.survey` producing one lead.
+Layer 2 carries every change through one rhythm: plan, review, execute, finalize. There is no separate "single-slice mode" — N=1 uses the same rhythm as N=12, with `intent.survey` producing one lead.
 
 | Skill            | Role                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
-| `/emery:plan`     | Wrap `emery plan author`: survey each bound source, reconcile `slices[]`, validate; exit at `pending` |
-| `emery plan execute` | Gate 1 plus the drive: the first run on a `pending` plan stamps `approved`, then runs the Layer 1 loop (guest-routed verb, wrapped by `/emery:execute`) |
+| `/emery:plan`     | Wrap `emery plan author`: survey each bound source, reconcile `slices[]`, validate; exit for review |
+| `emery plan execute` | The drive: running it is the operator's approval; runs the Layer 1 loop (guest-routed verb, wrapped by `/emery:execute`) |
 | `/emery:finalize` | Confirm operator-owned publication is complete, then archive the plan                                |
 
-The plan is the change's table of contents. `/emery:plan` produces it by invoking `emery plan author`, which surveys each source, reconciles leads across sources, and halts at `plan.lifecycle: pending`. It prints the literal `emery plan execute` command in its closing hint. The operator stamps Gate 1 by running that verb — `/emery:plan` never runs it itself.
+The plan is the change's table of contents. `/emery:plan` produces it by invoking `emery plan author`, which surveys each source, reconciles leads across sources, and halts for operator review. It prints the literal `emery plan execute` command in its closing hint. The operator approves by running that verb — `/emery:plan` never runs it itself.
 
-`emery plan execute` claims the next eligible entry, runs the Layer 1 loop, and updates per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
+`emery plan execute` advances the next eligible entry, runs the Layer 1 loop, and updates per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
 
-The matching CLI surface is **`emery plan {author, execute, add, amend, remove, undo, next, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Emery.
+The matching CLI surface is **`emery plan {author, execute, add, amend, remove, undo, advance, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Emery.
 
-### Gate 1: the operator review seam
+### The operator review seam
 
-The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships — there is no separate approve verb; invoking execute is the approval act, observable on disk as `plan.lifecycle: approved`. [Core concepts](concepts.md) owns the full Gate 1 story; [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md) covers the curation verbs available during the pause.
+The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships — there is no separate approve verb; invoking execute is the approval, and nothing is stamped or recorded. [Core concepts](concepts.md) owns the full review story; [Amend a plan before executing](../how-to/amend-a-plan.md) covers the curation verbs available during the pause.
 
 ## The layers compose
 

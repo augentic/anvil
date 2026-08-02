@@ -22,7 +22,7 @@ Requires authenticated `cursor-agent` on `PATH` (`cursor-agent login` or
 ```bash
 cargo make eval                              # list the cases
 cargo make eval auth --restart               # the auth workflow case, end to end
-cargo make eval auth --restart --until plan  # stop at Gate 1 to inspect the plan
+cargo make eval auth --restart --until plan  # stop after plan author to inspect the plan
 ```
 
 Case data lives in [`cases/`](cases/) (`cases/<id>/case.toml`). Each case

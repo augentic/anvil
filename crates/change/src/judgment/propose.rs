@@ -17,7 +17,7 @@ use project::plan::{ProposalRequest, ProposalResponse, SourceBinding};
 
 use crate::judgment::prose;
 
-/// Plan-authoring context for the Gate 1 prose the answer schema
+/// Plan-authoring context for the review prose the answer schema
 /// requires.
 ///
 /// Carries the plan name and its `plan.yaml.sources` bindings, so the
@@ -57,7 +57,7 @@ impl GateContext<'_> {
 ///
 /// `gate` is the optional plan-authoring context: when set, a `## Plan
 /// context` section rides the user message so the model can author the
-/// Gate 1 prose (`gate` on the answer) the collapsed `plan author`
+/// review prose (`gate` on the answer) the collapsed `plan author`
 /// orchestration persists.
 ///
 /// # Errors

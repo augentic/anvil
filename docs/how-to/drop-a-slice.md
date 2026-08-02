@@ -73,8 +73,8 @@ Dropping moves `.emery/slices/<name>/` — proposal, specs, design, tasks, `mode
 
 Dropping does not rewrite plan state. If the entry was `in-progress`, the execute loop stops with `slice-dropped` when it next looks. Choose one:
 
-- **Retry the entry fresh** — `emery plan undo <entry>` walks it back to `pending`; a later `emery plan next` reclaims it and refine starts a new slice directory.
-- **Remove the entry** — only while the plan is still replaceable (Gate 1, everything `pending`): `emery plan remove <entry>`.
+- **Retry the entry fresh** — `emery plan undo <entry>` walks it back to `pending`; a later `emery plan advance` re-advances it and refine starts a new slice directory.
+- **Remove the entry** — only while the plan is still replaceable (everything `pending`): `emery plan remove <entry>`.
 - **Leave it and re-plan** — for larger regroupings, re-run `/emery:plan` (confirms before replacing a pending plan).
 </section>
 

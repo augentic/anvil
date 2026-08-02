@@ -1,7 +1,7 @@
 //! Change-loop guest orchestrators.
 //!
 //! Plan authoring (survey fan-out → reconciliation judgment → persist
-//! → Gate 1 prose) and the drained execute loop that dispatches the
+//! → review prose) and the drained execute loop that dispatches the
 //! per-slice refine / build / merge phases through the `slice` crate.
 //! `emery plan author`, `emery plan execute`, and `emery source
 //! survey` route here through the guest.

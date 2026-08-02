@@ -142,7 +142,7 @@ This is the CLI command invoked by `/emery:merge` (which offers the dry-run flag
 
 **No git surface.** `slice merge` owns no git side effects: the workspace-clone commit leg is skipped explicitly with a `slice.merge.commit-skipped` journal event, and the `slice.archive.created` ledger entry carries no `merge-sha`. Committing and publishing merged baselines is operator-owned.
 
-**Preconditions.** Slice must be in `built` state; `merge --preview` and `merge --conflict-check` should pass. When a `plan.yaml` exists at the plan root, `merge` writes plan state (the per-entry `done` stamp), so it preflights the completion gate **before** touching the baseline: a missing entry refuses with `plan-entry-not-found`, and an entry that is not `in-progress` refuses with `slice-merge-entry-not-in-progress` (claim it with `emery plan next` first). Standalone breakouts do not take the guest marker — the lifecycle gates are the correctness fence.
+**Preconditions.** Slice must be in `built` state; `merge --preview` and `merge --conflict-check` should pass. When a `plan.yaml` exists at the plan root, `merge` writes plan state (the per-entry `done` stamp), so it preflights the completion gate **before** touching the baseline: a missing entry refuses with `plan-entry-not-found`, and an entry that is not `in-progress` refuses with `slice-merge-entry-not-in-progress` (advance it with `emery plan advance` first). Standalone breakouts do not take the guest marker — the lifecycle gates are the correctness fence.
 
 ## See also
 

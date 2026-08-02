@@ -10,11 +10,11 @@ argument-hint: <adapter|workspace>
 
 ## Invocation
 
-1. **Install or refresh the CLI** — invoking this skill is consent to install. Install the prebuilt release via the installer script (overwrites any existing binary; no local compile; verifies the Release archive's `.sha256`). The script installs to `~/.local/bin`, which is often absent from `PATH`, so put it on the session's `PATH` first — the subprocess cannot alter the parent shell:
+1. **Install or refresh the CLI** — on a machine with no `emery` binary, invoking this skill is consent to install. When `emery` is already on `PATH`, confirm with the operator before reinstalling — the installer overwrites the existing binary. Install the latest prebuilt release via the installer script (no local compile; verifies the Release archive's `.sha256`); a project whose floor outruns the installed binary fails typed later (`emery-version-too-old`, exit 3) with the same reinstall command as its hint. The script installs to `~/.local/bin`, which is often absent from `PATH`, so put it on the session's `PATH` first — the subprocess cannot alter the parent shell:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- --version 0.32.0 -y
+curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh -s -- -y
 ```
 
 Then run `emery --version --quiet` and stop on failure. Run every subsequent `emery` command in this session with that `PATH` export in effect; remind the operator to add `export PATH="$HOME/.local/bin:$PATH"` to their shell profile if the installer printed a PATH note.

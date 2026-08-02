@@ -117,7 +117,7 @@ where
         .route("/slice/{name}/drop", post!(::slice::handlers::Drop))
         .route("/archive/prune", post!(::slice::handlers::Prune))
         .route("/plan/validate", get!(::change::plan::handlers::Validate))
-        .route("/plan/next", post!(::change::plan::handlers::Next))
+        .route("/plan/advance", post!(::change::plan::handlers::Advance))
         .route("/plan/status", get!(::change::plan::handlers::Status))
         .route("/plan/{name}/add", post!(::change::plan::handlers::Add))
         .route("/plan/{name}/amend", post!(::change::plan::handlers::Amend))

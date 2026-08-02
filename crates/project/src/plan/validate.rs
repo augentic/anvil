@@ -283,7 +283,7 @@ fn project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic
 /// A slice may omit `project` only when the topology offers exactly one
 /// project (the kernel and [`super::resolve_target`] auto-bind it). When
 /// the registry declares more than one project an omitted `project` is
-/// ambiguous, so flag it early rather than waiting for `plan next` to
+/// ambiguous, so flag it early rather than waiting for `plan advance` to
 /// fail with `plan-reconcile-project-binding-required`.
 ///
 /// The single-regular-project case (no registry) is not reached here —
@@ -365,7 +365,8 @@ pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 /// Both are advisory (`Suggestion`): `divergence` is operator-settable
 /// standalone via `emery plan amend --divergence` (a contract-locked,
 /// advisory-metadata-in-v1 surface), so neither finding may block that
-/// write. They surface the inconsistency at `plan validate` / Gate 1.
+/// write. They surface the inconsistency at `plan validate` / plan
+/// review.
 /// `rejected` carries no obligation (the plan is to be re-proposed), so
 /// it triggers neither check.
 fn divergence_consistency(changes: &[Entry]) -> Vec<Diagnostic> {

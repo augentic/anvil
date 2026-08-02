@@ -31,15 +31,14 @@ jobs:
       - name: Build book
         run: mdbook build docs
 
-      - name: Set release date
-        id: date
-        if: github.event_name == 'push'
-        run: echo "today=$(date +'%Y-%m-%d')" >> ${GITHUB_OUTPUT}
-
-      - name: Deploy to Cloudflare Pages
+      # docs/wrangler.jsonc owns the worker name, assets directory, and the
+      # emery.augentic.io custom-domain route, so every deploy (re)attaches
+      # the domain. Requires the `augentic.io` zone in the same Cloudflare
+      # account as the API token.
+      - name: Deploy to Cloudflare Workers
         if: github.event_name == 'push'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --assets ./docs/book/html --name emery-docs --compatibility-date ${{ steps.date.outputs.today }}
+          command: deploy --config docs/wrangler.jsonc

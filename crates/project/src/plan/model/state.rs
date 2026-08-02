@@ -1,5 +1,5 @@
 //! Plan state: the `Plan` / `Entry` documents and their closed
-//! `Status` / `Lifecycle` state enums.
+//! `Status` state enum.
 
 use std::collections::BTreeMap;
 
@@ -13,8 +13,8 @@ use crate::name::{PlanName, SliceName};
 ///
 /// workflow collapses the per-entry state machine to three states:
 /// `pending` (default after `plan add` / `plan amend`), `in-progress`
-/// (written only by `plan next`), and `done` (written by `slice merge`
-/// — the final per-entry transition). Build failures and merge
+/// (written only by `plan advance`), and `done` (written by `slice
+/// merge` — the final per-entry transition). Build failures and merge
 /// conflicts leave the active entry `in-progress`; v1 has no per-entry
 /// `blocked`, `failed`, or `skipped` state.
 ///
@@ -40,7 +40,7 @@ pub enum Status {
     /// Not yet started. Written by `plan add` / `plan amend` (forward)
     /// and `plan undo <entry>` (reverse from `InProgress`).
     Pending,
-    /// Currently being executed. Written by `plan next` (forward)
+    /// Currently being executed. Written by `plan advance` (forward)
     /// and `plan undo <entry>` (reverse from `Done`).
     InProgress,
     /// Completed successfully. Written by `slice merge` (forward
@@ -50,54 +50,19 @@ pub enum Status {
     Done,
 }
 
-/// Plan-level lifecycle state stored at the top of `plan.yaml`
-/// (workflow §Workflow vocabulary).
-///
-/// Two stored states only — `pending` (default after `plan author`
-/// scaffolds the plan) and `approved` (stamped at Gate 1 by the first
-/// `emery plan execute` — invoking execute is the approval act).
-/// "Currently executing" and "drained" are computed from per-entry
-/// [`Status`] at read time via the plan's internal execution-state
-/// predicates.
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    Default,
-    PartialEq,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
-    serde::Serialize,
-    serde::Deserialize,
-    strum::Display,
-)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum Lifecycle {
-    /// Default after `plan author`; awaits operator review at Gate 1.
-    #[default]
-    Pending,
-    /// Gate 1 cleared — the first `emery plan execute` stamped it.
-    Approved,
-}
-
 /// In-memory model of `plan.yaml` (at the repo root).
 ///
 /// A `Plan` is an ordered, dependency-aware list of [`Entry`]s plus
 /// a named map of [`Plan::sources`] (local paths or git URLs) that the
-/// entries draw from, gated by a top-level [`Plan::lifecycle`] stamp.
+/// entries draw from. There is no plan-level lifecycle state: running
+/// `emery plan execute` on an authored plan *is* the approval, and
+/// "executing" / "drained" are computed from per-entry [`Status`] at
+/// read time.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Plan {
     /// Human-readable plan name, e.g. `platform-v2`.
     pub name: PlanName,
-    /// Plan-level lifecycle gate (workflow §Workflow vocabulary).
-    /// Defaults to [`Lifecycle::Pending`] on parse so a `plan.yaml`
-    /// without a `lifecycle:` field loads cleanly.
-    #[serde(default)]
-    pub lifecycle: Lifecycle,
     /// Named source bindings referenced by [`Entry::sources`].
     /// Optional in the YAML; defaults to an empty map.
     ///
@@ -157,7 +122,7 @@ pub struct Entry {
     /// reconciliation outcome. Absent on disk (the default) is semantic `none`.
     /// `Likely` is set by `/emery:plan`'s `propose` sub-step on
     /// materially-disagreeing lead synopses; `Accepted` /
-    /// `Rejected` are written by the operator at Gate 1 via
+    /// `Rejected` are written by the operator during plan review via
     /// `emery plan amend --divergence`. Advisory metadata in v1.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub divergence: Option<Divergence>,

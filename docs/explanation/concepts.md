@@ -56,16 +56,16 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
 <div class="rhythm-label">Plan</div>
 <h4 class="rhythm-title">Define the change</h4>
 
-`/emery:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
+`/emery:plan` surveys sources and writes `plan.yaml`. Exits for review.
 </div>
 
 
 <div class="rhythm-step" data-step="02">
 <div class="rhythm-num">02</div>
-<div class="rhythm-label">Gate 1</div>
+<div class="rhythm-label">Review</div>
 <h4 class="rhythm-title">Human approval</h4>
 
-Operator approves by running `emery plan execute` (its first run stamps `approved`). Nothing executes until then.
+Operator approves by running `emery plan execute` — running it is the approval. Nothing executes until then.
 </div>
 
 
@@ -81,7 +81,7 @@ Operator approves by running `emery plan execute` (its first run stamps `approve
 </div>
 
 
-## The plan → operator review (Gate 1) → execute → finalize rhythm
+## The plan → operator review → execute → finalize rhythm
 
 Every change flows through one rhythm. Full command detail: [Quick reference card](../reference/quick-reference.md).
 
@@ -90,11 +90,11 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 
 ![Change rhythm](../assets/diagrams/concepts/change-rhythm.svg)
 
-<p class="pipeline-caption">/emery:plan exits pending; operator stamps Gate 1; emery plan execute drives slices; /emery:finalize closes the change.</p>
+<p class="pipeline-caption">/emery:plan exits for review; emery plan execute is the approval and drives slices; /emery:finalize closes the change.</p>
 </div>
 
 
-`/emery:plan` surveys each bound source, proposes `slices[]`, and exits at `plan.lifecycle: pending`. The operator approves by running the guest-routed `emery plan execute` (Gate 1 — its first run stamps `approved`), which then drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
+`/emery:plan` surveys each bound source, proposes `slices[]`, and exits for operator review. The operator approves by running the guest-routed `emery plan execute` — running it is the approval — which drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
 
 A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `emery plan execute` runs the same single-slice rhythm.
 
@@ -171,7 +171,7 @@ A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how
 The default rhythm:
 
 > [!NOTE]
-> **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan execute` (Gate 1 + loop) → `/emery:finalize <name>`
+> **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan execute` (approval + loop) → `/emery:finalize <name>`
 
 Breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`) run one phase by hand when execute parks or you want manual control.
 

@@ -59,4 +59,4 @@ When a `disagreed` `id` group has multiple authorities, the kernel's [§Resoluti
 
 ## Plan-time reconciliation is a separate playbook
 
-Plan-time `Lead[]` reconciliation inside `emery plan author` is documented in the plan CLI reference. Cross-source matching is agent judgment; the kernel validates partition shape only. The operator curates at Gate 1 via `change.md` and `emery plan amend`.
+Plan-time `Lead[]` reconciliation inside `emery plan author` is documented in the plan CLI reference. Cross-source matching is agent judgment; the kernel validates partition shape only. The operator curates during plan review via `change.md` and `emery plan amend`.

@@ -1,4 +1,4 @@
-<svg viewBox="0 0 920 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Emery change rhythm from plan through Gate 1 to execute and finalize">
+<svg viewBox="0 0 920 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Emery change rhythm from plan through operator review to execute and finalize">
   <title>Emery change rhythm</title>
   <defs>
     <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
@@ -8,11 +8,11 @@
   <text x="20" y="24" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">CHANGE RHYTHM</text>
   <rect x="20" y="40" width="150" height="52" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="32" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">/emery:plan</text>
-  <text x="32" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#555">exits at pending</text>
+  <text x="32" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#555">exits for review</text>
   <path d="M170 66 L210 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <polygon points="230,66 248,52 248,80" fill="#fbeede" stroke="#b85c00"/>
-  <text x="256" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Gate 1</text>
-  <text x="256" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#555">first plan execute stamps approved</text>
+  <text x="256" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">review</text>
+  <text x="256" y="80" font-family="ui-monospace, monospace" font-size="11" fill="#555">running plan execute is the approval</text>
   <path d="M400 66 L440 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="440" y="40" width="150" height="52" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="452" y="62" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">plan execute</text>

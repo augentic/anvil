@@ -25,8 +25,8 @@ You do not need to read this guide front to back. Pick the row that matches wher
 
 Every change flows through one rhythm:
 
-1. **Plan** — `/emery:plan` surveys sources and writes `plan.yaml`. Exits at `pending`.
-2. **Operator review (Gate 1)** — you review, then approve by running `emery plan execute` (its first run stamps `approved`).
+1. **Plan** — `/emery:plan` surveys sources and writes `plan.yaml`. Exits for review.
+2. **Operator review** — you review, then approve by running `emery plan execute` (running it is the approval).
 3. **Execute** — the same `emery plan execute` loops per slice: refine → build → merge.
 4. **Finalize** — after operator-owned publication is complete, `/emery:finalize` archives the plan.
 
@@ -34,11 +34,11 @@ Every change flows through one rhythm:
 
 ![Emery change rhythm](../assets/diagrams/orientation/workflow-rhythm.svg)
 
-<p class="pipeline-caption">plan → operator review (Gate 1) → execute → finalize — a one-slice change uses the same steps as a twelve-slice migration.</p>
+<p class="pipeline-caption">plan → operator review → execute → finalize — a one-slice change uses the same steps as a twelve-slice migration.</p>
 </div>
 
 <div class="callout">
-  <strong>Gate 1.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits at <code>pending</code>; invoking <code>emery plan execute</code> is your approval act — its first run stamps <code>approved</code>. Nothing executes until you invoke it.
+  <strong>Review.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits after authoring; invoking <code>emery plan execute</code> is your approval — nothing is stamped or recorded. Nothing executes until you invoke it.
 </div>
 
 ## Why artifacts matter

@@ -28,7 +28,7 @@ enum Kind {
 }
 
 /// A workflow case: `init` and `plan author` always run; `until`
-/// selects how far past Gate 1 the run continues.
+/// selects how far past authoring the run continues.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Workflow {
@@ -92,10 +92,9 @@ pub struct Build {
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq, clap::ValueEnum)]
 #[serde(rename_all = "kebab-case")]
 pub enum WorkflowUntil {
-    /// Stop after `plan author`, leaving Gate 1 `pending`.
+    /// Stop after `plan author`, leaving every entry `pending`.
     Plan,
-    /// Author, then run the genuine drained `plan execute` (whose
-    /// first run stamps Gate 1).
+    /// Author, then run the genuine drained `plan execute`.
     #[default]
     Execute,
     /// Execute, then `plan archive`.

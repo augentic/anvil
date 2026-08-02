@@ -60,7 +60,6 @@ pub fn adversarial_bindings() -> Vec<SourceAssign> {
 pub fn plan_with_changes(changes: Vec<project::plan::Entry>) -> project::plan::Plan {
     project::plan::Plan {
         name: "test".into(),
-        lifecycle: project::plan::Lifecycle::Pending,
         sources: std::collections::BTreeMap::new(),
         entries: changes,
     }

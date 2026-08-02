@@ -1,30 +1,23 @@
 ---
 name: emery-execute
-description: Approve and execute a plan by gating Gate 1 on explicit operator confirmation, then invoking the guest-routed `emery plan execute` loop (whose first run stamps `approved`) and relaying its output. Use after `/emery:plan` exits at `pending`, or to resume an already-approved plan; not for per-slice breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`).
+description: Execute a plan by invoking the `emery plan execute` loop and relaying its output. Use after `/emery:plan` exits, or to resume a partially executed plan; not for per-slice breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`).
 ---
 
 # Execute Skill
 
-The engine guest owns the whole drained loop — the Gate 1 stamp (`pending → approved` on the first run), the guest lock, claim → refine → build → merge per entry, and every stop classification. This skill carries the operator's Gate 1 decision behind an explicit confirmation, then invokes the loop and relays its output. `/emery:plan` never runs execute; this skill runs it only when the operator says so.
+The CLI orchestration owns the whole loop — the run lock, refine → build → merge per entry, and every stop it reports. Running `emery plan execute` on an authored plan is itself the operator's approval; there is no separate approval step, state, or confirmation. This skill invokes the loop and relays its output.
 
 ## Invocation
-
-1. **Status probe** — run `emery plan status --quiet` (read-only — never substitute `emery plan next`, a plan-state writer). Branch on the header's `plan: <name> (pending|approved)` line and the `next-action` projection:
-   - lifecycle `pending` — continue to step 2 (the first execute will stamp Gate 1).
-   - `drained` — surface the output verbatim (its `resume` line already names `/emery:finalize`) and stop.
-   - lifecycle `approved` with any dispatch or stop projection — skip to step 3.
-2. **Gate 1 (approval gate)** — ask the operator to confirm they have reviewed `change.md`, `discovery.md`, and `plan.yaml` and approve the plan. Without an explicit affirmative, stop without running anything — never infer approval from context; invoking `emery plan execute` on a `pending` plan is the approval act.
-3. **Execute**:
 
 ```bash
 emery plan execute
 ```
 
-The loop is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract. Leave `--actor` at its default (`operator`): the stamp relays the operator's explicit confirmation, not the agent's judgment.
+The loop is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract.
 
 ## Relay
 
-- Surface the loop's output verbatim. On drain it prints the `approved:` stamp line (first run only), the completed phases, and the canonical `drained — run /emery:finalize <name>` closing line — relay it as-is without adding another pointer.
+- Surface the loop's output verbatim. On drain it prints the completed phases and the canonical `drained — run /emery:finalize <name>` closing line — relay it as-is without adding another pointer.
 - On `plan-execute-stopped` (exit 2), the loop already prints the canonical stop card (`stop: <reason>` / `hint:` / `resume:`) on stdout beside the error envelope — relay both verbatim; the resume line names the matching breakout (`/emery:refine`, `/emery:build`, `/emery:merge`) or the re-entrant `emery plan execute`. No follow-up `emery plan status` call is needed.
-- On any other non-zero exit, surface the structured error verbatim and stop; re-running re-enters cleanly. Workspace plans refuse execution (`plan-execute-workspace-unsupported`) — drive them hand-driven via `emery plan next` and the breakouts.
-- Route every state write through the CLI — never hand-edit `plan.yaml` or stamp lifecycle yourself.
+- On any other non-zero exit, surface the structured error verbatim and stop; re-running re-enters cleanly. Workspace plans refuse execution (`plan-execute-workspace-unsupported`) — drive them hand-driven via `emery plan advance` and the breakouts.
+- Route every state write through the CLI — never hand-edit `plan.yaml`.
