@@ -1,6 +1,6 @@
 # Agent Team Patterns
 
-Shared patterns for skills that coordinate work through Agent Teams. Each skill references this document and provides skill-specific values for the parameterized sections below.
+Some skills fan work out to a temporary team of Cursor agents instead of doing everything in one session — for example, a review skill that spawns specialists to inspect different areas in parallel. This page is the shared protocol those skills follow: role definitions, communication rules, and file-ownership discipline. You do not invoke it directly; a skill that uses agent teams references this document and supplies its own values for the parameterized sections below. As an operator, you will encounter it when such a skill names its team roles or cites these rules in its output.
 
 ## Team Roles
 

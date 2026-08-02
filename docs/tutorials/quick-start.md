@@ -133,9 +133,7 @@ Plan `fix-typo` is at `pending`. Review it, then run `emery plan execute` to app
 
 #### Operator review step (Gate 1)
 
-Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step** — Emery calls it **Gate 1**. `/emery:plan` never starts execution itself; invoking `emery plan execute` is your approval act — its first run stamps `approved`.
-
-Alternatively, run `/emery:execute`: it asks for this confirmation explicitly, then continues straight into the execute loop below.
+Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is [**Gate 1**](../reference/lifecycle.md#gate-1): nothing executes until you run `emery plan execute`, and that first run is itself the approval. Alternatively, run `/emery:execute` — it asks for this confirmation explicitly, then continues straight into the execute loop below.
 
 Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
 </div>
@@ -198,7 +196,26 @@ Source code changes land in your project tree (not under `.emery/`). Task checkb
 - The slice directory moves to `.emery/archive/`
 - `plan.yaml` marks the entry `done`
 
-If execute parks on a failure, see [Drive a slice manually](../how-to/drive-slice-manually.md).
+##### Watching progress
+
+Check on the run at any time from a second terminal with `emery plan status` (read-only). Mid-run it names the current phase and the exact command that makes progress:
+
+```text
+plan: fix-typo (approved)
+entries: 0 done / 1 in-progress / 0 pending
+next-action: build fix-typo
+resume: /emery:build fix-typo
+```
+
+When the slice has merged, status projects the literal drained line:
+
+```text
+plan: fix-typo (approved)
+entries: 1 done / 0 in-progress / 0 pending
+drained — run /emery:finalize fix-typo
+```
+
+If execute stops instead — say the build fails — the stop message names the reason and the resume command (`next-action: stop build-failed`, `resume: /emery:build fix-typo`). Fix the cause, then run the resume command; see [Drive a slice manually](../how-to/drive-slice-manually.md).
 </div>
 
 

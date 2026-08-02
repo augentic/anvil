@@ -47,7 +47,7 @@ For the exact operation signatures, the lead and claim grammars, the sandbox pos
 
 ## Authority resolution
 
-Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class their evidence carries (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice at Gate 1 via `emery plan amend <entry> --authority-override <claim-kind>=<source>` and then re-run `/emery:refine`; the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md); the operator-facing walk-through is in [From sources to slices](reconciliation.md).
+Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class their evidence carries (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice at Gate 1 via `emery plan amend <entry> --authority-override <claim-kind>=<source>` and then re-run `/emery:refine` — never by hand-editing the rendered `spec.md` provenance lines (see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md)). Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md); the operator-facing walk-through is in [From sources to slices](reconciliation.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>

@@ -55,7 +55,7 @@ Execute re-enters at the active `in-progress` entry and skips phases already com
 <h2><span class="num">2</span> When execute parks on merge conflict</h2>
 
 1. Read conflicting baseline paths from the stop hint.
-2. Re-run refine against the current baseline, or hand-edit the slice's spec body prose (never the kernel-rendered `ID:` / `Sources:` / `Status:` lines).
+2. Re-run refine against the current baseline, or hand-edit the slice's spec body prose (never the machine-rendered `ID:` / `Sources:` / `Status:` lines — see [Resolve spec conflicts](resolve-spec-conflicts.md)).
 3. Retry merge:
 
 ```text
@@ -102,7 +102,7 @@ The execute loop reads on-disk lifecycle state — no resume flags required.
 
 <h2><span class="num">5</span> Guest lock</h2>
 
-The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker (see [Guest](../appendices/glossary.md#g)) for the run's lifetime; a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts do not take the marker. For stale-marker recovery, see [Recover from a stale guest lock](recover-from-a-stale-guest-lock.md).
+Only one `emery plan execute` may run at a time: the loop creates and holds the `.emery/guest.lock` marker (see [Guest](../appendices/glossary.md#g)) for the run's lifetime, and a second driver session exits with `guest-marker-held` (exit 2). Standalone breakouts do not take the marker. For stale-marker recovery, see [Recover from a stale guest lock](recover-from-a-stale-guest-lock.md).
 </section>
 
 

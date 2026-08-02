@@ -24,7 +24,7 @@ Each binding creates a slot in `plan.yaml.sources` and contributes [leads](../ap
 
 ## Multi-source slices
 
-At plan-authoring time, reconcile leads across sources through the guest orchestration (survey fan-out, reconcile judgment, and slice write in one verb):
+At plan-authoring time, one verb surveys every source, reconciles the leads, and writes the slice table:
 
 ```bash
 emery plan author

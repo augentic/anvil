@@ -25,7 +25,7 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
   <div class="proof-item">
     <div class="proof-kicker">Control</div>
     <div class="proof-value">Gate 1</div>
-    <div class="proof-copy">The operator reviews and stamps the plan before <code>emery plan execute</code> can run.</div>
+    <div class="proof-copy">The plan waits at <code>pending</code> until the operator reviews it — running <code>emery plan execute</code> is the approval.</div>
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Trace</div>
