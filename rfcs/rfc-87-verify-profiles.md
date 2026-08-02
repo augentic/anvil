@@ -1,6 +1,6 @@
-# RFC-60: Verify Profiles
+# RFC-87: Verify Profiles
 
-> **Status: Deferred.** Omnia's `wasi-model` host accepts the `verify` grant but its execution is stubbed; generated-code verification runs through the adapters' existing native check flows. Revisit when verification moves into the model loop. Depends: [RFC-55](rfc-55-working-tree.md) · Owns: closed verification profiles and sandboxing
+> Status: Draft — step 3 of the platform-migration series ([next-stage.md](next-stage.md)). Formerly RFC-60 (deferred); promoted because host-owned verify is [RFC-88](rfc-88-concurrent-execution.md)'s convergence gate and [RFC-89](rfc-89-node-sync.md)'s trial-integration gate. Omnia's `wasi-model` host accepts the `verify` grant but its execution is stubbed today. Depends: [RFC-86](rfc-86-working-trees.md) · Owns: closed verification profiles and sandboxing
 
 ## Abstract
 
@@ -62,7 +62,7 @@ Not every node can verify. A node without the required toolchain or sandbox supp
 
 - Model tool-call dispatch; owned by the implemented `wasi-model` host and its backends.
 - Model backend selection; owned by the runtime binary's compile-time binding.
-- Working-tree materialization; see [RFC-55](rfc-55-working-tree.md).
+- Working-tree materialization; see [RFC-86](rfc-86-working-trees.md).
 
 ## Acceptance criteria
 

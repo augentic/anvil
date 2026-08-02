@@ -1,12 +1,12 @@
 # Adapter Descriptors and Registry Trust
 
-> **Status: Superseded (archived).** Design ownership moved to [Migration Walking Skeleton](../rfc-70-program.md) Part A. Do not implement this document; historical prior art only (filename keeps the old number; active [RFC-71](../rfc-71-deployment.md) is deployment).
+> **Status: Superseded (archived).** Design ownership moved to [Migration Walking Skeleton](../rfc-85-migration-program.md) Part A. Do not implement this document; historical prior art only (filename keeps the old number; active [RFC-71](../rfc-71-deployment.md) is deployment).
 >
 > Owns: install-time adapter descriptors, closed discovery vocabularies, registry descriptor projection, publisher/namespace trust, deterministic candidate filtering and explanation, recommendation-report currency.
 
 ## Intent
 
-Give Emery a typed `AdapterDescriptor` substrate so engine core does not hard-code adapter names for discovery. Source selection ("what can inspect this input?") and target selection ("what should this project become?") share the substrate but keep different owners ([RFC-72](rfc-72-migration.md) / [RFC-70](../rfc-70-program.md)).
+Give Emery a typed `AdapterDescriptor` substrate so engine core does not hard-code adapter names for discovery. Source selection ("what can inspect this input?") and target selection ("what should this project become?") share the substrate but keep different owners ([RFC-72](rfc-72-migration.md) / [RFC-70](../rfc-85-migration-program.md)).
 
 Installation is already solved: a pinned identity pulls from the compiled first-party GHCR mapping on miss ([RFC-71](../rfc-71-deployment.md) Stage 3), and the mapping accepts any kebab-case name. What is missing is the fact that decides *which* pin to install. Today a source adapter's whole metadata record is `emery-floor`, so nothing on the wire says a component reads TypeScript or builds mobile shells.
 
@@ -44,7 +44,7 @@ Platforms stay off the descriptor. A target's `PlatformsCapability` is not a sel
 
 ## Workload kinds
 
-The closed `workload-kind` vocabulary is the join key between a repository profile ([RFC-72](rfc-72-migration.md)) and a target's `produces` ([RFC-70](../rfc-70-program.md)). Every value below is grounded in existing adapter grammar rather than speculative:
+The closed `workload-kind` vocabulary is the join key between a repository profile ([RFC-72](rfc-72-migration.md)) and a target's `produces` ([RFC-70](../rfc-85-migration-program.md)). Every value below is grounded in existing adapter grammar rather than speculative:
 
 | Kind | Meaning |
 | --------------- | -------------------------------------------------------------------------- |
@@ -67,7 +67,7 @@ Adapters may be workload-neutral. `contracts` produces interface artifacts for a
 | D4 | Two axis-specific predicates (`inspects` / `produces`) over one shared vocabulary set. | Source and target selection reuse the filter kernel without sharing a policy owner. |
 | D5 | Filtering is deterministic and total: every catalogued adapter is either a candidate or excluded with a recorded reason. | The recommendation explains itself. No silent drops, so an operator can tell "no adapter reads Java" from "the Java adapter's floor is above your host". |
 | D6 | `emery-floor` participates in filtering. | A candidate the running host cannot dispatch is excluded with that reason up front, instead of being recommended and then failing at the metadata gate. |
-| D7 | Discovery emits an immutable recommendation report and stops. It never installs, binds, or writes config. | Approval is the consumer's gate — plan-time Gate 1 for sources ([RFC-72](rfc-72-migration.md)), Gate M1 for targets ([RFC-70](../rfc-70-program.md)). |
+| D7 | Discovery emits an immutable recommendation report and stops. It never installs, binds, or writes config. | Approval is the consumer's gate — plan-time Gate 1 for sources ([RFC-72](rfc-72-migration.md)), Gate M1 for targets ([RFC-70](../rfc-85-migration-program.md)). |
 | D8 | The report records the inputs it was computed from (profile digest, index revision, host version) and is invalidated when any of them change. | A stale recommendation cannot be approved after the profile moved underneath it. |
 | D9 | The first index covers the `emery:` namespace only. | Third-party descriptors, publisher identity, and namespace trust stay Stage 3, gated on roadmap RM-21 rather than on the migration program. |
 
