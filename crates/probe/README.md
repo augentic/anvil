@@ -19,7 +19,7 @@ or set `CURSOR_API_KEY` in `.env` at the repository root.
 ```bash
 cargo make eval                       # list the cases
 cargo make eval auth --restart        # run the engine's auth workflow case
-cargo make eval auth --restart --until plan   # stop at Gate 1
+cargo make eval auth --restart --until plan   # stop after plan author
 ```
 
 Each case keeps one stable retained sandbox at `sandbox/<case>/` (the
@@ -66,8 +66,8 @@ fresh sandbox. Two kinds exist:
 
 - **`kind = "workflow"`** — the operator rhythm over real verbs:
   `init <target>`, `plan author <change> [--intent] [--source k=v …]`,
-  then (past `--until plan`) the genuine drained `plan execute` (whose
-  first run stamps Gate 1), and (at `--until finalize`) `plan archive`. The default
+  then (past `--until plan`) the genuine drained `plan execute`
+  (running it is the approval), and (at `--until finalize`) `plan archive`. The default
   stop is `execute`; `case.toml`'s `until` sets a case default and
   `--until` overrides per run. An optional `clone = { url, dest }`
   (mutually exclusive with `fixture`) shallow-clones an upstream tree
@@ -96,7 +96,7 @@ Emery core has two steps that require a model's judgement.
 
 | Schema      | Step       | Crate    | Purpose                                                                                                                                     |
 | ----------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `proposal`  | Propose    | `change` | Reconcile *surveyed* leads across sources into plan slices and author the Gate 1 prose.                                                     |
+| `proposal`  | Propose    | `change` | Reconcile *surveyed* leads across sources into plan slices and author the review prose.                                                    |
 | `synthesis` | Synthesize | `slice`  | Reconcile *extracted* evidence with baseline context and target guidance, to produce build artifacts such as `proposal.md`, `spec.md`, etc. |
 
 
@@ -116,8 +116,8 @@ observable gates:
 
 | Case kind          | Check      | Pass condition                                                       |
 | ------------------ | ---------- | -------------------------------------------------------------------- |
-| workflow (plan)    | Entries    | `plan author` produces at least one entry; lifecycle stays `pending` |
-| workflow (execute) | Lifecycle  | Every plan entry is `done`                                           |
+| workflow (plan)    | Entries    | `plan author` produces at least one entry; every entry stays `pending` |
+| workflow (execute) | Entries    | Every plan entry is `done`                                           |
 | workflow (execute) | Provenance | Every evidenced requirement carries sources; ids are present         |
 | build              | Lifecycle  | Slice metadata is `built`                                            |
 | build              | Report     | The authoritative `build/report.yaml` exists under the slice         |

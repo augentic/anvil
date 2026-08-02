@@ -231,8 +231,8 @@ fn latest_archive(archive_dir: &Path, slice: &str) -> Option<PathBuf> {
 /// Read-only completion preflight, run before the `slice.merge.*`
 /// bracket and any baseline write: a plan-owned merge must be able to
 /// stamp its entry `done` (`in-progress → done` is the only legal
-/// edge), so an absent or unclaimed entry refuses here instead of
-/// failing after the baseline and archive have already been mutated.
+/// edge), so an absent or not-yet-advanced entry refuses here instead
+/// of failing after the baseline and archive have already been mutated.
 /// Standalone merges (no `plan.yaml`) skip the gate entirely.
 fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     if !layout.plan_path().exists() {
@@ -247,7 +247,7 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
             "slice-merge-entry-not-in-progress",
             "a plan-owned merge stamps its entry `done` from `in-progress`",
             format!(
-                "plan entry `{slice}` is `{}`; claim it with `emery plan next` before merging",
+                "plan entry `{slice}` is `{}`; advance it with `emery plan advance` before merging",
                 entry.status
             ),
         ));

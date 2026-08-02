@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Emery workflow skills: initialize a project, plan a change, approve and execute the plan, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output; `/emery:execute` wraps the guest-routed `emery plan execute` loop behind an explicit Gate 1 confirmation.
+This plugin provides the core Emery workflow skills: initialize a project, plan a change, execute the plan, check where a plan stands, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output; `/emery:execute` wraps the `emery plan execute` loop (running it is the operator's approval of the authored plan), and `/emery:status` is the read-only "where am I / what next" probe.
 
 **Purpose**: Drive the `plan -> execute` rhythm (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 
@@ -43,16 +43,17 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata
 ```text
 /emery:init <target>               (once per project; for a registry-only workspace, use emery init --workspace)
 
-/emery:plan <name> source ...      (authors change.md + plan.yaml; exits at lifecycle: pending)
+/emery:plan <name> source ...      (authors change.md + plan.yaml; exits for operator review)
 
-/emery:execute                     (Gate 1 on explicit operator confirmation, then the guest-routed
-                                   refine -> build -> merge loop; CLI equivalent:
-                                   emery plan execute — its first run stamps `approved`)
+/emery:execute                     (the refine -> build -> merge loop; CLI equivalent:
+                                   emery plan execute — running it is the approval)
 
 /emery:finalize <name>             (confirm publication, archive plan)
 ```
 
-Breakouts invoke the same guest orchestrations one slice at a time, when the execute loop parks or the operator wants to drive a slice by hand:
+At any point, `/emery:status` (read-only, wraps `emery plan status`) reports where the plan stands and the literal next command — use it whenever unsure what to do next, never `emery plan advance` (which writes plan state).
+
+Breakouts invoke the same orchestrations one slice at a time, when the execute loop stops or the operator wants to drive a slice by hand:
 
 - **/emery:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined` (`emery slice refine`).
 - **/emery:build**: Build one slice through its target adapter (`emery slice build`).
@@ -61,7 +62,7 @@ Breakouts invoke the same guest orchestrations one slice at a time, when the exe
 
 ## Tracing and output
 
-Host tracing is selected by the reserved host log flags — never set `RUST_LOG` on an `emery` subprocess. The host peels `--debug` / `--quiet` anywhere in argv before the guest sees it, so the flags are position-independent and never collide with a verb's own options. Two normal modes, selected by verb:
+Tracing is selected by the reserved log flags — never set `RUST_LOG` on an `emery` subprocess. The CLI strips `--debug` / `--quiet` anywhere in argv before the verb parses it, so the flags are position-independent and never collide with a verb's own options. Two normal modes, selected by verb:
 
 - **Long-running orchestrations** (`emery plan author`, `emery plan execute`, `emery slice refine`, `emery slice build`, committed `emery slice merge`) run bare — the host default emits live INFO progress on stderr with the noisy OTel targets muted:
 
@@ -87,6 +88,19 @@ Stream roles: the semantic CLI result (text or JSON envelope) is stdout; command
 
 ## Troubleshooting
 
+### Common error codes
+
+Every CLI failure prints a kebab-case error code (and usually a `hint:` line — follow it). The codes met most often:
+
+| Error code | What it means | Next action |
+|------------|---------------|-------------|
+| `init-adapter-required` | `emery init` was run without naming a target adapter | `emery init <adapter>`, or `emery init --workspace` for a registry-only workspace |
+| `emery-version-too-old` | The installed binary is older than the project's floor | Reinstall via the installer script (the hint prints the literal command), then rerun |
+| `adapter-cli-too-old` | An adapter requires a newer binary than the one installed | Reinstall the binary; if the adapter itself is stale, `emery adapter update <name>` |
+| `plan-already-exists` | `/emery:plan` on a project that already has a `plan.yaml` | Continue the existing plan (`/emery:status`) or confirm the replace and re-run with `--force` |
+| `target-build-*` | The target adapter aborted the build; the slice stays `refined` | Fix the reported problem, then retry `/emery:build <slice>` |
+| `merge-postflight-failed` | The merge landed but the post-merge check failed; the entry is already `done` | Repair the baseline, then `/emery:execute` to acknowledge and continue |
+
 ### Project not initialized
 
 - Run `/emery:init <target>` in the project root to create `.emery/` and write `project.yaml`
@@ -108,7 +122,8 @@ Stream roles: the semantic CLI result (text or JSON envelope) is stdout; command
 - See the project root `AGENTS.md` for overall project context
 - [Init SKILL.md](skills/init/SKILL.md) — Initialize Emery
 - [Plan SKILL.md](skills/plan/SKILL.md) — Author `change.md` + `plan.yaml`
-- [Execute SKILL.md](skills/execute/SKILL.md) — Confirm Gate 1, then drive the drained per-slice loop
+- [Execute SKILL.md](skills/execute/SKILL.md) — Drive the per-slice loop to completion
+- [Status SKILL.md](skills/status/SKILL.md) — Read-only "where am I / what next" probe
 - [Refine SKILL.md](skills/refine/SKILL.md) — Synthesize artifacts for one slice
 - [Build SKILL.md](skills/build/SKILL.md) — Validate artifacts and implement tasks
 - [Merge SKILL.md](skills/merge/SKILL.md) — Finalize completed slices

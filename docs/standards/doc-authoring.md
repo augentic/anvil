@@ -106,7 +106,7 @@ Available `data-d` values are `D1`–`D8`; they drive the tag colour.
 
 ![Workflow poster](../assets/diagrams/quick-reference/workflow-poster.svg)
 
-<p class="pipeline-caption">init → plan → Gate 1 → execute → finalize.</p>
+<p class="pipeline-caption">init → plan → review → execute → finalize.</p>
 </div>
 ```
 
@@ -259,14 +259,14 @@ Use mdBook 0.5 [native admonitions](https://rust-lang.github.io/mdBook/format/ma
 
 | Kind                  | Syntax           | Use                                    |
 | --------------------- | ---------------- | -------------------------------------- |
-| Gate / operator stamp | `> [!IMPORTANT]` | Gate 1 reminders, required human steps |
+| Operator obligation   | `> [!IMPORTANT]` | Review reminders, required human steps |
 | Gotcha                | `> [!WARNING]`   | Pitfalls and failure modes             |
 | Success / completion  | `> [!TIP]`       | Tutorial outcomes, “you’re done” notes |
 | Unchanged behaviour   | `> [!NOTE]`      | Behaviour that did not change          |
 
 ```markdown
 > [!IMPORTANT]
-> **Gate 1.** The first `emery plan execute` stamps `approved` — `/emery:plan` never runs it.
+> **Review.** Running `emery plan execute` is the approval — `/emery:plan` never runs it.
 ```
 
 Multi-line bodies prefix every line with `> `.

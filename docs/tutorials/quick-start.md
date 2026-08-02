@@ -125,17 +125,19 @@ Sources: 1. Leads: 1.
 - synopsis: fix typo in user.rs
 ```
 
-The skill exits at `plan.lifecycle: pending` and prints:
+The skill exits after authoring and prints:
 
 ```text
-Plan `fix-typo` is at `pending`. Review it, then run `emery plan execute` to approve and drive the slices (executing is the Gate 1 stamp).
+Plan `fix-typo` is authored. Review it, then run `emery plan execute` to drive the slices (running it is your approval).
 ```
 
-#### Operator review step (Gate 1)
+#### Operator review step
 
-Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is [**Gate 1**](../reference/lifecycle.md#gate-1): nothing executes until you run `emery plan execute`, and that first run is itself the approval. Alternatively, run `/emery:execute` — it asks for this confirmation explicitly, then continues straight into the execute loop below.
+Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step**. `/emery:plan` never starts execution itself; invoking `emery plan execute` is your approval — nothing is stamped or recorded.
 
-Learn more: [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
+Alternatively, run `/emery:execute`: it invokes the same command and continues straight into the execute loop below.
+
+Learn more: [Amend a plan before executing](../how-to/amend-a-plan.md).
 </div>
 
 
@@ -149,7 +151,7 @@ Drive the per-slice loop:
 emery plan execute
 ```
 
-(`/emery:execute` runs this same loop, adding the Gate 1 confirmation when the plan is still `pending`.)
+(`/emery:execute` runs this same loop.)
 
 Inside execute, each slice runs **refine → build → merge**:
 
@@ -237,7 +239,7 @@ Before finalizing, publish the completed repository changes through your normal 
 
 
 > [!TIP]
-> **Done.** You completed the full rhythm: `/emery:init` scaffolds once; `/emery:plan` exits at `pending`; Gate 1 is the operator review seam; `emery plan execute` loops refine → build → merge; `/emery:finalize` closes the change.
+> **Done.** You completed the full rhythm: `/emery:init` scaffolds once; `/emery:plan` exits for review; `emery plan execute` is your approval and loops refine → build → merge; `/emery:finalize` closes the change.
 
 <div class="see-also">
 <strong>See also</strong>

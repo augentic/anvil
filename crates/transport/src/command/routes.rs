@@ -238,17 +238,17 @@ where
         "Validate plan.yaml (structure + plan/change consistency).\n\nIncludes the three health diagnostics — `cycle-in-depends-on`, `orphan-source`, and `stale-workspace-clone` — alongside the base shape rules."
     );
     route!(
-        ["plan", "next"],
-        plan::NextArgs,
-        ::change::plan::handlers::Next,
-        "Return the active in-progress entry, or transition the next eligible `Pending` entry to `InProgress` and return it. `plan next` is the only writer of per-entry `in-progress` (workflow §CLI surface)"
+        ["plan", "advance"],
+        plan::AdvanceArgs,
+        ::change::plan::handlers::Advance,
+        "Advance the next eligible `pending` entry to `in-progress` and return it, or return the already-active entry unchanged. `plan advance` writes plan state — it is the only writer of per-entry `in-progress` (workflow §CLI surface); use `plan status` for the read-only projection"
     );
     route!(
         ["plan", "status"],
         plan::StatusArgs,
         ::change::plan::handlers::Status,
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`.\n\nProjects `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (slot-aware in workspace mode), and the journal tail. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` / `slice.merge.postflight-failed` journal events (claim-window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing — `plan next` stays the only writer of per-entry `in-progress`."
+        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`.\n\nProjects `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (slot-aware in workspace mode), and the journal tail. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` / `slice.merge.postflight-failed` journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing — `plan advance` stays the only writer of per-entry `in-progress`."
     );
     route!(
         ["plan", "add"],
@@ -267,28 +267,28 @@ where
         ["plan", "remove"],
         plan::RemoveArgs,
         ::change::plan::handlers::Remove,
-        "Remove a pending plan entry while the plan is still replaceable (`lifecycle: pending` and every entry `pending`). Gate 1 curation only — defers a lead without re-surveying `discovery.md`"
+        "Remove a pending plan entry while the plan is still replaceable (every entry `pending`). Plan-review curation only — defers a lead without re-surveying `discovery.md`"
     );
     route!(
         ["plan", "undo"],
         plan::UndoArgs,
         ::change::plan::handlers::Undo,
-        "Walk one plan entry one rung backwards on per-entry status",
-        "Walk one plan entry one rung backwards on per-entry status.\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`; the verb refuses to skip rungs — undoing a `done` entry to `pending` runs twice — and fires one `plan.transition.undone` event per call. Plan-level `approved` is stamped by the first `emery plan execute`.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan next`; per-entry `done` is written only by `slice merge`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
+        "Walk one plan entry backwards on per-entry status (one rung, or `--to <status>`)",
+        "Walk one plan entry backwards on per-entry status.\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`. Default is one rung; `--to <pending|in-progress>` walks rung by rung until the entry reaches the target. Either way, one `plan.transition.undone` journal event fires per rung, so the journal records every step.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan advance`; per-entry `done` is written only by `slice merge`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
     );
     route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the Gate 1 prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit at `pending` with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its lifecycle or entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint",
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Approve and run the drained execute loop in the engine guest: stamp Gate 1 (`pending → approved`) on first run, then claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`)",
-        "Approve and run the drained execute loop in the engine guest: stamp Gate 1 (`pending → approved`) on first run, then claim → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nInvoking execute is the Gate 1 approval act: a `pending` plan is stamped `approved` (one `plan.transition.approved` journal event carrying `--actor`) before the loop's first status projection; an already-approved plan stamps nothing. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop in the engine guest: advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). Running execute on an authored plan is the approval — there is no recorded approval state",
+        "Run the drained execute loop in the engine guest: advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nRunning execute on an authored plan is the approval — nothing is stamped or recorded. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
@@ -370,13 +370,13 @@ convert!(slice::MergeArgs => ::slice::handlers::MergeRunInput { name, allow_comp
 convert!(slice::DropArgs => ::slice::handlers::DropInput { name, reason });
 convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run });
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
-convert!(plan::NextArgs => ::change::plan::handlers::NextInput {});
+convert!(plan::AdvanceArgs => ::change::plan::handlers::AdvanceInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { actor });
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
-convert!(plan::UndoArgs => ::change::plan::handlers::UndoInput { name });
+convert!(plan::UndoArgs => ::change::plan::handlers::UndoInput { name, to });
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });

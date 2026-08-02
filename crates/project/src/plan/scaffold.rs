@@ -1,6 +1,6 @@
 //! The plan scaffold gates: kebab name, overwrite policy, and
 //! `Plan::init`. Driven by the guest `plan author` orchestration;
-//! Gate 1 prose and journal events stay with the owning operation.
+//! review prose and journal events stay with the owning operation.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -15,7 +15,7 @@ use crate::name::is_kebab;
 /// Checks the kebab-case name, then applies the overwrite policy:
 /// an existing `plan.yaml` is refused unless `force`; with `force`
 /// the existing plan is recreated unconditionally, whatever its
-/// lifecycle or entry statuses. Writes nothing — the caller decides
+/// entry statuses. Writes nothing — the caller decides
 /// what to mutate before the single atomic [`Plan::save`].
 ///
 /// # Errors

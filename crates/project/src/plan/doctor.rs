@@ -90,16 +90,16 @@ pub fn doctor(
     out
 }
 
-/// Claim-time gate subset: the structural `Plan::validate` findings
+/// Advance-time gate subset: the structural `Plan::validate` findings
 /// plus dependency cycles.
 ///
-/// This is what `plan next` (and the execute loop's per-phase claim)
-/// must be clean of before advancing an entry. Deliberately
-/// registry-free: claiming works in registry-less projects and must
-/// stay read-only. Cycle findings always block, so callers gate on
-/// `has_blocking` over the returned set.
+/// This is what `plan advance` (and the execute loop's per-phase
+/// advance) must be clean of before advancing an entry. Deliberately
+/// registry-free: advancing works in registry-less projects and the
+/// gate itself must stay read-only. Cycle findings always block, so
+/// callers gate on `has_blocking` over the returned set.
 #[must_use]
-pub fn claim_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
+pub fn advance_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
     let mut out = plan.validate(Some(slices_dir), None);
     out.extend(detect(&plan.entries));
     out
@@ -109,7 +109,7 @@ pub fn claim_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
 /// written plan.
 ///
 /// The post-write check the guest `plan author` orchestration runs
-/// before exiting at `pending`. Identical to the `plan validate`
+/// before exiting. Identical to the `plan validate`
 /// findings minus the verb-only registry-shape and topology-cache
 /// staleness surfaces (which need the verb's provider).
 ///

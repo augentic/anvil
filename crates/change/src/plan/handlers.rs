@@ -1,12 +1,12 @@
 //! The `emery plan *` verb family plus the shared plan-file helpers.
 
 mod add;
+mod advance;
 mod amend;
 mod archive;
 mod author;
 mod entry;
 mod execute;
-mod next;
 mod remove;
 mod status;
 mod undo;
@@ -21,12 +21,12 @@ use project::registry::Registry;
 use serde::Serialize;
 
 pub use self::add::{Add, AddInput};
+pub use self::advance::{Advance, AdvanceInput};
 pub use self::amend::{Amend, AmendInput};
 pub use self::archive::{Archive, ArchiveBody, ArchiveInput, ArchivedPlan};
 pub use self::author::{Author, AuthorBody, AuthorInput, AuthorSurvey};
 pub use self::entry::EntryBody;
 pub use self::execute::{Execute, ExecuteBody, ExecuteInput, ExecutePhase};
-pub use self::next::{Next, NextInput};
 pub use self::remove::{Remove, RemoveInput};
 pub use self::status::{Status, StatusInput};
 pub use self::undo::{Undo, UndoBody, UndoInput, UndoPair};

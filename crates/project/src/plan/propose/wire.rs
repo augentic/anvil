@@ -87,7 +87,8 @@ pub struct ProjectRef {
     /// the third routing-identity axis — *why* the project is
     /// shaped the way it is, surfaced so the agent can route a slice on
     /// architectural commitment and flag a lead that contradicts an
-    /// accepted decision before Gate 1. Empty stays off the wire.
+    /// accepted decision before the operator reviews the plan. Empty
+    /// stays off the wire.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub decisions: Vec<Decision>,
     /// Count of accepted decisions elided past the projection cap.
@@ -141,7 +142,7 @@ pub struct ProposalResponse {
     /// The agent's slices, in response order — the kernel writes
     /// `plan.yaml.slices[]` in this order.
     pub slices: Vec<ResponseSlice>,
-    /// Gate 1 review prose authored alongside the grouping.
+    /// Plan review prose authored alongside the grouping.
     /// Canonically optional; the generated judgment-answer schema
     /// requires it, and the collapsed `plan author` orchestration
     /// persists it into `change.md` / `discovery.md`. The projection
@@ -150,7 +151,7 @@ pub struct ProposalResponse {
     pub gate: Option<GateProse>,
 }
 
-/// Gate 1 review prose riding a [`ProposalResponse`]: section bodies
+/// Plan review prose riding a [`ProposalResponse`]: section bodies
 /// only — the orchestrator owns every deterministic frame (`# Change —
 /// <name>`, `# Discovery — <name>`, the `##` headings).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -158,7 +159,7 @@ pub struct ProposalResponse {
 pub struct GateProse {
     /// The `change.md` operator brief body rendered below the
     /// deterministic `# Change — <name>` heading: intent, scope, and
-    /// the Gate 1 review sections the skill flow authored by hand
+    /// the plan review sections the skill flow authored by hand
     /// (`## Tentative merges`, `## Cross-cutting leads`, `## Likely
     /// divergences` when applicable).
     pub change: String,
@@ -191,8 +192,8 @@ pub struct ResponseSlice {
     /// slice — that is fan-out.
     pub sources: Vec<ResponseMember>,
     /// Optional cross-source-match rationale the agent renders into
-    /// `change.md` for Gate 1. Agent-authored and kernel-ignored — it is
-    /// not echoed into the journal.
+    /// `change.md` for plan review. Agent-authored and kernel-ignored —
+    /// it is not echoed into the journal.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rationale: Option<String>,
     /// Slice names this row depends on. Empty stays off the wire.

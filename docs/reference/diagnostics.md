@@ -27,7 +27,7 @@ Closed set rendered when `emery plan execute` halts (exit 2, `plan-execute-stopp
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
 | `guest-marker-held` | A second driver session tried to start while `.emery/guest.lock` is held (exit 2). | Wait for the running session, or if the holder died, [recover from the stale lock](../how-to/recover-from-a-stale-guest-lock.md). |
-| `plan-execute-workspace-unsupported` | The execute loop refuses workspace plans (workspace root or any `project`-scoped entry). | Drive the plan by hand: `emery plan next`, then the refine/build/merge breakouts — see [Cross-repo changes](../tutorials/cross-repo-change.md). |
+| `plan-execute-workspace-unsupported` | The execute loop refuses workspace plans (workspace root or any `project`-scoped entry). | Drive the plan by hand: `emery plan advance`, then the refine/build/merge breakouts — see [Cross-repo changes](../tutorials/cross-repo-change.md). |
 
 ## Plan authoring and amendment
 
@@ -36,7 +36,7 @@ Closed set rendered when `emery plan execute` halts (exit 2, `plan-execute-stopp
 | `plan-already-exists` | `emery plan author` found an existing `plan.yaml`. | Re-run with `--force` to replace a pending plan wholesale (`/emery:plan` confirms first). |
 | `duplicate-source-key` | `--add-source` named a key the entry already binds (a slice binds at most one lead per source). | Re-size instead: `emery plan amend <entry> --sources <key>=<other-lead>`. |
 | `plan-amend-validation-failed` | A wholesale `--sources` replacement introduced an invalid binding set; the amend rolled back. | Fix the binding list (one lead per source key) and retry. |
-| `plan-remove-plan-not-replaceable` | `emery plan remove` requires a fully pending plan (`lifecycle: pending`, every entry `pending`). | Removal is a Gate 1 action only; after execution starts, [undo the entry](../how-to/undo-a-plan-entry.md) or drop its slice. |
+| `plan-remove-plan-not-replaceable` | `emery plan remove` requires a fully pending plan (every entry `pending`). | Removal is a pre-execution action only; after execution starts, [undo the entry](../how-to/undo-a-plan-entry.md) or drop its slice. |
 | `plan-remove-entry-referenced` | Another entry lists the removal target in `depends-on`. | Amend the dependent entry's `--depends-on` first. |
 | `plan-has-outstanding-work` | `emery plan archive` refused: the plan still has non-terminal entries (exit 1). | Drain the plan (merge or drop every entry) before archiving. |
 
@@ -56,7 +56,7 @@ All exit 2. The reconcile leg validates the proposed `slices[]` grouping before 
 | `plan-reconcile-depends-on-cycle` | The projected `depends-on` edges form a cycle. |
 | `plan-reconcile-project-binding-required` | A slice omits `project` when more than one project exists. |
 | `plan-reconcile-project-orphan` | A slice binds a `project` absent from the topology. |
-| `plan-reconcile-plan-not-replaceable` | The plan is approved or carries a non-pending entry. |
+| `plan-reconcile-plan-not-replaceable` | The plan carries a non-pending entry. |
 
 ## Plan validate findings
 
@@ -96,7 +96,7 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `target-build-success-with-blocking-finding` | The target reported `status: success` but its report carries a blocking finding; the gate refuses. | Fix the finding the report names, then rebuild. |
 | `merge-delta-headers-required` | A hand-authored flat requirement block was submitted against a non-empty baseline. | Use the delta format (`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`) — see [Artifact format](artifact-format.md#delta-spec-format-modified-domain). |
 | `plan-entry-not-found` | `emery slice merge` found no plan entry matching the slice. | Add the entry (`emery plan add`) or check the slice name. |
-| `slice-merge-entry-not-in-progress` | The plan entry exists but is not claimed. | Claim it first: `emery plan next`. |
+| `slice-merge-entry-not-in-progress` | The plan entry exists but is not claimed. | Advance it first: `emery plan advance`. |
 
 ## Source sandbox
 

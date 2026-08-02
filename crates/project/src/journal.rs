@@ -31,7 +31,7 @@ use serde_json::Value;
 
 pub use self::append::{append_batch, append_one};
 pub use self::emit::{bracket, emit_best_effort};
-pub use self::event::{Actor, AuthorityOverrideAction, Event, EventKind};
+pub use self::event::{AuthorityOverrideAction, Event, EventKind};
 use crate::config::Layout;
 
 /// Project-relative path the journal lives at.
@@ -124,7 +124,7 @@ pub(crate) fn read_recent<T>(
 ///
 /// The backward tail reader bounds the bytes touched by how far back
 /// `visit` keeps scanning, so a fold that stops at a known boundary
-/// event (e.g. the execution projection's claim window) stays flat as
+/// event (e.g. the execution projection's active window) stays flat as
 /// the journal grows. Reader leniency matches [`read`]: blank and
 /// unparseable lines are skipped and a missing journal yields no
 /// visits.

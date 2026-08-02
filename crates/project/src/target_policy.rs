@@ -7,7 +7,7 @@
 //!   bound project's topology.
 //! - [`resumed`] — after creation, the slice's recorded
 //!   `metadata.yaml` target is authoritative.
-//! - [`best_effort_next`] — `plan next`'s advisory `$TARGET`
+//! - [`best_effort_advance`] — `plan advance`'s advisory `$TARGET`
 //!   projection; `None` when the topology cannot resolve (the build
 //!   phase re-resolves before use).
 
@@ -78,10 +78,10 @@ pub fn resumed(layout: Layout<'_>, slice: &str) -> Result<String, Error> {
     Ok(SliceMetadata::load(&layout.slice_dir(slice))?.target)
 }
 
-/// Best-effort-next policy: `plan next`'s advisory `$TARGET` for a
-/// freshly advanced entry. `None` when the topology cannot resolve —
-/// the build phase re-resolves the target before use.
-pub fn best_effort_next(
+/// Best-effort advance policy: `plan advance`'s advisory `$TARGET`
+/// for a freshly advanced entry. `None` when the topology cannot
+/// resolve — the build phase re-resolves the target before use.
+pub fn best_effort_advance(
     resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths, entry: &Entry,
 ) -> Option<String> {
     resolve_topology(resolver, config, paths)

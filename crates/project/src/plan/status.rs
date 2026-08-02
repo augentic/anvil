@@ -4,7 +4,7 @@
 //! slice's `metadata.yaml` lifecycle, and the journal tail into a
 //! deterministic `next-action` — `refine|build|merge <slice>`,
 //! `stop <reason>`, or `drained` — so the execute loop renders the
-//! dispatch instead of deriving it. Writes nothing; `plan next`
+//! dispatch instead of deriving it. Writes nothing; `plan advance`
 //! stays the only writer of per-entry `in-progress`.
 //!
 //! This module owns the wire types; the per-entry decision kernel
@@ -12,8 +12,6 @@
 //! assembly in `project`.
 
 use serde::Serialize;
-
-use super::model::Lifecycle;
 
 mod project;
 
@@ -151,8 +149,6 @@ pub struct StatusCounts {
 pub struct StatusBody {
     /// Plan name from `plan.yaml.name`.
     pub plan: String,
-    /// Plan-level lifecycle (`pending | approved`).
-    pub lifecycle: Lifecycle,
     /// Per-status entry counts.
     pub counts: StatusCounts,
     /// Name of the active `in-progress` entry, when one exists.
@@ -200,7 +196,7 @@ pub fn drained_line(plan_name: &str) -> String {
 /// the literal stop-conditions drained string.
 impl crate::handler::Render for StatusBody {
     fn render(&self, w: &mut dyn std::io::Write) -> std::io::Result<()> {
-        writeln!(w, "plan: {} ({})", self.plan, self.lifecycle)?;
+        writeln!(w, "plan: {}", self.plan)?;
         writeln!(
             w,
             "entries: {} done / {} in-progress / {} pending",

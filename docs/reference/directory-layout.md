@@ -86,7 +86,7 @@ $EMERY_HOME/cache/<project-id>/                 # (default home: ~/.emery)
 
 ### `slices/`
 
-Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the `emery slice refine` orchestration, which mints the directory (re-entry safe) immediately before per-source `extract`. `emery plan add` does not create the slice directory — at Gate 1 the slice tree is empty regardless of slice count.
+Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the `emery slice refine` orchestration, which mints the directory (re-entry safe) immediately before per-source `extract`. `emery plan add` does not create the slice directory — before execution the slice tree is empty regardless of slice count.
 
 A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; the synthesis persist tail inside `emery slice refine` / `emery plan execute` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 

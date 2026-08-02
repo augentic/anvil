@@ -15,6 +15,7 @@
 
 - [Overview](tutorials/index.md)
 - [Quick start](tutorials/quick-start.md)
+- [Migrate a legacy service](tutorials/migrate-a-legacy-service.md)
 - [Your first multi-slice change](tutorials/first-change.md)
 - [Drive a slice by hand](tutorials/drive-a-slice-by-hand.md)
 - [Cross-repo changes](tutorials/cross-repo-change.md)
@@ -26,7 +27,7 @@
 - [Overview](how-to/index.md)
 - [Drop down a layer](how-to/drop-down-a-layer.md)
 - [Drive a slice manually](how-to/drive-slice-manually.md)
-- [Amend a plan at Gate 1](how-to/amend-plan-at-gate-1.md)
+- [Amend a plan before executing](how-to/amend-a-plan.md)
 - [Undo a plan entry](how-to/undo-a-plan-entry.md)
 - [Drop a slice](how-to/drop-a-slice.md)
 - [Resolve spec conflicts](how-to/resolve-spec-conflicts.md)

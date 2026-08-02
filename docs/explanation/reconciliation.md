@@ -21,13 +21,13 @@ The cross-source matching happens in the **propose** sub-step of `/emery:plan`. 
 
 Three rules keep this predictable:
 
-- **One lead per source, per slice.** A slice never fuses two leads from the *same* source. Re-sizing same-source work is an operator action at Gate 1, not something the agent does silently.
-- **Coverage is at-least-once, not exactly-once.** Every surveyed lead must be referenced by at least one slice, and a lead may appear in more than one. Work that lands in more than one project becomes multiple slices joined by `depends-on`; a cross-cutting lead — say a conventions document that informs several features surfaced by another source — is bound into every slice it informs (the one-lead-per-source rule still applies inside each slice), with no `depends-on` implied. Multi-homed leads are listed in `change.md` under `## Cross-cutting leads` for Gate 1 review.
+- **One lead per source, per slice.** A slice never fuses two leads from the *same* source. Re-sizing same-source work is an operator action during plan review, not something the agent does silently.
+- **Coverage is at-least-once, not exactly-once.** Every surveyed lead must be referenced by at least one slice, and a lead may appear in more than one. Work that lands in more than one project becomes multiple slices joined by `depends-on`; a cross-cutting lead — say a conventions document that informs several features surfaced by another source — is bound into every slice it informs (the one-lead-per-source rule still applies inside each slice), with no `depends-on` implied. Multi-homed leads are listed in `change.md` under `## Cross-cutting leads` for plan review.
 - **Uncertain matches are surfaced, not hidden.** When the agent is unsure whether two leads are the same work, it records the pair under `## Tentative merges` in `change.md` so you can confirm or split them. When two matched leads materially disagree, the slice is flagged `divergence: likely`.
 
 This is why a one-source, one-lead change and a twelve-slice migration use exactly the same machinery — the only difference is how many leads `survey` produced.
 
-You review and adjust the proposed slices at **Gate 1** before running `emery plan execute` — its first run stamps the plan `approved`.
+You review and adjust the proposed slices before running `emery plan execute` — running it is your approval.
 
 ## Slice time: evidence becomes a spec
 
@@ -56,7 +56,7 @@ Status: agreed
 
 ## How disagreements are resolved
 
-Two sources can disagree about the same requirement. Emery resolves this with **authority** — a closed ranking declared per source (`intent` > `documentation` > `behaviour`), sharpened by an optional per-slice override the operator records at Gate 1. The winner's value becomes the operative requirement and the loser survives as inline commentary (`[divergence]`); a tie at the top authority class has no winner (`[conflict]`). The canonical hierarchy, override surface, and step-by-step resolution order live in the workflow's embedded authority prompt (`crates/slice/prompts/synthesis/authority.md`).
+Two sources can disagree about the same requirement. Emery resolves this with **authority** — a closed ranking declared per source (`intent` > `documentation` > `behaviour`), sharpened by an optional per-slice override the operator records during plan review. The winner's value becomes the operative requirement and the loser survives as inline commentary (`[divergence]`); a tie at the top authority class has no winner (`[conflict]`). The canonical hierarchy, override surface, and step-by-step resolution order live in the workflow's embedded authority prompt (`crates/slice/prompts/synthesis/authority.md`).
 
 Tags never park the slice. Synthesis tags the requirement and proceeds. The operator reconciles a `[conflict]` or `[divergence]` by recording a per-slice authority override (`emery plan amend --authority-override`) or amending the plan's sources, then re-running `/emery:refine` — never by hand-editing the rendered `spec.md` provenance lines ([Resolve spec conflicts](../how-to/resolve-spec-conflicts.md) has the full rule).
 

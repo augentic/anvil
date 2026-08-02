@@ -74,15 +74,15 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 }
 ```
 
-### `emery plan next`
+### `emery plan advance`
 
-Returns the next entry the executor should pick up, or a `reason` describing why nothing is eligible. Success carries `next: "<entry>"`; drained / blocked / in-progress states carry `next: null` and a populated `reason` (`drained`, `in-progress`, etc.).
+Advances the next eligible entry to `in-progress` (or returns the already-active entry), or a `reason` describing why nothing is eligible. Success carries `advanced: "<entry>"`; drained / blocked / in-progress states carry `advanced: null` and a populated `reason` (`drained`, `in-progress`, etc.).
 
 ```json
 {
   "active": null,
+  "advanced": "b",
   "description": null,
-  "next": "b",
   "plan": "demo",
   "project": "default",
   "reason": null,
@@ -93,29 +93,27 @@ Returns the next entry the executor should pick up, or a `reason` describing why
 
 ### `emery plan author`
 
-The guest-routed authoring orchestration: survey per bound source, reconcile leads into `slices[]`, persist the Gate 1 prose, validate, exit at `lifecycle: pending`. `hint` is the literal Gate 1 closing line the `/emery:plan` skill relays.
+The guest-routed authoring orchestration: survey per bound source, reconcile leads into `slices[]`, persist the review prose, validate, exit for operator review. `hint` is the literal closing line the `/emery:plan` skill relays.
 
 ```json
 {
   "plan": "identity-revamp",
-  "lifecycle": "pending",
   "surveyed": [
     { "source": "docs", "adapter": "documentation", "leads": ["identity-api"] }
   ],
   "slices": ["identity-contracts", "identity-service"],
-  "hint": "Plan `identity-revamp` is at `pending`. Review it, then run `emery plan execute` to approve and drive the slices (executing is the Gate 1 stamp)."
+  "hint": "Plan `identity-revamp` is authored. Review it, then run `emery plan execute` to drive the slices (running it is your approval)."
 }
 ```
 
 ### `emery plan execute`
 
-The drained loop's success body — a stop surfaces on the error envelope instead (`error: "plan-execute-stopped"`, exit 2), so a driver tells a parked loop from a drained one without parsing prose. `gate1-stamped` is `true` only when this invocation performed the Gate 1 stamp (`pending → approved`); re-entry on an already-approved plan reports `false`. `phases[]` lists the phases this run completed, in order. Text mode prints `approved: <plan> (actor: <actor>)` when this run stamped, the phase lines, and closes with the canonical `drained — run /emery:finalize <plan>` line.
+The drained loop's success body — a stop surfaces on the error envelope instead (`error: "plan-execute-stopped"`, exit 2), so a driver tells a parked loop from a drained one without parsing prose. `phases[]` lists the phases this run completed, in order. Text mode prints the phase lines and closes with the canonical `drained — run /emery:finalize <plan>` line.
 
 ```json
 {
   "status": "drained",
   "plan": "identity-revamp",
-  "gate1-stamped": true,
   "phases": [
     { "slice": "identity-contracts", "step": "refine" },
     { "slice": "identity-contracts", "step": "build" },
@@ -159,27 +157,27 @@ Success summary after the reconcile kernel projects the agent **response** onto 
 
 ### `emery plan undo`
 
-The one-rung reverse walk. The `previous` / `current` pair pins the rung that fired, and the `undo: { from, to }` pair carries the same move as typed discriminants.
+The reverse walk. The `previous` / `current` pair pins the walk's endpoints, and `undo: [{ from, to }, …]` lists every rung as typed discriminants — one element for the default single rung, several when `--to` walks further.
 
 ```json
 {
-  "current": "in-progress",
+  "current": "pending",
   "name": "identity-service",
   "plan": {
     "name": "demo",
     "path": "<TEMPDIR>/plan.yaml"
   },
   "previous": "done",
-  "undo": {
-    "from": "done",
-    "to": "in-progress"
-  }
+  "undo": [
+    { "from": "done", "to": "in-progress" },
+    { "from": "in-progress", "to": "pending" }
+  ]
 }
 ```
 
 ### `emery plan status`
 
-Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). On a `pending` plan the dispatch projections keep their `next-action` but `resume` names `/emery:execute` — the operator path runs through Gate 1, not a phase breakout. The verb never writes: `plan next` stays the only `in-progress` writer.
+Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). On a fresh plan (nothing done, nothing in progress) the dispatch projections keep their `next-action` but `resume` names `/emery:execute` — the operator path starts with execute, not a phase breakout. The verb never writes: `plan advance` stays the only `in-progress` writer.
 
 ```json
 {
@@ -192,7 +190,6 @@ Read-only projection of the plan's execution state. `next-action` is the dispatc
   },
   "current-step": "refine",
   "last-completed": null,
-  "lifecycle": "approved",
   "next-action": "refine a",
   "plan": "demo",
   "project": "default",
@@ -214,7 +211,6 @@ A stopped plan carries the classification block:
   },
   "current-step": "build",
   "last-completed": "refine",
-  "lifecycle": "approved",
   "next-action": "stop build-failed",
   "plan": "demo",
   "project": "default",

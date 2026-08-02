@@ -4,8 +4,8 @@
 //! journal events on disk, invokes the operation, and asserts the
 //! projected `StatusBody`.
 //!
-//! The base happy-path dispatch arms (pending-stops,
-//! fresh-active-refine, lifecycle refine/build/merge, drained,
+//! The base happy-path dispatch arms (fresh-active-refine,
+//! per-entry refine/build/merge, drained,
 //! eligible-pending preview) are asserted end-to-end through the
 //! crate's orchestrate suites. What stays here is the dispatch and
 //! overlay classification that has no CLI status fixture: stuck
@@ -16,7 +16,7 @@
 mod support;
 
 use change::plan::handlers::{Status as StatusOp, StatusInput};
-use change::{Lifecycle, LoopStep, Plan, Status, StatusBody};
+use change::{LoopStep, Plan, Status, StatusBody};
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
@@ -30,11 +30,6 @@ impl Event {
     const fn event(timestamp: Timestamp, kind: EventKind) -> JournalEvent {
         JournalEvent { timestamp, kind }
     }
-}
-
-const fn approved(mut plan: Plan) -> Plan {
-    plan.lifecycle = Lifecycle::Approved;
-    plan
 }
 
 /// Stage `plan.yaml` at the project root.
@@ -100,8 +95,7 @@ mod next_action {
     #[tokio::test]
     async fn unmet_deps_stuck() {
         let project = Session::scripted("demo", Vec::new());
-        let plan =
-            approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
+        let plan = plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop stuck");
     }
@@ -110,17 +104,32 @@ mod next_action {
     async fn dropped_slice_stops() {
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", LifecycleStatus::Dropped);
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
     }
 
     #[tokio::test]
-    async fn drained_finalize_line() {
+    async fn fresh_plan() {
+        // A fresh plan (nothing advanced, nothing done) resumes with
+        // `/emery:execute`; the `resume:` line is the only
+        // start-execution hint — no approval footer.
+        let project = Session::scripted("demo", Vec::new());
+        let body = status(&project, &plan_with_changes(vec![change("a", Status::Pending)])).await;
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        let mut out = Vec::new();
+        project::handler::Render::render(&body, &mut out).expect("render");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(!text.contains("gate 1"), "no approval footer, got:\n{text}");
+        assert!(!text.contains("pending review"), "no approval footer, got:\n{text}");
+    }
+
+    #[tokio::test]
+    async fn drained_finalize() {
         // The drained projection and the literal stop-conditions
         // drained string, asserted through the text rendering.
         let project = Session::scripted("demo", Vec::new());
-        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
+        let plan = plan_with_changes(vec![change("a", Status::Done)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "drained");
         let mut out = Vec::new();
@@ -153,7 +162,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-conflict");
     }
@@ -174,7 +183,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop refine-failed");
     }
@@ -196,7 +205,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "build a", "newest marker is a success — dispatch resumes");
     }
@@ -208,7 +217,7 @@ mod failure_overlay {
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", LifecycleStatus::Built);
         append(project.root(), &[advanced(0, "test", "a"), build_failed(10, "a", "stale")]);
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "merge a");
     }
@@ -221,7 +230,7 @@ mod failure_overlay {
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", LifecycleStatus::Refined);
         append(project.root(), &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "build a");
     }
@@ -243,7 +252,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-incomplete");
     }
@@ -274,7 +283,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-incomplete");
     }
@@ -293,10 +302,7 @@ mod failure_overlay {
                 },
             )],
         );
-        let plan = approved(plan_with_changes(vec![
-            change("a", Status::Done),
-            change("b", Status::Pending),
-        ]));
+        let plan = plan_with_changes(vec![change("a", Status::Done), change("b", Status::Pending)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine b");
     }
@@ -321,7 +327,7 @@ mod postflight_debt {
                 },
             )],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
+        let plan = plan_with_changes(vec![change("a", Status::Done)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-postflight-failed");
         assert_eq!(body.slice.as_deref(), Some("a"));
@@ -358,7 +364,7 @@ mod postflight_debt {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
+        let plan = plan_with_changes(vec![change("a", Status::Done)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "drained");
         assert_eq!(body.resume.as_deref(), Some("/emery:finalize test"));
@@ -379,10 +385,7 @@ mod postflight_debt {
                 },
             )],
         );
-        let plan = approved(plan_with_changes(vec![
-            change("a", Status::Done),
-            change("b", Status::Pending),
-        ]));
+        let plan = plan_with_changes(vec![change("a", Status::Done), change("b", Status::Pending)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-postflight-failed");
         assert_eq!(body.slice.as_deref(), Some("a"));
@@ -409,10 +412,7 @@ mod postflight_debt {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![
-            change("a", Status::Done),
-            change("b", Status::Pending),
-        ]));
+        let plan = plan_with_changes(vec![change("a", Status::Done), change("b", Status::Pending)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine b");
     }
@@ -436,7 +436,7 @@ mod re_entry {
                 ),
             ],
         );
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, Some(LoopStep::Merge));
         assert_eq!(body.last_completed, Some(LoopStep::Merge));
@@ -446,7 +446,7 @@ mod re_entry {
     #[tokio::test]
     async fn drained_finalize() {
         let project = Session::scripted("demo", Vec::new());
-        let plan = approved(plan_with_changes(vec![change("a", Status::Done)]));
+        let plan = plan_with_changes(vec![change("a", Status::Done)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
         assert_eq!(body.last_completed, None);
@@ -454,11 +454,10 @@ mod re_entry {
     }
 
     #[tokio::test]
-    async fn pending_projects_like_approved() {
-        // Gate 1 lives on the first `plan execute` now, so a pending
-        // plan projects the same next action an approved one would —
-        // status never parks on the lifecycle. The resume point is the
-        // approval act, not a phase breakout that would skip Gate 1.
+    async fn fresh_plan_resumes_execute() {
+        // A fresh plan projects the real next action but resumes with
+        // `/emery:execute` rather than a phase breakout — the loop, not
+        // a single phase, is the natural entry point.
         let project = Session::scripted("demo", Vec::new());
         let plan = plan_with_changes(vec![change("a", Status::Pending)]);
         let body = status(&project, &plan).await;
@@ -471,15 +470,14 @@ mod re_entry {
         // `stuck` and `slice-dropped` need operator repair — no single
         // command makes progress, so `resume` stays empty.
         let project = Session::scripted("demo", Vec::new());
-        let plan =
-            approved(plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]));
+        let plan = plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop stuck");
         assert_eq!(body.resume, None);
 
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", LifecycleStatus::Dropped);
-        let plan = approved(plan_with_changes(vec![change("a", Status::InProgress)]));
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
         assert_eq!(body.current_step, None);
@@ -501,7 +499,7 @@ mod workspace_routing {
 
         let mut entry = change("a", Status::InProgress);
         entry.project = Some("storefront".to_string());
-        let plan = approved(plan_with_changes(vec![entry]));
+        let plan = plan_with_changes(vec![entry]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop build-failed");
         assert_eq!(body.project.as_deref(), Some("storefront"));
@@ -515,7 +513,7 @@ mod workspace_routing {
         write_slice(project.root(), "a", LifecycleStatus::Built);
         let mut entry = change("a", Status::InProgress);
         entry.project = Some("storefront".to_string());
-        let plan = approved(plan_with_changes(vec![entry]));
+        let plan = plan_with_changes(vec![entry]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "merge a");
     }

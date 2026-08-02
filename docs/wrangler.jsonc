@@ -1,0 +1,20 @@
+// Cloudflare Workers configuration for the published documentation site.
+//
+// The docs deploy (.github/workflows/docs.yaml) runs `wrangler deploy
+// --config docs/wrangler.jsonc` after `mdbook build docs`. Keeping the
+// worker name, assets directory, and — critically — the custom-domain
+// route in one committed file means a deploy always (re)attaches
+// emery.augentic.io; a bare `deploy --assets … --name …` uploads assets
+// but leaves the worker unreachable on the custom domain.
+{
+  "name": "emery-docs",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    // Relative to this config file: mdbook's rendered HTML output.
+    "directory": "./book/html",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "emery.augentic.io", "custom_domain": true }
+  ]
+}

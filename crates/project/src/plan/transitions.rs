@@ -1,16 +1,14 @@
-//! `Plan::transition` and `Plan::transition_lifecycle` — the only
-//! writers of `Entry::status` for `done` and `Plan::lifecycle` for
-//! `approved`.
+//! `Plan::transition` — the only writer of `Entry::status` for
+//! `done`.
 //!
 //! The legal edges are `Pending → InProgress` (written by
-//! `plan next`, never here) and `InProgress → Done` per entry (written
-//! by `slice merge`), plus `Pending → Approved` plan-level (the Gate 1
-//! stamp, fired by the first `emery plan execute`; workflow §The Plan /
-//! §Writer ownership).
+//! `plan advance`, never here) and `InProgress → Done` per entry
+//! (written by `slice merge`; workflow §The Plan / §Writer
+//! ownership).
 
 use error::Error;
 
-use super::model::{Entry, Lifecycle, Plan, Status};
+use super::model::{Entry, Plan, Status};
 
 impl Plan {
     /// Transition the named entry to `target` (in practice always
@@ -39,31 +37,15 @@ impl Plan {
         }
     }
 
-    /// Transition [`Plan::lifecycle`] to `target` — see module docs.
-    ///
-    /// # Errors
-    /// `plan-lifecycle-transition` when the edge is not legal.
-    pub fn transition_lifecycle(&mut self, target: Lifecycle) -> Result<(), Error> {
-        let current = self.lifecycle;
-        if matches!((current, target), (Lifecycle::Pending, Lifecycle::Approved)) {
-            self.lifecycle = target;
-            Ok(())
-        } else {
-            Err(Error::Diag {
-                code: "plan-lifecycle-transition",
-                detail: format!("cannot transition plan lifecycle from `{current}` to `{target}`"),
-            })
-        }
-    }
-
     /// Walk a single entry one step backwards along the legal v1
     /// lifecycle (`Done → InProgress`, `InProgress → Pending`) and
     /// return `(from, to)` so the caller can emit the matching
     /// `plan.transition.undone` journal event.
     ///
-    /// The undo verb refuses to skip rungs — `Done → Pending` MUST
-    /// run twice so the journal records each rung independently and
-    /// the operator never lands in a state the forward path cannot
+    /// The kernel never skips rungs — `Done → Pending` runs as two
+    /// calls (the undo verb's `--to` walk drives them one at a time)
+    /// so the journal records each rung independently and the
+    /// operator never lands in a state the forward path cannot
     /// reach. `Pending` has no predecessor (no prior status to
     /// reinstate); `plan add` / `plan amend` are the only writers
     /// of `Pending`.

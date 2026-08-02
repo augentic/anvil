@@ -2,7 +2,7 @@
 <div class="eyebrow">How-to</div>
 <h1 class="hero-title">Undo a plan entry</h1>
 
-Walk a plan entry's status backwards, one rung per call, with `emery plan undo`.
+Walk a plan entry's status backwards — one rung per call, or several with `--to` — with `emery plan undo`.
 
 <div class="meta-row">
 
@@ -18,7 +18,7 @@ Walk a plan entry's status backwards, one rung per call, with `emery plan undo`.
 <div class="when">
 <strong>When to use.</strong>
 
-Use this guide when a plan entry's status is ahead of reality — an entry was claimed (`in-progress`) but you want to release it, or an entry reached `done` and you need to reopen it for another pass.
+Use this guide when a plan entry's status is ahead of reality — an entry was advanced (`in-progress`) but you want to release it, or an entry reached `done` and you need to reopen it for another pass.
 </div>
 
 
@@ -26,14 +26,15 @@ Use this guide when a plan entry's status is ahead of reality — an entry was c
 
 <h2><span class="num">1</span> Rung-by-rung semantics</h2>
 
-Per-entry status moves forward through exactly one writer per rung (`plan add`/`amend` write `pending`, `plan next` writes `in-progress`, `slice merge` writes `done`). `emery plan undo` is the only backward walk, and it moves **one rung per call**:
+Per-entry status moves forward through exactly one writer per rung (`plan add`/`amend` write `pending`, `plan advance` writes `in-progress`, `slice merge` writes `done`). `emery plan undo` is the only backward walk. By default it moves **one rung per call**; `--to <status>` walks rung by rung until the entry reaches the named status:
 
 ```bash
-emery plan undo <entry>       # done → in-progress
-emery plan undo <entry>       # in-progress → pending (second call)
+emery plan undo <entry>                  # one rung: done → in-progress
+emery plan undo <entry>                  # one more: in-progress → pending
+emery plan undo <entry> --to pending     # or both rungs in one call
 ```
 
-The verb refuses to skip rungs — undoing a `done` entry back to `pending` is two invocations — and fires one `plan.transition.undone` journal event per rung. An entry already at `pending` has no backward rung and is refused.
+Either way the walk never skips a rung — it fires one `plan.transition.undone` journal event per rung. An entry already at `pending` (or already at the `--to` status) has no backward rung and is refused.
 </section>
 
 
@@ -46,7 +47,6 @@ The verb refuses to skip rungs — undoing a `done` entry back to `pending` is t
 
 Also out of scope:
 
-- **Plan lifecycle.** `approved` is never walked back — Gate 1 has no undo; the plan-level stamp is written once by the first `emery plan execute`.
 - **Slice lifecycle.** `metadata.yaml` keeps whatever state the slice reached; the slice orchestrations own those transitions.
 </section>
 
@@ -57,11 +57,11 @@ Also out of scope:
 
 | Situation | Moves |
 | --------- | ----- |
-| Claimed the wrong entry with `plan next` | `emery plan undo <entry>` (releases it to `pending`), then `emery plan next` claims the right one |
-| A merged slice needs another pass | `emery plan undo <entry>` twice (`done → in-progress → pending`), then re-drive the slice from refine |
-| Dropped a slice mid-entry and want a fresh attempt | `emery plan undo <entry>` (`in-progress → pending`), then `emery plan next` when ready |
+| Advanced the wrong entry with `plan advance` | `emery plan undo <entry>` (releases it to `pending`), then `emery plan advance` picks the right one |
+| A merged slice needs another pass | `emery plan undo <entry> --to pending` (`done → in-progress → pending`), then re-drive the slice from refine |
+| Dropped a slice mid-entry and want a fresh attempt | `emery plan undo <entry>` (`in-progress → pending`), then `emery plan advance` when ready |
 
-At most one entry may be `in-progress` at a time, so release the current claim before claiming another.
+At most one entry may be `in-progress` at a time, so release the current entry before advancing another.
 </section>
 
 
@@ -69,6 +69,6 @@ At most one entry may be `in-progress` at a time, so release the current claim b
 <strong>See also</strong>
 
 - [emery plan undo](../reference/cli/plan.md#emery-plan-undo) — reference entry with the JSON shape
-- [Lifecycle](../reference/lifecycle.md) — the three stacked state machines
+- [Lifecycle](../reference/lifecycle.md) — the stacked state machines
 - [Drop a slice](drop-a-slice.md) — abandoning slice work rather than rewinding plan state
 </div>

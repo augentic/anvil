@@ -5,7 +5,7 @@ mod support;
 use change::plan;
 use mock::invoke::run;
 use mock::session::Session;
-use project::plan::{Lifecycle, Plan};
+use project::plan::{Plan, Status};
 
 async fn author(
     session: &Session, force: bool,
@@ -47,7 +47,7 @@ async fn existing_refused_without_force() {
 }
 
 #[tokio::test]
-async fn force_replaces_pending() {
+async fn force_replaces_replaceable() {
     // Two author runs → two reconcile answers.
     let session = Session::scripted(
         "mock",
@@ -61,16 +61,15 @@ async fn force_replaces_pending() {
     assert!(!before.entries.is_empty(), "first author wrote slices");
 
     let replaced = author(&session, true).await.expect("force re-authors");
-    assert_eq!(replaced.lifecycle, Lifecycle::Pending);
     assert_eq!(replaced.slices, ["greeting"]);
 
     let after = Plan::load(&plan_path).expect("plan after force");
-    assert_eq!(after.lifecycle, Lifecycle::Pending);
     assert_eq!(after.entries.len(), 1);
+    assert!(after.entries.iter().all(|entry| entry.status == Status::Pending));
 }
 
 #[tokio::test]
-async fn force_replaces_approved() {
+async fn force_replaces_progressed() {
     // Two author runs → two reconcile answers.
     let session = Session::scripted(
         "mock",
@@ -79,16 +78,17 @@ async fn force_replaces_approved() {
     init(&session).await;
     author(&session, false).await.expect("first author");
 
+    // Walk an entry forward so the plan is no longer replaceable —
+    // `--force` still recreates it unconditionally.
     let plan_path = session.root().join("plan.yaml");
     let mut plan = Plan::load(&plan_path).expect("load");
-    plan.lifecycle = Lifecycle::Approved;
-    plan.save(&plan_path).expect("stamp approved");
+    plan.entries[0].status = Status::Done;
+    plan.save(&plan_path).expect("mark entry done");
 
-    let replaced = author(&session, true).await.expect("force re-authors approved");
-    assert_eq!(replaced.lifecycle, Lifecycle::Pending);
+    let replaced = author(&session, true).await.expect("force re-authors progressed plan");
     assert_eq!(replaced.slices, ["greeting"]);
 
     let after = Plan::load(&plan_path).expect("plan after force");
-    assert_eq!(after.lifecycle, Lifecycle::Pending);
     assert_eq!(after.entries.len(), 1);
+    assert!(after.entries.iter().all(|entry| entry.status == Status::Pending));
 }

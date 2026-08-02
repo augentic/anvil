@@ -73,7 +73,7 @@ impl TagCounts {
 ///
 /// `target_value` is the resolved target the slice's `metadata.yaml`
 /// records (e.g. `omnia@1.0.0`) — caller-resolved, mirroring how the
-/// skill takes it from the `plan next` response.
+/// skill takes it from the `plan advance` response.
 ///
 /// # Errors
 ///
@@ -195,14 +195,14 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 /// Refine one named plan entry outside the execute loop — the guest
 /// breakout of `/emery:refine`.
 ///
-/// Claim semantics mirror the standalone `slice build <name>` posture:
+/// Entry semantics mirror the standalone `slice build <name>` posture:
 /// the verb acts on the named slice directly against a `pending` or
 /// `in-progress` plan entry, never advancing per-entry status (`plan
-/// next` stays the only `in-progress` writer), and refuses a `done`
+/// advance` stays the only `in-progress` writer), and refuses a `done`
 /// entry. The target is caller-free: it resolves from the slice's own
 /// `metadata.yaml` when the slice already exists (a resumed
 /// `refining` breakout), else from the bound project's topology — the
-/// same resolution `plan next` hands the execute loop.
+/// same resolution `plan advance` hands the execute loop.
 ///
 /// # Errors
 ///

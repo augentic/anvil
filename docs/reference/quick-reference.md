@@ -7,7 +7,7 @@
 
 ![Default workflow poster](../assets/diagrams/quick-reference/workflow-poster.svg)
 
-<p class="pipeline-caption">init → plan → Gate 1 → execute → finalize; breakouts available when execute parks.</p>
+<p class="pipeline-caption">init → plan → review → execute → finalize; breakouts available when execute parks.</p>
 </div>
 
 
@@ -22,8 +22,8 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/emery:init`             | One-time project setup; run `emery init --workspace` for a registry-only workspace               |
-| `/emery:plan`             | Survey sources, propose `slices[]`, exit at Gate 1                                          |
-| `/emery:execute`          | Confirm Gate 1, then drive the per-slice refine → build → merge loop (`emery plan execute`) |
+| `/emery:plan`             | Survey sources, propose `slices[]`, exit for operator review                                 |
+| `/emery:execute`          | Drive the per-slice refine → build → merge loop (`emery plan execute` — running it is the approval) |
 | `/emery:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
 | `/emery:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/emery:build`            | Breakout: validate artifacts, implement tasks                                                  |
@@ -45,16 +45,10 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 
 ## Lifecycle states
 
-Plan lifecycle (two stored states):
-
-```text
-pending --(first plan execute stamps Gate 1)--> approved
-```
-
 Per-entry status:
 
 ```text
-pending --(plan next)--> in-progress --(slice merge)--> done
+pending --(plan advance)--> in-progress --(slice merge)--> done
 ```
 
 Slice lifecycle:
@@ -75,13 +69,13 @@ emery source resolve <name>                            # resolve a source adapte
 emery target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits at pending (--force replaces a pending plan)
+emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits for review (--force replaces a replaceable plan)
 emery plan add <entry> --sources <key>=<lead> --project <name>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
-emery plan remove <entry>                                  # Gate 1 deferral (replaceable plan only)
-emery plan execute                                     # Gate 1 on first run (stamps approved), then loops until the plan drains
+emery plan remove <entry>                                  # pre-execution deferral (replaceable plan only)
+emery plan execute                                     # the drained loop — running it is the approval
 emery plan status                                      # read-only next-action projection
-emery plan next                                        # active in-progress, or pick next pending
+emery plan advance                                     # active in-progress, or advance next pending
 emery plan archive
 
 # Slice management

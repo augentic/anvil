@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use diagnostics::is_blocking;
 use error::Error;
 
-use super::model::{Entry, Lifecycle, Plan, SourceBinding, Status};
+use super::model::{Entry, Plan, SourceBinding, Status};
 use crate::name::validate_name;
 use crate::plan::detect;
 
@@ -29,7 +29,6 @@ impl Plan {
         validate_name(name)?;
         Ok(Self {
             name: name.into(),
-            lifecycle: Lifecycle::Pending,
             sources,
             entries: vec![],
         })

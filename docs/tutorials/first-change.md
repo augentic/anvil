@@ -80,7 +80,6 @@ The plan surveys the documentation adapter — one [lead](../appendices/glossary
 ```yaml
 version: 1
 name: account-revamp
-lifecycle: pending
 sources:
   docs:
     adapter: documentation
@@ -125,9 +124,9 @@ Survey and reconciliation are model-driven, so your lead names and synopses will
 
 <div class="tutorial-step" data-step="03">
 <div class="step-label">03</div>
-<h3 class="step-title">Review at Gate 1</h3>
+<h3 class="step-title">Review the plan</h3>
 
-`/emery:plan` exits at `plan.lifecycle: pending`. Before executing, read the three plan artifacts at the project root:
+`/emery:plan` exits after authoring. Before executing, read the three plan artifacts at the project root:
 
 | File | Check |
 | ---- | ----- |
@@ -135,7 +134,7 @@ Survey and reconciliation are model-driven, so your lead names and synopses will
 | `plan.yaml` | Three slices, sensible names, each bound to one `docs` lead |
 | `discovery.md` | The lead inventory matches your three notes |
 
-This pause is [Gate 1](../appendices/glossary.md#g) — the operator review step. When the plan looks right, approving it *is* running `emery plan execute` (its first run stamps `approved`). If the grouping is wrong — say survey merged two notes into one lead — fix the notes and re-run `/emery:plan` (it confirms before replacing), or curate entries with the CLI; see [Amend a plan at Gate 1](../how-to/amend-plan-at-gate-1.md).
+This pause is the operator review step. When the plan looks right, approving it *is* running `emery plan execute`. If the grouping is wrong — say survey merged two notes into one lead — fix the notes and re-run `/emery:plan` (it confirms before replacing), or curate entries with the CLI; see [Amend a plan before executing](../how-to/amend-a-plan.md).
 </div>
 
 
@@ -147,7 +146,7 @@ This pause is [Gate 1](../appendices/glossary.md#g) — the operator review step
 emery plan execute
 ```
 
-The first run stamps `approved`, then drives each slice through refine → build → merge in plan order. Only one entry is `in-progress` at a time; each slice gets its own directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
+Execute drives each slice through refine → build → merge in plan order. Only one entry is `in-progress` at a time; each slice gets its own directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
 
 Check progress at any time from a second terminal:
 
@@ -186,13 +185,13 @@ Finalize confirms publication is complete and archives the [drained](../appendic
 
 
 > [!TIP]
-> **Done.** Three slices flowed through the same loop as the quick start's one: documentation bound at plan time, three leads reconciled into three slices, one Gate 1 review, one execute run to drain them all.
+> **Done.** Three slices flowed through the same loop as the quick start's one: documentation bound at plan time, three leads reconciled into three slices, one plan review, one execute run to drain them all.
 
 ## What you learned
 
 - Documentation sources bind at plan time with `source <key>=<adapter>:<path>` — here, `docs=documentation:./design-notes/account`.
 - One lead per slice-sized unit: survey turns each note into a lead, and reconciliation turns each lead into a plan entry.
-- Multi-slice plans share one `change.md` and one Gate 1 review; per-entry status (`pending → in-progress → done`) tracks progress through the execute loop.
+- Multi-slice plans share one `change.md` and one plan review; per-entry status (`pending → in-progress → done`) tracks progress through the execute loop.
 
 <div class="see-also">
 <strong>See also</strong>

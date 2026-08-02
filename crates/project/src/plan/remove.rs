@@ -1,17 +1,17 @@
 //! [`Plan::remove`]: drop one pending plan entry while the plan is still
-//! replaceable (Gate 1 curation).
+//! replaceable (plan-review curation).
 
 use error::Error;
 
-use super::model::{Lifecycle, Plan, Status};
+use super::model::{Plan, Status};
 
 impl Plan {
     /// Whether the plan accepts wholesale slice replacement (the
-    /// reconciliation kernel) or per-entry removal (`plan remove`).
+    /// reconciliation kernel) or per-entry removal (`plan remove`) —
+    /// true while no entry has left `pending`.
     #[must_use]
     pub(crate) fn is_replaceable(&self) -> bool {
-        self.lifecycle == Lifecycle::Pending
-            && self.entries.iter().all(|e| e.status == Status::Pending)
+        self.entries.iter().all(|e| e.status == Status::Pending)
     }
 
     /// Remove the entry named `name`. Allowed only while
@@ -26,7 +26,7 @@ impl Plan {
             return Err(Error::validation_failed(
                 "plan-remove-plan-not-replaceable",
                 "plan remove requires a replaceable plan",
-                "lifecycle is approved or any entry is in-progress or done",
+                "an entry is in-progress or done",
             ));
         }
 

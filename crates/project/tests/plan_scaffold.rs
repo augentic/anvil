@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use error::Error;
-use project::plan::{Lifecycle, Plan, scaffold};
+use project::plan::{Plan, scaffold};
 
 fn tmp_plan() -> (tempfile::TempDir, std::path::PathBuf) {
     let tmp = tempfile::TempDir::new().expect("tempdir");
@@ -35,35 +35,15 @@ fn existing_refused_without_force() {
 }
 
 #[test]
-fn force_replaces_pending() {
+fn force_replaces() {
     let (_tmp, path) = tmp_plan();
     scaffold(&path, "demo", BTreeMap::new(), false).expect("fresh").save(&path).expect("save");
 
-    let replaced =
-        scaffold(&path, "renamed", BTreeMap::new(), true).expect("force replaces pending");
+    let replaced = scaffold(&path, "renamed", BTreeMap::new(), true).expect("force replaces");
     assert_eq!(replaced.name.as_str(), "renamed");
     replaced.save(&path).expect("save");
 
     let loaded = Plan::load(&path).expect("load");
     assert_eq!(loaded.name.as_str(), "renamed");
-    assert_eq!(loaded.lifecycle, Lifecycle::Pending);
-}
-
-#[test]
-fn force_replaces_approved() {
-    let (_tmp, path) = tmp_plan();
-    scaffold(&path, "demo", BTreeMap::new(), false).expect("fresh").save(&path).expect("save");
-
-    let mut plan = Plan::load(&path).expect("load");
-    plan.lifecycle = Lifecycle::Approved;
-    plan.save(&path).expect("save approved");
-
-    let replaced =
-        scaffold(&path, "renamed", BTreeMap::new(), true).expect("force replaces approved");
-    assert_eq!(replaced.name.as_str(), "renamed");
-    replaced.save(&path).expect("save");
-
-    let loaded = Plan::load(&path).expect("load");
-    assert_eq!(loaded.name.as_str(), "renamed");
-    assert_eq!(loaded.lifecycle, Lifecycle::Pending);
+    assert!(loaded.entries.is_empty());
 }

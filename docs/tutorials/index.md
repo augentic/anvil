@@ -32,6 +32,18 @@ Run a one-slice Omnia change from intent through finalize.
 </a>
 
 
+<a class="card" href="migrate-a-legacy-service.md">
+<div class="card-head">
+<h3 class="card-title">Migrate a legacy service</h3>
+<span class="card-time">~45 min</span>
+</div>
+<div class="card-body">
+
+Bind an existing TypeScript codebase as a source and drive it to an Omnia service.
+</div>
+</a>
+
+
 <a class="card" href="first-change.md">
 <div class="card-head">
 <h3 class="card-title">Your first multi-slice change</h3>

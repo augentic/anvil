@@ -14,6 +14,14 @@ Append multiple `source` positionals after the change name:
 
 Each binding creates a slot in `plan.yaml.sources` and contributes [leads](../appendices/glossary.md#l) to `discovery.md`.
 
+## Anatomy of a binding
+
+Every binding is `<key>=<adapter>:<binding>`, three parts:
+
+- **`<key>`** — a label you choose (kebab-case, e.g. `legacy`, `docs`). It becomes the slot name in `plan.yaml.sources` that plan entries and evidence files (`evidence/<key>.yaml`) reference. Pick something short and memorable; it never has to match a path or adapter name.
+- **`<adapter>`** — the source adapter that reads the binding (`typescript`, `documentation`, `intent`, `screenshots`).
+- **`<binding>`** — what the adapter reads: a path, or `value:<literal>` for inline text (used by `intent`). Only the first `:` splits adapter from binding, so URLs like `git@github.com:org/repo.git` pass through unchanged.
+
 ## Binding forms
 
 | Form | Example | Use when |
@@ -34,7 +42,7 @@ Single-source intent slices may omit `project` when only one project exists; the
 
 ## Uncertain reconciliation
 
-When cross-source grouping is uncertain, `/emery:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review at [Gate 1](../appendices/glossary.md#g); amend before running `emery plan execute`.
+When cross-source grouping is uncertain, `/emery:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review it and amend before running `emery plan execute`.
 
 When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `emery plan amend <entry> --divergence likely`.
 

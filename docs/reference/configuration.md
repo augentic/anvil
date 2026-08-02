@@ -64,14 +64,13 @@ A workspace is a registry-only platform repo: it holds `registry.yaml`, `change.
 
 **Location:** `plan.yaml` at the project root (single-project) or `<workspace>/plan.yaml` (workspace mode)
 **Created by:** `/emery:plan` (via `emery plan author`'s scaffold leg)
-**Modified by:** `emery plan author`, `emery plan add`, `emery plan amend`, `emery plan remove`, `emery plan undo`, `emery plan next`, `emery plan archive`
+**Modified by:** `emery plan author`, `emery plan add`, `emery plan amend`, `emery plan remove`, `emery plan undo`, `emery plan advance`, `emery plan archive`
 
-The change's table of contents — an ordered, dependency-aware list of slices, plus the plan lifecycle.
+The change's table of contents — an ordered, dependency-aware list of slices.
 
 ```yaml
 version: 1
 name: identity-revamp
-lifecycle: approved
 sources:
   identity-design-notes:
     adapter: documentation
@@ -103,7 +102,6 @@ slices:
 | ------------------------ | -------- | ----------- |
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `lifecycle`              | Yes      | `pending` or `approved`. Stamped by the first `emery plan execute`; `/emery:plan` exits at `pending`. |
 | `sources`                | No       | Map of source → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
@@ -152,7 +150,7 @@ projects:
 **Created by:** `/emery:plan` (scaffolded; CLI helper)
 **Edited by:** Operator (directly)
 
-Operator-authored brief for a change. Scaffolded at plan time and editable at Gate 1. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain lead reconciliation), an optional `## Cross-cutting leads` block (leads multi-homed across several slices, each listed with its member slices), and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing lead pairs).
+Operator-authored brief for a change. Scaffolded at plan time and editable during plan review. May carry an optional `## Tentative merges` block (call-outs from propose's uncertain lead reconciliation), an optional `## Cross-cutting leads` block (leads multi-homed across several slices, each listed with its member slices), and an optional `## Likely divergences` block (side-by-side summaries for materially-disagreeing lead pairs).
 
 ```markdown
 # Identity revamp

@@ -13,14 +13,14 @@
   <text x="192" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">/emery:plan</text>
   <path d="M310 66 L340 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <polygon points="360,66 378,52 378,80" fill="#fbeede" stroke="#b85c00"/>
-  <text x="386" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#1c1c1c">Gate 1</text>
+  <text x="386" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#1c1c1c">review</text>
   <path d="M460 66 L490 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="490" y="44" width="130" height="44" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="502" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">plan execute</text>
   <path d="M620 66 L650 66" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="650" y="44" width="140" height="44" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="662" y="72" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="600" fill="#1c1c1c">/emery:finalize</text>
-  <text x="20" y="120" font-family="ui-monospace, monospace" font-size="11" fill="#555">Gate 1: the first emery plan execute stamps approved</text>
+  <text x="20" y="120" font-family="ui-monospace, monospace" font-size="11" fill="#555">Review: running emery plan execute is the approval</text>
   <text x="20" y="140" font-family="ui-monospace, monospace" font-size="11" fill="#555">Inside execute: /emery:refine &#8594; /emery:build &#8594; /emery:merge per slice</text>
   <text x="20" y="160" font-family="ui-monospace, monospace" font-size="11" fill="#555">Multi-source: /emery:plan &lt;name&gt; source legacy=typescript:./repo source docs=documentation:./design-notes</text>
   <text x="20" y="188" font-family="ui-monospace, monospace" font-size="11" fill="#888">Breakouts: /emery:refine &#8594; /emery:build &#8594; /emery:merge &#8594; /emery:drop</text>

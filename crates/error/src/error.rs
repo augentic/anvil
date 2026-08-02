@@ -110,6 +110,12 @@ impl Error {
             } => Some(
                 "author a plan first: run /emery:plan, or `emery plan author <name> --intent \"...\"`",
             ),
+            Self::CliTooOld { .. } => Some(
+                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`), then rerun the command",
+            ),
+            Self::AdapterCliTooOld { .. } => Some(
+                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`); if the adapter itself is stale instead, `emery adapter update <name>` pulls its newest published version",
+            ),
             Self::Diag { code, .. } => match *code {
                 "plan-has-outstanding-work" => Some(
                     "complete or drop the listed entries, or rerun with --force to archive anyway",
@@ -127,7 +133,7 @@ impl Error {
                     "run `emery slice list` for each slice's current status, then drive the missing phase: `emery slice refine|build|merge <slice>`",
                 ),
                 "plan-transition" => Some(
-                    "per-entry status has dedicated writers: `emery plan next` claims `in-progress`, `emery slice merge` stamps `done`, and `emery plan undo <entry>` walks backwards one rung",
+                    "per-entry status has dedicated writers: `emery plan advance` writes `in-progress`, `emery slice merge` writes `done`, and `emery plan undo <entry>` walks backwards",
                 ),
                 "plan-already-exists" => Some(
                     "rerun with --force to replace the plan, or continue the existing one (`emery plan status`)",

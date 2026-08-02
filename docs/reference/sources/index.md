@@ -23,7 +23,7 @@ You bind sources per change at plan time (`/emery:plan <name> source docs=docume
 | `screenshots` | A directory of screen images | `documentation` | Vision-assisted layout inference for UI targets (Vectis). |
 | `captures` | A runtime capture tree (operator-produced) | `behaviour` | Behaviour observed at runtime, anchored by replay digests. |
 
-Authority is set on the **Evidence document** during `extract`; the table above lists the default each adapter's extract prompt emits. Operators can override authority per slice at Gate 1 with `emery plan amend <entry> --authority-override`.
+Authority is set on the **Evidence document** during `extract`; the table above lists the default each adapter's extract prompt emits. Operators can override authority per slice during plan review with `emery plan amend <entry> --authority-override`.
 
 ## Identity and metadata
 

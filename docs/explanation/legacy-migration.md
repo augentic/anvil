@@ -1,6 +1,6 @@
 # Legacy migration at scale
 
-How existing codebases enter Emery through source adapters rather than hand-rewritten intent. This page explains the migration path conceptually; for the hands-on rhythm it rides on, see [Your first multi-slice change](../tutorials/first-change.md).
+How existing codebases enter Emery through source adapters rather than hand-rewritten intent. This page explains the migration path conceptually; for the hands-on counterpart, see [Migrate a legacy service](../tutorials/migrate-a-legacy-service.md).
 
 ## How legacy code enters Emery
 
@@ -12,7 +12,7 @@ At plan time, bind a code source alongside or instead of documentation:
 
 The source adapter's `survey` operation scans the bound tree and emits slice-sized **[leads](../appendices/glossary.md#l)** into `discovery.md`. At slice time, `extract` produces **Evidence** YAML that core synthesis reconciles into `spec.md`. The `typescript` adapter covers TypeScript today; language siblings follow the same pattern.
 
-Multi-slice migrations look like any other multi-slice plan: one operator review step ([Gate 1](../appendices/glossary.md#g)), then `emery plan execute` drives each slice through refine → build → merge. Scale changes the plan row count, not the machinery.
+Multi-slice migrations look like any other multi-slice plan: one operator review step, then `emery plan execute` drives each slice through refine → build → merge. Scale changes the plan row count, not the machinery.
 
 ## Why authority matters in migrations
 
@@ -24,10 +24,11 @@ Runtime capture trees are consumed by the [`captures` source adapter](https://gi
 
 ## Recommended reading order
 
-1. [Your first multi-slice change](../tutorials/first-change.md) — the multi-slice execute rhythm, hands-on
-2. [Bind multiple sources](../how-to/bind-multiple-sources.md) — combine legacy code with design notes at plan time
-3. [Anatomy of an adapter](adapter-anatomy.md) — survey vs extract operations
-4. [Omnia target](../reference/targets/omnia.md) — build and merge briefs for the generated code
+1. [Migrate a legacy service](../tutorials/migrate-a-legacy-service.md) — bind a TypeScript codebase and drive it to Omnia, hands-on
+2. [Your first multi-slice change](../tutorials/first-change.md) — the multi-slice execute rhythm
+3. [Bind multiple sources](../how-to/bind-multiple-sources.md) — combine legacy code with design notes at plan time
+4. [Anatomy of an adapter](adapter-anatomy.md) — survey vs extract operations
+5. [Omnia target](../reference/targets/omnia.md) — build and merge briefs for the generated code
 
 ## See also
 

@@ -6,7 +6,7 @@ use std::ops::ControlFlow;
 use error::Error;
 
 use super::super::execution::{JournalOverlay, Resolution, resolve_entry};
-use super::super::model::{Entry, Lifecycle, Plan, Status};
+use super::super::model::{Entry, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
 use crate::journal::{self, EventKind};
@@ -16,12 +16,13 @@ use crate::journal::{self, EventKind};
 /// Selection: the active `in-progress` entry, else sticky
 /// `merge-postflight-failed` when the newest plan-scoped postflight
 /// debt event is unacked, else the next eligible `pending` entry
-/// (what `plan next` would claim), else `drained` / `stop stuck`. The
-/// per-entry decision — slot-aware slice lifecycle plus (for the
-/// active entry) the folded claim-window journal facts — is the shared
-/// `resolve_entry` execution kernel; pre-claim candidates skip the
-/// journal overlay (nothing has run under the current claim; stale
-/// same-name events from earlier plans must not classify).
+/// (what `plan advance` would advance), else `drained` / `stop
+/// stuck`. The per-entry decision — slot-aware slice lifecycle plus
+/// (for the active entry) the folded active-window journal facts — is
+/// the shared `resolve_entry` execution kernel; not-yet-advanced
+/// candidates skip the journal overlay (nothing has run under the
+/// current activation; stale same-name events from earlier plans must
+/// not classify).
 ///
 /// `layout` resolves the plan root and the work root: an entry bound
 /// to a materialised workspace slot reads that slot's slice metadata
@@ -114,7 +115,6 @@ fn assemble(
     };
     StatusBody {
         plan: plan.name.to_string(),
-        lifecycle: plan.lifecycle,
         counts,
         active: active.map(|e| e.name.to_string()),
         next_action,
@@ -155,11 +155,10 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 /// `None` when no single command makes progress.
 fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
     let slice = resolution.slice.as_deref();
-    // Gate 1 first: a pending plan's dispatch projections resume
-    // through the approval act (`/emery:execute`), not a phase
-    // breakout — the projected `next-action` still names the phase
-    // the loop will run after the stamp.
-    if plan.lifecycle == Lifecycle::Pending
+    // A fresh plan (no entry has left `pending`) resumes through the
+    // execute loop, not a phase breakout — the projected
+    // `next-action` still names the phase the loop will run first.
+    if plan.entries.iter().all(|e| e.status == Status::Pending)
         && matches!(
             resolution.action,
             NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge

@@ -24,8 +24,8 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Control</div>
-    <div class="proof-value">Gate 1</div>
-    <div class="proof-copy">The plan waits at <code>pending</code> until the operator reviews it — running <code>emery plan execute</code> is the approval.</div>
+    <div class="proof-value">Review</div>
+    <div class="proof-copy">The operator reviews the plan; running <code>emery plan execute</code> is the approval.</div>
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Trace</div>
@@ -75,6 +75,15 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
       <p>Install prerequisites, initialize a project, and drive your first docs-backed change.</p>
     </div>
   </a>
+  <a class="card" href="tutorials/migrate-a-legacy-service.md">
+    <div class="card-head">
+      <h3 class="card-title">Migrate an existing codebase</h3>
+      <span class="card-time">Tutorial</span>
+    </div>
+    <div class="card-body">
+      <p>Bind a legacy TypeScript service as a source and drive it to a generated Omnia service.</p>
+    </div>
+  </a>
   <a class="card" href="reference/quick-reference.md">
     <div class="card-head">
       <h3 class="card-title">Look up a command</h3>
@@ -110,10 +119,10 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
 /emery:init omnia
 
 /emery:plan fix-typo source intent=intent:value:"fix typo in user.rs"
-  --> writes change.md + plan.yaml + discovery.md, exits at pending
+  --> writes change.md + plan.yaml + discovery.md, exits for review
 
 emery plan execute
-  --> operator review step (Gate 1): first run stamps approved,
+  --> running it is the operator's approval,
       then /emery:refine + /emery:build + /emery:merge per slice until drained
 
 /emery:finalize fix-typo

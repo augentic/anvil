@@ -17,7 +17,7 @@ emery slice drop <slice-name> --reason "<rationale>" --quiet
 Drop is a short deterministic verb — it runs with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).
 
 - When `[slice-name]` is omitted, run `emery slice list --quiet` and let the operator pick with the AskQuestion tool (confirm even when only one exists).
-- When invoked interactively (no `reason` argument), elicit the rationale and confirm the drop with the AskQuestion tool before running; warn first when the slice is `built`, since `/emery:merge` may be the intended action. When `reason` is supplied, skip the confirmations and run directly.
+- Always confirm the drop with the AskQuestion tool before running — a drop archives the slice without merging and is not undoable from the skill. When no `reason` argument was supplied, elicit the rationale as part of that confirmation; warn first when the slice is `built`, since `/emery:merge` may be the intended action.
 
 ## Relay
 

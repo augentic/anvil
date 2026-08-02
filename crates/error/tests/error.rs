@@ -21,7 +21,8 @@ fn cli_too_old_display() {
     assert_eq!(err.variant_str(), "emery-version-too-old");
     let msg = err.to_string();
     assert!(msg.contains("0.9.0") && msg.contains("1.0.0"), "both versions in display: {msg}");
-    assert!(err.hint().is_none(), "CliTooOld has no recovery hint");
+    let hint = err.hint().expect("exit-3 errors carry a recovery hint");
+    assert!(hint.contains("install.sh"), "the hint names the install channel: {hint}");
 }
 
 #[test]
@@ -39,7 +40,11 @@ fn adapter_too_old_display() {
         msg.contains("1.0.0") && msg.contains("2.0.0") && msg.contains("omnia"),
         "versions and adapter in display: {msg}"
     );
-    assert!(err.hint().is_none(), "AdapterCliTooOld has no recovery hint");
+    let hint = err.hint().expect("exit-3 errors carry a recovery hint");
+    assert!(
+        hint.contains("install.sh") && hint.contains("emery adapter update"),
+        "the hint names the install channel and the adapter-update fallback: {hint}"
+    );
 }
 
 #[test]

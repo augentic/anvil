@@ -94,7 +94,6 @@ Because the registry declares multiple projects, reconciliation must bind every 
 ```yaml
 version: 1
 name: platform-auth
-lifecycle: pending
 sources:
   docs:
     adapter: documentation
@@ -115,7 +114,7 @@ slices:
     status: pending
 ```
 
-At [Gate 1](../appendices/glossary.md#g), check the `project:` routing along with the usual scope review. If a slice is routed to the wrong project, fix it with `emery plan amend <entry> --project <name>`; a missing `project` on a multi-project registry is caught by `emery plan validate` (`project-missing-multi-repo`).
+During plan review, check the `project:` routing along with the usual scope review. If a slice is routed to the wrong project, fix it with `emery plan amend <entry> --project <name>`; a missing `project` on a multi-project registry is caught by `emery plan validate` (`project-missing-multi-repo`).
 </div>
 
 
@@ -129,13 +128,13 @@ Workspace plans refuse the automated loop. If you run `emery plan execute` here,
 error: plan-execute-workspace-unsupported   (exit 2)
 ```
 
-That refusal is expected — drive the plan one entry at a time instead. Claim the next eligible entry:
+That refusal is expected — drive the plan one entry at a time instead. Advance the next eligible entry:
 
 ```bash
-emery plan next
+emery plan advance
 ```
 
-then run the [breakouts](../appendices/glossary.md#b) for that slice — `/emery:refine`, `/emery:build`, `/emery:merge` — and repeat `emery plan next` until `emery plan status` projects `drained`. When a slice is project-bound, refine, build, and merge run inside that slot's checkout: `auth-token-issue`'s artifacts appear under `workspace/identity-svc/.emery/slices/`, and its code lands in the `identity-svc` tree. Commits and branch management remain operator-owned.
+then run the [breakouts](../appendices/glossary.md#b) for that slice — `/emery:refine`, `/emery:build`, `/emery:merge` — and repeat `emery plan advance` until `emery plan status` projects `drained`. When a slice is project-bound, refine, build, and merge run inside that slot's checkout: `auth-token-issue`'s artifacts appear under `workspace/identity-svc/.emery/slices/`, and its code lands in the `identity-svc` tree. Commits and branch management remain operator-owned.
 </div>
 
 
@@ -163,7 +162,7 @@ Finalize confirms publication is complete, then runs `emery plan archive`. It pe
 
 - A registry-only workspace holds `registry.yaml` and the plan artifacts; it has no target of its own.
 - Per-slice `project:` routes phase work into a materialised workspace slot — operators materialise slots and publish repository changes outside Emery.
-- Workspace plans are hand-driven: `emery plan next` plus the per-slice breakouts, because `emery plan execute` refuses workspace routing.
+- Workspace plans are hand-driven: `emery plan advance` plus the per-slice breakouts, because `emery plan execute` refuses workspace routing.
 - Finalize archives only after publication is complete.
 
 <div class="see-also">

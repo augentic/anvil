@@ -1,8 +1,7 @@
-//! `plan undo` — the one-rung reverse walk on per-entry status.
-//! Forward moves have dedicated writers: `plan add` / `plan amend`
-//! write `pending`, `plan next` writes `in-progress`, `slice merge`
-//! writes `done`, and plan-level `approved` is stamped by the first
-//! `emery plan execute`.
+//! `plan undo` — the reverse walk on per-entry status. Forward moves
+//! have dedicated writers: `plan add` / `plan amend` write `pending`,
+//! `plan advance` writes `in-progress`, and `slice merge` writes
+//! `done`.
 
 use std::io::Write;
 
@@ -22,15 +21,21 @@ use super::{Ref, plan_ref};
 pub struct UndoInput {
     /// Kebab-case plan-entry name.
     pub name: String,
+    /// Optional target status: walk rung by rung until the entry
+    /// reaches it. Absent means one rung.
+    #[serde(default)]
+    pub to: Option<EntryStatus>,
 }
 
-/// `emery plan undo <entry>`.
+/// `emery plan undo <entry> [--to <status>]`.
 ///
-/// The one-rung reverse walk on per-entry status (`done →
-/// in-progress`, `in-progress → pending`). Forward moves are owned by
-/// their dedicated writers — `slice merge` stamps `done` (re-run
-/// `emery slice merge` to heal a missing stamp), and plan-level
-/// `approved` is stamped by the first `emery plan execute`.
+/// The reverse walk on per-entry status (`done → in-progress`,
+/// `in-progress → pending`). Default is one rung; `--to` walks rung
+/// by rung until the entry reaches the target, emitting one
+/// `plan.transition.undone` journal event per rung so the journal
+/// cadence is identical either way. Forward moves are owned by their
+/// dedicated writers — `slice merge` stamps `done` (re-run `emery
+/// slice merge` to heal a missing stamp).
 #[derive(Clone, Copy, Debug)]
 pub struct Undo;
 
@@ -43,33 +48,56 @@ impl<P: Anchor> Operation<P> for Undo {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let UndoInput { name } = input;
+        let UndoInput { name, to } = input;
         let plan_path = cx.layout().plan_path();
-        // workflow §Observability: every status move emits exactly one
-        // `plan.transition.undone` journal event.
-        let (body, event) = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
-            let (from, to) = plan.transition_undo(&name)?;
+        // workflow §Observability: every rung emits exactly one
+        // `plan.transition.undone` journal event, whether walked one
+        // call at a time or through `--to`.
+        let (body, events) = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
             let entry = plan
                 .entries
                 .iter()
                 .find(|e| e.name == name)
                 .ok_or_else(|| plan.entry_not_found(&name))?;
+            if let Some(target) = to
+                && entry.status == target
+            {
+                return Err(error::Error::Diag {
+                    code: "plan-transition-undo",
+                    detail: format!("entry `{name}` is already `{target}`; nothing to undo"),
+                });
+            }
+            let mut steps: Vec<UndoPair> = Vec::new();
+            let mut events: Vec<EventKind> = Vec::new();
+            loop {
+                let (from, to_step) = plan.transition_undo(&name)?;
+                steps.push(UndoPair { from, to: to_step });
+                events.push(EventKind::PlanTransitionUndone {
+                    plan_name: plan.name.clone(),
+                    slice_name: name.clone().into(),
+                    from,
+                    to: to_step,
+                });
+                match to {
+                    None => break,
+                    Some(target) if to_step == target => break,
+                    Some(_) => {}
+                }
+            }
+            let first = steps.first().copied().expect("the walk visited at least one rung");
+            let last = steps.last().copied().expect("the walk visited at least one rung");
             let body = UndoBody {
                 plan: plan_ref(plan, &plan_path),
-                name: entry.name.to_string(),
-                previous: from.to_string(),
-                current: to.to_string(),
-                undo: UndoPair { from, to },
+                name: name.clone(),
+                previous: first.from.to_string(),
+                current: last.to.to_string(),
+                undo: steps,
             };
-            let event = EventKind::PlanTransitionUndone {
-                plan_name: plan.name.clone(),
-                slice_name: entry.name.clone(),
-                from,
-                to,
-            };
-            Ok(Mutation::changed((body, event)))
+            Ok(Mutation::changed((body, events)))
         })?;
-        journal::append_one(cx.layout(), &Event::new(cx.now(), event))?;
+        for event in events {
+            journal::append_one(cx.layout(), &Event::new(cx.now(), event))?;
+        }
         Ok(body)
     }
 }
@@ -82,18 +110,18 @@ pub struct UndoBody {
     pub plan: Ref,
     /// Entry name the undo acted on.
     pub name: String,
-    /// Status before the reverse step.
+    /// Status before the walk's first rung.
     pub previous: String,
-    /// Status after the reverse step.
+    /// Status after the walk's last rung.
     pub current: String,
-    /// The `(from, to)` pair the undo walk visited, surfaced on the
-    /// JSON envelope under `undo: { from, to }` so wire consumers can
-    /// branch on the reverse step without re-parsing `previous` /
-    /// `current`.
-    pub undo: UndoPair,
+    /// Every `(from, to)` rung the walk visited in order, surfaced on
+    /// the JSON envelope under `undo: [{ from, to }, …]` so wire
+    /// consumers can replay the reverse steps without re-parsing
+    /// `previous` / `current`.
+    pub undo: Vec<UndoPair>,
 }
 
-/// The `(from, to)` pair an undo walk visited.
+/// One `(from, to)` rung an undo walk visited.
 #[derive(Debug, Serialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub struct UndoPair {
@@ -105,7 +133,11 @@ pub struct UndoPair {
 
 impl Render for UndoBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        writeln!(w, "undid `{}`: {} \u{2192} {}", self.name, self.previous, self.current)?;
+        write!(w, "undid `{}`: {}", self.name, self.previous)?;
+        for step in &self.undo {
+            write!(w, " \u{2192} {}", step.to)?;
+        }
+        writeln!(w)?;
         writeln!(w, "  plan: {}", self.plan.path.display())
     }
 }

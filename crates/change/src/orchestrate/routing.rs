@@ -4,7 +4,7 @@
 //! Project-scoped work in a workspace needs a slot sync plus a chdir
 //! into `workspace/<project>/`; the guest orchestrations have no
 //! counterpart, so they refuse rather than write to the wrong tree
-//! (workspace plans run hand-driven: `emery plan next`, then the
+//! (workspace plans run hand-driven: `emery plan advance`, then the
 //! per-slice breakouts). Classification is centralized here — before any
 //! adapter lookup — while each operation maps the refusal to its own
 //! error code so operators see the verb they actually ran. The

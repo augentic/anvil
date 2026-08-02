@@ -46,23 +46,23 @@ The same one-slice change as the [Quick start](quick-start.md), driven phase by 
 /emery:plan health-check source intent=intent:value:"add a health-check endpoint"
 ```
 
-The skill exits at `plan.lifecycle: pending` with one slice row. Note the slice name in `plan.yaml` — the steps below call it `<slice>`; substitute the name your plan shows.
+The skill exits after authoring with one slice row. Note the slice name in `plan.yaml` — the steps below call it `<slice>`; substitute the name your plan shows.
 </div>
 
 
 <div class="tutorial-step" data-step="02">
 <div class="step-label">02</div>
-<h3 class="step-title">Claim the entry with plan next</h3>
+<h3 class="step-title">Advance the entry with plan advance</h3>
 
-Instead of running execute, claim the entry directly:
+Instead of running execute, advance the entry directly:
 
 ```bash
-emery plan next
+emery plan advance
 ```
 
-`plan next` is the only writer of per-entry `in-progress`: it returns the active entry if one exists, otherwise it advances the next eligible `pending` entry. Checkpoint — `plan.yaml` now shows your entry at `status: in-progress`.
+`plan advance` is the only writer of per-entry `in-progress`: it returns the active entry if one exists, otherwise it advances the next eligible `pending` entry. Checkpoint — `plan.yaml` now shows your entry at `status: in-progress`.
 
-One difference from the execute path is worth knowing: [Gate 1](../appendices/glossary.md#g)'s `approved` stamp is written only by the first `emery plan execute`, so a fully hand-driven plan keeps `lifecycle: pending`. The review obligation is the same — read `change.md` and `plan.yaml` before this step.
+The review obligation is the same as on the execute path — read `change.md` and `plan.yaml` before this step.
 </div>
 
 
@@ -107,7 +107,7 @@ emery plan status
 ```
 
 ```text
-plan: health-check (pending)
+plan: health-check
 entries: 1 done / 0 in-progress / 0 pending
 drained — run /emery:finalize health-check
 ```
@@ -132,12 +132,12 @@ Publish the repository changes through your normal Git workflow, then:
 
 
 > [!TIP]
-> **Done.** You drove `plan next` → refine → build → merge yourself. On a multi-slice plan the loop is the same — repeat `plan next` and the three breakouts per entry — and you can hand the plan back to `emery plan execute` at any point: it reads on-disk lifecycle state and skips phases already complete.
+> **Done.** You drove `plan advance` → refine → build → merge yourself. On a multi-slice plan the loop is the same — repeat `plan advance` and the three breakouts per entry — and you can hand the plan back to `emery plan execute` at any point: it reads on-disk lifecycle state and skips phases already complete.
 
 ## What you learned
 
 - `emery plan execute` is a loop over three orchestrations you can invoke directly as breakouts.
-- `emery plan next` claims entries; the slice lifecycle gates (`refined` before build, `built` before merge) enforce phase order; merge alone writes per-entry `done`.
+- `emery plan advance` advances entries; the slice lifecycle gates (`refined` before build, `built` before merge) enforce phase order; merge alone writes per-entry `done`.
 - Hand-driven and loop-driven slices are interchangeable — the orchestrations do not know which is driving them.
 
 <div class="see-also">

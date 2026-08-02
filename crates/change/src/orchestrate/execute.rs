@@ -1,5 +1,5 @@
-//! The drained execute loop behind `emery plan execute`: claim the
-//! next entry, dispatch its phase (refine / build / merge), repeat
+//! The drained execute loop behind `emery plan execute`: advance to
+//! the next entry, dispatch its phase (refine / build / merge), repeat
 //! until the plan projects `drained` or a stop. Every stop returns as
 //! a typed [`ExecuteOutcome::Stopped`] with a [`StopReason`] and hint.
 //!
@@ -45,9 +45,6 @@ pub enum ExecuteOutcome {
     Drained {
         /// Plan name from `plan.yaml.name`.
         plan: String,
-        /// Whether this invocation performed the Gate 1 stamp
-        /// (`pending → approved`); `false` on re-entry.
-        gate1_stamped: bool,
         /// Phases completed by this run, in order.
         phases: Vec<PhaseRun>,
     },
@@ -71,19 +68,16 @@ pub enum ExecuteOutcome {
     },
 }
 
-/// Run the drained execute loop: claim → refine → build → merge per
-/// entry until `plan status` projects `drained` or a stop.
+/// Run the drained execute loop: advance → refine → build → merge
+/// per entry until `plan status` projects `drained` or a stop.
 ///
-/// Invoking execute is the Gate 1 approval act: a `pending` plan is
-/// stamped `approved` (one `plan.transition.approved` journal event
-/// carrying `actor`) before the first status projection; an already
-/// `approved` plan stamps nothing. Re-entry is safe — a refine /
-/// build / preflight-merge failure leaves the entry `in-progress` and
-/// the journal terminal event in place, so the next run's status
-/// projection resumes (or re-reports the stop) from the same point.
-/// A postflight failure stamps the entry `done` (non-rollback) and
-/// projects a sticky `merge-postflight-failed` stop; re-running
-/// execute emits `plan.merge-postflight.acknowledged` and continues.
+/// Re-entry is safe — a refine / build / preflight-merge failure
+/// leaves the entry `in-progress` and the journal terminal event in
+/// place, so the next run's status projection resumes (or re-reports
+/// the stop) from the same point. A postflight failure stamps the
+/// entry `done` (non-rollback) and projects a sticky
+/// `merge-postflight-failed` stop; re-running execute emits
+/// `plan.merge-postflight.acknowledged` and continues.
 ///
 /// The bound target adapter resolves once, inside the loop's own
 /// setup (after the workspace refusal, before the marker) — its
@@ -107,34 +101,34 @@ pub enum ExecuteOutcome {
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
-    tree: &WorkingTree, actor: journal::Actor,
+    tree: &WorkingTree,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     refuse_workspace_routing(layout)?;
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
     let _marker = GuestMarker::acquire(layout, now)?;
-    // Gate 1: invoking execute is the approval act. Stamp before the
-    // first status projection; no-op when already approved.
-    let gate1_stamped = project::plan::stamp_approved(layout, now, actor)?;
-    if gate1_stamped {
-        tracing::info!(actor = %actor, "gate 1 stamped: plan approved");
-    }
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {
         let plan = Plan::load(&layout.plan_path())?;
         let status = plan_status_body(&plan, layout)?;
-        let step = match dispatch_status(layout, now, status, gate1_stamped, &phases) {
+        // Progress rendering: the active entry is the (done + 1)-th of the
+        // plan's total, carried into the per-phase lines below.
+        let counts = status.counts;
+        let total = counts.pending + counts.in_progress + counts.done;
+        let entry = (counts.done + 1).min(total.max(1));
+        let step = match dispatch_status(layout, now, status, &phases) {
             ControlFlow::Break(outcome) => return Ok(outcome),
             ControlFlow::Continue(None) => continue, // postflight ack
             ControlFlow::Continue(Some(step)) => step,
         };
 
-        // Claim: `plan next` before every phase, exactly as the skill
-        // drives it (returns the active entry unchanged mid-slice).
-        let Some(claim) = claim_next(caps.resolver, paths, now)? else {
-            // The status projection targeted a phase but the claim
+        // Advance: `plan advance` before every phase, exactly as the
+        // hand-driven fallback does (returns the active entry
+        // unchanged mid-slice).
+        let Some(advanced) = advance(caps.resolver, paths, now)? else {
+            // The status projection targeted a phase but the advance
             // found nothing runnable — plan state moved underneath us.
             // Surface it as the stuck stop rather than spinning.
             return Ok(ExecuteOutcome::Stopped {
@@ -145,13 +139,13 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                 phases,
             });
         };
-        let slice = claim.slice.clone();
+        let slice = advanced.slice.clone();
 
-        tracing::info!(slice = %slice, phase = %step, "phase started");
+        tracing::info!("{step} {slice} [entry {entry}/{total}] …");
         let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
         let result: Result<(), Error> = match step {
             LoopStep::Refine => {
-                let target = claim.target.clone().ok_or_else(|| Error::Diag {
+                let target = advanced.target.clone().ok_or_else(|| Error::Diag {
                     code: "slice-create-target-missing",
                     detail: format!(
                         "no target resolved for slice `{slice}`; declare the project adapter \
@@ -182,7 +176,7 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
 
         match result {
             Ok(()) => {
-                tracing::info!(slice = %slice, phase = %step, "phase completed");
+                tracing::info!("{step} {slice} [entry {entry}/{total}] — completed");
                 phases.push(PhaseRun { slice, step });
             }
             Err(err) => {
@@ -192,7 +186,7 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                 // leave the entry `in-progress`; postflight already
                 // stamped `done` (non-rollback) before failing.
                 let reason = phase_stop_reason(step, &err);
-                tracing::info!(slice = %slice, phase = %step, reason = %reason, "phase stopped");
+                tracing::info!("{step} {slice} [entry {entry}/{total}] — stopped: {reason}");
                 return Ok(ExecuteOutcome::Stopped {
                     reason,
                     detail: Some(err.to_string()),
@@ -208,13 +202,11 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
 /// Map a status projection to the next loop step, a terminal outcome,
 /// or a postflight-ack continue (`Continue(None)`).
 fn dispatch_status(
-    layout: Layout<'_>, now: Timestamp, status: StatusBody, gate1_stamped: bool,
-    phases: &[PhaseRun],
+    layout: Layout<'_>, now: Timestamp, status: StatusBody, phases: &[PhaseRun],
 ) -> ControlFlow<ExecuteOutcome, Option<LoopStep>> {
     match status.action {
         NextActionKind::Drained => ControlFlow::Break(ExecuteOutcome::Drained {
             plan: status.plan,
-            gate1_stamped,
             phases: phases.to_vec(),
         }),
         NextActionKind::Stop => {
@@ -306,7 +298,7 @@ fn phase_stop_reason(step: LoopStep, err: &Error) -> StopReason {
 /// slot sync plus a chdir into `workspace/<project>/`, and the guest
 /// loop has no counterpart yet — running anyway would create slices
 /// under the workspace root's own `.emery/` tree. Workspace plans
-/// run hand-driven instead: `emery plan next`, then the
+/// run hand-driven instead: `emery plan advance`, then the
 /// `/emery:refine` → `/emery:build` → `/emery:merge` breakouts. Uses the
 /// shared [`super::routing`] classification with this operation's own
 /// refusal code; single-project plans are unaffected.
@@ -320,42 +312,43 @@ fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
         "the guest execute loop runs single-project plans only",
         format!(
             "{subject}; workspace routing (slot sync + chdir) has no in-guest counterpart — \
-             drive workspace plans hand-driven (`emery plan next`, then the \
+             drive workspace plans hand-driven (`emery plan advance`, then the \
              /emery:refine → /emery:build → /emery:merge breakouts)"
         ),
     ))
 }
 
-/// One claimed entry: the slice to run and its best-effort resolved
+/// One advanced entry: the slice to run and its best-effort resolved
 /// target (`name[@vN]`).
-struct Claim {
+struct Advanced {
     slice: String,
     target: Option<String>,
 }
 
-/// Claim the next entry through the shared
-/// [`project::plan::claim_next`] kernel (see the module docs for why
-/// `require_held` does not apply in-loop). Returns `None` when
+/// Advance the plan through the shared
+/// [`project::plan::advance_next`] kernel (see the module docs for
+/// why `require_held` does not apply in-loop). Returns `None` when
 /// nothing is runnable (drained / stuck — the status projection
 /// decides which).
-fn claim_next(
+fn advance(
     resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
-) -> Result<Option<Claim>, Error> {
+) -> Result<Option<Advanced>, Error> {
     let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
-    let body = project::plan::claim_next(resolver, paths, now, &config)?;
+    let body = project::plan::advance_next(resolver, paths, now, &config)?;
     // A fresh advance carries the resolved target; the active-entry
     // return does not, so re-resolve lazily from the slice's own
-    // metadata at the phase (refine reads it from the claim, and only
-    // refine needs it — build/merge read `metadata.yaml` themselves).
-    Ok(match (body.next, body.active) {
-        (Some(slice), _) => Some(Claim {
+    // metadata at the phase (refine reads it from the advance, and
+    // only refine needs it — build/merge read `metadata.yaml`
+    // themselves).
+    Ok(match (body.advanced, body.active) {
+        (Some(slice), _) => Some(Advanced {
             slice,
             target: body.target,
         }),
         (None, Some(slice)) => {
             let target = project::target_policy::resumed(layout, &slice).ok();
-            Some(Claim { slice, target })
+            Some(Advanced { slice, target })
         }
         (None, None) => None,
     })

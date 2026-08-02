@@ -1,5 +1,5 @@
-//! `plan execute` — the Gate 1 stamp plus the drained refine → build →
-//! merge loop over the plan.
+//! `plan execute` — the drained refine → build → merge loop over the
+//! plan.
 
 use std::io::Write;
 
@@ -9,27 +9,22 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::journal;
 use project::plan::LoopStep;
 use project::seam::{Source, Target, WorkingTree};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome};
 
-/// Wire input for `plan execute`.
+/// Wire input for `plan execute` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct ExecuteInput {
-    /// Who is driving this invocation — `operator` (default) or
-    /// `agent`. Recorded on the `plan.transition.approved` journal
-    /// event when this run stamps Gate 1.
-    #[serde(default)]
-    pub actor: journal::Actor,
-}
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde deserialises the wire `{}` object into a braced struct only"
+)]
+pub struct ExecuteInput {}
 
 /// `emery plan execute` → the internal execute orchestration — the
-/// Gate 1 stamp (`pending → approved`, invoking execute is the
-/// approval act) plus the drained refine → build → merge loop.
+/// drained refine → build → merge loop.
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
@@ -39,22 +34,16 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
     type Output = ExecuteBody;
 
     async fn call(
-        input: Self::Input, context: CallContext<'_, P>,
+        _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let tree = WorkingTree::live();
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree, input.actor).await?;
+        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree).await?;
         match outcome {
-            ExecuteOutcome::Drained {
-                plan,
-                gate1_stamped,
-                phases,
-            } => Ok(ExecuteBody {
+            ExecuteOutcome::Drained { plan, phases } => Ok(ExecuteBody {
                 status: "drained",
                 plan,
-                gate1_stamped,
-                actor: input.actor,
                 phases: phases
                     .into_iter()
                     .map(|run| ExecutePhase {
@@ -101,13 +90,6 @@ pub struct ExecuteBody {
     pub status: &'static str,
     /// Plan name from `plan.yaml.name`.
     pub plan: String,
-    /// Whether this invocation performed the Gate 1 stamp
-    /// (`pending → approved`); `false` on re-entry.
-    pub gate1_stamped: bool,
-    /// Actor recorded on the Gate 1 stamp — display only (the text
-    /// `approved:` line); the JSON envelope carries `gate1-stamped`.
-    #[serde(skip)]
-    pub actor: journal::Actor,
     /// Completed phases in run order.
     pub phases: Vec<ExecutePhase>,
 }
@@ -124,9 +106,6 @@ pub struct ExecutePhase {
 
 impl Render for ExecuteBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
-        if self.gate1_stamped {
-            writeln!(w, "approved: {} (actor: {})", self.plan, self.actor)?;
-        }
         for phase in &self.phases {
             writeln!(w, "{} {}", phase.step, phase.slice)?;
         }
