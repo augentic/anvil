@@ -74,7 +74,7 @@ The neutral finding currency every check surface emits (`emery slice validate`, 
 The plan-time discovery artifact at `discovery.md` in the project root (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/emery:plan` through CLI helpers.
 
 **Divergence**
-Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's Gate-1 acknowledgement; the field is advisory in v1.
+Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's plan-review acknowledgement; the field is advisory in v1.
 
 **Drained**
 The state of a plan in which no entry is `pending` or `in-progress` — every entry is `done`. Not a stored field: `emery plan status` computes it from per-entry status and projects `drained`. `/emery:finalize` becomes legal at that point.
@@ -117,7 +117,12 @@ A mechanically decidable test result, such as lifecycle state, exit status, sche
 ## I
 
 **Intent**
-The operator-supplied free-form description that backs N=1 work and overrides higher-authority sources. Declared as a source adapter (`sources/intent/` in the adapters repo). Authority class: `intent`.
+The operator-supplied free-form description that backs single-slice, intent-only work and outranks every other source in authority. Declared as a source adapter (`sources/intent/` in the adapters repo). Authority class: `intent`.
+
+## J
+
+**Journal**
+The append-only event ledger the engine writes as verbs run (`slice.build.started`, `slice.merge.succeeded`, `slice.archive.created`, …). The durable record of what happened and when; inspected with `emery journal show`. The archive step's `slice.archive.created` entry is the outcome ledger for a completed slice.
 
 ## L
 
@@ -145,6 +150,9 @@ The single structured artifact per refined slice, at `.emery/slices/<slice>/mode
 
 **Omnia**
 An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. The [`omnia`](../reference/targets/omnia.md) target adapter generates Omnia service crates. Not part of the core Emery contract.
+
+**Operator**
+The human driving Emery: binds sources, reviews the plan before execute, resolves conflicts through overrides, and owns everything Emery deliberately leaves outside its scope — Git commits, publication, and workspace slot materialisation.
 
 **Operation**
 The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `<crate>::<domain>::handlers` submodules (in the `project`, `slice`, and `change` crates) beside their kernels and are invoked through `Invoker<P>` by the explicit typed command and HTTP routers. See [Operation shape](../standards/handler-shape.md).
@@ -186,7 +194,7 @@ A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requ
 The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as context; not executed. Empty `guidance` is valid.
 
 **Skill**
-An ultrathin Cursor slash-command wrapper (e.g. `/emery:plan`, `/emery:build`) that elicits arguments, invokes one `emery` verb, and relays its output. Skills do not own orchestration, synthesis, or code generation — those live in guest orchestrations and target-adapter prompts.
+A thin Cursor slash-command wrapper (e.g. `/emery:plan`, `/emery:build`) that elicits arguments, invokes one `emery` verb, and relays its output. Skills do not own orchestration, synthesis, or code generation — those live in the engine guest and target-adapter prompts.
 
 **Slice**
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.emery/slices/<name>/`.

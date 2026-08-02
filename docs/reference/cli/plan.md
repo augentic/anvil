@@ -39,7 +39,12 @@ Exit codes: `0` success (exits with the review hint); `2` for `plan-already-exis
 
 JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-plan-author) — surveyed sources, slice count, and the literal review `hint`.
 
-Author scaffolds `plan.yaml` at the repo root before its survey and reconcile legs run, and ensures every binding up front, before the scaffold write. Bare adapter names persist bare in `plan.yaml` (no auto version stamp): a cache-seeded binding (`emery adapter add`) resolves the seed, and an unseeded bare name resolves local-first (newest installed store version, else pull-latest provisioning) — the resolved version is logged to stderr, and the survey fan-out plus every later `slice refine` extract dispatch the same local resolution. Explicit `emery:<name>@<semver>` pins stamp `version:` on the binding and install through the standard pull-on-miss path. The `--intent` sugar's implicit `intent` binding rides the same rules. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
+Behavior notes:
+
+- **Order of operations.** Every binding is resolved up front, then `plan.yaml` is scaffolded at the repo root, then the survey and reconcile legs run. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
+- **Bare adapter names** persist bare in `plan.yaml` (no auto version stamp). A cache-seeded binding (`emery adapter add`) resolves the seed; an unseeded bare name resolves local-first — newest installed store version, else pull-latest provisioning. The resolved version is logged to stderr; the survey fan-out and every later `slice refine` extract dispatch the same local resolution.
+- **Explicit pins** (`emery:<name>@<semver>`) stamp `version:` on the binding and install through the standard pull-on-miss path.
+- **`--intent`** creates an implicit `intent` value binding that rides the same resolution rules.
 
 ### emery plan validate
 

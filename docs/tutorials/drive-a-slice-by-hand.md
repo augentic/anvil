@@ -74,7 +74,7 @@ The review obligation is the same as on the execute path — read `change.md` an
 /emery:refine <slice>
 ```
 
-The breakout invokes the same guest orchestration the execute loop runs: extract per bound source, synthesis, validation, and the `refined` transition. Checkpoint — `.emery/slices/<slice>/` now holds `proposal.md`, `specs/<domain>/spec.md`, `design.md`, `tasks.md`, `model.yaml`, and `evidence/intent.yaml`, and `metadata.yaml` reads `status: refined`.
+The breakout runs the same refine phase the execute loop runs: extract per bound source, synthesis, validation, and the `refined` transition. Checkpoint — `.emery/slices/<slice>/` now holds `proposal.md`, `specs/<domain>/spec.md`, `design.md`, `tasks.md`, `model.yaml`, and `evidence/intent.yaml`, and `metadata.yaml` reads `status: refined`.
 </div>
 
 

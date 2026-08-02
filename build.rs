@@ -1,14 +1,17 @@
-//! Builds, ahead-of-time compiles, and embeds the wasm32 engine
-//! component the shipped binary boots.
+//! Builds and embeds the wasm32 engine component the shipped binary
+//! boots.
 //!
 //! A child `cargo build --lib --target wasm32-wasip2` into an
 //! isolated target directory under `OUT_DIR` produces the raw engine
 //! component (so plain `cargo install --git … --locked` produces a
-//! bootable binary), which is then serialized to a native wasmtime
-//! artifact at `$OUT_DIR/emery.bin` for the `include_bytes!` in
-//! `src/main.rs` — startup deserializes instead of JIT-compiling the
-//! engine. There is no placeholder fallback: a native binary either
-//! embeds a real engine or fails to build with a direct instruction.
+//! bootable binary). Release builds then ahead-of-time serialize it
+//! to a native wasmtime artifact — startup deserializes instead of
+//! JIT-compiling the engine; debug builds skip the AOT pass and embed
+//! the raw component (JIT at startup), keeping the edit loop and CI
+//! fast. Either way the embed lands at `$OUT_DIR/emery.bin` for the
+//! `include_bytes!` in `src/main.rs`. There is no placeholder
+//! fallback: a native binary either embeds a real engine or fails to
+//! build with a direct instruction.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -33,12 +36,21 @@ fn main() {
     let len = std::fs::metadata(&engine).map(|meta| meta.len()).unwrap_or_default();
     assert!(len > 0, "engine component at {} is empty; refusing to embed it", engine.display());
 
-    precompile(&engine);
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.bin");
+    if std::env::var("PROFILE").as_deref() == Ok("release") {
+        precompile(&engine, &out);
+    } else {
+        // Debug embeds the raw component (JIT at startup): the AOT
+        // pass costs Cranelift time on every engine rebuild, which is
+        // pure overhead in the edit loop and CI.
+        std::fs::copy(&engine, &out).unwrap_or_else(|err| {
+            panic!("copying {} to {}: {err}", engine.display(), out.display())
+        });
+    }
 }
 
 /// Ahead-of-time compile the raw engine component into the serialized
-/// wasmtime artifact at `$OUT_DIR/emery.bin` that `src/main.rs`
-/// embeds.
+/// wasmtime artifact at `out` that `src/main.rs` embeds.
 ///
 /// The engine configuration mirrors the runtime loader: the same
 /// `RuntimeOptions` env-driven compile-affecting settings (`MAX_FUEL`,
@@ -48,7 +60,7 @@ fn main() {
 /// artifact at startup. Cargo's `TARGET` pins the code to the
 /// binary's triple, so cross-compiled binaries embed a loadable
 /// artifact rather than one for the build host.
-fn precompile(raw: &std::path::Path) {
+fn precompile(raw: &std::path::Path, out: &std::path::Path) {
     let options = omnia::RuntimeOptions::load_env().expect("runtime options from the build env");
     let mut config = omnia::wasmtime::Config::from(&options);
     let triple = std::env::var("TARGET").expect("cargo env");
@@ -61,8 +73,7 @@ fn precompile(raw: &std::path::Path) {
         .unwrap_or_else(|err| panic!("compiling engine component {}: {err}", raw.display()));
     let serialized = component.serialize().expect("serializing the compiled engine component");
 
-    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("emery.bin");
-    std::fs::write(&out, serialized)
+    std::fs::write(out, serialized)
         .unwrap_or_else(|err| panic!("writing {}: {err}", out.display()));
 }
 

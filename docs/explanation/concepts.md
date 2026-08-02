@@ -162,7 +162,7 @@ Sources: [identity-design-notes, legacy-monolith]
 Status: agreed
 ```
 
-`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tag-and-proceeds. The `ID:` / `Sources:` / `Status:` lines and headline tags are kernel-rendered; the operator reconciles by recording a per-slice authority override (`emery plan amend --authority-override`) or amending the plan's sources, then re-running `/emery:refine` — never by hand-editing those kernel lines (doing so trips `slice-spec-provenance-stale`). See [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md).
+`Sources:` is the **provenance** — which sources contributed the requirement. `Status:` is the closed enum `agreed` | `unknown` | `conflict` | `divergence`. **Authority** controls who wins a disagreement; ties at the top authority produce `[conflict]`, authority-resolved disagreements produce `[divergence]`. Tags surface inline on the requirement header and **never park the slice** — synthesis tags the requirement and proceeds. The `ID:` / `Sources:` / `Status:` lines are machine-rendered and never hand-edited; the operator reconciles through overrides and a re-refine — the full rule and recovery steps live in [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md).
 
 ## Skills
 

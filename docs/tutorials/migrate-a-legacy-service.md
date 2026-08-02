@@ -94,13 +94,13 @@ emery plan author my-service \
   --source "legacy=typescript:legacy"
 ```
 
-The source adapter's `survey` operation scans `legacy/` and emits slice-sized leads. Planning writes three artifacts — `change.md` (operator narrative), `discovery.md` (what the survey found), and `plan.yaml` (the slice table of contents) — then exits at Gate 1 with `lifecycle: pending`. Nothing executes yet.
+The source adapter's `survey` operation scans `legacy/` and emits slice-sized leads. Planning writes three artifacts — `change.md` (operator narrative), `discovery.md` (what the survey found), and `plan.yaml` (the slice table of contents) — then exits for operator review. Nothing executes yet.
 </div>
 
 
 <div class="tutorial-step" data-step="04">
 <div class="step-label">04</div>
-<h3 class="step-title">Review at Gate 1</h3>
+<h3 class="step-title">Review the plan</h3>
 
 Read `change.md`, `discovery.md`, and `plan.yaml`. For a migration, check that the slice breakdown matches how you think the service decomposes, and that `discovery.md`'s lead inventory reflects the legacy tree you expected it to survey — an empty survey usually means the source binding pointed at the wrong directory.
 
@@ -119,7 +119,7 @@ At any point, `emery plan status` (or `/emery:status`) is the read-only "where a
 /emery:execute
 ```
 
-The first run stamps Gate 1 `approved`, then drives each slice through **refine → build → merge** until every plan entry is done:
+Running execute is your approval; it drives each slice through **refine → build → merge** until every plan entry is done:
 
 <div class="pipeline">
 

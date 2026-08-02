@@ -28,7 +28,7 @@ The [install script](https://github.com/augentic/emery/blob/main/scripts/install
 curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
 ```
 
-Pin an exact release with `sh -s -- --version 0.32.0`. `/emery:init` uses this path when it refreshes the CLI.
+Pin an exact release with `sh -s -- --version <version>`, using a version number from the [Releases page](https://github.com/augentic/emery/releases). `/emery:init` uses this path when it refreshes the CLI.
 
 If `~/.local/bin` is not on your `PATH`, the script prints the exact `export PATH=…` line to add to your shell profile.
 
@@ -48,7 +48,7 @@ Upgrade later with `brew upgrade emery`.
 Prebuilt archives, no local compile (install [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) first). The root package is `publish = false`, so install from git:
 
 ```bash
-cargo binstall --git https://github.com/augentic/emery emery@0.32.0
+cargo binstall --git https://github.com/augentic/emery emery@<version>
 ```
 
 ### From source
@@ -85,7 +85,7 @@ Update through the same channel used to install:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh   # installer script
 brew upgrade emery                                                                         # Homebrew
-cargo binstall --git https://github.com/augentic/emery emery@0.32.0 --force              # prebuilt
+cargo binstall --git https://github.com/augentic/emery emery@<version> --force            # prebuilt
 cargo install --git https://github.com/augentic/emery --locked --force                     # source
 ```
 
@@ -93,15 +93,7 @@ cargo install --git https://github.com/augentic/emery --locked --force          
 
 ### Contributing to the repo
 
-The above covers installing `emery` to *use* Emery in your own project. Contributing to the [`augentic/emery`](https://github.com/augentic/emery) repo itself — editing skills, adapters, references, docs, or the CLI (the Cargo workspace at the repo root) — needs only a Rust toolchain, not a separately installed `emery`:
-
-```bash
-cargo make links # Developer Guide link integrity
-make ci          # the full Rust workspace gate (cargo make ci)
-cargo install --path . --locked # install the working-tree CLI into ~/.cargo/bin
-```
-
-No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](https://github.com/augentic/emery/blob/main/rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt. See [Quality gates](../contributing/quality-gates.md#consistency-links).
+The above covers installing `emery` to *use* Emery in your own project. Working on Emery itself needs only a Rust toolchain — see [Contributing to Emery](../contributing/index.md#building-from-a-checkout).
 
 ## Adapter-specific prerequisites
 

@@ -11,7 +11,7 @@
 </div>
 
 
-The same rhythm runs at N=1 and N=12. For multi-source slices, bind additional sources at plan time:
+The same rhythm runs for a one-slice change and a twelve-slice change alike. For multi-source slices, bind additional sources at plan time:
 
 ```text
 /emery:plan <name> source legacy=typescript:./vendor/monolith source docs=documentation:./design-notes
@@ -80,7 +80,7 @@ emery plan archive
 
 # Slice management
 emery slice list                                       # read-only: every slice with status + target
-emery slice refine <name>                              # guest-routed: create + extract + synthesis + refined
+emery slice refine <name>                              # create + extract + synthesis + refined, in one run
 emery slice validate <name>
 emery slice merge <name>                           # dry-runs: --preview / --conflict-check
 emery slice drop <name> [--reason "..."]
@@ -116,7 +116,7 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
 ├── workspace/            # workspace slots (workspace mode only; gitignored)
 └── .emery/
     ├── project.yaml      # project config (target, sources, workspace, emery-version)
-    ├── guest.lock        # create-exclusive marker held by guest orchestrations (second driver gets guest-marker-held)
+    ├── guest.lock        # lock held by a running plan execute (a second driver gets guest-marker-held)
     ├── scratch/          # transient per-run working state (gitignored)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
     ├── specs/            # merged baseline
@@ -132,7 +132,7 @@ The regenerable adapter cache lives outside the working tree under the Emery hom
 curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh
 
 # or: brew tap augentic/tap && brew install emery
-# or: cargo binstall --git https://github.com/augentic/emery emery@0.32.0
+# or: cargo binstall --git https://github.com/augentic/emery emery@<version>
 # or: cargo install --git https://github.com/augentic/emery --locked
 ```
 

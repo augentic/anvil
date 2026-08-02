@@ -22,7 +22,7 @@ Project-level configuration that persists across changes. Two shapes — the reg
 
 ```yaml
 name: my-project
-target: https://github.com/augentic/emery/targets/omnia
+target: omnia                 # bare name; or a pin such as emery:omnia@1.0.0
 sources: [intent, documentation, typescript]
 emery-version: "2.0.0"
 workspace: false

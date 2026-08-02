@@ -58,7 +58,7 @@ Status: agreed
 
 Two sources can disagree about the same requirement. Emery resolves this with **authority** — a closed ranking declared per source (`intent` > `documentation` > `behaviour`), sharpened by an optional per-slice override the operator records during plan review. The winner's value becomes the operative requirement and the loser survives as inline commentary (`[divergence]`); a tie at the top authority class has no winner (`[conflict]`). The canonical hierarchy, override surface, and step-by-step resolution order live in the workflow's embedded authority prompt (`crates/slice/prompts/synthesis/authority.md`).
 
-Tags never park the slice. Synthesis tags the requirement and proceeds. The operator reconciles a `[conflict]` or `[divergence]` by recording a per-slice authority override (`emery plan amend --authority-override`) or amending the plan's sources, then re-running `/emery:refine` — never by hand-editing the kernel-rendered `spec.md` provenance lines.
+Tags never park the slice. Synthesis tags the requirement and proceeds. The operator reconciles a `[conflict]` or `[divergence]` by recording a per-slice authority override (`emery plan amend --authority-override`) or amending the plan's sources, then re-running `/emery:refine` — never by hand-editing the rendered `spec.md` provenance lines ([Resolve spec conflicts](../how-to/resolve-spec-conflicts.md) has the full rule).
 
 ## model.yaml and the provenance trail
 

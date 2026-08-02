@@ -198,7 +198,26 @@ Source code changes land in your project tree (not under `.emery/`). Task checkb
 - The slice directory moves to `.emery/archive/`
 - `plan.yaml` marks the entry `done`
 
-If execute parks on a failure, see [Drive a slice manually](../how-to/drive-slice-manually.md).
+##### Watching progress
+
+Check on the run at any time from a second terminal with `emery plan status` (read-only). Mid-run it names the current phase and the exact command that makes progress:
+
+```text
+plan: fix-typo (approved)
+entries: 0 done / 1 in-progress / 0 pending
+next-action: build fix-typo
+resume: /emery:build fix-typo
+```
+
+When the slice has merged, status projects the literal drained line:
+
+```text
+plan: fix-typo (approved)
+entries: 1 done / 0 in-progress / 0 pending
+drained — run /emery:finalize fix-typo
+```
+
+If execute stops instead — say the build fails — the stop message names the reason and the resume command (`next-action: stop build-failed`, `resume: /emery:build fix-typo`). Fix the cause, then run the resume command; see [Drive a slice manually](../how-to/drive-slice-manually.md).
 </div>
 
 
