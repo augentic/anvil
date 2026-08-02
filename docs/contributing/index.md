@@ -38,6 +38,18 @@ Developer Guide link integrity is the book's job — `cargo make links` runs `md
 - [cargo-nextest](https://nexte.st/) — test runner used by the CI targets
 - [cargo-deny](https://embarkstudios.github.io/cargo-deny/) + [cargo-vet](https://mozilla.github.io/cargo-vet/) — supply-chain checks
 
+## Building from a checkout
+
+Contributing needs only a Rust toolchain, not a separately installed `emery`:
+
+```bash
+cargo make links # Developer Guide link integrity
+make ci          # the full Rust workspace gate (cargo make ci)
+cargo install --path . --locked # install the working-tree CLI into ~/.cargo/bin
+```
+
+No published binary is downloaded — every invocation builds from the in-tree Cargo workspace, so CI and clean clones build the same source. The Rust workspace pins its own toolchain in [`rust-toolchain.toml`](../../rust-toolchain.toml); `cargo make fmt` uses nightly rustfmt. See [Quality gates](quality-gates.md#consistency-links).
+
 ## Contribution workflow
 
 1. **Discuss first.** Open a GitHub issue before starting work to confirm alignment with the roadmap.

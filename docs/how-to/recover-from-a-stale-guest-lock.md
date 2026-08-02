@@ -26,9 +26,9 @@ Use this guide when `emery plan execute` exits with `guest-marker-held` (exit 2)
 
 <h2><span class="num">1</span> Understand the marker</h2>
 
-The `emery plan execute` loop holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime, so two driver loops cannot interleave writes. A second driver session refuses with `guest-marker-held`. Standalone [breakouts](../appendices/glossary.md#b) (`slice refine`, `slice build`, `slice merge`) do **not** take the marker — the slice lifecycle gates (only `refined` builds, only `built` merges) are their correctness fence.
+The `emery plan execute` loop creates and holds the `.emery/guest.lock` marker for the run's lifetime, so two driver loops cannot interleave writes. A second driver session refuses with `guest-marker-held`. Standalone [breakouts](../appendices/glossary.md#b) (`slice refine`, `slice build`, `slice merge`) do **not** take the marker — the slice lifecycle gates (only `refined` builds, only `built` merges) keep them safe.
 
-Because the marker is create-exclusive, a driver that dies without cleanup leaves it behind, and every later `emery plan execute` refuses until it is removed.
+Because only the run that created the marker removes it, a driver that dies without cleanup leaves it behind, and every later `emery plan execute` refuses until it is removed.
 </section>
 
 

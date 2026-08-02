@@ -8,7 +8,9 @@ The reference section is the lookup table for Emery. Use it when you need precis
 
 - [Quick reference card](quick-reference.md) — the whole workflow on one page: skills, artifacts, lifecycles, key commands.
 - [Artifact Format](artifact-format.md) — full specification of the core artifacts (proposal, spec, design, tasks) and target-specific structured outputs, including delta formats, tags, and validation checklists.
+- [Provenance projection](provenance.md) — the audit view `emery slice provenance` projects from `model.yaml`.
 - [Lifecycle](lifecycle.md) — the three stacked lifecycles (plan, per-entry, slice), transitions, `metadata.yaml` shape.
+- [Diagnostics index](diagnostics.md) — every operator-facing diagnostic code: meaning and recovery.
 - [Directory Layout](directory-layout.md) — annotated `.emery/` tree with explanations.
 
 ### Skills
@@ -19,6 +21,8 @@ The reference section is the lookup table for Emery. Use it when you need precis
 ### CLI
 
 - [CLI Reference](cli/index.md) — all `emery` subcommands grouped by family.
+- [CLI output shapes](cli-output-shapes.md) — the JSON envelopes every verb prints.
+
 ### Plugins
 
 - [Plugins](plugins/index.md) — Cursor operator plugin (Emery) and its `/emery:*` skill wrappers.
@@ -32,6 +36,11 @@ The reference section is the lookup table for Emery. Use it when you need precis
 ### Configuration
 
 - [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `registry.yaml`, `change.md`, `metadata.yaml`.
+- [Registry](registry.md) — the `registry.yaml` workspace catalogue.
+
+### Protocols
+
+- [Review team protocol](review-team-protocol.md) — shared patterns for skills that coordinate work through agent teams.
 
 Engineering standards (the adapter-embedded rules applied to generated code) live in the adapters repo, not here — see [The standards layer](../explanation/standards-layer.md).
 
@@ -46,6 +55,7 @@ Engineering standards (the adapter-embedded rules applied to generated code) liv
 | Configure my project                     | [Configuration Files](configuration.md)              |
 | See what Cursor plugins provide          | [Plugins](plugins/index.md)                          |
 | Understand the source/target split       | [Anatomy of an adapter](../explanation/adapter-anatomy.md) |
+| Decode an error or finding                | [Diagnostics index](diagnostics.md)                  |
 | Look up a term                            | [Glossary](../appendices/glossary.md)                |
 
 Standing design decisions (error layering, exit codes, plan lifecycle, journal taxonomy, and the rest) are recorded per area under [Standards](../standards/style.md) and in git history.

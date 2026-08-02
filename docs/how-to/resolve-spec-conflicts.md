@@ -16,7 +16,7 @@ Tags appear on requirement headers alongside `Status: conflict`, `Status: diverg
 
 ## The one rule
 
-The `ID:` / `Sources:` / `Status:` lines and the `[conflict]` / `[divergence]` / `[unknown]` headline tags are **kernel-rendered** from `model.yaml` — **never hand-edit them**. The provenance parser (run by `emery slice validate` and the `/emery:refine` gate) refuses any edit that stales a kernel line and reports `slice-spec-provenance-stale`. To change a resolution, drive the *inputs* the kernel resolves from and let it re-render:
+The `ID:` / `Sources:` / `Status:` lines and the `[conflict]` / `[divergence]` / `[unknown]` headline tags are **kernel-rendered** — written by the CLI's deterministic projection kernel from `model.yaml`, not by you or the agent — so **never hand-edit them**. The provenance parser (run by `emery slice validate` and the `/emery:refine` gate) refuses any edit that stales a kernel line and reports `slice-spec-provenance-stale`. To change a resolution, drive the *inputs* the kernel resolves from and let it re-render:
 
 - **(a) Record a per-slice authority override** to pin which source wins, then re-run `/emery:refine`.
 - **(b) Amend the slice's sources** (drop a misleading source, or correct a source's authority class), then re-run `/emery:refine`.

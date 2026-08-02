@@ -1,6 +1,9 @@
 # What is Emery?
 
-Emery orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Emery at existing documentation, intent, or legacy code), Emery generates a plan and durable artifacts, then the `emery` runtime and target adapters implement each slice from those artifacts. Operators drive the loop with `/emery:*` skills — ultrathin wrappers over CLI verbs.
+> [!NOTE]
+> Emery was previously distributed as **Specify**. If your installed Cursor plugin still registers `/spec:*` skills backed by a `specify` CLI, update to the current Augentic plugin release — every command in this guide uses the `emery` names.
+
+Emery orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Emery at existing documentation, intent, or legacy code), Emery generates a plan and durable artifacts, then the `emery` runtime and target adapters implement each slice from those artifacts. Operators drive the loop with `/emery:*` skills — thin slash-command wrappers that each run one `emery` command and relay its output.
 
 ## A graduated path
 
@@ -38,7 +41,7 @@ Every change flows through one rhythm:
 </div>
 
 <div class="callout">
-  <strong>Gate 1.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits at <code>pending</code>; invoking <code>emery plan execute</code> is your approval act — its first run stamps <code>approved</code>. Nothing executes until you invoke it.
+  <strong>Gate 1.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits at <code>pending</code>; invoking <code>emery plan execute</code> is your approval act — its first run stamps <code>approved</code>. Nothing executes until you invoke it. Full semantics: <a href="../reference/lifecycle.md#gate-1">Lifecycle § Gate 1</a>.
 </div>
 
 ## Why artifacts matter
@@ -55,7 +58,7 @@ Artifacts are regular files — you commit and review them like source code. `/e
 
 You can also run one phase by hand (a **breakout**) — `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
 
-Behind the skills, the `emery` CLI and its guest orchestrations own lifecycle, validation, synthesis, and target build. Target adapters own domain-specific generation.
+Behind the skills, the `emery` CLI owns lifecycle, validation, synthesis, and target build. Target adapters own domain-specific generation.
 
 ## Going deeper
 

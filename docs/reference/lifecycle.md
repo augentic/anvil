@@ -15,7 +15,9 @@ Emery's layered design is explained in [The Layered Stack](../explanation/layere
 
 Two stored states. The plan lifecycle does not move further during execution — "currently executing" and "drained" are computed from per-entry status.
 
-`/emery:plan` writes `pending`. The operator approves by running `emery plan execute` — this is **Gate 1**, the only review seam Emery ships; the first run stamps `approved` before the loop starts. `/emery:plan` never runs it itself.
+### Gate 1
+
+`/emery:plan` writes `pending`. The operator approves by running `emery plan execute` — this is **Gate 1**, the only review seam Emery ships; the first run stamps `approved` before the loop starts. `/emery:plan` never runs it itself. There is no separate approve verb: executing is approving, and the seam is observable on disk (`plan.lifecycle: approved`). A hand-driven plan (breakouts only, no execute loop) stays `pending`; the review still happens before you claim the first entry with `emery plan next`.
 
 ## Per-entry lifecycle
 

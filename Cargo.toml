@@ -27,9 +27,10 @@ omnia-wasi-otel.workspace = true
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 emery-guest.workspace = true
 
-# `build.rs` AOT-compiles the engine guest to a wasmtime-serialized artifact;
-# the build script always runs on the host, so this compiles Cranelift into
-# the build script only (the wasm32 child build's early return never uses it).
+# `build.rs` AOT-compiles the engine guest to a wasmtime-serialized artifact
+# in release builds (debug embeds the raw component); the build script always
+# runs on the host, so this compiles Cranelift into the build script only
+# (the wasm32 child build's early return never uses it).
 [build-dependencies]
 omnia.workspace = true
 
