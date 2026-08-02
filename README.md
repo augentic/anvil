@@ -84,6 +84,7 @@ When `plan execute` parks, or you want to drive one slice without the drained lo
 ## Documentation & Guides
 
 - **Quick Start Tutorial:** [Guided Omnia walkthrough](docs/tutorials/quick-start.md) · [hosted](https://emery.augentic.io/tutorials/quick-start.html)
+- **Migrate a legacy service:** [TypeScript → Omnia walkthrough](docs/tutorials/migrate-a-legacy-service.md) · [hosted](https://emery.augentic.io/tutorials/migrate-a-legacy-service.html)
 - **Command Lookup:** [Quick reference](docs/reference/quick-reference.md)
 - **Core Concepts:** [What is Emery?](docs/orientation/index.md) · [Core concepts](docs/explanation/concepts.md) · [AGENTS.md § Workflow nouns](AGENTS.md#workflow-nouns)
 - **Installation:** [Prerequisites](docs/orientation/prerequisites.md)
