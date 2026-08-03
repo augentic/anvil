@@ -41,16 +41,16 @@ Problems:
 ### What we want instead
 
 ```text
-Plan phase     author slices → refine to specs → review gaps → approve
+Plan phase     author slices → plan refine → review gaps → approve
 Execute phase  build → merge   (only after approval)
 ```
 
-- Operators review **real specs** before any code generation.
+- Operators review **topology** after author (before synthesis spend), then **real specs** after `plan refine`, before any code generation.
 - Known gaps are listed and, by default, **block approval to build**.
 - Approval is a recorded artifact: who approved what, against which specs.
 - One person on a laptop and a multi-person (later multi-node) change use the **same** rules.
 
-Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc.), and the meaning of refine / build / merge as verbs. What changes is **when** refine runs, **whether** gaps may enter build, and **how** progress is stored.
+Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc.), and the meaning of refine / build / merge as verbs. What changes is **when** refine runs (via `emery plan refine` in the plan phase, not inside execute), **whether** gaps may enter build, and **how** progress is stored.
 
 ---
 
@@ -58,10 +58,10 @@ Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc
 
 ### Plan phase — intent through specs
 
-1. **Author** — Survey bound sources, reconcile leads into slices. Produces `discovery.md`, `change.md`, and `plan.yaml` (which work exists).
-2. **Refine** — For each slice: extract Evidence from sources, synthesize `proposal.md`, `spec.md`, `design.md`, `tasks.md`, and `model.yaml`. Same refine verb as today; it just runs here, not inside execute.
-3. **Review** — Read the specs and the **gap inventory** (see below).
-4. **Iterate** — Fix inputs (richer intent/docs, authority overrides, corrected sources), then re-refine only the affected slices.
+1. **Author** — `emery plan author` (via `/emery:plan`) surveys bound sources and reconciles leads into slices. Produces `discovery.md`, `change.md`, and `plan.yaml` (which work exists). **Stops here** — no extract or synthesis yet, so the operator can review topology before paying for refine.
+2. **Refine** — `emery plan refine` (default: every unrefined in-scope slice; optional slice selectors) claims slices and runs the same per-slice refine implementation as today (`emery slice refine`): extract Evidence, synthesize `proposal.md`, `spec.md`, `design.md`, `tasks.md`, and `model.yaml`, and record input pins. Prints or leaves the gap inventory ready for review.
+3. **Review** — Read the specs and the **gap inventory** (see below). Optional **topology-only** approval may sit between author and refine when handing off the slice list before specs exist.
+4. **Iterate** — Fix inputs (richer intent/docs, authority overrides, corrected sources), then re-refine only the affected slices with `emery slice refine <slice>` (or `emery plan refine` over a subset).
 5. **Approve** — Record a **build approval** once the change is ready (all in-scope slices refined; gap policy satisfied or explicitly waived).
 
 ### Execute phase — code through merge
@@ -69,16 +69,16 @@ Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc
 6. **Execute** — `emery plan execute` runs **build → merge** per slice. It does **not** extract or synthesize again.
 7. **Finalize** — Operator publishes; archive as today.
 
-Hand-driven breakouts (`emery slice refine` / `build` / `merge`) still work. The drained execute loop simply no longer contains refine.
+`/emery:plan` remains an ultrathin wrapper over `plan author` only. Hand-driven breakouts (`emery slice refine` / `build` / `merge`) still work; `plan refine` is the batch fan-out over that same refine implementation. The drained execute loop simply no longer contains refine.
 
-One-slice changes stay the same shape, only shorter: author → refine → review → approve → build → merge.
+One-slice changes stay the same shape, only shorter: author → `plan refine` → review → approve → build → merge. `plan status`’s resume points at `emery plan refine` when any in-scope slice is still unrefined.
 
 ### Who owns what
 
 | Work | Plan phase | Execute phase |
 | ---- | ---------- | ------------- |
-| Survey and propose slices | yes | no |
-| Extract and synthesize specs | yes | **no** |
+| Survey and propose slices (`plan author`) | yes | no |
+| Extract and synthesize specs (`plan refine` / `slice refine`) | yes | **no** |
 | Review and close gaps | yes | no |
 | Approve for build | yes | required before starting |
 | Build and merge code | no | yes |
@@ -119,7 +119,7 @@ Do not hand-edit the machine-rendered `ID:` / `Sources:` / `Status:` lines or th
 
 | Finding | Typical fix | Next step |
 | ------- | ----------- | --------- |
-| `[unknown]` | Add or enrich a source (intent, docs, captures); or re-scope the lead so the requirement is not invented | Re-refine that slice |
+| `[unknown]` | Operator supplies the missing information: enrich a source (intent, docs, captures), or re-scope the lead so the requirement is not invented. Build stays blocked until the tag clears or the requirement is explicitly waived | Re-refine that slice |
 | `[conflict]` | Set an authority override, or remove/correct a misleading source | Re-refine |
 | `[divergence]` | Accept the winner, or override if the wrong source won | Re-refine only if inputs changed |
 | Stale inputs | Sources or baseline moved since refine pinned them | Re-pin and re-refine |
@@ -132,13 +132,13 @@ Vague prose in an otherwise `agreed` requirement (weak scenarios, missing accept
 
 Refine may finish with tags still present — the slice is refined, but not necessarily ready to build.
 
-**Build approval** checks a gap policy. Draft defaults (see open questions):
+**Build approval** checks a gap policy:
 
-| Finding | Default |
-| ------- | ------- |
+| Finding | Policy |
+| ------- | ------ |
 | `[conflict]` | **Block** — do not generate code over an unresolved contradiction |
-| `[unknown]` | **Block** — do not let generation invent what sources did not evidence |
-| `[divergence]` | **Allow, but list** — authority already chose; operator can still override before approve |
+| `[unknown]` | **Block** — insufficient information reached the agent; the operator must supply it (richer sources, re-scope, or an explicit waiver) before build. Uniform for every change shape — including intent-only / N=1. Desk-testing shows warn-only yields unpredictable generation that compounds through build and merge (see D14). |
+| `[divergence]` | **Allow, but list** — authority already chose; operator can still override before approve (open question #3) |
 
 If the policy fails, approve refuses and prints the inventory. The operator may:
 
@@ -194,12 +194,12 @@ Sharing a change is ordinary git (push / pull / PR). Two people’s event logs m
 | Milestone | Meaning |
 | --------- | ------- |
 | Authored | Plan has slices |
-| Refined (per slice) | Validated specs exist for that slice, pinned to known inputs |
+| Refined (per slice) | Validated specs exist for that slice, pinned to known inputs (`plan refine` or `slice refine`) |
 | Ready | Every in-scope slice is refined, and the gap policy passes (or was waived) |
 | Approved | A build approval covers the current plan and specs |
 | Built / merged | Build and merge facts exist for that slice |
 
-`plan status` next actions follow the phase split: refine / review gaps / approve in plan phase; build / merge after approval.
+`plan status` next actions follow the phase split: `plan refine` / `slice refine` / review gaps / approve in plan phase; build / merge after approval.
 
 ### Pins and requirement IDs (why implementers care)
 
@@ -230,6 +230,8 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | D10 | Hard cut (pre-1.0) | No compatibility shims for old status fields or execute-bundled refine |
 | D11 | **Plan owns refine; execute owns build/merge** | Specs are reviewed before generation spend |
 | D12 | **Gaps gate build approval, not refine success** | Incomplete Evidence can still refine; it cannot silently enter build |
+| D13 | **`emery plan refine` is the plan-phase batch; `/emery:plan` stops after author** | Topology review before synthesis cost; named batch for N-many; `slice refine` stays the per-slice implementation and gap-closure breakout |
+| D14 | **`[unknown]` always blocks build approval** | Thin intent is not an exception — close the gap or waive it explicitly; generation must not invent missing information |
 
 ---
 
@@ -238,11 +240,12 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | Command | Change |
 | ------- | ------ |
 | `emery plan approve` | **New.** Records approval (topology or build scope); build scope enforces the gap policy |
+| `emery plan refine` | **New.** Plan-phase batch: claims and refines every unrefined in-scope slice by default; optional slice selectors for a subset. Fans out to the same orchestration as `emery slice refine` (pins, extract, synthesize). Does not approve and does not build |
 | `emery plan gaps` (name TBD) | **New.** Shows the gap inventory |
 | `emery plan execute` | Requires build approval; runs **build → merge only**; never refines |
-| Plan-phase refine | Shape TBD (see open questions): refine-all helper and/or status-driven `emery slice refine` |
-| `emery slice refine` | Still the refine implementation; records input pins; used in plan phase |
-| `emery plan status` | Next actions include refine / review-gaps / approve, then build / merge |
+| `emery slice refine` | Still the refine implementation and per-slice breakout (gap closure, single-slice re-refine); records input pins; used in plan phase |
+| `/emery:plan` | Unchanged contract: elicit → `emery plan author` → relay; stops after topology. Does **not** run refine |
+| `emery plan status` | Next actions include `plan refine` / `slice refine` / review-gaps / approve, then build / merge; resume points at `emery plan refine` while any in-scope slice is unrefined |
 | `emery plan advance` / `undo` | Expressed as claim / retraction facts instead of rewriting status fields |
 
 Exact error codes and event names belong in the [implementation notes](#appendix-implementation-notes); product behavior is above.
@@ -255,7 +258,7 @@ Exact error codes and event names belong in the [implementation notes](#appendix
 | ----- | -------- | ---------------------- |
 | **A** | Fact logs + computed status | Same day-to-day flow; status still looks familiar |
 | **B** | Pins + merge-time requirement ids | Safer parallel refine; drift diagnostics |
-| **C** | Plan-phase refine, gap inventory, approval gate, execute without refine | The new rhythm: specs and gaps before build |
+| **C** | `plan refine`, gap inventory, approval gate, execute without refine | The new rhythm: author → `plan refine` → gaps → approve → build/merge-only execute |
 
 Do not implement Phase C until the [open questions](#open-questions) are closed.
 
@@ -266,8 +269,8 @@ Do not implement Phase C until the [open questions](#open-questions) are closed.
 1. Progress reported by the CLI is always computed from artifacts and facts — never read from a stored status field.
 2. Two people can refine different slices on copies of one change, merge via git, and both slices show as refined without journal conflicts.
 3. Two slices refined against the same baseline merge without requirement-id collision; a drifted modification is rejected instead of overwritten.
-4. **Shift-left:** after authoring, every slice is refined before any build; execute performs build and merge only.
-5. **Gap gate:** blocking findings prevent build approval until fixed or explicitly waived; execute never silent-waives.
+4. **Shift-left:** after authoring, every slice is refined via `emery plan refine` (or per-slice `emery slice refine`) before any build; execute performs build and merge only. `/emery:plan` does not run refine.
+5. **Gap gate:** `[conflict]` and `[unknown]` prevent build approval until fixed or explicitly waived (including intent-only / N=1); execute never silent-waives.
 6. Topology-only approval does not unlock execute; re-refine after build approval forces re-approval.
 7. The same verbs and artifacts work with no remote (solo laptop) and with the change shared over git (two people).
 
@@ -277,8 +280,8 @@ Do not implement Phase C until the [open questions](#open-questions) are closed.
 
 Close these before Phase C implementation.
 
-1. **How does plan-phase refine start?** Extend plan author, add `emery plan refine [--all]`, or only drive `emery slice refine` from `plan status`? Does `/emery:plan` stop after topology or continue through refine?
-2. **Should `[unknown]` block by default?** Strict is safer for multi-source migrations; intent-only one-slice changes are often thin by construction — warn-only for that case?
+1. ~~**How does plan-phase refine start?**~~ **Closed — D13.** `/emery:plan` / `emery plan author` stop after topology. Specs are minted by the new `emery plan refine` (batch over unrefined in-scope slices; optional selectors). Per-slice gap closure and re-refine use `emery slice refine`. Rejected: folding refine into `plan author` (pays synthesis before topology review; blurs the two review seams; makes topology-only approval awkward); status-driven `slice refine` only (no named batch — poor N-many ergonomics; agents invent ad-hoc fan-out outside the CLI contract).
+2. ~~**Should `[unknown]` block by default?**~~ **Closed — D14.** Always block. `[unknown]` means insufficient information was available to the agent; the operator must provide it (or explicitly waive) before build. Rejected: warn-only for intent-only / N=1 (desk-testing — unpredictable generation that compounds through later phases); context-sensitive defaults keyed on source count or change shape (two policies to teach; under-protects thin multi-slice intent).
 3. **Must each `[divergence]` be acknowledged**, or is “listed but allowed” enough for v1?
 4. **Waiver UX** — flag name, per-requirement only, and whether a second person must countersign in multi-person mode.
 5. **Human-only ambiguity** — optional operator checklist artifact, or prose review of `spec.md` alone?
@@ -317,6 +320,9 @@ Settled patterns this RFC borrows, without adopting their full machinery:
 - Auto-waive gaps when execute is invoked interactively — recreates invisible approval for the failures we care about.
 - Global requirement numbering at synthesize time — couples slices exactly when independence matters.
 - Custom git merge driver for one journal file — brittle vs per-actor logs that union naturally.
+- Fold refine into `plan author` / `/emery:plan` — spends extract/synthesis before the operator can re-cut the slice list; collapses topology review and spec review; leaves topology-only approval with nowhere natural to sit (see D13).
+- Status-driven `emery slice refine` only (no `plan refine`) — preserves a thin CLI but forces N-many operators and agents to invent batching; the drained refine fan-out belongs in one named plan verb (see D13).
+- Warn-only `[unknown]` for intent-only / N=1 (or any context-sensitive soften) — desk-testing shows generation invents missing detail and the error compounds through build and merge; thin intent closes gaps by enriching sources or waiving, not by skipping the gate (see D14).
 
 ---
 
@@ -338,16 +344,17 @@ For engine contributors. Not required to evaluate the product intent.
 - Merge assigns baseline `REQ-NNN`, records the id map as a merge fact, rejects drifted `MODIFIED` bases.
 - Validate gains `slice-base-drifted` / `slice-evidence-stale` (review signals); merge blocks on `merge-base-drifted` where needed.
 
-**Execute**
+**Plan refine and execute**
 
+- Guest `plan refine` orchestration claims each selected unrefined in-scope slice and dispatches the existing `slice refine` orchestration (pins, extract, synthesize); default selection is every unrefined in-scope slice.
 - Guest `plan execute` drops the refine leg.
 - Diagnostics (exit 2): `plan-approval-missing`, `plan-approval-stale`, `plan-gaps-unresolved`, `plan-approval-topology-only`, `slice-claim-conflict`, plus staleness / merge-drift codes above.
-- New events: `plan.approved`, claim/release, `fact.retracted`, identity-mapped merge; waiver may nest on approval.
+- New events: `plan.refined` (or per-slice claim + existing refine events), `plan.approved`, claim/release, `fact.retracted`, identity-mapped merge; waiver may nest on approval.
 
 **Tests**
 
 - Multi-actor fixtures in `crates/mock`: disjoint refine, claim conflict, base drift.
-- Shift-left fixture: author → refine → gaps → fix or waive → approve → build/merge-only execute.
+- Shift-left fixture: author → `plan refine` → gaps → fix or waive → approve → build/merge-only execute.
 - `cargo make ci` green; projection determinism and gap/approval paths covered as crate integration tests.
 
 **Hard cut**
