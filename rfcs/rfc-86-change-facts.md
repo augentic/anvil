@@ -121,7 +121,7 @@ Do not hand-edit the machine-rendered `ID:` / `Sources:` / `Status:` lines or th
 | ------- | ----------- | --------- |
 | `[unknown]` | Operator supplies the missing information: enrich a source (intent, docs, captures), or re-scope the lead so the requirement is not invented. Build stays blocked until the tag clears or the requirement is explicitly waived | Re-refine that slice |
 | `[conflict]` | Set an authority override, or remove/correct a misleading source | Re-refine |
-| `[divergence]` | Accept the winner, or override if the wrong source won | Re-refine only if inputs changed |
+| `[divergence]` | Informational — authority already chose; no decision required. Override only if the wrong source won | Re-refine only if inputs changed |
 | Stale inputs | Sources or baseline moved since refine pinned them | Re-pin and re-refine |
 
 Prefer fixing one slice at a time. Full-plan re-synthesis is expensive.
@@ -138,7 +138,7 @@ Refine may finish with tags still present — the slice is refined, but not nece
 | ------- | ------ |
 | `[conflict]` | **Block** — do not generate code over an unresolved contradiction |
 | `[unknown]` | **Block** — insufficient information reached the agent; the operator must supply it (richer sources, re-scope, or an explicit waiver) before build. Uniform for every change shape — including intent-only / N=1. Desk-testing shows warn-only yields unpredictable generation that compounds through build and merge (see D14). |
-| `[divergence]` | **Allow, but list** — authority already chose; operator can still override before approve (open question #3) |
+| `[divergence]` | **Allow, but list** — informational only; authority already chose (`intent` > `documentation` > `behaviour`, plus any per-slice override). No acknowledgment or decision required for approval. Override and re-refine only when the wrong source won (see D15) |
 
 If the policy fails, approve refuses and prints the inventory. The operator may:
 
@@ -232,6 +232,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | D12 | **Gaps gate build approval, not refine success** | Incomplete Evidence can still refine; it cannot silently enter build |
 | D13 | **`emery plan refine` is the plan-phase batch; `/emery:plan` stops after author** | Topology review before synthesis cost; named batch for N-many; `slice refine` stays the per-slice implementation and gap-closure breakout |
 | D14 | **`[unknown]` always blocks build approval** | Thin intent is not an exception — close the gap or waive it explicitly; generation must not invent missing information |
+| D15 | **`[divergence]` is informational; listed but allowed** | Authority hierarchy already picked a winner; approve does not require per-divergence acknowledgment. Wrong winner → override / amend sources and re-refine |
 
 ---
 
@@ -270,7 +271,7 @@ Do not implement Phase C until the [open questions](#open-questions) are closed.
 2. Two people can refine different slices on copies of one change, merge via git, and both slices show as refined without journal conflicts.
 3. Two slices refined against the same baseline merge without requirement-id collision; a drifted modification is rejected instead of overwritten.
 4. **Shift-left:** after authoring, every slice is refined via `emery plan refine` (or per-slice `emery slice refine`) before any build; execute performs build and merge only. `/emery:plan` does not run refine.
-5. **Gap gate:** `[conflict]` and `[unknown]` prevent build approval until fixed or explicitly waived (including intent-only / N=1); execute never silent-waives.
+5. **Gap gate:** `[conflict]` and `[unknown]` prevent build approval until fixed or explicitly waived (including intent-only / N=1); `[divergence]` is listed but does not block (authority already chose); execute never silent-waives.
 6. Topology-only approval does not unlock execute; re-refine after build approval forces re-approval.
 7. The same verbs and artifacts work with no remote (solo laptop) and with the change shared over git (two people).
 
@@ -282,7 +283,7 @@ Close these before Phase C implementation.
 
 1. ~~**How does plan-phase refine start?**~~ **Closed — D13.** `/emery:plan` / `emery plan author` stop after topology. Specs are minted by the new `emery plan refine` (batch over unrefined in-scope slices; optional selectors). Per-slice gap closure and re-refine use `emery slice refine`. Rejected: folding refine into `plan author` (pays synthesis before topology review; blurs the two review seams; makes topology-only approval awkward); status-driven `slice refine` only (no named batch — poor N-many ergonomics; agents invent ad-hoc fan-out outside the CLI contract).
 2. ~~**Should `[unknown]` block by default?**~~ **Closed — D14.** Always block. `[unknown]` means insufficient information was available to the agent; the operator must provide it (or explicitly waive) before build. Rejected: warn-only for intent-only / N=1 (desk-testing — unpredictable generation that compounds through later phases); context-sensitive defaults keyed on source count or change shape (two policies to teach; under-protects thin multi-slice intent).
-3. **Must each `[divergence]` be acknowledged**, or is “listed but allowed” enough for v1?
+3. ~~**Must each `[divergence]` be acknowledged?**~~ **Closed — D15.** Listed but allowed; informational only — no acknowledgment or decision required. The kernel already applied the authority hierarchy (`intent` > `documentation` > `behaviour`, plus any per-slice override) and wrote the winner as the operative body. Rejected: require per-divergence ack before approve (ceremony over a resolved disagreement; rubber-stamp risk; conflates divergence with conflict/unknown). Authority rules may be tightened later if wrong winners prove costly in practice; that is a hierarchy/override change, not a gate change.
 4. **Waiver UX** — flag name, per-requirement only, and whether a second person must countersign in multi-person mode.
 5. **Human-only ambiguity** — optional operator checklist artifact, or prose review of `spec.md` alone?
 6. **Shared leads across slices** — per-slice gap list enough for v1, or a cross-slice rollup?
@@ -323,6 +324,7 @@ Settled patterns this RFC borrows, without adopting their full machinery:
 - Fold refine into `plan author` / `/emery:plan` — spends extract/synthesis before the operator can re-cut the slice list; collapses topology review and spec review; leaves topology-only approval with nowhere natural to sit (see D13).
 - Status-driven `emery slice refine` only (no `plan refine`) — preserves a thin CLI but forces N-many operators and agents to invent batching; the drained refine fan-out belongs in one named plan verb (see D13).
 - Warn-only `[unknown]` for intent-only / N=1 (or any context-sensitive soften) — desk-testing shows generation invents missing detail and the error compounds through build and merge; thin intent closes gaps by enriching sources or waiving, not by skipping the gate (see D14).
+- Require per-`[divergence]` acknowledgment before build approval — taxes a disagreement the authority hierarchy already resolved; invites rubber-stamping; blurs divergence (winner chosen) with conflict/unknown (no winner / incomplete). List in the gap inventory; fix wrong winners via override and re-refine (see D15).
 
 ---
 
