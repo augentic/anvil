@@ -1,12 +1,12 @@
 # Synthesis Redesign — Structural Cost and Shape of the Refine Phase
 
-> Status: Superseded by [RFC-88 Concurrent Execution](../rfc-88-concurrent-execution.md) D7–D10, which merges this RFC's refine-time redesign with RFC-79's build-time swarm. Retained for the original measurement and sequencing detail.
+> Status: Superseded by [RFC-90 Concurrent Execution](../rfc-90-concurrent-execution.md) D7–D10, which merges this RFC's refine-time redesign with RFC-79's build-time swarm. Retained for the original measurement and sequencing detail.
 >
 > Owns: the engine-side synthesis judgment's structural shape beyond [RFC-78](rfc-78-prompt-budget.md) D8's mechanical cut: how the ~50 KB embedded playbook reaches the agent, where synthesized artifacts travel (answer channel vs lent tree), and the parallel survey / extract fan-outs at plan and refine time.
 >
 > Depends: [RFC-78](rfc-78-prompt-budget.md) D8 (path-first evidence — lands first, independently), [RFC-79](rfc-79-swarm-build.md) D4 (the backend concurrency substrate the fan-outs consume).
 >
-> Related: [RFC-55](rfc-55-working-tree.md) (distributed nodes — the same values-only constraints apply to refine-time operations), [RFC-60](../rfc-87-verify-profiles.md) (not consumed here — synthesis produces prose artifacts, not code to verify).
+> Related: [RFC-55](rfc-55-working-tree.md) (distributed nodes — the same values-only constraints apply to refine-time operations), [RFC-60](../rfc-89-verify-profiles.md) (not consumed here — synthesis produces prose artifacts, not code to verify).
 
 ## Intent
 
@@ -59,7 +59,7 @@ The RFC-79 pattern applied to refine: partition synthesis per domain (or per req
 
 - The mechanical evidence-inlining cut — [RFC-78](rfc-78-prompt-budget.md) D8 owns it and lands first.
 - Target-build decomposition, convergence, and the concurrency substrate — [RFC-79](rfc-79-swarm-build.md).
-- Verify profiles ([RFC-60](../rfc-87-verify-profiles.md)) — synthesis artifacts are validated by the engine's own kernel and sweep, not by toolchain verification.
+- Verify profiles ([RFC-60](../rfc-89-verify-profiles.md)) — synthesis artifacts are validated by the engine's own kernel and sweep, not by toolchain verification.
 - Changing the synthesis judgment's authority model, the `[conflict]` / `[divergence]` / `[unknown]` taxonomy, or the provenance contract — this RFC moves bytes and channels, not semantics.
 
 ## Ownership

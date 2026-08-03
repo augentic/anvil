@@ -4,7 +4,7 @@
 >
 > Owns: the operator-facing `emery` executable, deployment assembly, and Emery's fail-closed guest resolver over the adapter store and project cache.
 >
-> Builds on: [Emery on Omnia](architecture.md). Program: [RFC-85](rfc-85-migration-program.md) and the platform-migration series ([next-stage.md](next-stage.md)). Install transport: [RFC-76](archive/rfc-76-adapter-install.md) (archived).
+> Builds on: [Emery on Omnia](architecture.md). Program: the platform-migration series ([platform.md](platform.md)). Install transport: [RFC-76](archive/rfc-76-adapter-install.md) (archived).
 
 ## Landed (Stages 1 + 3, Stage 2 MCP)
 
@@ -31,4 +31,4 @@ Stage 1's pre-run adapter enumeration is **superseded and deleted**. Do not resu
 - Teaching Omnia Emery vocabulary
 - Statically linking first-party adapters into the released Wasm distribution
 - Making the native host the default operator distribution
-- Selecting which adapters a project should use ([RFC-85](rfc-85-migration-program.md))
+- Selecting which adapters a project should use ([RFC-87](rfc-87-detached-changes.md))

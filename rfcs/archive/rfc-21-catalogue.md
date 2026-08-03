@@ -1,6 +1,6 @@
 # RFC-21: Source Catalogue and Source-Clone Cache
 
-> **Status: Superseded (archived).** Design ownership moved to [Migration Walking Skeleton](../rfc-85-migration-program.md) Part B. Do not implement this document; historical prior art only.
+> **Status: Superseded (archived).** Source intake and topology ownership moved to [RFC-87 Detached Changes](../rfc-87-detached-changes.md). Do not implement this document; historical prior art only.
 >
 > Depends: the source-adapter flow in [`engine/docs/standards/workflow.md`](../../docs/standards/workflow.md) and the lead/evidence model in [From sources to slices](../../docs/explanation/reconciliation.md).
 
