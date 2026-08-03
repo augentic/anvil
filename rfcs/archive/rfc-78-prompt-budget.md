@@ -8,7 +8,7 @@
 >
 > Spans: `augentic/emery` (engine `read_inputs` / seam `Input` / the adapter SDK's `phase` renderers), `augentic/emery-adapters` (omnia / vectis / contracts assembles), `augentic/backends` (`omnia-cursor` spawn model, `CURSOR_TIMEOUT_SECS`).
 >
-> Related: [RFC-79](rfc-79-swarm-build.md) (the swarm build this RFC is the enabling layer for — focused convergent build requests replace the fat legs), [RFC-80](rfc-80-synthesis-redesign.md) (the deeper synthesis redesign D8 defers to), [RFC-18](../future/rfc-18-slm.md) (cheaper generation backend — orthogonal; this RFC shrinks the frontier-model cost itself), [RFC-60](../rfc-89-verify-profiles.md) (host-owned verify — RFC-79 promotes it to the swarm's convergence gate), [RFC-55](rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the deployment that re-activates bodies-on-the-wire).
+> Related: [RFC-79](rfc-79-swarm-build.md) (the swarm build this RFC is the enabling layer for — focused convergent build requests replace the fat legs), [RFC-80](rfc-80-synthesis-redesign.md) (the deeper synthesis redesign D8 defers to), [RFC-18](../future/rfc-18-slm.md) (cheaper generation backend — orthogonal; this RFC shrinks the frontier-model cost itself), [RFC-60](../rfc-90-verify-profiles.md) (host-owned verify — RFC-79 promotes it to the swarm's convergence gate), [RFC-55](rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the deployment that re-activates bodies-on-the-wire).
 
 ## Intent
 
@@ -172,10 +172,10 @@ Keep inline: the guidance brief (it comes from the adapter component, not the tr
 ### Non-goals
 
 - Training or swapping the model backend ([RFC-18](../future/rfc-18-slm.md)).
-- Host-owned `verify` profiles ([RFC-60](../rfc-89-verify-profiles.md)) — complementary later; this RFC does not move cargo out of the agent loop.
+- Host-owned `verify` profiles ([RFC-60](../rfc-90-verify-profiles.md)) — complementary later; this RFC does not move cargo out of the agent loop.
 - Changing the MCP references shelf layout or the `REFERENCES_POINTER` contract.
 - Splitting the generation leg's shared verify-repair channel (see D3).
-- **The swarm build itself — owned by [RFC-79](rfc-79-swarm-build.md).** Decomposing the fat legs into focused convergent requests, the verify convergence gate (promoting [RFC-60](../rfc-89-verify-profiles.md)), backend support for concurrent completions and per-worker workspace policy, and agent-pool lifecycle management all live there. This RFC is its enabling layer: small requests only work when the per-request fixed overhead (D1–D3), timeout semantics (D4), and session model (D5) are already right.
+- **The swarm build itself — owned by [RFC-79](rfc-79-swarm-build.md).** Decomposing the fat legs into focused convergent requests, the verify convergence gate (promoting [RFC-60](../rfc-90-verify-profiles.md)), backend support for concurrent completions and per-worker workspace policy, and agent-pool lifecycle management all live there. This RFC is its enabling layer: small requests only work when the per-request fixed overhead (D1–D3), timeout semantics (D4), and session model (D5) are already right.
 - **The deeper synthesis redesign — owned by [RFC-80](rfc-80-synthesis-redesign.md).** D8 takes the mechanical evidence-inlining cut; the structural questions move there: making the ~50 KB embedded synthesis playbook lazy (engine judgment legs carry no MCP grants — `crates/project/src/judgment.rs` — so laziness needs an engine-side references shelf and grant plumbing, not a prompt edit); moving synthesized artifacts off the answer channel (today artifact bodies ride the schema-gated JSON answer and are persisted by the tail — writing to the lent tree instead would rework the validate-before-visible contract); and parallelising the serial survey / extract fan-outs (`crates/slice/src/orchestrate/refine.rs`, `crates/change/src/orchestrate/survey.rs`) over RFC-79's concurrency substrate.
 
 ## Ownership

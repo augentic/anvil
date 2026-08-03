@@ -1,6 +1,6 @@
 # RFC-22: Migration Ledger and Slice Mapping
 
-> **Status: Superseded (archived).** Change-scoped coordination ownership moved to [RFC-87 Detached Changes](../rfc-87-detached-changes.md). Do not implement this document; historical prior art only.
+> **Status: Superseded (archived).** Change-scoped coordination ownership moved to [RFC-88 Detached Changes](../rfc-88-detached-changes.md). Do not implement this document; historical prior art only.
 >
 > Depends: [RFC-21](rfc-21-catalogue.md) (source catalogue, also archived) and the source-adapter flow in [`engine/docs/standards/workflow.md`](../../docs/standards/workflow.md).
 

@@ -34,7 +34,7 @@ Every release declares exactly one shape; the shape fixes the cross-repo order:
 | **Host-only** | CLI / lifecycle / engine guest; WIT unchanged | engine cut → publish; raise adapter floor only when a train needs the newer host |
 | **Adapter-only** | prompts, rules, target behavior; seam unchanged | adapters cut → publish |
 
-The invariant behind all three: an adapter train releases only against a **published** WIT and a **released (or RC)** engine revision. A WIT-breaking landing is recorded as a publication set ([RFC-88](rfc-88-publication-sets.md)).
+The invariant behind all three: an adapter train releases only against a **published** WIT and a **released (or RC)** engine revision. A WIT-breaking landing is recorded as a publication set ([RFC-89](rfc-89-publication-sets.md)).
 
 ### 2. Adapter-train gates before publish
 
@@ -42,7 +42,7 @@ The invariant behind all three: an adapter train releases only against a **publi
 2. CI green against a released (or RC) engine revision: engine crates pinned to a release tag (`tag = "vX.Y.Z"` in the adapters root `Cargo.toml`), sibling path `[patch]` commented out.
 3. Every adapter's `emery-floor` names the minimum host that can run the train.
 4. Each GHCR version tag is published once — bump the version for new bytes (checklist today; CI probe in Phase B).
-5. Once source selection lands ([RFC-87](rfc-87-detached-changes.md#source-adapter-selection)): every identity named by the engine's first-party selector profiles is on the coordinated train.
+5. Once source selection lands ([RFC-88](rfc-88-detached-changes.md#source-adapter-selection)): every identity named by the engine's first-party selector profiles is on the coordinated train.
 
 The tag pin makes gate 2 structural: the adapters tree cannot silently build against a floating engine `main`.
 
@@ -79,7 +79,7 @@ One row per release. This is a record, not a solver.
 - [`docs/release.md`](../docs/release.md) — operator cut/publish flow
 - `augentic/.github` — shared `release.yaml` / `patch.yaml` / `publish.yaml` / `crates.yaml`
 - [RFC-76](archive/rfc-76-adapter-install.md) — GHCR publish/install loop, exact pins, lockstep train SemVer
-- [RFC-88](rfc-88-publication-sets.md) — WIT-breaking landings as verifiable publication sets
+- [RFC-89](rfc-89-publication-sets.md) — WIT-breaking landings as verifiable publication sets
 - [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) — third-party ecosystem
 
-Related: [RFC-76](archive/rfc-76-adapter-install.md) · [RFC-71](rfc-71-deployment.md) · [RFC-88](rfc-88-publication-sets.md) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [docs/release.md](../docs/release.md)
+Related: [RFC-76](archive/rfc-76-adapter-install.md) · [RFC-71](rfc-71-deployment.md) · [RFC-89](rfc-89-publication-sets.md) · [RM-21](roadmap.md#rm-21-adapter-ecosystem-operating-model) · [docs/release.md](../docs/release.md)

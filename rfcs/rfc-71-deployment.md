@@ -31,4 +31,4 @@ Stage 1's pre-run adapter enumeration is **superseded and deleted**. Do not resu
 - Teaching Omnia Emery vocabulary
 - Statically linking first-party adapters into the released Wasm distribution
 - Making the native host the default operator distribution
-- Selecting which adapters a project should use ([RFC-87](rfc-87-detached-changes.md))
+- Selecting which adapters a project should use ([RFC-88](rfc-88-detached-changes.md))

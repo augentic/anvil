@@ -1,8 +1,10 @@
-# RFC-86: Local Working Trees
+# RFC-87: Local Working Trees
 
-> Status: Draft — step 1 of the platform-migration series ([platform.md](platform.md))
+> Status: Draft — step 2 of the platform-migration series ([platform.md](platform.md))
 >
 > Owns: the single-node value↔tree boundary — `materialize` / `changes()` over content-addressed `revision` / `changeset` values, read-only source grants and snapshots, the exclusive local working-tree lease, exact-base and cleanliness policy, and source/target tree separation.
+>
+> Depends on completed [RFC-86](rfc-86-change-facts.md): a recorded base is an RFC-86 pin (`base.yaml`, build records), lease lifecycle events land in the per-actor fact logs, and the machine-local lease is subordinate to RFC-86's actor-level claim (the lease guards a materialized tree on one machine; the claim coordinates actors).
 
 ## Intent
 
@@ -35,7 +37,7 @@ recorded revision
 
 The revision and changeset carry continuity after an operation ends. The retained mirror is just a cache.
 
-**Why now.** Every later step of the series consumes this primitive: [RFC-87](rfc-87-detached-changes.md) materializes per-change slots from it, [RFC-90](rfc-90-concurrent-execution.md) gives each concurrent worker its own tree, and [RFC-91](rfc-91-node-sync.md) moves the settled values between nodes.
+**Why now.** Every later step of the series consumes this primitive: [RFC-88](rfc-88-detached-changes.md) materializes per-change slots from it, [RFC-91](rfc-91-concurrent-execution.md) gives each concurrent worker its own tree, and [RFC-92](rfc-92-node-sync.md) moves the settled values between nodes.
 
 The serial loop wins today too. Builds anchor to an exact base instead of ambient directory state. Evidence stays stable while generation writes. Interrupted work resumes through classified recovery instead of manual cleanup.
 
@@ -46,7 +48,7 @@ Four concepts:
 - A **revision** identifies one immutable source tree. For Git repositories it is an exact commit.
 - A **working tree** is the mutable, local projection of a revision.
 - A **changeset** is the complete adds / modifies / deletes delta between a working tree and its recorded base revision.
-- A **lease** gives one owner exclusive use of one materialized writable tree. The lease carries ownership; the journal carries workflow state and audit events.
+- A **lease** gives one owner exclusive use of one materialized writable tree. The lease carries machine-local ownership; workflow state is projected from the RFC-86 fact tree, and lease lifecycle events ride the per-actor logs as audit facts.
 
 Two backend transformations cross the value↔tree boundary:
 
@@ -65,7 +67,7 @@ release(lease, outcome)
 
 Nothing else moves. Build and merge reports still carry judgment. Native orchestration captures or applies the changeset around those calls. Merge still owns folding the result into the baseline. The materializer prepares trees and branches — nothing more.
 
-This RFC's **changeset** is a tree-level delta. It is distinct from RFC-88's **publication set**, the forge-side record grouping one change's branches and pull requests across repositories.
+This RFC's **changeset** is a tree-level delta. It is distinct from RFC-89's **publication set**, the forge-side record grouping one change's branches and pull requests across repositories.
 
 ### Source-tree discipline
 
@@ -75,14 +77,14 @@ Phase A requires source and target roots to be disjoint, reporting `plan-source-
 
 ## Decisions
 
-- **D1 — Values are the operation boundary.** Live handles and descriptors expire with the operation. Continuity is the slice id plus `revision` / `changeset`, which round-trip faithfully in a fresh materialization root — the settled contract RFC-90 composition and RFC-91 transport build on.
-- **D2 — One exclusive lease per writable tree.** An advisory lock plus cleanliness classification guards each tree. A lease is held until release or an explicit `lease recover`, which validates the tree before changing ownership. Lease records live out of tree; the journal carries the audit trail.
-- **D3 — Every writable tree is materialized.** The host creates an exact-base scratch worktree from its mirror and leases it. No target operation runs in an operator-tended checkout. RFC-87 reuses the same capability for change-local slots.
-- **D4 — Exact base before mutation; one branch convention.** Materialization resolves the declared base ref, records the exact commit, creates `change/<plan>` in each repository, verifies cleanliness, and takes the lease — all before any workflow write. RFC-88 observes the same branch name; repository identity disambiguates equal names across members.
+- **D1 — Values are the operation boundary.** Live handles and descriptors expire with the operation. Continuity is the slice id plus `revision` / `changeset`, which round-trip faithfully in a fresh materialization root — the settled contract RFC-91 composition and RFC-92 transport build on.
+- **D2 — One exclusive lease per writable tree.** An advisory lock plus cleanliness classification guards each tree. A lease is held until release or an explicit `lease recover`, which validates the tree before changing ownership. Lease records live out of tree; the per-actor fact logs ([RFC-86](rfc-86-change-facts.md) D3) carry the audit trail. The lease is machine-local mechanics beneath the actor-level claim (RFC-86 D7): claims say which actor owns the slice, leases say which process owns the tree.
+- **D3 — Every writable tree is materialized.** The host creates an exact-base scratch worktree from its mirror and leases it. No target operation runs in an operator-tended checkout. RFC-88 reuses the same capability for change-local slots.
+- **D4 — Exact base before mutation; one branch convention.** Materialization resolves the declared base ref, records the exact commit, creates `change/<plan>` in each repository, verifies cleanliness, and takes the lease — all before any workflow write. RFC-89 observes the same branch name; repository identity disambiguates equal names across members.
 - **D5 — Cleanliness has a closed classification.** Three states proceed: clean-at-base, clean-on-expected-branch, and dirty-explained-by-active-slice. Three stop with a structured diagnostic and an explicit recovery verb: dirty-unaccounted, base-drifted, and branch-diverged. Recovery keeps unaccounted changes intact for inspection.
 - **D6 — Source snapshots and target trees are separate capabilities.** Source adapters read immutable snapshot trees; target adapters write leased writable trees — both routed per D8. A repository used in both roles gets both trees, pinned to the same commit unless its approved bindings say otherwise. Extraction stays reproducible while generation writes.
 - **D7 — Git is the writable backend; directory copy is the non-Git source backend.** Writable trees come from a host-owned bare mirror, one linked worktree per lease. Git source snapshots pin a commit; non-Git source directories copy into content-addressed read-only scratch. Both run in native host code.
-- **D8 — Trees route beneath the anchored mount; mounts and WIT do not change.** The `.` preopen remains the anchored root (the project root today, the change directory under RFC-87), and every materialized tree — leased worktrees and content-addressed source snapshots — is created under the gitignored `.emery/scratch/`, so a mid-run materialization is guest-visible through the existing preopen set. `working-tree.subpath` names the tree for deterministic guest code; the spawned-agent backend is lent only that subtree as its `local-path` — two views of one directory that cannot drift apart. Local isolation is an audit posture, not a capability boundary: subpath discipline plus lend scoping, enforced by `changes()` extracting exactly the lease's delta and the cleanliness classification flagging out-of-tree writes. A source original outside the anchored root is never guest-visible — host code snapshots it into scratch and guests read only the copy. Per-tree capability preopens are deferred: RFC-91's private per-node trees deliver enforced isolation without a runtime feature.
+- **D8 — Trees route beneath the anchored mount; mounts and WIT do not change.** The `.` preopen remains the anchored root (the project root today, the change directory under RFC-88), and every materialized tree — leased worktrees and content-addressed source snapshots — is created under the gitignored `.emery/scratch/`, so a mid-run materialization is guest-visible through the existing preopen set. `working-tree.subpath` names the tree for deterministic guest code; the spawned-agent backend is lent only that subtree as its `local-path` — two views of one directory that cannot drift apart. Local isolation is an audit posture, not a capability boundary: subpath discipline plus lend scoping, enforced by `changes()` extracting exactly the lease's delta and the cleanliness classification flagging out-of-tree writes. A source original outside the anchored root is never guest-visible — host code snapshots it into scratch and guests read only the copy. Per-tree capability preopens are deferred: RFC-92's private per-node trees deliver enforced isolation without a runtime feature.
 
 ## Ownership
 
@@ -95,7 +97,7 @@ Phase A requires source and target roots to be disjoint, reporting `plan-source-
 
 ## Fixed implementation cut
 
-- One host-owned bare mirror per Git repository backs every writable worktree, including RFC-87's ephemeral slots.
+- One host-owned bare mirror per Git repository backs every writable worktree, including RFC-88's ephemeral slots.
 - Trees materialize under the anchored root: leased worktrees at `.emery/scratch/<lease>/`, content-addressed source snapshots at `.emery/scratch/<digest>/`. The prefix is already init-managed `.gitignore` state; the enclosing repository's cleanliness classification excludes it, and scratch content never rides a changeset.
 - The workspace lend for a target operation is the leased subtree, never the whole mount.
 - Lease scope is one writable tree. The lock and lease record live beside the tree.
@@ -106,15 +108,15 @@ Phase A requires source and target roots to be disjoint, reporting `plan-source-
 
 ## Rejected alternatives
 
-- **Dynamic per-operation preopens** (an Omnia runtime feature) — purchases capability enforcement that D8's detection posture already provides; RFC-91's private per-node trees deliver enforced isolation without a runtime change.
-- **Changing the WIT `working-tree` record** — breaks RFC-90's "the WIT seam does not change" for no functional gain; `subpath` already routes beneath the shared mount and is unused today.
+- **Dynamic per-operation preopens** (an Omnia runtime feature) — purchases capability enforcement that D8's detection posture already provides; RFC-92's private per-node trees deliver enforced isolation without a runtime change.
+- **Changing the WIT `working-tree` record** — breaks RFC-91's "the WIT seam does not change" for no functional gain; `subpath` already routes beneath the shared mount and is unused today.
 - **Flat `.emery/<lease>/` tree roots** — generated lease names in the closed top-level `.emery/` namespace; `scratch/` is the reserved, already-gitignored boundary between engine state and regenerable trees.
 
 ## Phased delivery
 
 - **Phase A — Source grants and snapshots.** Canonical read-only grants, symlink containment, content-addressed directory copies, pinned Git source snapshots, and disjoint source/target roots.
 - **Phase B — Local slots and leases.** Bare-mirror sync, worktree materialization, cleanliness classification, exact-base recording, deterministic branches, `ensure` / `inspect` / `release`, the advisory lease, and explicit recovery.
-- **Phase C — The complete value boundary.** `materialize(revision)` / `changes()` over local linked worktrees, binary-patch persistence and application, round-trip in a fresh materialization root, and routing to separate immutable source and writable target trees. This phase enables same-repository source and target roles and completes RFC-86.
+- **Phase C — The complete value boundary.** `materialize(revision)` / `changes()` over local linked worktrees, binary-patch persistence and application, round-trip in a fresh materialization root, and routing to separate immutable source and writable target trees. This phase enables same-repository source and target roles and completes RFC-87.
 
 ## Acceptance criteria
 

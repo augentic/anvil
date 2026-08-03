@@ -1,6 +1,6 @@
 # Next Stage: Platform-Scale Migration
 
-> Status: Planning spine for the RFC-86…RFC-91 series — each RFC owns its own decisions; this document owns the sequence and the fit
+> Status: Planning spine for the RFC-86…RFC-92 series — each RFC owns its own decisions; this document owns the sequence and the fit. RFC numbers follow implementation order.
 >
 > Audience: contributors starting work on the series; operators evaluating what Emery is becoming
 
@@ -8,13 +8,13 @@
 
 Point Emery at a legacy system — a mobile app, a realtime platform, any estate of repositories that together comprise one product — and have it migrate that system: discover the repositories, profile them, author a plan, and execute it with a **swarm of concurrent agents** working across **multiple repositories** on **multiple nodes**, converging on verified, published changes.
 
-Then keep changing that platform the same way: open a disposable change directory, survey the organisation for repositories whose `.emery/project.yaml` declares `product:` (membership ids; the build set lives under `platforms:`), record the affected set (creating repositories when the change needs greenfield members), execute, publish, finalize.
+Then keep changing that platform the same way, from a disposable change directory — prior context intentionally thin (forge authentication and organisation plus source material), creating member repositories when the change needs ones that do not exist yet.
 
 Concretely, the exemplar workload is a migration the size of AT's mobile app or AT's realtime platform: tens of repositories, hundreds of slices, weeks of wall-clock — infeasible as today's serial, single-repo, operator-tended loop, and exactly what the series below makes routine.
 
-Prior context for either job is intentionally thin: GitHub authentication and organisation, plus source material (documents and/or code). Emery creates target repositories when they do not exist; it does not assume a tended platform repo or pre-checked-out slots.
+And do all of it with one Emery: the same binary, verbs, artifacts, and lifecycle on a single desktop and across a multi-node fleet — the engine guest is location-neutral by construction (a Wasm component whose deployment differences live in providers and the launcher), and [RFC-86](rfc-86-change-facts.md) makes the workflow state location-neutral to match. A desktop is the deployment with one actor and no remote, not a separate mode.
 
-Everything Emery already is stays load-bearing: the slice loop (`refine → build → merge`), artifact authority, the journal as single write authority, adapter seams over WIT, operator-owned publication. The series scales those invariants out; it does not replace them.
+Everything Emery already is stays load-bearing: the slice loop (`refine → build → merge`), artifact authority, the journal's closed event taxonomy as the audit trail, adapter seams over WIT, operator-owned publication. The series scales those invariants out; it does not replace them.
 
 ## Where we are
 
@@ -22,16 +22,17 @@ Today one change runs in one repository (or a hand-tended workspace of them), se
 
 ## The target architecture
 
-Four moves, layered:
+Five moves, layered:
 
-1. **Trees become values.** RFC-86 materializes one content-addressed `revision` under an exclusive local lease and extracts a `changeset`; RFC-90 later composes ordered same-base changesets; RFC-91 transports the settled values across nodes. No shared volume crosses an operation.
-2. **Location becomes ephemeral.** A change opens in a bare directory, discovers and records its member repositories from the forge (creating new ones when none match), materializes them as leased slots, and leaves nothing behind after finalize except merged baselines and forge history.
-3. **Verification becomes host-owned.** Closed, sandboxed verify profiles replace cargo-commands-in-prompts, producing normalized findings any orchestrator can route.
-4. **Judgment becomes a swarm.** Within a slice: focused workers with exclusive write manifests, converging through the verify gate. Across slices: independent plan entries build in parallel on separate leases, with a trial-integration gate measuring joint health continuously. Across nodes: three separated planes (coordination / convergence / publication) move events, values, and PRs respectively.
+1. **State becomes facts.** RFC-86 makes the change a self-contained, git-backed fact tree; all workflow status is a projection over it, and no later move needs a hosted authority.
+2. **Trees become values.** RFC-87 materializes a content-addressed `revision` under an exclusive local lease and extracts a `changeset`; RFC-91 later composes ordered same-base changesets; RFC-92 transports the settled values across nodes. No shared volume crosses an operation.
+3. **Location becomes ephemeral.** A change opens in a bare directory, discovers and records its member repositories from the forge (creating new ones when none match), materializes them as leased slots, and leaves nothing behind after finalize except merged baselines and forge history.
+4. **Verification becomes host-owned.** Closed, sandboxed verify profiles replace cargo-commands-in-prompts, producing normalized findings any orchestrator can route.
+5. **Judgment becomes a swarm.** Within a slice: focused workers with exclusive write manifests, converging through the verify gate. Across slices: independent plan entries build in parallel on separate leases, with a trial-integration gate measuring joint health continuously. Across nodes: three separated planes (coordination / convergence / publication) move facts, values, and PRs respectively.
 
 ```text
-            coordination plane (hosted journal, leases, plan status)
-                 │
+            coordination plane (RFC-86 fact tree: per-actor logs, claims, projections)
+                 │  synced by ordinary transports — git baseline, streamed when hosted
   ┌──────────────┼──────────────────┐
   node A         node B             node C
   slice 1        slice 2            per-project trial gate
@@ -39,82 +40,82 @@ Four moves, layered:
   tree ← lease   tree ← lease
   └─ tree delta α └─ tree delta β   serial merge gate (unchanged authority)
                  │
-            value plane (revision / changeset — iroh / NATS / S3, deployment-bound)
+            value plane (revision / changeset — content-addressed store, deployment-bound)
                  │
             publication plane (branches, PRs, forge — operator-owned, verified at finalize)
 ```
 
 ## The series
 
-Numbering is **implementation order** along the operator-story critical path first, then the scale track. Work completes one RFC before implementation starts on the next. Every RFC depends only on completed earlier steps, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC.
+The tables give **implementation order** — the operator-story critical path first, then the scale track. RFCs *complete* in this order: every RFC depends only on completed earlier steps, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC. Development may overlap where the code coupling is narrow — see [Working in parallel](#working-in-parallel).
 
 ### Product critical path — migrate and change a platform
 
-| RFC | Title | Delivers | Depends on |
-| --- | ----- | -------- | ---------- |
-| [RFC-86](rfc-86-working-trees.md) | Local Working Trees | Complete local value↔tree loop: source grants and snapshots, bare-mirror Git materialization, `revision → tree → changeset`, exact-base policy, local leases, and immutable source/target separation | — |
-| [RFC-87](rfc-87-detached-changes.md) | Detached Changes | Complete single-node migrate/change loop: generated source identities, deterministic selection, disposable change directory, GitHub discovery, recorded members, target-topology proposals, local ephemeral slots, and greenfield creation | completed 86 |
-| [RFC-88](rfc-88-publication-sets.md) | Publication Sets | Publication identity: one change's branches and PRs bound across repositories, ordered landing, verification at finalize | 87 (member derivation) |
+| Step | RFC                                  | Title               | Delivers                                                                                                                                                                                                                                                    | Depends on             |
+| ---- | ------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts        | The substrate: the change as a git-backed fact tree, projected status, per-actor event logs, pinned judgment inputs, merge-finalized requirement identity, approval as artifact, desktop as the degenerate deployment                                       | —                      |
+| 2    | [RFC-87](rfc-87-working-trees.md)    | Local Working Trees | Complete local value↔tree loop: source grants and snapshots, bare-mirror Git materialization, `revision → tree → changeset`, exact-base policy, local leases, and immutable source/target separation                                                        | completed 86           |
+| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, the change repository as the disposable home, GitHub discovery, recorded members, target-topology proposals, local ephemeral slots, and greenfield creation | completed 86, 87       |
+| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Publication identity: one change's branches and PRs bound across repositories, ordered landing, verification at finalize                                                                                                                                    | 88 (member derivation) |
 
 ### Scale track — concurrency after the location story works
 
-| RFC | Title | Delivers | Depends on |
-| --- | ----- | -------- | ---------- |
-| [RFC-89](rfc-89-verify-profiles.md) | Verify Profiles | Complete Omnia/Rust path for closed, sandboxed, host-owned verification with normalized findings and typed unavailability elsewhere | completed 86 |
-| [RFC-90](rfc-90-concurrent-execution.md) | Concurrent Execution | Complete single-node Omnia swarm: focused workers, write ownership, local pool, per-worker trees, deterministic changeset composition, convergence, refine/plan fan-outs, and synthesis payload restructuring | completed 86, 89 |
-| [RFC-91](rfc-91-node-sync.md) | Node Sync | Complete hosted/multi-node Omnia path: JetStream journal and values, fenced leases, hosted trees, remote pools, concurrent plan entries, and per-project trial integration | completed 86, 87, 89, 90 |
+| Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                        | Depends on                   |
+| ---- | ---------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| 5    | [RFC-90](rfc-90-verify-profiles.md)      | Verify Profiles      | Complete Omnia/Rust path for closed, sandboxed, host-owned verification with normalized findings and typed unavailability elsewhere                                                                                             | completed 87                 |
+| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node Omnia swarm: focused workers, write ownership, local pool, per-worker trees, deterministic changeset composition, convergence, refine/plan fan-outs, and synthesis payload restructuring                   | completed 86, 87, 90         |
+| 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Complete multi-node Omnia path: fact and value transport between nodes, fenced claims, hosted trees, remote pools, concurrent plan entries, and per-project trial integration — no authority cutover, no second lifecycle model | completed 86, 87, 88, 90, 91 |
 
 Sequencing notes:
 
-- **Complete RFC-86 first.** It ships the whole local tree capability through patch round-trip and immutable source/target separation. Layering and hosted backends are explicitly absent.
-- **Then complete RFC-87.** Bare directory, forge auth/org, source material → select adapters → discover → record members (create repos when needed) → plan → local materialization on execute → finalize. It is single-node and removes the old workspace/registry coordinator.
-- **Then complete RFC-88.** Publication projection and finalize verification consume only RFC-87's settled plan bindings and forge provider; there is no registry or `gh` bridge.
-- **Then scale inside-out through RFC-89 → RFC-90 → RFC-91.** Host-owned verify completes first; RFC-90 completes the local swarm and changeset composer; RFC-91 alone adds hosted trees, remote pools, durable control-plane state, and cross-node execution.
+- **Complete RFC-86 first.** It deletes the mechanics every later step would otherwise have to synchronize (stored status, the single journal file, synthesis-time identity, unrecorded approval) and delivers operator value immediately: reviewable, committable, shareable pre-build planning artifacts and the shift-left refine flow.
+- **Then complete 87 → 88 → 89 in order, and scale inside-out through 90 → 91 → 92.** Each step consumes only settled earlier vocabulary; RFC-92 adds only transport, fencing, hosted trees, and remote pools — the state model does not change when the second node appears.
+
+## Working in parallel
+
+Completion order stays serial (the tables above), but the code coupling between the first two steps is far narrower than "completed 86", so a small team can develop them concurrently.
+
+**RFC-86 ∥ RFC-87 — the headline split.** RFC-86 lives in the state layer: `crates/project/src/journal.rs` (single file → per-actor logs), the status ladders in `crates/project/src/plan/model/state.rs` and `crates/project/src/slice/lifecycle.rs` (deleted in favour of the projection kernel), `IdAllocator` in `crates/slice/src/synthesis/project.rs`, and the approval/claim surfaces in `crates/change`. RFC-87 lives in the tree/value layer: `WorkingTree` in `crates/project/src/seam.rs`, the three `WorkingTree::live()` dispatch sites (`change/src/plan/handlers/execute.rs`, `slice/src/handlers/build.rs`, `slice/src/orchestrate/merge/gate.rs`), the materialization backend, and the launcher mount policy; the WIT `revision` / `working-tree` records already exist. The tracks meet at exactly two seams — freeze these first, then neither blocks the other:
+
+1. **The revision digest convention** — RFC-86's `base.yaml` pins a baseline revision using RFC-87's value format (Git commit where available, `sha256:` tree digest otherwise). One track consumes it as a value format, the other as a pinning field.
+2. **The fact-log event shape** — RFC-87's lease records land as events in RFC-86's per-actor logs. Agree the `EventKind` extension pattern and actor-identity capture (a stable string captured once at the composition root, like `Locations`); leases are then just another event producer.
+
+**Within RFC-86**, Phase A (per-actor logs, projection kernel, claim/retraction facts) is journal-and-plan territory in `crates/project`; Phase B's identity work (slice-scoped requirement ids, `MODIFIED` base digests, merge-time finalization) is synthesis-and-merge-engine territory in `crates/slice`; the one shared contract is the merge fact that records the identity map. Phase C (approval, multi-actor) sits on top of A.
+
+**Slack absorbers** — real work with no ordering constraint: RFC-90's profile taxonomy, findings normalization, and Omnia `wasi-model` verify plumbing (buildable against a plain directory now); RFC-86's multi-actor fixtures in `crates/mock` (two actors, disjoint slices, merged change trees, claim-conflict and base-drift injections); RFC-89's record design (its implementation genuinely needs RFC-88's member bindings).
+
+**Collision points** — sequence explicitly, don't parallelize: the merge orchestration (`crates/slice/src/orchestrate/merge/` — RFC-86 adds identity finalization and the merge fact, RFC-87 rewires the tree the merge gates run against; decide who lands first, the second rebases), and RFC-88 itself — the convergence point needing the fact tree as the change home *and* materialized slots, effectively the integration test of the split.
 
 ## Two operator jobs, one loop
 
-What both jobs look like once the critical path lands:
-
-### 1. Migrate a legacy platform
-
-1. `emery change open` in a bare directory ([RFC-87](rfc-87-detached-changes.md)).
-2. `emery source discover` with **migrate** criteria fingerprints shallow source trees through [RFC-87](rfc-87-detached-changes.md)'s exact-one source selector and proposes members and target topology — including repositories that do not exist yet (RFC-87 greenfield).
-3. The operator runs `emery change approve`; it atomically records `plan.yaml.projects`, exact revisions, resolved target topology, and generated source bindings, and journals initialized `create-repository` for greenfield targets.
-4. `/emery:plan` authors slices over the recorded target-capable projects.
-5. `emery plan execute` materializes leased slots on demand ([RFC-86](rfc-86-working-trees.md)), runs refine → build → merge per entry.
-6. Operator publishes; finalize verifies the publication set ([RFC-88](rfc-88-publication-sets.md)); the change directory is deleted.
-
-### 2. Ongoing change to the migrated platform
-
-1. Same `emery change open` in a bare directory.
-2. `emery source discover` with **change** criteria surveys the organisation for repositories whose `.emery/project.yaml` declares `product:` (membership ids); optional criteria intersect with the change's requested product ids. The build set is `platforms:` (`core` / `ios` / `android` / …) — not the membership key.
-3. Approval records the affected members; greenfield proposals cover members the change needs that do not exist yet.
-4. Plan → execute → publish → finalize as above.
-
-Once the scale track lands, step 5 gains concurrent workers, concurrent plan entries, and multi-node execution — same loop, higher throughput.
+Both jobs run the same loop once the critical path lands; they differ only at the discover step. **Migrate** criteria fingerprint shallow source trees through RFC-88's exact-one source selector and propose members and target topology, including repositories that do not exist yet. **Change** criteria survey the organisation for repositories whose `.emery/project.yaml` declares `product:` membership ids (the build set is `platforms:`, not the membership key).
 
 ```text
-emery change open <dir>
+emery change open <dir>   # bare directory (RFC-88)
 emery source discover --mode migrate|change --criteria …
          │  immutable candidate report (may propose create-repository)
          ▼
-emery change approve
-                   →  record projects, revisions, topology, sources;
-                      create initialized repositories where needed
-/emery:plan        →  author slices over recorded projects
-emery plan execute →  materialize slots on demand; refine → build → merge
+emery change approve  →  record projects, exact revisions, topology, sources;
+                         create initialized repositories where needed
+/emery:plan           →  author slices over recorded projects
+(/emery:refine …)     →  optional shift-left (RFC-86): refine slices against pinned
+                         bases; review the committed spec set; emery plan approve
+emery plan execute    →  approval-gated (auto-approves interactively); materialize
+                         leased slots on demand (RFC-87); remaining phases per entry
 operator publishes
-/emery:finalize    →  verify publication set (RFC-88); archive
+/emery:finalize       →  verify publication set (RFC-89); archive
 rm -rf <dir>
 ```
+
+Once the scale track lands, execute gains concurrent workers, concurrent plan entries, and multi-node execution — same loop, higher throughput. Shift-left refinement distributes the same way: separate operators or nodes refine claimed slices against the same pinned bases and push facts to the shared change repository.
 
 ## Outside the series
 
 Unchanged and orthogonal — not part of this arc, not blocked by it:
 
 - **[RFC-71 Self-Assembling Wasm Deployment](rfc-71-deployment.md)** — largely landed; Stage 2 diagnostics remain draft.
-- **[RFC-77 Release Process](rfc-77-release-process.md)** — operational policy for releasing Emery itself; its WIT-breaking shape becomes RFC-88's first in-house publication set.
-- **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** (future) — an optional cost lever behind RFC-90's per-worker model-selection hook; a ratchet rung, not a stage.
+- **[RFC-77 Release Process](rfc-77-release-process.md)** — operational policy for releasing Emery itself; its WIT-breaking shape becomes RFC-89's first in-house publication set.
+- **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** (future) — an optional cost lever behind RFC-91's per-worker model-selection hook; a ratchet rung, not a stage.
 - **[RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md)** (future) — content-triggered vectis work, independent of this series.
 
-Known external reference: `augentic/remedium` RFC-81 cites "RFC-82" for what is now RFC-88's publication-set record; update that citation when next touching that repo.
+Known external reference: `augentic/remedium` RFC-81 cites "RFC-82" for what is now RFC-89's publication-set record; update that citation when next touching that repo.

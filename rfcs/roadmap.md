@@ -20,7 +20,7 @@ Emery owns the workflow semantics across those layers: intent becomes artifacts;
 ## Principles
 
 - **Keep the CLI authoritative for workflow state.** Skills, MCP servers, CI, and cloud runners may orchestrate `emery`; they must not reimplement lifecycle transitions, plan validation, registry validation, or merge behavior. Repository checkout and publication remain operator-owned.
-- **One authored home per fact; derive the rest.** Each repository's durable intent (`adapter`, `description`, `product`) lives in `.emery/project.yaml`; routing identity (`surface[]`, `decisions[]`, `recent[]`) is a deterministic baseline projection committed as `.emery/topology.lock`. A detached change records its approved repositories, exact revisions, and resolved target topology once under `plan.yaml.projects`; RFC-87 removes committed `registry.yaml` and tended workspace slots from multi-repository coordination. Rich catalog metadata can still live in Backstage or another catalog; Emery consumes reviewable projections at the boundary.
+- **One authored home per fact; derive the rest.** Each repository's durable intent (`adapter`, `description`, `product`) lives in `.emery/project.yaml`; routing identity (`surface[]`, `decisions[]`, `recent[]`) is a deterministic baseline projection committed as `.emery/topology.lock`. A detached change records its approved repositories, exact revisions, and resolved target topology once under `plan.yaml.projects`; RFC-88 removes committed `registry.yaml` and tended workspace slots from multi-repository coordination. Rich catalog metadata can still live in Backstage or another catalog; Emery consumes reviewable projections at the boundary.
 - **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
 - **Optimize for local first, cloud later.** `emery plan execute` remains the proving ground, but guest locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Eval coverage should exercise realistic multi-repo flows, not just isolated command behavior.
@@ -30,7 +30,7 @@ Emery owns the workflow semantics across those layers: intent becomes artifacts;
 
 ## Effect-oriented architecture
 
-The runtime architecture — Emery as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). Formerly deferred, now sequenced in the platform-migration series ([platform.md](platform.md)): critical path [RFC-86](rfc-86-working-trees.md) → [RFC-87](rfc-87-detached-changes.md) → [RFC-88](rfc-88-publication-sets.md); scale track [RFC-89](rfc-89-verify-profiles.md) → [RFC-90](rfc-90-concurrent-execution.md) → [RFC-91](rfc-91-node-sync.md).
+The runtime architecture — Emery as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). Formerly deferred, now sequenced in the platform-migration series ([platform.md](platform.md)): critical path [RFC-86](rfc-86-change-facts.md) → [RFC-87](rfc-87-working-trees.md) → [RFC-88](rfc-88-detached-changes.md) → [RFC-89](rfc-89-publication-sets.md); scale track [RFC-90](rfc-90-verify-profiles.md) → [RFC-91](rfc-91-concurrent-execution.md) → [RFC-92](rfc-92-node-sync.md).
 
 ### Cross-repo coordination
 
@@ -43,7 +43,7 @@ Realising the architecture spans four repositories, coordinated only through ver
 
 One Emery-owned seam is versioned across the boundary: `emery:adapter` (this repo → adapters). Land a published `emery:adapter` pin before the adapter components that consume it, and treat the seam as a contract so neither repo blocks the other. The Omnia runtime — including the `wasi-model` host interface — is consumed as an ordinary upstream dependency.
 
-That decoupling governs steady state. The transition moment when a seam itself must move — [RFC-77](rfc-77-release-process.md)'s WIT-breaking shape — is an ordered multi-repo landing, and that landing is a publication set ([RFC-88](rfc-88-publication-sets.md)): derived from the plan, marked on the forge, tracked and verified by Emery, published by the operator.
+That decoupling governs steady state. The transition moment when a seam itself must move — [RFC-77](rfc-77-release-process.md)'s WIT-breaking shape — is an ordered multi-repo landing, and that landing is a publication set ([RFC-89](rfc-89-publication-sets.md)): derived from the plan, marked on the forge, tracked and verified by Emery, published by the operator.
 
 ## Sequenced Roadmap
 
@@ -53,16 +53,16 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a known build of the operator-facing surfaces over the existing `journal` substrate — the substrate exists; the surfaces do not.
 
-In parallel, the migration critical path is [RFC-86 Working Trees](rfc-86-working-trees.md) → [RFC-87 Detached Changes](rfc-87-detached-changes.md) → [RFC-88 Publication Sets](rfc-88-publication-sets.md) (see [platform.md](platform.md)). Installation already works ([RFC-71](rfc-71-deployment.md)); Stage 2 diagnostics (`resolution.json` / `deployment show|doctor`) stay separate. Omnia stays free of Emery vocabulary throughout.
+In parallel, the migration critical path is [RFC-86 Change Facts](rfc-86-change-facts.md) → [RFC-87 Working Trees](rfc-87-working-trees.md) → [RFC-88 Detached Changes](rfc-88-detached-changes.md) → [RFC-89 Publication Sets](rfc-89-publication-sets.md) (see [platform.md](platform.md)). Installation already works ([RFC-71](rfc-71-deployment.md)); Stage 2 diagnostics (`resolution.json` / `deployment show|doctor`) stay separate. Omnia stays free of Emery vocabulary throughout.
 
-Target experience: thin prior context (forge auth/org + source material) → bare change directory → discover (migrate or ongoing-change mode) → record members (create repos when needed) → plan → materialize on execute → publish → finalize. RFC-87 also removes operator-authored source keys and lets ordinary single-project planning reuse its deterministic local source selector. Binding constraint is **adapter inventory** — today one code source (`typescript`) and no web target.
+Target experience: thin prior context (forge auth/org + source material) → bare change directory → discover (migrate or ongoing-change mode) → record members (create repos when needed) → plan → materialize on execute → publish → finalize. RFC-88 also removes operator-authored source keys and lets ordinary single-project planning reuse its deterministic local source selector. Binding constraint is **adapter inventory** — today one code source (`typescript`) and no web target.
 
 Delivery is strictly sequential: finish every decision and acceptance criterion in one RFC before implementing the next. Later RFCs consume settled capabilities; no RFC retains a phase gated on a successor.
 
 #### Deferred until trigger conditions or prerequisites
 
 - [RFC-46a](future/rfc-46a-web-asset.md) — web asset materialization; deferred until a web shell scaffold exists.
-- Scale-track concurrency ([RFC-89](rfc-89-verify-profiles.md) / [RFC-90](rfc-90-concurrent-execution.md) / [RFC-91](rfc-91-node-sync.md)) — after the migrate/change location story works on the critical path.
+- Scale-track concurrency ([RFC-90](rfc-90-verify-profiles.md) / [RFC-91](rfc-91-concurrent-execution.md) / [RFC-92](rfc-92-node-sync.md)) — after the migrate/change location story works on the critical path.
 - RM-12 / RM-13 — catalog import and read-oriented MCP.
 
 ---
@@ -132,7 +132,7 @@ emery registry diff <source>
 #### RM-17: Operator-owned forge integration
 
 **Goal:** Support branch transport, PR/MR creation, and finalize beyond GitHub CLI.
-**Provider extension covers:** branch transport, push permissions, PR/MR create-or-update, CI/mergeability status, and provider links over RFC-87's forge capability. RFC-87 already owns GitHub discovery/create and RFC-88 already owns the PR reads needed for verification; neither waits for this item.
+**Provider extension covers:** branch transport, push permissions, PR/MR create-or-update, CI/mergeability status, and provider links over RFC-88's forge capability. RFC-88 already owns GitHub discovery/create and RFC-89 already owns the PR reads needed for verification; neither waits for this item.
 **Target surface:**
 
 ```bash
@@ -149,7 +149,7 @@ emery plan finalize --forge github
 
 **Goal:** Run Emery plans durably in the background while preserving local workflow semantics.
 **Shape:** hosted execution means hosting the Omnia deployment durably. Model calls are session-less by design (fresh spawn per `create`, state carried in the working tree and `.emery/`), so resumability comes from the journal and `.emery/` state — there are no agent sessions to resume.
-**Requires:** completed [RFC-91](rfc-91-node-sync.md) for hosted trees, durable journal authority, fenced leases, remote worker pools, and value transport; plus human approval gates, controlled push/PR creation, deterministic recovery, and parity with `emery plan execute`.
+**Requires:** completed [RFC-92](rfc-92-node-sync.md) for hosted trees, fact and value transport, fenced claims, and remote worker pools; approval gates come from [RFC-86](rfc-86-change-facts.md)'s recorded approvals; plus controlled push/PR creation, deterministic recovery, and parity with `emery plan execute`.
 **Target surface:**
 
 ```bash
@@ -160,22 +160,22 @@ emery execute resume <run-id>
 
 #### RM-19: Multi-forge adapter coverage
 
-**Goal:** Add GitLab, Bitbucket, and self-hosted bindings for RFC-87's forge provider; GitHub is already the completed first binding.
+**Goal:** Add GitLab, Bitbucket, and self-hosted bindings for RFC-88's forge provider; GitHub is already the completed first binding.
 
 #### RM-20: Catalog-backed initiatives across many repositories
 
 **Goal:** Drive multi-repo initiatives from live catalog-backed registry projections.
-**First profile:** the migrate/change loop ([RFC-86](rfc-86-working-trees.md) through [RFC-87](rfc-87-detached-changes.md)) is the first concrete initiative shape; RM-20 generalises the noun only after that profile proves the coordination semantics.
-**Coordination semantics:** one change spanning many repositories is a publication set ([RFC-88](rfc-88-publication-sets.md)) — plan-derived members, `Emery-Change` markers, publication order from `depends-on`, verification at finalize. RM-20 layers initiative scoping over that record; it does not define a second coordination model.
+**First profile:** the migrate/change loop ([RFC-87](rfc-87-working-trees.md) through [RFC-88](rfc-88-detached-changes.md)) is the first concrete initiative shape; RM-20 generalises the noun only after that profile proves the coordination semantics.
+**Coordination semantics:** one change spanning many repositories is a publication set ([RFC-89](rfc-89-publication-sets.md)) — plan-derived members, `Emery-Change` markers, publication order from `depends-on`, verification at finalize. RM-20 layers initiative scoping over that record; it does not define a second coordination model.
 
 #### RM-21: Adapter ecosystem operating model
 
 **Goal:** Make adapters feel like a dependable ecosystem rather than bespoke first-party packages.
 **Frame:** an adapter is a wasm component implementing one axis of the versioned `emery:adapter` WIT contract, so compatibility is WIT-package versioning. Adapters publish as single components (`wkg publish`) and install into the global single-file store; in-runtime OCI guest sources remain a runtime capability to unlock.
-**First-party seam:** [RFC-76 Adapter Publish and Install](archive/rfc-76-adapter-install.md) (archived — Phases A–D landed; Actions GHCR publish landed; CI no-repush + attestations remain under RFC-77 Phase B) closed the build → publish → pull-on-miss → resolve loop. Release lines and host↔adapter coordination are owned by [RFC-77 Release Process](rfc-77-release-process.md) (Phase A landed; B/C deferred). Live-seam cost: [RFC-78 Judgment Leg Budget](archive/rfc-78-prompt-budget.md) (archived — D1–D8 landed: inactivity-based cursor timeouts, session-resume repairs, deterministic replay-skip and report absorption, SDK-level path-first inputs, dropped guidance refreshers, thinned build preambles; the D4.3 mismatch fail-fast and engine-kernel session resume remain follow-ons) shrank lent-workspace target-build cost after `wasm-omnia-r9k` measured ~64 KB generation spills and a 600s cursor timeout in standards review. It remains the enabling layer for [RFC-90 Concurrent Execution](rfc-90-concurrent-execution.md) (focused convergent build requests over a host-owned verify gate — [RFC-89](rfc-89-verify-profiles.md) — with local per-worker trees over [RFC-86](rfc-86-working-trees.md), plus the engine references shelf, staged write-to-tree artifacts, and parallel fan-outs). RFC-91 alone distributes the completed worker model.
+**First-party seam:** [RFC-76 Adapter Publish and Install](archive/rfc-76-adapter-install.md) (archived — Phases A–D landed; Actions GHCR publish landed; CI no-repush + attestations remain under RFC-77 Phase B) closed the build → publish → pull-on-miss → resolve loop. Release lines and host↔adapter coordination are owned by [RFC-77 Release Process](rfc-77-release-process.md) (Phase A landed; B/C deferred). Live-seam cost: [RFC-78 Judgment Leg Budget](archive/rfc-78-prompt-budget.md) (archived — D1–D8 landed: inactivity-based cursor timeouts, session-resume repairs, deterministic replay-skip and report absorption, SDK-level path-first inputs, dropped guidance refreshers, thinned build preambles; the D4.3 mismatch fail-fast and engine-kernel session resume remain follow-ons) shrank lent-workspace target-build cost after `wasm-omnia-r9k` measured ~64 KB generation spills and a 600s cursor timeout in standards review. It remains the enabling layer for [RFC-91 Concurrent Execution](rfc-91-concurrent-execution.md) (focused convergent build requests over a host-owned verify gate — [RFC-90](rfc-90-verify-profiles.md) — with local per-worker trees over [RFC-87](rfc-87-working-trees.md), plus the engine references shelf, staged write-to-tree artifacts, and parallel fan-outs). RFC-92 alone distributes the completed worker model.
 **Remaining:** third-party namespacing beyond the `emery:` namespace, a per-adapter release index, a WIT-contract compatibility matrix and semver-range floor policy, OCI (or equivalent) component distribution, migration guidance, and quality gates, examples, and ownership (rules, prompt briefs, references) beyond the first-party Omnia/Vectis/contracts set.
-**Coverage:** automatic source selection ([RFC-87](rfc-87-detached-changes.md#source-adapter-selection)) can only choose identities in the engine's bounded first-party selector profiles. Today that is one code source adapter (`typescript`, TS/JS only). Language source adapters (Java, Python, Go, C#, Ruby) and a web target are concrete inventory this item owes the migration track; in the first-party cut, adding an automatically selectable source identity requires adapter publication plus an Emery release.
-**Selection substrate:** [RFC-87](rfc-87-detached-changes.md#source-adapter-selection) keeps first-party selector profiles in the engine and resolves only the selected adapter. Dynamic registry inventory, third-party metadata, publisher trust, and optional organizational allowlists land together under this item rather than through a hand-maintained local roster or a premature WIT contract.
+**Coverage:** automatic source selection ([RFC-88](rfc-88-detached-changes.md#source-adapter-selection)) can only choose identities in the engine's bounded first-party selector profiles. Today that is one code source adapter (`typescript`, TS/JS only). Language source adapters (Java, Python, Go, C#, Ruby) and a web target are concrete inventory this item owes the migration track; in the first-party cut, adding an automatically selectable source identity requires adapter publication plus an Emery release.
+**Selection substrate:** [RFC-88](rfc-88-detached-changes.md#source-adapter-selection) keeps first-party selector profiles in the engine and resolves only the selected adapter. Dynamic registry inventory, third-party metadata, publisher trust, and optional organizational allowlists land together under this item rather than through a hand-maintained local roster or a premature WIT contract.
 
 #### RM-22: Hosted observability dashboards
 
@@ -189,7 +189,7 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 
 - **Specialized SLM code generation.** Train a specialized Small Language Model to generate Omnia Rust crates from Emery artifacts (Vectis following once proven), making the model behind the Omnia `build/crate.md` prompt cheaper, faster, and more reproducible — without replacing the workflow. This slots cleanly behind the swappable `wasi-model` backend.
 - **CLI observability.** The runtime binary binds `WasiOtel`, so `tracing`-based diagnostics for guest execution already exist. What remains parked is the residue wasi:otel does not cover — host-side deployment diagnostics and any stdout-contract-preserving ephemeral views over them.
-- **Source adapter selection.** Deterministic first-party selection is part of [RFC-87](rfc-87-detached-changes.md); dynamic catalog and trust belong to RM-21.
+- **Source adapter selection.** Deterministic first-party selection is part of [RFC-88](rfc-88-detached-changes.md); dynamic catalog and trust belong to RM-21.
 - **Omnia plan composition.** Teach `plan.yaml` to express the composition shape Omnia migrations produce — services composed of crates composed of handlers — without a parallel artifact or breaking existing plans.
 - **Standards baseline.** The cross-run lint lifecycle: acknowledging a body of legitimate findings as baseline debt, diffing scans against prior runs, and staging remediation across releases. Deferred — no consumers under fix-before-release on Emery-native codebases.
 - **Orchestration replay coverage.** Canonical scenarios separate hard assertions from semantic rubrics. `ModelDefault` provides deterministic request-key replay at the `wasi-model` boundary; native and composed profiles reuse that contract without capturing editor transcripts. Live profiles remain outside ordinary CI.

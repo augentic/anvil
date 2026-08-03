@@ -1,12 +1,12 @@
-# RFC-88: Publication Sets
+# RFC-89: Publication Sets
 
-> Status: Draft — step 3 of the critical path of the platform-migration series ([platform.md](platform.md)).
+> Status: Draft — step 4 of the critical path of the platform-migration series ([platform.md](platform.md)).
 >
 > Owns: the publication set — the durable identity that binds one change's branches and pull requests across every repository it touches: member derivation from `plan.yaml`, branch and PR marker conventions, publication-order declaration, verification at finalize, and the machine-readable publication projection external producers can emit.
 >
-> Depends on completed [RFC-87](rfc-87-detached-changes.md), which records the member set and supplies the forge provider this RFC extends with publication reads. Related: [RFC-91](rfc-91-node-sync.md) coordinates one change's execution across nodes before publication. First external producer: RFC-81 (`augentic/remedium` `rfcs/rfc-81-cloud-alert-remediation.md`).
+> Depends on completed [RFC-88](rfc-88-detached-changes.md), which records the member set and supplies the forge provider this RFC extends with publication reads. Related: [RFC-92](rfc-92-node-sync.md) coordinates one change's execution across nodes before publication. First external producer: RFC-81 (`augentic/remedium` `rfcs/rfc-81-cloud-alert-remediation.md`).
 >
-> Defers: performing pushes / PR creation / PR merges (publication stays operator-owned); atomic cross-repo submission; cross-checkout CI; parallel member preparation ([RFC-90](rfc-90-concurrent-execution.md) D4).
+> Defers: performing pushes / PR creation / PR merges (publication stays operator-owned); atomic cross-repo submission; cross-checkout CI; parallel member preparation ([RFC-91](rfc-91-concurrent-execution.md) D4).
 
 ## Intent
 
@@ -19,20 +19,20 @@ change-id → { repo₁: branch + PR, repo₂: branch + PR, … } + declared ord
 Emery derives, marks, tracks, and verifies — the forge merges.
 ```
 
-Every serious multi-repo coordination system is an instance of this one pattern (Gerrit topics, Zuul `Depends-On`, Sourcegraph Batch Changes). After RFC-87, Emery already has most of the object: a plan is a named change whose slices bind approved `plan.yaml.projects` rows and are ordered by `depends-on`. What is missing is the publication half — nothing records which branches and PRs constitute the change on the forge, nothing declares the order they must land in, and `/emery:finalize` takes the operator's word that publication happened.
+Every serious multi-repo coordination system is an instance of this one pattern (Gerrit topics, Zuul `Depends-On`, Sourcegraph Batch Changes). After RFC-88, Emery already has most of the object: a plan is a named change whose slices bind approved `plan.yaml.projects` rows and are ordered by `depends-on`. What is missing is the publication half — nothing records which branches and PRs constitute the change on the forge, nothing declares the order they must land in, and `/emery:finalize` takes the operator's word that publication happened.
 
 ## Background
 
 ### Before the critical-path hard cut
 
-- The current workspace implementation resolves each singular `slices[].project` through `registry.yaml` into a tended `workspace/<project>/` slot. RFC-87 removes that path before this RFC starts and replaces it with `plan.yaml.projects` plus local ephemeral slots.
+- The current workspace implementation resolves each singular `slices[].project` through `registry.yaml` into a tended `workspace/<project>/` slot. RFC-88 removes that path before this RFC starts and replaces it with `plan.yaml.projects` plus local ephemeral slots.
 - `depends-on` orders plan entries; `plan validate` already rejects `cycle-in-depends-on`.
 - Publication is operator-owned by contract ([cli-contract](../docs/standards/cli-contract.md)): "Materializing slots, preparing branches, committing, publishing, and completing pull requests are operator-owned operations outside Emery."
 - `/emery:finalize` confirms publication is complete, then `emery plan archive` sweeps the plan. The confirmation is prose — there is no verification.
 
 ### Vocabulary
 
-`emery slice merge` folds delta specs into the baseline — a lifecycle transition, not a git operation. This RFC is about **publication**: the branches, pull requests, and forge merges that carry a change's diffs into member repositories. Its **publication set** is a forge-side record, distinct from RFC-86's **changeset** tree-delta value. *Merge* stays lifecycle; *publish* and *land* are forge-side.
+`emery slice merge` folds delta specs into the baseline — a lifecycle transition, not a git operation. This RFC is about **publication**: the branches, pull requests, and forge merges that carry a change's diffs into member repositories. Its **publication set** is a forge-side record, distinct from RFC-87's **changeset** tree-delta value. *Merge* stays lifecycle; *publish* and *land* are forge-side.
 
 ### The gap
 
@@ -60,8 +60,8 @@ When a change touches three repositories, the fact "these three PRs are one chan
 | D6 | Promise **coordinated convergence, not atomicity.** No `submitWholeTopic` emulation; contract movement inside a publication set uses expand/contract expressed as ordered members. | An out-of-order landing is a journaled finding at verification, not a rollback — merged PRs cannot be unwound. Deployment-compatibility discipline stays with the operator and the target adapters. |
 | D7 | `emery plan publication [--format json]` is the read-only projection: members, branch refs, PR refs, per-member publication status, derived order, verification verdict. | Machine-readable surface for `/emery:finalize`, agents, and dashboards. Schema is versioned and owned by this RFC. |
 | D8 | External producers emit the **same record shape** for non-plan changes. | A Remedium remediation (RFC-81) spanning N repos is a publication set with no plan behind it — same trailer, same projection schema, no Emery lifecycle claim. The object is shared; the authority is not. |
-| D9 | Member publication checks run serially over RFC-87's resolved plan bindings and forge state; they do not materialize local slots. | The read-only projection is deterministic and complete without coupling publication verification to a checkout. |
-| D10 | Forge reads extend RFC-87's host forge provider with `find-pull-request` and `read-pull-request`; the shipped GitHub binding implements both in this RFC. | There is no interim `gh` probe and no dependency on RM-17. No forge write capability is introduced. |
+| D9 | Member publication checks run serially over RFC-88's resolved plan bindings and forge state; they do not materialize local slots. | The read-only projection is deterministic and complete without coupling publication verification to a checkout. |
+| D10 | Forge reads extend RFC-88's host forge provider with `find-pull-request` and `read-pull-request`; the shipped GitHub binding implements both in this RFC. | There is no interim `gh` probe and no dependency on RM-17. No forge write capability is introduced. |
 
 ## The publication projection
 
@@ -110,11 +110,12 @@ The [roadmap's cross-repo coordination note](roadmap.md#cross-repo-coordination)
 
 ## Relationship to existing RFCs
 
-- **[RFC-87](rfc-87-detached-changes.md)** — records the member set; its D4 demotes the committed registry, simplifying this RFC's member derivation to `plan.yaml` alone and making the forge markers (D3 here) the only out-of-band record. Migrate and ongoing change share that location model; this RFC binds their publication.
-- **[RFC-86](rfc-86-working-trees.md)** — a three-member publication set uses three RFC-87 ephemeral slots over the completed local materializer. There is no operator-prepared workspace bridge in this sequence.
+- **[RFC-86](rfc-86-change-facts.md)** — supplies the recorded approval this RFC's verification closes the loop on: finalize can state not only that every member PR landed in order, but that what landed traces to approved artifact digests. Publication facts (`plan.publication.*`) ride the per-actor logs like every other event.
+- **[RFC-88](rfc-88-detached-changes.md)** — records the member set; its D4 demotes the committed registry, simplifying this RFC's member derivation to `plan.yaml` alone and making the forge markers (D3 here) the only out-of-band record. Migrate and ongoing change share that location model; this RFC binds their publication.
+- **[RFC-87](rfc-87-working-trees.md)** — a three-member publication set uses three RFC-88 ephemeral slots over the completed local materializer. There is no operator-prepared workspace bridge in this sequence.
 - **[RFC-77](rfc-77-release-process.md)** — the WIT-breaking coordination order becomes the first publication set (above). No change to its decisions.
-- **[RFC-90](rfc-90-concurrent-execution.md)** — scale track; its D4 concurrency substrate is what would later let one publication set's members build in parallel (D9).
-- **RM-17 / RM-20 ([roadmap](roadmap.md))** — RM-17 may extend the settled forge provider with publication handoff or additional forges; RFC-88 does not wait for it. RM-20 ("catalog-backed initiatives across many repositories") gains its coordination semantics from this RFC rather than defining its own.
+- **[RFC-91](rfc-91-concurrent-execution.md)** — scale track; its D4 concurrency substrate is what would later let one publication set's members build in parallel (D9).
+- **RM-17 / RM-20 ([roadmap](roadmap.md))** — RM-17 may extend the settled forge provider with publication handoff or additional forges; RFC-89 does not wait for it. RM-20 ("catalog-backed initiatives across many repositories") gains its coordination semantics from this RFC rather than defining its own.
 - **RFC-81 (`augentic/remedium`)** — first external producer (D8): a correlated alert whose fix spans repos emits one publication-set record; its propose stage's "draft PR" becomes "publication-set member, usually singular."
 
 ## Phased delivery
@@ -122,7 +123,7 @@ The [roadmap's cross-repo coordination note](roadmap.md#cross-repo-coordination)
 ### Phase A — Identity and projection
 
 1. Document the `change/<plan>` branch and `Emery-Change` trailer conventions in the operator docs and finalize skill body.
-2. Implement the derived publication projection (`emery plan publication`), reading members and locations from RFC-87's resolved `plan.yaml` bindings and forge state through the extended GitHub provider.
+2. Implement the derived publication projection (`emery plan publication`), reading members and locations from RFC-88's resolved `plan.yaml` bindings and forge state through the extended GitHub provider.
 3. Journal events: `plan.publication.projected`, `plan.publication.member-landed`.
 
 ### Phase B — Verification and shared record
@@ -144,7 +145,7 @@ The [roadmap's cross-repo coordination note](roadmap.md#cross-repo-coordination)
 
 **External system as record owner (Sourcegraph Batch Changes, or a Remedium-owned store).** The tracking model is right; the ownership is wrong. Workflow state authority stays in the CLI; external systems may *emit* publication-set records (D8), never own the plan-backed ones.
 
-**Registry as the publication-set home.** RFC-87 removes the detached registry. A publication set is per-change state derived from `plan.yaml` and the forge; reintroducing a registry would create a second member authority.
+**Registry as the publication-set home.** RFC-88 removes the detached registry. A publication set is per-change state derived from `plan.yaml` and the forge; reintroducing a registry would create a second member authority.
 
 ## Non-goals
 
@@ -153,13 +154,13 @@ The [roadmap's cross-repo coordination note](roadmap.md#cross-repo-coordination)
 - Changing `slices[].project` cardinality or any slice lifecycle transition.
 - A second ordering surface beside `depends-on`.
 - Forge-side platform grouping (GitHub custom properties, topics) — complementary membership metadata, out of scope here.
-- Replacing RFC-87's detached location and source-selection model.
+- Replacing RFC-88's detached location and source-selection model.
 - A version solver or cross-repo dependency resolution.
-- Cross-checkout CI or speculative union testing — [RFC-91](rfc-91-node-sync.md)'s trial-integration gate owns pre-merge composition.
+- Cross-checkout CI or speculative union testing — [RFC-92](rfc-92-node-sync.md)'s trial-integration gate owns pre-merge composition.
 
 ## Acceptance criteria
 
-1. `emery plan publication` derives every member and repository location from RFC-87 plan bindings alone and reads branch/PR state through the forge provider.
+1. `emery plan publication` derives every member and repository location from RFC-88 plan bindings alone and reads branch/PR state through the forge provider.
 2. The projection is byte-stable for unchanged plan and forge state; a single-repository plan produces the same schema with one member.
 3. Publication order derives only from `depends-on`; unordered members carry no invented order.
 4. Finalize verifies trailers, merged state, and landing order; failures name each member and `--unverified` archives only with its journal event.
@@ -173,12 +174,12 @@ The [roadmap's cross-repo coordination note](roadmap.md#cross-repo-coordination)
 - Zuul `Depends-On` cross-repository dependencies
 - [Sourcegraph Batch Changes](https://sourcegraph.com/docs/batch-changes)
 - [roadmap.md — cross-repo coordination](roadmap.md#cross-repo-coordination) · [RM-17 / RM-20](roadmap.md#rm-17-operator-owned-forge-integration)
-- [RFC-87 Detached Changes](rfc-87-detached-changes.md) · [RFC-86 Working Trees](rfc-86-working-trees.md) · [RFC-77 Release Process](rfc-77-release-process.md) · [RFC-90 Concurrent Execution](rfc-90-concurrent-execution.md)
+- [RFC-88 Detached Changes](rfc-88-detached-changes.md) · [RFC-87 Working Trees](rfc-87-working-trees.md) · [RFC-77 Release Process](rfc-77-release-process.md) · [RFC-91 Concurrent Execution](rfc-91-concurrent-execution.md)
 - RFC-81 Cloud Alert Remediation Platform (`augentic/remedium` `rfcs/rfc-81-cloud-alert-remediation.md`)
 - [cli-contract — operator-owned publication](../docs/standards/cli-contract.md)
 
 ## Review ask
 
-Confirm D1–D10: the plan is the publication set (no new noun); the record is derived, never authored; `change/<plan>` branches and `Emery-Change` PR trailers make the set forge-reconstructible; publication order derives from `depends-on`; Emery tracks and verifies but never publishes; convergence not atomicity; a read-only `emery plan publication` projection; the same record shape for external producers; serial reads; forge state through RFC-87's provider.
+Confirm D1–D10: the plan is the publication set (no new noun); the record is derived, never authored; `change/<plan>` branches and `Emery-Change` PR trailers make the set forge-reconstructible; publication order derives from `depends-on`; Emery tracks and verifies but never publishes; convergence not atomicity; a read-only `emery plan publication` projection; the same record shape for external producers; serial reads; forge state through RFC-88's provider.
 
 The one decision that must not be deferred is D5 (track-and-verify vs perform): it is where this RFC either respects or amends the selection/detached non-goal and the cli-contract's operator ownership. This draft respects both.
