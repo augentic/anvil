@@ -1,6 +1,6 @@
-# Migration Intake and Source Selection
+# Adapter Selection and Source Selection
 
-> **Status: Superseded (archived).** Design ownership moved to [Migration Walking Skeleton](../rfc-85-migration-program.md) Part B. Do not implement this document; historical prior art only (filename keeps the old number; active [RFC-72](rfc-72-materialization.md) is managed materialization).
+> **Status: Superseded (archived).** Migration intake and topology ownership moved to [RFC-88 Detached Changes](../rfc-88-detached-changes.md). Do not implement this document; historical prior art only (filename keeps the old number; active [RFC-72](rfc-72-materialization.md) is managed materialization).
 >
 > Owns: durable source membership (`sources.yaml`), source materialization, repository profile schema + profiler, source-adapter selection policy, recommendation/approval, lowering approved sources into change plans.
 >
@@ -36,7 +36,7 @@ It reads manifest sentinels and a file census — `package.json`, `go.mod`, `pom
 | D6 | Approved bindings install through the existing pinned pull-on-miss path ([RFC-71](../rfc-71-deployment.md)). | Intake adds no download mechanism, no second store, and no configurable registry. |
 | D7 | Approved bindings lower into `plan.yaml.sources` through `emery plan author`, addressed by an `@key` selector form. | Gate 1 still reviews the authored plan. Intake feeds the existing plan surface rather than becoming a parallel one. |
 | D8 | Source snapshots are immutable, live out of tree, and are never the target slot. | A repository that is both migration source and target keeps evidence integrity while its slot is being written ([RFC-72](rfc-72-materialization.md)). |
-| D9 | Plan-time survey stays serial in the first cut. | Repeat-until-drained is repository-at-a-time ([RFC-70](../rfc-85-migration-program.md)), so a `--jobs` fan-out is a throughput optimisation with no correctness role yet. It stays deferred, and the current first-failure-aborts behaviour remains the contract. |
+| D9 | Plan-time survey stays serial in the first cut. | Repeat-until-drained is repository-at-a-time ([RFC-88](../rfc-88-detached-changes.md)), so a `--jobs` fan-out is a throughput optimisation with no correctness role yet. It stays deferred, and the current first-failure-aborts behaviour remains the contract. |
 
 ## First delivery
 
@@ -60,4 +60,4 @@ Stages 1–3, serial:
 - Replacing `plan.yaml` source bindings for ordinary single-repo work
 - Putting regenerable source snapshots under `.emery/cache/`
 - Profiling as a model judgment — the profile is deterministic evidence; judgment happens later, over the recommendation
-- Selecting or binding target adapters ([RFC-70](../rfc-85-migration-program.md) owns that policy)
+- Selecting or binding target adapters ([RFC-88](../rfc-88-detached-changes.md) owns that policy)

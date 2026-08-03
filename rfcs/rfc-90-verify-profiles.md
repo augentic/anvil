@@ -1,6 +1,6 @@
-# RFC-87: Verify Profiles
+# RFC-90: Verify Profiles
 
-> Status: Draft — step 3 of the platform-migration series ([next-stage.md](next-stage.md)). Formerly RFC-60 (deferred); promoted because host-owned verify is [RFC-88](rfc-88-concurrent-execution.md)'s convergence gate and [RFC-89](rfc-89-node-sync.md)'s trial-integration gate. Omnia's `wasi-model` host accepts the `verify` grant but its execution is stubbed today. Depends: [RFC-86](rfc-86-working-trees.md) · Owns: closed verification profiles and sandboxing
+> Status: Draft — step 5 of the platform-migration series (scale track) ([platform.md](platform.md)). Host-owned verify is [RFC-91](rfc-91-concurrent-execution.md)'s convergence gate and [RFC-92](rfc-92-node-sync.md)'s trial-integration gate. Omnia's `wasi-model` host accepts the `verify` grant but its execution is stubbed today. Depends on completed [RFC-87](rfc-87-working-trees.md) · Owns: closed verification profiles and sandboxing
 
 ## Abstract
 
@@ -58,11 +58,24 @@ Not every node can verify. A node without the required toolchain or sandbox supp
 - Capability signaling for toolchain-less nodes.
 - Cache policy for build artifacts, such as `target/`, when safe.
 
+## Fixed implementation cut
+
+- The host selects a profile table from the approved target adapter and platform set in `plan.yaml.projects` / `project.yaml`; model output never selects commands or a toolchain.
+- The first complete table is Omnia/Rust (`fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, `ci`). Other target/platform combinations and undeclared profiles return typed `unavailable`; adding their tables is independent coverage work, not an RFC-90 phase.
+- Verification runs in a disposable RFC-87 materialization of the candidate revision/changesets, never the authoritative working tree.
+- Egress, inherited environment, CPU, memory, wall time, and output limits are deny-by-default host policy. `test` and `ci` require the invocation's explicit execution grant; there is no persisted bypass file.
+- Cache reuse is lease-local and keyed by profile, toolchain identity, revision, and changeset digest. Release deletes the cache with the verification tree.
+- Normalization preserves the closed diagnostic substrate (`source: tool`, `kind: violation`) and attaches bounded raw output only when no structured parser exists.
+
+## Delivery
+
+Implement the closed request type, disposable verification tree, sandbox/resource policy, execution grant, Omnia/Rust profile table, lease-local cache keys, normalized reports, and typed unavailable signal as one vertical cut. RFC-90 is complete when that cut passes.
+
 ## Out of scope
 
 - Model tool-call dispatch; owned by the implemented `wasi-model` host and its backends.
 - Model backend selection; owned by the runtime binary's compile-time binding.
-- Working-tree materialization; see [RFC-86](rfc-86-working-trees.md).
+- Working-tree materialization; see [RFC-87](rfc-87-working-trees.md).
 
 ## Acceptance criteria
 
@@ -71,6 +84,9 @@ Not every node can verify. A node without the required toolchain or sandbox supp
 3. Verification output maps to the shared `report` shape with stable severities.
 4. Toolchain-less nodes expose a typed unavailable signal.
 5. `test` / `ci` execution is gated by explicit host policy.
+6. Omnia/Rust executes the declared profile table from the approved project target/platform binding; every unsupported target or profile fails typed.
+7. Verification always uses a disposable RFC-87 tree and cannot modify authoritative source, target, or slice state.
+8. `cargo make ci` is green in touched repositories with integration coverage for sandbox denial, resource/output bounds, every Omnia/Rust profile, unsupported targets, unavailable toolchains, cache isolation, and report normalization.
 
 ## Risks and invariants
 

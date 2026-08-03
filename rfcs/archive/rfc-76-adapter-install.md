@@ -6,7 +6,7 @@
 >
 > Builds on: [RFC-71](../rfc-71-deployment.md) Stages 1+3 (landed). First-party slice of [RM-21](../roadmap.md#rm-21-adapter-ecosystem-operating-model).
 >
-> Defers: GitHub Actions publish automation (attestation, CI no-repush), production supply-chain hardening, third-party registries and trust, discovery ([RFC-70](../rfc-85-migration-program.md) Part A), private-registry credentials, semver ranges, and polished public installers.
+> Defers: GitHub Actions publish automation (attestation, CI no-repush), production supply-chain hardening, third-party registries and trust, discovery ([RFC-88](../rfc-88-detached-changes.md#source-adapter-selection)), private-registry credentials, semver ranges, and polished public installers.
 
 ## Intent
 
