@@ -105,13 +105,18 @@ Plan authoring can also flag fuzzy *slice* matching (tentative merges, `divergen
 After refine, the operator sees a single list of open findings across slices, for example:
 
 ```text
-slice          req        status       summary
-auth-login     REQ-003    unknown      password-reset path not evidenced
-auth-login     REQ-007    conflict     session TTL: docs vs intent (tied)
-payments       REQ-012    divergence   retry budget: docs beat observed behaviour
+slice          req        status       summary                         shared-lead
+auth-login     REQ-003    unknown      password-reset path not evidenced  docs:conventions
+payments       REQ-008    unknown      reset copy not evidenced           docs:conventions
+auth-login     REQ-007    conflict     session TTL: docs vs intent (tied) —
+payments       REQ-012    divergence   retry budget: docs beat behaviour  —
+
+# shared lead docs:conventions → re-refine selectors: auth-login payments
 ```
 
 This list is **derived** from the specs/`model.yaml` already on disk. It is not a second file to keep in sync. It includes only typed requirement statuses (`unknown`, `conflict`, `divergence`) — not prose-quality advisories (see D17). `plan status` (and a dedicated gaps command — name TBD) surfaces it.
+
+**Gate authority stays per requirement** — each row is still `(slice, req, status)`. When the same lead is multi-homed across slices (coverage is at-least-once; cross-cutting leads in `change.md`), one thin or contradictory lead can surface as several inventory rows. `plan gaps` therefore also offers a **presentation rollup**: annotate or group open findings that share a contributing `(source, lead)`, and suggest the slice-selector set for a follow-up `plan refine` / `slice refine` after the shared input is fixed (see D18). The rollup is navigation only — it does not merge findings, change the approve gate, or introduce lead-wide waivers.
 
 ### How to close gaps
 
@@ -119,12 +124,12 @@ Do not hand-edit the machine-rendered `ID:` / `Sources:` / `Status:` lines or th
 
 | Finding | Typical fix | Next step |
 | ------- | ----------- | --------- |
-| `[unknown]` | Operator supplies the missing information: enrich a source (intent, docs, captures), or re-scope the lead so the requirement is not invented. Build stays blocked until the tag clears or that requirement is explicitly waived on approve (see D16) | Re-refine that slice |
-| `[conflict]` | Set an authority override, or remove/correct a misleading source. **Not waiveable** — resolve inputs, then re-refine | Re-refine |
+| `[unknown]` | Operator supplies the missing information: enrich a source (intent, docs, captures), or re-scope the lead so the requirement is not invented. Build stays blocked until the tag clears or that requirement is explicitly waived on approve (see D16) | Re-refine that slice (and any siblings the rollup lists for the same lead) |
+| `[conflict]` | Set an authority override, or remove/correct a misleading source. **Not waiveable** — resolve inputs, then re-refine | Re-refine (per slice that still shows the conflict; overrides remain per-slice) |
 | `[divergence]` | Informational — authority already chose; no decision required. Override only if the wrong source won | Re-refine only if inputs changed |
 | Stale inputs | Sources or baseline moved since refine pinned them | Re-pin and re-refine |
 
-Prefer fixing one slice at a time. Full-plan re-synthesis is expensive.
+Prefer fixing one shared input, then re-refining the affected slice set (the rollup’s suggested selectors when findings share a lead). Full-plan re-synthesis is expensive. Waivers stay per-requirement (`--waive <slice>/<req>`) even when rows share a lead.
 
 ### Human-only ambiguity (outside the engine)
 
@@ -237,6 +242,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | D15 | **`[divergence]` is informational; listed but allowed** | Authority hierarchy already picked a winner; approve does not require per-divergence acknowledgment. Wrong winner → override / amend sources and re-refine |
 | D16 | **Waiver UX: per-`[unknown]` on approve; `[conflict]` never waiveable; no multi-operator gate** | Repeatable `--waive <slice>/<req>` + required `--reason` on build-scoped `plan approve`; one operator’s approval is enough; re-refine clears approval and waivers |
 | D17 | **Human prose review stays outside the engine** | Operators own spec quality; approve gates only on typed gap policy. No checklist artifact, review attestation, or spec-quality rollup in `plan gaps` / `plan approve` |
+| D18 | **Shared-lead gap rollup is presentation only** | `plan gaps` annotates/groups open findings that share a contributing `(source, lead)` and suggests re-refine selectors; approve/waive stay per-requirement. No lead-wide waive, no shared-Evidence extract, no lead-level gate |
 
 ---
 
@@ -246,7 +252,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | ------- | ------ |
 | `emery plan approve` | **New.** Records approval (topology or build scope); build scope enforces the gap policy. For `[unknown]` leftovers only: repeatable `--waive <slice>/<req>` with required `--reason` (see D16). No `--force`, no bulk/all-gaps waive, no separate `plan waive` verb |
 | `emery plan refine` | **New.** Plan-phase batch: claims and refines every unrefined in-scope slice by default; optional slice selectors for a subset. Fans out to the same orchestration as `emery slice refine` (pins, extract, synthesize). Does not approve and does not build |
-| `emery plan gaps` (name TBD) | **New.** Shows the typed-status gap inventory only (not spec-quality advisories — see D17) |
+| `emery plan gaps` (name TBD) | **New.** Shows the typed-status gap inventory (not spec-quality advisories — see D17). When open findings share a contributing `(source, lead)`, annotates or groups those rows and suggests the slice-selector set for re-refine — presentation only; gate and waivers stay per-requirement (see D18) |
 | `emery plan execute` | Requires build approval; runs **build → merge only**; never refines |
 | `emery slice refine` | Still the refine implementation and per-slice breakout (gap closure, single-slice re-refine); records input pins; used in plan phase |
 | `/emery:plan` | Unchanged contract: elicit → `emery plan author` → relay; stops after topology. Does **not** run refine |
@@ -263,7 +269,7 @@ Exact error codes and event names belong in the [implementation notes](#appendix
 | ----- | -------- | ---------------------- |
 | **A** | Fact logs + computed status | Same day-to-day flow; status still looks familiar |
 | **B** | Pins + merge-time requirement ids | Safer parallel refine; drift diagnostics |
-| **C** | `plan refine`, gap inventory, approval gate, execute without refine | The new rhythm: author → `plan refine` → gaps → approve → build/merge-only execute |
+| **C** | `plan refine`, gap inventory (+ shared-lead presentation rollup), approval gate, execute without refine | The new rhythm: author → `plan refine` → gaps → approve → build/merge-only execute; multi-homed leads correlate in `plan gaps` without changing the per-req gate |
 
 Do not implement Phase C until the [open questions](#open-questions) are closed.
 
@@ -279,6 +285,7 @@ Do not implement Phase C until the [open questions](#open-questions) are closed.
 6. Topology-only approval does not unlock execute; re-refine after build approval forces re-approval (waivers on the stale approval do not carry forward).
 7. The same verbs and artifacts work with no remote (solo laptop) and with the change shared over git (two people).
 8. **Human review boundary:** build approval enforces typed gap policy only; prose review of `spec.md` is operator-owned and leaves no engine artifact (see D17).
+9. **Shared-lead rollup:** when open findings share a contributing `(source, lead)`, `plan gaps` annotates or groups those rows and suggests re-refine selectors; approve still fails or succeeds per requirement, and waivers remain `--waive <slice>/<req>` only (see D18).
 
 ---
 
@@ -291,7 +298,7 @@ Close these before Phase C implementation.
 3. ~~**Must each `[divergence]` be acknowledged?**~~ **Closed — D15.** Listed but allowed; informational only — no acknowledgment or decision required. The kernel already applied the authority hierarchy (`intent` > `documentation` > `behaviour`, plus any per-slice override) and wrote the winner as the operative body. Rejected: require per-divergence ack before approve (ceremony over a resolved disagreement; rubber-stamp risk; conflates divergence with conflict/unknown). Authority rules may be tightened later if wrong winners prove costly in practice; that is a hierarchy/override change, not a gate change.
 4. ~~**Waiver UX**~~ **Closed — D16.** Build-scoped `emery plan approve` accepts repeatable `--waive <slice>/<req>` with required `--reason`. Only `[unknown]` may be waived; `[conflict]` is not waiveable (authority override or source fix, then re-refine). Waivers nest on the approval artifact only — no separate `plan waive` verb, no plan-/slice-wide or inventory-digest waive, no `--force` / `--allow-gaps`. One operator’s recorded approval is enough; this RFC does **not** require a second-person countersign (multi-person four-eyes is a non-goal). Re-refine invalidates the approval and every waiver it carried; remaining unknowns must be re-listed on the new approve. Rejected: bulk/all-gaps waive (rubber-stamp / agent `--force` path); waiving `[conflict]` (unresolved contradiction must be decided in inputs, not papered over); separate `plan waive` then approve (extra verb and limbo without a countersign need); multi-operator waiver gating (second lifecycle / mode bit; solo laptop is the primary deployment).
 5. ~~**Human-only ambiguity**~~ **Closed — D17.** Prose review of `spec.md` (and related artifacts) alone — human operators own spec quality and how they choose to review; the engine does not record or gate on that process. Rejected: optional operator checklist artifact (extra artifact, stale-on-re-refine binding, rubber-stamp risk, overlaps git/PR review without improving gap policy); rolling advisory `kind: review` spec-quality heuristics into `plan gaps` or approve (blurs the typed-status boundary; waiver creep); `--reviewed` / review attestation on approve (ceremony without substance); model-assisted spec-quality gate at approve time (non-goal for this RFC — eval / later concurrency work).
-6. **Shared leads across slices** — per-slice gap list enough for v1, or a cross-slice rollup?
+6. ~~**Shared leads across slices**~~ **Closed — D18.** Flat per-requirement inventory remains the gate authority. `plan gaps` adds a **presentation rollup**: when open findings share a contributing `(source, lead)` (multi-homed / cross-cutting leads), annotate or group those rows and suggest the slice-selector set for re-refine after the shared input is fixed. Rejected: flat list only with no correlation aid (operators and agents invent sibling fan-out outside the CLI; N-row noise from one lead); lead-wide or `--waive-lead` sugar (same rubber-stamp risk as bulk waive in D16; same lead ≠ same gap after per-slice extract); first-class lead-level gate or status noun (second checklist-like surface; derived “lead status” can lie when sibling Evidence diverges); shared extract / shared Evidence for multi-homed leads (changes the per-slice extract contract; deferred — not a gap-inventory decision).
 7. **Sibling docs** — `platform.md` and later RFCs still say execute runs `refine → build → merge`; update them when Phase C decisions freeze.
 
 ---
@@ -303,6 +310,7 @@ Close these before Phase C implementation.
 - Automatically judging whether an `agreed` requirement is *good* (scenario depth, usefulness) — that stays human review and eval; no checklist artifact or approve-time attestation for prose review (see D17).
 - Parallel swarm refine (later concurrency RFC) — this RFC only makes multi-slice refine safe and claimable.
 - Multi-operator waiver / approval countersign — one actor’s build approval (with any unknown-waivers) is sufficient; shared-git collaboration stays social review of the approval artifact, not an engine four-eyes gate.
+- Lead-wide waive, lead-level approve gate, or shared Evidence for multi-homed leads — correlation of shared-lead gaps is presentation-only in `plan gaps` (see D18); extract stays per-slice.
 
 ---
 
@@ -338,6 +346,9 @@ Settled patterns this RFC borrows, without adopting their full machinery:
 - Operator checklist artifact for spec review — extra durable file, digest/stale rules, and checkbox theater; prose review stays outside the engine (see D17).
 - Review attestation flags on `plan approve` (`--reviewed`, reviewer id) — records ceremony, not quality; same boundary as D17.
 - Spec-quality advisories in `plan gaps` or approve-time blocking on `kind: review` findings — conflates human judgment with typed gap policy; heuristics belong in eval, not Phase C gates (see D17).
+- Flat gap list with no shared-lead correlation — forces operators and agents to rediscover multi-home fan-out from `change.md` alone; presentation rollup is cheap and keeps the CLI contract complete (see D18).
+- Lead-wide / `--waive-lead` waive, or a lead-level gap gate — papers over per-requirement decisions and over-groups when sibling extracts diverge; gate and waivers stay `<slice>/<req>` (see D16, D18).
+- Shared extract or shared Evidence for multi-homed leads — changes the per-slice extract contract and couples claimable slices; not a Phase C gap-inventory decision (see D18).
 
 ---
 
@@ -347,7 +358,7 @@ For engine contributors. Not required to evaluate the product intent.
 
 **Layout and writers**
 
-- Projection kernel in `crates/project`: facts + artifact index → status, gap inventory (typed statuses only — no spec-quality rollup; D17), `ready`. Property-test: any interleaving of per-actor logs, same projection.
+- Projection kernel in `crates/project`: facts + artifact index → status, gap inventory (typed statuses only — no spec-quality rollup; D17), `ready`. Gap inventory rows stay `(slice, req, status)`; when projecting `plan gaps`, join open findings to contributing `(source, lead)` via plan bindings + Evidence/provenance and, when the same lead appears in more than one open finding, attach a presentation group plus suggested re-refine selectors (D18) — never a lead-level status field or waive expansion. Property-test: any interleaving of per-actor logs, same projection.
 - Replace `.emery/journal.jsonl` with `events/<actor>.jsonl`; `emery journal show` merges the union.
 - Remove stored plan-entry `status` and slice lifecycle fields; ladders survive only as projection labels.
 - Approval files under `approvals/` plus matching events; build-scoped approvals embed gap counts and per-requirement `[unknown]` waiver lists (`slice` + req id + reason). Approving with a `--waive` for a non-unknown or absent gap is `plan-gaps-unresolved` / a typed waive error (name TBD).
@@ -370,6 +381,7 @@ For engine contributors. Not required to evaluate the product intent.
 
 - Multi-actor fixtures in `crates/mock`: disjoint refine, claim conflict, base drift (shared-git collaboration; not a waiver countersign gate).
 - Shift-left fixture: author → `plan refine` → gaps → fix conflicts / waive unknowns → approve → build/merge-only execute; refuse conflict-waive and bulk-waive shapes.
+- Multi-homed lead fixture: one `(source, lead)` bound into two refined slices with open unknowns; `plan gaps` groups/annotates both rows and suggests both slice selectors; approve still requires per-req waive or clearance (no lead-wide waive).
 - `cargo make ci` green; projection determinism and gap/approval paths covered as crate integration tests.
 
 **Hard cut**
