@@ -94,12 +94,13 @@ const fn claim_kind(kind: aseam::ClaimKind) -> artifacts::evidence::ClaimKind {
     }
 }
 
-/// Narrow a workflow working tree to the SDK tree.
+/// Narrow a workflow workspace to the SDK workspace.
 #[must_use]
-pub fn narrow_tree(tree: seam::WorkingTree) -> aseam::WorkingTree {
-    aseam::WorkingTree {
-        base: tree.base,
-        subpath: tree.subpath,
+pub fn narrow_workspace(workspace: seam::Workspace) -> aseam::Workspace {
+    aseam::Workspace {
+        id: workspace.id,
+        root: workspace.root,
+        artifacts: workspace.artifacts,
     }
 }
 

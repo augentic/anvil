@@ -34,18 +34,23 @@ use std::sync::OnceLock;
 
 use project::adapter::{AdapterSelector, RoutedId};
 use project::config::ProjectConfig;
-use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, Locations};
+use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT, Locations};
 use transport::command::selectors::{SeedRequest, refresh_request, seed_request};
 
 mod anchor;
 mod install;
 mod resolver;
+mod workspaces;
 
 pub use install::Registry;
 pub use resolver::Resolver;
+pub use workspaces::Workspaces;
 
 /// Guest-visible preopen name of the per-project derived cache.
 pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
+
+/// Guest-visible preopen name of the private-workspaces root.
+pub const WORKSPACES_MOUNT: &str = GUEST_WORKSPACES_MOUNT;
 
 /// One invocation's deployment policy: the anchored layout plus the
 /// optional `adapter add` seed preopen.
@@ -93,8 +98,10 @@ impl Policy {
         let root = anchor::project_root(invoked_dir, seed.as_ref());
         let paths = ExecutionPaths::new(root, locations);
         // The global store is host-owned (no guest mount); the install
-        // leg creates it on demand.
-        for dir in [paths.project_root().to_path_buf(), paths.cache_dir()] {
+        // leg creates it on demand. Same for the snapshot store — the
+        // workspace backend's kernel creates it on first write.
+        let workspaces_dir = paths.locations().workspaces_root().to_path_buf();
+        for dir in [paths.project_root().to_path_buf(), paths.cache_dir(), workspaces_dir] {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
@@ -124,6 +131,13 @@ impl Policy {
     #[must_use]
     pub fn cache_dir(&self) -> PathBuf {
         self.paths.cache_dir()
+    }
+
+    /// Host directory of the writable private-workspaces mount, named
+    /// [`WORKSPACES_MOUNT`].
+    #[must_use]
+    pub fn workspaces_dir(&self) -> PathBuf {
+        self.paths.locations().workspaces_root().to_path_buf()
     }
 
     /// The read-only self-named preopen: the `adapter add` component's
@@ -251,6 +265,12 @@ pub fn project_root() -> PathBuf {
 #[must_use]
 pub fn cache_dir() -> PathBuf {
     current().cache_dir()
+}
+
+/// Macro expression: host directory of the writable workspaces mount.
+#[must_use]
+pub fn workspaces_dir() -> PathBuf {
+    current().workspaces_dir()
 }
 
 /// Macro expression: guest-visible name of the read-only seed preopen.

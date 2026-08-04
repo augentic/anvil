@@ -20,7 +20,7 @@ use omnia_guest::model::{
 use omnia_wasi_model::{DirEntry, FutureResult, Reference, ToolHost, WasiModelCtx};
 
 /// A guest-side [`Model`] over a host-side backend, rooted at the
-/// project directory workspace lends resolve to.
+/// project directory workspace lends resolve against.
 #[derive(Clone, Debug)]
 pub struct Native<B> {
     backend: B,
@@ -29,9 +29,10 @@ pub struct Native<B> {
 
 impl<B> Native<B> {
     /// Wrap `backend` with `workspace` behind the lend: a request
-    /// carrying `lend_workspace: true` resolves it as the tool host's
-    /// `local_path` — the native stand-in for the guest's `"."`
-    /// preopen.
+    /// carrying a `workspace` path resolves it against this root
+    /// (`"."` is the root itself; an absolute path — a prepared
+    /// private workspace — wins outright) as the tool host's
+    /// `local_path` — the native stand-in for the guest's preopens.
     pub fn new(backend: B, workspace: impl Into<PathBuf>) -> Self {
         Self {
             backend,
@@ -41,8 +42,10 @@ impl<B> Native<B> {
 }
 
 impl<B: WasiModelCtx> Model for Native<B> {
-    async fn create(&self, request: Request) -> Result<Reply, Error> {
-        let workspace = request.lend_workspace.then(|| self.workspace.clone());
+    async fn create(&self, mut request: Request) -> Result<Reply, Error> {
+        let workspace = request.workspace.take().map(|path| {
+            if path == "." { self.workspace.clone() } else { self.workspace.join(path) }
+        });
 
         let wire = wire_request(request);
         omnia_wasi_model::validate_request(&wire).map_err(wire_error)?;

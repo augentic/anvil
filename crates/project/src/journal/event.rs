@@ -253,6 +253,17 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
+    /// Interim code delivery (RFC-87, pre-RFC-89): after the target's
+    /// postflight gate passed, the merge orchestration materialized
+    /// the slice's accepted result snapshot onto the product tree.
+    /// Deleted when publication sets (RFC-89) own the final seal.
+    #[serde(rename = "slice.code.applied", rename_all = "kebab-case")]
+    SliceCodeApplied {
+        /// Affected slice.
+        slice_name: SliceName,
+        /// The applied result snapshot (`sha256:<hex>`).
+        snapshot: String,
+    },
     /// The target's postflight merge gate raised a blocking finding
     /// **after** the deterministic commit: the slice is already merged,
     /// archived, and stamped `done`, so this is a terminal diagnostic —

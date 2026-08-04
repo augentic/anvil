@@ -19,7 +19,7 @@ use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{LoopStep, NextActionKind, Plan, StatusBody, StopReason, plan_status_body};
-use project::seam::{Source, Target, WorkingTree};
+use project::seam::{Source, Target, Workspaces};
 use tracing::Instrument as _;
 
 mod marker;
@@ -83,8 +83,8 @@ pub enum ExecuteOutcome {
 /// setup (after the workspace refusal, before the marker) — its
 /// declared inputs and its name feed every [`slice::orchestrate::build`] dispatch,
 /// so the declared inputs and the seam routing come from one identity.
-/// `tree` names the snapshot builds apply against (today's deployments
-/// share one live tree).
+/// Each build and merge phase manages its own private workspace
+/// through the target seam's `Workspaces` capability (RFC-87).
 ///
 /// # Errors
 ///
@@ -99,9 +99,8 @@ pub enum ExecuteOutcome {
 ///   says which file to delete.
 /// Phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
-pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
+pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
-    tree: &WorkingTree,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     refuse_workspace_routing(layout)?;
@@ -157,17 +156,12 @@ pub async fn execute<P: Model, S: Source, T: Target, R: Resolver>(
                     .await
                     .map(drop)
             }
-            LoopStep::Build => slice::orchestrate::build(
-                caps.targets,
-                layout,
-                now,
-                &slice,
-                &adapter.manifest,
-                tree.clone(),
-            )
-            .instrument(span)
-            .await
-            .map(drop),
+            LoopStep::Build => {
+                slice::orchestrate::build(caps.targets, layout, now, &slice, &adapter.manifest)
+                    .instrument(span)
+                    .await
+                    .map(drop)
+            }
             LoopStep::Merge => slice::orchestrate::merge(caps.targets, layout, now, &slice, false)
                 .instrument(span)
                 .await

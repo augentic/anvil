@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use adapter::seam::{Context, Error, WorkingTree, mcp_url_for};
+use adapter::seam::{Context, Error, mcp_url_for};
 use adapter::{Error as ModelError, Format, judgment};
 use omnia_testkit::model::{Harness, mcp_grants};
 use serde::Deserialize;
@@ -19,6 +19,7 @@ fn ctx<'a>(mcp_url: Option<&str>, root: &'a Path) -> Context<'a> {
         adapter_id: "target:contracts",
         project_root: root,
         mcp_url: mcp_url.map(str::to_owned),
+        lend: ".".to_string(),
     }
 }
 
@@ -50,7 +51,11 @@ async fn assembles_and_parses() {
         }
         other => panic!("expected schema format, got {other:?}"),
     }
-    assert!(request.lend_workspace, "every judgment leg lends the workspace");
+    assert_eq!(
+        request.workspace.as_deref(),
+        Some("."),
+        "every judgment leg lends the context's workspace path"
+    );
     let grants = mcp_grants(request);
     assert_eq!(grants.len(), 1);
     assert_eq!(grants[0].name, "contracts-references", "grant named after the adapter");
@@ -250,6 +255,7 @@ fn pinned_grant_strips_version() {
         adapter_id: "target:contracts@1.0.0",
         project_root: Path::new("."),
         mcp_url: url,
+        lend: ".".to_string(),
     };
     let grants = context.grants();
     assert_eq!(grants.len(), 1);
@@ -257,17 +263,16 @@ fn pinned_grant_strips_version() {
     assert_eq!(grants[0].url, "http://127.0.0.1:8080/mcp/target/contracts@1.0.0");
 }
 
-#[test]
-fn tree_root() {
-    let context = ctx(None, Path::new("/mnt"));
-    let bare = WorkingTree {
-        base: "rev-1".to_string(),
-        subpath: None,
-    };
-    let scoped = WorkingTree {
-        base: "rev-1".to_string(),
-        subpath: Some("proj".to_string()),
-    };
-    assert_eq!(context.tree_root(&bare), Path::new("/mnt"));
-    assert_eq!(context.tree_root(&scoped), Path::new("/mnt/proj"));
+// Build and merge legs re-lend their prepared workspace: the lent path
+// rides the model request instead of the `"."` project mount.
+#[tokio::test]
+async fn lending_overrides_the_lend_path() {
+    let model = Harness::answering([r#"{"done":true}"#]);
+    let context = ctx(None, Path::new(".")).lending("/emery-workspaces/ws-1");
+
+    let _: Answer = judgment(&model, &context, String::new(), "USER".to_string(), "probe", "{}")
+        .await
+        .expect("lent leg succeeds");
+
+    assert_eq!(model.requests()[0].workspace.as_deref(), Some("/emery-workspaces/ws-1"));
 }

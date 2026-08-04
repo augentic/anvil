@@ -8,7 +8,8 @@ use jiff::Timestamp;
 use project::config::{Layout, Mutation, with_state};
 use project::journal::{self, EventKind};
 use project::plan::{Plan, Status};
-use project::seam::{MergePhase, Target};
+use project::seam::{self, MergePhase, Target, Workspaces};
+use project::snapshot::CodePatch;
 
 use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, slice as slice_merge};
 
@@ -31,7 +32,12 @@ pub struct MergeOutcome {
 ///
 /// Runs target preflight gate → deterministic `slice_merge::commit`
 /// → plan entry `done` → target postflight gate, with each gate's
-/// report schema-gated and persisted.
+/// report schema-gated and persisted. Both gates read the built
+/// result code through one read-only private-workspace view of the
+/// slice's captured result snapshot (`build/patch.yaml`); after a
+/// successful postflight, the interim apply writes the patch's
+/// touched paths onto the product tree (journal-visible; deleted when
+/// RFC-89 publication sets own the final seal).
 ///
 /// A preflight failure aborts with the slice still `built`; a
 /// postflight failure (`target-merge-postflight-failed`) is terminal
@@ -55,7 +61,7 @@ pub struct MergeOutcome {
     skip_all,
     fields(slice = %slice, target = tracing::field::Empty)
 )]
-pub async fn merge<T: Target>(
+pub async fn merge<T: Target + Workspaces>(
     targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
     tracing::info!("merge started");
@@ -73,6 +79,9 @@ pub async fn merge<T: Target>(
     tracing::Span::current().record("target", target.as_str());
     let id =
         project::adapter::RoutedId::recorded(project::adapter::Axis::Target, &target).to_string();
+    // The captured code patch, read before the deterministic commit
+    // moves the slice tree into the archive.
+    let patch = load_patch(&slice_dir, slice)?;
 
     journal::emit_best_effort(
         layout,
@@ -83,8 +92,56 @@ pub async fn merge<T: Target>(
         "slice.merge",
     );
 
+    // One read-only view of the built result snapshot serves both
+    // gates; discarded on every exit (best-effort — a leaked view is
+    // GC territory, never a merge failure).
+    let view = journal_on_failure(layout, now, slice, prepare_view(targets, slice, &patch).await)?;
+    let run =
+        gated(targets, layout, now, slice, &slice_dir, &id, allow_composition_replace, &view).await;
+    if let Err(err) = targets.discard(view.id.clone()).await {
+        tracing::warn!(workspace = %view.id, "merge view discard failed: {err}");
+    }
+    let outcome = run?;
+
+    // Interim code delivery (deleted by RFC-89): the postflight gate
+    // passed, so materialize the accepted result snapshot onto the
+    // product tree and journal the apply.
+    journal_on_failure(layout, now, slice, apply_result(targets, slice, &patch).await)?;
+    journal::emit_best_effort(
+        layout,
+        now,
+        EventKind::SliceCodeApplied {
+            slice_name: slice.into(),
+            snapshot: patch.result.to_string(),
+        },
+        "slice.merge",
+    );
+
+    journal::emit_best_effort(
+        layout,
+        now,
+        EventKind::SliceMergeSucceeded {
+            slice_name: slice.into(),
+        },
+        "slice.merge",
+    );
+    tracing::info!(decisions = outcome.decisions.len(), "merge completed");
+    Ok(outcome)
+}
+
+/// The gate-bracketed core: preflight → deterministic commit →
+/// postflight, all over the shared read-only `view`. Split from
+/// [`merge`] so the caller can discard the view on every exit.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "internal merge kernel bracketed by the view lifecycle; callers use `merge`"
+)]
+async fn gated<T: Target>(
+    targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path, id: &str,
+    allow_composition_replace: bool, view: &seam::Workspace,
+) -> Result<MergeOutcome, Error> {
     // Target preflight: a failure aborts with the slice still `built`.
-    let preflight = run_gate(targets, &id, slice, MergePhase::Preflight).await;
+    let preflight = run_gate(targets, id, slice, MergePhase::Preflight, view).await;
     let preflight = journal_on_failure(layout, now, slice, preflight)?;
     persist_gate_report(&slice_dir.join("merge"), MergePhase::Preflight, &preflight)?;
 
@@ -104,7 +161,7 @@ pub async fn merge<T: Target>(
     // execute classifies sticky `merge-postflight-failed` debt — a bare
     // `?` on persist would otherwise surface as `merge-conflict`.
     let archive_merge = outcome.archive_path.join("merge");
-    match fetch_gate_report(targets, &id, slice, MergePhase::Postflight).await {
+    match fetch_gate_report(targets, id, slice, MergePhase::Postflight, view).await {
         Ok(report) => {
             let persist_err =
                 persist_gate_report(&archive_merge, MergePhase::Postflight, &report).err();
@@ -120,17 +177,53 @@ pub async fn merge<T: Target>(
             return postflight_terminal(layout, now, slice, &err);
         }
     }
-
-    journal::emit_best_effort(
-        layout,
-        now,
-        EventKind::SliceMergeSucceeded {
-            slice_name: slice.into(),
-        },
-        "slice.merge",
-    );
-    tracing::info!(decisions = outcome.decisions.len(), "merge completed");
     Ok(outcome)
+}
+
+/// Load the code patch `slice build` captured beside its report.
+fn load_patch(slice_dir: &Path, slice: &str) -> Result<CodePatch, Error> {
+    let path = slice_dir.join("build").join("patch.yaml");
+    if !path.is_file() {
+        return Err(Error::validation_failed(
+            "slice-merge-patch-missing",
+            "a built slice carries its captured code patch",
+            format!(
+                "slice `{slice}` has no `build/patch.yaml`; re-run `emery slice build {slice}` \
+                 before merging"
+            ),
+        ));
+    }
+    Ok(serde_saphyr::from_str(&project::fs::read_text(&path)?)?)
+}
+
+/// Prepare the read-only workspace view of the slice's result snapshot.
+async fn prepare_view(
+    workspaces: &impl Workspaces, slice: &str, patch: &CodePatch,
+) -> Result<seam::Workspace, Error> {
+    workspaces.prepare(patch.result.clone(), false).await.map_err(|err| Error::Diag {
+        code: "target-merge-workspace-failed",
+        detail: format!(
+            "preparing the read-only result view for slice `{slice}` failed \
+             (result `{}`): {err}",
+            patch.result
+        ),
+    })
+}
+
+/// Interim apply (deleted by RFC-89): write the accepted patch's
+/// touched paths onto the product tree — never a full-tree sync, so
+/// the deterministic commit's own baseline fold stands.
+async fn apply_result(
+    workspaces: &impl Workspaces, slice: &str, patch: &CodePatch,
+) -> Result<(), Error> {
+    workspaces.apply(patch.clone()).await.map_err(|err| Error::Diag {
+        code: "slice-merge-apply-failed",
+        detail: format!(
+            "applying result snapshot `{}` for merged slice `{slice}` failed after the \
+             commit (the baseline, archive, and plan stamp stand): {err}",
+            patch.result
+        ),
+    })
 }
 
 /// Journal `slice.merge.postflight-failed` and return the terminal

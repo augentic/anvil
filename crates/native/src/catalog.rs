@@ -47,14 +47,14 @@ type BuildFn = for<'a> fn(
     &'a str,
     &'a [aseam::Input],
     &'a aseam::BuildContext,
-    &'a aseam::WorkingTree,
+    &'a aseam::Workspace,
 ) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>>;
 type MergeFn = for<'a> fn(
     &'a DynModel,
     &'a Context<'a>,
     &'a str,
     aseam::MergePhase,
-    &'a aseam::WorkingTree,
+    &'a aseam::Workspace,
 ) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>>;
 
 /// The monomorphized operation legs of one linked adapter.
@@ -263,11 +263,11 @@ impl Catalog {
     )]
     pub(crate) async fn build(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str, inputs: &[aseam::Input],
-        context: &aseam::BuildContext, tree: &aseam::WorkingTree,
+        context: &aseam::BuildContext, workspace: &aseam::Workspace,
     ) -> Result<aseam::Report, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
             Some(Ops::Target { build, .. }) => {
-                build(model, ctx, slice, inputs, context, tree).await
+                build(model, ctx, slice, inputs, context, workspace).await
             }
             _ => Err(unlinked(id)),
         }
@@ -281,10 +281,10 @@ impl Catalog {
     /// routes to no linked target.
     pub(crate) async fn merge(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
-        phase: aseam::MergePhase, tree: &aseam::WorkingTree,
+        phase: aseam::MergePhase, workspace: &aseam::Workspace,
     ) -> Result<aseam::Report, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Target { merge, .. }) => merge(model, ctx, slice, phase, tree).await,
+            Some(Ops::Target { merge, .. }) => merge(model, ctx, slice, phase, workspace).await,
             _ => Err(unlinked(id)),
         }
     }
@@ -332,11 +332,11 @@ impl Builder {
             docs: A::docs,
             ops: Ops::Target {
                 guidance: |model, ctx| Box::pin(A::guidance(model, ctx)),
-                build: |model, ctx, slice, inputs, context, tree| {
-                    Box::pin(A::build(model, ctx, slice, inputs, context, tree))
+                build: |model, ctx, slice, inputs, context, workspace| {
+                    Box::pin(A::build(model, ctx, slice, inputs, context, workspace))
                 },
-                merge: |model, ctx, slice, phase, tree| {
-                    Box::pin(A::merge(model, ctx, slice, phase, tree))
+                merge: |model, ctx, slice, phase, workspace| {
+                    Box::pin(A::merge(model, ctx, slice, phase, workspace))
                 },
             },
         });

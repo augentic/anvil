@@ -22,7 +22,7 @@ use omnia_guest::model::{Reply, Request};
 use project::adapter::{AdapterSelector, ResolvedSource, ResolvedTarget, Resolver};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 use project::seam::wire::BuildReport;
-use project::seam::{self, Evidence, Input, Lead, MergePhase, WorkingTree};
+use project::seam::{self, Evidence, Input, Lead, MergePhase};
 
 /// The `adapter add` arguments the launcher needs to anchor the
 /// project mount and preopen the operator's component directory.
@@ -227,14 +227,38 @@ impl seam::Target for Grammar {
 
     async fn build(
         &self, _id: String, _slice: String, _inputs: Vec<Input>, _context: seam::BuildContext,
-        _tree: WorkingTree,
+        _workspace: seam::Workspace,
     ) -> Result<BuildReport, seam::Error> {
         never_dispatched!()
     }
 
     async fn merge(
-        &self, _id: String, _slice: String, _phase: MergePhase, _tree: WorkingTree,
+        &self, _id: String, _slice: String, _phase: MergePhase, _workspace: seam::Workspace,
     ) -> Result<BuildReport, seam::Error> {
+        never_dispatched!()
+    }
+}
+
+impl seam::Workspaces for Grammar {
+    async fn freeze(&self) -> Result<project::snapshot::SnapshotId, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn prepare(
+        &self, _base: project::snapshot::SnapshotId, _writable: bool,
+    ) -> Result<seam::Workspace, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn capture(&self, _id: String) -> Result<project::snapshot::CodePatch, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn discard(&self, _id: String) -> Result<(), seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn apply(&self, _patch: project::snapshot::CodePatch) -> Result<(), seam::Error> {
         never_dispatched!()
     }
 }

@@ -4,7 +4,7 @@ use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, evidence_tai
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
-    TargetMetadata, WorkingTree,
+    TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
 use omnia_testkit::model::Harness;
@@ -86,13 +86,13 @@ impl Target for Probe {
 
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
-        _tree: &WorkingTree,
+        _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
 
     async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -103,6 +103,7 @@ fn ctx() -> Context<'static> {
         adapter_id: "source:probe",
         project_root: std::path::Path::new("."),
         mcp_url: None,
+        lend: ".".to_string(),
     }
 }
 
@@ -127,16 +128,17 @@ async fn source_dispatch() {
 #[tokio::test]
 async fn target_dispatch() {
     let model = Harness::answering([""; 0]);
-    let tree = WorkingTree {
-        base: "rev-1".to_string(),
-        subpath: None,
+    let workspace = Workspace {
+        id: "ws-1".to_string(),
+        root: "/emery-workspaces/ws-1".to_string(),
+        artifacts: "/host/project".to_string(),
     };
 
-    let report = Probe::build(&model, &ctx(), "demo", &[], &BuildContext::default(), &tree)
+    let report = Probe::build(&model, &ctx(), "demo", &[], &BuildContext::default(), &workspace)
         .await
         .expect("build succeeds");
     assert_eq!(report, Report::success());
-    let report = Probe::merge(&model, &ctx(), "demo", MergePhase::Preflight, &tree)
+    let report = Probe::merge(&model, &ctx(), "demo", MergePhase::Preflight, &workspace)
         .await
         .expect("merge succeeds");
     assert_eq!(report, Report::success());
@@ -153,6 +155,7 @@ async fn guidance_failure() {
         adapter_id: "target:probe-fail-guidance",
         project_root: std::path::Path::new("."),
         mcp_url: None,
+        lend: ".".to_string(),
     };
     let err = Probe::guidance(&model, &failing).await.expect_err("guidance fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("probe-fail-guidance")));

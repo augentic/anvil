@@ -25,6 +25,9 @@ pub mod registry;
 pub mod seam;
 pub mod serde_time;
 pub mod slice;
+pub mod snapshot;
 pub mod target_policy;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod workspace;
 
 pub use platform::Platform;

@@ -120,6 +120,15 @@ async fn author_approve_execute_drains() {
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
 
+    // RFC-87: the artifact arrived through capture + the interim
+    // post-merge apply, never an ambient checkout write — the archived
+    // code patch records the touched path and the journal carries the
+    // apply event.
+    let patch = fs::read_to_string(archive.join("build/patch.yaml")).expect("archived code patch");
+    assert!(patch.contains("mock-build/greeting.md"), "{patch}");
+    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    assert!(journal.contains("slice.code.applied"), "{journal}");
+
     // Guidance dispatch proof, stronger than a call log: the mock
     // target's guidance brief reached the recorded synthesis prompt.
     let requests = session.model().requests();

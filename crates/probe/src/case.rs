@@ -199,11 +199,38 @@ async fn run_build(
     );
     let report = slice_dir.join("build").join("report.yaml");
     ensure!(report.is_file(), "no authoritative build report at {}", report.display());
-    enforce_expected(id, root, &case.expect)?;
+
+    // RFC-87: build writes land in the captured result snapshot, never
+    // the sandbox product tree (code reaches it only at merge).
+    // Materialize the result beside the sandbox for the artifact gate
+    // and operator inspection.
+    let patch_path = slice_dir.join("build").join("patch.yaml");
+    let patch: project::snapshot::CodePatch = serde_saphyr::from_str(
+        &fs::read_to_string(&patch_path)
+            .with_context(|| format!("reading the captured patch {}", patch_path.display()))?,
+    )
+    .context("parsing build/patch.yaml")?;
+    let result_dir = root.join("build-result");
+    project::workspace::Store::new(paths(root).locations().snapshots_root())
+        .materialize(&patch.result, &result_dir)
+        .context("materializing the captured result snapshot")?;
+    enforce_expected(id, &result_dir, &case.expect)?;
 
     telemetry::report(&telemetry.counts(), 1);
     println!("eval case {id}: pass (sandbox {}, report {})", root.display(), report.display());
     Ok(())
+}
+
+// The sandbox-relative execution layout every case verb runs under:
+// store and cache (and through them the snapshot store and workspaces
+// roots) live inside the retained sandbox, so a case leaves one
+// self-contained tree behind.
+fn paths(root: &Path) -> ExecutionPaths {
+    let locations = Locations::explicit(
+        root.join("adapter-store"),
+        CachePlacement::Parent(root.join("project-cache")),
+    );
+    ExecutionPaths::new(root, locations)
 }
 
 // One `emery` verb through the native command surface, which owns
@@ -213,12 +240,8 @@ async fn invoke(root: &Path, model: &DynModel, catalog: &Catalog, argv: &[&str])
     tracing::info!("emery {command}");
     let mut full = vec!["emery".to_string()];
     full.extend(argv.iter().map(ToString::to_string));
-    let locations = Locations::explicit(
-        root.join("adapter-store"),
-        CachePlacement::Parent(root.join("project-cache")),
-    );
-    let paths = ExecutionPaths::new(root, locations);
-    let response = native::command::execute(paths, model.clone(), catalog.clone(), full).await?;
+    let response =
+        native::command::execute(paths(root), model.clone(), catalog.clone(), full).await?;
     io::stdout().write_all(&response.stdout)?;
     io::stderr().write_all(&response.stderr)?;
     ensure!(response.exit == 0, "`emery {command}` exited {}", response.exit);

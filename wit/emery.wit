@@ -28,12 +28,72 @@ interface types {
   /// first argument; the wire type stays an opaque string.
   type adapter-id = string;
 
-  /// A content-addressed snapshot identity (a git commit oid in the git
-  /// backend). Portable: it names a build's starting point independently of
-  /// which node the working tree lives on. With today's shared mounts it
-  /// names the state of the one live project tree; it is the forward hook
-  /// for distributed working trees (deferred).
+  /// A content-addressed snapshot identity: `sha256:<64 lowercase hex>`,
+  /// the digest of the snapshot's canonical tree manifest in the host's
+  /// content-addressed store. Portable: it names a complete product-code
+  /// tree independently of which node materializes it — the value the
+  /// workspace capability freezes, prepares from, and captures to.
   type revision = string;
+}
+
+/// The host-owned private-workspace capability (RFC-87): immutable
+/// snapshots in a content-addressed store, disposable private workspaces,
+/// and code patches derived by comparing trees. Imported by the workflow
+/// guest only — adapters never prepare or capture; they receive an
+/// already-prepared `workspace` on `build` / `merge`. The host owns the
+/// snapshot store and the workspaces root; no live directory handle
+/// crosses this interface.
+interface workspaces {
+  use types.{ error, revision };
+
+  /// One prepared private workspace. The caller derives the
+  /// deployment-local root from the id (the directory name beneath the
+  /// deployment's workspaces mount); the record carries only what the
+  /// host alone knows.
+  record prepared {
+    /// Opaque workspace identity beneath the workspaces root.
+    id: string,
+    /// Agent-visible read-only artifact root: the host-absolute path of
+    /// the project tree, for prompts that reference change-tree
+    /// artifacts from inside a lent workspace.
+    artifacts: string,
+  }
+
+  /// The immutable relation between a base and result snapshot: the
+  /// durable record of what one execution changed.
+  record code-patch {
+    /// The snapshot the execution started from.
+    base: revision,
+    /// The snapshot captured from the execution's result tree.
+    %result: revision,
+    /// Sorted workspace-relative paths that differ between the trees.
+    touched: list<string>,
+  }
+
+  /// Freeze the product tree (the project root minus VCS and change-tree
+  /// state) as an immutable snapshot. Interim base pinning: once RFC-86
+  /// records base pins, builds freeze from recorded pins instead.
+  freeze: async func() -> result<revision, error>;
+
+  /// Materialize `base` into a fresh private workspace. `writable: false`
+  /// prepares a read-only source view — same preparation, discarded
+  /// without capture.
+  prepare: async func(base: revision, writable: bool) -> result<prepared, error>;
+
+  /// Capture the workspace's result tree: store and verify every object,
+  /// record the result snapshot, and derive the touched paths against
+  /// the recorded base.
+  capture: async func(id: string) -> result<code-patch, error>;
+
+  /// Discard a workspace. Idempotent; captured snapshots survive by
+  /// digest.
+  discard: async func(id: string) -> result<_, error>;
+
+  /// Interim code delivery (pre-RFC-89): write `patch`'s touched paths
+  /// from its result snapshot onto the product tree, leaving everything
+  /// else — including paths the deterministic merge just folded —
+  /// untouched. Deleted when publication sets own the final seal.
+  apply: async func(patch: code-patch) -> result<_, error>;
 }
 
 /// The source adapter contract. Both operations are judgment legs: the guest
@@ -196,16 +256,20 @@ interface target {
     sources: list<string>,
   }
 
-  /// Names the tree a build or merge operates on. Every guest in the
-  /// deployment shares the same `[[mount]]` preopens, so no directory handle
-  /// crosses this boundary: the adapter opens its own `"."` preopen and
-  /// resolves `subpath` beneath it. `base` names the snapshot the operation
-  /// applies against.
-  record working-tree {
-    /// The snapshot the operation applies against.
-    base: revision,
-    /// Optional path beneath the shared mount root scoping the operation.
-    subpath: option<string>,
+  /// The private workspace a build or merge operates on (RFC-87). Every
+  /// guest in the deployment shares the same `[[mount]]` preopens, so no
+  /// directory handle crosses this boundary: the adapter resolves `root`
+  /// against its own preopens (the workspaces mount) and lends it to its
+  /// agent by path. Change-tree artifacts stay outside the workspace and
+  /// are read through the `"."` preopen in-guest, or through the
+  /// agent-visible `artifacts` root from a spawned agent.
+  record workspace {
+    /// Opaque identity of the preparation.
+    id: string,
+    /// Deployment-local path of the writable workspace root.
+    root: string,
+    /// Agent-visible read-only artifact root (the project tree).
+    artifacts: string,
   }
 
   /// The severity of a finding. The closed review severity enum shared
@@ -356,21 +420,24 @@ interface target {
   /// adapter may consult its model without a contract change.
   guidance: async func(id: adapter-id) -> result<string, error>;
 
-  /// Build a slice against the shared project mount. The adapter opens its
-  /// own `"."` preopen, reads existing code through it, and writes its
-  /// changes in place; the judgment leg runs behind the adapter's own
-  /// `create` call, with references served from its MCP export. The report
-  /// carries only judgment — the resulting delta lives in the tree.
-  build: async func(id: adapter-id, slice: string, inputs: list<input>, context: build-context, tree: working-tree) -> result<report, error>;
+  /// Build a slice inside its prepared private workspace. The adapter
+  /// resolves the workspace root against its own preopens, reads and
+  /// writes product code there, and reads slice artifacts through its
+  /// `"."` preopen; the judgment leg runs behind the adapter's own
+  /// `create` call with the workspace lent by path and references served
+  /// from its MCP export. The report carries only judgment — the
+  /// resulting delta lives in the workspace, captured by the engine.
+  build: async func(id: adapter-id, slice: string, inputs: list<input>, context: build-context, workspace: workspace) -> result<report, error>;
 
   /// Run one target-specific merge gate around the engine's deterministic
   /// core merge. Dispatched twice per slice merge: `preflight` before the
   /// engine folds the slice's deltas into the baseline, `postflight` after
-  /// the commit and archive. The adapter reads both the built slice and the
-  /// baseline through the shared mount named by `tree`; the report carries
-  /// only judgment — lifecycle transitions, baseline spec merging, and
-  /// archive moves stay engine-owned.
-  merge: async func(id: adapter-id, slice: string, phase: merge-phase, tree: working-tree) -> result<report, error>;
+  /// the commit and archive. The adapter reads the result code through
+  /// the read-only `workspace` view and the built slice plus baseline
+  /// through its `"."` preopen; the report carries only judgment —
+  /// lifecycle transitions, baseline spec merging, and archive moves stay
+  /// engine-owned.
+  merge: async func(id: adapter-id, slice: string, phase: merge-phase, workspace: workspace) -> result<report, error>;
 }
 
 /// A source adapter component: one axis interface plus the MCP reference
@@ -398,8 +465,17 @@ world adapter {
 /// The workflow guest: the deployment's only `wasi:cli/run` exporter. Its
 /// `source` / `target` imports are satisfied by Omnia's host-mediated
 /// dispatch, routed to the exporting adapter guest by each call's
-/// `adapter-id` first argument.
+/// `adapter-id` first argument; `workspaces` is a host-implemented
+/// capability over the deployment's snapshot store.
 world workflow {
   import source;
   import target;
+  import workspaces;
+}
+
+/// Host-side bindgen world for the `workspaces` capability: the shipped
+/// runtime links a host implementation of this interface into the engine
+/// deployment. Never exported by a guest.
+world workspace-host {
+  import workspaces;
 }

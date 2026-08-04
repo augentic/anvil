@@ -99,7 +99,7 @@ version = "1.0.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.base64]]
-version = "0.23.0"
+version = "0.23.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.base64ct]]
@@ -226,10 +226,6 @@ criteria = "safe-to-deploy"
 version = "0.20.11"
 criteria = "safe-to-deploy"
 
-[[exemptions.darling]]
-version = "0.23.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.darling_core]]
 version = "0.13.4"
 criteria = "safe-to-deploy"
@@ -238,16 +234,8 @@ criteria = "safe-to-deploy"
 version = "0.20.11"
 criteria = "safe-to-deploy"
 
-[[exemptions.darling_core]]
-version = "0.23.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.darling_macro]]
 version = "0.13.4"
-criteria = "safe-to-deploy"
-
-[[exemptions.darling_macro]]
-version = "0.23.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.dashmap]]
@@ -255,7 +243,7 @@ version = "6.2.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.data-encoding]]
-version = "2.11.0"
+version = "2.11.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.defmt]]
@@ -303,7 +291,7 @@ version = "0.2.9"
 criteria = "safe-to-deploy"
 
 [[exemptions.encoding_rs_io]]
-version = "0.1.7"
+version = "0.1.8"
 criteria = "safe-to-deploy"
 
 [[exemptions.fancy-regex]]
@@ -511,7 +499,7 @@ version = "3.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.ipnet]]
-version = "2.12.0"
+version = "2.12.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.itertools]]
@@ -559,15 +547,15 @@ version = "0.3.103"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema]]
-version = "0.49.2"
+version = "0.49.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema-regex]]
-version = "0.49.2"
+version = "0.49.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema-value]]
-version = "0.49.2"
+version = "0.49.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonwebtoken]]
@@ -815,7 +803,7 @@ version = "0.5.18"
 criteria = "safe-to-deploy"
 
 [[exemptions.referencing]]
-version = "0.49.2"
+version = "0.49.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.reqwest]]

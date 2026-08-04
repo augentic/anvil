@@ -59,7 +59,7 @@ Omnia is built on Wasmtime. Its design centers on pluggable host services behind
 - **Instance-per-call execution**: a fresh instance spins up every time a guest is called, so a host→guest callback can never *recursively* re-enter an instance already on the stack — the one kind of reentrance the component model still traps (*sibling* reentrance, into a component whose other tasks are suspended, is allowed under the async ABI) — avoiding a class of aliasing complexity by construction.
 - **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Emery move from a desktop tool to a horizontally scalable service unchanged.
 
-Emery extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a git-aware `wasi:filesystem` backend that materializes the [working tree](#the-working-tree), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core.
+Emery extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a snapshot-backed workspace provider that prepares the [private workspace](#the-private-workspace), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core.
 
 ## Judgment: the `wasi-model` host
 
@@ -85,7 +85,7 @@ Because recursively re-entering a live instance would trap, this resolution land
 
 Logical sequence: extract
 
-The model reads and mutates a working tree through the same tool surface — `read` / `list` to scan existing code, `write` to accumulate an edit, `verify` to check itself — so it never holds a descriptor or an OS path. A filesystem-capable spawned-agent backend instead reads and writes the working tree directly through the `local-path` it is lent.
+The model reads and mutates a private workspace through the same tool surface — `read` / `list` to scan existing code, `write` to accumulate an edit, `verify` to check itself — so it never holds a descriptor or an OS path. A filesystem-capable spawned-agent backend instead reads and writes the private workspace directly through the `local-path` it receives.
 
 ### The model backend is swappable
 
@@ -108,7 +108,7 @@ A single operation spans several guests: the engine guest plus the source and ta
 
 Because the interfaces (`target` / `source` / `references`) are statically known and only the adapter *instances* are dynamic, the host serves them with `wit-bindgen-wrpc`**-generated typed bindings** rather than wRPC's dynamic value-introspection path; the dynamic path remains available if an interface is ever unknown at host-compile time.
 
-The seam is a contract, not a wire protocol: every selected call rides [wRPC](https://github.com/bytecodealliance/wrpc) — a WIT-native, transport-agnostic RPC backend that encodes the typed records (and their async `stream` / `future` values) — over whatever transport the deployment binds: an in-process or Unix-domain-socket transport on a single node, NATS or QUIC across a cluster. Moving from desktop to cloud is therefore a transport swap, not a code change. Plain records (`revision`, `changeset`, `input`, `report`, `lead`, `evidence`) cross by value; a live resource such as the [working tree](#the-working-tree)'s `descriptor` never crosses. [RFC-87](rfc-87-working-trees.md) settles local materialization; [RFC-92](rfc-92-node-sync.md) transports those values and re-materializes private trees remotely. wRPC stays behind the backend boundary — pinned and swappable, never in the `emery:adapter` contract — so the guest's view stays purely typed and the seam keeps a native in-process fast-path available if it is ever needed.
+The seam is a contract, not a wire protocol: every selected call rides [wRPC](https://github.com/bytecodealliance/wrpc) — a WIT-native, transport-agnostic RPC backend that encodes the typed records (and their async `stream` / `future` values) — over whatever transport the deployment binds: an in-process or Unix-domain-socket transport on a single node, NATS or QUIC across a cluster. Moving from desktop to cloud is therefore a transport swap, not a code change. Snapshot and result identities cross by value; a live workspace path never crosses. [RFC-87](rfc-87-working-trees.md) settles private local materialization; [RFC-92](rfc-92-node-sync.md) transports snapshot objects and prepares equivalent private workspaces remotely. wRPC stays behind the backend boundary — pinned and swappable, never in the `emery:adapter` contract — so the guest's view stays purely typed and the seam keeps a native in-process fast-path available if it is ever needed.
 
 ### Many guests, selected by identity
 
@@ -141,32 +141,29 @@ Logical sequence: build
 
 A `build` flows like this:
 
-1. The engine guest resolves the slice to a base revision and asks the host to materialize the slice's [working tree](#the-working-tree); the slice and its inputs stay pure, node-independent data, while the mutable tree is the one capability.
+1. The engine guest resolves the slice to a base snapshot and asks the host to prepare a [private workspace](#the-private-workspace); the slice and its inputs stay pure, node-independent data.
 2. It runs any deterministic setup (a `tool` adapter export, reached by host-mediated dynamic linking).
 3. For the judgment leg it calls `wasi-model.eval` with the `build` brief.
-4. The model backend drives the model. `resolve` follows the brief's references (the adapter's `references` export); `read` / `list` scan existing code through the working tree; `write` accumulates an edit.
+4. The model backend drives the model. `resolve` follows the brief's references (the adapter's `references` export); `read` / `list` scan existing code through the private workspace; `write` accumulates an edit.
 5. When the brief calls for it the model emits `verify(<check>)`; the backend runs that vetted, sandboxed profile and feeds the severity-tiered `report` back; the model repairs and re-verifies.
 6. `eval` returns the validated, typed answer to the guest.
-7. The report carries only judgment (status and findings); the host extracts the resulting mutations as a content-addressed `change-set` (a `git diff` against the base revision), and the guest requests the lifecycle `transition` effect.
+7. The report carries only judgment (status and findings); the host captures the result snapshot and touched paths against the immutable base, and the guest requests the lifecycle `transition` effect.
 
-In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the references server, and what crosses out is a typed report plus a content-addressed change-set.
+In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the references server, and what crosses out is a typed report plus immutable base/result snapshot identities.
 
-## The working tree
+## The private workspace
 
-A `build` generates a slice *into a pre-existing project*, reading existing code and conventions and writing changes back in place. Modeling that tree as a bare `project-path` string is the one thing that pins an operation to a single machine, so the contract models it as a host-materialized **working tree** capability instead.
+A `build` generates a slice against a pre-existing project, reading existing code and conventions and writing into a private workspace. A bare `project-path` would pin the operation to one machine, so the host instead prepares the workspace from an immutable snapshot.
 
-The host materializes the tree from a content-addressed **base revision** (a git commit, in the git backend) onto whichever node runs the operation — a local clone on a desktop, a fresh checkout on a cluster node. The capability exposes two faces:
+The workspace is disposable and unique to one execution. The agent receives its node-local writable path plus separate read-only artifact roots. No workspace path is workflow state, and no two workers share a writable directory.
 
-- a `wasi:filesystem` **descriptor**, for deterministic guest code that reads or validates the tree through capability-scoped handles;
-- a host-reported node-local `local-path`, for the one consumer that cannot hold a descriptor: the filesystem-capable **spawned-agent** model backend, which reads and writes through real OS paths. An absent path means no real local tree exists on this node — a clean capability signal that an agent-driven build is unavailable there.
-
-The agent's read-modify-write loop is irreducibly node-local, so it is not abstracted away — it is *quarantined* between two portable boundaries: a host-materialized tree on the way in, and a content-addressed **change-set** (adds, modifies, deletes against the base revision) on the way out. Neither `build` nor `merge` returns the delta; the report carries only judgment, and the host extracts the change-set from the tree. `build` is lent the slice's tree and the caller extracts its delta; `merge` is lent the *baseline* tree and folds a change-set into it in place. What crosses the contract is the change-set, never a shared mount — which is what lets `build` and `merge` run on different nodes. Git provides exactly this content-addressing, so it is the natural first backend, carried as a **custom git-aware** `wasi:filesystem` **backend** (native code, so git stays native and there is no in-guest VCS). The mechanism is specified in [RFC-87](rfc-87-working-trees.md).
+The read-modify-write loop is quarantined between two portable boundaries: an immutable base snapshot on the way in and an immutable result snapshot on the way out. The host derives touched paths, records the logical code patch as `{ base snapshot, result snapshot, touched paths }`, and discards the workspace. Git is the natural first local object store and materializer, while the contract remains store-neutral. [RFC-87](rfc-87-working-trees.md) specifies the mechanism.
 
 ## Host services and state
 
 Guests are stateless and instance-per-call, so anything that must outlive a call lives in a host service behind a swappable backend:
 
-- `wasi:filesystem` — inputs, assets, and the project tree; the working tree is a custom git-aware backend.
+- `wasi:filesystem` — inputs, assets, and workspace access; the snapshot store and local materializer stay behind the workspace provider.
 - `wasi:keyvalue` (`state`) — host-held scratch and memoization (a computed reference, a model session's accumulating edits); filesystem locally, Redis / NATS for fleet-shared state.
 - `journal` — the durable lifecycle log and its legal transitions; a JSON store over a filesystem backend.
 - `wasi-model` — model evaluation, backed by a frontier API, a spawned agent, a local SLM, or replay.
@@ -206,7 +203,7 @@ The runtime admits adapter guests by **resolver-backed admission on first dispat
 
 ## Deferred relatives
 
-The fact-based change substrate is step 1 of the platform-migration critical path — [RFC-86](rfc-86-change-facts.md): projected status, per-actor event logs, pinned judgment inputs, and approval as a recorded artifact. Local value-backed working trees follow ([RFC-87](rfc-87-working-trees.md)), before single-node detached forge discovery, source selection, and ephemeral slots ([RFC-88](rfc-88-detached-changes.md)). [RFC-92](rfc-92-node-sync.md) later adds fact and value transport for multi-node execution over the same state model. Host-owned verify profiles ([RFC-90](rfc-90-verify-profiles.md)) sit on the scale track. See [platform.md](platform.md) for the full sequence.
+The fact-based change substrate is step 1 of the platform-migration critical path — [RFC-86](rfc-86-change-facts.md): projected status, per-actor event logs, pinned judgment inputs, and approval as a recorded artifact. Private snapshot-backed workspaces follow ([RFC-87](rfc-87-working-trees.md)), before single-node detached forge discovery and source selection ([RFC-88](rfc-88-detached-changes.md)). [RFC-92](rfc-92-node-sync.md) later adds fact and snapshot transport for multi-node execution over the same state model. Host-owned verify profiles ([RFC-90](rfc-90-verify-profiles.md)) sit on the scale track. See [platform.md](platform.md) for the full sequence.
 
 ## Key trade-offs
 

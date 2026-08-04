@@ -74,7 +74,7 @@ async fn create<P: Model>(
                     SchemaFormat::builder().name(schema_name).schema(schema).build(),
                 ))
                 .tools(ctx.grants().into_iter().map(Tool::Mcp).collect())
-                .lend_workspace(true)
+                .workspace(ctx.lend.clone())
                 .build(),
         )
         .await
