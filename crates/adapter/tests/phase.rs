@@ -8,16 +8,25 @@ use adapter::phase::{
     report,
 };
 use adapter::seam::{
-    BuildOutput, Context, Finding, Input, Payload, Platform, Report, Severity, Status, WorkingTree,
+    BuildOutput, Context, Finding, Input, Payload, Platform, Report, Severity, Status, Workspace,
 };
 use omnia_testkit::model::Harness;
 use tempfile::tempdir;
 
-const fn context(root: &Path) -> Context<'_> {
+fn context(root: &Path) -> Context<'_> {
     Context {
         adapter_id: "target:test",
         project_root: root,
         mcp_url: None,
+        lend: ".".to_string(),
+    }
+}
+
+fn workspace() -> Workspace {
+    Workspace {
+        id: "ws-1".to_string(),
+        root: "/emery-workspaces/ws-1".to_string(),
+        artifacts: "/host/project".to_string(),
     }
 }
 
@@ -31,19 +40,13 @@ const fn success_report() -> Report {
 }
 
 #[test]
-fn tree_roots() {
-    let ctx = context(Path::new("/mounted"));
-    let bare = WorkingTree {
-        base: "rev-1".to_string(),
-        subpath: None,
-    };
-    let scoped = WorkingTree {
-        base: "rev-1".to_string(),
-        subpath: Some("project".to_string()),
-    };
-
-    assert_eq!(ctx.tree_root(&bare), Path::new("/mounted"));
-    assert_eq!(ctx.tree_root(&scoped), Path::new("/mounted/project"));
+fn workspace_paths() {
+    let ws = workspace();
+    assert_eq!(ws.root_path(), Path::new("/emery-workspaces/ws-1"));
+    assert_eq!(
+        ws.artifact_path(".emery/slices/demo/spec.md"),
+        "/host/project/.emery/slices/demo/spec.md"
+    );
 }
 
 #[tokio::test]
@@ -83,16 +86,22 @@ async fn judgment_legs() {
 #[test]
 fn renderers() {
     assert_eq!(assemble_system(&["first", "second"]), "first\n\n---\n\nsecond");
-    assert_eq!(render_inputs(&[]), "(no slice artifacts were provided)");
-    let rendered = render_inputs(&[
-        Input::Proposal(Payload::Path(".emery/slices/demo/proposal.md".to_string())),
-        Input::Spec(Payload::Body("inlined spec body".to_string())),
-    ]);
+    let ws = workspace();
+    assert_eq!(render_inputs(&[], &ws), "(no slice artifacts were provided)");
+    let rendered = render_inputs(
+        &[
+            Input::Proposal(Payload::Path(".emery/slices/demo/proposal.md".to_string())),
+            Input::Spec(Payload::Body("inlined spec body".to_string())),
+        ],
+        &ws,
+    );
     assert!(
-        rendered.starts_with("Slice artifact inputs. Read each path from the working tree"),
+        rendered.starts_with("Slice artifact inputs. Read each path"),
         "the preamble instructs the agent to read the files: {rendered}"
     );
-    assert!(rendered.contains("### input: proposal → .emery/slices/demo/proposal.md"));
+    assert!(
+        rendered.contains("### input: proposal → /host/project/.emery/slices/demo/proposal.md")
+    );
     assert!(rendered.contains("### input: spec\n\ninlined spec body"));
 
     let outcome = render_outcome(
@@ -124,7 +133,7 @@ fn report_guards() {
     ];
     assert_eq!(
         missing_outputs(&claimed, tmp.path()),
-        ["- declared output `missing` does not exist in the working tree"]
+        ["- declared output `missing` does not exist in the workspace"]
     );
 
     claimed.status = Status::Failure;

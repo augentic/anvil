@@ -40,6 +40,7 @@ emery-native = { workspace = true, features = ["cli"] }
 omnia-guest.workspace = true
 emery-project.workspace = true
 serde.workspace = true
+serde-saphyr.workspace = true
 toml.workspace = true
 tracing.workspace = true
 # Client-only (feature = "client").

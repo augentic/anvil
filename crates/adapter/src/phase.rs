@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 use crate::answers::{REPORT_ANSWER_SCHEMA, ReportAnswer};
 use crate::judgment;
-use crate::seam::{Context, Error, Finding, Input, Payload, Report, Status};
+use crate::seam::{Context, Error, Finding, Input, Payload, Report, Status, Workspace};
 
 /// Answer schema for one internal phase leg (not part of the WIT contract).
 pub const PHASE_ANSWER_SCHEMA: &str = r#"{
@@ -82,27 +82,31 @@ pub fn assemble_system(bodies: &[&str]) -> String {
 /// Render typed inputs as labeled path or body sections.
 ///
 /// Path-form inputs arrive project-relative on the seam and are
-/// rendered verbatim; the preamble instructs the agent to read each
-/// file from the lent working tree before writing code. Body-form
-/// inputs (RFC-55 non-lent deployments) inline the artifact text
-/// under the label with no path.
+/// rendered against the workspace's agent-visible artifact root
+/// ([`Workspace::artifact_path`]), so the agent — whose working
+/// directory is the lent private workspace — can read each file
+/// before writing code. Body-form inputs (RFC-55 non-lent
+/// deployments) inline the artifact text under the label with no
+/// path.
 #[must_use]
-pub fn render_inputs(inputs: &[Input]) -> String {
+pub fn render_inputs(inputs: &[Input], workspace: &Workspace) -> String {
     if inputs.is_empty() {
         return "(no slice artifacts were provided)".to_string();
     }
     let sections = inputs
         .iter()
         .map(|input| match input.payload() {
-            Payload::Path(path) => format!("### input: {} → {path}", input.label()),
+            Payload::Path(path) => {
+                format!("### input: {} → {}", input.label(), workspace.artifact_path(path))
+            }
             Payload::Body(body) => format!("### input: {}\n\n{body}", input.label()),
         })
         .collect::<Vec<_>>()
         .join("\n\n");
     format!(
-        "Slice artifact inputs. Read each path from the working tree before \
-         writing code; a body is inlined under its label only when the \
-         deployment does not lend the tree.\n\n{sections}"
+        "Slice artifact inputs. Read each path (read-only artifact roots \
+         outside your workspace) before writing code; a body is inlined \
+         under its label only when the deployment does not lend a workspace.\n\n{sections}"
     )
 }
 
@@ -115,20 +119,21 @@ pub fn render_outcome(name: &str, answer: &PhaseAnswer) -> String {
     )
 }
 
-/// Declared outputs a `success` report claims that are missing from the tree.
+/// Declared outputs a `success` report claims that are missing from the
+/// workspace.
 ///
 /// `failure` reports are already parked; their output claims are not re-checked.
 #[must_use]
-pub fn missing_outputs(report: &Report, tree_root: &Path) -> Vec<String> {
+pub fn missing_outputs(report: &Report, workspace_root: &Path) -> Vec<String> {
     if report.status == Status::Failure {
         return Vec::new();
     }
     report
         .outputs
         .iter()
-        .filter(|output| !tree_root.join(&output.path).exists())
+        .filter(|output| !workspace_root.join(&output.path).exists())
         .map(|output| {
-            format!("- declared output `{}` does not exist in the working tree", output.path)
+            format!("- declared output `{}` does not exist in the workspace", output.path)
         })
         .collect()
 }

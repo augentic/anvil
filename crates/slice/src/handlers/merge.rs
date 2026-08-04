@@ -10,7 +10,7 @@ use error::Error;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::Target;
+use project::seam::{Target, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::merge::{
@@ -46,7 +46,7 @@ pub struct MergeRunInput {
 #[derive(Clone, Copy, Debug)]
 pub struct MergeRun;
 
-impl<P: Anchor + Target> Operation<P> for MergeRun {
+impl<P: Anchor + Target + Workspaces> Operation<P> for MergeRun {
     type Error = project::handler::Error;
     type Input = MergeRunInput;
     type Output = MergeRunBody;

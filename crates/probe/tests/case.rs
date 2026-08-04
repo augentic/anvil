@@ -338,7 +338,18 @@ async fn build_case_reaches_built() {
         root.join(".emery/slices/greeting/build/report.yaml").is_file(),
         "the authoritative build report is persisted"
     );
-    assert!(root.join("mock-build/greeting.md").is_file(), "the expected output exists");
+    assert!(
+        root.join(".emery/slices/greeting/build/patch.yaml").is_file(),
+        "the captured code patch is persisted"
+    );
+    assert!(
+        !root.join("mock-build/greeting.md").exists(),
+        "build never writes the product tree (RFC-87) — code arrives at merge"
+    );
+    assert!(
+        root.join("build-result/mock-build/greeting.md").is_file(),
+        "the expected output exists in the materialized result snapshot"
+    );
     let journal = journal(&root);
     assert!(journal.contains("slice.build.started"), "{journal}");
     assert!(journal.contains("slice.build.succeeded"), "{journal}");

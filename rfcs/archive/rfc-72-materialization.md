@@ -1,6 +1,6 @@
 # Managed Workspace Materialization
 
-> **Status: Superseded by [RFC-87 Working Trees](../rfc-87-working-trees.md)**, which merges this RFC's slot policy and lease with RFC-55's value↔tree mechanics. Retained for the original policy detail (registry modes, cleanliness matrix, CLI surface, staging).
+> **Status: Superseded by [RFC-87 Private Workspaces](../rfc-87-working-trees.md)**, which replaces slots and leases with disposable workspaces over immutable snapshots. Retained for the rejected long-lived-slot policy detail.
 >
 > Owns: cloning and refreshing registry projects, creating writable workspace slots, branch preparation, cleanliness checks, and the lease boundary required by automated multi-repository execution.
 >

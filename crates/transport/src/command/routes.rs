@@ -8,7 +8,7 @@ use omnia_guest::api::command::{BuildError, Completions, Namespace, Router, Rout
 use omnia_guest::api::invoke::Invoker;
 use project::adapter::Resolver;
 use project::handler::Anchor;
-use project::seam::{Source, Target};
+use project::seam::{Source, Target, Workspaces};
 
 use super::{
     EmeryProjector, Globals, adapter, archive, journal, plan, registry, slice, source, target,
@@ -96,7 +96,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
 )]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target,
+    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)

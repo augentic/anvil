@@ -38,7 +38,7 @@ Realising the architecture spans four repositories, coordinated only through ver
 
 - **`augentic/emery`** (this repo) — owns the typed contract (the `emery:adapter` package), the Emery runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the engine guest, and the operator CLI surface.
 - **`augentic/omnia`** — owns the generic runtime library (the Wasmtime interpreter, the pluggable host-service framework, multi-guest deployments, host-mediated linking) and the general-purpose host interfaces, including `wasi-model` (`omnia:model/completion.create`). It carries zero Emery domain knowledge and zero model knowledge.
-- **`augentic/backends`** — owns the model backends behind `wasi-model`: `omnia-cursor` (spawns `cursor-agent` against the mounted working tree with MCP grants) and `omnia-genai` (frontier / hosted APIs); Omnia's in-tree `ModelDefault` covers deterministic replay.
+- **`augentic/backends`** — owns the model backends behind `wasi-model`: `omnia-cursor` (spawns `cursor-agent` against the private workspace with MCP grants) and `omnia-genai` (frontier / hosted APIs); Omnia's in-tree `ModelDefault` covers deterministic replay.
 - **`augentic/emery-adapters`** — consumes the `emery:adapter` package as a pinned dependency and ships a WASM component per adapter: its axis world plus the `wasi:http` MCP export serving its compiled-in references.
 
 One Emery-owned seam is versioned across the boundary: `emery:adapter` (this repo → adapters). Land a published `emery:adapter` pin before the adapter components that consume it, and treat the seam as a contract so neither repo blocks the other. The Omnia runtime — including the `wasi-model` host interface — is consumed as an ordinary upstream dependency.
@@ -53,9 +53,9 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a known build of the operator-facing surfaces over the existing `journal` substrate — the substrate exists; the surfaces do not.
 
-In parallel, the migration critical path is [RFC-86 Change Facts](rfc-86-change-facts.md) → [RFC-87 Working Trees](rfc-87-working-trees.md) → [RFC-88 Detached Changes](rfc-88-detached-changes.md) → [RFC-89 Publication Sets](rfc-89-publication-sets.md) (see [platform.md](platform.md)). Installation already works ([RFC-71](rfc-71-deployment.md)); Stage 2 diagnostics (`resolution.json` / `deployment show|doctor`) stay separate. Omnia stays free of Emery vocabulary throughout.
+In parallel, the migration critical path is [RFC-86 Change Facts](rfc-86-change-facts.md) → [RFC-87 Private Workspaces](rfc-87-working-trees.md) → [RFC-88 Detached Changes](rfc-88-detached-changes.md) → [RFC-89 Publication Sets](rfc-89-publication-sets.md) (see [platform.md](platform.md)). Installation already works ([RFC-71](rfc-71-deployment.md)); Stage 2 diagnostics (`resolution.json` / `deployment show|doctor`) stay separate. Omnia stays free of Emery vocabulary throughout.
 
-Target experience: thin prior context (forge auth/org + source material) → bare change directory → discover (migrate or ongoing-change mode) → record members (create repos when needed) → plan → materialize on execute → publish → finalize. RFC-88 also removes operator-authored source keys and lets ordinary single-project planning reuse its deterministic local source selector. Binding constraint is **adapter inventory** — today one code source (`typescript`) and no web target.
+Target experience: thin prior context (forge auth/org + source material) → bare change directory → discover (migrate or ongoing-change mode) → record members (create repos when needed) → plan → prepare private workspaces on execute → publish → finalize. RFC-88 also removes operator-authored source keys and lets ordinary single-project planning reuse its deterministic local source selector. Binding constraint is **adapter inventory** — today one code source (`typescript`) and no web target.
 
 Delivery is strictly sequential: finish every decision and acceptance criterion in one RFC before implementing the next. Later RFCs consume settled capabilities; no RFC retains a phase gated on a successor.
 
@@ -148,8 +148,8 @@ emery plan finalize --forge github
 #### RM-18: Cloud-hosted execute loop
 
 **Goal:** Run Emery plans durably in the background while preserving local workflow semantics.
-**Shape:** hosted execution means hosting the Omnia deployment durably. Model calls are session-less by design (fresh spawn per `create`, state carried in the working tree and `.emery/`), so resumability comes from the journal and `.emery/` state — there are no agent sessions to resume.
-**Requires:** completed [RFC-92](rfc-92-node-sync.md) for hosted trees, fact and value transport, fenced claims, and remote worker pools; approval gates come from [RFC-86](rfc-86-change-facts.md)'s recorded approvals; plus controlled push/PR creation, deterministic recovery, and parity with `emery plan execute`.
+**Shape:** hosted execution means hosting the Omnia deployment durably. Model calls are session-less by design (fresh spawn per `create`); resumability comes from coordination facts and immutable snapshots, not from retaining an agent session or workspace.
+**Requires:** completed [RFC-92](rfc-92-node-sync.md) for remote workspaces, fact and snapshot transport, fenced claims, and remote worker pools; approval gates come from [RFC-86](rfc-86-change-facts.md)'s recorded approvals; plus controlled push/PR creation, deterministic recovery, and parity with `emery plan execute`.
 **Target surface:**
 
 ```bash

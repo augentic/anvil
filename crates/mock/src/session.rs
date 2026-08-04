@@ -41,10 +41,15 @@ impl Session {
     /// Panics when the tempdir cannot be created.
     #[must_use]
     pub fn bare(answers: Vec<String>) -> Self {
-        let (tmp, root) = owned_tree();
+        let (tmp, base) = owned_tree();
+        // Production shape: the layout roots (store, cache, snapshot
+        // store, workspaces) live outside the project root, so a
+        // product-tree freeze never captures them.
+        let root = base.join("project");
+        std::fs::create_dir_all(&root).expect("mkdir project root");
         let locations = Locations::explicit(
-            root.join("adapter-store"),
-            CachePlacement::Parent(root.join("project-cache")),
+            base.join("adapter-store"),
+            CachePlacement::Parent(base.join("project-cache")),
         );
         let paths = ExecutionPaths::new(&root, locations);
         let model = Harness::answering(answers);

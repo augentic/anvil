@@ -82,11 +82,12 @@ impl From<BuildContext> for crate::seam::BuildContext {
     }
 }
 
-impl From<WorkingTree> for crate::seam::WorkingTree {
-    fn from(tree: WorkingTree) -> Self {
+impl From<Workspace> for crate::seam::Workspace {
+    fn from(workspace: Workspace) -> Self {
         Self {
-            base: tree.base,
-            subpath: tree.subpath,
+            id: workspace.id,
+            root: workspace.root,
+            artifacts: workspace.artifacts,
         }
     }
 }
@@ -198,13 +199,13 @@ pub async fn dispatch_guidance<A: crate::Target>(id: AdapterId) -> Result<String
 ///
 /// As the implementor's [`build`](crate::Target::build).
 pub async fn dispatch_build<A: crate::Target>(
-    id: AdapterId, slice: String, inputs: Vec<Input>, context: BuildContext, tree: WorkingTree,
+    id: AdapterId, slice: String, inputs: Vec<Input>, context: BuildContext, workspace: Workspace,
 ) -> Result<Report, Error> {
     let inputs: Vec<crate::seam::Input> = inputs.into_iter().map(Into::into).collect();
     let context = crate::seam::BuildContext::from(context);
-    let tree = crate::seam::WorkingTree::from(tree);
-    let ctx = crate::seam::Context::guest(&id);
-    A::build(&crate::WasiModel, &ctx, &slice, &inputs, &context, &tree)
+    let workspace = crate::seam::Workspace::from(workspace);
+    let ctx = crate::seam::Context::guest(&id).lending(workspace.root.clone());
+    A::build(&crate::WasiModel, &ctx, &slice, &inputs, &context, &workspace)
         .await
         .map(Into::into)
         .map_err(Into::into)
@@ -214,12 +215,12 @@ pub async fn dispatch_build<A: crate::Target>(
 ///
 /// As the implementor's [`merge`](crate::Target::merge).
 pub async fn dispatch_merge<A: crate::Target>(
-    id: AdapterId, slice: String, phase: MergePhase, tree: WorkingTree,
+    id: AdapterId, slice: String, phase: MergePhase, workspace: Workspace,
 ) -> Result<Report, Error> {
     let phase = crate::seam::MergePhase::from(phase);
-    let tree = crate::seam::WorkingTree::from(tree);
-    let ctx = crate::seam::Context::guest(&id);
-    A::merge(&crate::WasiModel, &ctx, &slice, phase, &tree)
+    let workspace = crate::seam::Workspace::from(workspace);
+    let ctx = crate::seam::Context::guest(&id).lending(workspace.root.clone());
+    A::merge(&crate::WasiModel, &ctx, &slice, phase, &workspace)
         .await
         .map(Into::into)
         .map_err(Into::into)
@@ -254,18 +255,19 @@ macro_rules! target {
                 slice: String,
                 inputs: Vec<$crate::target::Input>,
                 context: $crate::target::BuildContext,
-                tree: $crate::target::WorkingTree,
+                workspace: $crate::target::Workspace,
             ) -> Result<$crate::target::Report, $crate::target::Error> {
-                $crate::target::dispatch_build::<$adapter>(id, slice, inputs, context, tree).await
+                $crate::target::dispatch_build::<$adapter>(id, slice, inputs, context, workspace)
+                    .await
             }
 
             async fn merge(
                 id: $crate::target::AdapterId,
                 slice: String,
                 phase: $crate::target::MergePhase,
-                tree: $crate::target::WorkingTree,
+                workspace: $crate::target::Workspace,
             ) -> Result<$crate::target::Report, $crate::target::Error> {
-                $crate::target::dispatch_merge::<$adapter>(id, slice, phase, tree).await
+                $crate::target::dispatch_merge::<$adapter>(id, slice, phase, workspace).await
             }
         }
 

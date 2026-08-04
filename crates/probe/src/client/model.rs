@@ -3,7 +3,7 @@
 //! A lazily connected cursor backend (`omnia_cursor::Client`, the
 //! host-side `WasiModelCtx` backend) behind the shared [`Native`]
 //! bridge, which performs the guest-request mapping, the host request
-//! gate, the `lend_workspace` → project-root tool host, and the answer
+//! gate, the workspace-lend → tool-host path resolution, and the answer
 //! projection. The connection happens on first use so deterministic
 //! commands never require cursor-agent on `PATH`; clones share the
 //! connection cell, so each constructed backend connects cursor-agent

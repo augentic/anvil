@@ -16,14 +16,15 @@ use project::adapter::{
     AdapterSelector, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource,
     ResolvedTarget, Resolver,
 };
-use project::handler::{Anchor, ExecutionPaths};
+use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT};
 use project::seam::wire::build_finding;
 use project::seam::{
-    self, BuildContext, Evidence, Input, Lead, MergePhase, Source, Target, WorkingTree,
+    self, BuildContext, Evidence, Input, Lead, MergePhase, Source, Target, Workspace,
 };
+use project::snapshot::{CodePatch, SnapshotId};
 use slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
-use crate::bindings::emery::adapter::{source, target, types};
+use crate::bindings::emery::adapter::{source, target, types, workspaces};
 
 /// Workflow capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -102,19 +103,16 @@ impl Target for Provider {
 
     fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, context: BuildContext,
-        tree: WorkingTree,
+        workspace: Workspace,
     ) -> impl Future<Output = Result<BuildReport, seam::Error>> + Send {
         async move {
             let wire_inputs = inputs.into_iter().map(map_input).collect();
             let wire_context = target::BuildContext {
                 sources: context.sources,
             };
-            let wire_tree = target::WorkingTree {
-                base: tree.base,
-                subpath: tree.subpath,
-            };
+            let wire_workspace = map_workspace(workspace);
             let report =
-                target::build(id.clone(), slice.clone(), wire_inputs, wire_context, wire_tree)
+                target::build(id.clone(), slice.clone(), wire_inputs, wire_context, wire_workspace)
                     .await
                     .map_err(map_error)?;
             Ok(widen_report(&id, slice, report))
@@ -122,22 +120,83 @@ impl Target for Provider {
     }
 
     fn merge(
-        &self, id: String, slice: String, phase: MergePhase, tree: WorkingTree,
+        &self, id: String, slice: String, phase: MergePhase, workspace: Workspace,
     ) -> impl Future<Output = Result<BuildReport, seam::Error>> + Send {
         async move {
             let wire_phase = match phase {
                 MergePhase::Preflight => target::MergePhase::Preflight,
                 MergePhase::Postflight => target::MergePhase::Postflight,
             };
-            let wire_tree = target::WorkingTree {
-                base: tree.base,
-                subpath: tree.subpath,
-            };
-            let report = target::merge(id.clone(), slice.clone(), wire_phase, wire_tree)
+            let wire_workspace = map_workspace(workspace);
+            let report = target::merge(id.clone(), slice.clone(), wire_phase, wire_workspace)
                 .await
                 .map_err(map_error)?;
             Ok(widen_report(&id, slice, report))
         }
+    }
+}
+
+impl seam::Workspaces for Provider {
+    fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
+        async move { parse_revision(workspaces::freeze().await.map_err(map_error)?) }
+    }
+
+    fn prepare(
+        &self, base: SnapshotId, writable: bool,
+    ) -> impl Future<Output = Result<Workspace, seam::Error>> + Send {
+        async move {
+            let prepared = workspaces::prepare(base.as_str().to_string(), writable)
+                .await
+                .map_err(map_error)?;
+            // The record carries only what the host alone knows; the
+            // deployment-local root derives from the workspaces mount.
+            let root = format!("{GUEST_WORKSPACES_MOUNT}/{}", prepared.id);
+            Ok(Workspace {
+                id: prepared.id,
+                root,
+                artifacts: prepared.artifacts,
+            })
+        }
+    }
+
+    fn capture(&self, id: String) -> impl Future<Output = Result<CodePatch, seam::Error>> + Send {
+        async move {
+            let patch = workspaces::capture(id).await.map_err(map_error)?;
+            Ok(CodePatch {
+                base: parse_revision(patch.base)?,
+                result: parse_revision(patch.result)?,
+                touched: patch.touched,
+            })
+        }
+    }
+
+    fn discard(&self, id: String) -> impl Future<Output = Result<(), seam::Error>> + Send {
+        async move { workspaces::discard(id).await.map_err(map_error) }
+    }
+
+    fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), seam::Error>> + Send {
+        async move {
+            let wire = workspaces::CodePatch {
+                base: patch.base.into(),
+                result: patch.result.into(),
+                touched: patch.touched,
+            };
+            workspaces::apply(wire).await.map_err(map_error)
+        }
+    }
+}
+
+/// Parse a wire `revision` into the typed snapshot identity; the host
+/// mints these, so a malformed value is an internal seam failure.
+fn parse_revision(revision: String) -> Result<SnapshotId, seam::Error> {
+    SnapshotId::parse(&revision).map_err(|err| seam::Error::Internal(err.to_string()))
+}
+
+fn map_workspace(workspace: Workspace) -> target::Workspace {
+    target::Workspace {
+        id: workspace.id,
+        root: workspace.root,
+        artifacts: workspace.artifacts,
     }
 }
 
