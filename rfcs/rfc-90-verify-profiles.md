@@ -62,20 +62,20 @@ Not every node can verify. A node without the required toolchain or sandbox supp
 
 - The host selects a profile table from the approved target adapter and platform set in `plan.yaml.projects` / `project.yaml`; model output never selects commands or a toolchain.
 - The first complete table is Omnia/Rust (`fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, `ci`). Other target/platform combinations and undeclared profiles return typed `unavailable`; adding their tables is independent coverage work, not an RFC-90 phase.
-- Verification runs in a disposable RFC-87 materialization of the candidate revision/changesets, never the authoritative working tree.
+- Verification runs in a disposable RFC-87 workspace prepared from the candidate result snapshot, never the authoritative tree.
 - Egress, inherited environment, CPU, memory, wall time, and output limits are deny-by-default host policy. `test` and `ci` require the invocation's explicit execution grant; there is no persisted bypass file.
-- Cache reuse is lease-local and keyed by profile, toolchain identity, revision, and changeset digest. Release deletes the cache with the verification tree.
+- Cache reuse is workspace-local and keyed by profile, toolchain identity, and snapshot id. Discard deletes the cache with the verification workspace.
 - Normalization preserves the closed diagnostic substrate (`source: tool`, `kind: violation`) and attaches bounded raw output only when no structured parser exists.
 
 ## Delivery
 
-Implement the closed request type, disposable verification tree, sandbox/resource policy, execution grant, Omnia/Rust profile table, lease-local cache keys, normalized reports, and typed unavailable signal as one vertical cut. RFC-90 is complete when that cut passes.
+Implement the closed request type, disposable verification workspace, sandbox/resource policy, execution grant, Omnia/Rust profile table, workspace-local cache keys, normalized reports, and typed unavailable signal as one vertical cut. RFC-90 is complete when that cut passes.
 
 ## Out of scope
 
 - Model tool-call dispatch; owned by the implemented `wasi-model` host and its backends.
 - Model backend selection; owned by the runtime binary's compile-time binding.
-- Working-tree materialization; see [RFC-87](rfc-87-working-trees.md).
+- Preparing work directories; see [RFC-87](rfc-87-working-trees.md).
 
 ## Acceptance criteria
 

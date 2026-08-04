@@ -25,24 +25,37 @@ Today one change runs in one repository (or a hand-tended workspace of them), se
 Five moves, layered:
 
 1. **State becomes facts.** RFC-86 makes the change a self-contained, git-backed fact tree; all workflow status is a projection over it, and no later move needs a hosted authority.
-2. **Trees become values.** RFC-87 materializes a content-addressed `revision` under an exclusive local lease and extracts a `changeset`; RFC-91 later composes ordered same-base changesets; RFC-92 transports the settled values across nodes. No shared volume crosses an operation.
-3. **Location becomes ephemeral.** A change opens in a bare directory, discovers and records its member repositories from the forge (creating new ones when none match), materializes them as leased slots, and leaves nothing behind after finalize except merged baselines and forge history.
+2. **Trees become values.** RFC-87 materializes an immutable snapshot into a private workspace and captures a result snapshot; the code patch is the relation between them. RFC-91 later composes ordered same-base results; RFC-92 moves snapshot objects between nodes. No shared volume crosses an operation.
+3. **Location becomes ephemeral.** A change opens in a bare directory, discovers and records its member repositories from the forge (creating new ones when none match), prepares disposable private workspaces, and leaves nothing behind after finalize except merged baselines and forge history.
 4. **Verification becomes host-owned.** Closed, sandboxed verify profiles replace cargo-commands-in-prompts, producing normalized findings any orchestrator can route.
-5. **Judgment becomes a swarm.** Within a slice: focused workers with exclusive write manifests, converging through the verify gate. Across slices: independent plan entries build in parallel on separate leases, with a trial-integration gate measuring joint health continuously. Across nodes: three separated planes (coordination / convergence / publication) move facts, values, and PRs respectively.
+5. **Judgment becomes a swarm.** Within a slice: focused workers with exclusive write manifests, converging through the verify gate. Across slices: independent plan entries build in parallel in separate private workspaces, with a trial-integration gate measuring joint health continuously. Across nodes: three separated planes (coordination / convergence / publication) move facts, values, and PRs respectively.
 
-```text
-            coordination plane (RFC-86 fact tree: per-actor logs, claims, projections)
-                 │  synced by ordinary transports — git baseline, streamed when hosted
-  ┌──────────────┼──────────────────┐
-  node A         node B             node C
-  slice 1        slice 2            per-project trial gate
-  worker swarm   worker swarm       repo A + α; repo B + β → findings
-  tree ← lease   tree ← lease
-  └─ tree delta α └─ tree delta β   serial merge gate (unchanged authority)
-                 │
-            value plane (revision / changeset — content-addressed store, deployment-bound)
-                 │
-            publication plane (branches, PRs, forge — operator-owned, verified at finalize)
+### Scaling invariant
+
+Scale is hierarchical, not flat. Emery partitions work into conflict domains: projects at plan level, dependency-ordered slices within each project, and path-owned worker tasks within each slice. Each domain has a bounded worker pool and a local convergence gate. Workers consume immutable snapshots in private work directories, return digest-identified artifacts or code patches, and append coordination facts; no writable tree is shared.
+
+Results converge upward: worker outputs pass through slice verification, slice patches compose into per-project trial integrations, and accepted slice results reach the existing serial merge and publication gates. A logically central scheduler may place work, but it is neither workflow-state authority nor an unbounded convergence bottleneck.
+
+```mermaid
+flowchart TB
+    C["Coordination plane<br/>facts · claims · dependencies · projections"]
+    C --> PA["Project A conflict domain"]
+    C --> PB["Project B conflict domain"]
+
+    PA --> WA["Bounded slice pools<br/>private work directories"]
+    PB --> WB["Bounded slice pools<br/>private work directories"]
+
+    WA <-->|snapshot ids + code patches| V["Convergence plane<br/>content-addressed store"]
+    WB <-->|snapshot ids + code patches| V
+
+    WA --> VA["Slice verify gates"]
+    WB --> VB["Slice verify gates"]
+    VA --> TA["Project A trial-integration gate"]
+    VB --> TB["Project B trial-integration gate"]
+
+    TA --> M["Serial merge gate"]
+    TB --> M
+    M --> P["Publication plane<br/>branches + PRs · operator-owned"]
 ```
 
 ## The series
@@ -54,7 +67,7 @@ The tables give **implementation order** — the operator-story critical path fi
 | Step | RFC                                  | Title               | Delivers                                                                                                                                                                                                                                                    | Depends on             |
 | ---- | ------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts        | The substrate: the change as a git-backed fact tree, projected status, per-actor event logs, pinned judgment inputs, merge-finalized requirement identity, approval as artifact, desktop as the degenerate deployment                                       | —                      |
-| 2    | [RFC-87](rfc-87-working-trees.md)    | Local Working Trees | Complete local value↔tree loop: source grants and snapshots, bare-mirror Git materialization, `revision → tree → changeset`, exact-base policy, local leases, and immutable source/target separation                                                        | completed 86           |
+| 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces  | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                       | completed 86           |
 | 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, the change repository as the disposable home, GitHub discovery, recorded members, target-topology proposals, local ephemeral slots, and greenfield creation | completed 86, 87       |
 | 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Publication identity: one change's branches and PRs bound across repositories, ordered landing, verification at finalize                                                                                                                                    | 88 (member derivation) |
 
@@ -63,7 +76,7 @@ The tables give **implementation order** — the operator-story critical path fi
 | Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                        | Depends on                   |
 | ---- | ---------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | 5    | [RFC-90](rfc-90-verify-profiles.md)      | Verify Profiles      | Complete Omnia/Rust path for closed, sandboxed, host-owned verification with normalized findings and typed unavailability elsewhere                                                                                             | completed 87                 |
-| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node Omnia swarm: focused workers, write ownership, local pool, per-worker trees, deterministic changeset composition, convergence, refine/plan fan-outs, and synthesis payload restructuring                   | completed 86, 87, 90         |
+| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node Omnia swarm: focused workers, write ownership, local pool, per-worker trees, deterministic code-patch composition, convergence, refine/plan fan-outs, and synthesis payload restructuring                  | completed 86, 87, 90         |
 | 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Complete multi-node Omnia path: fact and value transport between nodes, fenced claims, hosted trees, remote pools, concurrent plan entries, and per-project trial integration — no authority cutover, no second lifecycle model | completed 86, 87, 88, 90, 91 |
 
 Sequencing notes:
@@ -75,10 +88,10 @@ Sequencing notes:
 
 Completion order stays serial (the tables above), but the code coupling between the first two steps is far narrower than "completed 86", so a small team can develop them concurrently.
 
-**RFC-86 ∥ RFC-87 — the headline split.** RFC-86 lives in the state layer: `crates/project/src/journal.rs` (single file → per-actor logs), the status ladders in `crates/project/src/plan/model/state.rs` and `crates/project/src/slice/lifecycle.rs` (deleted in favour of the projection kernel), `IdAllocator` in `crates/slice/src/synthesis/project.rs`, and the approval/claim surfaces in `crates/change`. RFC-87 lives in the tree/value layer: `WorkingTree` in `crates/project/src/seam.rs`, the three `WorkingTree::live()` dispatch sites (`change/src/plan/handlers/execute.rs`, `slice/src/handlers/build.rs`, `slice/src/orchestrate/merge/gate.rs`), the materialization backend, and the launcher mount policy; the WIT `revision` / `working-tree` records already exist. The tracks meet at exactly two seams — freeze these first, then neither blocks the other:
+**RFC-86 ∥ RFC-87 — the headline split.** RFC-86 lives in the state layer: `crates/project/src/journal.rs` (single file → per-actor logs), the status ladders in `crates/project/src/plan/model/state.rs` and `crates/project/src/slice/lifecycle.rs` (deleted in favour of the projection kernel), `IdAllocator` in `crates/slice/src/synthesis/project.rs`, and the approval/claim surfaces in `crates/change`. RFC-87 lives in the tree/value layer: it replaces the three `WorkingTree::live()` dispatch sites with `prepare` / `capture` / `discard`, private workspaces, and a snapshot store. The tracks meet at exactly two seams:
 
-1. **The revision digest convention** — RFC-86's `base.yaml` pins a baseline revision using RFC-87's value format (Git commit where available, `sha256:` tree digest otherwise). One track consumes it as a value format, the other as a pinning field.
-2. **The fact-log event shape** — RFC-87's lease records land as events in RFC-86's per-actor logs. Agree the `EventKind` extension pattern and actor-identity capture (a stable string captured once at the composition root, like `Locations`); leases are then just another event producer.
+1. **Snapshot and result identity** — RFC-86 records snapshot pins and result facts; RFC-87 consumes the pins and returns `{ base snapshot, result snapshot, touched paths }`.
+2. **Pin authorship timing** — source snapshots close at plan authoring or detached-change approval; refine adds the baseline digest; build freezes the target base before `prepare`.
 
 **Within RFC-86**, Phase A (per-actor logs, projection kernel, claim/retraction facts) is journal-and-plan territory in `crates/project`; Phase B's identity work (slice-scoped requirement ids, `MODIFIED` base digests, merge-time finalization) is synthesis-and-merge-engine territory in `crates/slice`; the one shared contract is the merge fact that records the identity map. Phase C (approval, multi-actor) sits on top of A.
 
@@ -100,8 +113,8 @@ emery change approve  →  record projects, exact revisions, topology, sources;
 /emery:plan           →  author slices over recorded projects
 (/emery:refine …)     →  optional shift-left (RFC-86): refine slices against pinned
                          bases; review the committed spec set; emery plan approve
-emery plan execute    →  approval-gated (auto-approves interactively); materialize
-                         leased slots on demand (RFC-87); remaining phases per entry
+emery plan execute    →  approval-gated (auto-approves interactively); prepare
+                         private workspaces on demand (RFC-87); remaining phases per entry
 operator publishes
 /emery:finalize       →  verify publication set (RFC-89); archive
 rm -rf <dir>

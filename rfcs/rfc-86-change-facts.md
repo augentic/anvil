@@ -4,7 +4,7 @@
 >
 > Owns: the fact-based change substrate — the change as a self-contained tree of immutable, digest-identified artifacts and append-only per-actor event logs; workflow status as a projection over facts, never a stored field; pinned bases for every judgment leg; slice-scoped requirement identity finalized at merge; approval as a recorded artifact; and the single-actor desktop as the degenerate case of the same substrate, not a separate mode.
 >
-> Depends on: nothing in the series. Consumed by every later step: [RFC-87](rfc-87-working-trees.md) (tree values join the fact vocabulary), [RFC-88](rfc-88-detached-changes.md) (the detached change home becomes a fact tree), [RFC-89](rfc-89-publication-sets.md) (approval and publication verification read facts), [RFC-91](rfc-91-concurrent-execution.md) (concurrent synthesis requires merge-finalized identity), [RFC-92](rfc-92-node-sync.md) (node sync becomes fact-and-value transport, with no authority cutover).
+> Depends on: nothing in the series. Consumed by every later step: [RFC-87](rfc-87-working-trees.md) (snapshot and result identities join the fact vocabulary), [RFC-88](rfc-88-detached-changes.md) (the detached change home becomes a fact tree), [RFC-89](rfc-89-publication-sets.md) (approval and publication verification read facts), [RFC-91](rfc-91-concurrent-execution.md) (concurrent synthesis requires merge-finalized identity), [RFC-92](rfc-92-node-sync.md) (node sync becomes fact-and-value transport, with no authority cutover).
 
 ## Intent
 
@@ -41,7 +41,7 @@ Three kinds of thing exist. Nothing else carries workflow state.
 
 - **Artifacts** — immutable once referenced: `change.md`, `plan.yaml` (topology only), per-slice `spec.md` / `design.md` / `model.yaml` / `evidence/`, `base.yaml` pins, build records. Identified by content digest. Ordinary committed files.
 - **Facts** — append-only events in per-actor logs: claims, validations, approvals, build outcomes, merges, retractions. The existing closed `EventKind` taxonomy, re-homed and extended.
-- **Values** — bulk content-addressed payloads: RFC-87's `revision` and `changeset`. Referenced from artifacts and facts by digest; stored outside the coordination tree.
+- **Values** — content-addressed snapshot objects. RFC-87 code patches relate a base snapshot to a result snapshot; no separate patch blob exists. Artifacts and facts reference the snapshot identities.
 
 The change tree:
 
@@ -58,7 +58,7 @@ The change tree:
     spec.md                      # delta spec with slice-scoped requirement ids
     design.md
     tasks.md
-    builds/<digest>.yaml         # build record: base tree revision + changeset digest + report digest
+    builds/<digest>.yaml         # build record: base/result snapshots + touched paths + report digest
 ```
 
 The baseline (`.emery/specs/`) remains the durable system of record in the product repository, exactly as today. Changes merge into it and archive away.
@@ -69,7 +69,7 @@ Status is one deterministic fold over the union of artifacts and facts:
 authored   ⇐ plan.yaml has slices
 approved   ⇐ an approval fact covers the current plan digest (and whichever spec digests existed)
 refined(s) ⇐ validated artifacts exist for s, pinned by base.yaml, with a validation fact
-built(s)   ⇐ a build record references s's current spec digest and its changeset value exists
+built(s)   ⇐ a build record references s's current spec digest and base/result snapshots exist
 merged(s)  ⇐ a merge fact records s's delta folded into a named baseline revision
 dropped(s) ⇐ a drop fact
 ```
@@ -79,14 +79,14 @@ dropped(s) ⇐ a drop fact
 Every phase becomes a pure function over pinned values:
 
 ```text
-survey     : (source snapshot revision)                → leads
-extract    : (source snapshot revision, lead)          → evidence
-synthesize : (evidence digests, baseline revision)     → spec delta + model
-build      : (spec digest, base tree revision)         → changeset digest + report
-merge      : (changeset, spec delta, baseline revision) → new baseline + tree revisions + identity map
+survey     : (source snapshot id)                      → leads
+extract    : (source snapshot id, lead)                → evidence
+synthesize : (evidence digests, baseline snapshot)     → spec delta + model
+build      : (spec digest, base tree snapshot)         → result snapshot + touched paths + report
+merge      : (base/result snapshots, spec delta, baseline) → new baseline + tree snapshots + identity map
 ```
 
-Each is relocatable to any node that can materialize its inputs, and auditable by anyone who can read the change tree. This is the planning layer speaking the same value language RFC-87 gives the tree layer.
+Each is relocatable to any node that can prepare its inputs, and auditable by anyone who can read the change tree. This is the planning layer speaking the same value language RFC-87 gives the tree layer.
 
 ## Decisions
 
@@ -95,11 +95,11 @@ Each is relocatable to any node that can materialize its inputs, and auditable b
 | D1 | **The change is a self-contained, git-backed fact tree.** In-place mode it is `.emery/` in the product repository (already committable — only `scratch/` and `workspace/` are ignored); detached mode ([RFC-88](rfc-88-detached-changes.md)) it is its own repository. Sharing, review, and durability are ordinary git push / pull / PR. | Extended planning survives by construction. A second operator clones the change; a reviewer reads a diff of specs; nothing new is invented for transport, backup, or history. |
 | D2 | **Status is projected, never stored.** `plan.yaml` carries no per-entry `status`; `metadata.yaml` carries no lifecycle field. The `LifecycleStatus` and plan `Status` ladders survive as projection *outputs* with their exact current semantics and writer discipline expressed as fact-emission rules. `plan undo` appends a retraction fact; projections honor retractions; no fact is ever rewritten. | The single hardest distributed-state problem — synchronizing mutable ladders — is deleted rather than solved. Re-entry, resumption, and `plan status` read one code path. The lifecycle vocabulary (`refining → refined → built → merged`, `pending → in-progress → done`) is unchanged for operators. |
 | D3 | **Events live in per-actor append-only logs.** `events/<actor>.jsonl` replaces the single `journal.jsonl`; an actor id is a stable workflow identity (operator or node), captured once per composition root like `Locations`; each event carries actor and per-actor sequence. `emery journal show` projects the merged union. Git merges of the change tree union event files without conflict. | The journal keeps its closed `EventKind` taxonomy and its role as the audit trail. What changes is only the storage shape — from the worst concurrent-append structure to one that is conflict-free under exactly the merges D1 invites. |
-| D4 | **Every judgment leg runs against pinned, recorded inputs.** `base.yaml` records the baseline spec revision and per-source snapshot revisions before refine; build records pin the spec digest and base tree revision; evidence is valid only against its recorded snapshot. Staleness is *detected* (typed diagnostics at validate and merge), never silently absorbed. | Refinement against the committed baseline is reproducible and safe over time — the precondition for shift-left planning, multi-operator refinement, and RFC-91's concurrent synthesis. A reviewed spec provably describes what it was synthesized from. |
+| D4 | **Every judgment leg runs against pinned, recorded inputs.** Per-source snapshot revisions close at plan authoring (in-place) or change approval (detached) — when the source set is closed — and are recorded at plan scope first. Refine writes each slice's `base.yaml` by copying those source pins and adding the baseline spec revision before the first extract; build records pin the spec digest and base tree revision; evidence is valid only against its recorded snapshot. Staleness is *detected* (typed diagnostics at validate and merge), never silently absorbed. | Refinement against the committed baseline is reproducible and safe over time — the precondition for shift-left planning, multi-operator refinement, and RFC-91's concurrent synthesis. A reviewed spec provably describes what it was synthesized from. Pins close when their inputs are knowable; `base.yaml` is the refine-time assembly, not the first writer of source snapshot ids. |
 | D5 | **Requirement identity is slice-scoped at synthesis and finalized at merge.** Synthesis mints ids in the slice's namespace; the delta spec carries them; each `MODIFIED` entry records the digest of the baseline requirement body it modified. Merge assigns final baseline `REQ-NNN` numbers, records the slice-id → baseline-id map as a merge fact, and rejects a drifted `MODIFIED` base digest with a typed conflict instead of last-writer-wins. | Two slices refined against the same baseline can never collide on identity — the defect that today forces serial, interleaved refinement. Provenance survives renumbering through the recorded map. This is the same reconciliation RFC-91's concurrency needs; it lands once, here. |
 | D6 | **Approval is an artifact.** An approval fact names the plan digest and the per-slice spec digests in scope at approval time, plus the approving actor. `emery plan execute` requires a covering approval; invoked interactively on an unapproved plan it records the approval fact for the invoking actor and proceeds — today's ergonomics, now recorded. `emery plan approve` is the explicit review-then-distribute surface. Approving after refinement covers specs; approving before covers topology only; the fact records which. | "What exactly was approved, by whom, against which artifacts" becomes answerable — by finalize verification, a second operator, or an audit months later. Distributed execution has something that travels. Both review postures (cheap topology gate, deep spec review) are one mechanism. |
-| D7 | **Work is claimed by fact, not by lock.** Claiming a slice (or the plan-author / merge role) is an event; the projection treats a slice with a live claim as owned; conflicting concurrent claims are a *detected violation* surfaced by the projection, not a merge to resolve. Local process-level guards (`guest.lock`, RFC-87's advisory tree lease) remain as machine-local safety, subordinate to claims. | Coordination is visible in the shared change tree with no coordination service. RFC-87's lease generalizes naturally: the lease guards a materialized tree on one machine; the claim coordinates actors across machines. Fencing hardens claims in RFC-92 without changing their shape. |
-| D8 | **Phases are pure functions over values.** Every phase's inputs and outputs are digest-identified (the table above); orchestrations record the binding as facts. No phase reads ambient directory state as an implicit input. | Any node that can materialize the inputs can run the work — the Bazel property, without pretending judgment is cacheable. Failure loses nothing: inputs and every completed output persist; retry is re-dispatch. |
+| D7 | **Work is claimed by fact, not by lock.** Claiming a slice (or the plan-author / merge role) is an event; the projection treats a slice with a live claim as owned; conflicting concurrent claims are a *detected violation* surfaced by the projection, not a merge to resolve. RFC-87 workspaces are private by construction and carry no workflow lock. | Coordination is visible in the shared change tree with no coordination service. Claims coordinate actors across machines; RFC-92 fencing hardens claims without changing their shape. |
+| D8 | **Phases are pure functions over values.** Every phase's inputs and outputs are digest-identified (the table above); orchestrations record the binding as facts. No phase reads ambient directory state as an implicit input. | Any node that can prepare the inputs can run the work — the Bazel property, without pretending judgment is cacheable. Failure loses nothing: inputs and every completed output persist; retry is re-dispatch. |
 | D9 | **The desktop is the degenerate deployment, not a mode.** One actor, one node, no remote: the same fact tree, projections, claims, and pins, with git remotes and value transport simply absent. No behavior, verb, or artifact differs between single-node and multi-node operation except the transports configured at the composition root. | There is exactly one lifecycle model to implement, test, and document. The Omnia/Wasmtime investment pays off as intended: the guest is location-neutral, providers carry deployment, and now state does too. RFC-92 shrinks to transport. |
 | D10 | **Hard cut, no shims.** Stored status fields, the single journal file, synthesis-time global id allocation, and unrecorded approval are removed, not aliased. Pre-1.0 posture applies: re-init over migration. | One model in the codebase. The projection is the only status reader; the fact logs are the only status writers. |
 
@@ -109,7 +109,7 @@ Each is relocatable to any node that can materialize its inputs, and auditable b
 - `emery plan execute` — requires a covering approval fact; interactively auto-approves as D6; otherwise unchanged as the drained loop.
 - `emery plan advance` — becomes the claim-writing verb (its `in-progress` semantic, re-expressed); `emery plan undo` appends retraction facts walking the same rungs.
 - `emery plan status` / `emery journal show` — unchanged operator surface, now reading the projection over the fact union.
-- `emery slice refine` — records `base.yaml` pins before extraction; refuses when the pinned baseline revision cannot be resolved.
+- `emery slice refine` — writes `base.yaml` before extraction (plan-scope source snapshot pins plus baseline digest); refuses when the pinned baseline revision cannot be resolved.
 - `emery slice validate` — gains staleness checks: `slice-base-drifted` (baseline moved since `base.yaml`), `slice-evidence-stale` (source snapshot superseded) — review signals until merge, where drift on a `MODIFIED` target becomes blocking.
 - `emery slice merge` — assigns final requirement numbers, records the identity map in the merge fact, and rejects `merge-base-drifted` on a stale `MODIFIED` digest.
 - New closed diagnostics: `plan-approval-missing`, `plan-approval-stale`, `slice-claim-conflict`, `slice-base-drifted`, `slice-evidence-stale`, `merge-base-drifted` (exit 2).
@@ -120,7 +120,7 @@ Each is relocatable to any node that can materialize its inputs, and auditable b
 - The projection is one pure kernel in `crates/project` (facts + artifact index in, status out), property-tested for determinism: same fact set, any interleaving of per-actor files, same projection.
 - Actor identity is a stable string captured once at the composition root (config or environment via the launcher, generated and persisted on first use); kernels never read `std::env`.
 - Per-actor event files append with the same atomic-write discipline as today's journal; an actor writes only its own file.
-- `base.yaml` is written by refine before the first extract; its baseline revision is the content digest of the baseline `specs/` tree (Git commit where available, `sha256:` tree digest otherwise, matching RFC-87's non-Git convention).
+- Plan authoring (in-place) or change approval (detached) records per-source snapshot ids at plan scope. `base.yaml` is written by refine before the first extract: it copies those source pins and adds the baseline snapshot. Build records reference RFC-87 base/result snapshot identities; no code-patch bytes live in the change-files tree.
 - Slice-scoped requirement ids use the existing grammar under a slice namespace; the merge-recorded identity map is the only translation surface, and `emery slice provenance` resolves through it.
 - The `MODIFIED` base digest is SHA-256 over the parsed baseline requirement block, computed by the same parser the merge engine uses.
 - Approval facts live as both an event and a content-addressed file under `approvals/` — the file is the reviewable artifact, the event is the ordered record; they carry the same digest.
@@ -138,7 +138,7 @@ Each is relocatable to any node that can materialize its inputs, and auditable b
 ## Phased delivery
 
 - **Phase A — Facts and projections.** Per-actor event logs, the projection kernel, removal of stored `status` / lifecycle fields, `plan advance` / `undo` as claim / retraction facts, `journal show` over the union. Single-actor behavior is observably unchanged (`plan status` output parity is the gate).
-- **Phase B — Pins and identity.** `base.yaml` pinning in refine, staleness diagnostics in validate, slice-scoped requirement ids, `MODIFIED` base digests, merge-time number finalization with the recorded identity map, provenance through the map.
+- **Phase B — Pins and identity.** Plan-scope source snapshot pins (from authoring/approval) assembled into `base.yaml` at refine with the baseline digest, staleness diagnostics in validate, slice-scoped requirement ids, `MODIFIED` base digests, merge-time number finalization with the recorded identity map, provenance through the map.
 - **Phase C — Approval and multi-actor.** Approval facts and the `plan approve` / gated `execute` surface, claim conflicts as typed violations, multi-actor change-tree merge coverage, shift-left flow proven end to end: author → refine all slices → review the committed spec set → approve → execute (build + merge only).
 
 ## Acceptance criteria

@@ -32,7 +32,7 @@ Every serious multi-repo coordination system is an instance of this one pattern 
 
 ### Vocabulary
 
-`emery slice merge` folds delta specs into the baseline — a lifecycle transition, not a git operation. This RFC is about **publication**: the branches, pull requests, and forge merges that carry a change's diffs into member repositories. Its **publication set** is a forge-side record, distinct from RFC-87's **changeset** tree-delta value. *Merge* stays lifecycle; *publish* and *land* are forge-side.
+`emery slice merge` folds delta specs into the baseline — a lifecycle transition, not a git operation. This RFC is about **publication**: the branches, pull requests, and forge merges that carry a change's diffs into member repositories. Its **publication set** is a forge-side record, distinct from RFC-87's **code patch** (the relation between base and result snapshots). *Merge* stays lifecycle; *publish* and *land* are forge-side.
 
 ### The gap
 
@@ -112,7 +112,7 @@ The [roadmap's cross-repo coordination note](roadmap.md#cross-repo-coordination)
 
 - **[RFC-86](rfc-86-change-facts.md)** — supplies the recorded approval this RFC's verification closes the loop on: finalize can state not only that every member PR landed in order, but that what landed traces to approved artifact digests. Publication facts (`plan.publication.*`) ride the per-actor logs like every other event.
 - **[RFC-88](rfc-88-detached-changes.md)** — records the member set; its D4 demotes the committed registry, simplifying this RFC's member derivation to `plan.yaml` alone and making the forge markers (D3 here) the only out-of-band record. Migrate and ongoing change share that location model; this RFC binds their publication.
-- **[RFC-87](rfc-87-working-trees.md)** — a three-member publication set uses three RFC-88 ephemeral slots over the completed local materializer. There is no operator-prepared workspace bridge in this sequence.
+- **[RFC-87](rfc-87-working-trees.md)** — each member operation uses a disposable private workspace prepared from its recorded snapshot. There is no operator-prepared checkout bridge in this sequence.
 - **[RFC-77](rfc-77-release-process.md)** — the WIT-breaking coordination order becomes the first publication set (above). No change to its decisions.
 - **[RFC-91](rfc-91-concurrent-execution.md)** — scale track; its D4 concurrency substrate is what would later let one publication set's members build in parallel (D9).
 - **RM-17 / RM-20 ([roadmap](roadmap.md))** — RM-17 may extend the settled forge provider with publication handoff or additional forges; RFC-89 does not wait for it. RM-20 ("catalog-backed initiatives across many repositories") gains its coordination semantics from this RFC rather than defining its own.
@@ -174,7 +174,7 @@ The [roadmap's cross-repo coordination note](roadmap.md#cross-repo-coordination)
 - Zuul `Depends-On` cross-repository dependencies
 - [Sourcegraph Batch Changes](https://sourcegraph.com/docs/batch-changes)
 - [roadmap.md — cross-repo coordination](roadmap.md#cross-repo-coordination) · [RM-17 / RM-20](roadmap.md#rm-17-operator-owned-forge-integration)
-- [RFC-88 Detached Changes](rfc-88-detached-changes.md) · [RFC-87 Working Trees](rfc-87-working-trees.md) · [RFC-77 Release Process](rfc-77-release-process.md) · [RFC-91 Concurrent Execution](rfc-91-concurrent-execution.md)
+- [RFC-88 Detached Changes](rfc-88-detached-changes.md) · [RFC-87 Private Workspaces](rfc-87-working-trees.md) · [RFC-77 Release Process](rfc-77-release-process.md) · [RFC-91 Concurrent Execution](rfc-91-concurrent-execution.md)
 - RFC-81 Cloud Alert Remediation Platform (`augentic/remedium` `rfcs/rfc-81-cloud-alert-remediation.md`)
 - [cli-contract — operator-owned publication](../docs/standards/cli-contract.md)
 

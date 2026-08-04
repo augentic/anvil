@@ -1,6 +1,6 @@
 # RFC-55: Working-Tree Materialization — the git-aware `wasi:filesystem` backend
 
-> **Status: Superseded by [RFC-87 Working Trees](../rfc-87-working-trees.md)**, which merges this RFC's value↔tree mechanics with RFC-72's slot policy and lease. Retained for the original backend detail. Previous status: Deferred — every guest runs against the shared `[[mount]]` preopens of the operator's live project tree; the `revision` / `changeset` types stay in `emery:adapter` as this RFC's forward hook. Owns: the value↔tree boundary
+> **Status: Superseded by [RFC-87 Private Workspaces](../rfc-87-working-trees.md)**, which keeps immutable tree values while replacing descriptors and patch blobs with disposable workspaces and base/result snapshots. Retained for the original backend detail.
 
 ## Abstract
 
