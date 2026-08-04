@@ -36,6 +36,8 @@ Scale is hierarchical, not flat. Emery partitions work into conflict domains: pr
 
 Results converge upward: worker outputs pass through slice verification, slice patches compose into per-project trial integrations, and accepted slice results reach the existing serial merge and publication gates. A logically central scheduler may place work, but it is neither workflow-state authority nor an unbounded convergence bottleneck.
 
+Each convergence wave consumes results derived from one accepted snapshot and emits the next. Disjoint results compose; shared paths become dependencies or a fan-in integration task rather than an implicit text merge. When a project drains, one serial project seal turns its final snapshot into a Git commit for operator-owned publication.
+
 ```mermaid
 flowchart TB
     C["Coordination plane<br/>facts · claims · dependencies · projections"]
@@ -55,7 +57,8 @@ flowchart TB
 
     TA --> M["Serial merge gate"]
     TB --> M
-    M --> P["Publication plane<br/>branches + PRs · operator-owned"]
+    M --> S["Project seal<br/>final snapshot → Git commit"]
+    S --> P["Publication plane<br/>branches + PRs · operator-owned"]
 ```
 
 ## The series
@@ -68,8 +71,8 @@ The tables give **implementation order** — the operator-story critical path fi
 | ---- | ------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
 | 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts        | The substrate: the change as a git-backed fact tree, projected status, per-actor event logs, pinned judgment inputs, merge-finalized requirement identity, approval as artifact, desktop as the degenerate deployment                                       | —                      |
 | 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces  | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                       | completed 86           |
-| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, the change repository as the disposable home, GitHub discovery, recorded members, target-topology proposals, local ephemeral slots, and greenfield creation | completed 86, 87       |
-| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Publication identity: one change's branches and PRs bound across repositories, ordered landing, verification at finalize                                                                                                                                    | 88 (member derivation) |
+| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, the change repository as the disposable home, GitHub discovery, recorded members, target-topology proposals, operation-local workspaces, and greenfield creation | completed 86, 87       |
+| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and finalize verification                                                          | 88 (member derivation) |
 
 ### Scale track — concurrency after the location story works
 
@@ -114,8 +117,9 @@ emery change approve  →  record projects, exact revisions, topology, sources;
 (/emery:refine …)     →  optional shift-left (RFC-86): refine slices against pinned
                          bases; review the committed spec set; emery plan approve
 emery plan execute    →  approval-gated (auto-approves interactively); prepare
-                         private workspaces on demand (RFC-87); remaining phases per entry
-operator publishes
+                         private workspaces on demand (RFC-87); remaining phases per entry;
+                         seal each drained project's final snapshot (RFC-89)
+operator publishes    →  push sealed branches; open and merge PRs
 /emery:finalize       →  verify publication set (RFC-89); archive
 rm -rf <dir>
 ```

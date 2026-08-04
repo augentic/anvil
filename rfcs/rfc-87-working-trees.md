@@ -63,6 +63,8 @@ Every execution receives a fresh workspace. No two executions share a writable d
 
 `prepare` accepts an exact base snapshot. `capture` records a result snapshot and derives touched paths by comparing the two trees. Facts and build records reference snapshot identities, never workspace paths.
 
+`capture` stores and verifies every object needed to materialize the result before returning `{ base snapshot, result snapshot, touched paths }`. It creates no Git commit, branch, completion fact, or publication event; the caller records completion only after capture succeeds.
+
 A read-only source view is the same preparation with an empty writable scope; it is discarded without capture. There is no second source-copy model.
 
 For Git repositories, the local provider may use Git's object database and worktree machinery. That is an implementation and cache strategy, not an authority boundary.
@@ -77,7 +79,7 @@ The code patch contains the base snapshot id, result snapshot id, and derived to
 
 The writable workspace contains product code only. Specs, designs, tasks, Evidence, facts, and build records remain in the change tree and are granted as explicit read-only inputs. They are never copied into the workspace or captured in its result snapshot.
 
-The caller authors the access manifest. RFC-87 enforces the grants and reports touched paths; it does not decide how work is partitioned.
+The caller authors the access manifest, but the touched paths derived by `capture` are the authoritative record of what changed. RFC-87 enforces the grants and reports that record; it does not decide how work is partitioned or how an overlap is repaired.
 
 ### D5 — Failure retries from immutable inputs
 
@@ -93,13 +95,13 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, approvals, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies worker decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) supplies branches, pull requests, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, approvals, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies worker decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 
 ### D8 — Hard cut
 
-`WorkingTree::live()`, operator-checkout writes, persistent holds, tree recovery, dirty-tree lifecycle states, stored patch blobs, and mirror-branch commits are removed rather than adapted. Callers use `prepare` / `capture` / `discard`.
+`WorkingTree::live()`, operator-checkout writes, persistent holds, tree recovery, dirty-tree lifecycle states, stored patch blobs, and workspace-layer branch commits are removed rather than adapted. Callers use `prepare` / `capture` / `discard`; RFC-89 owns the one final project seal.
 
 ## Fixed implementation cut
 
@@ -108,7 +110,7 @@ RFC-87 consumes an execution request and returns an immutable code result. It ow
 - Give the agent one writable code root plus explicit read-only artifact roots.
 - Keep local snapshot objects and workspaces under host-owned storage; persist no workspace path.
 - Discard on completion and garbage-collect abandoned workspaces.
-- Leave verification, code-patch composition, remote transport, serial merge commits, and publication to their owning RFCs.
+- Leave verification, code-patch composition, remote transport, project sealing, and publication to their owning RFCs.
 
 ## Acceptance criteria
 
