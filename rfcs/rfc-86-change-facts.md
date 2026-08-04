@@ -45,7 +45,7 @@ Plan phase     author slices → plan refine → review gaps → approve
 Execute phase  build → merge   (only after approval)
 ```
 
-- Operators review **topology** after author (before synthesis spend), then **real specs** after `plan refine`, before any code generation.
+- Operators review **topology** after author (before synthesis spend), then read **real specs** after `plan refine` and check the **gap inventory** before any code generation. Prose quality is human-owned — the engine does not record how spec reading happens (see D17).
 - Known gaps are listed and, by default, **block approval to build**.
 - Approval is a recorded artifact: who approved what, against which specs.
 - One person on a laptop and a multi-person (later multi-node) change use the **same** rules.
@@ -60,7 +60,7 @@ Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc
 
 1. **Author** — `emery plan author` (via `/emery:plan`) surveys bound sources and reconciles leads into slices. Produces `discovery.md`, `change.md`, and `plan.yaml` (which work exists). **Stops here** — no extract or synthesis yet, so the operator can review topology before paying for refine.
 2. **Refine** — `emery plan refine` (default: every unrefined in-scope slice; optional slice selectors) claims slices and runs the same per-slice refine implementation as today (`emery slice refine`): extract Evidence, synthesize `proposal.md`, `spec.md`, `design.md`, `tasks.md`, and `model.yaml`, and record input pins. Prints or leaves the gap inventory ready for review.
-3. **Review** — Read the specs and the **gap inventory** (see below). Optional **topology-only** approval may sit between author and refine when handing off the slice list before specs exist.
+3. **Review** — Read `spec.md` and related slice artifacts, and the **gap inventory** (see below). Prose quality and acceptance-criteria depth are operator-owned (see D17) — the engine does not score or record how that reading happened. Optional **topology-only** approval may sit between author and refine when handing off the slice list before specs exist.
 4. **Iterate** — Fix inputs (richer intent/docs, authority overrides, corrected sources), then re-refine only the affected slices with `emery slice refine <slice>` (or `emery plan refine` over a subset).
 5. **Approve** — Record a **build approval** once the change is ready (all in-scope slices refined; no open conflicts; unknowns cleared or waived per requirement on approve — see D16).
 
@@ -79,7 +79,7 @@ One-slice changes stay the same shape, only shorter: author → `plan refine` �
 | ---- | ---------- | ------------- |
 | Survey and propose slices (`plan author`) | yes | no |
 | Extract and synthesize specs (`plan refine` / `slice refine`) | yes | **no** |
-| Review and close gaps | yes | no |
+| Review specs (prose) and close typed gaps | yes | no |
 | Approve for build | yes | required before starting |
 | Build and merge code | no | yes |
 
@@ -111,7 +111,7 @@ auth-login     REQ-007    conflict     session TTL: docs vs intent (tied)
 payments       REQ-012    divergence   retry budget: docs beat observed behaviour
 ```
 
-This list is **derived** from the specs/`model.yaml` already on disk. It is not a second file to keep in sync. `plan status` (and a dedicated gaps command — name TBD) surfaces it.
+This list is **derived** from the specs/`model.yaml` already on disk. It is not a second file to keep in sync. It includes only typed requirement statuses (`unknown`, `conflict`, `divergence`) — not prose-quality advisories (see D17). `plan status` (and a dedicated gaps command — name TBD) surfaces it.
 
 ### How to close gaps
 
@@ -126,7 +126,9 @@ Do not hand-edit the machine-rendered `ID:` / `Sources:` / `Status:` lines or th
 
 Prefer fixing one slice at a time. Full-plan re-synthesis is expensive.
 
-Vague prose in an otherwise `agreed` requirement (weak scenarios, missing acceptance criteria) stays a **human** review concern. This RFC only machine-gates the typed statuses above.
+### Human-only ambiguity (outside the engine)
+
+Vague prose in an otherwise `agreed` requirement (weak scenarios, missing acceptance criteria) stays a **human** review concern. The operator reads `spec.md` / `design.md` by whatever process fits — IDE, PR, checklist on paper, pair review — and decides whether to approve. The agentic and programmed workflow does not model that step: no checklist artifact, no review attestation on `plan approve`, and no spec-quality findings in the gap inventory (see D17). This RFC only machine-gates the typed statuses above.
 
 ### When build is allowed (gap policy)
 
@@ -234,6 +236,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | D14 | **`[unknown]` always blocks build approval** | Thin intent is not an exception — close the gap or waive it explicitly; generation must not invent missing information |
 | D15 | **`[divergence]` is informational; listed but allowed** | Authority hierarchy already picked a winner; approve does not require per-divergence acknowledgment. Wrong winner → override / amend sources and re-refine |
 | D16 | **Waiver UX: per-`[unknown]` on approve; `[conflict]` never waiveable; no multi-operator gate** | Repeatable `--waive <slice>/<req>` + required `--reason` on build-scoped `plan approve`; one operator’s approval is enough; re-refine clears approval and waivers |
+| D17 | **Human prose review stays outside the engine** | Operators own spec quality; approve gates only on typed gap policy. No checklist artifact, review attestation, or spec-quality rollup in `plan gaps` / `plan approve` |
 
 ---
 
@@ -243,7 +246,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | ------- | ------ |
 | `emery plan approve` | **New.** Records approval (topology or build scope); build scope enforces the gap policy. For `[unknown]` leftovers only: repeatable `--waive <slice>/<req>` with required `--reason` (see D16). No `--force`, no bulk/all-gaps waive, no separate `plan waive` verb |
 | `emery plan refine` | **New.** Plan-phase batch: claims and refines every unrefined in-scope slice by default; optional slice selectors for a subset. Fans out to the same orchestration as `emery slice refine` (pins, extract, synthesize). Does not approve and does not build |
-| `emery plan gaps` (name TBD) | **New.** Shows the gap inventory |
+| `emery plan gaps` (name TBD) | **New.** Shows the typed-status gap inventory only (not spec-quality advisories — see D17) |
 | `emery plan execute` | Requires build approval; runs **build → merge only**; never refines |
 | `emery slice refine` | Still the refine implementation and per-slice breakout (gap closure, single-slice re-refine); records input pins; used in plan phase |
 | `/emery:plan` | Unchanged contract: elicit → `emery plan author` → relay; stops after topology. Does **not** run refine |
@@ -275,6 +278,7 @@ Do not implement Phase C until the [open questions](#open-questions) are closed.
 5. **Gap gate:** `[unknown]` prevents build approval until fixed or explicitly waived per requirement on approve (including intent-only / N=1); `[conflict]` prevents approval until resolved via override/sources and re-refine — **not** waiveable; `[divergence]` is listed but does not block (authority already chose); execute never silent-waives.
 6. Topology-only approval does not unlock execute; re-refine after build approval forces re-approval (waivers on the stale approval do not carry forward).
 7. The same verbs and artifacts work with no remote (solo laptop) and with the change shared over git (two people).
+8. **Human review boundary:** build approval enforces typed gap policy only; prose review of `spec.md` is operator-owned and leaves no engine artifact (see D17).
 
 ---
 
@@ -286,7 +290,7 @@ Close these before Phase C implementation.
 2. ~~**Should `[unknown]` block by default?**~~ **Closed — D14.** Always block. `[unknown]` means insufficient information was available to the agent; the operator must provide it (or explicitly waive) before build. Rejected: warn-only for intent-only / N=1 (desk-testing — unpredictable generation that compounds through later phases); context-sensitive defaults keyed on source count or change shape (two policies to teach; under-protects thin multi-slice intent).
 3. ~~**Must each `[divergence]` be acknowledged?**~~ **Closed — D15.** Listed but allowed; informational only — no acknowledgment or decision required. The kernel already applied the authority hierarchy (`intent` > `documentation` > `behaviour`, plus any per-slice override) and wrote the winner as the operative body. Rejected: require per-divergence ack before approve (ceremony over a resolved disagreement; rubber-stamp risk; conflates divergence with conflict/unknown). Authority rules may be tightened later if wrong winners prove costly in practice; that is a hierarchy/override change, not a gate change.
 4. ~~**Waiver UX**~~ **Closed — D16.** Build-scoped `emery plan approve` accepts repeatable `--waive <slice>/<req>` with required `--reason`. Only `[unknown]` may be waived; `[conflict]` is not waiveable (authority override or source fix, then re-refine). Waivers nest on the approval artifact only — no separate `plan waive` verb, no plan-/slice-wide or inventory-digest waive, no `--force` / `--allow-gaps`. One operator’s recorded approval is enough; this RFC does **not** require a second-person countersign (multi-person four-eyes is a non-goal). Re-refine invalidates the approval and every waiver it carried; remaining unknowns must be re-listed on the new approve. Rejected: bulk/all-gaps waive (rubber-stamp / agent `--force` path); waiving `[conflict]` (unresolved contradiction must be decided in inputs, not papered over); separate `plan waive` then approve (extra verb and limbo without a countersign need); multi-operator waiver gating (second lifecycle / mode bit; solo laptop is the primary deployment).
-5. **Human-only ambiguity** — optional operator checklist artifact, or prose review of `spec.md` alone?
+5. ~~**Human-only ambiguity**~~ **Closed — D17.** Prose review of `spec.md` (and related artifacts) alone — human operators own spec quality and how they choose to review; the engine does not record or gate on that process. Rejected: optional operator checklist artifact (extra artifact, stale-on-re-refine binding, rubber-stamp risk, overlaps git/PR review without improving gap policy); rolling advisory `kind: review` spec-quality heuristics into `plan gaps` or approve (blurs the typed-status boundary; waiver creep); `--reviewed` / review attestation on approve (ceremony without substance); model-assisted spec-quality gate at approve time (non-goal for this RFC — eval / later concurrency work).
 6. **Shared leads across slices** — per-slice gap list enough for v1, or a cross-slice rollup?
 7. **Sibling docs** — `platform.md` and later RFCs still say execute runs `refine → build → merge`; update them when Phase C decisions freeze.
 
@@ -296,7 +300,7 @@ Close these before Phase C implementation.
 
 - Implementing this RFC while the open questions remain open.
 - Changing Evidence schemas or the authority ranking (`intent` > `documentation` > `behaviour`).
-- Automatically judging whether an `agreed` requirement is *good* (scenario depth, usefulness) — that stays human review and eval.
+- Automatically judging whether an `agreed` requirement is *good* (scenario depth, usefulness) — that stays human review and eval; no checklist artifact or approve-time attestation for prose review (see D17).
 - Parallel swarm refine (later concurrency RFC) — this RFC only makes multi-slice refine safe and claimable.
 - Multi-operator waiver / approval countersign — one actor’s build approval (with any unknown-waivers) is sufficient; shared-git collaboration stays social review of the approval artifact, not an engine four-eyes gate.
 
@@ -331,6 +335,9 @@ Settled patterns this RFC borrows, without adopting their full machinery:
 - Waive `[conflict]` on approve — papers over an unresolved contradiction; the operator must pick a winner via authority override or correct sources, then re-refine (see D16).
 - Separate `emery plan waive` verb before approve — extra noun and waived-but-not-approved limbo once countersign is a non-goal; nest waivers on `plan approve` instead (see D16).
 - Multi-operator countersign on waivers or build approval — second lifecycle / mode bit; solo laptop is the primary deployment; collaboration remains git + review of the approval artifact (see D16).
+- Operator checklist artifact for spec review — extra durable file, digest/stale rules, and checkbox theater; prose review stays outside the engine (see D17).
+- Review attestation flags on `plan approve` (`--reviewed`, reviewer id) — records ceremony, not quality; same boundary as D17.
+- Spec-quality advisories in `plan gaps` or approve-time blocking on `kind: review` findings — conflates human judgment with typed gap policy; heuristics belong in eval, not Phase C gates (see D17).
 
 ---
 
@@ -340,7 +347,7 @@ For engine contributors. Not required to evaluate the product intent.
 
 **Layout and writers**
 
-- Projection kernel in `crates/project`: facts + artifact index → status, gap inventory, `ready`. Property-test: any interleaving of per-actor logs, same projection.
+- Projection kernel in `crates/project`: facts + artifact index → status, gap inventory (typed statuses only — no spec-quality rollup; D17), `ready`. Property-test: any interleaving of per-actor logs, same projection.
 - Replace `.emery/journal.jsonl` with `events/<actor>.jsonl`; `emery journal show` merges the union.
 - Remove stored plan-entry `status` and slice lifecycle fields; ladders survive only as projection labels.
 - Approval files under `approvals/` plus matching events; build-scoped approvals embed gap counts and per-requirement `[unknown]` waiver lists (`slice` + req id + reason). Approving with a `--waive` for a non-unknown or absent gap is `plan-gaps-unresolved` / a typed waive error (name TBD).
