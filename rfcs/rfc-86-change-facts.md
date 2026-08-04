@@ -1,6 +1,6 @@
 # RFC-86: Change Facts
 
-> **Status:** Draft — gap/approve/shift-left decisions closed (D11–D20); [open review questions](#open-questions) below must close before an implementation plan is cut. Sibling-series consistency remains an implementation task (D19), not a product blocker.
+> **Status:** Draft — gap/approve/shift-left decisions closed (D11–D21); [open review questions](#open-questions) below must close before an implementation plan is cut. Sibling-series consistency remains an implementation task (D19), not a product blocker.
 >
 > **Series:** Step 1 of the [platform-migration series](platform.md). Later RFCs (working trees, detached changes, publication, concurrency, node sync) all build on this.
 >
@@ -60,7 +60,7 @@ Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc
 
 1. **Author** — `emery plan author` (via `/emery:plan`) surveys bound sources and reconciles leads into slices. Produces `discovery.md`, `change.md`, and `plan.yaml` (which work exists). **Stops here** — no extract or synthesis yet, so the operator can review topology before paying for refine.
 2. **Refine** — `emery plan refine` (default: every unrefined in-scope slice; optional slice selectors) claims slices and runs the same per-slice refine implementation as today (`emery slice refine`): extract Evidence, synthesize `proposal.md`, `spec.md`, `design.md`, `tasks.md`, and `model.yaml`, and record input pins. Prints or leaves the gap inventory ready for review.
-3. **Review** — Read `spec.md` and related slice artifacts, and the **gap inventory** (see below). Prose quality and acceptance-criteria depth are operator-owned (see D17) — the engine does not score or record how that reading happened. Optional **topology-only** approval may sit between author and refine when handing off the slice list before specs exist.
+3. **Review** — Read `spec.md` and related slice artifacts, and the **gap inventory** (see below). Prose quality and acceptance-criteria depth are operator-owned (see D17) — the engine does not score or record how that reading happened. After author, operators **pause** to catch slicing issues before expensive refine; that human review needs no engine gate. Optionally record a slice-list handoff with `emery plan approve --slices` (see D21) — audit/status only; refine does not require it.
 4. **Iterate** — Fix inputs (richer intent/docs, authority overrides, corrected sources), then re-refine only the affected slices with `emery slice refine <slice>` (or `emery plan refine` over a subset).
 5. **Approve** — Record a **build approval** with `emery plan approve` once the change is ready (all in-scope slices refined; no open conflicts; unknowns cleared or waived per requirement on approve — see D16). This step is mandatory before execute, including when no waivers are needed (see D20).
 
@@ -154,14 +154,14 @@ If the policy fails, approve refuses and prints the inventory. The operator may:
 
 Running execute must **not** auto-waive gaps, and must **not** mint a build approval — even when the change is Ready and no waivers are needed. Operators (and `/emery:execute`) always record build approval via `emery plan approve` first; execute refuses with `plan-approval-missing` (or stale) otherwise (see D20).
 
-Two approval scopes:
+Two approval scopes on one verb:
 
-| Scope | Covers | Unlocks execute? |
-| ----- | ------ | ---------------- |
-| Topology only | The plan’s slice list (handoff before specs exist) | **No** |
-| Build | Plan + current spec digests + gap outcome (including any unknown-waivers) | **Yes** |
+| Scope | Invoke | Covers | Unlocks execute? |
+| ----- | ------ | ------ | ---------------- |
+| Slice list (topology) | `emery plan approve --slices` | The plan’s slice list (handoff before specs exist) | **No** |
+| Build (default) | `emery plan approve` | Plan + current spec digests + gap outcome (including any unknown-waivers) | **Yes** |
 
-If someone re-refines after a build approval, the approval goes stale — including every waiver it carried — and must be done again (re-list any remaining unknown-waivers).
+`--slices` is an optional recorded statement for multi-person handoff; nothing in this RFC gates refine, gaps, or execute on it (see D21). Only a covering **build** approval unlocks execute. If someone re-refines after a build approval, that approval goes stale — including every waiver it carried — and must be done again (re-list any remaining unknown-waivers). Plan amend / re-author that changes the slice list may stale a prior `--slices` approval for audit/status, but refine still does not require a fresh one.
 
 ---
 
@@ -230,7 +230,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | D3 | Per-person (or per-node) event logs | Collaboration and later multi-machine sync without one contested journal file |
 | D4 | Every refine/build pins its inputs | A reviewed spec is tied to what it was made from; drift is detected |
 | D5 | Requirement ids finalized at merge | Parallel refine of different slices against one baseline is safe |
-| D6 | Approval is a recorded artifact with scope | Auditable “who approved what”; topology handoff ≠ permission to build |
+| D6 | Approval is a recorded artifact with scope | Auditable “who approved what”; slice-list handoff (`--slices`) ≠ permission to build |
 | D7 | Work is claimed in the log | Two people do not unknowingly refine the same slice |
 | D8 | Phases consume pinned inputs only | Retry after failure loses no completed work |
 | D9 | One lifecycle everywhere | Laptop and fleet differ only by transport config |
@@ -245,6 +245,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | D18 | **Shared-lead gap rollup is presentation only** | `plan gaps` annotates/groups open findings that share a contributing `(source, lead)` and suggests re-refine selectors; approve/waive stay per-requirement. No lead-wide waive, no shared-Evidence extract, no lead-level gate |
 | D19 | **Sibling-series consistency is an implementation task** | When implementing this RFC (especially Phase C), review remaining unimplemented series RFCs (`platform.md`, RFC-87…RFC-92) for prose that still assumes execute-bundled refine or “running execute is approval”. Do not litigate or cascade-rewrite those docs as part of freezing this RFC; later RFCs may further review this work and roll back or refactor anything that becomes obsolete |
 | D20 | **`plan approve` is required in the happy path; execute never mints approval** | Build approval is only recorded by `emery plan approve`. `plan execute` / `/emery:execute` always require a covering prior build approval — including when Ready with no waivers. No execute-side auto-approve, no `--record-approval` sugar |
+| D21 | **Slice-list approval is optional and ungated** | `emery plan approve --slices` records topology handoff; default `plan approve` is build-scoped. No machine consumer gates refine/gaps/execute on `--slices` — only build approval unlocks execute. Human pause after author remains the primary topology review seam |
 
 ---
 
@@ -252,7 +253,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 
 | Command | Change |
 | ------- | ------ |
-| `emery plan approve` | **New.** Records approval (topology or build scope); build scope enforces the gap policy. For `[unknown]` leftovers only: repeatable `--waive <slice>/<req>` with required `--reason` (see D16). No `--force`, no bulk/all-gaps waive, no separate `plan waive` verb |
+| `emery plan approve` | **New.** Default is **build** scope (enforces the gap policy). `--slices` records optional slice-list (topology) handoff only — does not unlock execute and is not required before refine (see D21). For build scope `[unknown]` leftovers only: repeatable `--waive <slice>/<req>` with required `--reason` (see D16). No `--force`, no bulk/all-gaps waive, no separate `plan waive` / topology verb |
 | `emery plan refine` | **New.** Plan-phase batch: claims and refines every unrefined in-scope slice by default; optional slice selectors for a subset. Fans out to the same orchestration as `emery slice refine` (pins, extract, synthesize). Does not approve and does not build |
 | `emery plan gaps` (name TBD) | **New.** Shows the typed-status gap inventory (not spec-quality advisories — see D17). When open findings share a contributing `(source, lead)`, annotates or groups those rows and suggests the slice-selector set for re-refine — presentation only; gate and waivers stay per-requirement (see D18) |
 | `emery plan execute` | Requires a prior covering build approval from `emery plan approve` (D20); runs **build → merge only**; never refines; never mints or refreshes approval |
@@ -284,7 +285,7 @@ Close the [open review questions](#open-questions) before cutting an implementat
 3. Two slices refined against the same baseline merge without requirement-id collision; a drifted modification is rejected instead of overwritten.
 4. **Shift-left:** after authoring, every slice is refined via `emery plan refine` (or per-slice `emery slice refine`) before any build; execute performs build and merge only. `/emery:plan` does not run refine.
 5. **Gap gate:** `[unknown]` prevents build approval until fixed or explicitly waived per requirement on approve (including intent-only / N=1); `[conflict]` prevents approval until resolved via override/sources and re-refine — **not** waiveable; `[divergence]` is listed but does not block (authority already chose); execute never silent-waives.
-6. Topology-only approval does not unlock execute; re-refine after build approval forces re-approval (waivers on the stale approval do not carry forward).
+6. `emery plan approve --slices` does not unlock execute and is not required before refine; re-refine after build approval forces re-approval (waivers on the stale approval do not carry forward) (see D21).
 7. **Explicit approve:** every execute path (CLI and `/emery:execute`) requires a covering build approval previously recorded by `emery plan approve` — including the clean Ready / no-waiver happy path; execute never auto-records approval (see D20).
 8. The same verbs and artifacts work with no remote (solo laptop) and with the change shared over git (two people).
 9. **Human review boundary:** build approval enforces typed gap policy only; prose review of `spec.md` is operator-owned and leaves no engine artifact (see D17).
@@ -294,23 +295,21 @@ Close the [open review questions](#open-questions) before cutting an implementat
 
 ## Open questions
 
-Close the **open** items before cutting an implementation plan. They are product / contract questions — not engine design. Closed items below are the decision trail for D13–D20.
+Close the **open** items before cutting an implementation plan. They are product / contract questions — not engine design. Closed items below are the decision trail for D13–D21.
 
 ### Open (close before planning)
 
-1. **Topology-only approval: command shape and consumers.** Build vs topology scopes are decided (D6), but not how topology-only approval is invoked on `emery plan approve`, nor who reads it besides human handoff. Decide the operator-facing shape (e.g. an explicit scope on approve) and whether anything in the engine besides audit/status treats topology approval as a gate — or whether topology approval is an optional recorded statement with no machine consumer in this RFC.
+1. **Ready vs Approved when waivers exist.** The progress table defines Ready as including unknowns “cleared or waived,” but waivers nest only on the approval artifact. Clarify the milestones so `plan status` is plannable: e.g. Ready means refined + gap policy passes with **no** waivers required; Approved means a covering build approval exists (possibly carrying unknown-waivers); or another split that does not make Ready depend on an approval that does not exist yet. (Build approval itself is always an explicit `plan approve` — see D20.)
 
-2. **Ready vs Approved when waivers exist.** The progress table defines Ready as including unknowns “cleared or waived,” but waivers nest only on the approval artifact. Clarify the milestones so `plan status` is plannable: e.g. Ready means refined + gap policy passes with **no** waivers required; Approved means a covering build approval exists (possibly carrying unknown-waivers); or another split that does not make Ready depend on an approval that does not exist yet. (Build approval itself is always an explicit `plan approve` — see D20.)
+2. **Concurrent refine claims.** Acceptance requires two people to refine different slices on copies of one change and merge via git without fighting. Today’s plan model allows at most one `in-progress` entry. Decide the product rule this RFC commits to: may multiple in-scope slices be claimed/refined concurrently (retiring single-active-entry for the refine phase), while execute still drains build/merge serially? Or is multi-person refine “different clones, non-overlapping selectors, serialize claims some other way”? Parallel *swarm* refine inside one slice stays a non-goal.
 
-3. **Concurrent refine claims.** Acceptance requires two people to refine different slices on copies of one change and merge via git without fighting. Today’s plan model allows at most one `in-progress` entry. Decide the product rule this RFC commits to: may multiple in-scope slices be claimed/refined concurrently (retiring single-active-entry for the refine phase), while execute still drains build/merge serially? Or is multi-person refine “different clones, non-overlapping selectors, serialize claims some other way”? Parallel *swarm* refine inside one slice stays a non-goal.
+3. **What “in-scope” means for default `plan refine` / Ready / approve.** The batch default and the Ready/approve gates all say “in-scope.” Define which plan entries count (every entry? exclude dropped/removed? anything else?) so status, gaps, and approve do not invent divergent filters.
 
-4. **What “in-scope” means for default `plan refine` / Ready / approve.** The batch default and the Ready/approve gates all say “in-scope.” Define which plan entries count (every entry? exclude dropped/removed? anything else?) so status, gaps, and approve do not invent divergent filters.
+4. **Change home for this RFC vs RFC-88.** The rough layout shows a self-contained `<change>/` tree; today’s projects keep plan/journal/slices under the in-place `.emery/` + root `plan.yaml` layout; RFC-88 later makes the change repository the home. Decide whether this RFC’s operator-visible home is (a) the current in-place project layout with facts/approvals adapted into it, (b) the detached change-repository layout, or (c) a layout-neutral contract (“artifacts + per-actor event logs + approvals live with the change”) with the concrete tree left to the plan / RFC-88. Without this, Phase A cannot be scoped independently of later series RFCs.
 
-5. **Change home for this RFC vs RFC-88.** The rough layout shows a self-contained `<change>/` tree; today’s projects keep plan/journal/slices under the in-place `.emery/` + root `plan.yaml` layout; RFC-88 later makes the change repository the home. Decide whether this RFC’s operator-visible home is (a) the current in-place project layout with facts/approvals adapted into it, (b) the detached change-repository layout, or (c) a layout-neutral contract (“artifacts + per-actor event logs + approvals live with the change”) with the concrete tree left to the plan / RFC-88. Without this, Phase A cannot be scoped independently of later series RFCs.
+5. **Post-author resume.** `/emery:plan` stays an author-only wrapper (D13), but today’s author/status hints point operators at `emery plan execute` next. Decide the operator-visible next step after a successful author: always `emery plan refine` (then gaps → approve → execute), and whether `plan status` / author epilogues must say so in this RFC’s acceptance surface. Skill-body wording can follow; the contract question is the resume point. (Execute never substitutes for approve — see D20. Optional `plan approve --slices` after author is handoff-only — see D21.)
 
-6. **Post-author resume.** `/emery:plan` stays an author-only wrapper (D13), but today’s author/status hints point operators at `emery plan execute` next. Decide the operator-visible next step after a successful author: always `emery plan refine` (then gaps → approve → execute), and whether `plan status` / author epilogues must say so in this RFC’s acceptance surface. Skill-body wording can follow; the contract question is the resume point. (Execute never substitutes for approve — see D20.)
-
-7. **Pins before RFC-87 values.** This RFC requires refine/build to pin baseline and source inputs so drift is detectable (D4). RFC-87 owns content-addressed working-tree values. Decide whether pin *semantics* for this RFC are “detect that baseline/specs and bound sources moved since refine” and may ship against today’s trees with a plan-chosen pin representation, or whether Phase B is allowed to depend on the RFC-87 revision/value seam being frozen first. (Exact on-disk pin format stays out of this RFC either way.)
+6. **Pins before RFC-87 values.** This RFC requires refine/build to pin baseline and source inputs so drift is detectable (D4). RFC-87 owns content-addressed working-tree values. Decide whether pin *semantics* for this RFC are “detect that baseline/specs and bound sources moved since refine” and may ship against today’s trees with a plan-chosen pin representation, or whether Phase B is allowed to depend on the RFC-87 revision/value seam being frozen first. (Exact on-disk pin format stays out of this RFC either way.)
 
 ### Closed — decision trail
 
@@ -322,6 +321,7 @@ Close the **open** items before cutting an implementation plan. They are product
 6. ~~**Shared leads across slices**~~ **Closed — D18.** Flat per-requirement inventory remains the gate authority. `plan gaps` adds a **presentation rollup**: when open findings share a contributing `(source, lead)` (multi-homed / cross-cutting leads), annotate or group those rows and suggest the slice-selector set for re-refine after the shared input is fixed. Rejected: flat list only with no correlation aid (operators and agents invent sibling fan-out outside the CLI; N-row noise from one lead); lead-wide or `--waive-lead` sugar (same rubber-stamp risk as bulk waive in D16; same lead ≠ same gap after per-slice extract); first-class lead-level gate or status noun (second checklist-like surface; derived “lead status” can lie when sibling Evidence diverges); shared extract / shared Evidence for multi-homed leads (changes the per-slice extract contract; deferred — not a gap-inventory decision).
 7. ~~**Sibling docs**~~ **Closed — D19.** Consistency with `platform.md` and later unimplemented series RFCs is an **implementation task** for this RFC (especially Phase C): review them for stale “execute runs `refine → build → merge`” / “running execute is approval” assumptions. This RFC does **not** cascade-rewrite those documents at decision-freeze time. Later RFCs remain free to review the landed shape and roll back or refactor anything that becomes obsolete. Rejected: freezing Phase C product design on a full sibling rewrite now; treating series-doc drift as an open product question rather than delivery work.
 8. ~~**Is `plan approve` required in the happy path?**~~ **Closed — D20.** Always. Build approval is recorded only by `emery plan approve`; `plan execute` / `/emery:execute` refuse without a covering prior build approval — including when the change is Ready and no waivers are needed. Resume after refine/gaps is always `plan approve` then execute. Rejected: execute auto-recording a clean build approval when Ready with no waivers (recreates “running execute is the approval” as a second mint path; agents skip the explicit approve verb; muddies audit and stale-on-re-refine); execute `--record-approval` / similar sugar (still two mint sites; agents pass the flag unconditionally and converge on invisible approve). Auto-waive on execute remains rejected (D16).
+9. ~~**Topology-only approval: command shape and consumers**~~ **Closed — D21.** Optional recorded slice-list handoff via `emery plan approve --slices`; default (no flag) remains **build** scope. Human pause after author is the primary topology review seam — catch slicing issues before expensive refine — and needs no engine gate. In this RFC, `--slices` has **no machine consumer** that gates refine, gaps, or execute; `plan status` / journal may surface it for audit and multi-person handoff. Only a covering build approval unlocks execute; execute with only a `--slices` approval still fails (`plan-approval-topology-only` / missing build approval). Rejected: hard-gating `plan refine` on topology approval (second mandatory ceremony; fights solo-laptop / N=1); soft warn-only refine gate (noise agents ignore); dropping the recorded shape entirely (loses an optional handoff receipt when collaborators want one); a separate topology verb (extra plan-phase recording surface next to `plan approve`).
 
 ---
 
@@ -334,6 +334,7 @@ Close the **open** items before cutting an implementation plan. They are product
 - Lead-wide waive, lead-level approve gate, or shared Evidence for multi-homed leads — correlation of shared-lead gaps is presentation-only in `plan gaps` (see D18); extract stays per-slice.
 - Cascade-rewriting `platform.md` and later series RFCs as part of freezing this RFC — sibling consistency is a Phase C implementation review task; later RFCs may further adjust obsolete assumptions (see D19).
 - Execute minting or refreshing build approval (auto on Ready, or `--record-approval` sugar) — approval stays a distinct recorded act via `emery plan approve` only (see D20).
+- Machine-gating refine (or execute) on slice-list / topology approval — `plan approve --slices` is optional audit/handoff only; the post-author pause is human-owned (see D21).
 
 ---
 
@@ -373,6 +374,9 @@ Settled patterns this RFC borrows, without adopting their full machinery:
 - Flat gap list with no shared-lead correlation — forces operators and agents to rediscover multi-home fan-out from `change.md` alone; presentation rollup is cheap and keeps the CLI contract complete (see D18).
 - Lead-wide / `--waive-lead` waive, or a lead-level gap gate — papers over per-requirement decisions and over-groups when sibling extracts diverge; gate and waivers stay `<slice>/<req>` (see D16, D18).
 - Shared extract or shared Evidence for multi-homed leads — changes the per-slice extract contract and couples claimable slices; not a Phase C gap-inventory decision (see D18).
+- Hard- or soft-gating `plan refine` on topology / slice-list approval — second ceremony (or ignorable warning) without improving the build gate; human pause after author is enough (see D21).
+- Separate topology approve verb — extra plan-phase surface; nest slice-list scope on `plan approve --slices` instead (see D21).
+- Dropping recorded slice-list approval entirely — optional handoff receipt is cheap when collaborators want one; default happy path never requires it (see D21).
 
 ---
 
@@ -398,13 +402,13 @@ For engine contributors. Not required to evaluate the product intent.
 
 - Guest `plan refine` orchestration claims each selected unrefined in-scope slice and dispatches the existing `slice refine` orchestration (pins, extract, synthesize); default selection is every unrefined in-scope slice.
 - Guest `plan execute` drops the refine leg and never mints or refreshes a build approval; a covering prior `plan approve` is mandatory (D20), including the clean Ready / no-waiver case.
-- Diagnostics (exit 2): `plan-approval-missing`, `plan-approval-stale`, `plan-gaps-unresolved`, `plan-approval-topology-only`, `plan-waiver-invalid` (waive of non-unknown / unknown id / missing reason), `slice-claim-conflict`, plus staleness / merge-drift codes above.
-- New events: `plan.refined` (or per-slice claim + existing refine events), `plan.approved` (unknown-waivers nested on the approval), claim/release, `fact.retracted`, identity-mapped merge.
+- Diagnostics (exit 2): `plan-approval-missing`, `plan-approval-stale`, `plan-gaps-unresolved`, `plan-approval-topology-only` (execute saw only a `--slices` / slice-list approval — D21), `plan-waiver-invalid` (waive of non-unknown / unknown id / missing reason), `slice-claim-conflict`, plus staleness / merge-drift codes above. Refine must **not** emit a missing-topology-approval diagnostic.
+- New events: `plan.refined` (or per-slice claim + existing refine events), `plan.approved` (scope build or slices; unknown-waivers nested only on build), claim/release, `fact.retracted`, identity-mapped merge.
 
 **Tests**
 
 - Multi-actor fixtures in `crates/mock`: disjoint refine, claim conflict, base drift (shared-git collaboration; not a waiver countersign gate).
-- Shift-left fixture: author → `plan refine` → gaps → fix conflicts / waive unknowns → `plan approve` → build/merge-only execute; refuse conflict-waive and bulk-waive shapes; refuse execute without a prior covering build approval even when Ready and waiver-free (D20).
+- Shift-left fixture: author → `plan refine` → gaps → fix conflicts / waive unknowns → `plan approve` → build/merge-only execute; refuse conflict-waive and bulk-waive shapes; refuse execute without a prior covering build approval even when Ready and waiver-free (D20); refine succeeds with no prior `plan approve --slices`; execute with only `--slices` approval fails as topology-only / missing build (D21).
 - Multi-homed lead fixture: one `(source, lead)` bound into two refined slices with open unknowns; `plan gaps` groups/annotates both rows and suggests both slice selectors; approve still requires per-req waive or clearance (no lead-wide waive).
 - `cargo make ci` green; projection determinism and gap/approval paths covered as crate integration tests.
 
