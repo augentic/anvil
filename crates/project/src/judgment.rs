@@ -92,7 +92,7 @@ async fn create<P: Model>(
                 .format(Format::Schema(
                     SchemaFormat::builder().name(schema_name).schema(schema).build(),
                 ))
-                .lend_workspace(true)
+                .workspace(".")
                 .build(),
         )
         .await

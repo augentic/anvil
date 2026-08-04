@@ -16,6 +16,8 @@ use artifacts::evidence::{AuthorityClass, Claim};
 use serde::{Deserialize, Serialize};
 pub use wire::BuildReport;
 
+use crate::snapshot::{CodePatch, SnapshotId};
+
 /// Typed seam failure, mirroring the WIT `types.error` variant.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum Error {
@@ -66,16 +68,16 @@ pub struct Evidence {
 /// One slice-artifact payload, mirroring the WIT `payload` variant.
 ///
 /// `Path` is the artifact's project-relative location ('/'-separated),
-/// resolvable both in the adapter guest's `"."` preopen and in a lent
-/// agent workspace — never host-absolute. `Body` is the inlined
-/// artifact text for non-lent deployments (RFC-55). The cases are
-/// exclusive: the engine sends `Path` while every deployment lends
-/// the working tree.
+/// resolvable in the adapter guest's `"."` preopen and rendered
+/// against the lent workspace's artifact root for spawned agents —
+/// never host-absolute. `Body` is the inlined artifact text for
+/// non-lent deployments (RFC-55). The cases are exclusive: the engine
+/// sends `Path` while every deployment lends a workspace.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Payload {
     /// Project-relative artifact path ('/'-separated).
     Path(String),
-    /// Inlined artifact text when the deployment does not lend the tree.
+    /// Inlined artifact text when the deployment does not lend a workspace.
     Body(String),
 }
 
@@ -107,26 +109,23 @@ pub struct BuildContext {
     pub sources: Vec<String>,
 }
 
-/// Names the tree a build operates on.
+/// One prepared private workspace, mirroring the WIT `workspace`
+/// record (RFC-87).
 ///
-/// Guests share mount preopens, so no directory handle crosses the seam.
+/// Guests share mount preopens, so no directory handle crosses the
+/// seam: `root` is a deployment-local path the receiving side resolves
+/// against its own preopens (or opens directly off-wasm), and
+/// `artifacts` is the agent-visible read-only artifact root for
+/// prompts that reference change-tree artifacts from inside a lent
+/// workspace.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WorkingTree {
-    /// The snapshot the operation applies against.
-    pub base: String,
-    /// Optional path beneath the shared mount root.
-    pub subpath: Option<String>,
-}
-
-impl WorkingTree {
-    /// The live shared mount every build applies against.
-    #[must_use]
-    pub fn live() -> Self {
-        Self {
-            base: "live".to_string(),
-            subpath: None,
-        }
-    }
+pub struct Workspace {
+    /// Opaque identity of the preparation.
+    pub id: String,
+    /// Deployment-local path of the writable workspace root.
+    pub root: String,
+    /// Agent-visible read-only artifact root (the project tree).
+    pub artifacts: String,
 }
 
 /// Which side of the deterministic core merge a `merge` dispatch runs
@@ -160,18 +159,59 @@ pub trait Target: Send + Sync {
     /// Guidance on the expected build artifacts for this target.
     fn guidance(&self, id: String) -> impl Future<Output = Result<String, Error>> + Send;
 
-    /// Build `slice` against the shared project mount.
+    /// Build `slice` inside its prepared private workspace.
     fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, context: BuildContext,
-        tree: WorkingTree,
+        workspace: Workspace,
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
 
     /// Run one target-specific merge gate (`phase`) around the engine's
     /// deterministic core merge. Dispatched twice per slice merge —
-    /// preflight before the commit, postflight after it.
+    /// preflight before the commit, postflight after it — each over a
+    /// read-only view of the built result snapshot.
     fn merge(
-        &self, id: String, slice: String, phase: MergePhase, tree: WorkingTree,
+        &self, id: String, slice: String, phase: MergePhase, workspace: Workspace,
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
+}
+
+/// The host-owned private-workspace capability (RFC-87).
+///
+/// Mirrors the WIT `workspaces` interface: immutable snapshots in a
+/// content-addressed store, disposable private workspaces, and code
+/// patches derived by comparing trees.
+///
+/// Implemented by the same providers that carry the other seam
+/// capabilities: the native provider calls the
+/// [`crate::workspace`] kernel in-process; the engine guest maps the
+/// host-implemented WIT imports.
+pub trait Workspaces: Send + Sync {
+    /// Freeze the product tree (the project root minus VCS and
+    /// change-tree state) as an immutable snapshot. Interim base
+    /// pinning — once RFC-86 records base pins, builds freeze from
+    /// recorded pins instead.
+    fn freeze(&self) -> impl Future<Output = Result<SnapshotId, Error>> + Send;
+
+    /// Materialize `base` into a fresh private workspace.
+    /// `writable: false` prepares a read-only source view — same
+    /// preparation, discarded without capture.
+    fn prepare(
+        &self, base: SnapshotId, writable: bool,
+    ) -> impl Future<Output = Result<Workspace, Error>> + Send;
+
+    /// Capture the workspace's result tree: store and verify every
+    /// object, record the result snapshot, and derive the touched
+    /// paths against the recorded base.
+    fn capture(&self, id: String) -> impl Future<Output = Result<CodePatch, Error>> + Send;
+
+    /// Discard a workspace. Idempotent; captured snapshots survive by
+    /// digest.
+    fn discard(&self, id: String) -> impl Future<Output = Result<(), Error>> + Send;
+
+    /// Interim code delivery (pre-RFC-89): write `patch`'s touched
+    /// paths from its result snapshot onto the product tree, leaving
+    /// everything else untouched. Deleted when publication sets own
+    /// the final seal.
+    fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), Error>> + Send;
 }
 
 /// The borrowed capability bundle one orchestration run dispatches

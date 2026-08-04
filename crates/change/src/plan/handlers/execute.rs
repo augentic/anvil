@@ -10,7 +10,7 @@ use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::plan::LoopStep;
-use project::seam::{Source, Target, WorkingTree};
+use project::seam::{Source, Target, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome};
@@ -28,7 +28,7 @@ pub struct ExecuteInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
-impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
+impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> for Execute {
     type Error = project::handler::Error;
     type Input = ExecuteInput;
     type Output = ExecuteBody;
@@ -37,9 +37,8 @@ impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Execute {
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let tree = WorkingTree::live();
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), &tree).await?;
+        let outcome = orchestrate::execute(caps, &cx.paths, cx.now()).await?;
         match outcome {
             ExecuteOutcome::Drained { plan, phases } => Ok(ExecuteBody {
                 status: "drained",

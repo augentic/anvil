@@ -16,7 +16,7 @@ use crate::identity::AdapterIdentity;
 use crate::registry::Doc;
 use crate::seam::{
     BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
-    TargetMetadata, WorkingTree,
+    TargetMetadata, Workspace,
 };
 
 /// Source adapter contract: `metadata`, prose registry, `survey` / `extract`.
@@ -69,14 +69,14 @@ pub trait Target {
         model: &P, ctx: &Context<'_>,
     ) -> impl Future<Output = Result<String, Error>> + Send;
 
-    /// Build `slice` against the lent working tree.
+    /// Build `slice` inside its prepared private workspace.
     fn build<P: Model>(
         model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input], context: &BuildContext,
-        tree: &WorkingTree,
+        workspace: &Workspace,
     ) -> impl Future<Output = Result<Report, Error>> + Send;
 
-    /// Run one phased merge gate.
+    /// Run one phased merge gate over a read-only workspace view.
     fn merge<P: Model>(
-        model: &P, ctx: &Context<'_>, slice: &str, phase: MergePhase, tree: &WorkingTree,
+        model: &P, ctx: &Context<'_>, slice: &str, phase: MergePhase, workspace: &Workspace,
     ) -> impl Future<Output = Result<Report, Error>> + Send;
 }

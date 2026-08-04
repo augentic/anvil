@@ -18,7 +18,9 @@ use project::adapter::{
 };
 use project::handler::ExecutionPaths;
 use project::seam::wire::BuildReport;
-use project::seam::{self, Evidence, Input, Lead, Source, Target, WorkingTree};
+use project::seam::{self, Evidence, Input, Lead, Source, Target, Workspace};
+use project::snapshot::{CodePatch, SnapshotId};
+use project::workspace::{self as workspace_kernel, Access, Store};
 
 use crate::catalog::{Catalog, Entry};
 use crate::convert;
@@ -130,12 +132,26 @@ impl Provider {
     }
 
     // Assemble the SDK context for one operation through this one place.
+    // The default lend is the project root itself (host path — the
+    // native stand-in for the guest's `"."` preopen); build and merge
+    // re-lend their prepared workspace.
     fn ctx<'a>(&'a self, id: &'a str, url: Option<String>) -> Context<'a> {
         Context {
             adapter_id: id,
             project_root: self.paths.project_root(),
             mcp_url: url,
+            lend: self.paths.project_root().display().to_string(),
         }
+    }
+
+    /// The snapshot store at the carried locations' snapshots root.
+    fn store(&self) -> Store {
+        Store::new(self.paths.locations().snapshots_root())
+    }
+
+    /// The private-workspace root from the carried locations.
+    fn workspaces_root(&self) -> &std::path::Path {
+        self.paths.locations().workspaces_root()
     }
 
     /// Match one selector against the compiled catalog (native
@@ -249,33 +265,82 @@ impl Target for Provider {
 
     async fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, context: seam::BuildContext,
-        tree: WorkingTree,
+        workspace: Workspace,
     ) -> Result<BuildReport, seam::Error> {
-        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?).lending(workspace.root.clone());
         let inputs: Vec<aseam::Input> = inputs.into_iter().map(convert::narrow_input).collect();
         let context = convert::narrow_context(context);
-        let tree = convert::narrow_tree(tree);
+        let workspace = convert::narrow_workspace(workspace);
         let report = self
             .catalog
-            .build(&self.model, &ctx, &id, &slice, &inputs, &context, &tree)
+            .build(&self.model, &ctx, &id, &slice, &inputs, &context, &workspace)
             .await
             .map_err(convert::error)?;
         Ok(convert::widen_report(&id, slice, report))
     }
 
     async fn merge(
-        &self, id: String, slice: String, phase: seam::MergePhase, tree: WorkingTree,
+        &self, id: String, slice: String, phase: seam::MergePhase, workspace: Workspace,
     ) -> Result<BuildReport, seam::Error> {
-        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?).lending(workspace.root.clone());
         let phase = convert::narrow_phase(phase);
-        let tree = convert::narrow_tree(tree);
+        let workspace = convert::narrow_workspace(workspace);
         let report = self
             .catalog
-            .merge(&self.model, &ctx, &id, &slice, phase, &tree)
+            .merge(&self.model, &ctx, &id, &slice, phase, &workspace)
             .await
             .map_err(convert::error)?;
         Ok(convert::widen_report(&id, slice, report))
     }
+}
+
+impl seam::Workspaces for Provider {
+    /// Freeze the project root's product tree (the kernel excludes
+    /// `.git` and `.emery`) into the local snapshot store.
+    async fn freeze(&self) -> Result<SnapshotId, seam::Error> {
+        self.store().snapshot(self.paths.project_root()).map_err(|err| workspace_failure(&err))
+    }
+
+    async fn prepare(&self, base: SnapshotId, writable: bool) -> Result<Workspace, seam::Error> {
+        let prepared = workspace_kernel::prepare(
+            &self.store(),
+            self.workspaces_root(),
+            &base,
+            Access { writable },
+        )
+        .map_err(|err| workspace_failure(&err))?;
+        Ok(Workspace {
+            id: prepared.id,
+            root: prepared.root.display().to_string(),
+            artifacts: host_absolute(self.paths.project_root()),
+        })
+    }
+
+    async fn capture(&self, id: String) -> Result<CodePatch, seam::Error> {
+        workspace_kernel::capture(&self.store(), self.workspaces_root(), &id)
+            .map_err(|err| workspace_failure(&err))
+    }
+
+    async fn discard(&self, id: String) -> Result<(), seam::Error> {
+        workspace_kernel::discard(self.workspaces_root(), &id)
+            .map_err(|err| workspace_failure(&err))
+    }
+
+    async fn apply(&self, patch: CodePatch) -> Result<(), seam::Error> {
+        self.store().apply(&patch, self.paths.project_root()).map_err(|err| workspace_failure(&err))
+    }
+}
+
+/// Map a workspace-kernel failure onto the seam error contract.
+fn workspace_failure(err: &Error) -> seam::Error {
+    seam::Error::Internal(err.to_string())
+}
+
+/// The agent-visible artifact root: the project tree as a host-absolute
+/// path, so a spawned agent working inside a lent workspace can still
+/// read change-tree artifacts.
+fn host_absolute(path: &std::path::Path) -> String {
+    std::path::absolute(path).unwrap_or_else(|_io| path.to_path_buf()).display().to_string()
 }
 
 /// The development placeholder version unpublished adapters compile

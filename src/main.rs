@@ -27,6 +27,7 @@ cfg_if::cfg_if! {
         use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_model::WasiModel;
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
+        use omnia_wasi_workspaces::WasiWorkspaces;
 
         omnia::runtime!({
             mode: command,
@@ -41,6 +42,10 @@ cfg_if::cfg_if! {
             mounts: [
                 { name: ".", path: launcher::project_root(), writable: true },
                 { name: launcher::CACHE_MOUNT, path: launcher::cache_dir(), writable: true },
+                // Shared workspaces preopen: adapter guests open their
+                // prepared private workspace by deployment-local path.
+                // The snapshot store itself is host-owned — no mount.
+                { name: launcher::WORKSPACES_MOUNT, path: launcher::workspaces_dir(), writable: true },
                 { name: launcher::seed_mount_name(), path: launcher::seed_mount_path() },
             ],
             link: ["emery:adapter/source@0.1.0", "emery:adapter/target@0.1.0"],
@@ -62,6 +67,10 @@ cfg_if::cfg_if! {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: Cursor,
+                // The RFC-87 private-workspace capability: the engine
+                // guest's `workspaces` import over the launcher's
+                // snapshot-store kernel.
+                WasiWorkspaces: launcher::Workspaces,
             }
         });
     } else {

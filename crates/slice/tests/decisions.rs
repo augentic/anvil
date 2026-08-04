@@ -5,6 +5,7 @@ use std::path::Path;
 
 use mock::invoke::run;
 use mock::session::Session;
+use project::seam::Workspaces as _;
 
 /// Rule ids carried by a failing validate operation's report.
 fn report_rule_ids(err: &project::handler::Error) -> Vec<String> {
@@ -65,6 +66,16 @@ async fn merge_promotes_and_supersedes() {
         &staged.join("new-choice.md"),
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-0001]\n",
     );
+    // A merge needs the build's captured code patch; this test stages
+    // `built` by hand, so freeze the fixture tree as a no-op patch
+    // (base == result).
+    let snapshot = project.provider().freeze().await.expect("freeze fixture tree");
+    fs::create_dir_all(slice.join("build")).expect("create build dir");
+    fs::write(
+        slice.join("build/patch.yaml"),
+        format!("base: {snapshot}\nresult: {snapshot}\ntouched: []\n"),
+    )
+    .expect("stage patch.yaml");
 
     let body = run::<slice::handlers::MergeRun, _, _>(
         project.provider(),

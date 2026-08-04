@@ -9,7 +9,7 @@ use project::adapter::{AdapterSelector, TargetAdapter};
 use project::config::Layout;
 use project::journal::{self, EventKind};
 use project::plan::Plan;
-use project::seam::{BuildContext, Input, Payload, Target, WorkingTree};
+use project::seam::{BuildContext, Input, Payload, Target, Workspaces};
 
 use super::{seam_failure, target_id};
 use crate::{
@@ -47,18 +47,24 @@ pub struct BuildOutcome {
 /// declared `inputs[]` assemble the request, and its name must match
 /// the slice's recorded `metadata.yaml` target so the declared inputs
 /// and the seam dispatch can never resolve from different adapters.
-/// `tree` names the snapshot the build applies against.
+///
+/// The build runs inside a disposable private workspace (RFC-87): the
+/// orchestration freezes the product tree as the base snapshot,
+/// prepares a writable workspace from it, dispatches the build there,
+/// captures the result as `build/patch.yaml` (base / result / touched
+/// — the shape RFC-86's build records re-home), and discards the
+/// workspace. Durable code state is only the snapshots.
 ///
 /// # Errors
 ///
 /// Refuses with `target-build-adapter-mismatch` when the slice's recorded target
 ///   names a different adapter than `adapter`.
-/// Dispatch and finalize failures retain their seam, report, output, or
-/// lifecycle diagnostics.
+/// Workspace, dispatch, and finalize failures retain their seam,
+/// report, output, or lifecycle diagnostics.
 #[tracing::instrument(name = "slice.build", skip_all, fields(slice = %slice, target = %adapter.name))]
 pub async fn build(
-    seam: &impl Target, layout: Layout<'_>, now: Timestamp, slice: &str, adapter: &TargetAdapter,
-    tree: WorkingTree,
+    seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
+    adapter: &TargetAdapter,
 ) -> Result<BuildOutcome, Error> {
     tracing::info!("build started");
     let slice_dir = layout.slice_dir(slice);
@@ -99,7 +105,7 @@ pub async fn build(
         EventKind::SliceBuildStarted {
             slice_name: slice.into(),
         },
-        finalize(seam, layout, now, slice, &slice_dir, adapter, &request, tree),
+        in_workspace(seam, layout, now, slice, &slice_dir, adapter, &request),
         |_| EventKind::SliceBuildSucceeded {
             slice_name: slice.into(),
         },
@@ -113,19 +119,51 @@ pub async fn build(
     Ok(outcome)
 }
 
+/// Bracket [`finalize`] with the workspace lifecycle: freeze the base
+/// snapshot, prepare a writable private workspace, run the dispatch +
+/// finalize tail against it, and discard the workspace on every exit
+/// (best-effort — captured snapshots survive by digest and a leaked
+/// directory is GC territory, never a build failure).
+async fn in_workspace(
+    seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
+    slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
+) -> Result<BuildOutcome, Error> {
+    // Interim base pinning: freeze the product tree at build start.
+    // When RFC-86 records base pins, this one call site reads the
+    // recorded pin instead.
+    let base = seam.freeze().await.map_err(|err| workspace_failure("freeze", slice, &err))?;
+    let workspace =
+        seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;
+    let outcome = finalize(seam, layout, now, slice, slice_dir, adapter, request, &workspace).await;
+    if let Err(err) = seam.discard(workspace.id.clone()).await {
+        tracing::warn!(workspace = %workspace.id, "workspace discard failed: {err}");
+    }
+    outcome
+}
+
+/// Map a workspace-capability failure onto the build's diagnostic
+/// contract.
+fn workspace_failure(operation: &'static str, slice: &str, err: &project::seam::Error) -> Error {
+    Error::Diag {
+        code: "target-build-workspace-failed",
+        detail: format!("workspace `{operation}` failed for slice `{slice}`: {err}"),
+    }
+}
+
 /// Dispatch `seam.build` and run the native finalize tail over the
 /// returned report. Wrapped by [`build`] so the `slice.build.*` pair
 /// brackets it.
 #[expect(clippy::too_many_arguments, reason = "internal seam-dispatch kernel; callers use `build`")]
 async fn finalize(
-    seam: &impl Target, layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
-    adapter: &TargetAdapter, request: &BuildRequest, tree: WorkingTree,
+    seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
+    slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
+    workspace: &project::seam::Workspace,
 ) -> Result<BuildOutcome, Error> {
     let inputs = read_inputs(request)?;
     let context = build_context(layout, slice)?;
     let id = target_id(adapter);
     let report = seam
-        .build(id.clone(), slice.to_string(), inputs, context, tree)
+        .build(id.clone(), slice.to_string(), inputs, context, workspace.clone())
         .await
         .map_err(|err| seam_failure("build", &id, &err))?;
 
@@ -144,7 +182,8 @@ async fn finalize(
     }
 
     report.enforce_no_blocking()?;
-    report.enforce_outputs_exist(layout.project_dir())?;
+    // Declared outputs live in the private workspace until capture.
+    report.enforce_outputs_exist(Path::new(&workspace.root))?;
     if report.status == BuildStatus::Failure {
         return Err(Error::Diag {
             code: "target-build-failed",
@@ -155,6 +194,16 @@ async fn finalize(
             ),
         });
     }
+
+    // Capture the result tree and persist the code patch beside the
+    // report. The body is shaped as RFC-86's planned build record, so
+    // re-homing it into the fact substrate is a file move.
+    let patch = seam
+        .capture(workspace.id.clone())
+        .await
+        .map_err(|err| workspace_failure("capture", slice, &err))?;
+    let patch_yaml = project::fs::yaml(&patch)?;
+    bytes_write(&slice_dir.join("build").join("patch.yaml"), patch_yaml.as_bytes())?;
 
     slice_actions::transition(slice_dir, LifecycleStatus::Built, now)?;
 
@@ -187,15 +236,16 @@ fn write_request(
 /// in request order (proposal, design, tasks, specs, additional).
 ///
 /// Each payload is [`Payload::Path`] with the artifact's
-/// project-relative, '/'-separated path — every deployment lends the
-/// working tree, so the adapter's agent reads the file itself. Paths
-/// are never host-absolute: they resolve both in the adapter guest's
-/// `"."` preopen and in the lent agent workspace.
+/// project-relative, '/'-separated path — change-tree artifacts stay
+/// outside the private workspace, so the adapter reads them through
+/// its `"."` preopen and renders them against the workspace's
+/// agent-visible artifact root for its agent. Paths are never
+/// host-absolute.
 fn read_inputs(request: &BuildRequest) -> Result<Vec<Input>, Error> {
     let root = &request.inputs.root;
     let project_dir = &request.project_dir;
     let artifacts = &request.inputs.artifacts;
-    let resolve = |relative: &str| resolve_artifact(root, project_dir, relative);
+    let resolve = |relative: &str| resolve_artifact(root, project_dir, relative, true);
     let mut inputs = vec![
         Input::Proposal(resolve(&artifacts.proposal)?),
         Input::Design(resolve(&artifacts.design)?),
@@ -205,17 +255,24 @@ fn read_inputs(request: &BuildRequest) -> Result<Vec<Input>, Error> {
         inputs.push(Input::Spec(resolve(spec)?));
     }
     for additional in &artifacts.additional {
-        inputs.push(Input::Other(resolve(additional)?));
+        // Adapter-declared inputs may be directories (e.g. the contracts
+        // staged-delta dir), so a build retry over an existing delta
+        // assembles instead of tripping the file gate.
+        inputs.push(Input::Other(resolve_artifact(root, project_dir, additional, false)?));
     }
     Ok(inputs)
 }
 
 /// Resolve one request artifact to its project-relative path payload,
-/// verifying the file exists so a broken slice tree fails here rather
-/// than inside the adapter's judgment leg.
-fn resolve_artifact(root: &Path, project_dir: &Path, relative: &str) -> Result<Payload, Error> {
+/// verifying it exists (`file_only` additionally requires a regular
+/// file) so a broken slice tree fails here rather than inside the
+/// adapter's judgment leg.
+fn resolve_artifact(
+    root: &Path, project_dir: &Path, relative: &str, file_only: bool,
+) -> Result<Payload, Error> {
     let absolute = root.join(relative);
-    if !absolute.is_file() {
+    let present = if file_only { absolute.is_file() } else { absolute.exists() };
+    if !present {
         return Err(Error::validation_failed(
             "target-build-input-missing",
             "every request artifact resolves to a file in the slice tree",

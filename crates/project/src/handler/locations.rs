@@ -34,6 +34,24 @@ pub const GUEST_CACHE_MOUNT: &str = "/emery-cache";
 /// origin display, never I/O.
 pub const GUEST_STORE_MOUNT: &str = "/emery-store";
 
+/// Nominal snapshot-store root inside the engine guest's layout.
+///
+/// The content-addressed snapshot store is host-owned and gets **no**
+/// guest mount: the guest drives `prepare` / `capture` / `discard`
+/// through the workspace capability and never opens a snapshot
+/// object. The constant is the guest's nominal
+/// [`Locations::snapshots_root`] — pure path math, never I/O.
+pub const GUEST_SNAPSHOTS_MOUNT: &str = "/emery-snapshots";
+
+/// Guest-visible preopen name of the host's workspaces root inside
+/// the deployment's WASI sandbox.
+///
+/// The deployment mounts the host's resolved
+/// [`Locations::workspaces_root`] under this name so every guest
+/// (engine and adapters) can open a prepared private workspace by its
+/// deployment-local path.
+pub const GUEST_WORKSPACES_MOUNT: &str = "/emery-workspaces";
+
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CachePlacement {
@@ -48,23 +66,27 @@ pub enum CachePlacement {
 
 /// Well-known on-disk locations for resolvable artifacts.
 ///
-/// Owns the two production roots — the global adapter store (pinned
-/// identities plus digest sidecars) and the project component cache
-/// (operator-seeded local components) — and the layout formulas over
-/// them. Methods are pure path math; the roots are fixed at
+/// Owns the production roots — the global adapter store (pinned
+/// identities plus digest sidecars), the project component cache
+/// (operator-seeded local components), the content-addressed snapshot
+/// store, and the private-workspace root — and the layout formulas
+/// over them. Methods are pure path math; the roots are fixed at
 /// construction.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Locations {
     store_root: PathBuf,
     cache: CachePlacement,
+    snapshots_root: PathBuf,
+    workspaces_root: PathBuf,
 }
 
 impl Locations {
     /// Production layout: capture `EMERY_HOME` once. A non-empty
     /// absolute override wins; otherwise the effective home is
     /// `$HOME/.emery`, then `<temp>/emery` when `$HOME` is
-    /// unavailable. Store and cache derive together as `<home>/store`
-    /// and `<home>/cache`.
+    /// unavailable. Store, cache, snapshots, and workspaces derive
+    /// together as `<home>/store`, `<home>/cache`, `<home>/snapshots`,
+    /// and `<home>/workspaces`.
     ///
     /// Composition-root only — never called from kernels or handlers;
     /// the wasm32 engine guest constructs [`Self::explicit`] over its
@@ -76,27 +98,49 @@ impl Locations {
             .or_else(|| env_path("HOME").map(|user_home| user_home.join(".emery")))
             .unwrap_or_else(|| std::env::temp_dir().join("emery"));
         Self::explicit(home.join("store"), CachePlacement::Parent(home.join("cache")))
+            .values_under(&home)
     }
 
     /// Explicit layout — no environment reads. Sandboxed sessions and
     /// tests pass [`CachePlacement::Parent`]; the wasm32 engine guest
     /// passes [`CachePlacement::Project`] for its already-resolved
-    /// preopen.
+    /// preopen. Value roots default beneath the store root's parent;
+    /// [`Self::values_under`] re-homes them.
     #[must_use]
-    pub const fn explicit(store_root: PathBuf, cache: CachePlacement) -> Self {
-        Self { store_root, cache }
+    pub fn explicit(store_root: PathBuf, cache: CachePlacement) -> Self {
+        let home = store_root.parent().map_or_else(|| store_root.clone(), Path::to_path_buf);
+        Self {
+            store_root,
+            cache,
+            snapshots_root: home.join("snapshots"),
+            workspaces_root: home.join("workspaces"),
+        }
+    }
+
+    /// Re-home the value roots (snapshot store and workspaces) as
+    /// `<home>/snapshots` and `<home>/workspaces`. Chainable after
+    /// [`Self::explicit`] when the value layout diverges from the
+    /// store root's parent.
+    #[must_use]
+    pub fn values_under(mut self, home: &Path) -> Self {
+        self.snapshots_root = home.join("snapshots");
+        self.workspaces_root = home.join("workspaces");
+        self
     }
 
     /// The engine guest's layout: the writable cache preopen the
     /// deployment manifest grants plus the nominal (never-opened)
-    /// store root — no environment, no project-id suffix below the
-    /// cache mount.
+    /// store and snapshot roots — no environment, no project-id
+    /// suffix below the cache mount. Prepared workspaces resolve
+    /// under the deployment's workspaces preopen.
     #[must_use]
     pub fn guest() -> Self {
-        Self::explicit(
-            PathBuf::from(GUEST_STORE_MOUNT),
-            CachePlacement::Project(PathBuf::from(GUEST_CACHE_MOUNT)),
-        )
+        Self {
+            store_root: PathBuf::from(GUEST_STORE_MOUNT),
+            cache: CachePlacement::Project(PathBuf::from(GUEST_CACHE_MOUNT)),
+            snapshots_root: PathBuf::from(GUEST_SNAPSHOTS_MOUNT),
+            workspaces_root: PathBuf::from(GUEST_WORKSPACES_MOUNT),
+        }
     }
 
     /// Global store root — host-side installs and verify-and-load;
@@ -149,6 +193,21 @@ impl Locations {
     #[must_use]
     pub fn component(&self, project_root: &Path, name: &str) -> PathBuf {
         self.project_cache_dir(project_root).join("components").join(format!("{name}.wasm"))
+    }
+
+    /// Content-addressed snapshot store root — host-side snapshot and
+    /// materialization; nominal (never opened) in-guest.
+    #[must_use]
+    pub fn snapshots_root(&self) -> &Path {
+        &self.snapshots_root
+    }
+
+    /// Private-workspace root: the host prepares each disposable
+    /// workspace beneath it; the deployment mounts it so guests open
+    /// prepared workspaces by deployment-local path.
+    #[must_use]
+    pub fn workspaces_root(&self) -> &Path {
+        &self.workspaces_root
     }
 }
 

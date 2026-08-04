@@ -194,9 +194,10 @@ async fn extract_crosses_workflow_seam() {
 async fn build_merge_cross_seam() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
-    let tree = || seam::WorkingTree {
-        base: "live".to_string(),
-        subpath: None,
+    let workspace = || seam::Workspace {
+        id: "ws-1".to_string(),
+        root: tmp.path().display().to_string(),
+        artifacts: tmp.path().display().to_string(),
     };
 
     let inputs = vec![seam::Input::Proposal(seam::Payload::Path(
@@ -208,14 +209,19 @@ async fn build_merge_cross_seam() {
             "demo".to_string(),
             inputs,
             seam::BuildContext::default(),
-            tree(),
+            workspace(),
         )
         .await
         .expect("build dispatches");
     assert_eq!(report.outputs[0].path, "build:demo:1");
 
     let report = provider
-        .merge("target:mock".to_string(), "demo".to_string(), seam::MergePhase::Preflight, tree())
+        .merge(
+            "target:mock".to_string(),
+            "demo".to_string(),
+            seam::MergePhase::Preflight,
+            workspace(),
+        )
         .await
         .expect("merge dispatches");
     assert_eq!(report.outputs[0].path, "merge:demo:preflight");

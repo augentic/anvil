@@ -9,7 +9,7 @@
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
-    TargetMetadata, WorkingTree,
+    TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
@@ -83,17 +83,20 @@ macro_rules! mock_target {
 
             async fn build<P: Model>(
                 _model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input],
-                _context: &BuildContext, tree: &WorkingTree,
+                _context: &BuildContext, workspace: &Workspace,
             ) -> Result<Report, Error> {
-                let root = ctx.tree_root(tree);
-                behaviour::build(&root, ctx.adapter_id, slice, inputs)
+                behaviour::build(workspace.root_path(), ctx.adapter_id, slice, inputs)
             }
 
             async fn merge<P: Model>(
-                _model: &P, ctx: &Context<'_>, slice: &str, phase: MergePhase, tree: &WorkingTree,
+                _model: &P, ctx: &Context<'_>, slice: &str, phase: MergePhase,
+                _workspace: &Workspace,
             ) -> Result<Report, Error> {
-                let root = ctx.tree_root(tree);
-                behaviour::merge(&root, ctx.adapter_id, slice, phase)
+                // Gate markers are test control-plane written into the
+                // project tree after the build, so they are read through
+                // the `"."` preopen — the read-only result view carries
+                // only what the build captured.
+                behaviour::merge(ctx.project_root, ctx.adapter_id, slice, phase)
             }
         }
     };

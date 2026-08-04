@@ -18,6 +18,7 @@ crate-type = ["cdylib"]
 anyhow.workspace = true
 cfg-if.workspace = true
 emery-launcher.workspace = true
+emery-wasi-workspaces.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-wasi-http.workspace = true
@@ -190,6 +191,10 @@ tower = "0.5.3"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
+# Pinned to omnia's wasmtime line — the host-capability crate's generated
+# bindings must share the runtime's wasmtime types.
+wasmtime = { version = "47.0.3", default-features = false, features = ["anyhow", "component-model-bytes"] }
+futures = "0.3.33"
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
 # Workspace crates publish under emery-* package names; short `use` paths
@@ -208,6 +213,7 @@ emery-project = { path = "crates/project" }
 emery-prose = { path = "crates/prose" }
 emery-slice = { path = "crates/slice" }
 emery-transport = { path = "crates/transport" }
+emery-wasi-workspaces = { path = "crates/wasi-workspaces" }
 
 # `cli` (the host `omnia run` grammar) is unused — the shipped binary is a
 # `program:` direct-command deployment; `otlp` (gRPC exporters) is dropped for
@@ -228,23 +234,27 @@ omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
-omnia = { git = "https://github.com/augentic/omnia" }
+# RFC-87 co-dev: the omnia entries resolve the sibling checkout's
+# `workspace-grants` branch (path-carrying workspace lends) until that
+# change merges and emery re-pins the published release; flip these back
+# to the git patches then.
 omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
-omnia-guest = { git = "https://github.com/augentic/omnia" }
-omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
-omnia-host-macros = { git = "https://github.com/augentic/omnia" }
-omnia-testkit = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
-# omnia = { path = "../omnia/crates/omnia" }
-# omnia-guest = { path = "../omnia/crates/omnia-guest" }
-# omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
-# omnia-host-macros = { path = "../omnia/crates/host-macros" }
-# omnia-testkit = { path = "../omnia/crates/testkit" }
-# omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
-# omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
-# omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
+# omnia = { git = "https://github.com/augentic/omnia" }
+# omnia-guest = { git = "https://github.com/augentic/omnia" }
+# omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
+# omnia-host-macros = { git = "https://github.com/augentic/omnia" }
+# omnia-testkit = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
+omnia = { path = "../omnia/crates/omnia" }
+omnia-guest = { path = "../omnia/crates/omnia-guest" }
+omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+omnia-host-macros = { path = "../omnia/crates/host-macros" }
+omnia-testkit = { path = "../omnia/crates/testkit" }
+omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
+omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
+omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io.
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }

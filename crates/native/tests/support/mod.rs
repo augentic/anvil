@@ -13,7 +13,7 @@
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, Platform, Report,
-    SourceMetadata, Status, TargetMetadata, WorkingTree,
+    SourceMetadata, Status, TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
@@ -95,13 +95,13 @@ impl Target for Probe {
 
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, slice: &str, inputs: &[Input], _context: &BuildContext,
-        _tree: &WorkingTree,
+        _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(echo(format!("build:{slice}:{}", inputs.len())))
     }
 
     async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, slice: &str, phase: MergePhase, _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, slice: &str, phase: MergePhase, _workspace: &Workspace,
     ) -> Result<Report, Error> {
         let phase = match phase {
             MergePhase::Preflight => "preflight",
@@ -140,13 +140,13 @@ impl Target for FailGuidance {
 
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
-        _tree: &WorkingTree,
+        _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
 
     async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -181,13 +181,13 @@ impl Target for Floored {
 
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
-        _tree: &WorkingTree,
+        _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
 
     async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -257,13 +257,13 @@ impl Target for Pinned {
 
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
-        _tree: &WorkingTree,
+        _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
 
     async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -298,13 +298,13 @@ impl Target for BadVersion {
 
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
-        _tree: &WorkingTree,
+        _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
 
     async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
@@ -339,13 +339,13 @@ impl Target for ProbeV2 {
 
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
-        _tree: &WorkingTree,
+        _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }
 
     async fn merge<P: Model>(
-        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _tree: &WorkingTree,
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _phase: MergePhase, _workspace: &Workspace,
     ) -> Result<Report, Error> {
         Ok(Report::success())
     }

@@ -1,9 +1,7 @@
 //! The exhaustive catalog inventory and the failure profiles, all
 //! exercised through the SDK trait surface (no provider hooks).
 
-use adapter::seam::{
-    BuildContext, Context, Error, Input, MergePhase, Payload, Status, WorkingTree,
-};
+use adapter::seam::{BuildContext, Context, Error, Input, MergePhase, Payload, Status, Workspace};
 use adapter::{Source, Target};
 use mock::{
     Adapter, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput, catalog,
@@ -40,6 +38,7 @@ fn ctx(id: &str) -> Context<'_> {
         adapter_id: id,
         project_root: std::path::Path::new("."),
         mcp_url: None,
+        lend: ".".to_string(),
     }
 }
 
@@ -47,10 +46,13 @@ fn model() -> Scripted {
     Scripted::answers::<&str>([])
 }
 
-fn tree() -> WorkingTree {
-    WorkingTree {
-        base: "HEAD".to_string(),
-        subpath: None,
+/// A prepared workspace rooted at `root` — the mock build writes its
+/// artifact into the workspace root, never the ambient checkout.
+fn workspace(root: &std::path::Path) -> Workspace {
+    Workspace {
+        id: "ws-mock".to_string(),
+        root: root.display().to_string(),
+        artifacts: root.display().to_string(),
     }
 }
 
@@ -89,7 +91,7 @@ async fn target_failures() {
         "s",
         &[],
         &BuildContext::default(),
-        &tree(),
+        &workspace(tmp.path()),
     )
     .await
     .expect_err("fail-build fails");
@@ -100,7 +102,7 @@ async fn target_failures() {
         &ctx("target:mock-fail-merge"),
         "s",
         MergePhase::Preflight,
-        &tree(),
+        &workspace(tmp.path()),
     )
     .await
     .expect_err("fail-merge fails");
@@ -121,7 +123,7 @@ async fn missing_output_names_path() {
         "greeting",
         &[],
         &BuildContext::default(),
-        &tree(),
+        &workspace(tmp.path()),
     )
     .await
     .expect("missing-output reports success");
@@ -148,7 +150,7 @@ async fn build_writes_artifact() {
         "greeting",
         &inputs,
         &BuildContext::default(),
-        &tree(),
+        &workspace(tmp.path()),
     )
     .await
     .expect("mock builds");

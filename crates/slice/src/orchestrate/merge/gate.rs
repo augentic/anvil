@@ -6,7 +6,7 @@ use std::path::Path;
 
 use artifacts::atomic::bytes_write;
 use error::Error;
-use project::seam::{MergePhase, Target, WorkingTree};
+use project::seam::{self, MergePhase, Target};
 
 use super::super::seam_failure;
 use crate::{BuildReport, BuildStatus};
@@ -15,19 +15,21 @@ use crate::{BuildReport, BuildStatus};
 /// path — persist happens after a successful return).
 #[tracing::instrument(name = "slice.merge.gate", skip_all, fields(phase = %phase, target = %id))]
 pub(super) async fn run_gate<T: Target>(
-    targets: &T, id: &str, slice: &str, phase: MergePhase,
+    targets: &T, id: &str, slice: &str, phase: MergePhase, view: &seam::Workspace,
 ) -> Result<BuildReport, Error> {
-    let report = fetch_gate_report(targets, id, slice, phase).await?;
+    let report = fetch_gate_report(targets, id, slice, phase, view).await?;
     enforce_gate(&report, phase, slice)?;
     Ok(report)
 }
 
 /// Fetch one target merge gate report and check the slice-name match.
+/// `view` is the read-only workspace over the slice's built result
+/// snapshot both gates read the result code through.
 pub(super) async fn fetch_gate_report<T: Target>(
-    targets: &T, id: &str, slice: &str, phase: MergePhase,
+    targets: &T, id: &str, slice: &str, phase: MergePhase, view: &seam::Workspace,
 ) -> Result<BuildReport, Error> {
     let report = targets
-        .merge(id.to_string(), slice.to_string(), phase, WorkingTree::live())
+        .merge(id.to_string(), slice.to_string(), phase, view.clone())
         .await
         .map_err(|err| seam_failure("merge", id, &err))?;
 

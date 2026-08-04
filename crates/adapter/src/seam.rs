@@ -2,7 +2,7 @@
 //!
 //! Only answer-deserialized types carry serde derives.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use omnia_guest::model::McpGrant;
 use serde::Deserialize;
@@ -44,6 +44,11 @@ pub struct Context<'a> {
     /// The adapter's MCP references endpoint, granted to the spawned
     /// agent so it can fetch `doc://` references lazily.
     pub mcp_url: Option<String>,
+    /// Deployment-local path every judgment leg lends through
+    /// `grants.workspace`. Defaults to the `"."` project mount (source
+    /// and guidance legs); build and merge legs lend their prepared
+    /// workspace via [`Self::lending`].
+    pub lend: String,
 }
 
 impl<'a> Context<'a> {
@@ -56,7 +61,17 @@ impl<'a> Context<'a> {
             adapter_id,
             project_root: Path::new("."),
             mcp_url: mcp_url(adapter_id),
+            lend: ".".to_string(),
         }
+    }
+
+    /// Lend `path` (a deployment-local directory, e.g. a prepared
+    /// workspace root) to this context's judgment legs instead of the
+    /// `"."` project mount.
+    #[must_use]
+    pub fn lending(mut self, path: impl Into<String>) -> Self {
+        self.lend = path.into();
+        self
     }
 
     /// MCP grants offered on every judgment leg: the adapter's own
@@ -77,14 +92,6 @@ impl<'a> Context<'a> {
             })
             .into_iter()
             .collect()
-    }
-
-    /// Resolve an operation's tree root beneath the shared mount.
-    #[must_use]
-    pub fn tree_root(&self, tree: &WorkingTree) -> PathBuf {
-        tree.subpath
-            .as_deref()
-            .map_or_else(|| self.project_root.to_path_buf(), |sub| self.project_root.join(sub))
     }
 }
 
@@ -120,11 +127,11 @@ pub fn mcp_url_for(addr: Option<&str>, adapter_id: &str) -> Option<String> {
 /// One slice-artifact payload — mirrors the WIT `payload` variant.
 ///
 /// `Path` is the artifact's project-relative location ('/'-separated),
-/// resolvable both in the guest's `"."` preopen and in a lent agent
-/// workspace — never host-absolute. `Body` is the inlined artifact
-/// text for non-lent deployments (RFC-55). The cases are exclusive:
-/// the engine sends `Path` while every deployment lends the working
-/// tree.
+/// resolvable in the guest's `"."` preopen — never host-absolute;
+/// prompts reference it from inside a lent workspace through
+/// [`Workspace::artifact_path`]. `Body` is the inlined artifact text
+/// for non-lent deployments (RFC-55). The cases are exclusive: the
+/// engine sends `Path` while every deployment lends a workspace.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Payload {
     /// Project-relative artifact path ('/'-separated).
@@ -201,13 +208,39 @@ pub struct BuildContext {
     pub sources: Vec<String>,
 }
 
-/// The tree an operation works on — mirrors the WIT `working-tree` record.
+/// The private workspace an operation works on — mirrors the WIT
+/// `target.workspace` record (RFC-87).
+///
+/// `root` is the deployment-local path of the writable code tree: the
+/// adapter reads and writes product code there and lends it to its
+/// agent by path. Change-tree artifacts stay outside the workspace —
+/// readable through the `"."` preopen in-guest (project-relative
+/// paths), or through the agent-visible `artifacts` root from a
+/// spawned agent.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WorkingTree {
-    /// The snapshot the operation applies against.
-    pub base: String,
-    /// Optional path beneath the shared mount root.
-    pub subpath: Option<String>,
+pub struct Workspace {
+    /// Opaque identity of the preparation.
+    pub id: String,
+    /// Deployment-local path of the writable workspace root.
+    pub root: String,
+    /// Agent-visible read-only artifact root (the project tree).
+    pub artifacts: String,
+}
+
+impl Workspace {
+    /// The workspace root as a path, for in-guest filesystem access.
+    #[must_use]
+    pub fn root_path(&self) -> &Path {
+        Path::new(&self.root)
+    }
+
+    /// The agent-visible location of a project-relative artifact path
+    /// — how prompts reference change-tree inputs from inside the
+    /// lent workspace.
+    #[must_use]
+    pub fn artifact_path(&self, relative: &str) -> String {
+        format!("{}/{relative}", self.artifacts)
+    }
 }
 
 /// Which side of the deterministic core merge a `merge` dispatch runs

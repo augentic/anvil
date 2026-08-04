@@ -1,6 +1,6 @@
 # RFC-87: Private Workspaces
 
-> Status: Accepted — design locked; step 2 of the platform-migration series ([platform.md](platform.md))
+> Status: Implemented — landed with interim RFC-86 stand-ins (build-time base self-pinning, slice-local `build/patch.yaml`, merge-time apply); step 2 of the platform-migration series ([platform.md](platform.md))
 >
 > Owns: materializing an immutable code snapshot into a private workspace, granting separate read-only artifact access, capturing the resulting code snapshot and touched paths, and discarding the workspace.
 >

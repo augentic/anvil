@@ -6,7 +6,7 @@ use omnia_guest::api::Provider;
 use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
 use project::adapter::Resolver;
 use project::handler::{Anchor, Render};
-use project::seam::{Source, Target};
+use project::seam::{Source, Target, Workspaces};
 use serde::Serialize;
 use tracing::Instrument as _;
 
@@ -109,7 +109,7 @@ fn operation_response(
 /// exporter.
 pub async fn execute<P>(router: &Router<P, Globals>, argv: Vec<String>) -> CommandResponse
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target,
+    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces,
 {
     let span = tracing::info_span!(
         "emery.command",
