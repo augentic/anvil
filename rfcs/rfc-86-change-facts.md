@@ -1,6 +1,6 @@
 # RFC-86: Change Facts
 
-> **Status:** Draft — incomplete. Open product questions remain at the end.
+> **Status:** Draft — product open questions closed. Sibling-series consistency is an implementation task (D19), not a blocker on Phase C product design.
 >
 > **Series:** Step 1 of the [platform-migration series](platform.md). Later RFCs (working trees, detached changes, publication, concurrency, node sync) all build on this.
 >
@@ -243,6 +243,7 @@ One operator, one machine, no remote: same artifacts, same facts, same commands.
 | D16 | **Waiver UX: per-`[unknown]` on approve; `[conflict]` never waiveable; no multi-operator gate** | Repeatable `--waive <slice>/<req>` + required `--reason` on build-scoped `plan approve`; one operator’s approval is enough; re-refine clears approval and waivers |
 | D17 | **Human prose review stays outside the engine** | Operators own spec quality; approve gates only on typed gap policy. No checklist artifact, review attestation, or spec-quality rollup in `plan gaps` / `plan approve` |
 | D18 | **Shared-lead gap rollup is presentation only** | `plan gaps` annotates/groups open findings that share a contributing `(source, lead)` and suggests re-refine selectors; approve/waive stay per-requirement. No lead-wide waive, no shared-Evidence extract, no lead-level gate |
+| D19 | **Sibling-series consistency is an implementation task** | When implementing this RFC (especially Phase C), review remaining unimplemented series RFCs (`platform.md`, RFC-87…RFC-92) for prose that still assumes execute-bundled refine or “running execute is approval”. Do not litigate or cascade-rewrite those docs as part of freezing this RFC; later RFCs may further review this work and roll back or refactor anything that becomes obsolete |
 
 ---
 
@@ -269,9 +270,9 @@ Exact error codes and event names belong in the [implementation notes](#appendix
 | ----- | -------- | ---------------------- |
 | **A** | Fact logs + computed status | Same day-to-day flow; status still looks familiar |
 | **B** | Pins + merge-time requirement ids | Safer parallel refine; drift diagnostics |
-| **C** | `plan refine`, gap inventory (+ shared-lead presentation rollup), approval gate, execute without refine | The new rhythm: author → `plan refine` → gaps → approve → build/merge-only execute; multi-homed leads correlate in `plan gaps` without changing the per-req gate |
+| **C** | `plan refine`, gap inventory (+ shared-lead presentation rollup), approval gate, execute without refine; sibling-series consistency pass (D19) | The new rhythm: author → `plan refine` → gaps → approve → build/merge-only execute; multi-homed leads correlate in `plan gaps` without changing the per-req gate. Implementation also reviews unimplemented series RFCs for stale execute/approval assumptions — without blocking on a full cascade rewrite here |
 
-Do not implement Phase C until the [open questions](#open-questions) are closed.
+Product open questions are closed. Phase C may proceed; include the D19 sibling-review task in the implementation work.
 
 ---
 
@@ -291,7 +292,7 @@ Do not implement Phase C until the [open questions](#open-questions) are closed.
 
 ## Open questions
 
-Close these before Phase C implementation.
+All closed. Record kept for the decision trail.
 
 1. ~~**How does plan-phase refine start?**~~ **Closed — D13.** `/emery:plan` / `emery plan author` stop after topology. Specs are minted by the new `emery plan refine` (batch over unrefined in-scope slices; optional selectors). Per-slice gap closure and re-refine use `emery slice refine`. Rejected: folding refine into `plan author` (pays synthesis before topology review; blurs the two review seams; makes topology-only approval awkward); status-driven `slice refine` only (no named batch — poor N-many ergonomics; agents invent ad-hoc fan-out outside the CLI contract).
 2. ~~**Should `[unknown]` block by default?**~~ **Closed — D14.** Always block. `[unknown]` means insufficient information was available to the agent; the operator must provide it (or explicitly waive) before build. Rejected: warn-only for intent-only / N=1 (desk-testing — unpredictable generation that compounds through later phases); context-sensitive defaults keyed on source count or change shape (two policies to teach; under-protects thin multi-slice intent).
@@ -299,18 +300,18 @@ Close these before Phase C implementation.
 4. ~~**Waiver UX**~~ **Closed — D16.** Build-scoped `emery plan approve` accepts repeatable `--waive <slice>/<req>` with required `--reason`. Only `[unknown]` may be waived; `[conflict]` is not waiveable (authority override or source fix, then re-refine). Waivers nest on the approval artifact only — no separate `plan waive` verb, no plan-/slice-wide or inventory-digest waive, no `--force` / `--allow-gaps`. One operator’s recorded approval is enough; this RFC does **not** require a second-person countersign (multi-person four-eyes is a non-goal). Re-refine invalidates the approval and every waiver it carried; remaining unknowns must be re-listed on the new approve. Rejected: bulk/all-gaps waive (rubber-stamp / agent `--force` path); waiving `[conflict]` (unresolved contradiction must be decided in inputs, not papered over); separate `plan waive` then approve (extra verb and limbo without a countersign need); multi-operator waiver gating (second lifecycle / mode bit; solo laptop is the primary deployment).
 5. ~~**Human-only ambiguity**~~ **Closed — D17.** Prose review of `spec.md` (and related artifacts) alone — human operators own spec quality and how they choose to review; the engine does not record or gate on that process. Rejected: optional operator checklist artifact (extra artifact, stale-on-re-refine binding, rubber-stamp risk, overlaps git/PR review without improving gap policy); rolling advisory `kind: review` spec-quality heuristics into `plan gaps` or approve (blurs the typed-status boundary; waiver creep); `--reviewed` / review attestation on approve (ceremony without substance); model-assisted spec-quality gate at approve time (non-goal for this RFC — eval / later concurrency work).
 6. ~~**Shared leads across slices**~~ **Closed — D18.** Flat per-requirement inventory remains the gate authority. `plan gaps` adds a **presentation rollup**: when open findings share a contributing `(source, lead)` (multi-homed / cross-cutting leads), annotate or group those rows and suggest the slice-selector set for re-refine after the shared input is fixed. Rejected: flat list only with no correlation aid (operators and agents invent sibling fan-out outside the CLI; N-row noise from one lead); lead-wide or `--waive-lead` sugar (same rubber-stamp risk as bulk waive in D16; same lead ≠ same gap after per-slice extract); first-class lead-level gate or status noun (second checklist-like surface; derived “lead status” can lie when sibling Evidence diverges); shared extract / shared Evidence for multi-homed leads (changes the per-slice extract contract; deferred — not a gap-inventory decision).
-7. **Sibling docs** — `platform.md` and later RFCs still say execute runs `refine → build → merge`; update them when Phase C decisions freeze.
+7. ~~**Sibling docs**~~ **Closed — D19.** Consistency with `platform.md` and later unimplemented series RFCs is an **implementation task** for this RFC (especially Phase C): review them for stale “execute runs `refine → build → merge`” / “running execute is approval” assumptions. This RFC does **not** cascade-rewrite those documents at decision-freeze time. Later RFCs remain free to review the landed shape and roll back or refactor anything that becomes obsolete. Rejected: freezing Phase C product design on a full sibling rewrite now; treating series-doc drift as an open product question rather than delivery work.
 
 ---
 
 ## Non-goals
 
-- Implementing this RFC while the open questions remain open.
 - Changing Evidence schemas or the authority ranking (`intent` > `documentation` > `behaviour`).
 - Automatically judging whether an `agreed` requirement is *good* (scenario depth, usefulness) — that stays human review and eval; no checklist artifact or approve-time attestation for prose review (see D17).
 - Parallel swarm refine (later concurrency RFC) — this RFC only makes multi-slice refine safe and claimable.
 - Multi-operator waiver / approval countersign — one actor’s build approval (with any unknown-waivers) is sufficient; shared-git collaboration stays social review of the approval artifact, not an engine four-eyes gate.
 - Lead-wide waive, lead-level approve gate, or shared Evidence for multi-homed leads — correlation of shared-lead gaps is presentation-only in `plan gaps` (see D18); extract stays per-slice.
+- Cascade-rewriting `platform.md` and later series RFCs as part of freezing this RFC — sibling consistency is a Phase C implementation review task; later RFCs may further adjust obsolete assumptions (see D19).
 
 ---
 
@@ -383,6 +384,10 @@ For engine contributors. Not required to evaluate the product intent.
 - Shift-left fixture: author → `plan refine` → gaps → fix conflicts / waive unknowns → approve → build/merge-only execute; refuse conflict-waive and bulk-waive shapes.
 - Multi-homed lead fixture: one `(source, lead)` bound into two refined slices with open unknowns; `plan gaps` groups/annotates both rows and suggests both slice selectors; approve still requires per-req waive or clearance (no lead-wide waive).
 - `cargo make ci` green; projection determinism and gap/approval paths covered as crate integration tests.
+
+**Sibling series (D19)**
+
+- During Phase C implementation, review remaining unimplemented series RFCs (`platform.md`, RFC-87…RFC-92) for prose that still assumes execute-bundled refine or invisible execute-as-approval. Record or fix drift as ordinary delivery work; do not block this RFC’s product freeze on a cascade rewrite. Later RFCs may further roll back or refactor obsolete assumptions.
 
 **Hard cut**
 
