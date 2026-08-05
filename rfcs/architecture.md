@@ -203,7 +203,7 @@ The runtime admits adapter guests by **resolver-backed admission on first dispat
 
 ## Deferred relatives
 
-The fact-based change substrate is step 1 of the platform-migration critical path — [RFC-86](rfc-86-change-facts.md): projected status, per-actor event logs, pinned judgment inputs, and approval as a recorded artifact. Private snapshot-backed workspaces follow ([RFC-87](rfc-87-working-trees.md)), before single-node detached forge discovery and source selection ([RFC-88](rfc-88-detached-changes.md)). [RFC-92](rfc-92-node-sync.md) later adds fact and snapshot transport for multi-node execution over the same state model. Host-owned verify profiles ([RFC-90](rfc-90-verify-profiles.md)) sit on the scale track. See [platform.md](platform.md) for the full sequence.
+The fact-based change substrate is step 1 of the platform-migration critical path — [RFC-86](rfc-86-change-facts.md): projected status, per-actor event logs, pinned judgment inputs, and digest-bound `plan.execute.started`. Private snapshot-backed workspaces follow ([RFC-87](rfc-87-working-trees.md)), before single-node detached forge discovery and source selection ([RFC-88](rfc-88-detached-changes.md)). [RFC-92](rfc-92-node-sync.md) later adds fact and snapshot transport for multi-node execution over the same state model. Host-owned verify profiles ([RFC-90](rfc-90-verify-profiles.md)) sit on the scale track. See [platform.md](platform.md) for the full sequence.
 
 ## Key trade-offs
 

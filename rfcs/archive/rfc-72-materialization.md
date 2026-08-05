@@ -4,7 +4,7 @@
 >
 > Owns: cloning and refreshing registry projects, creating writable workspace slots, branch preparation, cleanliness checks, and the lease boundary required by automated multi-repository execution.
 >
-> Source-list intake and topology now belong to [RFC-88](../rfc-88-detached-changes.md); source snapshots belong to [RFC-87](../rfc-87-working-trees.md).
+> Source-list authoring scope and topology now belong to [RFC-88](../rfc-88-detached-changes.md); source snapshots belong to [RFC-87](../rfc-87-working-trees.md).
 
 ## Abstract
 

@@ -1,6 +1,6 @@
 # RFC-87: Private Workspaces
 
-> Status: Implemented — landed with interim RFC-86 stand-ins (build-time base self-pinning, slice-local `build/patch.yaml`, merge-time apply); step 2 of the platform-migration series ([platform.md](platform.md)). Amended by [RFC-88](rfc-88-detached-changes.md): D4 and acceptance criterion 4 admit the project repository's durable state into the snapshot, and the interim `apply` is deleted there.
+> Status: Implemented — landed with interim RFC-86 stand-ins (build-time base self-pinning, slice-local `build/patch.yaml`, merge-time apply); step 2 of the platform-migration series ([platform.md](platform.md)). [RFC-88](rfc-88-detached-changes.md) proposes amendments: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 admit the project repository's durable state into the tree, plan/discovery artifacts name the tree identity a **CID** (`SnapshotId` is that value), and the interim `apply` is deleted.
 >
 > Owns: materializing an immutable code snapshot into a private workspace, granting separate read-only artifact access, capturing the resulting code snapshot and touched paths, and discarding the workspace.
 >
@@ -65,7 +65,7 @@ Every execution receives a fresh workspace. No two executions share a writable d
 
 `capture` stores and verifies every object needed to materialize the result before returning `{ base snapshot, result snapshot, touched paths }`. It creates no Git commit, branch, completion fact, or publication event; the caller records completion only after capture succeeds.
 
-A read-only source view is the same preparation with an empty writable scope; it is discarded without capture. There is no second source-copy model. [RFC-88](rfc-88-detached-changes.md) binds every source pin to this path: a source's resolved value is an ordinary snapshot, and `capture`'s refusal on a read-only workspace is what makes "a source is never captured" structural.
+A read-only source view is the same preparation with an empty writable scope; it is discarded without capture. There is no second source-copy model. [RFC-88](rfc-88-detached-changes.md) binds every source pin to this path: a source's resolved value is an ordinary CID (this RFC's snapshot identity), and `capture`'s refusal on a read-only workspace is what makes "a source is never captured" structural.
 
 For Git repositories, the local provider may use Git's object database and worktree machinery. That is an implementation and cache strategy, not an authority boundary.
 
@@ -97,7 +97,7 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, approvals, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies worker decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies worker decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 
