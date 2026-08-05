@@ -23,7 +23,7 @@ This RFC gives each worker a narrow brief, explicit write ownership, an individu
 1. The Omnia adapter core partitions a build into writer tasks with exclusive path manifests.
 2. Each writing worker starts from the same immutable base CID in its own RFC-87 private workspace and returns a typed outcome plus a **code patch**.
 3. The composer checks every completed patch, copies disjoint touched paths into a fresh integration workspace, and captures the next CID.
-4. The host runs closed RFC-90 verify profiles and returns normalized findings.
+4. The host runs predefined RFC-90 verify profiles and returns normalized findings.
 5. The orchestrator routes each finding to the worker that owns the affected path. That worker resumes its session with only the findings delta.
 6. Bounded repair and convergence rounds continue until verification passes or the build returns a typed failure with residual findings.
 
@@ -79,7 +79,7 @@ Reusable brief, manifest, and outcome helpers live in `augentic/emery`'s adapter
 
 ### D2 — Host-owned verify profiles are the convergence gate
 
-Workers never receive cargo command text. The orchestrator requests a closed RFC-90 profile, and the host owns its argv, sandboxed execution, normalized findings, and convergence budget. `augentic/omnia` provides the `wasi-model` verify capability; `augentic/emery` owns policy.
+Workers never receive cargo command text. The orchestrator requests a predefined RFC-90 profile, and the host owns its argv, sandboxed execution, normalized findings, and convergence budget. `augentic/omnia` provides the `wasi-model` verify capability; `augentic/emery` owns policy.
 
 Findings map to the owning worker and resume that worker's session with a findings delta, never a fresh full prompt. Stage A includes this gate from its first release. Splitting the build before host-owned verification exists would delete the current repair channel without replacing it.
 
@@ -181,7 +181,7 @@ When every required frontier gate passes, the engine performs RFC-86's target-wa
 ## Acceptance criteria
 
 1. An Omnia build for a slice the size of `at-r9k-position-adapter` completes as focused worker requests, each with a spilled prompt no larger than about 15 KB, and no worker prompt contains cargo command text.
-2. Verify runs only through closed RFC-90 profiles. Findings route to the owning worker, and convergence-budget exhaustion produces a typed `failure` report with residual findings.
+2. Verify runs only through predefined RFC-90 profiles. Findings route to the owning worker, and convergence-budget exhaustion produces a typed `failure` report with residual findings.
 3. Review specialists are individually observable and timeout-able. No nested in-agent team remains in the Omnia review path.
 4. Predicted manifest overlap becomes an explicit dependency or fan-in task before dispatch. Captured touched-path overlap rejects the complete wave without partial composition and routes ownership findings to every contributor.
 5. In Stage B, two workers run concurrently in separate RFC-87 workspaces with isolated MCP configuration and no shared writable files. Pool cancellation reaps every in-flight worker.
