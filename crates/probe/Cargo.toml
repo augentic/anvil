@@ -19,9 +19,9 @@ workspace = true
 [features]
 default = []
 client = [
+    "dep:emery-model",
     "dep:jiff",
     "dep:omnia",
-    "dep:omnia-cursor",
     "dep:omnia-wasi-model",
     "dep:tokio",
     "dep:tracing-subscriber",
@@ -44,9 +44,9 @@ serde-saphyr.workspace = true
 toml.workspace = true
 tracing.workspace = true
 # Client-only (feature = "client").
+emery-model = { workspace = true, optional = true }
 jiff = { workspace = true, optional = true }
 omnia = { workspace = true, optional = true }
-omnia-cursor = { workspace = true, optional = true }
 omnia-wasi-model = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true, features = ["macros", "rt-multi-thread", "sync"] }
 tracing-subscriber = { workspace = true, optional = true }

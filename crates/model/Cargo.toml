@@ -1,0 +1,32 @@
+[package]
+name = "emery-model"
+description = "Model backend selection for the shipped emery binary: cursor-agent or Claude Code, with bounded retry on transport failures"
+publish = false
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+# Workspace code imports the short crate name.
+[lib]
+name = "model"
+
+[dependencies]
+anyhow.workspace = true
+omnia.workspace = true
+omnia-cursor.workspace = true
+omnia-wasi-model.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["io-util", "macros", "process", "time"] }
+tracing.workspace = true
+
+# Integration tests are separate crates and do not inherit the library's
+# dependencies, so the ones `tests/live.rs` drives are repeated here.
+[dev-dependencies]
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+
+[lints]
+workspace = true

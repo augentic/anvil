@@ -1,24 +1,28 @@
 //! [`DevModel`] — the case runner's live [`Model`] backend.
 //!
-//! A lazily connected cursor backend (`omnia_cursor::Client`, the
-//! host-side `WasiModelCtx` backend) behind the shared [`Native`]
-//! bridge, which performs the guest-request mapping, the host request
-//! gate, the workspace-lend → tool-host path resolution, and the answer
-//! projection. The connection happens on first use so deterministic
-//! commands never require cursor-agent on `PATH`; clones share the
-//! connection cell, so each constructed backend connects cursor-agent
-//! at most once (the case runner constructs one per run).
+//! A lazily connected spawned-agent backend (`model::ModelBackend`, the
+//! host-side `WasiModelCtx` backend the shipped binary also links)
+//! behind the shared [`Native`] bridge, which performs the
+//! guest-request mapping, the host request gate, the workspace-lend →
+//! tool-host path resolution, and the answer projection. The connection
+//! happens on first use so deterministic commands never require an
+//! agent CLI on `PATH`; clones share the connection cell, so each
+//! constructed backend connects at most once (the case runner
+//! constructs one per run).
 //!
-//! Cursor `ConnectOptions::from_env` (via `Client::connect`) reads:
-//! - `CURSOR_MODEL=<model-id>` — default when a request leaves `model`
-//!   unset; blank/unset lets `cursor-agent` choose. A guest-supplied id
-//!   always wins.
-//! - `CURSOR_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound (backend
-//!   default 600s); the `cargo make eval` tasks raise it for live cases.
+//! `ModelBackend::connect` reads `EMERY_MODEL_BACKEND` to pick the
+//! agent, then defers to that backend's own options:
+//! - `CURSOR_MODEL` / `CLAUDE_MODEL` — default when a request leaves
+//!   `model` unset; blank/unset lets the CLI choose. A guest-supplied
+//!   id always wins.
+//! - `CURSOR_TIMEOUT_SECS` / `CLAUDE_TIMEOUT_SECS` — per-spawn
+//!   wall-clock bound (backend default 600s); the `cargo make eval`
+//!   tasks raise it for live cases.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use model::{ModelBackend, Selection};
 use omnia::Backend as _;
 use omnia_guest::Model;
 use omnia_guest::model::{Error, Reply, Request};
@@ -33,12 +37,13 @@ pub struct DevModel {
     /// The project root workspace lends resolve to.
     root: PathBuf,
     /// The shared connection, established by the first judgment leg.
-    cell: Arc<tokio::sync::OnceCell<Native<omnia_cursor::Client>>>,
+    cell: Arc<tokio::sync::OnceCell<Native<ModelBackend>>>,
 }
 
 impl DevModel {
-    /// A lazily connected cursor backend rooted at `project_dir`.
-    /// Model id and timeout come from cursor's `ConnectOptions::from_env`.
+    /// A lazily connected spawned-agent backend rooted at `project_dir`.
+    /// Backend selection, model id, and timeout all come from the
+    /// environment via `ModelBackend::connect`.
     #[must_use]
     pub fn new(project_dir: &Path) -> Self {
         Self {
@@ -51,15 +56,18 @@ impl DevModel {
         let native = self
             .cell
             .get_or_try_init(|| async {
-                let client = omnia_cursor::Client::connect().await?;
+                let client = ModelBackend::connect().await?;
                 Ok::<_, anyhow::Error>(Native::new(client, self.root.clone()))
             })
             .await
             .map_err(|err| {
+                // Naming the selection re-reads the environment rather than
+                // asking the backend, which is exactly what failed to connect.
+                let selection = Selection::from_env().unwrap_or_default();
                 Error::Backend(format!(
-                    "cursor-agent backend unavailable: {err:#}; install cursor-agent, \
-                     then `cursor-agent login` or export CURSOR_API_KEY (command-mode \
-                     credentials, not the IDE login `cursor-agent status` reports)"
+                    "{} backend unavailable: {err:#}; {}",
+                    selection.name(),
+                    selection.install_hint()
                 ))
             })?;
         native.create(request).await

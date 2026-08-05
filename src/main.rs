@@ -20,10 +20,16 @@
 //! into the host log preset before the guest sees argv. There is no
 //! `omnia.toml` and no `run --config` surface: the deployment exists
 //! only in memory, per invocation.
+//!
+//! The `WasiModel` slot takes `model::ModelBackend`, which connects
+//! one spawned agent CLI — `cursor-agent` by default, Claude Code
+//! under `EMERY_MODEL_BACKEND=claude` — and retries transport
+//! failures with bounded backoff. Only the selected backend is
+//! connected, so each mode requires only its own binary on `PATH`.
 
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
-        use omnia_cursor::Client as Cursor;
+        use model::ModelBackend;
         use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_model::WasiModel;
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
@@ -66,7 +72,7 @@ cfg_if::cfg_if! {
             hosts: {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
-                WasiModel: Cursor,
+                WasiModel: ModelBackend,
                 // The RFC-87 private-workspace capability: the engine
                 // guest's `workspaces` import over the launcher's
                 // snapshot-store kernel.

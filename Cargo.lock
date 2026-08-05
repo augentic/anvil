@@ -1073,11 +1073,11 @@ dependencies = [
  "emery-guest",
  "emery-launcher",
  "emery-mock",
+ "emery-model",
  "emery-native",
  "emery-probe",
  "emery-wasi-workspaces",
  "omnia",
- "omnia-cursor",
  "omnia-wasi-http",
  "omnia-wasi-model",
  "omnia-wasi-otel",
@@ -1217,6 +1217,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "emery-model"
+version = "0.38.0"
+dependencies = [
+ "anyhow",
+ "omnia",
+ "omnia-cursor",
+ "omnia-wasi-model",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "emery-native"
 version = "0.38.0"
 dependencies = [
@@ -1243,11 +1257,11 @@ dependencies = [
  "clap",
  "emery-artifacts",
  "emery-mock",
+ "emery-model",
  "emery-native",
  "emery-project",
  "jiff",
  "omnia",
- "omnia-cursor",
  "omnia-guest",
  "omnia-testkit",
  "omnia-wasi-model",
