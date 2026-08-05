@@ -97,6 +97,8 @@ The plan name is the change identity. Its publication members are the distinct a
 
 There is no second lifecycle object or authored publication artifact. A single-repository plan is simply a one-member publication set.
 
+Publication is incremental by member, not gated on draining the whole plan. Once the reviewed terminal projection is fixed and every entry for one target is merged, that target may seal, publish, and land while entries for other targets continue, subject to D4's dependency order. Archive remains a whole-set gate. Streaming authoring does not weaken the seal boundary: survey, refine, and build may overlap, but no result advances an accepted CID, seals, or publishes until the resulting plan projection is reviewed and commit-authorized. Completing one leaf never creates a commit; each target receives exactly one seal after all of its entries merge.
+
 ### D2 — Plan-backed publication records are derived
 
 Each fact has one authoritative home:
@@ -198,7 +200,7 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 
 ## Acceptance criteria
 
-1. Draining a target seals its final accepted CID into exactly one local commit whose parent is the recorded initial revision. It updates local `change/<plan>` and records an idempotent fact without touching the operator checkout or forge.
+1. Draining a target seals its final accepted CID into exactly one local commit whose parent is the recorded initial revision. It may do so before unrelated targets drain, but never before the reviewed terminal projection fixes that target's complete entry set; individual leaf completion creates no commit. The seal updates local `change/<plan>` and records an idempotent fact without touching the operator checkout or forge.
 2. `emery plan archive` derives every member and repository location from RFC-88 plan bindings, every sealed commit from its fact, and branch and pull-request state through the forge provider before changing archive state.
 3. The projection is byte-stable for unchanged facts, plan, and forge state. A single-repository plan produces the same schema with one member and one sealed commit.
 4. Publication order derives only from cross-target leaf `depends-on` edges, including RFC-88's deterministic projection of domain dependencies. Unrelated members carry no invented constraint, and archive does not reinterpret internal domains. A leaf-acyclic fixture whose target contraction contains a two-target cycle fails `publication-target-cycle` at plan validation and archive.
