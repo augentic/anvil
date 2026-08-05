@@ -24,9 +24,9 @@ Today one change runs in one repository (or a hand-tended workspace of them), se
 
 Five moves, layered:
 
-1. **State becomes facts.** RFC-86 makes the change a self-contained, git-backed fact tree; all workflow status is a projection over it, and no later move needs a hosted authority.
+1. **State becomes facts.** RFC-86 makes the change a self-contained, version-control-neutral fact tree; all workflow status is a projection over it, and no later move needs a hosted authority.
 2. **Trees become values.** RFC-87 materializes an immutable snapshot into a private workspace and captures a result snapshot; the code patch is the relation between them. RFC-91 later composes ordered same-base results; RFC-92 moves snapshot objects between nodes. No shared volume crosses an operation.
-3. **Location becomes ephemeral.** Plan authoring in a bare directory discovers and records member repositories from the forge, execution creates missing members and prepares disposable private workspaces, and archive leaves nothing behind except merged baselines and forge history.
+3. **Location becomes ephemeral.** Plan authoring in an empty ordinary directory discovers and records member repositories from the forge, execution creates missing members and prepares disposable private workspaces, and archive leaves nothing behind except merged baselines and forge history.
 4. **Verification becomes host-owned.** Closed, sandboxed verify profiles replace cargo-commands-in-prompts, producing normalized findings any orchestrator can route.
 5. **Judgment becomes a swarm.** Within a slice: focused workers with exclusive write manifests, converging through the verify gate. Across slices: independent plan entries build in parallel in separate private workspaces, with a trial-integration gate measuring joint health continuously. Across nodes: three separated planes (coordination / convergence / publication) move facts, values, and PRs respectively.
 
@@ -69,9 +69,9 @@ The tables list each RFC's hard dependencies and what it delivers. Step numbers 
 
 | Step | RFC                                  | Title               | Delivers                                                                                                                                                                                                                                                    | Depends on             |
 | ---- | ------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts        | The substrate: the change as a git-backed fact tree, projected status, per-actor event logs, pinned judgment inputs, merge-finalized requirement identity, approval as artifact, desktop as the degenerate deployment                                       | —                      |
+| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts        | The substrate: the change as a version-control-neutral fact tree, projected status, per-actor event logs, pinned judgment inputs, merge-finalized requirement identity, approval as artifact, desktop as the degenerate deployment                           | —                      |
 | 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces  | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                       | completed 86           |
-| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, the change repository as the disposable home, GitHub discovery, recorded members, target-topology proposals, operation-local workspaces, and greenfield creation | completed 86, 87       |
+| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, recorded members, target-topology proposals, operation-local workspaces, and greenfield creation | completed 86, 87       |
 | 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                           | 88 (member derivation) |
 
 ### Scale track — concurrency (fans out after 87; joins product at 92)
@@ -84,7 +84,7 @@ The tables list each RFC's hard dependencies and what it delivers. Step numbers 
 
 Sequencing notes:
 
-- **Complete RFC-86 first.** It deletes the mechanics every later step would otherwise have to synchronize (stored status, the single journal file, synthesis-time identity, unrecorded approval) and delivers operator value immediately: reviewable, committable, shareable pre-build planning artifacts and the shift-left refine flow.
+- **Complete RFC-86 first.** It deletes the mechanics every later step would otherwise have to synchronize (stored status, the single journal file, synthesis-time identity, unrecorded approval) and delivers operator value immediately: reviewable, portable pre-build planning artifacts and the shift-left refine flow.
 - **Then complete RFC-87** — the shared stem both tracks consume (private workspaces and code patches).
 - **After 87, the series is a Y, not two independent pipelines:** product path `88 → 89` and scale path `90 → 91` fan out in parallel; **RFC-92 is the join** (needs completed 88 and 91). RFC-89 (publication) and RFC-92 (multi-node execution) are orthogonal — 92 does not wait on 89. Each step still consumes only settled earlier vocabulary; RFC-92 adds only transport, fencing, hosted trees, and remote pools — the state model does not change when the second node appears.
 
@@ -139,7 +139,7 @@ emery plan archive    →  verify the publication set (RFC-89); archive
 rm -rf <dir>
 ```
 
-Once the scale track lands, execute gains concurrent workers, concurrent plan entries, and multi-node execution — same loop, higher throughput. Shift-left refinement distributes the same way: separate operators or nodes refine claimed slices against the same pinned bases and push facts to the shared change repository.
+Once the scale track lands, execute gains concurrent workers, concurrent plan entries, and multi-node execution — same loop, higher throughput. Shift-left refinement distributes the same way: separate operators or nodes refine claimed slices against the same pinned bases and exchange facts through RFC-92's coordination plane.
 
 ## Outside the series
 

@@ -10,7 +10,11 @@
 
 ## Intent
 
-Start in a bare, git-backed directory with forge authentication, an organisation, intent, and optional source material. `emery plan author` discovers and pins the participating projects and sources before it reconciles slices. `emery plan execute` records authorization, provisions approved greenfield projects, and executes every slice against disposable private workspaces. The result of this RFC is one final accepted snapshot for each touched project, carrying that project's code and its merged baseline together.
+Start in an empty directory with forge authentication, an organisation, intent, and optional source material. 
+
+`emery plan author` discovers participating projects and sources before g slices. 
+
+`emery plan execute` records authorization, provisions approved greenfield projects, and executes every slice against disposable private workspaces. The result of this RFC is one final accepted snapshot for each touched project, carrying that project's code and its merged baseline together.
 
 The change replaces the permanent platform repository as the coordination home. Product code never lives in that home, and the operator never tends `workspace/<project>/` slots or a committed registry. Migrate and ongoing change use the same pipeline: migrate criteria locate legacy inputs and propose target topology; change criteria locate initialized product members. Source intake remains independent of project membership in both modes.
 
@@ -39,11 +43,13 @@ flowchart LR
     H --> S["RFC-89 seal + publication"]
 ```
 
+
+
 ## Decisions
 
 ### D1 — The change home is the detached fact tree, separate from durable project state
 
-Detached artifacts live at the repository root, with no synthetic project configuration:
+Detached artifacts live at the change root, with no synthetic project configuration:
 
 ```text
 <change>/
@@ -63,7 +69,7 @@ Detached artifacts live at the repository root, with no synthetic project config
 
 In-place mode writes the same artifact set to `.emery/change/`, which is the sole in-place change home. Durable project state — `project.yaml`, the `specs/` baseline, and `decisions/` — stays at `.emery/` and belongs to the repository rather than to any change. The two have different lifetimes: a change home is archived and deleted, while durable project state merges forward and ships with the repository. Emery carries the pair as two roots, a project root and a change root, rather than one layout with two mappings; detached mode is the case where they are unrelated directories, and in-place mode is the case where the change root is nested beneath the project root.
 
-That separation yields one tree boundary for both modes: a project snapshot excludes `.git` and the change home when it is nested, and nothing else. Detached root discovery never depends on `.emery/project.yaml`. RFC-92's untracked `.emery/hosted.yaml` may coexist as node-local transport configuration, but it is not a change artifact or project-root marker. Emery writes the files; ordinary Git commit, push, pull, and review remain operator-owned.
+That separation yields one tree boundary for both modes: a project snapshot excludes `.git` and the change home when it is nested, and nothing else. Detached root discovery never depends on `.emery/project.yaml` or Git metadata. RFC-92's untracked `.emery/hosted.yaml` may coexist as node-local transport configuration, but it is not a change artifact or project-root marker. Emery writes the files; versioning, copying, backup, and review of the change home are optional operator-owned concerns.
 
 ### D2 — Sources are generic immutable location bindings pinned as snapshots
 
@@ -135,7 +141,7 @@ Forge access is a host provider capability, not an adapter axis. The shipped Git
 
 Remote source fetches require HTTPS, reject credentials in URLs and local/private network targets, and cap redirects and bodies. Tree reads execute no hooks, submodules, LFS filters, or symlink traversal outside the root. Provider-specific document URLs such as GitHub `blob` pages normalize to raw content.
 
-No change-coordination state is required after RFC-89 has sealed, verified, and archived the change. Project configuration, baselines, created repositories, forge history, and host caches are durable state outside that claim. Deleting an unpushed change home loses its facts; retaining the repository after archive is optional policy that preserves more audit history. Before RFC-92, another machine can reconstruct recorded Git inputs and committed materials, but unsealed result snapshots remain node-local values; cloning the change repository alone does not move them.
+No change-coordination state is required after RFC-89 has sealed, verified, and archived the change. Project configuration, baselines, created repositories, forge history, and host caches are durable state outside that claim. Deleting the change home before copying or otherwise replicating it loses its facts; retaining the directory after archive is optional policy that preserves more audit history. Before RFC-92, another machine can reconstruct recorded Git inputs and copied materials, but unsealed result snapshots remain node-local values; copying or versioning the change home alone does not move them.
 
 ## Fixed implementation cut
 
@@ -153,7 +159,7 @@ No change-coordination state is required after RFC-89 has sealed, verified, and 
 
 ## Acceptance criteria
 
-1. A bare git directory can author a detached change without `.emery/project.yaml`; every artifact lands in the D1 layout, and in-place authoring writes the same artifact set to `.emery/change/` while `project.yaml`, `specs/`, and `decisions/` stay outside the change home and inside the project snapshot.
+1. An empty directory that is not a Git working tree can author a detached change without `.emery/project.yaml`; every artifact lands in the D1 layout, and in-place authoring writes the same artifact set to `.emery/change/` while `project.yaml`, `specs/`, and `decisions/` stay outside the change home and inside the project snapshot.
 2. Git, change-relative, external local, HTTPS, file, and tree sources resolve to RFC-87 snapshots in the ordinary store, and an inline value stays in `plan.yaml` under the plan digest. Operations receive only a read-only prepared root or the inline payload and cannot recover or reread a mutable origin. A repository bound as both a project and a source yields one snapshot id over one store entry.
 3. Source inference selects exactly one profile or records a source-local no-match/ambiguity without changing project membership. Explicit bindings pass the same intake and access gates.
 4. Generated source keys are argument-order deterministic, stable when a later source introduces a basename collision, collision-safe without counters, and duplicate-rejecting.
@@ -178,3 +184,4 @@ No change-coordination state is required after RFC-89 has sealed, verified, and 
 - **Engine-owned adapter inventories, model-ranked selection, or resolving bare names on every machine** — violate adapter neutrality or make recorded topology non-reproducible.
 - **Atomic/idempotent cross-system repository creation** — GitHub offers no such guarantee; intent, reconciliation, and receipt are the honest recovery contract.
 - **Forge as a third adapter axis or Emery-owned push/PR/merge** — forge access is host infrastructure, while publication remains operator-owned and RFC-89-defined.
+

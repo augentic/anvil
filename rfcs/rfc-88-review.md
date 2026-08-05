@@ -120,7 +120,7 @@ State explicitly that discovery pins the initial base and execution authorizes i
 
 ### Problem
 
-Current orchestration has one project root. In detached mode the invoked root is the change repository, while product code belongs to a selected project snapshot. Without an explicit split, build or merge can freeze or write the coordination tree.
+Current orchestration has one project root. In detached mode the invoked root is the change home, while product code belongs to a selected project snapshot. Without an explicit split, build or merge can freeze or write the coordination tree.
 
 ### Recommendation
 
@@ -265,7 +265,7 @@ Replace “idempotent create operation” with “resumable provisioning saga wi
 
 ### Problem
 
-RFC-86 places detached facts at the change repository root, while RFC-88 places `candidate.yaml` under `.emery/`. The current project layout also discovers a root through `.emery/project.yaml`, which a detached coordination repository should not fake.
+RFC-86 places detached facts at the change root, while RFC-88 places `candidate.yaml` under `.emery/`. The current project layout also discovers a root through `.emery/project.yaml`, which a detached coordination directory should not fake.
 
 ### Recommendation
 
@@ -285,7 +285,7 @@ Use RFC-86's detached root:
 
 In-place mode continues to map the same logical change artifacts through its project layout. Add one logical change-layout abstraction rather than scattering detached-mode path conditions or creating a dummy project configuration.
 
-Emery writes files; ordinary Git commit/push/pull remains operator-owned unless a later RFC explicitly introduces fact transport.
+Emery writes files; versioning, copying, backup, and review of the detached change home remain optional operator-owned concerns unless a later RFC explicitly introduces fact transport.
 
 ### RFC effect
 
@@ -359,17 +359,17 @@ Retain `discovery-too-broad`, but define where the cap applies and how an operat
 
 ### Problem
 
-“No Emery state outlives the change” is broader than the actual design: project configuration and baselines are durable Emery state, forge history survives, and host caches may remain. “Clone the change repository to share it” also overstates pre-RFC-92 portability because Git moves facts and artifacts, not unsealed result snapshot objects.
+“No Emery state outlives the change” is broader than the actual design: project configuration and baselines are durable Emery state, forge history survives, and host caches may remain. “Copy the change home to share it” also overstates pre-RFC-92 portability because copying the tree moves facts and artifacts, not unsealed result snapshot objects.
 
 ### Recommendation
 
 Use these narrower invariants:
 
 - No **change-coordination state** is required after verified publication and archive.
-- Deleting an unpushed change repository loses its facts.
+- Deleting a change home before copying or otherwise replicating it loses its facts.
 - Before RFC-92, another machine can reproduce recorded input snapshots from repository revisions, but unsealed result snapshots remain node-local values.
 - RFC-92 transports snapshot values without changing their identities or workflow meaning.
-- Retaining or archiving the change repository is optional policy, with the corresponding audit trade-off stated explicitly.
+- Retaining or archiving the change home is optional policy, with the corresponding audit trade-off stated explicitly.
 
 ### RFC effect
 
@@ -379,7 +379,7 @@ Replace “nothing of record is lost” with a precise list of durable outcomes:
 
 The rewritten RFC can use four nouns:
 
-- **Change home** — the git-backed RFC-86 fact tree containing coordination artifacts.
+- **Change home** — the version-control-neutral RFC-86 fact tree containing coordination artifacts.
 - **Project** — a repository participating in the change, carrying its exact repository reference and RFC-87 snapshot; target-capable when it carries `target`.
 - **Source** — a stable adapter-bound input whose `location` or `value` resolves to one immutable read-only value identified by `digest`.
 - **Accepted project snapshot** — the fact-projected current result of successful slice merges for one project.
