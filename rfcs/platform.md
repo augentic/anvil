@@ -6,7 +6,7 @@
 
 ## The vision
 
-Point Emery at a legacy system — a mobile app, a realtime platform, any estate of repositories that together comprise one product — and have it migrate that system: discover the repositories, profile them, author a plan, and execute it with a **swarm of concurrent agents** working across **multiple repositories** on **multiple nodes**, converging on verified, published changes.
+Point Emery at a legacy system — a mobile app, a realtime platform, any estate of repositories that together comprise one product — and have it migrate that system: discover the repositories, profile them, survey every source, recursively decompose the result into bounded conflict domains, and execute the buildable leaves with a **swarm of concurrent agents** working across **multiple repositories** on **multiple nodes**, converging on verified, published changes.
 
 Then keep changing that platform the same way, from a disposable change directory — prior context intentionally thin (forge authentication and organisation plus source material), creating member repositories when the change needs ones that do not exist yet.
 
@@ -20,73 +20,125 @@ Everything Emery already is stays load-bearing: the slice loop (`refine → buil
 
 Today one change runs in one repository (or a hand-tended workspace of them), serially: one judgment leg at a time, one working tree the operator prepared, verify as prompt text inside the agent loop, publication tracked in the operator's head. The measured walls (RFC-78's `wasm-omnia-r9k` runs): a ~30-minute serialized build with an unobservable nested review team, an 11–54 minute synthesis leg, and no way to run two of anything at once.
 
-## The target architecture
+## Target architecture
 
-Five moves, layered:
+The architecture makes five related shifts:
 
-1. **State becomes facts.** RFC-86 makes the change a self-contained, version-control-neutral fact tree; all workflow status is a projection over it, and no later move needs a hosted authority.
-2. **Trees become values.** RFC-87 materializes an immutable snapshot into a private workspace and captures a result snapshot; the code patch is the relation between them. RFC-91 later composes ordered same-base results; RFC-92 moves snapshot objects between nodes. No shared volume crosses an operation.
-3. **Location becomes ephemeral.** Plan authoring in an empty ordinary directory discovers and records member repositories from the forge, execution prepares disposable private workspaces, and archive leaves nothing behind except merged baselines and forge history.
-4. **Verification becomes host-owned.** Closed, sandboxed verify profiles replace cargo-commands-in-prompts, producing normalized findings any orchestrator can route.
-5. **Judgment becomes a swarm.** Within a slice: focused workers with exclusive write manifests, converging through the verify gate. Across slices: independent plan entries build in parallel in separate private workspaces, with a trial-integration gate measuring joint health continuously. Across nodes: three separated planes (coordination / convergence / publication) move facts, values, and PRs respectively.
+1. **State becomes facts.** A change is a self-contained, version-control-neutral fact tree. Workflow status is projected from those facts, so a hosted service never becomes lifecycle authority.
+2. **Trees become values.** Every operation starts from an immutable snapshot in a private workspace and captures another snapshot. A code patch is the relation between the two; no shared working directory crosses an operation.
+3. **Location becomes disposable.** Plan authoring can begin in an empty directory, discover the participating repositories, and record their exact revisions. Execution creates private workspaces on demand. Archive leaves only merged baselines and forge history.
+4. **Verification becomes host-owned.** Closed, sandboxed profiles replace toolchain commands embedded in prompts. They return normalized findings that any orchestrator can route.
+5. **Judgment becomes recursive.** Plan authoring surveys the pinned source set and partitions it until every terminal scope is a buildable slice. Target adapters may repeat the same pattern inside a slice with focused, path-owning workers.
 
 ### Scaling invariant
 
-Scale is hierarchical, not flat. Emery partitions work into conflict domains: targets at plan level, dependency-ordered slices within each target, and path-owned worker tasks within each slice. Each domain has a bounded worker pool and a local convergence gate. Workers consume immutable snapshots in private work directories, return digest-identified artifacts or code patches, and append coordination facts; no writable tree is shared.
+Emery scales by repeating one bounded pattern:
 
-Results converge upward: worker outputs pass through slice verification, slice patches compose into per-target trial integrations, and accepted slice results reach the existing serial merge and publication gates. A logically central scheduler may place work, but it is neither workflow-state authority nor an unbounded convergence bottleneck.
+1. start from immutable inputs;
+2. partition a scope into children;
+3. run independent children concurrently;
+4. converge their results before leaving the parent scope.
 
-Each convergence wave consumes results derived from one accepted snapshot and emits the next. Disjoint results compose; shared paths become dependencies or a fan-in integration task rather than an implicit text merge. When a project drains, one serial project seal turns its final snapshot into a Git commit for operator-owned publication.
+A **conflict domain** is one such parent scope: child results may interact inside it, so the domain owns their dependency graph, ownership envelope, concurrency bound, and local convergence gate. A domain either partitions again or terminates as one buildable slice. A target adapter may repeat the pattern inside that slice for path-owned worker tasks.
+
+This gives Emery two recursive levels without introducing nested workflows:
+
+- **Planning recursion** turns the surveyed estate into conflict domains and buildable slice leaves.
+- **Build recursion** turns one slice into focused workers and one verified result.
+
+Internal domains have no slice lifecycle, claim, or nested plan. They only describe containment and convergence.
+
+#### Planning: hierarchy first, executable leaves second
+
+Plan authoring persists the full hierarchy in `decomposition.yaml`. The executable `plan.yaml` is its deterministic leaf projection:
+
+- `slices[]` contains exactly the terminal domains;
+- domain dependencies compile into leaf `depends-on` edges;
+- `decomposition-digest` binds the flat executable graph to the reviewed hierarchy.
+
+The engine owns the loop: **partition → validate → recurse → project**. Judgment may propose a typed `split` or `leaf`, but the engine accepts a split only when it preserves source-lead coverage, reduces a deterministic scope measure, stays within depth and node budgets, and resolves sibling interaction through disjoint ownership, an explicit dependency, or a fan-in leaf. Uncertain boundaries remain review findings.
+
+#### Execution: bounded waves, bottom-up convergence
+
+Ready leaves run in private workspaces. Results move upward through their recorded domain ancestry:
+
+- worker results pass the slice's verification gate;
+- same-target child patches compose at their nearest domain;
+- multi-target domains aggregate target results and dependency health without mixing repository trees;
+- every completed gate writes an immutable domain-round record for retry or remote resume.
+
+One target wave consumes one accepted CID and commits the next. Independent, disjoint leaves may share a wave; dependent leaves run in later waves. Shared paths become an explicit dependency or fan-in leaf—never an implicit text merge. One atomic committed fact records the complete member set and final CID, so no partial wave becomes authoritative. The one-member case is the ordinary slice merge.
+
+A failure blocks only its domain and dependants. Runtime overlap produces an inert amendment proposal; only an operator-invoked compare-and-set may revise the decomposition and leaf projection. When a target drains, one project seal turns its final CID into a Git commit for operator-owned publication.
+
+#### Authority: grant, claim, and input fence
+
+Three records answer three different questions:
+
+- `plan.execute.started` records what the operator authorized;
+- a live claim records which actor owns a leaf;
+- build, domain, and merge facts record the exact inputs and results consumed.
+
+A wave manifest names its build authorization. Its committed fact separately names closed-plan commit authorization. The first cut uses one reviewed epoch for both. Keeping them separate permits a future streaming epoch to refine and build ready leaves while surveying continues, without allowing accepted-CID mutation before the resulting plan is reviewed. A claim or projected `in-progress` status never grants execution authority.
 
 ```mermaid
 flowchart TB
     C["Coordination plane<br/>facts · claims · dependencies · projections"]
-    C --> PA["Target A conflict domain"]
-    C --> PB["Target B conflict domain"]
+    C --> R["Persisted decomposition<br/>recursive conflict domains"]
+    R --> PA["Target A domain"]
+    R --> PB["Target B domain"]
 
-    PA --> WA["Bounded slice pools<br/>private work directories"]
-    PB --> WB["Bounded slice pools<br/>private work directories"]
+    PA --> DA["Subsystem domains<br/>buildable slice leaves"]
+    PB --> DB["Subsystem domains<br/>buildable slice leaves"]
+    DA --> WA["Bounded worker pools<br/>private work directories"]
+    DB --> WB["Bounded worker pools<br/>private work directories"]
 
     WA <-->|snapshot ids + code patches| V["Convergence plane<br/>content-addressed store"]
     WB <-->|snapshot ids + code patches| V
 
     WA --> VA["Slice verify gates"]
     WB --> VB["Slice verify gates"]
-    VA --> TA["Target A trial-integration gate"]
-    VB --> TB["Target B trial-integration gate"]
+    VA --> TA["Target A domain gates"]
+    VB --> TB["Target B domain gates"]
 
-    TA --> M["Serial merge gate"]
+    TA --> M["Atomic target-wave merge gates"]
     TB --> M
-    M --> S["Target seal<br/>final snapshot → Git commit"]
+    M --> S["Target seals<br/>final CID → Git commit"]
     S --> P["Publication plane<br/>branches + PRs · operator-owned"]
 ```
 
+
+
 ## The series
 
-The tables list each RFC's hard dependencies and what it delivers. Step numbers are a reading order (product path, then scale), not a single serial queue: after the shared 86 → 87 stem the tracks fan out, and RFC-92 joins them — see [Working in parallel](#working-in-parallel). Every RFC still depends only on completed earlier steps, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC.
+The tables list each RFC's hard dependencies and what it delivers. Step numbers are a reading order (product path, then scale), not a single serial queue: after the shared 86 → 87 stem, RFC-88's recursive authoring contract and RFC-90's verification work can proceed in parallel; RFC-91 joins them for a complete local recursive swarm, and RFC-92 distributes that settled shape — see [Working in parallel](#working-in-parallel). Every RFC still depends only on completed earlier steps, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC.
 
 ### Product critical path — migrate and change a platform
 
-| Step | RFC                                  | Title               | Delivers                                                                                                                                                                                                                                                    | Depends on             |
-| ---- | ------------------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts        | The substrate: the change as a version-control-neutral fact tree, projected status, per-actor event logs, pinned judgment inputs, merge-finalized requirement identity, digest-bound `plan.execute.started`, desktop as the degenerate deployment                       | —                      |
-| 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces  | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                       | completed 86           |
-| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, recorded members, target-topology proposals, and operation-local workspaces | completed 86, 87       |
-| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                           | 88 (member derivation) |
 
-### Scale track — concurrency (fans out after 87; joins product at 92)
+| Step | RFC                                  | Title              | Delivers                                                                                                                                                                                                                                                                                       | Depends on             |
+| ---- | ------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts       | The substrate: the change as a version-control-neutral fact tree, projected status, per-actor event logs, explicit execution-authorization epochs, pinned per-leaf inputs, immutable one-member target-wave commit, merge-finalized requirement identity, desktop as the degenerate deployment | —                      |
+| 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                                                             | completed 86           |
+| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes   | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, recursive conflict-domain decomposition, a buildable leaf projection, and operation-local workspaces                    | completed 86, 87       |
+| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets   | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                                                              | 88 (member derivation) |
 
-| Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                        | Depends on                   |
-| ---- | ---------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| 5    | [RFC-90](rfc-90-verify-profiles.md)      | Verify Profiles      | Complete Omnia/Rust path for closed, sandboxed, host-owned verification with normalized findings and typed unavailability elsewhere                                                                                             | completed 87                 |
-| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node Omnia swarm: focused workers, write ownership, local pool, per-worker trees, deterministic code-patch composition, convergence, refine/plan fan-outs, and synthesis payload restructuring                  | completed 86, 87, 90         |
-| 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Complete multi-node Omnia path: fact and value transport between nodes, fenced claims, hosted trees, remote pools, concurrent plan entries, and per-target trial integration — no authority cutover, no second lifecycle model | completed 86, 87, 88, 90, 91 |
+
+### Scale track — concurrency (verification fans out after 87; joins recursive authoring at 91)
+
+
+| Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                                                                                                               | Depends on                   |
+| ---- | ---------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| 5    | [RFC-90](rfc-90-verify-profiles.md)      | Verify Profiles      | Complete Omnia/Rust path for closed, sandboxed, host-owned verification with normalized findings and typed unavailability elsewhere                                                                                                                                                                                    | completed 87                 |
+| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node recursive swarm: focused workers, write ownership, local pool, concurrent leaf scheduling, deterministic code-patch composition, durable domain rounds, bottom-up convergence, multi-member target waves, recursive plan decomposition, refine/plan fan-outs, and synthesis payload restructuring | completed 86, 87, 88, 90     |
+| 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Distribution of the completed RFC-91 model: fact, artifact, and value transport between nodes; fenced claims; hosted trees; and remote pools — no new scheduler, convergence, acceptance, authority, or lifecycle semantics                                                                                            | completed 86, 87, 88, 90, 91 |
+
 
 Sequencing notes:
 
 - **Complete RFC-86 first.** It deletes the mechanics every later step would otherwise have to synchronize (stored status, the single journal file, synthesis-time identity, unrecorded execute starts) and delivers operator value immediately: reviewable, portable pre-build planning artifacts and the shift-left refine flow.
 - **Then complete RFC-87** — the shared stem both tracks consume (private workspaces and code patches).
-- **After 87, the series is a Y, not two independent pipelines:** product path `88 → 89` and scale path `90 → 91` fan out in parallel; **RFC-92 is the join** (needs completed 88 and 91). RFC-89 (publication) and RFC-92 (multi-node execution) are orthogonal — 92 does not wait on 89. Each step still consumes only settled earlier vocabulary; RFC-92 adds only transport, fencing, hosted trees, and remote pools — the state model does not change when the second node appears.
+- **After 87, the series is a braid, not two independent pipelines:** RFC-88 settles recursive authoring while RFC-90 settles host-owned verification; RFC-89 may follow 88 independently, while **RFC-91 joins 88 and 90** to make the recursive shape concurrent on one node. RFC-92 then distributes that completed local model. RFC-89 (publication) and RFC-92 (multi-node execution) remain orthogonal — 92 does not wait on 89.
 
 ```text
 RFC-86  (shared; complete first)
@@ -96,22 +148,27 @@ RFC-87  (shared stem — both tracks need it)
    │
    ├─────────────────────┐
    ▼                     ▼
-RFC-88 → RFC-89     RFC-90 → RFC-91
-   │                     │
-   └──────► RFC-92 ◄─────┘
+RFC-88 → RFC-89          RFC-90
+   │                       │
+   └────────► RFC-91 ◄─────┘
+                  │
+                  ▼
+                RFC-92
 ```
 
 ## Working in parallel
 
-Completion order for each edge stays as the tables and diagram above: do not staff `87 → 88 → 89` and `90 → 91 → 92` as fully separate from day one. Both need 86; the scale track cannot *complete* RFC-90 until 87 lands. After the shared stem, distribute as two tracks that meet at 92.
+Completion order for each edge stays as the tables and diagram above. Both product authoring and verification need the shared stem; after it, RFC-88 and RFC-90 can proceed in parallel. RFC-91 starts only when RFC-88's decomposition artifacts and RFC-90's gate are stable, because its completion fixture exercises both.
 
 **Staffing after the stem.** Once 87 is complete (or close enough that its workspace contract is stable):
 
-| Track | Owner | Sequence | Notes |
-| ----- | ----- | -------- | ----- |
-| Location / product | Team A | 88 → 89 | Detached change home, discovery, member bindings, then project seal / publication sets |
-| Concurrency / scale | Team B | 90 → 91 | Host-owned verify, then single-node swarm; **91 does not depend on 88 or 89** |
-| Multi-node join | Team C (later) | 92 | Start only when **both** 88 and 91 are complete |
+
+| Track                      | Owner          | Sequence | Notes                                                                                                     |
+| -------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------------------- |
+| Location / product         | Team A         | 88 → 89  | Detached change home, recursive decomposition, leaf/member bindings, then project seal / publication sets |
+| Verification               | Team B         | 90       | Host-owned profiles and normalized findings, parallel with RFC-88                                         |
+| Concurrency / distribution | Team C (later) | 91 → 92  | Start 91 when **both** 88 and 90 are complete; distribute only the completed local recursive model        |
+
 
 **RFC-86 ∥ RFC-87 — narrowing the stem.** Before that fan-out, a small team can develop 86 and 87 concurrently: the code coupling is far narrower than "completed 86". RFC-86 lives in the state layer: `crates/project/src/journal.rs` (single file → per-actor logs), the status ladders in `crates/project/src/plan/model/state.rs` and `crates/project/src/slice/lifecycle.rs` (deleted in favour of the projection kernel), `IdAllocator` in `crates/slice/src/synthesis/project.rs`, and the execute-start / claim surfaces in `crates/change`. RFC-87 lives in the tree/value layer: it replaces the three `WorkingTree::live()` dispatch sites with `prepare` / `capture` / `discard`, private workspaces, and a snapshot store. The tracks meet at exactly two seams:
 
@@ -130,10 +187,13 @@ Both jobs run the same three-command loop once the critical path lands; they dif
 
 ```text
 emery plan author     →  initialize the detached home when needed; discover and pin
-                         targets/sources; author slices over the recorded topology
+                         targets/sources; recursively decompose surveyed leads;
+                         project buildable leaves into plan.yaml
 emery plan execute    →  append plan.execute.started;
-                         prepare private workspaces on demand (RFC-87); execute entries;
-                         seal each drained project's final snapshot (RFC-89)
+                         prepare private workspaces on demand (RFC-87); execute leaves;
+                         commit target waves (RFC-88);
+                         converge domains and extend waves across ready leaves (RFC-91);
+                         seal each drained target's final CID (RFC-89)
 operator publishes    →  push sealed branches; open and merge PRs
 emery plan archive    →  verify the publication set (RFC-89); archive
 rm -rf <dir>
