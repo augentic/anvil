@@ -26,7 +26,7 @@ Five moves, layered:
 
 1. **State becomes facts.** RFC-86 makes the change a self-contained, git-backed fact tree; all workflow status is a projection over it, and no later move needs a hosted authority.
 2. **Trees become values.** RFC-87 materializes an immutable snapshot into a private workspace and captures a result snapshot; the code patch is the relation between them. RFC-91 later composes ordered same-base results; RFC-92 moves snapshot objects between nodes. No shared volume crosses an operation.
-3. **Location becomes ephemeral.** A change opens in a bare directory, discovers and records its member repositories from the forge (creating new ones when none match), prepares disposable private workspaces, and leaves nothing behind after finalize except merged baselines and forge history.
+3. **Location becomes ephemeral.** Plan authoring in a bare directory discovers and records member repositories from the forge, execution creates missing members and prepares disposable private workspaces, and archive leaves nothing behind except merged baselines and forge history.
 4. **Verification becomes host-owned.** Closed, sandboxed verify profiles replace cargo-commands-in-prompts, producing normalized findings any orchestrator can route.
 5. **Judgment becomes a swarm.** Within a slice: focused workers with exclusive write manifests, converging through the verify gate. Across slices: independent plan entries build in parallel in separate private workspaces, with a trial-integration gate measuring joint health continuously. Across nodes: three separated planes (coordination / convergence / publication) move facts, values, and PRs respectively.
 
@@ -63,7 +63,7 @@ flowchart TB
 
 ## The series
 
-The tables give **implementation order** — the operator-story critical path first, then the scale track. RFCs *complete* in this order: every RFC depends only on completed earlier steps, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC. Development may overlap where the code coupling is narrow — see [Working in parallel](#working-in-parallel).
+The tables list each RFC's hard dependencies and what it delivers. Step numbers are a reading order (product path, then scale), not a single serial queue: after the shared 86 → 87 stem the tracks fan out, and RFC-92 joins them — see [Working in parallel](#working-in-parallel). Every RFC still depends only on completed earlier steps, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC.
 
 ### Product critical path — migrate and change a platform
 
@@ -72,9 +72,9 @@ The tables give **implementation order** — the operator-story critical path fi
 | 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts        | The substrate: the change as a git-backed fact tree, projected status, per-actor event logs, pinned judgment inputs, merge-finalized requirement identity, approval as artifact, desktop as the degenerate deployment                                       | —                      |
 | 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces  | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                       | completed 86           |
 | 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes    | Complete single-node migrate/change loop: generated source identities, deterministic selection, the change repository as the disposable home, GitHub discovery, recorded members, target-topology proposals, operation-local workspaces, and greenfield creation | completed 86, 87       |
-| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and finalize verification                                                          | 88 (member derivation) |
+| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets    | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                           | 88 (member derivation) |
 
-### Scale track — concurrency after the location story works
+### Scale track — concurrency (fans out after 87; joins product at 92)
 
 | Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                        | Depends on                   |
 | ---- | ---------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
@@ -85,42 +85,57 @@ The tables give **implementation order** — the operator-story critical path fi
 Sequencing notes:
 
 - **Complete RFC-86 first.** It deletes the mechanics every later step would otherwise have to synchronize (stored status, the single journal file, synthesis-time identity, unrecorded approval) and delivers operator value immediately: reviewable, committable, shareable pre-build planning artifacts and the shift-left refine flow.
-- **Then complete 87 → 88 → 89 in order, and scale inside-out through 90 → 91 → 92.** Each step consumes only settled earlier vocabulary; RFC-92 adds only transport, fencing, hosted trees, and remote pools — the state model does not change when the second node appears.
+- **Then complete RFC-87** — the shared stem both tracks consume (private workspaces and code patches).
+- **After 87, the series is a Y, not two independent pipelines:** product path `88 → 89` and scale path `90 → 91` fan out in parallel; **RFC-92 is the join** (needs completed 88 and 91). RFC-89 (publication) and RFC-92 (multi-node execution) are orthogonal — 92 does not wait on 89. Each step still consumes only settled earlier vocabulary; RFC-92 adds only transport, fencing, hosted trees, and remote pools — the state model does not change when the second node appears.
+
+```text
+RFC-86  (shared; complete first)
+   │
+   ▼
+RFC-87  (shared stem — both tracks need it)
+   │
+   ├─────────────────────┐
+   ▼                     ▼
+RFC-88 → RFC-89     RFC-90 → RFC-91
+   │                     │
+   └──────► RFC-92 ◄─────┘
+```
 
 ## Working in parallel
 
-Completion order stays serial (the tables above), but the code coupling between the first two steps is far narrower than "completed 86", so a small team can develop them concurrently.
+Completion order for each edge stays as the tables and diagram above: do not staff `87 → 88 → 89` and `90 → 91 → 92` as fully separate from day one. Both need 86; the scale track cannot *complete* RFC-90 until 87 lands. After the shared stem, distribute as two tracks that meet at 92.
 
-**RFC-86 ∥ RFC-87 — the headline split.** RFC-86 lives in the state layer: `crates/project/src/journal.rs` (single file → per-actor logs), the status ladders in `crates/project/src/plan/model/state.rs` and `crates/project/src/slice/lifecycle.rs` (deleted in favour of the projection kernel), `IdAllocator` in `crates/slice/src/synthesis/project.rs`, and the approval/claim surfaces in `crates/change`. RFC-87 lives in the tree/value layer: it replaces the three `WorkingTree::live()` dispatch sites with `prepare` / `capture` / `discard`, private workspaces, and a snapshot store. The tracks meet at exactly two seams:
+**Staffing after the stem.** Once 87 is complete (or close enough that its workspace contract is stable):
+
+| Track | Owner | Sequence | Notes |
+| ----- | ----- | -------- | ----- |
+| Location / product | Team A | 88 → 89 | Detached change home, discovery, member bindings, then project seal / publication sets |
+| Concurrency / scale | Team B | 90 → 91 | Host-owned verify, then single-node swarm; **91 does not depend on 88 or 89** |
+| Multi-node join | Team C (later) | 92 | Start only when **both** 88 and 91 are complete |
+
+**RFC-86 ∥ RFC-87 — narrowing the stem.** Before that fan-out, a small team can develop 86 and 87 concurrently: the code coupling is far narrower than "completed 86". RFC-86 lives in the state layer: `crates/project/src/journal.rs` (single file → per-actor logs), the status ladders in `crates/project/src/plan/model/state.rs` and `crates/project/src/slice/lifecycle.rs` (deleted in favour of the projection kernel), `IdAllocator` in `crates/slice/src/synthesis/project.rs`, and the approval/claim surfaces in `crates/change`. RFC-87 lives in the tree/value layer: it replaces the three `WorkingTree::live()` dispatch sites with `prepare` / `capture` / `discard`, private workspaces, and a snapshot store. The tracks meet at exactly two seams:
 
 1. **Snapshot and result identity** — RFC-86 records snapshot pins and result facts; RFC-87 consumes the pins and returns `{ base snapshot, result snapshot, touched paths }`.
-2. **Pin authorship timing** — source snapshots close at plan authoring or detached-change approval; refine adds the baseline digest; build freezes the target base before `prepare`.
+2. **Pin authorship timing** — source snapshots close at plan authoring or detached discovery; refine adds the baseline digest; build freezes the target base before `prepare`.
 
 **Within RFC-86**, Phase A (per-actor logs, projection kernel, claim/retraction facts) is journal-and-plan territory in `crates/project`; Phase B's identity work (slice-scoped requirement ids, `MODIFIED` base digests, merge-time finalization) is synthesis-and-merge-engine territory in `crates/slice`; the one shared contract is the merge fact that records the identity map. Phase C (approval, multi-actor) sits on top of A.
 
-**Slack absorbers** — real work with no ordering constraint: RFC-90's profile taxonomy, findings normalization, and Omnia `wasi-model` verify plumbing (buildable against a plain directory now); RFC-86's multi-actor fixtures in `crates/mock` (two actors, disjoint slices, merged change trees, claim-conflict and base-drift injections); RFC-89's record design (its implementation genuinely needs RFC-88's member bindings).
+**Slack absorbers** — real work with no ordering constraint on the critical edge: RFC-90's profile taxonomy, findings normalization, and Omnia `wasi-model` verify plumbing (buildable against a plain directory before 87's disposable workspaces land; the vertical cut still waits on 87); RFC-86's multi-actor fixtures in `crates/mock` (two actors, disjoint slices, merged change trees, claim-conflict and base-drift injections); RFC-89's record design (its implementation genuinely needs RFC-88's member bindings).
 
-**Collision points** — sequence explicitly, don't parallelize: the merge orchestration (`crates/slice/src/orchestrate/merge/` — RFC-86 adds identity finalization and the merge fact, RFC-87 rewires the tree the merge gates run against; decide who lands first, the second rebases), and RFC-88 itself — the convergence point needing the fact tree as the change home *and* materialized slots, effectively the integration test of the split.
+**Collision points** — sequence explicitly, don't parallelize: the merge orchestration (`crates/slice/src/orchestrate/merge/` — RFC-86 adds identity finalization and the merge fact, RFC-87 rewires the tree the merge gates run against; decide who lands first, the second rebases), and RFC-88 itself — the convergence point needing the fact tree as the change home *and* operation-local workspaces, effectively the integration test of the 86∥87 split.
 
 ## Two operator jobs, one loop
 
-Both jobs run the same loop once the critical path lands; they differ only at the discover step. **Migrate** criteria fingerprint shallow source trees through RFC-88's exact-one source selector and propose members and target topology, including repositories that do not exist yet. **Change** criteria survey the organisation for repositories whose `.emery/project.yaml` declares `product:` membership ids (the build set is `platforms:`, not the membership key).
+Both jobs run the same three-command loop once the critical path lands; they differ only in `plan author` intake. **Migrate** criteria fingerprint shallow source trees through RFC-88's exact-one source selector and propose members and target topology, including repositories that do not exist yet. **Change** criteria survey the organisation for repositories whose `.emery/project.yaml` declares `product:` membership ids (the build set is `platforms:`, not the membership key).
 
 ```text
-emery change open <dir>   # bare directory (RFC-88)
-emery source discover --mode migrate|change --criteria …
-         │  immutable candidate report (may propose create-repository)
-         ▼
-emery change approve  →  record projects, exact revisions, topology, sources;
-                         create initialized repositories where needed
-/emery:plan           →  author slices over recorded projects
-(/emery:refine …)     →  optional shift-left (RFC-86): refine slices against pinned
-                         bases; review the committed spec set; emery plan approve
-emery plan execute    →  approval-gated (auto-approves interactively); prepare
-                         private workspaces on demand (RFC-87); remaining phases per entry;
+emery plan author     →  initialize the detached home when needed; discover and pin
+                         projects/sources; author slices over the recorded topology
+emery plan execute    →  record approval; create initialized repositories where needed;
+                         prepare private workspaces on demand (RFC-87); execute entries;
                          seal each drained project's final snapshot (RFC-89)
 operator publishes    →  push sealed branches; open and merge PRs
-/emery:finalize       →  verify publication set (RFC-89); archive
+emery plan archive    →  verify the publication set (RFC-89); archive
 rm -rf <dir>
 ```
 
