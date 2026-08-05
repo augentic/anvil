@@ -1,300 +1,315 @@
 # RFC-88: Detached Changes
 
-> Status: Draft — step 3 of the platform-migration series ([platform.md](platform.md)); the complete single-node operator migrate/change story
+> Status: Draft — step 3 of the platform-migration series ([platform.md](platform.md))
 >
-> Owns: the complete single-node detached workflow — the change as the unit of location; the no-state-outlives-the-change invariant; the narrow forge provider used for discovery and repository creation; discovery in **migrate** and **change** modes; deterministic first-party source adapter selection; generated source identities; resolved projects recorded at approval; product-membership criteria; operation-local workspace preparation; and greenfield repository provisioning when no project matches.
+> Owns: the detached change home; discovery and immutable pinning of targets, sources, and adapters; recursive conflict-domain decomposition; the deterministic buildable-leaf projection into `plan.yaml`; and per-target execution over accepted CIDs.
 >
-> Depends on completed [RFC-86](rfc-86-change-facts.md) (the change home is an RFC-86 fact tree: artifacts, per-actor event logs, projected status, recorded approvals) and [RFC-87](rfc-87-working-trees.md) (immutable snapshots, disposable private workspaces, and separate writable-code/read-only-artifact access). Reuses [RFC-71](rfc-71-deployment.md)'s landed pull-on-miss adapter resolution.
+> Builds on [RFC-86](rfc-86-change-facts.md)'s facts, explicit execution-authorization epoch, and per-leaf input fences and [RFC-87](rfc-87-working-trees.md)'s content-addressed trees and private workspaces. [RFC-89](rfc-89-publication-sets.md) publishes the results; [RFC-92](rfc-92-node-sync.md) transports them between nodes.
 >
-> Consumed after completion by: [RFC-89](rfc-89-publication-sets.md) (publication identity over the recorded members) and [RFC-92](rfc-92-node-sync.md) (hosted execution of the same change-scoped workflow).
+> Amends RFC-86 D1 (the in-place change home is `.emery/change/`, not all of `.emery/`) and RFC-87: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 include the target repository's durable state in its tree, the tree identity is named a **CID** in plan and discovery artifacts (RFC-87's `SnapshotId` is that CID), and the interim `apply` is deleted.
 
 ## Intent
 
-Start from a bare directory with thin prior context — forge authentication, organisation, and source material — and run a whole change: discover the repositories that comprise the work, record them (creating repositories when none match), materialize them, execute the plan, publish, finalize — then delete the directory.
+Decouple change coordination from product checkouts and permanent workspace infrastructure.
 
-**Migrate** and **ongoing change** share this loop. Only discovery criteria differ:
+A change owns portable facts and artifacts, never product code or durable product state. Participating targets and independent source inputs are discovered and pinned as immutable values, surveyed as one closed input set, then recursively decomposed into conflict domains until every terminal domain is a buildable slice. Execution processes those leaves in disposable private workspaces. No permanent platform repository, committed registry, or operator-tended `workspace/<project>/` slots remain.
 
-| Job | Discovery finds | Greenfield |
-| --- | --------------- | ---------- |
-| Migrate a legacy platform | Legacy code and non-code inputs matching migrate criteria; proposes target topology | Primary — target repos often do not exist yet |
-| Ongoing change to the migrated platform | Org repositories whose `.emery/project.yaml` declares `product:` (membership; optionally filtered to the change's product ids) | When the change needs a member that does not exist yet |
+This gives migrate and ongoing change one multi-target pipeline that produces a final accepted CID for each touched target, carrying that repository's code and merged baseline together. New repositories are created on the forge by the operator (with `product:` so change-mode discovery can find them); Emery does not provision repositories in this cut. Publication remains [RFC-89](rfc-89-publication-sets.md)'s responsibility.
 
-Emery today anchors multi-repo work in a permanent platform repo (`workspace: true`, committed `registry.yaml`, tended `workspace/<project>/` slots). Detached mode replaces that anchor with the change itself: the change directory is the one self-contained home for coordination state, valid exactly as long as the change is live. This RFC owns the complete intake path from source trees to approved member and target topology; ordinary in-place planning reuses its source-binding grammar and selector without adopting detached coordination.
+## Flow and terms
+
+1. The operator runs detached `emery plan author` with an authoring scope (CLI args or `--scope`; see [Scope](#scope)). Change uses bounded discovery selector rows; migrate uses explicit sources and may also bound target candidates through discovery. Intent is optional inline source value.
+2. Discovery pins exact repositories, CIDs, and adapter versions into `discovery.yaml`.
+3. `plan author` surveys every source, recursively partitions the combined lead catalog into persisted conflict domains, and projects the terminal domains into `plan.yaml.slices`.
+4. The operator reviews the decomposition and leaf plan together; `plan execute` appends `plan.execute.started` covering both and runs only the slice leaves in disposable private workspaces.
+5. Each touched target ends with one accepted CID for RFC-89 to publish.
+
+Nouns: **change home** (RFC-86 fact tree; no product code or durable product state); **target** (participating repo + initial CID + optional target-axis adapter); **source** (immutable CID or inline value); **CID** (`sha256:` + hex of RFC-87's tree manifest; wire field `cid`); **conflict domain** (a recursively identified scope whose child results may interact and therefore converge together); **accepted target CID** (latest successful merge result for one target).
+
+`sources` and `targets` share one row shape (`adapter`, `locator` or `value`, `cid`). Durable product state stays `.emery/project.yaml` inside each repository.
+
+## Scope
+
+The authoring scope is an invocation envelope, not a change artifact. Supply it as flags or with `--scope`; prefer the file when lists grow. After authoring, `discovery.yaml` is topology authority, `decomposition.yaml` is conflict-domain authority, and `plan.yaml` is its executable leaf projection. Source keys and adapter pins are discovery outputs (D5, D6).
+
+When present, `discover` is a non-empty list of selector rows. Each row has exactly one required `target` bound — an exact repository URL, or a repository-host namespace (an org, group, or subgroup) ending in `/*`; nothing else globs — and optional `products` and `topics` filters. Rows union; filters within a row intersect. A namespace row is a bounded candidate search; an exact row skips the search and asserts one candidate directly, subject to the same verification. The CLI composes rows: `--target` appends a selector row (exact URL or namespace `/*`); repeated `--product` / `--topic` flags fill the most recent row's filters; `--source` appends to `sources`; `--intent` sets `intent`. Exact clap names are illustrative. Scope supplies the bounded estate, never its decomposition.
+
+Scope cannot create targets or prescribe source→target mappings. Create a forge repository with `product:` so discovery can find it; recursive authoring records each mapping in `decomposition.yaml` and renders its rationale into `change.md` or per-slice `design.md`. There is no `--create` or `create:` surface.
+
+```bash
+# Change — bounded target discovery
+emery plan author checkout-v2 \
+  --target 'https://github.com/acme/*' \
+  --product checkout \
+  --intent "Raise checkout to the shared payment API"
+
+# Same change scope from a file
+emery plan author checkout-v2 --scope scope.yaml
+
+# Migrate — explicit sources (small enough for args)
+emery plan author orders-modernization \
+  --source https://github.com/acme/legacy-orders@main \
+  --target https://github.com/acme/orders-sdk
+  --intent "Extract the orders bounded context into its own service"
+```
+
+```yaml
+# scope.yaml — operator-owned; not written into the change home
+intent: Raise checkout to the shared payment API
+discover:
+  - target: https://github.com/acme/*
+    products: [checkout]
+  - target: https://github.com/acme/payments-sdk
+```
 
 ## Decisions
 
-| # | Decision | Consequence |
-| - | -------- | ----------- |
-| D1 | **The change is the unit of location, and its home is an RFC-86 fact tree in its own git repository.** `emery change open` initializes the change repository — plan, per-actor event logs, approvals, and slice artifacts committed — valid for the change's duration and deletable after finalize. Product code materializes only in RFC-87 operation-local workspaces outside the change tree. There is no platform repo. | "Where does this change live?" has a one-repository answer on any machine — clone it to share it. Extended planning, multi-operator refinement, and spec review are ordinary git push / pull / PR over the change repository. Ephemeral means *disposable after finalize*, not scratch: deleting an unpushed change repository mid-change forfeits its facts, exactly as deleting any unpushed repository would. |
-| D2 | **No Emery state outlives the change.** Durable outcomes land where they already land: baselines in member repos, code and PRs on the forge, identity reconstructible per [RFC-89](rfc-89-publication-sets.md) D3. Post-finalize retention of the change repository (or its archive) is an operator convenience under the existing prune posture, never a requirement. | The lifecycle story is [RFC-86](rfc-86-change-facts.md)'s: each actor appends only its own event log, status is projected, and the CLI enforces the fact-emission rules for the change's duration; it just stops pretending those files are the product. Nothing new to back up, replicate, or migrate. |
-| D3 | **Projects and sources are discovered, then recorded — before plan authoring.** `emery source discover` queries the forge by mode and criteria, fingerprints shallow read-only trees, applies this RFC's exact-one source filter, and emits an immutable candidate report. Operator approval atomically records the resolved `projects` map, exact revisions, target topology, and generated source bindings in `plan.yaml`; it is the gate for any `create-repository`. `/emery:plan` authors slices only over those bindings. | Dynamic population is not re-querying: re-materializing a half-done change resolves the recorded topology deterministically, and RFC-89 can derive publication members without a registry. |
-| D4 | **The registry is removed from detached coordination.** Detached mode authors no `registry.yaml`; membership and location derive from the plan's resolved bindings, and any registry-shaped view is a projection. The committed platform-repo workspace posture and `emery init --workspace` are removed at this hard cut; regular in-place projects remain. | [RFC-89](rfc-89-publication-sets.md)'s member derivation is `plan.yaml` alone, and the forge markers become the only out-of-band reconstruction record. There is one multi-repository coordination model to implement and document. |
-| D5 | **Members materialize only for an operation.** The approved plan records each member's repository and snapshot identity. Survey, build, and merge prepare disposable RFC-87 workspaces on demand and discard them afterward; there is no per-change checkout or slot to tend. | Change location is independent of code location. Local execution uses the same snapshot/workspace contract that RFC-92 later binds to remote nodes. |
-| D6 | **Greenfield is a first-class, explicit discovery outcome.** When no repository matches, the candidate report proposes only repositories supplied by `--create`; absent that input, discovery fails with the required flag form. Approval renders ordinary `emery init` output into an initial tree, and the forge provider's only write operation — `create-repository` — creates the repository with that tree as its initial commit and returns the exact revision. Later branch push and PR merge remain operator-owned publication. | Greenfield projects have an immutable RFC-87 base before plan authoring, with no invented repository identity or uncommitted initialization state. The provisioning write stays one approval-gated, journaled operation. |
-| D7 | **The journal is change-local, file-backed, per-actor.** The change repository holds the [RFC-86](rfc-86-change-facts.md) `events/<actor>.jsonl` logs for the change's lifetime; all re-entry reads the projected union. Sharing and durability are git push/pull of the change repository. | RFC-88 has no service, replica, remote journal, or durability mode — and needs none: a second operator or node participates by cloning and pushing facts. [RFC-92](rfc-92-node-sync.md) adds lower-latency transport for the same facts without a second journal model. |
-| D8 | **Single-repo in-place mode keeps the same lifecycle.** A repository already carrying `.emery/` that the operator opens as the working directory never routes through discovery or detached materialization; it does adopt D11's keyless source-intake grammar and can reuse the deterministic selector for `plan author --source <path>`. | One workflow, two anchors. Surveying the org *for* repos that declare `product:` (D9 change mode) is discovery of *members*, not in-place single-repo mode. |
-| D9 | **Two discovery modes; change-mode membership is `product:`.** **Migrate mode** criteria: org (required), plus target product ids, language / topics / manifest sentinels / path binds for non-code inputs; product ids label proposed targets but do not filter legacy sources. **Change mode** criteria: org (required); a repository is a candidate iff its `.emery/project.yaml` declares a non-empty `product:` list. Optional criteria intersect with requested product ids and may further filter by platforms, adapter name, forge topics, or path globs. Absence of `product:` means not a product member for discovery, even if `.emery/` and `platforms:` exist. | `product` is membership only. The build set remains `platforms:` — `core` plus presentation layers (`ios` / `android` / …), never the discovery key. |
-| D10 | **Migrate and ongoing change share one intake and location model.** This RFC owns source-selection facts and filtering, candidate-report shape, target-topology proposals, member-recording approval, and greenfield initialization. | One product loop and one topology gate; ordinary single-project `plan author` reuses selection without gaining detached-change artifacts. |
-| D11 | **Source keys are generated, never authored.** Source intake accepts a path, an adapter-qualified path, or an adapter-qualified value; Emery allocates a deterministic non-colliding key and persists it with the binding. The existing `<key>=<adapter>:<binding>` form is removed at this hard cut. | Keys remain visible stable references in plans, Evidence filenames, provenance, and amend commands, but operators copy them rather than design them. The CLI has no key-override grammar or compatibility alias. |
-| D12 | **Forge access is a host provider capability, not a third adapter axis.** The engine consumes typed `query-repositories`, `read-repository`, and `create-repository(initial-tree)` operations; the shipped binary binds a GitHub implementation using operator credentials. Push, pull-request, merge, and publication operations are absent. | Discovery and initialized greenfield creation land completely in this RFC without confusing source/target adapter vocabulary or waiting for RM-17. Other forges can implement the same provider later. |
+### D1 — The change home is the detached fact tree, separate from durable product state
 
-## Discovery and approval contract
-
-The discovery grammar is one command:
+Detached artifacts live at the change root, with no synthetic project configuration:
 
 ```text
-emery source discover
-  --mode <migrate|change>
-  --organization <org>
-  --intent <text>
-  [--repository <name>]…
-  [--product <id>]…
-  [--topic <topic>]…
-  [--language <language>]…
-  [--platform <platform>]…
-  [--target-adapter <adapter>]…
-  [--marker <relative-path>]…
-  [--path-glob <glob>]…
-  [--source <path|adapter=path|adapter=value:literal>]…
-  [--create <repository>=<private|public>]…
-  [--force]
+<change>/
+  change.md
+  plan.yaml
+  decomposition.yaml           # conflict-domain hierarchy + leaf projection inputs
+  decompositions/<digest>.yaml # immutable decomposition revisions once referenced
+  discovery.yaml              # pinned topology from discovery
+  leads.md                    # source-adapter lead inventory
+  leads/<digest>.md            # immutable lead-catalog revisions once referenced
+  planning/proposals/<digest>.yaml # validated but unapplied amendments
+  domains/<domain>/rounds/<digest>.yaml # RFC-91 convergence records
+  targets/<target>/waves/<digest>.yaml # immutable closed wave membership
+  events/<actor>.jsonl        # facts, including plan.execute.started
+  slices/<slice>/...
 ```
 
-All repeatable filters are OR within one flag and AND across flag kinds. In migrate mode `--product` labels proposed target rows and `--platform` / `--target-adapter` constrain topology without filtering legacy candidates; in change mode those flags filter existing members. `--source` uses this RFC's keyless intake grammar for local or value inputs that forge discovery cannot find. `--create` is the only source of greenfield repository names and visibility; the topology judgment may assign those rows but never invent another repository. When discovery needs a missing target and no create specification covers it, it fails with `discovery-greenfield-input-required` and prints the exact flag form. `--intent` is lowered to the ordinary generated `intent` value source and also feeds unresolved target-topology judgment; it never changes deterministic repository filtering or source-adapter selection, and `/emery:plan` does not ask for it again.
+`discovery.yaml` records the pinned targets and sources: CIDs and exact adapter package pins. Candidates that do not match are omitted; match failures surface as ephemeral diagnostics, not change artifacts.
 
-`emery source discover` atomically writes one typed report at `.emery/candidate.yaml` and prints that path. The report is review-only input to `emery change approve`; operators never edit it.
+`leads.md` is an authoritative parsed catalog, not unbound review prose. Its canonical `leads-digest` covers every source key and, within that source, every lead id, synopsis, topic, parent relation, and source-local focus. Before a decomposition revision or build fact references that digest, Emery copies the exact document to `leads/<digest>.md`; later focused survey appends create another revision instead of changing the meaning of an existing reference.
+
+`decomposition.yaml` records the reviewed conflict-domain hierarchy: its `leads-digest`, stable node ids, parent/child relations, contributing `(source, lead)` scopes, target bindings, ownership envelopes, dependencies, local gate kinds, and the terminal node → slice mapping. Internal nodes carry no lifecycle or claim. Once referenced by an execution or domain-round fact, the exact document is retained as `decompositions/<digest>.yaml`; later amendments produce a new revision and current view.
+
+`plan.yaml` copies the discovered topology, carries matching `leads-digest` and `decomposition-digest`, and adds exactly the terminal slice projection. Domain dependencies compile into leaf `depends-on` edges; the deterministic projector expands a dependency from one domain to another as edges from the source domain's exit leaves (terminal descendants with no successor inside that domain) to the destination domain's entry leaves (terminal descendants with no predecessor inside that domain).
+
+`domains/<domain>/rounds/` contains RFC-91's immutable convergence records, not domain lifecycle state. `planning/proposals/` contains deterministic amendments proposed by overlap recovery or the operator; a proposal has no authority until `emery plan amend --proposal <digest>` validates and applies it.
+
+`targets/<target>/waves/` contains RFC-86's immutable wave manifests. A manifest closes the member leaves, accepted base CID, planning revisions, dependency frontier, and build-authorization epoch before any member build starts. The committed fact separately names its closed-plan commit authorization, so a future streaming-built member may be reviewed and committed under a later epoch. RFC-86's initial executor creates one-member waves; RFC-91 may select several independent ready leaves into one manifest without changing merge facts or accepted-CID semantics.
+
+`change.md` and the documents under `slices/<slice>/` keep their existing formats. `leads.md` is the current `discovery.md` format under a clearer name and also records any focused child leads with their parent lead. `discovery.yaml`, `decomposition.yaml`, immutable planning revisions, amendment proposals, and the RFC-88 additions to `plan.yaml` are the new document shapes.
+
+In-place mode writes the same artifacts to `.emery/change/`. Durable product state (`project.yaml`, `specs/`, and `decisions/`) remains in `.emery/`, merges forward, and ships with the repository. The change home is temporary and is archived or deleted.
+
+Operations therefore receive separate target (product) and change roots. A target tree excludes `.git` and any nested change home, but includes the rest of the repository. A detached change home needs neither `.emery/project.yaml` nor Git metadata. Versioning, backup, and review of it are operator concerns.
+
+### D2 — Sources are generic immutable location bindings pinned as CIDs
+
+Each source has a generated key, an exact adapter package pin, and exactly one of:
+
+- `locator`: a Git reference (`url@revision`), change-relative path, external local path, or bounded HTTPS URL.
+- `value`: inline content stored in `plan.yaml`.
+
+Emery resolves each locator once, applies its optional `path` (default `.`), stages it temporarily, and stores the resulting file or tree under its CID. A file is represented as a one-file tree, so every location-backed source has the same read-only root shape. Inline values are already protected by the plan digest and are passed directly.
+
+Git, local, and HTTPS locators all follow that path; none creates a persistent copy in the change home. Mutable Git refs become exact revisions, but every origin is provenance after the CID is recorded. Later runs use the recorded CID rather than rereading the origin. CIDs in `plan.yaml` remain store GC roots until the change ends. If one repository is both target and source, both roles reuse the same CID.
+
+Source operations receive the source key, its read-only workspace or inline value, and read-only change artifacts. They never parse `plan.yaml`, assume that a source is a target, or capture a source workspace.
+
+The initial `survey` runs with no focus and emits source-local planning leads; a lead is no longer promised to be a final slice boundary. To split a broad lead without guessing from its synopsis, the source contract lets the engine survey that lead as a focus and append stable child leads under it. The engine controls recursion and budgets; an adapter handles only one requested source scope.
+
+Each leaf still binds at most one lead from any source because refinement persists exactly one `evidence/<source>.yaml`. Internal domains may retain broad parent leads as planning context, but a leaf that needs a focused child from that source binds only the child; the adapter's child scope includes the inherited parent context needed for extraction. Cross-cutting guidance may be multi-homed into several leaves, but never beside another lead from the same source in one leaf. `extract` names that one terminal `(source, lead)` pair, so Evidence remains focused and cannot overwrite a sibling extraction.
+
+### D3 — Discovery and survey precede recursive leaf authoring
+
+Detached `emery plan author` initializes the change home when needed, then runs three internal phases:
+
+1. **Discover topology** — query bounded repository-host candidates, resolve sources, select adapters, run topology judgment, and write its validated result to `discovery.yaml`.
+2. **Survey sources** — survey every pinned source into `leads.md`; RFC-91 may fan these independent calls out without changing their stable merge order.
+3. **Decompose and project** — create one root over the complete lead catalog, recursively partition it into conflict domains, persist the validated hierarchy in `decomposition.yaml`, and deterministically project its terminal domains into `plan.yaml.slices`.
+
+For each open domain, the judgment response is typed `split` or `leaf`. The engine validates it before continuing. A split must preserve at-least-once lead coverage, retain every cross-cutting lead on each child it informs, bind every child inside its parent's target set, strictly reduce a normalized scope measure, and stay within fixed depth, node, repair, and judgment budgets. Siblings predicted to touch the same ownership scope must carry an explicit order or fan-in child; ambiguous overlap blocks authoring. A leaf must bind exactly one target, state one coherent behavioural outcome, fit the target's bounded build and verification envelope, expose an ownership manifest and reviewable acceptance boundary, and carry at most one terminal lead per source.
+
+Containment and execution order are separate relations. Parent/child edges explain recursive decomposition. Dependency edges order siblings or domains. Only the latter compile into `plan.yaml.depends-on`; neither relation creates status for an internal node. A one-slice change is the degenerate root → leaf tree.
+
+The deterministic engine owns the queue, termination tests, validation, and projection. Judgment proposes one bounded partition at a time; there is no lead agent that may recursively spawn arbitrary workers. Uncertain boundaries, estimates, or source-to-target assignments are preserved in `change.md` for operator review rather than silently accepted.
+
+This decision owns phase order and the `discovery.yaml` / `decomposition.yaml` / `plan.yaml` contract, not dispatch concurrency. Independent Discover-topology reads may proceed concurrently under D9's discovery limits; results still merge into one validated `discovery.yaml`. RFC-91 owns parallel initial and focused survey calls and may evaluate independent open domains concurrently, but deterministic ordering and byte-stable artifacts do not change.
+
+The discovery, lead-catalog, and decomposition digests cover schema-validated content and are independent of Markdown or YAML formatting. Both authoring and execution verify that `plan.yaml` matches `discovery.yaml`, that its `leads-digest` identifies the retained catalog revision, that its leaves and dependencies are the exact decomposition projection, and that recorded source, target, CID, and adapter pins remain valid. `--force` runs discovery and decomposition again. Raw judgment requests, responses, and repair attempts remain ephemeral; the validated hierarchy, rationales, uncertainty findings, and focused lead inventory persist.
+
+The first implementation publishes `decomposition.yaml` and `plan.yaml` together only after the complete tree passes. The immutable revision layout is deliberately finer-grained than that policy: a future streaming execution epoch may publish closed domain branches and ready leaves while other surveys continue, and every build remains bound to the exact lead and decomposition revisions it saw. Removing `plan.execute.started` or inferring it from a claim is not required to add that mode.
+
+One target and one source produce:
+
+```yaml
+# discovery.yaml
+version: 1
+targets:
+  orders:
+    adapter: emery:omnia@1.4.0
+    locator: https://github.com/acme/orders@0123456789abcdef0123456789abcdef01234567
+    cid: sha256:…
+sources:
+  orders-code:
+    adapter: emery:typescript@1.2.0
+    locator: https://github.com/acme/orders@0123456789abcdef0123456789abcdef01234567
+    cid: sha256:…
+```
+
+For a one-leaf result, `decomposition.yaml` is still present:
 
 ```yaml
 version: 1
-change: migrate-orders
-mode: migrate
-criteria:
-  organization: acme
-  products: [orders]
-
-candidates:
-  - repository: github.com/acme/legacy-orders
-    revision: 7b6e…
-    fingerprint: sha256:2da9…
-    source-adapter: typescript
-    disposition: selected
-    reasons: [repository-match, language-match]
-
-projects:
-  legacy-orders:
-    action: use
-    repository: github.com/acme/legacy-orders
-    revision: 7b6e…
-    product: [orders]
+leads-digest: sha256:…
+root: orders-modernization
+nodes:
+  orders-modernization:
+    children: [orders-api]
+    sources:
+      - source: orders-code
+        lead: orders-api
   orders-api:
-    action: create
-    repository: github.com/acme/orders-api
-    product: [orders]
-    create:
-      visibility: private
-    target:
-      adapter: omnia
-      platforms: [core]
+    parent: orders-modernization
+    target: orders
+    slice: orders-api
+    ownership: [src/orders/**]
+    sources:
+      - source: orders-code
+        lead: orders-api
+```
 
+`plan.yaml` copies the topology and binds only the terminal projection:
+
+```yaml
+name: orders-modernization
+discovery-digest: sha256:…
+leads-digest: sha256:…
+decomposition-digest: sha256:…
+targets:
+  orders:
+    adapter: emery:omnia@1.4.0
+    locator: https://github.com/acme/orders@0123456789abcdef0123456789abcdef01234567
+    cid: sha256:…
 sources:
-  intent:
-    adapter: intent
-    value: Migrate order processing
-  legacy-orders:
-    adapter: typescript
-    project: legacy-orders
-    path: .
-
-topology-answer-digest: sha256:9cc4…
-```
-
-`candidates[]` records every forge result considered, its exact revision/fingerprint, `selected | excluded` disposition, and closed reason ids. `projects` is the proposed post-approval map: `action: use` requires an existing exact revision; `action: create` requires the fixed greenfield fields and receives its revision during approval. `sources` already carries final generated keys. The report digest is SHA-256 over canonical typed serialization of the whole document; `plan.yaml.candidate-digest` records that digest.
-
-Migrate discovery invokes one generated, schema-gated topology answer after deterministic source selection. Its request contains operator intent, selected source facts, existing project configuration, requested product ids, and the bounded first-party target inventory. Its response contains only proposed project rows:
-
-```yaml
-kind: response
-projects:
-  - repository: github.com/acme/orders-api
-    action: create
-    product: [orders]
-    target:
-      adapter: omnia
-      platforms: [core]
-```
-
-The generated answer schema lives with the change judgment answers and the prompt lives in the change prompt corpus. Existing project rows are immutable inputs; the answer may add target rows only from supplied `--create` specifications and cannot alter repository, revision, product, adapter, platforms, or visibility supplied as facts. Every proposed adapter must come from the supplied inventory, every target row must have a non-empty platform set including `core`, and any missing/unknown field enters the ordinary bounded repair loop then fails discovery if still unresolved. The validated answer is normalized into `candidate.yaml`; no free-form topology prose becomes state.
-
-The bounded target inventory is engine-owned in this cut:
-
-```yaml
-- name: omnia
-  purpose: general core software, services, libraries, and command-line tools
-  platforms: [core]
-- name: vectis
-  purpose: native application UI and platform shells
-  platforms: [core, ios, android]
-  requires-any: [ios, android]
-- name: contracts
-  purpose: OpenAPI, AsyncAPI, and JSON Schema contract artifacts
-  platforms: [core]
-```
-
-Auto-proposal and `--target-adapter` are limited to these identities. `--platform` values must fit the selected profile; the topology answer cannot widen them. Only adapters present in normalized project rows resolve/install through the ordinary pull-on-miss path during approval. Adding another automatically selectable target requires its publication, an inventory update, and an Emery release; dynamic or third-party target inventory remains RM-21 work.
-
-`emery change approve` takes no topology flags. It reads the fixed report path, verifies its digest and current plan-shell name, performs idempotent `action: create` operations, journals each result, and atomically replaces the shell's empty `projects` / `sources` with the resolved maps plus `candidate-digest`. It refuses an edited report, stale candidate revision, unknown adapter, non-empty `slices`, or an already approved digest. Before approval, `emery source discover --force` may replace the report; after approval, replacement requires empty slices and a fresh report/approval cycle. The command is the only approval surface.
-
-## Detached plan shape
-
-Approval writes one closed, resolved topology into `plan.yaml` before plan authoring:
-
-```yaml
-name: migrate-orders
-candidate-digest: sha256:8a17…
-
-projects:
-  legacy-orders:
-    repository: github.com/acme/legacy-orders
-    revision: 7b6e…
-    product: [orders]
-  orders-api:
-    repository: github.com/acme/orders-api
-    revision: a182…
-    product: [orders]
-    target:
-      adapter: omnia
-      platforms: [core]
-
-sources:
-  intent:
-    adapter: intent
-    value: Migrate order processing
-  legacy-orders:
-    adapter: typescript
-    project: legacy-orders
-    path: .
-
+  orders-code:
+    adapter: emery:typescript@1.2.0
+    locator: https://github.com/acme/orders@0123456789abcdef0123456789abcdef01234567
+    cid: sha256:…
 slices:
-  - name: migrate-order-write-path
-    project: orders-api
-    sources: [intent, legacy-orders]
+  - name: orders-api
+    target: orders
+    sources:
+      - source: orders-code
+        lead: orders-api
 ```
 
-`emery change open` creates a detached plan shell (`name`, empty `projects` / `sources` / `slices`). Discovery approval fills `candidate-digest`, `projects`, and `sources`; `/emery:plan` then authors review prose and `slices` into that same file without replacing the approved topology. Only when anchored in a detached change directory does `plan author` recognize this typed shell; it requires its name argument to match and refuses any other existing plan as today. In-place project planning retains its existing create/force behavior. Detached `--force` may re-author slices over the same approved topology; replacing topology requires a new discovery and approval. Running `plan execute` remains approval of the fully authored plan.
+### D4 — Registry-backed workspace coordination is removed
 
-`projects` replaces detached `registry.yaml`. Its generated map key is the repository basename, disambiguated with the same stable locator digest used for source ids. `repository` is the canonical forge locator and `revision` is the exact approved Git commit. `product` is the resolved membership snapshot. `target` is required for every project referenced by `slices[].project` and omitted for read-only source repositories.
+Detached plans create no `registry.yaml`, topology lock, or workspace slots. `plan.yaml.targets` is the sole stored topology; registry-shaped and target-head views are computed when needed. `emery init --workspace`, workspace routing, slot synchronization, and committed-registry handlers are removed. Regular in-place product repositories remain.
 
-Detached source bindings add optional `project:`. A project-bound source resolves `path` relative to that project's immutable RFC-87 snapshot; a binding without `project` remains a local path or value source. A project key and source key may share text but occupy different maps and types.
+### D5 — Targets record both an exact Git base and an initial CID
 
-Existing initialized repositories supply authoritative target adapter, platforms, and product ids from `.emery/project.yaml`. Migrate discovery runs one schema-gated topology judgment only for unresolved target needs, using operator intent and selected source facts; it may propose new project rows but cannot override existing configuration. `[unknown]` target fields block approval rather than being guessed. Approval atomically persists `projects`, generated `sources`, and the candidate-report digest. Plan authoring may then add slices, whose singular `project` must reference a target-capable row.
+A target records both:
 
-This RFC owns the accompanying schema changes: `project.yaml.product` is an optional list of unique kebab-case ids; `emery init --product <csv>` writes it for greenfield projects; plan validation rejects unknown project/source references, a slice targeting a read-only project, and drift between an existing member's approved target fields and its `project.yaml`.
+- `locator`: the exact Git commit as `url@revision`, discovered at the repository host.
+- `cid`: the content identifier of that commit's tree, excluding `.git` and any nested change home.
 
-## Source adapter selection
+The identified tree includes durable Emery state such as `project.yaml`, `specs/`, and `decisions/`. Git revisions identify publication bases; CIDs identify trees used by Emery. A moved branch is only a freshness warning, but an unavailable recorded commit is an error.
 
-Selection is deliberately a small first-party policy, not an adapter-discovery platform. The engine carries a bounded profile per automatically selectable source adapter:
+Every target is an existing forge repository at discovery time — including an empty or freshly initialized one the operator created by hand so change-mode filters can see its `product:`. Authoring scope has no `--create` or `create:` field, discovery has no `action: create`, and there is no execute-time repository provisioning in this cut. How surveyed source scopes map onto a target is recorded by conflict-domain nodes, rendered as design prose (`change.md`, per-slice `design.md`), and projected into `slices[].target`; it is not a scope create list.
 
-```yaml
-name: typescript
-extensions: [ts, tsx, mts, cts, js, jsx, mjs, cjs]
-markers: [package.json, tsconfig.json]
-```
+In change mode, each `discover` row's `target` bound limits repository-host discovery and a server-side marker narrows namespace rows, but the pinned `.emery/project.yaml` decides membership through its non-empty `product:` list. A row's product filters intersect that list; an exact row nominates its repository without filters but passes the same membership check; `platforms:` remains the build set. In migrate mode, source locators and optional `discover` rows provide candidates; topology judgment may propose target bindings and fill adapter gaps only against discovered repositories. Existing `project.yaml` configuration wins. A slice may bind only a target that carries a target-axis adapter.
 
-The first inventory contains `typescript`, `documentation`, `screenshots`, and `captures`; value-only `intent` remains explicit. A profile describes evidence sufficient to select an adapter, not every file that adapter can read. Adding or changing a first-party profile requires the corresponding adapter publication and an Emery release.
+Target discovery and source selection are independent. One target may supply several sources, a source may have no target, and a source no-match never removes its target row.
 
-The profile lives with the engine inventory in this cut. It does not grow the WIT metadata contract, install components merely to inspect metadata, or add `adapters.yaml`, a registry query, trust policy, profile command, or recommendation artifact. Dynamic third-party inventory and publisher trust remain RM-21 work.
+### D6 — The host supplies the adapter catalog and exact versions are recorded
 
-For each granted read-only source tree, Emery computes one ephemeral syntactic fingerprint: normalized relative paths, basenames, extension counts, root markers, and total regular-file count. It follows no symlink outside the granted root and ignores Git and Emery control trees. An adapter is eligible when a declared marker is present or its declared extensions account for a strict majority of regular files.
+The host supplies a bounded, versioned catalog of source adapters and their recognition profiles, plus target adapters and their platform constraints. The engine performs deterministic matching and topology validation without owning the adapter inventory.
 
-Selection proceeds only when exactly one profile is eligible:
+When a source omits `adapter`, Emery fingerprints its immutable value. One matching profile selects the adapter and pins it. No matches or several matches omit that source and surface `source-adapter-no-match` or `source-adapter-ambiguous` as ephemeral diagnostics until the operator names an adapter. There is no ranking or model fallback.
 
-- **one** — resolve that adapter through the existing local-first/pull-on-miss path and lower it to an ordinary `SourceBinding`;
-- **zero** — for direct local intake, fail before any plan write with `source-adapter-no-match`; during forge discovery, record `disposition: excluded` / `reason: source-no-match` and continue, failing `discovery-no-match` only when no candidate remains;
-- **more than one** — fail the direct intake or whole discovery with `source-adapter-ambiguous`, showing the repository/locator, eligible names, and explicit adapter form.
+Discovery records every selected adapter as an exact package pin (`emery:<name>@<semver>`). Unversioned local components cannot enter detached topology. The initial catalog recognizes `typescript`, `documentation`, `screenshots`, and `captures`; `intent` is explicit; target-axis adapters are `omnia`, `vectis`, and `contracts`. Explicit third-party adapters are allowed when the resolver can produce the same exact identity.
 
-There is no ranking, tie-break, model fallback, intermediate report, or separate approval. An explicit adapter bypasses matching but not RFC-87's source-tree safety gates. Survey remains the semantic judgment leg.
+Source keys are independent of targets. A locator uses its normalized basename; an inline value uses its adapter; `intent` is reserved. Unchanged bindings retain their keys, collisions receive stable digest suffixes, and duplicate bindings are rejected. The persisted key is authoritative downstream.
 
-## Source intake and generated keys
+### D7 — Execution maintains one accepted CID per target
 
-The repeatable `plan author --source` grammar is:
+RFC-86 defines the independently deployable one-member wave and atomic merge fact; with RFC-87 snapshot values, this RFC makes that fact the accepted-CID transition for each detached target. `plan.yaml` stores only each target's initial CID. The serial scheduler selects only a leaf whose dependencies are already accepted, writes a closed target-wave manifest against the current accepted CID, and appends `target.wave.opened`. A dependent leaf therefore enters a later wave based on its producer wave's accepted result. A build fact names its wave digest, build authorization, exact planning revisions, and base/result CIDs; the committed fact names the closed-plan commit authorization.
 
-| Form | Meaning |
-| ---- | ------- |
-| `--source <path>` | Infer the adapter. |
-| `--source <adapter>=<path>` | Use an explicit adapter. |
-| `--source <adapter>=value:<literal>` | Use an explicit value-bound adapter. |
+Once every member result is present and its required gates pass, target-wave merge folds every member's delta spec in stable order and captures one final candidate CID. It then appends one `target.merge.wave-committed` fact with the frozen member set, base/result CIDs, finalized identity maps, and optional RFC-91 domain-round digests. That fact advances the accepted CID and projects every member `merged`; no prefix is authoritative. Emery computes the current CID from committed facts and rejects any broken wave chain.
 
-`--intent <text>` remains sugar for a single value-bound `intent` source. A token with no `=` is a path. With `=`, the left side must parse as an adapter; everything after the separator is the path or `value:` payload. Prefix a path whose first component itself looks like `<adapter>=` with `./`. The removed `<key>=<adapter>:<binding>` shape fails with `source-key-authored` (exit 2) and the equivalent keyless command; it is not a compatibility alias.
+`emery slice merge <slice>` resolves the slice's frozen wave and refuses until every member is complete; it can never manufacture a singleton prefix. In this RFC's serial executor every wave has one member. RFC-91's concurrent executor opens deterministic bounded ready antichains and the same command may therefore commit the complete multi-member wave containing the named slice. A result from an older base outside the open wave is stale and must rebuild; it cannot be silently attached.
 
-Key allocation runs over the complete input set before persistence:
+Each code operation receives a fresh writable workspace prepared from the selected target's current accepted CID. Change artifacts are mounted separately and read-only. The product baseline already lives inside the identified tree, so there is no second baseline tree. Drift from a leaf's pinned baseline is reported rather than hidden.
 
-1. For a path binding, derive a base by removing a terminal `.git`, converting the locator's final path segment to lowercase kebab-case, and falling back to `source` when no characters remain. For a value binding, use the adapter name.
-2. Keep the base when it is unique.
-3. On collision, append the shortest collision-free prefix (minimum eight lowercase hex characters) of SHA-256 over the selected adapter plus canonical identity bytes: project forge locator + normalized relative path for project sources, canonical local path for local sources, or value bytes.
-4. Reject the same canonical source locator or identical adapter/value pair more than once with `source-binding-duplicate` (exit 2) rather than manufacturing two identities for one input.
+Target-wave merge prepares the verified composed result, runs every member's slice-scoped target-adapter preflight in stable member order, folds every delta spec and identity map, captures the final CID, and atomically appends the committed fact. It then runs each member's slice-scoped postflight in the same order, persists completed reports, and resumes at the first missing report after a crash. When all reports exist, it appends either `target.merge.wave-succeeded` or one aggregate `target.merge.wave-postflight-failed` naming every failed member. A postflight failure is non-rollback: the accepted wave stands and `plan execute` stops until the existing acknowledgement path is invoked. A crash before commit leaves the prior CID authoritative. The change home is never prepared or captured as product code, and RFC-87's interim write-back operation, `apply`, is removed.
 
-The generated key is immutable for the life of the authored plan. Downstream source references use the persisted value; they never recompute it from a moved tree or changed binding. Discovery applies the same allocation after approval closes the member set, so local and forge intake cannot drift.
+### D8 — Plan execution is the only privileged-start surface
 
-## Fixed implementation cut
+`emery plan execute` verifies that the plan matches `discovery.yaml`, binds the retained lead revision, and is the exact leaf projection of `decomposition.yaml`, then appends RFC-86's `plan.execute.started` with `closed-plan` coverage. Detached start requires `discovery-digest`, `leads-digest`, and `decomposition-digest` alongside the plan and sorted per-leaf spec coverage: an existing digest or `refine-under-epoch`. Only then may Emery execute slices. Any covered change (amended lead catalog, decomposition, plan, discovery, existing spec, or refinement output) requires the operator to run execute again in this cut.
 
-- The command is `emery change open <dir>`; `emery init --detached` is not an alias.
-- The approval command is `emery change approve`; it reads `.emery/candidate.yaml` and accepts no inline topology edits or alternate report path.
-- Discovery criteria are structured flags only. Both modes require organisation and intent and accept optional product ids, repository, topic, language, platform, target-adapter, marker, path-glob, explicit source inputs, and explicit create specifications; product ids label targets in migrate mode and filter members in change mode.
-- Discovery refuses more than 100 forge candidates with `discovery-too-broad` and asks for narrower criteria; it never truncates, ranks, or sends an unbounded organisation inventory to a model.
-- Candidate reason ids are closed: `repository-match`, `repository-mismatch`, `product-match`, `product-mismatch`, `topic-match`, `topic-mismatch`, `language-match`, `language-mismatch`, `platform-match`, `platform-mismatch`, `target-adapter-match`, `target-adapter-mismatch`, `marker-match`, `marker-missing`, `path-match`, `path-missing`, and `source-no-match`. Selected rows carry every positive reason that admitted them; excluded rows carry the first deterministic mismatch in the CLI criteria order.
-- Product ids are free kebab-case strings. A repository declaring any requested id is a member; requesting no ids matches every repository with a non-empty `product:` list.
-- Member code never lives under the change directory. RFC-87 prepares operation-local workspaces from the recorded member snapshots; removing the change directory removes no snapshot cache or forge state.
-- Greenfield creation requires explicit `--create <repository>=<private|public>` under the required organisation. The forge default branch is accepted; license, branch-protection, team, and policy setup remain operator-owned.
-- GitHub repository creation receives the preservation-safe `emery init` tree and commits it as the default branch's initial revision within the one `create-repository` operation. Approval records the returned revision.
-- A candidate report is immutable input to one approval operation. Approval writes the closed project set, resolved target topology, and generated source bindings atomically; partial approval is a new discovery run, not mutation of the old report.
-- Approval is resumable across forge side effects: each create uses a stable `(change, project)` idempotency key, its returned repository/revision is journaled, and only then does one atomic `plan.yaml` write publish the complete approved topology. Re-entry resumes missing creates or the final write without duplicating repositories.
+Runtime ownership overlap writes a validated amendment proposal naming the nearest domain, new dependency or fan-in leaf, expected planning digests, expected accepted CID per target, the complete committed leaf→wave set, and the affected open-wave and claim frontier. It cannot edit authority or execute hidden work. The operator first quiesces or retracts affected claims and uncommitted waves, then applies it with `emery plan amend --proposal <digest>`; the command compare-and-sets every expected revision and accepted frontier, refuses any live affected work, preserves every committed leaf's identity, source binding, target, dependencies, and terminal mapping, writes and retains a new decomposition revision, reprojects `plan.yaml`, and invalidates the old closed-plan epoch. Accepted leaves may gain new dependants but cannot be removed, rebound, reordered behind new work, or disappear from publication membership. Existing direct leaf `plan add` / `amend` / `remove` operations must lower to the same domain mutation and preservation checks or refuse when no unambiguous hierarchy edit exists. Repository-host writes (create, push, branch, PR, merge) remain out of scope — create on the forge if you need a new target; RFC-89 owns publication.
 
-## Lifecycle sketch
+### D9 — Reads are bounded and the change home is disposable
 
-```text
-emery change open <dir>                 # bare directory becomes the change home
-emery source discover --mode migrate|change --organization … --intent … [filters]
-                                        # forge query + fingerprint/source selection
-                                        # → immutable candidate report
-                                        # (report may propose create-repository)
-emery change approve                    # records projects, revisions, topology, sources;
-                                        # journals initialized create-repository for greenfield
-/emery:plan                             # author slices over recorded projects only
-emery plan execute                      # private workspaces prepared on demand;
-                                        # refine → build → merge per entry
-                                        # operator publishes (push, PRs, merge)
-/emery:finalize                         # operator confirms publication, archive
-rm -rf <dir>                            # nothing of record is lost
-```
+Repository-host access is infrastructure, not an adapter axis. Each `discover` row's `target` bound selects the provider and bounds its namespace; for example, `https://github.com/acme/*` selects GitHub repositories owned by `acme`, while a GitLab group or subgroup `/*` bound covers that provider accordingly. The provider narrows each namespace row with a server-side marker and the row's product and topic filters, then verifies selected repositories at exact revisions; an exact row costs one verification read, not a search. The budgets below cover the union of rows; oversized searches fail with `discovery-too-broad` and suggest narrowing rows or filters.
 
-## Rejected alternatives
+A versioned policy limits candidates, API requests, concurrency, time, inspected bytes, imported trees, redirects, and HTTPS bodies. The concurrency bound covers Discover-topology reads (candidate queries, source and target resolve and CID capture, fingerprint reads), not source-adapter survey — that fan-out is RFC-91. Remote URLs require HTTPS, contain no credentials, and cannot target private networks. Tree reads run no hooks, submodules, LFS filters, or escaping symlinks. GitHub document pages resolve to raw content.
 
-- **Permanent platform repo** (current workspace mode) — a durable coordination anchor for inherently change-scoped state; forces registry tending and slot hygiene between changes.
-- **Durable out-of-tree change store** (`~/.emery/changes/…`) — recreates the platform repo one directory over; still state to back up and migrate.
-- **Committing coordination state into a member repo** — pollutes members with cross-repo state and makes membership circular.
-- **Re-resolving discovery at materialization time** — non-deterministic membership; recorded bindings exist so a half-done change re-materializes exactly.
-- **Plan first, then discover/create** — leaves plan authoring without a closed member set; greenfield and recorded bindings must precede `/emery:plan`.
-- **Membership = mere presence of `.emery/project.yaml`** — too broad; single-repo or non-platform Emery projects would be swept into every change-mode survey. D9 requires a declared `product:` field.
-- **Membership = `platforms:`** — conflates the closed build set with product membership; rejected in favour of the `platforms` / `product` split.
-- **Renaming the build set away from `platforms`** — unnecessary once membership uses `product:`.
-- **A separate adapter-selection approval/report before discovery** — duplicates the candidate report and member-recording gate; selection is an inline deterministic leg of intake.
-- **Full publication autonomy** (push / PR merge verbs) — collapses the operator-owned publication boundary that every other RFC preserves.
+After RFC-89 publishes and archives the change, no coordination state is required. Product configuration, baselines, repositories, repository-host history, and caches may remain. Deleting an unreplicated change home loses its facts; retaining it preserves more audit history. Before RFC-92, copying the change home does not transport source or result tree objects.
 
-## Phased delivery
+## Implementation requirements
 
-- **Phase A — Detached change home.** `emery change open`, change-scoped `plan.yaml` / journal / slice artifacts in the change directory; manual member binding (operator supplies repo URLs); operation-local [RFC-87](rfc-87-working-trees.md) workspaces.
-- **Phase B — Source intake, topology, and forge discovery.** Add the bounded first-party selector profiles, deterministic fingerprint/exact-one kernel, generated source/project ids, keyless `plan author --source` hard cut, `projects` / project-bound-source schemas, `project.yaml.product`, generated topology answer, typed `.emery/candidate.yaml`, and `emery change approve`; then `emery source discover --mode migrate|change` → immutable report → resolved existing-project topology (D3, D9–D12).
-- **Phase C — Greenfield and hard cut.** Render `emery init --product` into an initial tree, add the forge provider's approval-gated initialized `create-repository`, record its returned revision, remove `emery init --workspace` and committed-registry coordination, and complete the single-node migrate/change loop (D4, D6, D12).
+- The public workflow remains `emery plan author → emery plan execute → emery plan archive`; RFC-89 owns the seal and successful archive gate after execute.
+- `Plan` gains `targets`, `discovery-digest`, `leads-digest`, `decomposition-digest`, exact source pins with `cid`, and singular `slices[].target`; `ProjectConfig` gains a unique kebab-case `product` list. The current `discovery.md` lead inventory becomes the canonically digestible `leads.md`. Validation checks discovery, retained lead revision, decomposition, and leaf projection as one unit.
+- Add the closed `decomposition.yaml` shape, canonical digest, bounded recursive partition kernel, leaf-readiness gate, domain-dependency compiler, exact projection validator, and RFC-89 target-contraction cycle check. CLI plan mutations must update the decomposition and reproject the plan or refuse; hand-edited drift never executes.
+- Retain every referenced lead and decomposition revision by digest. Add closed planning-proposal DTOs and `emery plan amend --proposal <digest>` with compare-current-planning-digests, accepted-target-frontier, committed-leaf-set, and affected-work-quiescence application; runtime recovery may author proposals but never apply them.
+- Route every detached target through RFC-86's immutable one-member wave and accepted-CID projection. Preserve separate build and commit authorization anchors plus stable per-member preflight/postflight report sequencing so RFC-91 can widen membership without changing the merge WIT operation.
+- Operations take explicit target (product) and change roots. Detached roots are unrelated; in-place changes use `<product>/.emery/change/`. Detached homes have no synthetic `project.yaml`.
+- Target trees ignore only `.git` and a nested change home. `.emery/` is otherwise included.
+- Repository ingestion accepts an exact revision; workspace preparation accepts an explicit target and CID. Builds no longer `freeze` ambient roots, and merges update the baseline inside the workspace. `Workspaces::apply` and its write-back machinery are removed.
+- The source WIT receives either a read-only workspace or inline value. Extend `survey` with an optional parent-lead focus and stable child-lead response so the engine can request source-local detail without adding a third source operation; `extract` continues to consume a terminal lead. Target-axis adapters continue to receive a prepared workspace and read-only change artifacts.
+- Plan CIDs remain GC roots for the change lifetime. Resolution exposes exact adapter package pins; the host supplies bounded discovery access, the adapter catalog, and repository-host access.
+- Discovery DTOs reject unknown fields and use typed canonical digests. Integration tests use local repository-host, HTTP, content-addressed store, and component fixtures.
+- Artifact field `cid` is the RFC-87 tree identity; keep `SnapshotId` as the Rust type alias or rename in a follow-on cut — wire documents say `cid`.
 
 ## Acceptance criteria
 
-1. Local and shallow forge trees produce the same fingerprint and selector result; TypeScript, documentation, screenshot, capture, no-match, and ambiguous fixtures are covered through public integration surfaces.
-2. Inference resolves only the selected adapter. Explicit adapter bindings bypass matching, while both paths pass RFC-87's snapshot and read-only access gates.
-3. Generated keys are deterministic under argument reordering, remain unchanged for unique basenames, disambiguate equal basenames without counters, and reject duplicate inputs. The removed authored-key grammar produces its targeted hard-cut diagnostic.
-4. Discovery approval atomically records the candidate digest, closed `projects` map, exact revisions, target topology, and generated source bindings before plan authoring; re-entry never re-queries membership.
-5. The GitHub forge provider queries and reads repositories without writing; `create-repository(initial-tree)` is available only through approval, requires every fixed input, creates the initialized default-branch commit, returns its exact revision, and is journaled as one provisioning operation.
-6. `plan.yaml.projects`, project-bound sources, `project.yaml.product`, and `slices[].project` validate as one referential graph; existing project configuration wins and unresolved target topology blocks approval.
-7. `candidate.yaml` round-trips through its public typed schema; its canonical digest changes on any semantic field edit; stale revisions, invalid topology answers, alternate adapters, and approval after slices exist fail before plan mutation or duplicate forge writes.
-8. A complete single-node run opens a bare change directory, discovers or creates projects, approves, authors, executes through disposable private workspaces, survives process re-entry, confirms publication through the existing finalize flow, and leaves no required Emery state after directory deletion.
-9. `emery init --workspace`, committed detached registries, remote journals, long-lived member workspaces, and multi-node placement are absent from the shipped surface.
-10. `cargo make ci` is green with crate-level integration coverage for source intake, generated ids, discovery/report schema, topology repair, approval/idempotency, greenfield creation, materialization, re-entry, and finalization.
+1. An empty non-Git directory can author a detached change without `.emery/project.yaml`; in-place mode writes the same artifacts under `.emery/change/`. Durable product state remains outside the change home and inside target trees.
+2. Every location-backed source resolves once to a CID; inline values remain under the plan digest. Source operations receive only the pinned read-only root or inline value. A repository used as both target and source reuses one CID.
+3. Source inference selects exactly one adapter or omits the source with an ephemeral no-match or ambiguity diagnostic without removing its target. Generated keys are deterministic, stable across later collisions, and reject duplicate bindings.
+4. Before survey, `discovery.yaml` records the pinned targets and sources with CIDs and adapter package pins. Edits, unknown fields, stale revisions, or changed adapter pins block execution.
+5. A broad source lead can be focused into stable child leads. A multi-target migration recursively decomposes into at least three domain levels, preserves every lead, terminates within configured budgets, and projects byte-stable buildable leaves and `depends-on` edges. Every leaf has at most one terminal lead per source. Leaf cycles, target-contraction publication cycles, lost coverage, non-reducing splits, duplicate source bindings, ambiguous ownership, an unready leaf, and lead/decomposition/plan drift block authoring or execution.
+6. Referencing a lead or decomposition digest retains byte-identical source content at its immutable revision path. Editing a source key, lead id, synopsis, topic, parent relation, focus, domain, or leaf creates a new digest and invalidates every closed-plan execution and result that consumed the old current view.
+7. The serial executor opens a one-member wave before build. Exactly one committed fact advances the accepted CID and projects its member merged; failure before that fact projects no merge, while postflight failure after it leaves the accepted CID in force and records the resumable stop. A dependent leaf opens later against that result. The change home and ambient product trees are never write targets.
+8. `plan execute` is the only privileged-start action (`plan.execute.started`). Its closed-plan coverage transitively binds the lead and decomposition revisions and does not create forge repositories; a live claim without that epoch cannot build or merge.
+9. A runtime overlap produces an inert amendment proposal. Applying it through `plan amend --proposal` compare-and-sets the expected planning revisions, accepted target CIDs, committed leaf set, and affected open-work frontier; refuses live affected claims or waves; preserves every accepted leaf and prior revision; reprojects only legal remaining work; and requires a new execution epoch. Stale, malformed, cyclic, accepted-history-changing, or ambiguous proposals change nothing.
+10. Repository-host and source reads obey recorded limits and fail closed. Host markers narrow discovery but never override pinned `project.yaml.product`, and execution never repeats membership discovery.
+11. Execution ends with one accepted CID per touched target and no commit or branch; RFC-89 publishes it. Copying the change home before RFC-92 does not transport source or result tree objects.
+12. Removed concepts stay removed: workspace registries and slots, ambient product roots, authored source keys, engine-owned adapter inventories, separate discovery or approve commands, plan-approval vocabulary (`plan.approved`, projected `approved`), authoring-scope `--create` / discovery `action: create` / execute-time repository provisioning, a second source-digest scheme, discovery `mode` / catalog-digest / policy-digest / disposition fields, persisted exclusion rows, nested `adapter.package` / `adapter.component-digest`, the artifact field name `snapshot` for tree identity, baseline writes outside workspaces, `apply`, and repository-host publication writes.
+13. `cargo make ci` passes with crate-level integration coverage for discovery, pinning, lead/decomposition revision retention, bounded decomposition, leaf projection, proposal application, immutable one-member wave creation, commit/postflight crash boundaries, execution, and `plan.execute.started` coverage.
+
+## Rejected alternatives
+
+- **Permanent platform repository, registry, or durable out-of-tree change store** — makes change-scoped coordination a platform to tend.
+- **Asymmetric `projects:` topology with nested `repository:` / `target:` adapter fields** — invents a third noun beside the source/target axes; the isomorphic `targets:` / `sources:` maps keep one row shape and one adapter pin per binding.
+- **A single `discover.root` with intersecting filters, or arbitrary repository globs** — one root cannot express the union "every namespace repository with this product, plus these exact repositories" in one change, and mid-path patterns (`acme/orders-`*) unbound the namespace guarantee name filters were never meant to carry. Selector rows union, filters within a row intersect, and the only glob is a trailing namespace `/*`.
+- **Origin-specific source schemas or target-bound sources as the only source form** — cannot represent local documents, HTTPS material, inline intent, or several inputs from one repository uniformly.
+- **One-shot reconciliation directly from flat leads to slices** — assumes each source already knows the global target and conflict boundaries, loses the hierarchy needed for bounded scheduling and convergence, and cannot focus an oversized lead without guessing from its synopsis.
+- **Nested plans or lifecycle-bearing internal domains** — duplicate claims, status, approval, and archive semantics at every level. Domains explain partition and convergence; only terminal domains become ordinary slices under one plan.
+- **Live source reads or ambient checkouts during operations** — make judgments and builds depend on mutable location rather than pinned values.
+- **Git revision as a CID or a mutable target head in** `plan.yaml` — conflates publication identity, tree identity, and state already computed from facts.
+- **Naming the tree-identity field `snapshot`** — the value is a content identifier; `cid` matches that role. RFC-87's prepare/capture contract is unchanged.
+- **Adopting IPFS multicodec CIDs** — Emery's wire form stays `sha256:<64 lowercase hex>` over the RFC-87 manifest; no multibase or codec prefix.
+- **A source digest scheme separate from tree CIDs** — a second content identity for the same kind of value, when the tree manifest already distinguishes a file from a tree and one path from another.
+- **Keeping the baseline outside the target tree** — splits one result across two authorities, hides the baseline from target workspaces, and requires separate composition.
+- **Granting a second read-only baseline root** — works around that split rather than fixing it; baseline drift should remain a diagnostic.
+- **Separate open, discover, or topology-approve commands** — expose internal authoring phases without adding an operator decision boundary; `plan execute` already records `plan.execute.started`.
+- **Owning survey/extract fan-out concurrency here** — Discover-topology reads may use D9's concurrency budget; Author-slices survey parallelism is RFC-91. Mixing them would gate the product path on the scale track.
+- **Persisting discovery `mode`, catalog-digest, policy-digest, disposition, or exclusion rows** — process envelope, not topology. Pinned locators, CIDs, and adapter package pins are the authority; rejects and change-vs-migrate are invocation or diagnostic concerns, and catalog/policy stay host runtime.
+- **Recording `adapter.component-digest` beside the package pin** — enterprise supply-chain hardening. MVP pins `adapter: emery:<name>@<semver>`; store verify-on-read stays host-side.
+- **Engine-owned adapter inventories, model-ranked selection, or resolving bare names on every machine** — violate adapter neutrality or make recorded topology non-reproducible.
+- **Atomic/idempotent cross-system repository creation** — not needed while Emery does not provision repositories; if a create surface returns later, GitHub still offers no such guarantee and intent/receipt would be required.
+- **Authoring-scope `--create` / discovery `action: create` / execute-time provisioning** — invents a privileged topology path before survey and decomposition can say where work belongs. Operator-created forge repos with `product:` plus conflict-domain mapping rationale scale without a second create contract.
+- **Repository-host access as a third adapter axis or Emery-owned push/PR/merge** — host access is infrastructure, while publication remains operator-owned and RFC-89-defined.
+

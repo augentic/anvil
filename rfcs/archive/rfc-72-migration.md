@@ -1,6 +1,6 @@
 # Adapter Selection and Source Selection
 
-> **Status: Superseded (archived).** Migration intake and topology ownership moved to [RFC-88 Detached Changes](../rfc-88-detached-changes.md). Do not implement this document; historical prior art only (filename keeps the old number; active [RFC-72](rfc-72-materialization.md) is managed materialization).
+> **Status: Superseded (archived).** Migration authoring scope and topology ownership moved to [RFC-88 Detached Changes](../rfc-88-detached-changes.md). Do not implement this document; historical prior art only (filename keeps the old number; active [RFC-72](rfc-72-materialization.md) is managed materialization).
 >
 > Owns: durable source membership (`sources.yaml`), source materialization, repository profile schema + profiler, source-adapter selection policy, recommendation/approval, lowering approved sources into change plans.
 >

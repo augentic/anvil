@@ -1,6 +1,6 @@
 # RFC-87: Private Workspaces
 
-> Status: Implemented — landed with interim RFC-86 stand-ins (build-time base self-pinning, slice-local `build/patch.yaml`, merge-time apply); step 2 of the platform-migration series ([platform.md](platform.md))
+> Status: Implemented — landed with interim RFC-86 stand-ins (build-time base self-pinning, slice-local `build/patch.yaml`, merge-time apply); step 2 of the platform-migration series ([platform.md](platform.md)). [RFC-88](rfc-88-detached-changes.md) proposes amendments: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 admit the project repository's durable state into the tree, plan/discovery artifacts name the tree identity a **CID** (`SnapshotId` is that value), and the interim `apply` is deleted.
 >
 > Owns: materializing an immutable code snapshot into a private workspace, granting separate read-only artifact access, capturing the resulting code snapshot and touched paths, and discarding the workspace.
 >
@@ -65,7 +65,7 @@ Every execution receives a fresh workspace. No two executions share a writable d
 
 `capture` stores and verifies every object needed to materialize the result before returning `{ base snapshot, result snapshot, touched paths }`. It creates no Git commit, branch, completion fact, or publication event; the caller records completion only after capture succeeds.
 
-A read-only source view is the same preparation with an empty writable scope; it is discarded without capture. There is no second source-copy model.
+A read-only source view is the same preparation with an empty writable scope; it is discarded without capture. There is no second source-copy model. [RFC-88](rfc-88-detached-changes.md) binds every source pin to this path: a source's resolved value is an ordinary CID (this RFC's snapshot identity), and `capture`'s refusal on a read-only workspace is what makes "a source is never captured" structural.
 
 For Git repositories, the local provider may use Git's object database and worktree machinery. That is an implementation and cache strategy, not an authority boundary.
 
@@ -75,9 +75,11 @@ The code patch contains the base snapshot id, result snapshot id, and derived to
 
 [RFC-91](rfc-91-concurrent-execution.md) owns deterministic composition of same-base results. [RFC-92](rfc-92-node-sync.md) owns transport of the referenced snapshot objects.
 
-### D4 — Code and Emery artifacts stay separate
+### D4 — Code and change artifacts stay separate
 
-The writable workspace contains product code only. Specs, designs, tasks, Evidence, facts, and build records remain in the change tree and are granted as explicit read-only inputs. They are never copied into the workspace or captured in its result snapshot.
+A snapshot is one project repository tree: product code plus the repository's own durable Emery state — `project.yaml`, the `specs/` baseline, and `decisions/`. Change artifacts are what stays out. Plans, slice specs, designs, tasks, Evidence, facts, and build records live in the change home, are granted as explicit read-only inputs, and are never copied into the workspace or captured in its result snapshot.
+
+[RFC-88](rfc-88-detached-changes.md) amends this decision, which originally excluded all of `.emery/`, and fixes the tree boundary as `.git` plus the change home when nested. The exclusion was safe only while every operation ran in the operator's checkout, where the baseline had somewhere else to live; a detached change has no such place, and a sealed commit whose tree omitted the baseline would silently drop every merged spec.
 
 The caller authors the access manifest, but the touched paths derived by `capture` are the authoritative record of what changed. RFC-87 enforces the grants and reports that record; it does not decide how work is partitioned or how an overlap is repaired.
 
@@ -95,13 +97,15 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, approvals, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies worker decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies worker decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 
 ### D8 — Hard cut
 
 `WorkingTree::live()`, operator-checkout writes, persistent holds, tree recovery, dirty-tree lifecycle states, stored patch blobs, and workspace-layer branch commits are removed rather than adapted. Callers use `prepare` / `capture` / `discard`; RFC-89 owns the one final project seal.
+
+The interim `apply`, which writes an accepted patch's touched paths onto an ambient product tree, is a stand-in for that completion. [RFC-88](rfc-88-detached-changes.md) deletes it: once the baseline folds inside a workspace, the accepted project snapshot is the whole result and there is nothing left to write back.
 
 ## Fixed implementation cut
 
@@ -117,7 +121,7 @@ RFC-87 consumes an execution request and returns an immutable code result. It ow
 1. `prepare` materializes the exact requested snapshot into a fresh private workspace without touching the operator's checkout.
 2. Two executions over the same base receive different writable directories and can run concurrently.
 3. `capture` round-trips additions, edits, deletes, empty files, binaries, modes, and symlinks as a result snapshot and reports the exact touched paths.
-4. Artifact inputs are readable through separate grants and absent from the captured result.
+4. Change artifacts are readable through separate grants and absent from the captured result, while the project's own durable state — baseline, decisions, `project.yaml` — round-trips inside the snapshot (amended by RFC-88).
 5. Discarding or losing a workspace does not lose any completed result and requires no recovery protocol; retry starts from the recorded base.
 6. The same snapshot and code-patch identities materialize to byte-identical trees through local and remote store bindings.
 7. No operator checkout, persistent hold, patch blob, workspace path, or publication branch is part of the RFC-87 contract.
