@@ -2,9 +2,9 @@
 
 > Status: Draft — step 6 of the platform-migration series, on the scale track ([platform.md](platform.md))
 >
-> Owns: the complete single-node concurrency path: focused Omnia build workers, host-owned convergence, exclusive write ownership, per-worker private workspaces, deterministic code-patch composition, the local agent pool, parallel survey and extract fan-outs, and the synthesis payload redesign.
+> Owns: the complete single-node recursive execution path: focused Omnia build workers, host-owned convergence, exclusive write ownership, per-worker private workspaces, concurrent ready-leaf scheduling, deterministic code-patch composition, durable domain-round records, bottom-up domain convergence, multi-member use of RFC-88's atomic target waves, the local agent pool, parallel survey and extract fan-outs, bounded concurrent evaluation of RFC-88 conflict-domain decomposition, and the synthesis payload redesign.
 >
-> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-verify-profiles.md). [RFC-78](archive/rfc-78-prompt-budget.md) supplies request budgets, timeout semantics, and sessions. This RFC absorbs [RFC-79](archive/rfc-79-swarm-build.md) and [RFC-80](archive/rfc-80-synthesis-redesign.md).
+> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), and [RFC-90](rfc-90-verify-profiles.md). [RFC-78](archive/rfc-78-prompt-budget.md) supplies request budgets, timeout semantics, and sessions. This RFC absorbs [RFC-79](archive/rfc-79-swarm-build.md) and [RFC-80](archive/rfc-80-synthesis-redesign.md).
 >
 > [RFC-92](rfc-92-node-sync.md) may place these workers on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-worker model-selection hook.
 
@@ -16,7 +16,7 @@ Today one Omnia generation conversation acts as crate writer, test writer, guest
 
 Synthesis has the same structural problem. Observed attempts took 11 and 54 minutes while repeatedly carrying about 50 KB of playbook prose and complete artifact bodies through the answer channel. Survey and extract also remain serial because the backend cannot yet isolate concurrent completions.
 
-This RFC gives each worker a narrow brief, explicit write ownership, an individual timeout and budget, and a private workspace. A deterministic guest orchestrator composes their immutable results and sends verification through the host. The same local pool then serves build, review, survey, and extract. Synthesis remains one cross-domain judgment leg, but its playbook becomes lazy and its artifacts move out of the answer.
+This RFC gives each worker a narrow brief, explicit write ownership, an individual timeout and budget, and a private workspace. A deterministic guest orchestrator composes their immutable results and sends verification through the host. The same local scheduler claims independent plan leaves, folds their results through the persisted RFC-88 domain hierarchy, records every completed gate, and atomically accepts passing same-target waves. The pool also serves build, review, survey, extract, and independent decomposition nodes. Synthesis remains one cross-domain judgment leg, but its playbook becomes lazy and its artifacts move out of the answer.
 
 ## Flow and terms
 
@@ -32,6 +32,8 @@ A **worker** is one focused judgment request: a thin role brief, only the path-f
 A **code patch** is RFC-87's `{ base snapshot, result snapshot, touched paths }` relation. RFC-89's publication set is a separate forge-side record. Merge-finalized requirement identity from RFC-86 makes same-base concurrent synthesis safe, while worker and round outcomes are recorded as per-actor facts.
 
 `target.build` remains one WIT dispatch per slice. The swarm is internal sequencing by the target adapter core, not a new target interface.
+
+At plan level, a **domain round** is one immutable record binding a domain id and decomposition revision to an ordered child-result set, target bases, composed candidate CIDs, profile reports, completeness (`frontier | complete`), and verdict. A **target wave** is RFC-88's immutable ready same-target leaf set accepted together after its required domain gates pass. Internal domains gain records and result facts, not lifecycle status or claims.
 
 ## Worked examples
 
@@ -85,7 +87,7 @@ Verify remains RFC-90's security boundary. More verify calls must not widen acce
 
 ### D3 — Every worker has exclusive, enforced write ownership
 
-Each worker carries an explicit manifest. Predicted overlap becomes a dependency or generated fan-in task before dispatch; ambiguous ownership fails planning. Initial partitions follow the existing writer roles, and `tasks.md` subdivides a role only when task paths prove disjoint. A model never chooses the partition.
+Each build worker carries an explicit manifest. Predicted overlap becomes a dependency or generated fan-in task before dispatch; ambiguous ownership fails planning. Initial build partitions follow the existing writer roles, and `tasks.md` subdivides a role only when task paths prove disjoint. A model never chooses the target-build partition.
 
 Manifests are predictions, while RFC-87 captured touched paths are authoritative. Before applying any result, the gate compares the complete captured sets. Out-of-manifest writes are blocking findings. Undeclared overlap rejects the whole wave atomically and enters the same repair shape as other findings.
 
@@ -109,7 +111,7 @@ This removes the nested in-agent review team. The host can observe, bound, cance
 
 Given one base snapshot id and an ordered list of RFC-87 code patches naming that base, the kernel requires pairwise-disjoint touched paths. It copies each path's exact value from the corresponding result tree into a fresh integration workspace and captures the next immutable snapshot. Base mismatch or overlap fails before verify; no implicit text merge occurs.
 
-Dependencies and fan-in tasks create later waves. RFC-92 may project plan dependencies into per-project wave lists, but it must use this same kernel and cannot redefine composition semantics. RFC-87 continues to own prepare and capture; `augentic/emery` and `augentic/backends` own the composition implementation introduced here.
+Dependencies and fan-in tasks create later waves. This RFC projects RFC-88's domain and leaf dependencies into bottom-up convergence waves, and every single-target domain uses this same kernel. RFC-92 may place the work remotely but cannot redefine scheduling, composition, domain readiness, or acceptance semantics. RFC-87 continues to own prepare and capture; `augentic/emery` and `augentic/backends` own the composition implementation introduced here.
 
 ### D7 — The synthesis playbook moves to an engine references shelf
 
@@ -129,24 +131,51 @@ D8 lands only after D7 passes its own live-eval gate. It changes payload and rep
 
 ### D9 — Survey and extract fan out through the Stage B pool
 
-After RFC-88 discovery pins topology, Author slices runs `survey_all` for all bound sources concurrently. It merges `leads.md` in binding order, so output remains byte-identical to serial execution.
+After RFC-88 discovery pins topology, Author slices runs the initial `survey_all` for all bound sources concurrently. It merges `leads.md` in binding order, so output remains byte-identical to serial execution. Focused survey calls requested by recursive decomposition use the same pool and merge by `(source, parent lead, child lead)`, never completion order.
 
 Refine dispatches extract operations concurrently in the same way. Per-source Evidence files form their natural disjoint write set. Plan-time survey is the first consumer.
 
 This decision covers Author-slices survey and refine-time extract in `augentic/emery/crates/change` and `crates/slice`. It does not cover RFC-88's Discover-topology host reads, which remain under RFC-88 D9's separate concurrency budget. Concurrency changes dispatch, never output order.
 
+### D10 — Recursive plan decomposition is bounded engine orchestration
+
+After the complete initial lead inventory exists, the engine evaluates RFC-88's open conflict domains. Independent nodes may be judged concurrently, but one compiled orchestration owns the queue, depth and node budgets, strict-scope-reduction check, coverage validation, stable node identities, and final byte ordering.
+
+Each judgment receives one domain, its inherited topology and ownership envelope, and only the lead material relevant to that domain. It returns typed `split` or `leaf`. A split proposes children, ownership, dependencies, rationale, and any focused surveys needed for missing source-local detail. The engine validates the response before adding children to the queue. It does not let one model call spawn another or decide its own budget.
+
+`decomposition.yaml` and `plan.yaml` become visible only after every branch terminates and RFC-88's complete-tree and leaf-projection gates pass. Failure retains `discovery.yaml` and `leads.md` for retry but exposes no partial plan. Concurrency affects latency only: the same responses produce the same canonical hierarchy and leaf plan regardless of completion order.
+
+Publication is atomic only at that current-view boundary. Every referenced lead and decomposition revision is retained by digest, so this choice does not bake final-plan closure into build or merge facts. A future streaming authorization epoch may publish ready branch revisions while other branches continue; the local scheduler below already consumes explicit revisions rather than ambient current files.
+
+### D11 — The local scheduler folds ready leaves through domain gates
+
+On one desktop, `plan execute` opens at most one wave per target from a deterministic bounded antichain of leaves whose projected dependencies are already accepted and whose ownership envelopes can share the current accepted target base. The bound is the target share of the host pool cap. The immutable RFC-88 wave manifest is written before claims or builds; every claim and result binds it. A dependency edge can never occur between members, so a producer wave commits first and its dependant is selected into a later wave against the new accepted CID.
+
+The scheduler groups completed wave members by their nearest affected domain. A single-target `frontier` round composes only the current wave's same-base child patches with D6, runs its declared RFC-90 profiles, writes a domain-round record, and publishes `domain.convergence.recorded`. A multi-target domain stores one ordered target→CID/report set and dependency verdict; it never composes trees.
+
+A `frontier` round covers a causally closed ready subset: every included leaf dependency is accepted or in the same wave, but unfinished dependant children may remain. It may gate that target wave but cannot satisfy its domain as a complete child of the parent. Later waves bind the accepted CID produced by earlier frontiers; they never need to build against an unaccepted producer candidate.
+
+A `complete` single-target round does not recompose historical child patches across bases. It validates the ordered chain of committed frontier waves from the domain's recorded initial base to the current accepted CID, requires every child and domain dependency for that decomposition revision, runs complete-domain profiles against that current tree, and emits that CID as the final domain result. Only complete rounds fold upward as complete child results. Failure blocks that domain and its dependants only. This is the complete local semantics; RFC-92 transports it without adding another scheduler.
+
+### D12 — Domain rounds are durable and target waves accept atomically
+
+Before publishing `domain.convergence.recorded`, the engine atomically writes `domains/<domain>/rounds/<digest>.yaml`. The closed record contains the domain id, lead/decomposition revision, child leaf or round digests, build and commit authorization anchors as applicable, target base CIDs, ordered current-wave patches or historical committed-wave chain, candidate/final CIDs, verification-report digests, completeness, and verdict. Its deterministic operation key is the digest of that complete input set and current accepted frontier. Duplicate claimless evaluation converges on the same record; different output for one operation key is a blocking violation. The fact references the record digest. Snapshot GC roots every candidate reachable from a live change record, so restart, detach, and remote resume never recompute a completed gate.
+
+When every required frontier gate passes, the engine performs RFC-86's target-wave merge over the already frozen manifest. It revalidates every member's build authorization and input fence, requires a closed-plan commit authorization covering the exact reviewed member/spec set, composes all member patches, and follows RFC-88's stable per-member commit-then-postflight sequence. One `target.merge.wave-committed` fact names the commit authorization, advances the accepted CID, and projects every member leaf `merged`; no prefix is authoritative. The succeeded or aggregate postflight-failed fact then records the non-rollback gate outcome. `emery slice merge <member>` resolves and commits this whole wave or refuses if another member is incomplete; it cannot downgrade membership to N=1.
+
 ## Implementation requirements
 
 - Deliver **Phase A** with split Omnia writer and review roles, one private workspace per worker, D6 composition, completed RFC-90 verification, and bounded repair while dispatch remains serial.
-- Deliver **Phase B** with concurrent in-flight model calls from one guest, the shared local pool, isolated MCP and prompt state, host-visible specialists, and deterministic parallel survey and extract. Whether the backend uses a Rust process pool or an SDK sidecar is decided from Stage B evidence.
+- Deliver **Phase B** with concurrent in-flight model calls from one guest, the shared local pool, isolated MCP and prompt state, host-visible specialists, deterministic parallel survey and extract, and bounded evaluation of independent decomposition nodes. Whether the backend uses a Rust process pool or an SDK sidecar is decided from Stage B evidence.
+- In Phase B, add deterministic bounded-antichain wave selection, single-node ready-leaf scheduling, domain ancestry projection, frontier and complete domain-round records and facts, bottom-up single-target composition and multi-target aggregation, and multi-member RFC-88 target-wave merge. Hosted placement is not required to exercise any of these semantics.
 - Deliver **Phase C** with D7's engine shelf followed by D8's execution-local staging tree, outcome-only answers, atomic promotion, and findings-only repair deltas. RFC-91 is complete only after Phase C and both live-eval gates pass.
 - Give each worker at most two repair rounds and each build at most three convergence rounds. Exhaustion returns a typed `failure` report with residual findings.
-- Apply one host-level pool cap to build, review, survey, and extract workers. The default is four, and deployment configuration may lower it. RFC-92 schedules whole remote pools without adding another local limit.
+- Apply one host-level pool cap to build, review, survey, extract, and decomposition workers. The default is four, and deployment configuration may lower it. RFC-92 schedules whole remote pools without adding another local limit.
 - Scope each worker session to its repair chain. Enforce per-worker inactivity timeout and pool-level cancellation that reaps every in-flight worker.
 - Use the configured project model for every worker by default. The request's existing `model` field permits later per-role model overrides for RFC-18, but those overrides are not required here.
 - Keep budget, ordering, and finding routing as compiled-in policy visible in the journal. Extend RFC-78's per-worker budget assertions so adapter tests lock brief sizes.
-- Keep `target.build`, `BuildReport`, and the synthesis authority model unchanged. Do not add cross-slice scheduling, remote placement, value transport, hosted execution, a replacement model backend, domain-partitioned synthesis, or mandatory swarm adoption by Vectis or Contracts.
-- Preserve ownership boundaries: `augentic/emery` owns SDK helpers, orchestration policy, composition, the engine shelf, staged synthesis, and survey/extract fan-outs; `augentic/emery-adapters` owns Omnia partitioning, manifests, and review workers; `augentic/omnia` owns the verify capability; `augentic/backends` owns the RFC-87-backed local pool and participates in composition.
+- Keep `target.build`, `BuildReport`, and the synthesis authority model unchanged. Do not add remote placement, value transport, hosted execution, a replacement model backend, domain-partitioned synthesis, or mandatory swarm adoption by Vectis or Contracts.
+- Preserve ownership boundaries: `augentic/emery` owns SDK helpers, orchestration policy, plan scheduling, domain records, target-wave acceptance, composition, the engine shelf, staged synthesis, and survey/extract fan-outs; `augentic/emery-adapters` owns Omnia target-build partitioning, manifests, review workers, and its existing merge gates; `augentic/omnia` owns the verify capability; `augentic/backends` owns the RFC-87-backed local pool and participates in composition.
 - Treat live evaluation as a terminal implementation gate. Capture pre-change grades, run `cargo make eval omnia-r9k --restart` in `augentic/emery-adapters` after D7, then run `cargo make eval orders-contracts --restart` there after D8. Every typed case gate must pass, and neither final grade may be lower than its baseline. If credentials or the model backend are unavailable, RFC-91 remains incomplete and RFC-92 does not start; CI is not a substitute.
 
 ## Acceptance criteria
@@ -159,14 +188,18 @@ This decision covers Author-slices survey and refine-time extract in `augentic/e
 6. Concurrent workers return result snapshots against the same base. Deterministic composition in a fresh integration workspace passes the convergence gate; base mismatch and composition conflict fail before verify.
 7. The synthesis system prompt carries `synthesize.md` plus the measured always-inline subset, while the engine shelf serves the rest lazily. The synthesis answer is an outcome record, artifact bodies never cross the answer channel, and staged artifacts never become visible slice state before validation passes.
 8. With Stage B available, `plan author`'s Author-slices phase dispatches survey over N sources concurrently after RFC-88 discovery pins topology. Its `leads.md` output is byte-identical to serial output.
-9. Three disjoint workers that need one shared module converge as one parallel wave followed by one exclusive integration task. No first-wave worker owns the shared path, and no textual auto-merge occurs.
-10. When three workers unexpectedly modify the same shared module, the first wave is retained but not composed. Each worker recaptures a result omitting that path, the repaired wave composes, and one fan-in task integrates the module.
-11. `cargo make ci` passes in every touched repository, D8 regenerates its goldens, and the separately evaluated `omnia-r9k` and `orders-contracts` live cases preserve quality after D7 and D8 respectively.
+9. A migration-scale lead set decomposes through at least three domain levels with independent nodes evaluated concurrently. Canonical `decomposition.yaml` and `plan.yaml` are byte-identical to serial evaluation; partial failure exposes neither current-view artifact, and depth, node, scope-reduction, coverage, ownership, and leaf-readiness violations fail closed.
+10. Independent plan leaves execute concurrently on one node and fold through at least two same-target domain gates. Every completed gate has one digest-bound record and fact; killing and resuming after each boundary reuses the record and byte-identical candidate without re-running composition or verification.
+11. Two same-base independent leaves enter one frozen target wave. `slice merge` on either member refuses until both are complete, then one committed fact advances the accepted CID and projects both leaves merged; failure or process loss before that fact projects neither, and replay after it creates no duplicate acceptance or identity map.
+12. A producer and dependant on one target enter different waves. A passing frontier round lets the producer wave commit without waiting for its unfinished dependant; the dependant then builds from that accepted CID. The eventual complete round validates the ordered committed-wave chain and current tree without feeding cross-base patches to D6, then folds the whole domain into its parent.
+13. Three disjoint workers that need one shared module converge as one parallel wave followed by one exclusive integration task. No first-wave worker owns the shared path, and no textual auto-merge occurs.
+14. When three workers unexpectedly modify the same shared module, the first wave is retained but not composed. Each worker recaptures a result omitting that path, the repaired wave composes, and one fan-in task integrates the module.
+15. `cargo make ci` passes in every touched repository, D8 regenerates its goldens, and the separately evaluated `omnia-r9k` and `orders-contracts` live cases preserve quality after D7 and D8 respectively.
 
 ## Rejected alternatives
 
 - **Keep the fat generation and review legs** — preserves the opaque verify-repair channel, unbounded nested work, large prompts, and serial wall-clock that this RFC exists to remove.
-- **A lead-agent orchestrator** — moves the multi-purpose judgment leg up one level. Partitioning, budgets, ordering, and arbitration must remain deterministic guest policy.
+- **A lead-agent orchestrator** — moves the multi-purpose judgment leg up one level. Build partitioning and plan-decomposition queueing, budgets, ordering, termination, and arbitration must remain deterministic guest policy; individual judgments may only propose one bounded split or leaf.
 - **Shared writable workspaces** — make safety depend on timing and filesystem races. Every stage uses private workspaces and immutable code patches.
 - **Textual auto-merge for shared paths** — confuses conflicting ownership with merge mechanics. Shared paths require one later owner or serialized tasks.
 - **Compose the conflict-free subset of an overlapping wave** — exposes partial state from a wave whose complete ownership check failed. The gate rejects and repairs the wave atomically.

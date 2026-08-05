@@ -4,7 +4,7 @@
 >
 > Owns: closed verification profiles, host-owned command selection, sandbox and resource policy, normalized reports, cache isolation, and the typed unavailable capability.
 >
-> Builds on completed [RFC-87](rfc-87-working-trees.md). Host-owned verification becomes [RFC-91](rfc-91-concurrent-execution.md)'s convergence gate and [RFC-92](rfc-92-node-sync.md)'s trial-integration gate. Omnia's `wasi-model` host accepts the `verify` grant, but execution is stubbed today.
+> Builds on completed [RFC-87](rfc-87-working-trees.md). Host-owned verification becomes [RFC-91](rfc-91-concurrent-execution.md)'s bottom-up conflict-domain convergence gate; [RFC-92](rfc-92-node-sync.md) transports the same gate without redefining it. Omnia's `wasi-model` host accepts the `verify` grant, but execution is stubbed today.
 
 ## Intent
 
@@ -22,7 +22,7 @@ This RFC delivers the complete Omnia/Rust path. Other target and platform combin
 4. Native orchestration applies the profile's sandbox, execution grant, resource limits, and workspace-local cache policy, then runs the vetted commands.
 5. The host normalizes tool output into the shared report. The model may repair the candidate and request another pass while its repair budget remains.
 
-An **execution grant** is invocation-scoped permission to run a higher-risk profile. **Unavailable** is the typed result returned when the node lacks the required toolchain or sandbox support, or when the selected target/platform combination has no requested profile. It is not permission to improvise a command.
+An **execution grant** is invocation-scoped permission to run a higher-risk profile. **Unavailable** is the typed result returned when the node lacks the required toolchain or sandbox support, or when the selected target/platform combination has no requested profile. It is not permission to improvise a command. A candidate may be a worker, slice, or single-target conflict-domain result; verification receives only its target binding and snapshot and therefore needs no knowledge of decomposition or lifecycle.
 
 ## Worked example
 

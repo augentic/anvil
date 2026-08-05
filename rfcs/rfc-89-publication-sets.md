@@ -4,7 +4,7 @@
 >
 > Owns: one local project seal per publication member; the branch, pull-request marker, and landing-order conventions that bind those members into one change; archive-time verification; and the shared machine-readable publication projection.
 >
-> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets and supplies the forge provider extended here with publication reads. [RFC-92](rfc-92-node-sync.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
+> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-92](rfc-92-node-sync.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
 >
 > Defers: pushing branches, opening or merging pull requests, atomic cross-repository submission, automated rollback, cross-checkout CI, and parallel member preparation.
 
@@ -18,14 +18,14 @@ That collection is the **publication set**. Emery derives it from the plan, seal
 
 ## Flow and terms
 
-1. Plan entries identify the participating targets and their `depends-on` relationships.
+1. RFC-88 projects terminal conflict domains into plan entries identifying the participating targets and their leaf `depends-on` relationships.
 2. When all entries for one target are merged, Emery seals its final accepted CID into one local commit on `change/<plan>`.
 3. The operator pushes that branch, opens a pull request carrying `Emery-Change: <plan>`, and lands the members in dependency order.
 4. `emery plan archive` reads the forge, reconstructs the set, and verifies every member before archiving.
 
 A **publication member** is a distinct adapter-bearing target used by at least one slice. A **project seal** turns that target's final accepted CID into its one local Git commit. A **publication set** binds the change name, members, sealed commits, branches, pull requests, and required landing order.
 
-`emery slice merge` remains a lifecycle transition that folds a delta spec into the baseline. In this RFC, **publish** means creating the remote branch and pull request, while **land** means merging that pull request on the forge. A publication set is also distinct from an RFC-87 code patch, which relates one base CID to one result CID.
+RFC-88's target-wave commit is the accepted-CID transition; its initial one-leaf form is `emery slice merge`, and RFC-91 later extends membership without changing the fact shape. In this RFC, **publish** means creating the remote branch and pull request, while **land** means merging that pull request on the forge. A publication set is also distinct from an RFC-87 code patch, which relates one base CID to one result CID.
 
 ## Worked example
 
@@ -93,7 +93,7 @@ Here archive stops because the frontend pull request is still open. `publication
 
 ### D1 — The plan is the publication set
 
-The plan name is the change identity. Its publication members are the distinct adapter-bearing targets referenced by `slices[].target`. A target listed in `plan.yaml` but used only as read-only input, or not used at all, is not a member.
+The plan name is the change identity. Its publication members are the distinct adapter-bearing targets referenced by the terminal `slices[].target` projection. A target listed in `plan.yaml` but used only as read-only input, present only on an internal conflict domain, or not used at all is not a member.
 
 There is no second lifecycle object or authored publication artifact. A single-repository plan is simply a one-member publication set.
 
@@ -116,9 +116,11 @@ Those markers let an operator reconstruct the set from the forge without the ori
 
 ### D4 — Publication order comes from `depends-on`
 
-Cross-target `depends-on` edges form the publication order. Same-target edges disappear when the entry graph is projected onto targets, while unrelated targets remain unordered.
+Cross-target leaf `depends-on` edges form the publication order. RFC-88 has already compiled dependencies between internal domains into edges between their entry and exit leaves; publication does not interpret the decomposition again. Same-target edges disappear when the leaf graph is projected onto targets, while unrelated targets remain unordered.
 
 In the worked example, `adopt-payment-api` depends on `expose-payment-api`, so the payment API must land first. If a documentation target had no dependency path to either member, it could land at any time. Emery does not invent a second ordering field for the operator to maintain.
+
+An acyclic leaf graph is not sufficient: contraction can expose `target-a → target-b` and `target-b → target-a` through different leaves without creating a leaf cycle. RFC-88 plan validation therefore contracts the complete leaf graph to distinct targets and rejects any strongly connected component or self-loop as `publication-target-cycle`. Archive repeats the same pure validation before reading forge state. Only an acyclic contracted graph is a publication partial order.
 
 ### D5 — Emery observes publication but does not perform it
 
@@ -166,7 +168,7 @@ There is no temporary `gh` subprocess path and no dependency on RM-17. The provi
 
 ### D11 — One project seal creates each committable result
 
-When every entry for a target has crossed the serial merge gate, Emery creates one local Git commit:
+When every entry for a target is named by an RFC-88 committed target-wave chain and no postflight failure remains unacknowledged, Emery creates one local Git commit:
 
 ```text
 recorded initial Git revision + final accepted CID
@@ -174,11 +176,11 @@ recorded initial Git revision + final accepted CID
     → plan.publication.project-sealed
 ```
 
-For example, three slices may successively produce accepted CIDs for `payments-api`; only the final CID becomes repository history. Workers do not commit, and intermediate CIDs do not receive branches.
+For example, three slices may enter one atomic wave or several serialized waves for `payments-api`; only the final accepted CID becomes repository history. Workers do not commit, and intermediate candidate or accepted CIDs do not receive branches.
 
 The seal writes the commit directly from the immutable tree in the host-owned Git object store. It does not materialize a workspace or touch the operator's checkout. RFC-88 already includes code and the merged `.emery/specs/` baseline in the accepted tree, so the seal assembles no new content.
 
-Commit author, message, and timestamp derive from the plan and its covering `plan.execute.started` fact. The same parent and final tree therefore produce the same commit id. The idempotent seal records the project, parent revision, final CID, commit id, and branch in `plan.publication.project-sealed`.
+Commit author, message, and timestamp derive from the plan and the closed-plan commit-authorization epoch covering its final wave. The same parent and final tree therefore produce the same commit id. The idempotent seal records the project, parent revision, final CID, commit id, and branch in `plan.publication.project-sealed`.
 
 The seal prepares publication; it does not create a remote ref, pull request, merge, or revert.
 
@@ -187,7 +189,8 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 - Implement the idempotent project seal over the final accepted CID, local `change/<plan>` ref, and `plan.publication.project-sealed` fact.
 - Document the `change/<plan>` branch and `Emery-Change` trailer conventions in operator guidance.
 - Extend the forge provider and shipped GitHub binding with `find-pull-request` and `read-pull-request`.
-- Implement one typed projector over plan bindings, seal facts, and forge state. Derive its partial order only from `depends-on`.
+- Implement one typed projector over terminal plan bindings, seal facts, and forge state. Derive its partial order only from projected leaf `depends-on`; do not create a second decomposition reader in publication.
+- Share one target-contraction and cycle-validation kernel between RFC-88 plan validation and archive. Reject `publication-target-cycle` before sealing or forge reads.
 - Render the projection before archive mutation and gate unverified publication with `publication-unverified`; journal the `--unverified` bypass.
 - Append `plan.publication.projected` and `plan.publication.member-landed` through the existing per-actor fact logs.
 - Publish and validate the shared record schema for external producers.
@@ -198,7 +201,7 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 1. Draining a target seals its final accepted CID into exactly one local commit whose parent is the recorded initial revision. It updates local `change/<plan>` and records an idempotent fact without touching the operator checkout or forge.
 2. `emery plan archive` derives every member and repository location from RFC-88 plan bindings, every sealed commit from its fact, and branch and pull-request state through the forge provider before changing archive state.
 3. The projection is byte-stable for unchanged facts, plan, and forge state. A single-repository plan produces the same schema with one member and one sealed commit.
-4. Publication order derives only from cross-target `depends-on` edges. Unrelated members carry no invented constraint.
+4. Publication order derives only from cross-target leaf `depends-on` edges, including RFC-88's deterministic projection of domain dependencies. Unrelated members carry no invented constraint, and archive does not reinterpret internal domains. A leaf-acyclic fixture whose target contraction contains a two-target cycle fails `publication-target-cycle` at plan validation and archive.
 5. Archive verifies trailers, merged state, and landing order. Failures name every affected member; `--unverified` archives only after appending its fact.
 6. External records validate against the published schema and project through the same read surface without acquiring plan lifecycle authority.
 7. A WIT-breaking engine and adapter release fixture is represented and verified as a multi-member publication set.
@@ -213,4 +216,5 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 - **`submitWholeTopic` emulation** — requires Emery to merge and revert on the forge even though GitHub provides no atomic cross-repository operation. Ordered convergence is the honest guarantee.
 - **An external system as record owner** — [Sourcegraph Batch Changes](https://sourcegraph.com/docs/batch-changes) has the right tracking shape but the wrong authority for plan-backed changes. External systems may emit D8 records; they do not own Emery workflow state.
 - **Forge labels as the authoritative marker** — labels are useful views but are forge-specific and easy to retag. The pull-request trailer is portable and travels with the review record.
-- **Cross-checkout speculative CI in archive** — publication verification reads settled forge state. RFC-92's trial-integration gate owns pre-merge composition.
+- **Cross-checkout speculative CI in archive** — publication verification reads settled forge state. RFC-91's local domain gates own pre-merge composition; RFC-92 only transports that model.
+- **Assuming leaf acyclicity implies publication acyclicity** — contracting several leaves onto one target can create a target cycle absent from the leaf graph. The contracted graph is validated explicitly.

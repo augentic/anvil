@@ -2,7 +2,7 @@
 
 > Status: Draft — step 7 of the platform-migration series, scale track ([platform.md](platform.md))
 >
-> Owns: multi-node execution for one change: fact and snapshot transport, fenced claims, remote private workspaces and worker pools, round-boundary convergence, concurrent plan entries, and trial integration.
+> Owns: multi-node placement of RFC-91's completed local execution model: fact, planning-artifact, domain-round, and snapshot transport; fenced claims; remote private workspaces and worker pools; attach, resume, and detach. It adds no scheduler, convergence, merge, authority, or lifecycle semantics.
 >
 > Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-88](rfc-88-detached-changes.md), [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-verify-profiles.md), and [RFC-91](rfc-91-concurrent-execution.md).
 >
@@ -12,7 +12,7 @@
 
 Let one change execute across desktop peers, a hosted fleet, or both without sharing a filesystem.
 
-RFC-86 already makes change state safe to exchange: each actor owns an append-only log, logs form a deterministic union, status is projected, and claims assign work. This RFC adds transport and fencing around that model. It does not move authority, add a second lifecycle, or change how facts are interpreted.
+RFC-86 already makes change state safe to exchange: each actor owns an append-only log, logs form a deterministic union, status is projected, and claims assign work. RFC-88 defines atomic target-wave commit, and RFC-91 defines concurrent leaf eligibility, multi-member waves, and durable bottom-up domain convergence on one node. This RFC adds transport, placement, and fencing around that model. It does not move authority, add a second lifecycle, or change how facts are interpreted.
 
 Coordination is near realtime; code convergence is deliberately coarser. A dependent observes a producer's result when a judgment leg ends and its immutable snapshot has been captured and verified. Emery does not synchronize keystrokes or live directories.
 
@@ -22,10 +22,10 @@ The single-node desktop remains the degenerate deployment with these transports 
 
 1. An operator starts `emery plan execute --hosted` from an authored RFC-88 change home.
 2. Emery records the privileged start, attaches the change to its coordination and value transports, and registers the node's actor identity.
-3. Nodes claim eligible entries. Each worker resolves immutable inputs into a fresh private workspace.
+3. RFC-91's scheduler identifies eligible leaf entries; nodes acquire their fenced claims. Each worker resolves immutable inputs into a fresh private workspace.
 4. At a round boundary, the worker captures its result and verifies the stored snapshot objects before publishing the result fact.
-5. The orchestrator composes outstanding results per target, runs trial integration, and streams an aggregated advisory finding set.
-6. `emery slice merge` remains the serial writer of baselines and the merge fact from which per-entry `done` projects.
+5. Completed leaf and domain results replicate by digest. Any node with the required facts and values may continue RFC-91's unchanged bottom-up fold.
+6. RFC-88's atomic target-wave commit remains the only accepted-CID writer and projects every member leaf `done`.
 
 The three **sync planes** are:
 
@@ -33,7 +33,7 @@ The three **sync planes** are:
 - **convergence** — immutable project, source, and result snapshot objects exchanged between private workspaces;
 - **publication** — branches and pull requests on the forge, unchanged and operator-owned under RFC-89.
 
-A **round boundary** is the point after a judgment leg completes and `capture` records its result. A **fencing generation** is the monotonically increasing token attached to a claim and every write made under that claim. A **code patch** is RFC-87's `{ base snapshot, result snapshot, touched paths }` relation. It is not a patch blob, and RFC-89's publication set never enters the value plane.
+A **round boundary** is the point after a judgment leg completes and `capture` records its result. A **fencing generation** is the monotonically increasing token attached to a claim and every write made under that claim. A **code patch** is RFC-87's `{ base snapshot, result snapshot, touched paths }` relation. A **domain result** is RFC-91's immutable record: either one composed candidate CID for a single-target domain or an ordered target→CID/report set for a multi-target coordination domain. It is not a patch blob, and RFC-89's publication set never enters the value plane.
 
 ## Worked example: attach and resume on two nodes
 
@@ -74,15 +74,15 @@ slices:
     depends-on: [add-refund-endpoint]
 ```
 
-The first two entries share the recorded `payments-api` base and have disjoint write manifests, so they may run concurrently. At the round boundary, Emery composes their RFC-91 code patches into one `payments-api` candidate and runs that target's RFC-90 verify profiles.
+RFC-88's decomposition places the first two entries under one `payment-behaviour` domain inside the `payments-api` target domain. They share the recorded base and have disjoint write manifests, so RFC-91 may run them concurrently whether both workers are local or one is remote. At the round boundary, the same RFC-91 kernel composes their patches, writes the domain-round record, runs RFC-90 verification, and folds the result upward.
 
 The `mobile` dependency controls scheduling only. Once `add-refund-endpoint` has produced the required result, `adopt-refund-ui` may run against the `mobile` base. Emery never applies the payments patch to the mobile repository. Trial integration creates a separate `mobile` candidate and runs the mobile verify profiles.
 
-The coordination plane receives one aggregated advisory report containing findings from both candidates. Every finding names its target and owning entry. Cross-repository CI is outside this gate, and the existing serial merge and verify gates retain lifecycle authority.
+The root coordination domain receives the same aggregated advisory report as a desktop-only run. Every finding names its target, nearest domain, and owning entry. Cross-repository CI is outside this gate, and RFC-88's target-wave commit retains accepted-CID authority.
 
-If the two payments results unexpectedly both touch `src/errors.rs`, the payments convergence wave stops before either result is composed. The immutable results remain available for recovery, and the mobile or any other target domain may continue. The producers can recapture without the shared path; otherwise Emery proposes a fan-in integration slice that depends on both producers and exclusively owns the path, or serializes the entries.
+If the two payments results unexpectedly both touch `src/errors.rs`, RFC-91 stops their nearest common domain before either result is composed and writes the same inert recovery proposal it would locally. The immutable results and proposal replicate; the mobile or any domain outside that branch may continue.
 
-Adding an integration slice changes the plan digest. The affected target stays paused until the operator invokes `plan execute` again, appending a fresh `plan.execute.started` for the amended plan. The integration slice then starts from the repaired composed snapshot and uses the ordinary RFC-91 gate.
+The operator applies that proposal through RFC-88's `plan amend --proposal` surface and starts a new closed-plan execution epoch. Transport does not gain an amendment writer or hidden recovery path.
 
 ## Decisions
 
@@ -132,29 +132,23 @@ Emery does not provide CRDT trees, synchronized editor buffers, or two agents wr
 
 Concurrent work happens in private workspaces with partitioned ownership. RFC-91's deterministic kernel composes the results.
 
-### D8 — Independent entries run concurrently, with layering per target
+### D8 — Remote placement preserves the local recursive scheduler
 
-Plan entries with no `depends-on` path are eligible in parallel. Entries bound to the same `plan.yaml.targets` row share its recorded base and use RFC-91's composer for producer code patches.
+RFC-91 remains the sole definition of concurrent leaf eligibility, domain readiness, composition, verification, and multi-member wave selection; RFC-88 remains the definition of target-wave commit. RFC-92 may place any claimed leaf, target-build worker, or ready domain operation on a capable node. Placement uses the digest-matched decomposition revision and never infers a replacement hierarchy from plan order.
 
-A dependency across targets orders scheduling but never composes one repository's result into another. The target key is the composition boundary, while the existing plan graph remains the concurrency declaration. RFC-92 owns that graph-to-per-target-layer projection and does not reopen RFC-91's composer.
+Every remote claimed result carries its authorization epoch, fencing generation, and RFC-91 input fence. The receiving node rejects stale generations or mismatched lead, decomposition, wave, leaf, dependency-frontier, spec, or base digests before recording or folding it.
 
-`emery slice merge` remains the serial writer of baselines and the merge fact from which per-entry `done` projects.
+Domain convergence itself remains claimless and content-addressed. A remote domain operation carries RFC-91's deterministic operation key over its complete inputs and accepted frontier; compare-and-set publication accepts the first byte-valid record for that key, treats an identical duplicate as success, and reports different output for the same key as a blocking determinism violation. No synthetic domain claim or lifecycle state is introduced.
 
-### D9 — Trial integration creates one candidate tree per target
+### D9 — Domain records, facts, and values travel together
 
-At each round boundary, the orchestrator groups outstanding code patches by target and RFC-91 convergence wave. It composes each wave into the target's next candidate snapshot, runs that target's RFC-90 verify profiles, and emits one aggregated finding set on the coordination plane.
+The coordination-artifact plane transports retained lead and decomposition revisions, amendment proposals, and RFC-91 domain-round records. The coordination stream transports the facts that reference them. The value plane transports every CID reachable from build and domain records. A referenced fact becomes visible to projection only after its artifact and value dependencies are present and digest-verified.
 
-Every finding identifies its target and owning entry. Cross-target dependencies affect order only, and cross-repository CI is outside this gate.
+This ordering makes a completed domain gate resumable on any node without recomputation. Detach first synchronizes the same closure; garbage collection treats replicated live records as roots.
 
-The aggregated findings measure overall quality but remain advisory. Patch or base conflicts block only the affected composition and its dependent scheduling; they do not move authority away from the existing serial merge and verify gates.
+### D10 — Recovery proposals do not acquire authority in transport
 
-### D10 — Prefer disjoint ownership over artificially small slices
-
-`plan author` records an agent-proposed write manifest for each slice. The CLI normalizes those paths and compares ownership only among entries bound to the same target. Predicted shared paths become a `depends-on` edge when order is unambiguous or a fan-in integration task; ambiguous overlap rejects the plan. This rule is adapter-neutral.
-
-Captured touched paths remain authoritative at runtime. Different targets are structurally disjoint. Result snapshots may become more frequent without becoming smaller, and per-slice overhead still places a practical floor under slice size.
-
-When runtime results unexpectedly overlap, the affected target wave follows the recovery shown in the trial-integration example. A bad prediction can never become a silent merge.
+RFC-91 may write a validated amendment proposal after runtime overlap. RFC-92 replicates it as an immutable coordination artifact but never applies it. Only RFC-88's operator-invoked compare-and-set amendment surface may revise decomposition and plan authority.
 
 ### D11 — Remote workspaces preserve RFC-87 semantics
 
@@ -189,8 +183,8 @@ This makes RFC-92 directly operable without waiting for RM-18's background-submi
 - Treat claim expiry only as suspected loss. Recovery stays inside `plan execute`: explicitly confirm it, validate the last fact round, atomically increment the fencing generation, and reject every event, result, or release carrying the old token. Add no recovery subcommand.
 - Chunk snapshot objects in the JetStream backend, address them by content, and verify them after download before materialization. Transport project bases and results and source inputs through this path. RFC-87 defines no separate patch payload.
 - Place completed RFC-91 worker pools on remote nodes without changing their ownership or composition contracts. Every worker receives a private workspace and returns a result snapshot through the value plane.
-- Project the plan graph into deterministic parallel eligibility and per-target convergence layers. Normalize agent-proposed manifests, insert an unambiguous `depends-on` edge for unknown or overlapping ownership, and otherwise reject the plan.
-- At round boundaries, compose one candidate per target and convergence wave, run the target's RFC-90 profiles, and stream one normalized aggregated advisory report. Patch or base conflicts block only the affected composition and dependent scheduling.
+- Place RFC-91 eligible leaves, workers, and domain operations remotely without changing readiness or composition. Require authorization epoch, fencing generation, and complete RFC-91 input fences on claimed results; require the deterministic operation key and claimless compare-and-set publication on domain results.
+- Replicate retained lead/decomposition revisions, amendment proposals, and domain-round records through the coordination-artifact store before exposing their referencing facts; replicate every reachable CID through the value plane.
 - Use an Omnia/Rust multi-project change, where RFC-90 verification and RFC-91 remote pools are available, as the completion workload. A project with unavailable verify profiles runs serially and emits typed trial-integration unavailability; it never silently bypasses a claimed gate.
 
 ## Acceptance criteria
@@ -199,8 +193,8 @@ This makes RFC-92 directly operable without waiting for RM-18's background-submi
 2. Two nodes cannot own one slice claim. Explicit recovery increments the fencing generation, and stale workers cannot append events, record results, or release the recovered claim.
 3. Project snapshots captured locally and source snapshots ingested locally materialize remotely to the same tree digests. Downloaded objects fail closed on digest mismatch.
 4. An RFC-91 Omnia worker pool runs remotely with private trees and returns the same composed result and normalized verify findings as the single-node run.
-5. Independent plan entries execute concurrently. Same-target dependents compose producer values over their shared base, while cross-target dependencies order scheduling without applying foreign patches. A runtime-discovered shared path rejects only the affected target wave, retains every result, and proposes an integration slice requiring execution to be invoked again, or deterministic serialization, while unrelated target domains continue.
-6. Trial integration produces and verifies one candidate tree per target, then streams an aggregated advisory report without moving `slice merge` or per-entry `done` authority.
+5. One desktop-only and one two-node run over the same facts, planning revisions, and values choose the same eligible leaves, produce byte-identical domain-round records and target-wave CID, and project the same leaf statuses. Duplicate remote evaluation of one domain operation key converges idempotently, while different output for that key blocks. No RFC-92 code path defines alternative readiness, convergence, or acceptance policy.
+6. A domain-round fact arriving before its record or referenced CIDs remains invisible; once all dependencies verify, resume reuses the completed round without rerunning composition or verification. Detach retains the same resumable closure locally.
 7. Process loss at every phase boundary resumes from per-actor fact sequences, the claim generation, and content-addressed values without shared filesystem state.
 8. Failure injection before namespace creation, after artifact upload, and mid-stream resumes idempotently without duplicate change ids, duplicated facts, or forge or tree mutations. A node that streams, detaches after synchronization, and reattaches observes the same projection at each step.
 9. `cargo make ci` is green in touched repositories. Two-node integration tests cover attach and resume, fact replication, fencing, value integrity, remote materialization, worker placement, concurrent entries, and trial integration.
@@ -209,6 +203,7 @@ This makes RFC-92 directly operable without waiting for RM-18's background-submi
 
 - **Shared volumes or network filesystems** — couple failure domains, introduce distributed locking semantics, depend on location, and break the `local-path` lending model.
 - **CRDT-synchronized live trees** — solve a problem the round-boundary rhythm does not have while making intermediate states difficult to verify.
+- **A hosted-only scheduler or convergence policy** — creates different desktop and fleet workflow semantics. RFC-92 distributes RFC-91's completed local model and owns placement only.
 - **Coordination records in the value plane** — collapse D1. Coordination needs liveness and per-actor ordering, not content addressing.
 - **A second event store beside the fact logs** — creates dual-write drift. One authoritative set of per-actor logs with a streaming carrier is sufficient.
 - **Hosted journal authority cutover** — making the stream the sole durable event authority and demoting local files to projections creates two lifecycle models, a one-way boundary, and a hosted dependency for reading a local change. RFC-86's per-actor logs remove the need.
