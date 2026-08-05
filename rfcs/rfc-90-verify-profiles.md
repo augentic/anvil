@@ -60,7 +60,7 @@ Not every node can verify. A node without the required toolchain or sandbox supp
 
 ## Fixed implementation cut
 
-- The host selects a profile table from the approved target adapter and platform set in `plan.yaml.projects` / `project.yaml`; model output never selects commands or a toolchain.
+- The host selects a profile table from the bound target adapter and platform set in `plan.yaml.projects` / `project.yaml`; model output never selects commands or a toolchain.
 - The first complete table is Omnia/Rust (`fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, `ci`). Other target/platform combinations and undeclared profiles return typed `unavailable`; adding their tables is independent coverage work, not an RFC-90 phase.
 - Verification runs in a disposable RFC-87 workspace prepared from the candidate result snapshot, never the authoritative tree.
 - Egress, inherited environment, CPU, memory, wall time, and output limits are deny-by-default host policy. `test` and `ci` require the invocation's explicit execution grant; there is no persisted bypass file.
@@ -84,7 +84,7 @@ Implement the closed request type, disposable verification workspace, sandbox/re
 3. Verification output maps to the shared `report` shape with stable severities.
 4. Toolchain-less nodes expose a typed unavailable signal.
 5. `test` / `ci` execution is gated by explicit host policy.
-6. Omnia/Rust executes the declared profile table from the approved project target/platform binding; every unsupported target or profile fails typed.
+6. Omnia/Rust executes the declared profile table from the bound project target/platform binding; every unsupported target or profile fails typed.
 7. Verification always uses a disposable RFC-87 tree and cannot modify authoritative source, target, or slice state.
 8. `cargo make ci` is green in touched repositories with integration coverage for sandbox denial, resource/output bounds, every Omnia/Rust profile, unsupported targets, unavailable toolchains, cache isolation, and report normalization.
 

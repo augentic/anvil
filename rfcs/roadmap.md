@@ -20,7 +20,7 @@ Emery owns the workflow semantics across those layers: intent becomes artifacts;
 ## Principles
 
 - **Keep the CLI authoritative for workflow state.** Skills, MCP servers, CI, and cloud runners may orchestrate `emery`; they must not reimplement lifecycle transitions, plan validation, registry validation, or merge behavior. Repository checkout and publication remain operator-owned.
-- **One authored home per fact; derive the rest.** Each repository's durable intent (`adapter`, `description`, `product`) lives in `.emery/project.yaml`; routing identity (`surface[]`, `decisions[]`, `recent[]`) is a deterministic baseline projection committed as `.emery/topology.lock`. A detached change records its approved repositories, exact revisions, and resolved target topology once under `plan.yaml.projects`; RFC-88 removes committed `registry.yaml` and tended workspace slots from multi-repository coordination. Rich catalog metadata can still live in Backstage or another catalog; Emery consumes reviewable projections at the boundary.
+- **One authored home per fact; derive the rest.** Each repository's durable intent (`adapter`, `description`, `product`) lives in `.emery/project.yaml`; routing identity (`surface[]`, `decisions[]`, `recent[]`) is a deterministic baseline projection committed as `.emery/topology.lock`. A detached change records its pinned repositories, exact revisions, and resolved target topology once under `plan.yaml.projects`; RFC-88 removes committed `registry.yaml` and tended workspace slots from multi-repository coordination. Rich catalog metadata can still live in Backstage or another catalog; Emery consumes reviewable projections at the boundary.
 - **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
 - **Optimize for local first, cloud later.** `emery plan execute` remains the proving ground, but guest locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Eval coverage should exercise realistic multi-repo flows, not just isolated command behavior.
@@ -149,7 +149,7 @@ emery plan finalize --forge github
 
 **Goal:** Run Emery plans durably in the background while preserving local workflow semantics.
 **Shape:** hosted execution means hosting the Omnia deployment durably. Model calls are session-less by design (fresh spawn per `create`); resumability comes from coordination facts and immutable snapshots, not from retaining an agent session or workspace.
-**Requires:** completed [RFC-92](rfc-92-node-sync.md) for remote workspaces, fact and snapshot transport, fenced claims, and remote worker pools; approval gates come from [RFC-86](rfc-86-change-facts.md)'s recorded approvals; plus controlled push/PR creation, deterministic recovery, and parity with `emery plan execute`.
+**Requires:** completed [RFC-92](rfc-92-node-sync.md) for remote workspaces, fact and snapshot transport, fenced claims, and remote worker pools; digest coverage for privileged work comes from [RFC-86](rfc-86-change-facts.md)'s `plan.execute.started`; plus controlled push/PR creation, deterministic recovery, and parity with `emery plan execute`.
 **Target surface:**
 
 ```bash
@@ -214,5 +214,5 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 - How should orchestration ownership and handoff work across multiple operators or agents?
 - What cross-version compatibility matrix and semver-range host-CLI floor policy should adapter authors provide across adapter versions (RM-21)? Draft process answer: [RFC-77](rfc-77-release-process.md) (exact pins + `emery-floor` + short compatibility rows; ranges still open).
 - How much telemetry should emit by default, and what requires explicit opt-in?
-- What approval model is required before hosted execution can push branches or open pull requests?
+- What authorization is required before hosted execution can push branches or open pull requests?
 
