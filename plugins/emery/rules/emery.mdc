@@ -82,7 +82,7 @@ emery plan status --quiet
 emery plan author <name> ... --debug
 ```
 
-`--debug` turns on the INFO progress filter plus `omnia_cursor` / `omnia_wasi_http` debug tracing; both flags win over any ambient `RUST_LOG`.
+`--debug` turns on the INFO progress filter plus `omnia_cursor` / `omnia_wasi_http` debug tracing; both flags win over any ambient `RUST_LOG`. The preset names the cursor backend only — under `EMERY_MODEL_BACKEND=claude`, spawn detail comes from `RUST_LOG=info,model=debug` with no flag.
 
 Stream roles: the semantic CLI result (text or JSON envelope) is stdout; command failures and live tracing are stderr. Relay the semantic result or structured error once, verbatim; do not repeat or reformat tracing lines in the closing response.
 

@@ -16,8 +16,10 @@ and grading posture live in [`crates/probe/README.md`](../../crates/probe/README
 
 ## Live cases (the prompt loop)
 
-Requires authenticated `cursor-agent` on `PATH` (`cursor-agent login` or
-`CURSOR_API_KEY` in `.env` at the repository root).
+Requires an authenticated agent CLI on `PATH` for whichever backend
+`EMERY_MODEL_BACKEND` selects: `cursor` (default) wants `cursor-agent login`
+or `CURSOR_API_KEY` in `.env` at the repository root; `claude` wants
+`claude login` or `ANTHROPIC_API_KEY`. Only the selected backend connects.
 
 ```bash
 cargo make eval                              # list the cases
@@ -38,10 +40,10 @@ cargo make lab -- --project-dir sandbox/auth plan execute
 
 The reserved `--debug` / `--quiet` host log flags (peeled before
 dispatch, a flag wins over `RUST_LOG`; flagless defaults to `info`) and
-the `CURSOR_MODEL`, `CURSOR_TIMEOUT_SECS`, `RUST_LOG`, and `EVAL_LOG`
+the `EMERY_MODEL_*`, `CURSOR_*`, `CLAUDE_*`, `RUST_LOG`, and `EVAL_LOG`
 env knobs are documented in
 [`crates/probe/README.md`](../../crates/probe/README.md);
-`cargo make eval` defaults the timeout to 300s.
+`cargo make eval` defaults the cursor timeout to 300s.
 
 Cadence: before a release tag, and after any change to the judgment prompts
 (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer

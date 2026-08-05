@@ -6,13 +6,13 @@ The two adapter components ([source.rs](source.rs), [target.rs](target.rs)) are 
 
 ## Quick start
 
-Login to the Cursor agent:
+Authenticate the agent CLI for whichever backend `EMERY_MODEL_BACKEND` selects. For the default cursor backend:
 
 ```bash
 agent login
 ```
 
-or set `CURSOR_API_KEY` in `.env`.
+or set `CURSOR_API_KEY` in `.env`. For `EMERY_MODEL_BACKEND=claude`, run `claude login` or set `ANTHROPIC_API_KEY`.
 
 Run the example:
 
@@ -28,7 +28,7 @@ cargo make wasm-clean
 
 Artifacts land under the gitignored `sandbox/wasm/` — the project tree at `sandbox/wasm/project/`, with the store and cache beside it.
 
-Set `RUST_LOG` yourself when debugging the seam (the run keeps the env-driven filter because it wants `omnia_wasi_http=debug` without `omnia_cursor=debug`); for ad-hoc `emery` invocations the reserved host flags `--debug` / `--quiet` are the ergonomic route — they win over any ambient `RUST_LOG`.
+Set `RUST_LOG` yourself when debugging the seam (the run keeps the env-driven filter because it wants `omnia_wasi_http=debug` without the model backend's own debug lines); for ad-hoc `emery` invocations the reserved host flags `--debug` / `--quiet` are the ergonomic route — they win over any ambient `RUST_LOG`. Note that `--debug` names `omnia_cursor` and not the Claude backend, so Claude spawn detail needs `RUST_LOG=info,model=debug`.
 
 The runtime's HTTP trigger serves adapter MCP reference shelves on a per-invocation port: the launcher pre-binds an ephemeral loopback listener when `HTTP_ADDR` is unset (any bind failure is a startup failure), so concurrent `emery` invocations never contend. The runtime injects the listener's local address as the guest-visible `HTTP_ADDR`; every judgment dispatch grants the spawned agent `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]` derived from it, and the deployment's `http_paths` hook maps that path back onto the routed adapter id so the component's own `wasi:http` handler serves it (the native eval rung hosts the same shelves in-process at `/mcp/<name>`). A path outside that grammar — or a claimed identity nothing supplies — is an ordinary 404; a genuine fault on a claimed route, including a guest without the handler export, is an error-logged 500, never a dispatch to the engine guest.
 

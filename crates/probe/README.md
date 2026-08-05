@@ -8,13 +8,28 @@ deterministic validators — not a model.
 
 ## Quick start
 
-Login to the Cursor agent:
+The runner drives the same `model::ModelBackend` the shipped binary links, so
+it honours `EMERY_MODEL_BACKEND` — `cursor` (default) or `claude`. Authenticate
+whichever one you select.
+
+For cursor-agent, log in:
 
 ```bash
 [cursor-]agent login
 ```
 
-or set `CURSOR_API_KEY` in `.env` at the repository root.
+or set `CURSOR_API_KEY` in `.env` at the repository root. Note that
+`cursor-agent status` proves an IDE login, not the `--print` path the backend
+spawns.
+
+For Claude Code, run `claude login` or set `ANTHROPIC_API_KEY`, then:
+
+```bash
+EMERY_MODEL_BACKEND=claude cargo make eval auth --restart
+```
+
+Only the selected backend is connected, so each mode needs only its own CLI on
+`PATH`.
 
 ```bash
 cargo make eval                       # list the cases
@@ -38,10 +53,15 @@ Driver-side knobs (read by `probe::client`):
 
 | Knob                      | Effect                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `--debug` / `--quiet`     | Reserved host log flags, peeled anywhere in argv before dispatch (mutually exclusive) — the same contract as the shipped `emery` binary. `--quiet` turns tracing off; `--debug` selects `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins over `RUST_LOG`. |
-| `CURSOR_MODEL=<model-id>` | Default model when a request leaves `model` unset; blank/unset lets `cursor-agent` choose. Read by `omnia_cursor::ConnectOptions`. |
-| `CURSOR_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds), read by `omnia_cursor::ConnectOptions`. Unset → backend default 600. `cargo make eval` sets `300`. |
-| `RUST_LOG=<filter>`       | The env escape hatch when no flag is passed. Example: `info,omnia_cursor=debug`. Flagless with `RUST_LOG` unset defaults to `info`. |
+| `--debug` / `--quiet`     | Reserved host log flags, peeled anywhere in argv before dispatch (mutually exclusive) — the same contract as the shipped `emery` binary. `--quiet` turns tracing off; `--debug` selects `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins over `RUST_LOG`. That preset predates the Claude backend and does not name it — for Claude spawn detail use `RUST_LOG=info,model=debug` with no flag. |
+| `EMERY_MODEL_BACKEND=<name>` | Which agent CLI serves completions: `cursor` (default) or `claude`. An unrecognised value fails at startup rather than falling back. |
+| `EMERY_MODEL_RETRIES=<u32>` | Extra attempts after a transport failure (unreachable provider, killed spawn, stalled stream). Unset → 2. A rejected answer is never retried here — the backend's own two-attempt format repair covers that. |
+| `EMERY_MODEL_RETRY_BACKOFF_MS=<u64>` | Wait before the first retry, doubling with jitter thereafter. Unset → 1000. |
+| `CURSOR_MODEL` / `CLAUDE_MODEL` | Default model when a request leaves `model` unset; blank/unset lets the CLI choose. A guest-supplied id always wins. |
+| `CURSOR_TIMEOUT_SECS` / `CLAUDE_TIMEOUT_SECS` | Per-spawn wall-clock bound (seconds). Unset → backend default 600. `cargo make eval` sets `300` for cursor. |
+| `CURSOR_INACTIVITY_SECS` / `CLAUDE_INACTIVITY_SECS` | Kill a spawn after this long with no stream events, so a stalled agent dies well before the absolute cap. Unset → 120. |
+| `CLAUDE_BARE=1`           | Pass `--bare`, forcing `ANTHROPIC_API_KEY` and ignoring the CLI's stored OAuth/subscription login. Unset → off. |
+| `RUST_LOG=<filter>`       | The env escape hatch when no flag is passed. Example: `info,omnia_cursor=debug` or `info,model=debug`. Flagless with `RUST_LOG` unset defaults to `info`. |
 | `EVAL_LOG=<path>`         | Log-file override. When unset, a named eval case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
 
 Console tracing goes to stderr; stdout stays the semantic command
@@ -51,7 +71,7 @@ A run's spans — `eval.case` (this crate), `emery.command` (the
 transport router), the engine orchestration spans (`plan.author`,
 `plan.execute.entry`, `slice.refine` / `slice.build` / `slice.merge`,
 `source.survey` / `source.extract`, `judgment.leg`), and
-`model.request` (the cursor backend) — carry only bounded labels (case
+`model.request` (the selected model backend) — carry only bounded labels (case
 id/kind, command label, slice/adapter ids, judgment leg, repair count,
 effective model id, exit code), never raw argv, intent/source values,
 prompts, or project paths. The lab exports no OTLP telemetry: the
@@ -85,9 +105,12 @@ not evidence volume. Docs claim a 30-minute idle timeout; code claims 15;
 documentation authority should win. Grading still only asserts lifecycle +
 provenance; it does not require a `[divergence]` tag.
 
-`judgment-model-failed` on refine usually means the cursor layer timed out
+`judgment-model-failed` on refine usually means the model backend timed out
 or returned unparseable JSON — the engine `MAX_REPAIRS` loop never sees
-that failure.
+that failure. Transport failures (an unreachable provider, a killed spawn, a
+stalled stream) are retried inside the backend before they reach here, so a
+`judgment-model-failed` that survives the retries is worth reading as a real
+answer problem rather than a flaky connection.
 
 ## Model judgment
 

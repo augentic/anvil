@@ -17,7 +17,7 @@ Nothing on this rung compiles Wasmtime. An ordinary workflow change should never
 
 ## 2. `cargo make eval` — prompt evaluation
 
-Runs one live eval case (the `crates/probe` case runner composed by the root `eval` example). The engine's `auth` workflow case drives plan → execute (refine → build → merge per slice) over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning; `--until plan` stops after plan author to inspect the authored plan. The hard synthesis case is authority divergence (`session-timeout` / `session-policy`), not evidence volume. It needs command-mode model credentials — `cursor-agent login` or `CURSOR_API_KEY`; note `cursor-agent status` proves an IDE login, not the `--print` path the model backend spawns. `CURSOR_MODEL` and `CURSOR_TIMEOUT_SECS` are documented in [`crates/probe/README.md`](../../crates/probe/README.md).
+Runs one live eval case (the `crates/probe` case runner composed by the root `eval` example). The engine's `auth` workflow case drives plan → execute (refine → build → merge per slice) over an adversarial lead set, graded by the deterministic validators, with per-leg repair counts reported as the early drift warning; `--until plan` stops after plan author to inspect the authored plan. The hard synthesis case is authority divergence (`session-timeout` / `session-policy`), not evidence volume. It needs command-mode model credentials for whichever backend `EMERY_MODEL_BACKEND` selects: `cursor` (default) wants `cursor-agent login` or `CURSOR_API_KEY` — note `cursor-agent status` proves an IDE login, not the `--print` path the backend spawns — and `claude` wants `claude login` or `ANTHROPIC_API_KEY`. Only the selected backend connects, so each mode needs only its own CLI on `PATH`. The full knob set (`EMERY_MODEL_*`, `CURSOR_*`, `CLAUDE_*`) is documented in [`crates/probe/README.md`](../../crates/probe/README.md).
 
 If you want to set environment variables in a file, see `.env.example`. Copy to `.env` and set variables then run
 
@@ -31,7 +31,7 @@ Each case keeps one stable retained sandbox at `sandbox/<case>/` (composition-ow
 
 ## The WASM seam
 
-There is no automated WASM boundary rung. The component seam — the embedded engine guest, the per-axis mock components faulting in through the fail-closed resolver, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; `CURSOR_API_KEY` in `examples/.env`; see [examples/wasm/README.md](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
+There is no automated WASM boundary rung. The component seam — the embedded engine guest, the per-axis mock components faulting in through the fail-closed resolver, dispatch-by-id on both axes, metadata reads, guest-to-host model wiring, preopens — is exercised by the operator-invoked wasm example: `cargo make wasm-run` (live model; credentials for the selected backend in `examples/.env`; see [examples/wasm/README.md](../../examples/wasm/README.md)). Run it when a change crosses a WIT, dispatch, hosting, or preopen seam. Expect minutes, not seconds — guest builds plus Wasmtime JIT dominate.
 
 ## What CI runs
 

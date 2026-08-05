@@ -1148,10 +1148,7 @@ mod tests {
             let workspace = std::env::temp_dir();
             let config = r#"{"mcpServers":{}}"#.to_owned();
             let args = args(&agent_command(&options(&workspace, Some(config)), None, "the prompt"));
-            assert!(
-                args.iter().any(|arg| arg.starts_with("--mcp-config=")),
-                "args: {args:?}"
-            );
+            assert!(args.iter().any(|arg| arg.starts_with("--mcp-config=")), "args: {args:?}");
             assert!(
                 args.contains(&"--strict-mcp-config".to_owned()),
                 "a project .mcp.json must not leak in: {args:?}"

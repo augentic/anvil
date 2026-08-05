@@ -95,6 +95,21 @@ cargo install --git https://github.com/augentic/emery --locked --force          
 
 The above covers installing `emery` to *use* Emery in your own project. Working on Emery itself needs only a Rust toolchain — see [Contributing to Emery](../contributing/index.md#building-from-a-checkout).
 
+## Model backend
+
+Emery's judgment steps (plan propose, slice synthesis) call a model by spawning an agent CLI in non-interactive print mode. Choose one and authenticate it; `EMERY_MODEL_BACKEND` selects which, and only the selected one is connected, so you need just that CLI on your `PATH`.
+
+| `EMERY_MODEL_BACKEND` | CLI | Authenticate with |
+| --------------------- | --- | ----------------- |
+| `cursor` (default)    | [cursor-agent](https://cursor.com/cli) | `cursor-agent login` or `CURSOR_API_KEY` |
+| `claude`              | [Claude Code](https://claude.com/product/claude-code) | `claude login` or `ANTHROPIC_API_KEY` |
+
+For cursor-agent, the credential must be a command-mode one: `cursor-agent status` reporting a logged-in IDE is not enough for the `--print` path Emery spawns.
+
+Optional per-backend knobs mirror each other — `CURSOR_MODEL` / `CLAUDE_MODEL` set the default model when a request leaves it unset, `CURSOR_TIMEOUT_SECS` / `CLAUDE_TIMEOUT_SECS` set the per-spawn wall-clock cap (default 600), and `CURSOR_INACTIVITY_SECS` / `CLAUDE_INACTIVITY_SECS` kill a spawn that stops streaming (default 120). Raise the timeouts for long synthesis legs.
+
+A completion that fails to reach the provider is retried automatically with exponential backoff — `EMERY_MODEL_RETRIES` (default 2) and `EMERY_MODEL_RETRY_BACKOFF_MS` (default 1000) bound it. A model answer that fails validation is not retried this way; the backend's own two-attempt repair loop handles that.
+
 ## Adapter-specific prerequisites
 
 Depending on which adapter you use, you may need additional tooling.
@@ -131,6 +146,7 @@ Run through this checklist to confirm everything is ready:
 
 1. **CLI installed:** `emery --version` prints a version number.
 2. **Cursor plugins:** Open Cursor Settings > Plugins and confirm the Augentic plugins are listed.
-3. **Adapter tooling:** If using Omnia, run `rustup target list --installed` and confirm `wasm32-wasip2` appears. If using Vectis, confirm `rustc --version` succeeds.
+3. **Model backend:** `cursor-agent --version` (or `claude --version`, matching your `EMERY_MODEL_BACKEND`) succeeds and the CLI is authenticated.
+4. **Adapter tooling:** If using Omnia, run `rustup target list --installed` and confirm `wasm32-wasip2` appears. If using Vectis, confirm `rustc --version` succeeds.
 
-If all three checks pass, proceed to the [Quick Start](../tutorials/quick-start.md).
+If all four checks pass, proceed to the [Quick Start](../tutorials/quick-start.md).

@@ -4,7 +4,7 @@
 //! example in this repository over the mock catalog and the one in
 //! `augentic/emery-adapters` over the first-party catalog: native
 //! command passthrough by default, the live case runner under the
-//! `eval` subcommand. The client owns the lazily connected cursor
+//! `eval` subcommand. The client owns the lazily connected model
 //! backend ([`DevModel`]), the process tracing subscriber (console
 //! plus an optional ANSI-free file copy — the lab exports no OTLP
 //! telemetry; the shipped runtime binary owns that), and the
@@ -18,11 +18,16 @@
 //!   argv before the grammar sees them (mutually exclusive; repeats
 //!   are idempotent). `--quiet` turns tracing off; `--debug` selects
 //!   `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins
-//!   over any ambient `RUST_LOG`.
+//!   over any ambient `RUST_LOG`. The preset names the cursor backend
+//!   only, so Claude spawn detail needs `RUST_LOG` instead.
 //! - `RUST_LOG` — the env escape hatch when no flag is passed
-//!   (e.g. `info,omnia_cursor=debug`); flagless with `RUST_LOG` unset
-//!   defaults to `info`. Console tracing goes to stderr — stdout stays
-//!   the semantic command output.
+//!   (e.g. `info,omnia_cursor=debug` or `info,model=debug` for the
+//!   Claude backend); flagless with `RUST_LOG` unset defaults to
+//!   `info`. Console tracing goes to stderr — stdout stays the
+//!   semantic command output.
+//!
+//! Which agent the backend spawns is `EMERY_MODEL_BACKEND` — `cursor`
+//! (default) or `claude`; see [`crate::client::DevModel`].
 //! - `EVAL_LOG` — log-file override. When unset, a named eval case
 //!   logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at
 //!   startup) and passthrough commands log to console only. The file
@@ -186,7 +191,11 @@ where
     Ok((layer, path))
 }
 
-/// A lazily connected cursor-agent backend per case root.
+/// A lazily connected spawned-agent backend per case root, over
+/// whichever CLI `EMERY_MODEL_BACKEND` selects.
+///
+/// The name predates the Claude backend and is kept because
+/// `augentic/emery-adapters` calls it from its own eval composition.
 #[must_use]
 pub fn cursor_factory() -> ModelFactory {
     Arc::new(|root| Ok(DynModel::new(DevModel::new(root))))
