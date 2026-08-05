@@ -1,10 +1,22 @@
 //! The Claude Code model backend: a spawned `claude --print` agent behind the
 //! `omnia:model/completion` boundary.
 //!
-//! Structurally a sibling of `omnia_cursor::model` — same prompt spill, same
-//! dual inactivity/cap watchdog, same two-attempt `Format::repair` loop over a
-//! resumed session. Three things differ:
+//! Structurally a sibling of `omnia_cursor::model` — same dual inactivity/cap
+//! watchdog, same two-attempt `Format::repair` loop over a resumed session.
+//! What differs:
 //!
+//! - The prompt is piped on stdin rather than spilled to a file the CLI is
+//!   pointed at. Claude audits its instructions: told to "follow every
+//!   instruction in the file at <path>" and then to reply with only JSON and
+//!   no reasoning, it reads the pair as a prompt-injection sequence and
+//!   refuses outright. On stdin the prompt is an ordinary user turn, and the
+//!   pipe has no `ARG_MAX` ceiling either.
+//! - Schema answers set `--json-schema`, so conformance is the CLI's job
+//!   rather than a promise extracted from the model. The terminal event then
+//!   carries the parsed value in `structured_output`, and a schema the CLI
+//!   will not accept falls back to the prompt instruction alone.
+//! - The terminal event's `permission_denials` are logged, so a refused tool
+//!   call is visible rather than showing up later as an inexplicable answer.
 //! - MCP servers ride on `--mcp-config` rather than a snapshotted project file,
 //!   so there is no on-disk guard to install and restore around each spawn.
 //! - Tool calls arrive as `tool_use` / `tool_result` content blocks inside
@@ -16,10 +28,9 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use anyhow::{Context as _, Result, anyhow, bail, ensure};
@@ -29,7 +40,9 @@ use omnia_wasi_model::{
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
-use tokio::io::{AsyncBufReadExt as _, AsyncRead, AsyncReadExt as _, BufReader};
+use tokio::io::{
+    AsyncBufReadExt as _, AsyncRead, AsyncReadExt as _, AsyncWriteExt as _, BufReader,
+};
 use tokio::process::Command;
 use tokio::time::Instant;
 use tracing::instrument;
@@ -134,12 +147,49 @@ struct SpawnOptions<'a> {
     inactivity: Duration,
     /// The `--mcp-config` payload, when the request granted MCP servers.
     mcp_config: Option<String>,
+    /// The `--json-schema` payload, when the format constrains the answer.
+    schema: Option<String>,
     bare: bool,
+}
+
+/// The `--json-schema` payload for a format, if it constrains the answer.
+///
+/// A schema format passes its own schema through. A bare JSON format has none
+/// of its own, so it passes the weakest schema that still means "an object" —
+/// which is exactly what [`Format::check`] enforces for it. Text formats
+/// constrain nothing and go without the flag.
+fn json_schema(format: &Format) -> Option<String> {
+    match format {
+        Format::Schema(spec) => Some(without_dialect(&spec.schema)),
+        Format::Json => Some(r#"{"type":"object"}"#.to_owned()),
+        Format::Text => None,
+    }
+}
+
+/// Drop a root `$schema` declaration.
+///
+/// The CLI resolves `$schema` against a registry of dialects it knows and
+/// rejects the whole document when the URI is not one of them — including
+/// `https://json-schema.org/draft/2020-12/schema`, which guest schemas
+/// routinely declare. Without the key it infers a dialect and accepts the same
+/// document. The host has already validated the schema, so nothing is lost by
+/// not restating which dialect it was written against.
+fn without_dialect(schema: &str) -> String {
+    let Ok(Value::Object(mut document)) = serde_json::from_str::<Value>(schema) else {
+        return schema.to_owned();
+    };
+    if document.remove("$schema").is_none() {
+        return schema.to_owned();
+    }
+    Value::Object(document).to_string()
 }
 
 #[derive(Debug)]
 struct AgentOutput {
     result: String,
+    /// The CLI's own schema-validated answer, when the spawn carried
+    /// `--json-schema`. Preferred over reparsing `result`.
+    structured: Option<Value>,
     transcript: Option<Transcript>,
     usage: Option<Usage>,
     /// The spawn's `session_id` from the stream, for `--resume` repairs.
@@ -186,6 +236,7 @@ impl WasiModelCtx for Client {
                 timeout,
                 inactivity,
                 mcp_config,
+                schema: json_schema(format),
                 bare,
             };
 
@@ -197,15 +248,11 @@ impl WasiModelCtx for Client {
                 request.grants.references.is_some(),
             );
 
-            let AgentOutput {
-                result,
-                transcript,
-                usage,
-                session_id,
-            } = spawn_agent(&prompt, &spawn, None).await?;
-            log_attempt(1, &result, transcript.as_ref());
+            let output = spawn_agent(&prompt, &spawn, None).await?;
+            log_attempt(1, &output);
+            let session_id = output.session_id.clone();
             let resume;
-            match take_answer(format, result, transcript, usage, false) {
+            match take_answer(format, output, false) {
                 Outcome::Done(answer) => return Ok(answer),
                 Outcome::Repair { result, reason } => {
                     tracing::debug!(
@@ -218,17 +265,16 @@ impl WasiModelCtx for Client {
                 }
             }
 
-            let AgentOutput {
-                result,
-                transcript,
-                usage,
-                ..
-            } = spawn_agent(&prompt, &spawn, resume.as_deref()).await?;
-            log_attempt(2, &result, transcript.as_ref());
-            match take_answer(format, result, transcript, usage, true) {
+            let output = spawn_agent(&prompt, &spawn, resume.as_deref()).await?;
+            log_attempt(2, &output);
+            match take_answer(format, output, true) {
                 Outcome::Done(answer) => Ok(answer),
-                Outcome::Repair { reason, .. } => {
-                    bail!("claude did not return an answer after 2 attempts: {reason}");
+                Outcome::Repair { result, reason } => {
+                    bail!(
+                        "claude did not return an answer after 2 attempts: {reason}; it replied: \
+                         {}",
+                        truncate(&result, TEXT_PREVIEW_CHARS)
+                    );
                 }
             }
         })
@@ -257,11 +303,21 @@ enum Outcome {
     Repair { result: String, reason: String },
 }
 
-fn take_answer(
-    format: &Format, result: String, transcript: Option<Transcript>, usage: Option<Usage>,
-    last: bool,
-) -> Outcome {
-    match format.parse(&result) {
+/// Interpret one spawn's output as an answer, or as grounds for a repair.
+///
+/// `structured_output` is preferred when present: the CLI already validated it
+/// against the same schema, so reparsing the prose `result` can only lose.
+fn take_answer(format: &Format, output: AgentOutput, last: bool) -> Outcome {
+    let AgentOutput {
+        result,
+        structured,
+        transcript,
+        usage,
+        ..
+    } = output;
+
+    let parsed = structured.map_or_else(|| format.parse(&result), Ok);
+    match parsed {
         Ok(value) => match format.check(&value) {
             Err(reason) if !last => Outcome::Repair { result, reason },
             // Wrong shape is better than no answer on the last attempt.
@@ -314,19 +370,30 @@ fn mcp_hint(servers: &[&Mcp]) -> String {
 }
 
 /// The `claude` invocation for one spawn; `resume` re-enters the named session
-/// instead of starting a fresh one.
+/// instead of starting a fresh one, and `schema` is dropped when a previous
+/// spawn showed the CLI will not accept it.
 ///
-/// Every optional flag here uses the attached `--flag=value` form, because the
-/// prompt rides as a trailing positional argument and three of these flags
-/// would otherwise consume it: `--add-dir` and `--mcp-config` are variadic
-/// (`<directories...>`, `<configs...>`) and `--resume` takes an optional value.
-/// A swallowed prompt fails as `Input must be provided either through stdin or
-/// as a prompt argument`, which names nothing about the flag that ate it.
-fn agent_command(options: &SpawnOptions<'_>, resume: Option<&str>, prompt_arg: &str) -> Command {
+/// The prompt is not here: it goes in on stdin. Every optional flag still uses
+/// the attached `--flag=value` form, because `--add-dir` and `--mcp-config`
+/// are variadic (`<directories...>`, `<configs...>`) and `--resume` takes an
+/// optional value, so in the detached form each will swallow whatever follows
+/// it.
+///
+/// Permissions are `bypassPermissions`, which is broader than the lent
+/// workspace. `acceptEdits` is the tighter mode and does confine a spawn to
+/// the allowed directories, but it is not usable here: adapter prompts hand
+/// the agent absolute paths into the project tree the workspace was derived
+/// from, and MCP tool calls need approval under that mode too, so the gate
+/// denies the reference lookups and artifact reads the leg exists to perform.
+/// Confining a spawn is therefore the workspace-lending layer's job, not this
+/// flag's. Denials are logged by [`warn_denials`] under either mode.
+fn agent_command(
+    options: &SpawnOptions<'_>, resume: Option<&str>, schema: Option<&str>,
+) -> Command {
     let mut cmd = Command::new(CLAUDE_BIN);
     cmd.kill_on_drop(true)
         .current_dir(options.workspace)
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .args(["--print", "--output-format", "stream-json", "--verbose"])
@@ -337,6 +404,9 @@ fn agent_command(options: &SpawnOptions<'_>, resume: Option<&str>, prompt_arg: &
         // servers the request never granted.
         cmd.arg(format!("--mcp-config={config}")).arg("--strict-mcp-config");
     }
+    if let Some(schema) = schema {
+        cmd.arg(format!("--json-schema={schema}"));
+    }
     if options.bare {
         cmd.arg("--bare");
     }
@@ -346,34 +416,67 @@ fn agent_command(options: &SpawnOptions<'_>, resume: Option<&str>, prompt_arg: &
     if let Some(session_id) = resume {
         cmd.arg(format!("--resume={session_id}"));
     }
-    cmd.arg(prompt_arg);
     cmd
 }
 
+/// One completion attempt, retried once without `--json-schema` when the CLI
+/// turns out not to accept this schema.
+///
+/// The schema comes from the guest and may use JSON Schema the CLI's
+/// structured-output support does not cover. Dropping the flag costs the hard
+/// guarantee but leaves the prompt's own format instruction and the
+/// `Format::repair` loop, which is strictly better than failing the leg.
 #[instrument(skip(prompt, options, resume), fields(model = options.model))]
 async fn spawn_agent(
     prompt: &str, options: &SpawnOptions<'_>, resume: Option<&str>,
 ) -> Result<AgentOutput> {
-    let spilled = Prompt::spill(prompt, options.workspace)?;
     tracing::debug!(
-        prompt_path = %spilled.path.display(),
         prompt_len = prompt.len(),
         resume,
+        schema = options.schema.is_some(),
         preview = %truncate(prompt, PROMPT_PREVIEW_CHARS),
         "claude prompt"
     );
 
-    let mut child = agent_command(options, resume, &spilled.arg)
+    let schema = options.schema.as_deref();
+    match run_agent(prompt, options, resume, schema).await {
+        Err(error) if schema.is_some() && rejected_schema(&error) => {
+            tracing::warn!(
+                %error,
+                "claude rejected --json-schema; retrying on the prompt's format instruction alone"
+            );
+            run_agent(prompt, options, resume, None).await
+        }
+        outcome => outcome,
+    }
+}
+
+/// Whether a failed spawn blamed the schema, rather than the model or the
+/// network. Matched loosely: a needless retry costs one spawn, a missed one
+/// costs the leg.
+fn rejected_schema(error: &anyhow::Error) -> bool {
+    error.to_string().to_lowercase().contains("schema")
+}
+
+async fn run_agent(
+    prompt: &str, options: &SpawnOptions<'_>, resume: Option<&str>, schema: Option<&str>,
+) -> Result<AgentOutput> {
+    let mut child = agent_command(options, resume, schema)
         .spawn()
         .with_context(|| format!("spawning `{CLAUDE_BIN}`"))?;
+    let stdin = child.stdin.take().context("child stdin is piped")?;
     let stdout = child.stdout.take().context("child stdout is piped")?;
     let stderr = child.stderr.take().context("child stderr is piped")?;
 
     // Parse stdout as it streams so memory stays bounded on chatty runs, and
     // drain stderr concurrently so the child can never block on a full pipe.
+    // Feeding stdin joins them rather than preceding them: a prompt larger
+    // than the pipe buffer would otherwise block on a child that is itself
+    // blocked writing to a stdout nobody is reading.
     let activity = Activity::now();
     let drive = async {
-        let (parsed, stderr) = tokio::join!(parse_stream(stdout, &activity), drain(stderr));
+        let (parsed, stderr, ()) =
+            tokio::join!(parse_stream(stdout, &activity), drain(stderr), feed(stdin, prompt));
         let status = child.wait().await.with_context(|| format!("waiting on `{CLAUDE_BIN}`"))?;
         anyhow::Ok((parsed, stderr, status))
     };
@@ -395,51 +498,19 @@ async fn spawn_agent(
     parsed
 }
 
-/// Spilled prompt file: CLI arg points at a path that lives as long as this value.
-struct Prompt {
-    arg: String,
-    path: PathBuf,
-    _guard: PromptFile,
-}
-
-// Removes a spill-to-disk prompt file when the spawn finishes.
-struct PromptFile {
-    path: PathBuf,
-}
-
-impl Drop for PromptFile {
-    fn drop(&mut self) {
-        if let Err(error) = fs::remove_file(&self.path) {
-            tracing::warn!(path = %self.path.display(), %error, "failed to remove prompt file");
-        }
+/// Write the prompt to the child and close the pipe, which is what tells
+/// `--print` the turn is complete.
+///
+/// A write that fails means the child is already gone, and its exit status and
+/// stderr say why far better than a broken pipe does — so this reports nothing
+/// upward and lets the caller surface the real failure.
+async fn feed(mut stdin: tokio::process::ChildStdin, prompt: &str) {
+    if let Err(error) = stdin.write_all(prompt.as_bytes()).await {
+        tracing::debug!(%error, "claude closed stdin before the prompt was written");
+        return;
     }
-}
-
-static PROMPT_COUNTER: AtomicU64 = AtomicU64::new(0);
-
-impl Prompt {
-    fn spill(prompt: &str, workspace: &Path) -> Result<Self> {
-        let claude_dir = workspace.join(".claude");
-        fs::create_dir_all(&claude_dir)
-            .with_context(|| format!("creating {}", claude_dir.display()))?;
-
-        // The name carries the pid: concurrent host processes may lend the same workspace.
-        let id = PROMPT_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path = claude_dir.join(format!("emery-prompt-{}-{id}.txt", std::process::id()));
-        fs::write(&path, prompt)
-            .with_context(|| format!("writing prompt file {}", path.display()))?;
-
-        let arg = format!(
-            "Follow every instruction in the file at `{}`. When you are done, reply exactly as \
-             that file instructs.",
-            path.display()
-        );
-
-        Ok(Self {
-            arg,
-            path: path.clone(),
-            _guard: PromptFile { path },
-        })
+    if let Err(error) = stdin.shutdown().await {
+        tracing::debug!(%error, "closing claude stdin");
     }
 }
 
@@ -557,15 +628,30 @@ fn log_completion(
     }
 }
 
-fn log_attempt(attempt: u32, result: &str, transcript: Option<&Transcript>) {
-    let (interesting_tools, noisy_tools) = tool_counts(transcript);
+fn log_attempt(attempt: u32, output: &AgentOutput) {
+    let (interesting_tools, noisy_tools) = tool_counts(output.transcript.as_ref());
     tracing::debug!(
         attempt,
-        result_len = result.len(),
+        result_len = output.result.len(),
+        structured = output.structured.is_some(),
         interesting_tools,
         noisy_tools,
+        preview = %truncate(&output.result, TEXT_PREVIEW_CHARS),
         "claude answer"
     );
+}
+
+/// A refused tool call is how a spawn reaching outside the lent workspace
+/// shows up. It is not fatal — the agent sees the denial and carries on — but
+/// it is the only signal that the boundary did something, so it gets a WARN.
+fn warn_denials(denials: &[PermissionDenial]) {
+    for denial in denials {
+        tracing::warn!(
+            tool = denial.tool_name.as_deref().unwrap_or("unknown"),
+            args = %args_summary(&denial.tool_input),
+            "claude tool call denied by the permission gate (outside the lent workspace?)"
+        );
+    }
 }
 
 fn tool_counts(transcript: Option<&Transcript>) -> (usize, usize) {
@@ -654,9 +740,23 @@ enum Event {
         result: Option<String>,
         session_id: Option<String>,
         usage: Option<UsageReport>,
+        /// The schema-validated answer, present only when the spawn carried
+        /// `--json-schema`.
+        structured_output: Option<Value>,
+        #[serde(default)]
+        permission_denials: Vec<PermissionDenial>,
     },
     #[serde(other)]
     Other,
+}
+
+/// One tool call the permission gate refused, reported on the terminal event.
+#[derive(Deserialize)]
+struct PermissionDenial {
+    #[serde(default)]
+    tool_name: Option<String>,
+    #[serde(default)]
+    tool_input: Value,
 }
 
 /// One `mcp_servers[]` entry on the init event.
@@ -736,6 +836,8 @@ impl UsageReport {
 #[derive(Default)]
 struct OutputParser {
     result: Option<String>,
+    /// The `--json-schema` validated answer, when the CLI produced one.
+    structured: Option<Value>,
     session_id: Option<String>,
     usage: Option<Usage>,
     /// `tool_use_id` -> (tool name, arguments), awaiting its `tool_result`.
@@ -787,8 +889,11 @@ impl OutputParser {
                 result,
                 session_id,
                 usage,
+                structured_output,
+                permission_denials,
             } => {
                 self.session(session_id);
+                warn_denials(&permission_denials);
                 if let Some(usage) = usage {
                     self.usage = Some(usage.into_usage());
                 }
@@ -797,6 +902,9 @@ impl OutputParser {
                         "claude reported an error: {}",
                         result.as_deref().unwrap_or("<no detail>")
                     );
+                }
+                if structured_output.is_some() {
+                    self.structured = structured_output;
                 }
                 if result.is_some() {
                     self.result = result;
@@ -873,6 +981,7 @@ impl OutputParser {
             if self.turns.is_empty() { None } else { Some(Transcript { turns: self.turns }) };
         Ok(AgentOutput {
             result,
+            structured: self.structured,
             transcript,
             usage: self.usage,
             session_id: self.session_id,
@@ -899,14 +1008,13 @@ fn warn_unhealthy_mcp(servers: &[McpStatus]) {
 // The live acceptance gate is `tests/live.rs`, which is `#[ignore]`d.
 #[cfg(test)]
 mod tests {
-    use std::fs;
     use std::time::Duration;
 
     use omnia_wasi_model::{Format, Mcp};
     use serde_json::json;
 
     use super::{
-        Activity, AgentOutput, Deadlines, OutputParser, Prompt, SpawnOptions, agent_command,
+        Activity, AgentOutput, Deadlines, OutputParser, SpawnOptions, agent_command, json_schema,
         mcp_config, repair_plan, single_line, truncate, watchdog,
     };
 
@@ -1024,19 +1132,46 @@ mod tests {
     }
 
     #[test]
-    fn spills_prompt() {
-        let workspace =
-            std::env::temp_dir().join(format!("emery-claude-prompt-{}", std::process::id()));
-        drop(fs::remove_dir_all(&workspace));
-        fs::create_dir_all(&workspace).expect("temp workspace");
+    fn structured_output_beats_the_prose_result() {
+        let stdout = r#"{"type":"result","subtype":"success","is_error":false,"result":"Here you go: {\"verdict\":\"pass\"}","structured_output":{"verdict":"pass"},"session_id":"s-1"}"#;
+        let output = parse_output(stdout).expect("parse stream");
+        assert_eq!(
+            output.structured,
+            Some(json!({ "verdict": "pass" })),
+            "the CLI's validated answer is kept apart from the prose it was wrapped in"
+        );
+    }
 
-        let prompt = Prompt::spill("hello", workspace.as_path()).expect("spill prompt");
-        assert!(prompt.arg.contains("emery-prompt-"), "arg references prompt file: {}", prompt.arg);
-        assert!(prompt.path.exists(), "the prompt file is on disk while the guard lives");
-        let path = prompt.path.clone();
-        drop(prompt);
-        assert!(!path.exists(), "the prompt file is removed on drop");
-        drop(fs::remove_dir_all(&workspace));
+    #[test]
+    fn schema_only_for_constrained_formats() {
+        assert!(json_schema(&Format::Text).is_none(), "text constrains nothing");
+        assert_eq!(json_schema(&Format::Json).as_deref(), Some(r#"{"type":"object"}"#));
+        let spec = Format::Schema(omnia_wasi_model::Schema {
+            name: "verdict".to_owned(),
+            schema: r#"{"type":"object","required":["verdict"]}"#.to_owned(),
+        });
+        assert_eq!(
+            json_schema(&spec).as_deref(),
+            Some(r#"{"type":"object","required":["verdict"]}"#),
+            "a schema format passes its own schema through"
+        );
+    }
+
+    /// The CLI rejects the whole document when `$schema` names a dialect it
+    /// does not have registered, which the 2020-12 URI guests declare is.
+    #[test]
+    fn dialect_declaration_is_dropped() {
+        let declared = Format::Schema(omnia_wasi_model::Schema {
+            name: "verdict".to_owned(),
+            schema: r#"{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object"}"#
+                .to_owned(),
+        });
+        assert_eq!(json_schema(&declared).as_deref(), Some(r#"{"type":"object"}"#));
+    }
+
+    #[test]
+    fn unparseable_schema_is_left_alone() {
+        assert_eq!(super::without_dialect("not json"), "not json");
     }
 
     mod repair {
@@ -1087,31 +1222,8 @@ mod tests {
                 timeout: Duration::from_mins(10),
                 inactivity: Duration::from_mins(2),
                 mcp_config,
+                schema: None,
                 bare: false,
-            }
-        }
-
-        /// The prompt is a trailing positional, and `--add-dir` /
-        /// `--mcp-config` are variadic while `--resume` takes an optional
-        /// value — so any of the three written in the detached form eats it.
-        #[test]
-        fn every_optional_flag_leaves_the_prompt_last() {
-            let workspace = std::env::temp_dir();
-            let mut options = options(&workspace, Some(r#"{"mcpServers":{}}"#.to_owned()));
-            options.model = Some("sonnet");
-            options.bare = true;
-
-            let args = args(&agent_command(&options, Some("s-1"), "the prompt"));
-            assert_eq!(
-                args.last().map(String::as_str),
-                Some("the prompt"),
-                "no flag may consume the prompt: {args:?}"
-            );
-            for flag in ["--add-dir", "--mcp-config", "--model", "--resume"] {
-                assert!(
-                    args.iter().any(|arg| arg.starts_with(&format!("{flag}="))),
-                    "`{flag}` must use the attached form: {args:?}"
-                );
             }
         }
 
@@ -1119,26 +1231,78 @@ mod tests {
             cmd.as_std().get_args().map(|a| a.to_string_lossy().into_owned()).collect()
         }
 
+        /// `--add-dir` and `--mcp-config` are variadic and `--resume` takes an
+        /// optional value, so in the detached form each swallows what follows.
+        #[test]
+        fn every_optional_flag_uses_the_attached_form() {
+            let workspace = std::env::temp_dir();
+            let mut options = options(&workspace, Some(r#"{"mcpServers":{}}"#.to_owned()));
+            options.model = Some("sonnet");
+            options.bare = true;
+
+            let args = args(&agent_command(&options, Some("s-1"), Some(r#"{"type":"object"}"#)));
+            for flag in ["--add-dir", "--mcp-config", "--model", "--resume", "--json-schema"] {
+                assert!(
+                    args.iter().any(|arg| arg.starts_with(&format!("{flag}="))),
+                    "`{flag}` must use the attached form: {args:?}"
+                );
+            }
+        }
+
+        /// The prompt goes in on stdin, so no positional argument may appear —
+        /// one would be read as the prompt and the piped turn ignored.
+        #[test]
+        fn the_prompt_is_not_an_argument() {
+            let workspace = std::env::temp_dir();
+            let args = args(&agent_command(&options(&workspace, None), None, None));
+            assert!(
+                args.iter().all(|arg| arg.starts_with('-') || is_flag_value(arg)),
+                "no positional argument may reach the CLI: {args:?}"
+            );
+        }
+
+        fn is_flag_value(arg: &str) -> bool {
+            matches!(arg, "stream-json" | "--verbose")
+        }
+
         #[test]
         fn stream_json_needs_verbose() {
             let workspace = std::env::temp_dir();
-            let args = args(&agent_command(&options(&workspace, None), None, "the prompt"));
+            let args = args(&agent_command(&options(&workspace, None), None, None));
             assert!(args.contains(&"--verbose".to_owned()), "args: {args:?}");
             assert!(args.contains(&"stream-json".to_owned()), "args: {args:?}");
-            assert_eq!(args.last().map(String::as_str), Some("the prompt"));
+        }
+
+        /// A leg reads artifacts by absolute path outside the lent workspace
+        /// and calls MCP tools, both of which `acceptEdits` denies.
+        #[test]
+        fn permissions_do_not_gate_the_leg() {
+            let workspace = std::env::temp_dir();
+            let args = args(&agent_command(&options(&workspace, None), None, None));
+            assert!(
+                args.contains(&"--permission-mode=bypassPermissions".to_owned()),
+                "args: {args:?}"
+            );
         }
 
         #[test]
         fn resume_uses_attached_form() {
             let workspace = std::env::temp_dir();
-            let args = args(&agent_command(&options(&workspace, None), Some("s-1"), "the prompt"));
+            let args = args(&agent_command(&options(&workspace, None), Some("s-1"), None));
             assert!(args.contains(&"--resume=s-1".to_owned()), "args: {args:?}");
+        }
+
+        #[test]
+        fn no_schema_means_no_flag() {
+            let workspace = std::env::temp_dir();
+            let args = args(&agent_command(&options(&workspace, None), None, None));
+            assert!(!args.iter().any(|a| a.starts_with("--json-schema")), "args: {args:?}");
         }
 
         #[test]
         fn no_mcp_grant_means_no_mcp_flags() {
             let workspace = std::env::temp_dir();
-            let args = args(&agent_command(&options(&workspace, None), None, "the prompt"));
+            let args = args(&agent_command(&options(&workspace, None), None, None));
             assert!(!args.iter().any(|a| a.starts_with("--mcp-config")), "args: {args:?}");
             assert!(!args.iter().any(|a| a.starts_with("--strict")), "args: {args:?}");
         }
@@ -1147,7 +1311,7 @@ mod tests {
         fn mcp_grant_is_strict() {
             let workspace = std::env::temp_dir();
             let config = r#"{"mcpServers":{}}"#.to_owned();
-            let args = args(&agent_command(&options(&workspace, Some(config)), None, "the prompt"));
+            let args = args(&agent_command(&options(&workspace, Some(config)), None, None));
             assert!(args.iter().any(|arg| arg.starts_with("--mcp-config=")), "args: {args:?}");
             assert!(
                 args.contains(&"--strict-mcp-config".to_owned()),
