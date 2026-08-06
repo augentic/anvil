@@ -26,12 +26,14 @@ This RFC gives each worker a narrow brief, explicit write ownership, an individu
 4. The engine dispatches RFC-90's target `verify` against the composed candidate; the target's verification agent runs one declared check pass and returns typed findings.
 5. The orchestrator routes each finding to the worker that owns the affected path. That worker resumes its session with only the findings delta.
 6. Bounded repair and convergence rounds continue until verification passes or the build returns a typed failure with residual findings.
+7. After verification passes, the engine dispatches `review`; the target runs its specialist workers and antagonist, then returns one aggregated phase report.
+8. Blocking review findings follow RFC-90's engine-owned `repair(origin: review) → verify → review` route.
 
 A **worker** is one focused judgment request: a thin role brief, only the path-first task inputs it needs under RFC-78 D1, an explicit write-ownership manifest, MCP-lazy references, and a typed answer gate. A **wave** is an ordered set of code patches that all name the same base CID and have pairwise-disjoint touched paths. A **fan-in task** is a later worker with exclusive ownership of a path needed by several earlier tasks.
 
 A **code patch** is RFC-87's `{ base snapshot, result snapshot, touched paths }` relation. RFC-89's publication set is a separate forge-side record. Merge-finalized requirement identity from RFC-86 makes same-base concurrent synthesis safe, while worker and round outcomes are recorded as per-actor facts.
 
-RFC-90 has already split the target build surface into `build`, `repair`, `verify`, and `review`. The Omnia worker swarm is internal to its `build` and `repair` implementations; RFC-91 adds no further target operation.
+RFC-90 has already split the target build surface into `build`, `repair`, `verify`, and `review`. Omnia's writing swarm is internal to `build` and `repair`, while its read-only specialist swarm is internal to `review`. Each operation still returns one phase report, and RFC-91 adds no further target operation.
 
 At plan level, a **domain round** is one immutable record binding a domain id and decomposition revision to an ordered child-result set, target bases, composed candidate CIDs, verification phase reports, completeness (`frontier | complete`), and verdict. A **target wave** is RFC-88's immutable ready same-target leaf set accepted together after its required domain gates pass. Internal domains gain records and result facts, not lifecycle status or claims.
 
@@ -49,7 +51,7 @@ guest writer  owns guests/payments/**
 
 All three workers start from CID `sha256:base`. They finish with three immutable result CIDs whose captured touched paths match those disjoint prefixes. The composer prepares a fresh workspace from `sha256:base`, copies each touched path's exact result-tree value in fixed dependency order, and captures `sha256:composed`. The order is fixed for byte stability even though these disjoint copies commute.
 
-Only then does the engine dispatch the target's model-assisted `verify` phase with `domain` scope. If a test failure points to `crates/payments/src/client.rs`, the finding returns to the crate writer. The worker resumes its existing session, edits its private workspace, and returns a replacement patch. Cargo command text is confined to the target's one-pass verification prompt; writer and repair prompts receive findings, not command instructions.
+Only then does the engine dispatch the target's model-assisted `verify` against the composed candidate workspace. The adapter receives only that workspace; any domain identity and completeness remain in the engine's round record. If a test failure points to `crates/payments/src/client.rs`, the finding returns to the crate writer. The worker resumes its existing session, edits its private workspace, and returns a replacement patch. Cargo command text is confined to the target's one-pass verification prompt; writer and repair prompts receive findings, not command instructions.
 
 ### Shared-path fan-in
 
@@ -73,7 +75,7 @@ If all three workers unexpectedly touch `crates/payments/src/lib.rs`, their mani
 
 ### D1 — The engine and Omnia core own different orchestration levels
 
-RFC-90's engine phase machine owns `build → verify ⇄ repair → review` ordering, repair budgets, terminal report assembly, and the slice transition. Inside `build`, compiled Omnia guest code performs partition → dispatch → compose; inside `repair`, it routes findings to existing owners and composes their replacement patches. Each call returns one phase report. Omnia code decides worker sequencing and ownership arbitration; workers supply judgment. There is no lead agent deciding which other agents to run.
+RFC-90's engine phase machine owns `build → verify ⇄ repair → review` ordering, repair budgets, terminal report assembly, and the slice transition. Inside `build`, compiled Omnia guest code performs partition → dispatch → compose; inside `repair`, it routes findings to existing owners and composes their replacement patches; inside `review`, it dispatches specialists followed by the antagonist and aggregates their findings without remediation. Each call returns one phase report. Omnia code decides worker sequencing and ownership arbitration; workers supply judgment. There is no lead agent deciding which other agents to run.
 
 Reusable brief, manifest, and outcome helpers live in `augentic/emery`'s adapter SDK. The Omnia implementation lives in `augentic/emery-adapters/targets/omnia`. This RFC uses RFC-90's WIT seam without extending it and does not require Vectis or Contracts to adopt worker partitioning.
 
@@ -95,17 +97,17 @@ This partition discipline, rather than textual merge luck, is the safety invaria
 
 ### D4 — Local concurrency lands as Stage A → Stage B
 
-**Stage A — observable sequential swarm.** Omnia's focused writers and serial review role run one at a time. Every worker still receives a fresh RFC-87 private workspace, and immutable results compose into a fresh integration workspace before serialized model-assisted verification. Stage A therefore lands observability, model selection, ownership enforcement, bounded blast radius, and the convergence gate without a shared writable tree.
+**Stage A — observable sequential swarm.** Omnia's focused writers run one at a time. Every writing worker still receives a fresh RFC-87 private workspace, and immutable results compose into a fresh integration workspace before serialized model-assisted verification. Only after verification passes does the engine dispatch `review`, whose specialists and antagonist also run one at a time against the verified candidate. Stage A therefore lands observability, model selection, ownership enforcement, bounded blast radius, and the convergence gate without a shared writable tree.
 
-**Stage B — concurrent private workspaces.** A bounded local pool, concurrent in-flight `create` calls from one guest, per-spawn MCP isolation, and isolated prompt spills allow workers from the same base to run together. Their immutable results still compose in dependency order into a fresh integration workspace before verification. The survey and extract fan-outs in D9 use this same pool.
+**Stage B — concurrent private workspaces.** A bounded local pool, concurrent in-flight `create` calls from one guest, per-spawn MCP isolation, and isolated prompt spills allow writing workers from the same base to run together and, after verification passes, allow review specialists to run together. Writing results still compose in dependency order into a fresh integration workspace before verification, and the antagonist still waits for every specialist outcome. The survey and extract fan-outs in D9 use this same pool.
 
 Tree isolation exists in both stages; only dispatch changes. Workers never share a writable tree or live handle, and their only code-bearing outputs are RFC-87 base/result snapshot relations. Remote placement is RFC-92, not a hidden third stage.
 
 ### D5 — Review specialists are host-visible workers
 
-Security, Correctness, and Quality specialists become first-class workers with typed findings, individual budgets, and individual inactivity timeouts. The antagonist runs only after their outcomes are available. Remediation routes through the same ownership and convergence gate as writer repairs.
+Within one engine-dispatched `review` operation, Security, Correctness, and Quality specialists become separate model workers with typed findings, individual budgets, and individual inactivity timeouts. The antagonist runs only after their outcomes are available, and compiled Omnia code aggregates one review phase report for the engine. Blocking findings return to the engine, which follows RFC-90's `repair(origin: review) → verify → review` route; the repair implementation routes them to the existing owners and convergence gate.
 
-This removes the nested in-agent review team. The host can observe, bound, cancel, and time out each specialist separately.
+This removes the nested in-agent review team. The host can observe, bound, cancel, and time out each specialist separately even though the engine sees one target `review` dispatch and one phase report.
 
 ### D6 — Code-patch composition is one reusable deterministic kernel
 
