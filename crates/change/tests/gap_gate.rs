@@ -106,7 +106,7 @@ async fn conflict_blocks_build() {
     let detail = err.core().to_string();
     assert!(detail.contains("conflict"), "{detail}");
     assert!(detail.contains("REQ-001"), "{detail}");
-    assert!(detail.contains("a"), "inventory names the slice: {detail}");
+    assert!(detail.contains('a'), "inventory names the slice: {detail}");
 }
 
 #[tokio::test]

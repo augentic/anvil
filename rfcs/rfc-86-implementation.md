@@ -46,8 +46,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S18 | plan.execute.started + --waive CLI | `done` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
 | S19 | Execute gap gate before build | `done` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
 | S20 | refine-under-epoch + shift-left fixtures | `done` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
-| S21 | Remaining Phase C acceptance fixtures | `next` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
-| S22 | D20 sibling docs + operator prose | `pending` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
+| S21 | Remaining Phase C acceptance fixtures | `done` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
+| S22 | D20 sibling docs + operator prose | `next` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
 | S23 | Full cargo make ci + acceptance closeout | `pending` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
 | S24 | Open single full-RFC implementation PR | `pending` | PR URL returned | none (operator-directed) |
 
@@ -141,6 +141,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S20
 - Finding: Acceptance #5 fixtures in `crates/change/tests/shift_left.rs`. Preferred path: author is topology-only (no model/base/synthesize facts) → `slice refine` → clean gaps / Ready → execute stamps `existing` coverage and runs Build+Merge only. Under-epoch: execute over unspec'd leaf stamps `refine-under-epoch`, phases Refine→Build→Merge (gap gate before build). CLI absence: `emery plan approve` / `emery plan refine` exit 2 and are absent from `plan --help` (`transport/tests/router.rs`); bumped stale http_parity route count 30→31 (plan gaps).
 - Plan change: none beyond status (S20=done, S21=next).
+
+### 2026-08-07 — S21
+- Finding: Remaining Acceptance #8–15 fixtures in `crates/change/tests/phase_c_acceptance.rs`: in-scope drop excludes gaps/Ready/gap-gate without `plan remove` (D24; membership via live `dropped_at`, matching prior fixtures); waive skips Ready then clearing unknowns projects Ready (D22); `plan.execute.started` wire shape asserts `kind: closed-plan` + kebab `plan-digest` / Existing specs + stale after spec change; post-author hint + status resume name execute (D26); under-execute wave.opened before build.succeeded + postflight-failed keeps wave-committed (D9). Coverage wire fix: internally-tagged `ClosedPlanCoverage` was emitting snake_case `plan_digest` — explicit `#[serde(rename = "plan-digest")]` / `unknown-waivers` so the journal matches the RFC appendix example.
+- Plan change: none beyond status (S21=done, S22=next).
 ```
 
 ### Session template (copy into each agent prompt)

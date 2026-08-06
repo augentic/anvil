@@ -38,9 +38,11 @@ pub fn enforce_before_build(layout: Layout<'_>, plan: &Plan, slice: &str) -> Res
 /// Newest `closed-plan` coverage from the fact union.
 fn newest_coverage(layout: Layout<'_>) -> Result<ClosedPlanCoverage, Error> {
     let events = journal::read_union(layout)?;
-    let Some(event) = events.iter().rev().find(|event| {
-        matches!(event.kind, EventKind::PlanExecuteStarted { .. })
-    }) else {
+    let Some(event) = events
+        .iter()
+        .rev()
+        .find(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }))
+    else {
         return Err(epoch_stale(
             "no covering `plan.execute.started` — run `emery plan execute` to open an \
              authorization epoch before build",
@@ -56,9 +58,7 @@ fn check_epoch_fresh(
     layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
 ) -> Result<(), Error> {
     let ClosedPlanCoverage::ClosedPlan {
-        plan_digest,
-        specs,
-        ..
+        plan_digest, specs, ..
     } = coverage;
 
     let live_plan = live_plan_digest(layout)?;
@@ -107,9 +107,7 @@ fn check_epoch_fresh(
 fn check_gap_policy(
     layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
 ) -> Result<(), Error> {
-    let ClosedPlanCoverage::ClosedPlan {
-        unknown_waivers, ..
-    } = coverage;
+    let ClosedPlanCoverage::ClosedPlan { unknown_waivers, .. } = coverage;
     let gaps = plan_gaps_body(plan, layout)?;
     let leaf_rows: Vec<_> = gaps.rows.iter().filter(|row| row.slice == slice).collect();
 
@@ -124,9 +122,8 @@ fn check_gap_policy(
                 ));
             }
             RequirementStatus::Unknown => {
-                let waived = unknown_waivers
-                    .iter()
-                    .any(|w| w.slice == row.slice && w.req == row.req);
+                let waived =
+                    unknown_waivers.iter().any(|w| w.slice == row.slice && w.req == row.req);
                 if !waived {
                     blockers.push(format!(
                         "{}/{} [unknown] {} — close the gap or `emery plan execute --waive {}/{} \

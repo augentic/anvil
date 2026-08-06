@@ -500,19 +500,21 @@ pub enum EventKind {
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`]
-/// (RFC-86 D6).
+/// (RFC-86 D6). Wire fields use explicit kebab-case renames — container
+/// `rename_all` does not reach internally-tagged variant fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum ClosedPlanCoverage {
     /// One reviewed plan digest with per-leaf spec coverage.
     ClosedPlan {
         /// Content digest of the reviewed `plan.yaml`.
+        #[serde(rename = "plan-digest")]
         plan_digest: String,
         /// Sorted per-leaf coverage: `existing { digest }` or
         /// `refine-under-epoch`.
         specs: std::collections::BTreeMap<String, LeafSpecCoverage>,
         /// Per-requirement unknown waivers nested on this epoch (D17).
-        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        #[serde(rename = "unknown-waivers", default, skip_serializing_if = "Vec::is_empty")]
         unknown_waivers: Vec<UnknownWaiver>,
     },
 }

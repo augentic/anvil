@@ -199,7 +199,7 @@ fn covering_epoch(layout: Layout<'_>) -> EpochRef {
             }),
             _ => None,
         })
-        .unwrap_or(EpochRef {
+        .unwrap_or_else(|| EpochRef {
             actor: journal::actor_id(),
             sequence: 0,
         })

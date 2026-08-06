@@ -28,15 +28,14 @@ fn journal_text(root: &std::path::Path) -> String {
 }
 
 fn started_coverage(root: &std::path::Path) -> project::journal::ClosedPlanCoverage {
-    let started = read_union(Layout::new(root))
+    read_union(Layout::new(root))
         .expect("union")
         .into_iter()
         .find_map(|event| match event.kind {
             EventKind::PlanExecuteStarted { coverage, .. } => Some(coverage),
             _ => None,
         })
-        .expect("plan.execute.started");
-    started
+        .expect("plan.execute.started")
 }
 
 async fn scaffold_init(session: &Session) {
@@ -113,12 +112,10 @@ async fn shift_left_refine_then_execute_build_merge() {
         .expect("gaps");
     assert!(gaps.rows.is_empty(), "clean greeting → no typed gaps: {gaps:?}");
 
-    let status = run::<plan::handlers::Status, _, _>(
-        session.provider(),
-        plan::handlers::StatusInput {},
-    )
-    .await
-    .expect("status");
+    let status =
+        run::<plan::handlers::Status, _, _>(session.provider(), plan::handlers::StatusInput {})
+            .await
+            .expect("status");
     assert!(status.ready, "refined + clean gaps → Ready");
     assert!(!status.authorized, "no epoch until execute");
 
@@ -143,9 +140,7 @@ async fn shift_left_refine_then_execute_build_merge() {
     let project::journal::ClosedPlanCoverage::ClosedPlan { specs, .. } = started_coverage(&root);
     assert_eq!(
         specs.get("greeting"),
-        Some(&LeafSpecCoverage::Existing {
-            digest: specs_digest,
-        }),
+        Some(&LeafSpecCoverage::Existing { digest: specs_digest }),
         "preferred path stamps existing digests; got {specs:?}"
     );
 
@@ -200,7 +195,10 @@ async fn refine_under_epoch_then_gap_gate_build() {
     // privileged work proceeded under the epoch.
     let journal = journal_text(&root);
     assert!(journal.contains("plan.execute.started"), "{journal}");
-    assert!(journal.contains("slice.build.succeeded") || journal.contains("target.wave.opened"), "{journal}");
+    assert!(
+        journal.contains("slice.build.succeeded") || journal.contains("target.wave.opened"),
+        "{journal}"
+    );
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");
     assert!(root.join(".emery/specs/greeting/spec.md").is_file());
 }
