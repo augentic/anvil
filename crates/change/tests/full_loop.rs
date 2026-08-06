@@ -156,6 +156,8 @@ async fn author_approve_execute_drains() {
     let journal = journal_text(&root);
     assert!(journal.contains("slice.code.applied"), "{journal}");
     assert!(journal.contains("target.wave.opened"), "{journal}");
+    assert!(journal.contains("target.merge.wave-committed"), "{journal}");
+    assert!(journal.contains("target.merge.wave-succeeded"), "{journal}");
 
     // Guidance dispatch proof, stronger than a call log: the mock
     // target's guidance brief reached the recorded synthesis prompt.
@@ -360,7 +362,9 @@ async fn postflight_terminal() {
 
     // The journal makes the irreversible state explicit; no ack yet.
     let journal = journal_text(&root);
-    assert!(journal.contains("slice.merge.postflight-failed"), "{journal}");
+    assert!(journal.contains("target.merge.wave-committed"), "{journal}");
+    assert!(journal.contains("target.merge.wave-postflight-failed"), "{journal}");
+    assert!(!journal.contains("target.merge.wave-succeeded"), "{journal}");
     assert!(!journal.contains("slice.merge.succeeded"), "{journal}");
     assert!(!journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
 

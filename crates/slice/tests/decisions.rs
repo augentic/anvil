@@ -66,18 +66,33 @@ async fn merge_promotes_and_supersedes() {
         &staged.join("new-choice.md"),
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-0001]\n",
     );
-    // A merge needs a fact-substrate build record; this test stages
-    // `built` by hand, so freeze the fixture tree as a no-op patch
-    // (base == result) and wrap it in a minimal BuildRecord.
+    // A merge needs a fact-substrate build record + revalidated
+    // one-member wave; this test stages `built` by hand, so freeze the
+    // fixture tree as a no-op patch (base == result), open a matching
+    // wave, and wrap both in a BuildRecord.
     let snapshot = project.provider().freeze().await.expect("freeze fixture tree");
-    let wave = project::snapshot::SnapshotId::from_digest(&"c".repeat(64));
+    let layout = project::config::Layout::new(project.root());
+    let wave = project::wave::Wave::one_member(
+        "demo",
+        snapshot.clone(),
+        project::name::SliceName::from("demo"),
+        project::snapshot::SnapshotId::from_digest(&"b".repeat(64)),
+        vec![],
+        project::wave::EpochRef {
+            actor: "local".into(),
+            sequence: 0,
+        },
+    );
+    let opened = wave
+        .open(layout, jiff::Timestamp::from_second(1_700_000_000).expect("ts"))
+        .expect("open wave");
     let record = project::build_record::BuildRecord::from_capture(
         project::snapshot::CodePatch {
             base: snapshot.clone(),
             result: snapshot,
             touched: vec![],
         },
-        wave,
+        opened.digest,
         project::seam::wire::BuildReport {
             version: 1,
             slice: "demo".into(),

@@ -285,16 +285,50 @@ pub enum EventKind {
         snapshot: String,
     },
     /// The target's postflight merge gate raised a blocking finding
-    /// **after** the deterministic commit: the slice is already merged,
-    /// archived, and stamped `done`, so this is a terminal diagnostic —
-    /// never a rollback. `reason` carries a short human reason or
-    /// finding code; the merged baseline stands.
-    #[serde(rename = "slice.merge.postflight-failed", rename_all = "kebab-case")]
-    SliceMergePostflightFailed {
-        /// Affected slice — already merged and archived.
+    /// **after** `target.merge.wave-committed` (RFC-86 D9): the member
+    /// is already merged, so this is a terminal diagnostic — never a
+    /// rollback. `reason` carries a short human reason or finding code;
+    /// the merged baseline stands.
+    #[serde(rename = "target.merge.wave-postflight-failed", rename_all = "kebab-case")]
+    TargetMergeWavePostflightFailed {
+        /// Target key under `.emery/targets/`.
+        target: String,
+        /// Wave manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// Sole member's slice — already merged and archived.
         slice_name: SliceName,
         /// Short human reason / finding code for the failed gate.
         reason: String,
+    },
+    /// Deterministic wave commit finalized requirement identity maps
+    /// (RFC-86 D5 / D9). Projects the member merged; failures before
+    /// this fact leave no merged projection. Carries every local→
+    /// baseline `REQ-NNN` mapping for the wave's sole member.
+    #[serde(rename = "target.merge.wave-committed", rename_all = "kebab-case")]
+    TargetMergeWaveCommitted {
+        /// Target key under `.emery/targets/`.
+        target: String,
+        /// Wave manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// Sole member's slice name.
+        slice_name: SliceName,
+        /// Closed-plan commit-authorization epoch (may differ from the
+        /// wave's build-authorization; serial execution normally reuses
+        /// the same epoch).
+        commit_authorization: FactEpochRef,
+        /// Slice-local id → final baseline `REQ-NNN` for every
+        /// requirement in the member.
+        identity_maps: Vec<IdentityMap>,
+    },
+    /// Target postflight gate succeeded after wave commit (RFC-86 D9).
+    #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
+    TargetMergeWaveSucceeded {
+        /// Target key under `.emery/targets/`.
+        target: String,
+        /// Wave manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// Sole member's slice name.
+        slice_name: SliceName,
     },
     /// The `source survey` finalize tail validated and merged
     /// one source's lead set into `discovery.md`. The plan-time peer
@@ -373,8 +407,8 @@ pub enum EventKind {
     /// `emery plan execute` acknowledged a sticky
     /// `merge-postflight-failed` stop and is continuing the queue.
     /// Clears the plan-wide postflight debt projected by `plan status`
-    /// until the next `slice.merge.postflight-failed`. No new CLI verb —
-    /// re-running execute is the ack.
+    /// until the next `target.merge.wave-postflight-failed`. No new CLI
+    /// verb — re-running execute is the ack.
     #[serde(rename = "plan.merge-postflight.acknowledged", rename_all = "kebab-case")]
     PlanMergePostflightAcknowledged {
         /// Slice whose postflight debt was acknowledged — already
@@ -451,6 +485,29 @@ pub enum EventKind {
         /// The sole member's slice name.
         slice_name: SliceName,
     },
+}
+
+/// One slice-local → baseline requirement identity mapping on
+/// [`EventKind::TargetMergeWaveCommitted`] (RFC-86 D5 / D9).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct IdentityMap {
+    /// Slice-local `REQ-NNN` minted at synthesize.
+    pub local: String,
+    /// Final baseline `REQ-NNN` assigned at wave commit.
+    pub baseline: String,
+}
+
+/// Fact-log identity of an authorization epoch (`actor` + 1-based
+/// `sequence`), carried on wave commit facts. Same shape as the wave
+/// manifest's `build-authorization` / commit-authorization refs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct FactEpochRef {
+    /// Actor file that holds the epoch fact.
+    pub actor: String,
+    /// 1-based sequence of the epoch fact in that actor's file.
+    pub sequence: u64,
 }
 
 /// Closed `action` enum on [`EventKind::PlanAmendAuthorityOverride`].

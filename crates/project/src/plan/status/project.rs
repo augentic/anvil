@@ -74,15 +74,15 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
 }
 
 /// When the chronologically latest among
-/// `{slice.merge.postflight-failed, plan.merge-postflight.acknowledged}`
+/// `{target.merge.wave-postflight-failed, plan.merge-postflight.acknowledged}`
 /// (restricted to slices named in this plan) is a postflight failure,
 /// project the sticky `merge-postflight-failed` stop for that slice.
 fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
     let mut resolution = None;
     scan_union(events, |event| match &event.kind {
-        EventKind::SliceMergePostflightFailed { slice_name, reason }
-            if plan.entries.iter().any(|e| e.name == *slice_name) =>
-        {
+        EventKind::TargetMergeWavePostflightFailed {
+            slice_name, reason, ..
+        } if plan.entries.iter().any(|e| e.name == *slice_name) => {
             let entry = plan.entries.iter().find(|e| e.name == *slice_name);
             if let Some(entry) = entry {
                 resolution = Some(Resolution::stop_for(

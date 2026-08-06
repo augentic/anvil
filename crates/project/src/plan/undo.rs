@@ -107,7 +107,8 @@ fn retract_rung(
             .filter(|event| !retracted.contains(&(event.actor.as_str(), event.sequence)))
             .filter_map(|event| match &event.kind {
                 EventKind::SliceArchiveCreated { slice_name, .. }
-                | EventKind::SliceMergePostflightFailed { slice_name, .. }
+                | EventKind::TargetMergeWaveCommitted { slice_name, .. }
+                | EventKind::TargetMergeWavePostflightFailed { slice_name, .. }
                     if slice_name == slice =>
                 {
                     Some((event.actor.clone(), event.sequence))

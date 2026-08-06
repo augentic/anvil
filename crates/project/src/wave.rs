@@ -16,21 +16,15 @@ use error::Error;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
+use crate::build_record::BuildRecord;
 use crate::config::Layout;
-use crate::journal::{self, Event, EventKind};
+use crate::journal::{self, Event, EventKind, FactEpochRef};
 use crate::name::SliceName;
 use crate::snapshot::SnapshotId;
 
 /// Fact-log identity of a `plan.execute.started` authorization epoch
 /// (`actor` + 1-based `sequence` of that line in the union).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct EpochRef {
-    /// Actor file that holds the epoch fact.
-    pub actor: String,
-    /// 1-based sequence of the epoch fact in that actor's file.
-    pub sequence: u64,
-}
+pub type EpochRef = FactEpochRef;
 
 /// Exact inputs one wave member consumed when the wave opened.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -230,6 +224,61 @@ impl Wave {
             path: layout.target_wave_path(&self.target, digest.digest()),
             digest,
         })
+    }
+
+    /// Revalidate this manifest against a build record at merge time
+    /// (RFC-86 D9): one member naming `slice`, content digest matching
+    /// `record.wave`, and `base` matching the recorded build base.
+    ///
+    /// # Errors
+    ///
+    /// `target-wave-member-count`, `target-wave-member-mismatch`,
+    /// `target-wave-digest-mismatch`, or `target-wave-base-mismatch`.
+    pub fn revalidate(&self, slice: &str, record: &BuildRecord) -> Result<(), Error> {
+        self.enforce_one_member()?;
+        let member = &self.members[0];
+        if member.slice.as_str() != slice {
+            return Err(Error::Diag {
+                code: "target-wave-member-mismatch",
+                detail: format!(
+                    "wave for target `{}` names member `{}`, but merge ran for `{slice}`",
+                    self.target, member.slice
+                ),
+            });
+        }
+        let digest = self.digest()?;
+        if digest != record.wave {
+            return Err(Error::Diag {
+                code: "target-wave-digest-mismatch",
+                detail: format!(
+                    "wave digest `{digest}` does not match build record wave `{}`",
+                    record.wave
+                ),
+            });
+        }
+        if self.base != record.base {
+            return Err(Error::Diag {
+                code: "target-wave-base-mismatch",
+                detail: format!(
+                    "wave base `{}` does not match build record base `{}`",
+                    self.base, record.base
+                ),
+            });
+        }
+        Ok(())
+    }
+
+    /// Load the wave named by a build record under `layout`'s target key.
+    ///
+    /// # Errors
+    ///
+    /// Propagates [`Self::load`] / [`Self::revalidate`].
+    pub fn load_for_merge(
+        layout: Layout<'_>, target: &str, slice: &str, record: &BuildRecord,
+    ) -> Result<Self, Error> {
+        let wave = Self::load(layout, target, record.wave.as_str())?;
+        wave.revalidate(slice, record)?;
+        Ok(wave)
     }
 }
 

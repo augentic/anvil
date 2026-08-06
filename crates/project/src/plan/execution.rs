@@ -176,7 +176,8 @@ pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Stat
                 }
             }
             EventKind::SliceArchiveCreated { slice_name, .. }
-            | EventKind::SliceMergePostflightFailed { slice_name, .. }
+            | EventKind::TargetMergeWaveCommitted { slice_name, .. }
+            | EventKind::TargetMergeWavePostflightFailed { slice_name, .. }
                 if ladders.contains_key(slice_name) =>
             {
                 ladders.insert(slice_name.clone(), Status::Done);
@@ -376,7 +377,10 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
             EventKind::SliceMergeSucceeded { slice_name: s } if s == slice => {
                 facts.merged = true;
             }
-            EventKind::SliceArchiveCreated { slice_name: s, .. } if s == slice => {
+            EventKind::SliceArchiveCreated { slice_name: s, .. }
+            | EventKind::TargetMergeWaveCommitted { slice_name: s, .. }
+                if s == slice =>
+            {
                 facts.merged = true;
             }
             EventKind::SliceSynthesizeCompleted { slice_name: s, .. }
@@ -420,9 +424,10 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
                 }
                 terminal_seen = true;
             }
-            EventKind::SliceMergePostflightFailed {
+            EventKind::TargetMergeWavePostflightFailed {
                 slice_name: s,
                 reason,
+                ..
             } if s == slice => {
                 if !terminal_seen {
                     facts.newest_failure = Some((

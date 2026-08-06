@@ -39,8 +39,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S11 | Slice-local REQ ids + MODIFIED digests | `done` | synthesis local-id + modified-digest tests | `feat(slice): mint slice-local requirement ids until wave commit` |
 | S12 | One-member wave manifests + target.wave.opened | `done` | wave write/load tests | `feat(project): one-member target wave manifests and open fact` |
 | S13 | Build from pins; retire freeze + patch.yaml | `done` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
-| S14 | Wave commit + identity maps; keep apply | `next` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
-| S15 | Pin drift diagnostics + Phase B fixtures | `pending` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
+| S14 | Wave commit + identity maps; keep apply | `done` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
+| S15 | Pin drift diagnostics + Phase B fixtures | `next` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
 | S16 | Gap inventory + shared-lead rollup | `pending` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
 | S17 | Ready/Authorized + status next-actions | `pending` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
 | S18 | plan.execute.started + --waive CLI | `pending` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
@@ -113,6 +113,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S13
 - Finding: Refine freezes the product tree into `base.yaml` `target-base` (alongside sources + baseline-spec). Build deletes ambient `seam.freeze()`: loads that pin, opens a one-member wave (`inputs.spec` = `dir_cid(specs/)`), `prepare`s from the pin, captures into content-addressed `.emery/slices/<slice>/builds/<digest>.yaml` (`base`/`result`/`touched`/`wave`/`report`), and never writes `build/patch.yaml`. “Built” projects from `BuildRecord::present` (+ facts). Merge loads the newest build record for interim `apply`. Wave `build-authorization` uses `{ actor, sequence: 0 }` until S18’s `plan.execute.started`. Mock fail-build markers read from `project_root` (control-plane), matching merge-gate markers. Also fixed pre-existing slice rustdoc private-link warnings that blocked `cargo make check`.
 - Plan change: none beyond status (S13=done, S14=next).
+
+### 2026-08-07 — S14
+- Finding: Merge revalidates the build record's one-member wave (`Wave::load_for_merge`), finalizes requirement identity (`merge::identity::finalize` — MODIFIED keeps `baseline-id` after `merge-base-drifted` digest check; ADDED takes next free baseline `REQ-NNN`), rewrites slice specs/`model.yaml`/`tasks.md`, then deterministic commit → strict `target.merge.wave-committed` (identity maps + commit-authorization reusing wave build-authorization until S18) → postflight `target.merge.wave-succeeded` / `target.merge.wave-postflight-failed`. Hard-cut replaced `slice.merge.postflight-failed`. Interim `apply` still runs after successful postflight. Failures before wave-committed leave no merged projection. Ladder/sticky-debt/undo readers updated; `cli-contract` event table lists the new ids.
+- Plan change: none beyond status (S14=done, S15=next).
 ```
 
 ### Session template (copy into each agent prompt)

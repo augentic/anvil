@@ -375,7 +375,11 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::SliceMergePostflightFailed {
+                EventKind::TargetMergeWavePostflightFailed {
+                    target: "demo".into(),
+                    digest:
+                        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                     slice_name: "a".into(),
                     reason: "target-merge-postflight-failed".to_string(),
                 },
@@ -405,7 +409,10 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::SliceMergePostflightFailed {
+                    EventKind::TargetMergeWavePostflightFailed {
+                        target: "demo".into(),
+                        digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                         slice_name: "a".into(),
                         reason: "target-merge-postflight-failed".to_string(),
                     },
@@ -433,7 +440,11 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::SliceMergePostflightFailed {
+                EventKind::TargetMergeWavePostflightFailed {
+                    target: "demo".into(),
+                    digest:
+                        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                     slice_name: "a".into(),
                     reason: "target-merge-postflight-failed".to_string(),
                 },
@@ -453,7 +464,10 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::SliceMergePostflightFailed {
+                    EventKind::TargetMergeWavePostflightFailed {
+                        target: "demo".into(),
+                        digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                         slice_name: "a".into(),
                         reason: "target-merge-postflight-failed".to_string(),
                     },
