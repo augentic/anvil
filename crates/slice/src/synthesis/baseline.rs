@@ -95,8 +95,7 @@ impl BaselineIndex {
         self.domains.iter().map(|(domain, baseline)| (domain.as_str(), baseline))
     }
 
-    /// Map a [`SpecKind`] from [`crate::actions::scan_touched`] to
-    /// [`DomainKind`].
+    /// Map a [`SpecKind`] (from the touched-spec scan) to [`DomainKind`].
     #[must_use]
     pub const fn kind_from_spec_kind(kind: SpecKind) -> DomainKind {
         match kind {

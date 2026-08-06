@@ -64,13 +64,24 @@ fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
         SliceArt::Built => {
             std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
                 .expect("write model.yaml");
-            let build = slice_dir.join("build");
-            std::fs::create_dir_all(&build).expect("create build dir");
+            // Minimal fact-substrate build record (RFC-86 D27). Report
+            // fields satisfy the closed BuildReport shape.
+            let builds = slice_dir.join("builds");
+            std::fs::create_dir_all(&builds).expect("create builds dir");
             std::fs::write(
-                build.join("patch.yaml"),
-                "base: sha256:aa\nresult: sha256:bb\ntouched: []\n",
+                builds.join("aa.yaml"),
+                "base: sha256:aa\n\
+                 result: sha256:bb\n\
+                 touched: []\n\
+                 wave: sha256:cc\n\
+                 report:\n\
+                   version: 1\n\
+                   slice: a\n\
+                   target: demo-target@1.0.0\n\
+                   status: success\n\
+                   findings: []\n",
             )
-            .expect("write patch.yaml");
+            .expect("write build record");
         }
     }
     std::fs::write(slice_dir.join("metadata.yaml"), meta).expect("write metadata");

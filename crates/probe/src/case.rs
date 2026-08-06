@@ -197,24 +197,20 @@ async fn run_build(
     let report = slice_dir.join("build").join("report.yaml");
     ensure!(report.is_file(), "no authoritative build report at {}", report.display());
 
-    // RFC-87: build writes land in the captured result snapshot, never
-    // the sandbox product tree (code reaches it only at merge).
-    // Materialize the result beside the sandbox for the artifact gate
-    // and operator inspection.
-    let patch_path = slice_dir.join("build").join("patch.yaml");
+    // RFC-87 / RFC-86 D27: build writes land in the captured result
+    // snapshot, never the sandbox product tree (code reaches it only
+    // at merge). Materialize the result beside the sandbox for the
+    // artifact gate and operator inspection.
     ensure!(
-        patch_path.is_file() || metadata.completed_at.is_some(),
-        "slice `{}` has no build/patch.yaml (or completed_at) after the build",
+        project::build_record::BuildRecord::present(&slice_dir) || metadata.completed_at.is_some(),
+        "slice `{}` has no builds/<digest>.yaml (or completed_at) after the build",
         case.slice,
     );
-    let patch: project::snapshot::CodePatch = serde_saphyr::from_str(
-        &fs::read_to_string(&patch_path)
-            .with_context(|| format!("reading the captured patch {}", patch_path.display()))?,
-    )
-    .context("parsing build/patch.yaml")?;
+    let record = project::build_record::BuildRecord::load_latest(&slice_dir)
+        .context("loading the fact-substrate build record")?;
     let result_dir = root.join("build-result");
     project::workspace::Store::new(paths(root).locations().snapshots_root())
-        .materialize(&patch.result, &result_dir)
+        .materialize(&record.result, &result_dir)
         .context("materializing the captured result snapshot")?;
     enforce_expected(id, &result_dir, &case.expect)?;
 

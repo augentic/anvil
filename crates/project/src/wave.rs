@@ -36,7 +36,7 @@ pub struct EpochRef {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MemberInputs {
-    /// Content digest of the member's `spec.md` (`sha256:…`).
+    /// Content digest of the member's `specs/` tree (`sha256:…`).
     pub spec: SnapshotId,
 }
 

@@ -6,14 +6,17 @@ use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::{AdapterSelector, TargetAdapter};
-use project::config::Layout;
+use project::build_record::BuildRecord;
+use project::config::{Layout, ProjectConfig};
 use project::journal::{self, EventKind};
-use project::plan::Plan;
+use project::name::SliceName;
+use project::plan::{Plan, dir_cid};
 use project::seam::{BuildContext, Input, Payload, Target, Workspaces};
+use project::wave::{EpochRef, Wave};
 
 use super::{seam_failure, target_id};
 use crate::{
-    BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata, actions as slice_actions,
+    Base, BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata, actions as slice_actions,
     build_request,
 };
 
@@ -48,11 +51,12 @@ pub struct BuildOutcome {
 /// the slice's recorded `metadata.yaml` target so the declared inputs
 /// and the seam dispatch can never resolve from different adapters.
 ///
-/// The build runs inside a disposable private workspace (RFC-87): the
-/// orchestration freezes the product tree as the base snapshot,
-/// prepares a writable workspace from it, dispatches the build there,
-/// captures the result as `build/patch.yaml` (base / result / touched
-/// — the shape RFC-86's build records re-home), and discards the
+/// The build runs inside a disposable private workspace (RFC-87 /
+/// RFC-86 D27): the orchestration reads the refine-time target-base
+/// pin from `base.yaml`, opens a one-member target wave, prepares a
+/// writable workspace from that recorded pin (never ambient
+/// `freeze`), dispatches the build there, captures the result into a
+/// content-addressed `builds/<digest>.yaml` record, and discards the
 /// workspace. Durable code state is only the snapshots.
 ///
 /// # Errors
@@ -119,8 +123,9 @@ pub async fn build(
     Ok(outcome)
 }
 
-/// Bracket [`finalize`] with the workspace lifecycle: freeze the base
-/// snapshot, prepare a writable private workspace, run the dispatch +
+/// Bracket [`finalize`] with the workspace lifecycle: read the
+/// recorded target-base pin, open a one-member wave, prepare a
+/// writable private workspace from that pin, run the dispatch +
 /// finalize tail against it, and discard the workspace on every exit
 /// (best-effort — captured snapshots survive by digest and a leaked
 /// directory is GC territory, never a build failure).
@@ -128,17 +133,57 @@ async fn in_workspace(
     seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
 ) -> Result<BuildOutcome, Error> {
-    // Interim base pinning: freeze the product tree at build start.
-    // When RFC-86 records base pins, this one call site reads the
-    // recorded pin instead.
-    let base = seam.freeze().await.map_err(|err| workspace_failure("freeze", slice, &err))?;
+    let pins = Base::load(slice_dir).map_err(|err| Error::Diag {
+        code: "slice-base-missing",
+        detail: format!(
+            "slice `{slice}` has no readable base.yaml target-base pin; re-run \
+             `emery slice refine {slice}` before building ({err})"
+        ),
+    })?;
+    let base = pins.target_base;
+    let wave_digest = open_wave(layout, now, slice, slice_dir, &base)?;
     let workspace =
         seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;
-    let outcome = finalize(seam, layout, now, slice, slice_dir, adapter, request, &workspace).await;
+    let outcome =
+        finalize(seam, layout, now, slice, slice_dir, adapter, request, &workspace, wave_digest)
+            .await;
     if let Err(err) = seam.discard(workspace.id.clone()).await {
         tracing::warn!(workspace = %workspace.id, "workspace discard failed: {err}");
     }
     outcome
+}
+
+/// Open the one-member target wave for this build (RFC-86 D9).
+fn open_wave(
+    layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
+    base: &project::snapshot::SnapshotId,
+) -> Result<project::snapshot::SnapshotId, Error> {
+    let config = ProjectConfig::load(layout.project_dir())?;
+    let plan = Plan::load(&layout.plan_path())?;
+    let entry =
+        plan.entries.iter().find(|e| e.name.as_str() == slice).ok_or_else(|| Error::Diag {
+            code: "target-wave-entry-missing",
+            detail: format!(
+                "slice `{slice}` has no plan.yaml entry; cannot open a target wave without \
+                 depends-on / membership"
+            ),
+        })?;
+    let specs_dir = slice_dir.join("specs");
+    let wave = Wave::one_member(
+        config.name,
+        base.clone(),
+        SliceName::from(slice),
+        dir_cid(&specs_dir)?,
+        entry.depends_on.clone(),
+        // Breakout / pre–S18 stand-in: `plan.execute.started` epochs
+        // land in S18; until then sequence `0` marks an unbound
+        // build-authorization ref for the calling actor.
+        EpochRef {
+            actor: journal::actor_id(),
+            sequence: 0,
+        },
+    );
+    Ok(wave.open(layout, now)?.digest)
 }
 
 /// Map a workspace-capability failure onto the build's diagnostic
@@ -157,7 +202,7 @@ fn workspace_failure(operation: &'static str, slice: &str, err: &project::seam::
 async fn finalize(
     seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
-    workspace: &project::seam::Workspace,
+    workspace: &project::seam::Workspace, wave: project::snapshot::SnapshotId,
 ) -> Result<BuildOutcome, Error> {
     let inputs = read_inputs(request)?;
     let context = build_context(layout, slice)?;
@@ -195,15 +240,13 @@ async fn finalize(
         });
     }
 
-    // Capture the result tree and persist the code patch beside the
-    // report. The body is shaped as RFC-86's planned build record, so
-    // re-homing it into the fact substrate is a file move.
+    // Capture the result tree and persist the fact-substrate build
+    // record (RFC-86 D27) — `build/patch.yaml` is no longer authority.
     let patch = seam
         .capture(workspace.id.clone())
         .await
         .map_err(|err| workspace_failure("capture", slice, &err))?;
-    let patch_yaml = project::fs::yaml(&patch)?;
-    bytes_write(&slice_dir.join("build").join("patch.yaml"), patch_yaml.as_bytes())?;
+    BuildRecord::from_capture(patch, wave, report.clone()).write(slice_dir)?;
 
     slice_actions::transition(slice_dir, LifecycleStatus::Built, now)?;
 

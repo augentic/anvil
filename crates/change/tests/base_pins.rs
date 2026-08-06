@@ -73,9 +73,19 @@ async fn refine_writes_base_yaml() {
     assert_eq!(base.baseline_spec, empty_cid());
     assert_eq!(base.baseline_spec, dir_cid(&layout.specs_dir()).expect("dir cid"));
 
+    // Target-base pin is a real store snapshot (refine freezes the
+    // product tree); it must be present and distinct from the empty
+    // baseline-spec identity on a non-empty project tree.
+    assert!(
+        base.target_base.as_str().starts_with("sha256:"),
+        "target-base wire form: {}",
+        base.target_base
+    );
+
     let yaml =
         fs::read_to_string(Base::path(&layout.slice_dir("login-flow"))).expect("read base.yaml");
     assert!(yaml.contains("baseline-spec:"), "{yaml}");
+    assert!(yaml.contains("target-base:"), "{yaml}");
     assert!(yaml.contains("sources:"), "{yaml}");
     assert!(yaml.contains("docs:"), "{yaml}");
     assert!(yaml.contains("code:"), "{yaml}");

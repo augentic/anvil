@@ -18,7 +18,7 @@ use project::handler::ExecutionPaths;
 use project::journal::{self, EventKind};
 use project::plan::{Entry, Plan, Status, collect_events, project_ladders, resolve_topology};
 use project::registry::topology::{Decision, Surface};
-use project::seam::{Source, Target};
+use project::seam::{Source, Target, Workspaces};
 
 use super::synthesize::SynthesizeRequest;
 use crate::judgment::synthesize::Kernel;
@@ -89,7 +89,7 @@ impl TagCounts {
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `slice-lifecycle` gate error from the `refined` transition.
 #[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
-pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
+pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str,
 ) -> Result<RefineOutcome, Error> {
@@ -102,10 +102,15 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
         slice_actions::create(&parent_dir, slice, target_value, CreateIfExists::Continue, now)?;
     let slice_dir = created.dir;
 
-    // Pin assembly before extract (RFC-86 D4 / D25): copy closed plan
-    // source cids and the baseline-spec digest into base.yaml.
+    // Pin assembly before extract (RFC-86 D4 / D25 / D27): copy closed
+    // plan source cids, baseline-spec digest, and freeze the product
+    // tree as the target-base pin build will prepare from.
     let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
-    Base::assemble(&plan, &entry, &baseline_specs_dir)?.write(&slice_dir)?;
+    let target_base = caps.targets.freeze().await.map_err(|err| Error::Diag {
+        code: "slice-base-freeze-failed",
+        detail: format!("freezing the product tree for slice `{slice}` base.yaml failed: {err}"),
+    })?;
+    Base::assemble(&plan, &entry, &baseline_specs_dir, target_base)?.write(&slice_dir)?;
 
     // Extract fan-out, serially in binding declaration order (the
     // skill's no-parallelism rule).
@@ -215,7 +220,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 /// - `slice-create-target-missing` when neither the slice metadata nor
 ///   the topology resolves a target.
 /// - everything [`refine`] surfaces.
-pub async fn refine_breakout<P: Model, S: Source, T: Target, R: Resolver>(
+pub async fn refine_breakout<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
 ) -> Result<RefineOutcome, Error> {
     let layout = Layout::new(paths.project_root());

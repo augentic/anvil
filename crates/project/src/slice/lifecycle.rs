@@ -7,6 +7,7 @@
 use std::path::Path;
 
 use super::metadata::SliceMetadata;
+use crate::build_record::BuildRecord;
 
 /// Lifecycle labels a slice may project.
 #[derive(
@@ -49,7 +50,10 @@ impl LifecycleStatus {
         if metadata.merged_at.is_some() {
             return Self::Merged;
         }
-        if metadata.completed_at.is_some() || slice_dir.join("build").join("patch.yaml").is_file() {
+        // RFC-86 D27: “built” projects from fact-substrate build
+        // records (or the completed_at stamp refine/build write), never
+        // from a leftover `build/patch.yaml` path check.
+        if metadata.completed_at.is_some() || BuildRecord::present(slice_dir) {
             return Self::Built;
         }
         if metadata.defined_at.is_some()

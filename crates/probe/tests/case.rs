@@ -356,8 +356,12 @@ async fn build_case_reaches_built() {
         "the authoritative build report is persisted"
     );
     assert!(
-        root.join(".emery/slices/greeting/build/patch.yaml").is_file(),
-        "the captured code patch is persisted"
+        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
+        "the fact-substrate build record is persisted"
+    );
+    assert!(
+        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        "patch.yaml is not build-outcome authority"
     );
     assert!(
         !root.join("mock-build/greeting.md").exists(),

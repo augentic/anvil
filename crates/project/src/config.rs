@@ -246,6 +246,21 @@ impl<'a> Layout<'a> {
         self.target_waves_dir(target).join(format!("{digest}.yaml"))
     }
 
+    /// Absolute path to one slice's build-record directory,
+    /// `<project_dir>/.emery/slices/<name>/builds/` (RFC-86 D27).
+    #[must_use]
+    pub fn slice_builds_dir(&self, name: &str) -> PathBuf {
+        self.slice_dir(name).join("builds")
+    }
+
+    /// Absolute path to one content-addressed build record,
+    /// `<project_dir>/.emery/slices/<name>/builds/<digest>.yaml`
+    /// where `digest` is the bare 64-hex content address.
+    #[must_use]
+    pub fn slice_build_record_path(&self, name: &str, digest: &str) -> PathBuf {
+        self.slice_builds_dir(name).join(format!("{digest}.yaml"))
+    }
+
     /// Absolute path to `<project_dir>/registry.yaml` — the platform
     /// catalogue. Platform-level artifact, lives at the repo root.
     #[must_use]

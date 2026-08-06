@@ -10,6 +10,7 @@
 pub mod adapter;
 pub(crate) mod agents;
 pub mod answers;
+pub mod build_record;
 pub(crate) mod cmd;
 pub mod config;
 pub mod decisions;

@@ -31,7 +31,7 @@ pub use project::slice::LifecycleStatus;
 pub(crate) use project::slice::{
     Outcome, OutcomeKind, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec,
 };
-pub use synthesis::baseline::BaselineIndex;
+pub use synthesis::baseline::{BaselineIndex, DomainKind};
 pub(crate) use synthesis::evidence::{read_evidence_index, read_source_inputs};
 pub(crate) use synthesis::persist::{
     failure_reason as synthesize_failure_reason, persist_synthesized,

@@ -136,14 +136,26 @@ async fn author_approve_execute_drains() {
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
 
-    // RFC-87: the artifact arrived through capture + the interim
-    // post-merge apply, never an ambient checkout write — the archived
-    // code patch records the touched path and the journal carries the
-    // apply event.
-    let patch = fs::read_to_string(archive.join("build/patch.yaml")).expect("archived code patch");
-    assert!(patch.contains("mock-build/greeting.md"), "{patch}");
+    // RFC-87 / RFC-86 D27: the artifact arrived through capture + the
+    // interim post-merge apply, never an ambient checkout write — the
+    // archived fact-substrate build record records the touched path
+    // and the journal carries the apply event.
+    let builds = archive.join("builds");
+    let record_path = fs::read_dir(&builds)
+        .expect("archived builds/")
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .find(|p| p.extension().and_then(|ext| ext.to_str()) == Some("yaml"))
+        .expect("archived build record");
+    let record = fs::read_to_string(&record_path).expect("read build record");
+    assert!(record.contains("mock-build/greeting.md"), "{record}");
+    assert!(
+        !archive.join("build/patch.yaml").exists(),
+        "patch.yaml must not be build-outcome authority"
+    );
     let journal = journal_text(&root);
     assert!(journal.contains("slice.code.applied"), "{journal}");
+    assert!(journal.contains("target.wave.opened"), "{journal}");
 
     // Guidance dispatch proof, stronger than a call log: the mock
     // target's guidance brief reached the recorded synthesis prompt.
@@ -243,8 +255,12 @@ async fn preflight_parks_built() {
         .expect("slice still present");
     assert!(metadata.contains("completed-at:"), "{metadata}");
     assert!(
-        root.join(".emery/slices/greeting/build/patch.yaml").is_file(),
+        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
         "build record must remain after a parked preflight"
+    );
+    assert!(
+        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        "patch.yaml is not authority"
     );
     assert!(!root.join(".emery/specs/greeting/spec.md").exists());
 

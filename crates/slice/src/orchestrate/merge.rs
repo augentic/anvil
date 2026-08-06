@@ -34,10 +34,10 @@ pub struct MergeOutcome {
 /// (archive fact projects `done`) → target postflight gate, with each
 /// gate's report schema-gated and persisted. Both gates read the built
 /// result code through one read-only private-workspace view of the
-/// slice's captured result snapshot (`build/patch.yaml`); after a
-/// successful postflight, the interim apply writes the patch's
-/// touched paths onto the product tree (journal-visible; deleted when
-/// RFC-89 publication sets own the final seal).
+/// slice's captured result snapshot (fact-substrate build record);
+/// after a successful postflight, the interim apply writes the
+/// patch's touched paths onto the product tree (journal-visible;
+/// deleted when RFC-88 owns that cut).
 ///
 /// A preflight failure aborts with the slice still built; a
 /// postflight failure (`target-merge-postflight-failed`) is terminal
@@ -79,7 +79,7 @@ pub async fn merge<T: Target + Workspaces>(
         project::adapter::RoutedId::recorded(project::adapter::Axis::Target, &target).to_string();
     // The captured code patch, read before the deterministic commit
     // moves the slice tree into the archive.
-    let patch = load_patch(&slice_dir, slice)?;
+    let patch = load_patch(&slice_dir)?;
 
     journal::emit_best_effort(
         layout,
@@ -178,20 +178,10 @@ async fn gated<T: Target>(
     Ok(outcome)
 }
 
-/// Load the code patch `slice build` captured beside its report.
-fn load_patch(slice_dir: &Path, slice: &str) -> Result<CodePatch, Error> {
-    let path = slice_dir.join("build").join("patch.yaml");
-    if !path.is_file() {
-        return Err(Error::validation_failed(
-            "slice-merge-patch-missing",
-            "a built slice carries its captured code patch",
-            format!(
-                "slice `{slice}` has no `build/patch.yaml`; re-run `emery slice build {slice}` \
-                 before merging"
-            ),
-        ));
-    }
-    Ok(serde_saphyr::from_str(&project::fs::read_text(&path)?)?)
+/// Load the code patch from the newest fact-substrate build record
+/// (RFC-86 D27 — `build/patch.yaml` is no longer authority).
+fn load_patch(slice_dir: &Path) -> Result<CodePatch, Error> {
+    Ok(project::build_record::BuildRecord::load_latest(slice_dir)?.to_patch())
 }
 
 /// Prepare the read-only workspace view of the slice's result snapshot.

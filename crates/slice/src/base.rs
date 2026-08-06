@@ -1,9 +1,10 @@
 //! Refine-time pin assembly (`base.yaml`, RFC-86 D4 / D25).
 //!
 //! Before extract, refine copies the closed plan source `cid`s for
-//! every binding on the slice and records the baseline-spec tree
-//! digest. Exact on-disk shape is an implementation detail; drift
-//! validation is a later session.
+//! every binding on the slice, records the baseline-spec tree digest,
+//! and freezes the product tree into a target-base pin. Build prepares
+//! from that recorded pin (D27) — never ambient `freeze` at build
+//! start. Drift validation is a later session.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -22,6 +23,10 @@ pub struct Base {
     pub sources: BTreeMap<String, SnapshotId>,
     /// Content-addressed identity of the baseline `specs/` tree.
     pub baseline_spec: SnapshotId,
+    /// Product-tree (target-base) snapshot identity recorded at refine
+    /// via [`project::seam::Workspaces::freeze`]. Build reads this pin
+    /// into `prepare` (RFC-86 D25 / D27).
+    pub target_base: SnapshotId,
 }
 
 impl Base {
@@ -31,8 +36,9 @@ impl Base {
         slice_dir.join("base.yaml")
     }
 
-    /// Assemble pins from the plan's closed source set plus the
-    /// baseline-spec digest at `baseline_specs_dir`.
+    /// Assemble pins from the plan's closed source set, the
+    /// baseline-spec digest at `baseline_specs_dir`, and a caller-
+    /// frozen target-base snapshot.
     ///
     /// # Errors
     ///
@@ -40,7 +46,9 @@ impl Base {
     /// absent from `plan.sources`; `slice-base-pin-missing` when a
     /// bound source has no `cid` yet; filesystem failures from the
     /// baseline tree digest.
-    pub fn assemble(plan: &Plan, entry: &Entry, baseline_specs_dir: &Path) -> Result<Self, Error> {
+    pub fn assemble(
+        plan: &Plan, entry: &Entry, baseline_specs_dir: &Path, target_base: SnapshotId,
+    ) -> Result<Self, Error> {
         let mut sources = BTreeMap::new();
         for binding in &entry.sources {
             let key = binding.source();
@@ -67,6 +75,7 @@ impl Base {
         Ok(Self {
             sources,
             baseline_spec: dir_cid(baseline_specs_dir)?,
+            target_base,
         })
     }
 

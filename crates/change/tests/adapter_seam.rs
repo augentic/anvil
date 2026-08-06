@@ -261,7 +261,7 @@ async fn merge_failure_parks_built() {
             .expect("slice still present");
     assert!(metadata.contains("completed-at:"), "no commit happened:\n{metadata}");
     assert!(
-        session.root().join(".emery/slices/greeting/build/patch.yaml").is_file(),
+        project::build_record::BuildRecord::present(&session.root().join(".emery/slices/greeting")),
         "build record must remain when merge parks"
     );
     assert!(!session.root().join(".emery/specs/greeting/spec.md").exists(), "no baseline write");

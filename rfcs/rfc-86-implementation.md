@@ -38,8 +38,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S10 | Refine writes base.yaml | `done` | refine integration test asserts `base.yaml` | `feat(slice): write refine-time base.yaml pins` |
 | S11 | Slice-local REQ ids + MODIFIED digests | `done` | synthesis local-id + modified-digest tests | `feat(slice): mint slice-local requirement ids until wave commit` |
 | S12 | One-member wave manifests + target.wave.opened | `done` | wave write/load tests | `feat(project): one-member target wave manifests and open fact` |
-| S13 | Build from pins; retire freeze + patch.yaml | `next` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
-| S14 | Wave commit + identity maps; keep apply | `pending` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
+| S13 | Build from pins; retire freeze + patch.yaml | `done` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
+| S14 | Wave commit + identity maps; keep apply | `next` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
 | S15 | Pin drift diagnostics + Phase B fixtures | `pending` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
 | S16 | Gap inventory + shared-lead rollup | `pending` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
 | S17 | Ready/Authorized + status next-actions | `pending` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
@@ -109,6 +109,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S12
 - Finding: One-member wave types land in `project::wave` at `.emery/targets/<target>/waves/<bare-hex>.yaml` (stand-in under flat `.emery/`). Manifest fields: `target`, `base` (`SnapshotId`), `members[]` (`slice` + `inputs.spec`), `depends-on`, `build-authorization` (`{ actor, sequence }` epoch ref). `Wave::open` write-onces the content-addressed YAML and appends `target.wave.opened` (`target`, `digest`, `slice-name`). Not wired into build orchestration (S13). `cli-contract` event table updated for the new id; broader workflow/AGENTS event prose stays S22.
 - Plan change: none beyond status (S12=done, S13=next).
+
+### 2026-08-07 — S13
+- Finding: Refine freezes the product tree into `base.yaml` `target-base` (alongside sources + baseline-spec). Build deletes ambient `seam.freeze()`: loads that pin, opens a one-member wave (`inputs.spec` = `dir_cid(specs/)`), `prepare`s from the pin, captures into content-addressed `.emery/slices/<slice>/builds/<digest>.yaml` (`base`/`result`/`touched`/`wave`/`report`), and never writes `build/patch.yaml`. “Built” projects from `BuildRecord::present` (+ facts). Merge loads the newest build record for interim `apply`. Wave `build-authorization` uses `{ actor, sequence: 0 }` until S18’s `plan.execute.started`. Mock fail-build markers read from `project_root` (control-plane), matching merge-gate markers. Also fixed pre-existing slice rustdoc private-link warnings that blocked `cargo make check`.
+- Plan change: none beyond status (S13=done, S14=next).
 ```
 
 ### Session template (copy into each agent prompt)

@@ -183,10 +183,10 @@ impl SliceModel {
     /// model:
     ///
     /// - `resolution` (and `resolution-trace`) is re-derived by re-running
-    ///   the authority kernel ([`resolve`]) over the requirement's
-    ///   `ClaimRef`s, the per-source document `authority` read from
-    ///   `evidence/<source>.yaml`, the per-slice `overrides` map, and the
-    ///   requirement's persisted `agreement` verdict.
+    ///   the authority kernel over the requirement's `ClaimRef`s, the
+    ///   per-source document `authority` read from `evidence/<source>.yaml`,
+    ///   the per-slice `overrides` map, and the requirement's persisted
+    ///   `agreement` verdict.
     /// - each contributing claim's `value` (single-line payload) and
     ///   `path` anchor are read from `evidence/<source>.yaml`, keyed by
     ///   the `(source, id)` the claim already carries.

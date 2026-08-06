@@ -191,7 +191,7 @@ pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewRes
 
 /// Atomic multi-class merge plus archive.
 ///
-/// Gates on `build/patch.yaml`, runs [`preview`]'s in-memory plan,
+/// Gates on a fact-substrate build record, runs [`preview`]'s in-memory plan,
 /// writes each merged baseline, stamps `merged_at`/`completed_at` and
 /// an `Outcome { phase: Merge, outcome: Success }` into
 /// `metadata.yaml`, then archives the slice directory via
@@ -222,13 +222,13 @@ pub fn commit(
     allow_composition_replace: bool,
 ) -> Result<MergeCommit, Error> {
     let mut metadata = SliceMetadata::load(slice_dir)?;
-    // RFC-86 D2: "built" projects from the build record, not stored
-    // LifecycleStatus.
-    if !slice_dir.join("build").join("patch.yaml").is_file() {
+    // RFC-86 D2 / D27: "built" projects from fact-substrate build
+    // records, not stored LifecycleStatus or `build/patch.yaml`.
+    if !project::build_record::BuildRecord::present(slice_dir) {
         return Err(Error::Diag {
             code: "slice-lifecycle",
             detail: format!(
-                "cannot merge: slice `{}` has no build/patch.yaml (not yet built)",
+                "cannot merge: slice `{}` has no builds/<digest>.yaml (not yet built)",
                 slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown")
             ),
         });

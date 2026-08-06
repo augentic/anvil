@@ -66,16 +66,29 @@ async fn merge_promotes_and_supersedes() {
         &staged.join("new-choice.md"),
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-0001]\n",
     );
-    // A merge needs the build's captured code patch; this test stages
+    // A merge needs a fact-substrate build record; this test stages
     // `built` by hand, so freeze the fixture tree as a no-op patch
-    // (base == result).
+    // (base == result) and wrap it in a minimal BuildRecord.
     let snapshot = project.provider().freeze().await.expect("freeze fixture tree");
-    fs::create_dir_all(slice.join("build")).expect("create build dir");
-    fs::write(
-        slice.join("build/patch.yaml"),
-        format!("base: {snapshot}\nresult: {snapshot}\ntouched: []\n"),
-    )
-    .expect("stage patch.yaml");
+    let wave = project::snapshot::SnapshotId::from_digest(&"c".repeat(64));
+    let record = project::build_record::BuildRecord::from_capture(
+        project::snapshot::CodePatch {
+            base: snapshot.clone(),
+            result: snapshot,
+            touched: vec![],
+        },
+        wave,
+        project::seam::wire::BuildReport {
+            version: 1,
+            slice: "demo".into(),
+            target: "mock@0.0.0".into(),
+            status: project::seam::wire::BuildStatus::Success,
+            findings: vec![],
+            outputs: vec![],
+            ui_surface: None,
+        },
+    );
+    record.write(&slice).expect("stage build record");
 
     let body = run::<slice::handlers::MergeRun, _, _>(
         project.provider(),

@@ -224,13 +224,20 @@ mod targets {
     }
 
     /// Build one slice: write the observable artifact under
-    /// [`BUILD_DIR`] and report it as a core-platform output.
+    /// [`BUILD_DIR`] (in the private workspace) and report it as a
+    /// core-platform output.
+    ///
+    /// Fail-build markers are test control-plane on the project tree
+    /// (same posture as merge-gate markers) — they are not part of the
+    /// recorded target-base pin, so they are read from `project_root`.
     ///
     /// # Errors
     ///
     /// - `Internal` when the id selects the `fail-build` profile.
     /// - `Io` when the artifact cannot be written.
-    pub fn build(root: &Path, id: &str, slice: &str, inputs: &[Input]) -> Result<Report, Error> {
+    pub fn build(
+        workspace: &Path, project_root: &Path, id: &str, slice: &str, inputs: &[Input],
+    ) -> Result<Report, Error> {
         if id.contains("fail-build") {
             return Err(Error::Internal(format!("mock build failure for `{id}`")));
         }
@@ -242,11 +249,11 @@ mod targets {
                 vec![core_output(format!("{BUILD_DIR}/{slice}-never-written.md"))],
             ));
         }
-        if root.join(FAIL_BUILD_MARKER).is_file() {
+        if project_root.join(FAIL_BUILD_MARKER).is_file() {
             return Ok(report(Status::Failure, Vec::new()));
         }
         let relative = format!("{BUILD_DIR}/{slice}.md");
-        let path = root.join(&relative);
+        let path = workspace.join(&relative);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|err| Error::Io(err.to_string()))?;
         }

@@ -34,6 +34,7 @@ use error::Error;
 
 use super::model::{Entry, Plan, Status};
 use super::status::{LoopStep, NextActionKind, StopBody, StopReason};
+use crate::build_record::BuildRecord;
 use crate::config::Layout;
 use crate::journal::{self, Event, EventKind, claim};
 use crate::name::{PlanName, SliceName};
@@ -291,7 +292,9 @@ enum Phase {
 }
 
 fn phase_progress(slice_dir: &Path, window: Option<&WindowFacts>) -> Phase {
-    let mut phase = if slice_dir.join("build").join("patch.yaml").is_file() {
+    // RFC-86 D27: “built” from fact-substrate build records, not
+    // `build/patch.yaml`.
+    let mut phase = if BuildRecord::present(slice_dir) {
         Phase::Built
     } else if slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file() {
         Phase::Refined
