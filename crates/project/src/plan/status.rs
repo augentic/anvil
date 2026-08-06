@@ -1,15 +1,15 @@
 //! Read-only `emery plan status` projection.
 //!
-//! [`plan_status_body`] projects `plan.yaml` entries, the candidate
-//! slice's `metadata.yaml` lifecycle, and the journal tail into a
-//! deterministic `next-action` — `refine|build|merge <slice>`,
-//! `stop <reason>`, or `drained` — so the execute loop renders the
-//! dispatch instead of deriving it. Writes nothing; `plan advance`
-//! stays the only writer of per-entry `in-progress`.
+//! [`plan_status_body`] projects plan topology, slice artifacts, and
+//! the fact union into a deterministic `next-action` —
+//! `refine|build|merge <slice>`, `stop <reason>`, or `drained` — so
+//! the execute loop renders the dispatch instead of deriving it
+//! (RFC-86 D2). Writes nothing. Stored `Entry.status` /
+//! `LifecycleStatus` fields are not authority for this view.
 //!
 //! This module owns the wire types; the per-entry decision kernel
-//! lives in the shared `core::execution` projection and the body
-//! assembly in `project`.
+//! lives in the shared `execution` projection and the body assembly
+//! in `project`.
 
 use serde::Serialize;
 
@@ -167,10 +167,10 @@ pub struct StatusBody {
     /// phase, including a phase the loop is stopped on. `None` when no
     /// slice is targeted (`stuck`, `slice-dropped`, `drained`).
     pub current_step: Option<LoopStep>,
-    /// Most recent step the targeted slice completed, from its
-    /// lifecycle (`refined` → `refine`, `built` → `build`, a landed
-    /// merge → `merge`). `None` before the first phase completes or
-    /// when no slice is targeted.
+    /// Most recent step the targeted slice completed, from artifacts
+    /// and success facts (`refined` → `refine`, `built` → `build`, a
+    /// landed merge → `merge`). `None` before the first phase
+    /// completes or when no slice is targeted.
     pub last_completed: Option<LoopStep>,
     /// Next valid resume point as a literal command — the phase
     /// skill for dispatches and retryable stops, `emery plan execute`

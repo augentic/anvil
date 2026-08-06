@@ -18,10 +18,9 @@
 //! show` operation in [`handlers`]. Writes route through the internal
 //! appenders only — CLI verbs append their own events as a side
 //! effect of the operation. This root owns the read side (per-actor
-//! union, forward reads, recent-tail projection, and the private
-//! filtered `show` projection behind `emery journal show`) and
-//! re-exports the public surface so callers keep importing
-//! `crate::journal::*`.
+//! union, recent-tail projection, and the private filtered `show`
+//! projection behind `emery journal show`) and re-exports the public
+//! surface so callers keep importing `crate::journal::*`.
 //!
 //! [workflow §Observability]: ../../../../docs/standards/workflow.md#observability
 
@@ -173,23 +172,6 @@ pub(crate) fn read_recent<T>(
     }
     newest_first.reverse();
     Ok(newest_first)
-}
-
-/// Visit journal [`Event`]s newest-first until `visit` breaks or the
-/// head of the union is reached.
-///
-/// # Errors
-///
-/// Propagates I/O failures other than a missing events directory.
-pub(crate) fn scan_recent(
-    layout: Layout<'_>, mut visit: impl FnMut(Event) -> std::ops::ControlFlow<()>,
-) -> Result<(), Error> {
-    for event in read_union(layout)?.into_iter().rev() {
-        if visit(event).is_break() {
-            break;
-        }
-    }
-    Ok(())
 }
 
 /// Read events for `emery journal show`, in union order

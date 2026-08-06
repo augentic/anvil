@@ -1,8 +1,12 @@
 //! Integration coverage for the read-only `plan status` projection,
 //! exercised through the `plan status` operation (the public
-//! boundary): each test stages `plan.yaml`, slice metadata, and
+//! boundary): each test stages `plan.yaml`, slice artifacts, and
 //! journal events on disk, invokes the operation, and asserts the
 //! projected `StatusBody`.
+//!
+//! Progress is computed from artifacts and facts (RFC-86 D2) — stored
+//! `Entry.status` / `LifecycleStatus` fields are written only as
+//! bridge noise and are not authority for the projection.
 //!
 //! The base happy-path dispatch arms (fresh-active-refine,
 //! per-entry refine/build/merge, drained,
@@ -22,7 +26,6 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{DEFAULT_ACTOR, Event as JournalEvent, EventKind, append_for};
-use slice::LifecycleStatus;
 use support::{change, change_with_deps, plan_with_changes};
 
 struct Event;
@@ -45,15 +48,40 @@ async fn status(project: &Session, plan: &Plan) -> StatusBody {
     run::<StatusOp, _, _>(project.provider(), StatusInput {}).await.expect("status")
 }
 
-fn write_slice(root: &std::path::Path, name: &str, status: LifecycleStatus) {
+/// Stage a live slice directory with optional abandon / refine / build
+/// artifact signals (not lifecycle status — projection ignores that).
+fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
     let slice_dir = root.join(".emery").join("slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
-    let status = serde_saphyr::to_string(&status).expect("serialize lifecycle").trim().to_string();
-    std::fs::write(
-        slice_dir.join("metadata.yaml"),
-        format!("target: demo-target@1.0.0\nstatus: {status}\n"),
-    )
-    .expect("write metadata");
+    let mut meta = String::from("target: demo-target@1.0.0\nstatus: refining\n");
+    match kind {
+        SliceArt::Dropped => {
+            meta.push_str("dropped-at: \"2024-01-01T00:00:00Z\"\n");
+        }
+        SliceArt::Refined => {
+            std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
+                .expect("write model.yaml");
+        }
+        SliceArt::Built => {
+            std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
+                .expect("write model.yaml");
+            let build = slice_dir.join("build");
+            std::fs::create_dir_all(&build).expect("create build dir");
+            std::fs::write(
+                build.join("patch.yaml"),
+                "base: sha256:aa\nresult: sha256:bb\ntouched: []\n",
+            )
+            .expect("write patch.yaml");
+        }
+    }
+    std::fs::write(slice_dir.join("metadata.yaml"), meta).expect("write metadata");
+}
+
+#[derive(Clone, Copy)]
+enum SliceArt {
+    Dropped,
+    Refined,
+    Built,
 }
 
 fn ts(seconds: i64) -> Timestamp {
@@ -70,6 +98,19 @@ fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {
         EventKind::PlanEntryAdvanced {
             plan_name: plan.into(),
             slice_name: slice.into(),
+        },
+    )
+}
+
+fn archived(seconds: i64, slice: &str) -> JournalEvent {
+    Event::event(
+        ts(seconds),
+        EventKind::SliceArchiveCreated {
+            slice_name: slice.into(),
+            touched_specs: Vec::new(),
+            outcome_summary: "merged".into(),
+            merge_sha: None,
+            decisions: Vec::new(),
         },
     )
 }
@@ -98,7 +139,8 @@ mod next_action {
     #[tokio::test]
     async fn dropped_slice_stops() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Dropped);
+        write_slice(project.root(), "a", SliceArt::Dropped);
+        append(project.root(), &[advanced(0, "test", "a")]);
         let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
@@ -124,6 +166,7 @@ mod next_action {
         // The drained projection and the literal stop-conditions
         // drained string, asserted through the text rendering.
         let project = Session::scripted("demo", Vec::new());
+        append(project.root(), &[archived(0, "a")]);
         let plan = plan_with_changes(vec![change("a", Status::Done)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "drained");
@@ -143,7 +186,7 @@ mod failure_overlay {
     #[tokio::test]
     async fn merge_failure_conflict() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Built);
+        write_slice(project.root(), "a", SliceArt::Built);
         append(
             project.root(),
             &[
@@ -186,7 +229,7 @@ mod failure_overlay {
     #[tokio::test]
     async fn later_success_clears_failure() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Refined);
+        write_slice(project.root(), "a", SliceArt::Refined);
         append(
             project.root(),
             &[
@@ -202,15 +245,18 @@ mod failure_overlay {
         );
         let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
-        assert_eq!(body.next_action, "build a", "newest marker is a success — dispatch resumes");
+        assert_eq!(
+            body.next_action, "merge a",
+            "build.succeeded projects built — dispatch advances to merge"
+        );
     }
 
     #[tokio::test]
     async fn non_awaited_failure_ignored() {
-        // The slice was hand-advanced past the failed phase; the stale
-        // failure must not pin the projection.
+        // The slice already carries a built artifact; a stale build
+        // failure must not pin the projection off merge.
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Built);
+        write_slice(project.root(), "a", SliceArt::Built);
         append(project.root(), &[advanced(0, "test", "a"), build_failed(10, "a", "stale")]);
         let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
@@ -221,9 +267,9 @@ mod failure_overlay {
     async fn reclaim_shadows_old_failure() {
         // A fresh `plan.entry.advanced` (re-claim after undo, or a new
         // plan reusing the slice name) is newer than the failure, so
-        // dispatch falls back to the lifecycle.
+        // dispatch falls back to the artifact phase.
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Refined);
+        write_slice(project.root(), "a", SliceArt::Refined);
         append(project.root(), &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
         let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
@@ -232,8 +278,8 @@ mod failure_overlay {
 
     #[tokio::test]
     async fn unstamped_merge_stops() {
-        // Torn state: the merge landed (slice dir archived) but the
-        // entry is still in-progress.
+        // Torn state: the merge landed (merge.succeeded) but the
+        // archive / done stamp has not.
         let project = Session::scripted("demo", Vec::new());
         append(
             project.root(),
@@ -290,12 +336,15 @@ mod failure_overlay {
         let project = Session::scripted("demo", Vec::new());
         append(
             project.root(),
-            &[Event::event(
-                ts(0),
-                EventKind::SliceMergeSucceeded {
-                    slice_name: "b".into(),
-                },
-            )],
+            &[
+                archived(0, "a"),
+                Event::event(
+                    ts(0),
+                    EventKind::SliceMergeSucceeded {
+                        slice_name: "b".into(),
+                    },
+                ),
+            ],
         );
         let plan = plan_with_changes(vec![change("a", Status::Done), change("b", Status::Pending)]);
         let body = status(&project, &plan).await;
@@ -441,6 +490,7 @@ mod re_entry {
     #[tokio::test]
     async fn drained_finalize() {
         let project = Session::scripted("demo", Vec::new());
+        append(project.root(), &[archived(0, "a")]);
         let plan = plan_with_changes(vec![change("a", Status::Done)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
@@ -471,7 +521,8 @@ mod re_entry {
         assert_eq!(body.resume, None);
 
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Dropped);
+        write_slice(project.root(), "a", SliceArt::Dropped);
+        append(project.root(), &[advanced(0, "test", "a")]);
         let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
@@ -489,7 +540,7 @@ mod workspace_routing {
         let project = Session::scripted("demo", Vec::new());
         let slot = project.root().join("workspace").join("storefront");
         std::fs::create_dir_all(&slot).expect("create slot");
-        write_slice(&slot, "a", LifecycleStatus::Refined);
+        write_slice(&slot, "a", SliceArt::Refined);
         append(&slot, &[advanced(0, "test", "a"), build_failed(10, "a", "slot failure")]);
 
         let mut entry = change("a", Status::InProgress);
@@ -505,11 +556,39 @@ mod workspace_routing {
     #[tokio::test]
     async fn missing_slot_falls_back() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Built);
+        write_slice(project.root(), "a", SliceArt::Built);
+        append(project.root(), &[advanced(0, "test", "a")]);
         let mut entry = change("a", Status::InProgress);
         entry.project = Some("storefront".to_string());
         let plan = plan_with_changes(vec![entry]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "merge a");
+    }
+}
+
+mod ignores_stored_status {
+    use super::*;
+
+    /// Stored `Entry.status` must not drive the projection: a plan
+    /// row stamped `done` with no archive / postflight fact still
+    /// projects as pending work.
+    #[tokio::test]
+    async fn stored_done_without_facts_is_pending() {
+        let project = Session::scripted("demo", Vec::new());
+        let plan = plan_with_changes(vec![change("a", Status::Done)]);
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "refine a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+    }
+
+    /// Stored `in-progress` without an advance / claim fact does not
+    /// select the entry as active — preview the pending refine.
+    #[tokio::test]
+    async fn stored_in_progress_without_facts_is_pending() {
+        let project = Session::scripted("demo", Vec::new());
+        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "refine a");
+        assert_eq!(body.active, None);
     }
 }

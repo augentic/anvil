@@ -1,31 +1,39 @@
-//! The status projection: plan entries + the shared execution-state
-//! kernel → one [`StatusBody`].
+//! The status projection: plan topology + artifacts + the fact union
+//! → one [`StatusBody`] (RFC-86 D2).
 
 use std::ops::ControlFlow;
 
 use error::Error;
 
-use super::super::execution::{JournalOverlay, Resolution, resolve_entry};
+use super::super::execution::{
+    JournalOverlay, Resolution, collect_events, next_eligible, project_ladders, resolve_entry,
+    scan_union,
+};
 use super::super::model::{Entry, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
-use crate::journal::{self, EventKind};
+use crate::journal::{Event, EventKind};
+use crate::name::SliceName;
 
 /// Project the read-only `emery plan status` body.
 ///
-/// Selection: the active `in-progress` entry, else sticky
+/// Selection: the first projected `in-progress` entry, else sticky
 /// `merge-postflight-failed` when the newest plan-scoped postflight
-/// debt event is unacked, else the next eligible `pending` entry
-/// (what `plan advance` would advance), else `drained` / `stop
-/// stuck`. The per-entry decision — slot-aware slice lifecycle plus
-/// (for the active entry) the folded active-window journal facts — is
+/// debt event is unacked, else the next eligible projected `pending`
+/// entry (what `plan advance` would advance), else `drained` /
+/// `stop stuck`. The per-entry decision — artifact phase plus (for
+/// an in-progress entry) the folded active-window journal facts — is
 /// the shared `resolve_entry` execution kernel; not-yet-advanced
 /// candidates skip the journal overlay (nothing has run under the
 /// current activation; stale same-name events from earlier plans must
 /// not classify).
 ///
+/// Ladder labels and the awaited phase are computed from the fact
+/// union and slice artifacts. Stored `Entry.status` /
+/// `LifecycleStatus` fields are not read.
+///
 /// `layout` resolves the plan root and the work root: an entry bound
-/// to a materialised workspace slot reads that slot's slice metadata
+/// to a materialised workspace slot reads that slot's slice artifacts
 /// and journal, mirroring where phase work writes them.
 ///
 /// # Errors
@@ -34,51 +42,56 @@ use crate::journal::{self, EventKind};
 /// ([`Error::YamlDe`]); a missing slice directory is the fresh-slice
 /// signal, not an error.
 pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, Error> {
+    let events = collect_events(plan, layout)?;
+    let ladders = project_ladders(plan, &events);
     let counts = StatusCounts {
-        pending: count(plan, Status::Pending),
-        in_progress: count(plan, Status::InProgress),
-        done: count(plan, Status::Done),
+        pending: count(&ladders, Status::Pending),
+        in_progress: count(&ladders, Status::InProgress),
+        done: count(&ladders, Status::Done),
     };
-    let active = plan.entries.iter().find(|e| e.status == Status::InProgress);
+    let active = plan
+        .entries
+        .iter()
+        .find(|e| ladders.get(&e.name).copied() == Some(Status::InProgress));
 
     let resolution = match active {
-        Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply)?,
+        Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply, &events)?,
         None => {
             // Sticky postflight debt: after a non-rollback postflight
             // failure the entry is already `done`, so nothing is
             // in-progress — project the stop until execute acknowledges.
-            if let Some(debt) = postflight_debt(layout, plan)? {
+            if let Some(debt) = postflight_debt(plan, &events) {
                 debt
             } else {
-                match plan.next_eligible() {
-                    Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Skip)?,
-                    None if plan.is_drained() => Resolution::drained(),
+                match next_eligible(plan, &ladders) {
+                    Some(entry) => {
+                        resolve_entry(plan, entry, layout, JournalOverlay::Skip, &events)?
+                    }
+                    None if ladders.values().all(|s| *s == Status::Done) => Resolution::drained(),
                     None => Resolution::stop(StopReason::Stuck),
                 }
             }
         }
     };
-    Ok(assemble(plan, counts, active, resolution))
+    Ok(assemble(plan, counts, active, &ladders, resolution))
 }
 
 /// When the chronologically latest among
 /// `{slice.merge.postflight-failed, plan.merge-postflight.acknowledged}`
 /// (restricted to slices named in this plan) is a postflight failure,
 /// project the sticky `merge-postflight-failed` stop for that slice.
-fn postflight_debt(layout: Layout<'_>, plan: &Plan) -> Result<Option<Resolution>, Error> {
+fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
     let mut resolution = None;
-    journal::scan_recent(layout, |event| {
-        match event.kind {
+    scan_union(events, |event| {
+        match &event.kind {
             EventKind::SliceMergePostflightFailed { slice_name, reason }
-                if plan.entries.iter().any(|e| e.name == slice_name) =>
+                if plan.entries.iter().any(|e| e.name == *slice_name) =>
             {
-                let entry = plan.entries.iter().find(|e| e.name == slice_name);
-                // Entry presence is gated above; reconstruct the stop
-                // with the plan entry's project binding when found.
+                let entry = plan.entries.iter().find(|e| e.name == *slice_name);
                 if let Some(entry) = entry {
                     resolution = Some(Resolution::stop_for(
                         StopReason::MergePostflightFailed,
-                        Some(reason),
+                        Some(reason.clone()),
                         entry,
                         Some(LoopStep::Merge),
                     ));
@@ -86,23 +99,24 @@ fn postflight_debt(layout: Layout<'_>, plan: &Plan) -> Result<Option<Resolution>
                 ControlFlow::Break(())
             }
             EventKind::PlanMergePostflightAcknowledged { slice_name }
-                if plan.entries.iter().any(|e| e.name == slice_name) =>
+                if plan.entries.iter().any(|e| e.name == *slice_name) =>
             {
                 resolution = None;
                 ControlFlow::Break(())
             }
             _ => ControlFlow::Continue(()),
         }
-    })?;
-    Ok(resolution)
+    });
+    resolution
 }
 
-fn count(plan: &Plan, status: Status) -> usize {
-    plan.entries.iter().filter(|e| e.status == status).count()
+fn count(ladders: &std::collections::HashMap<SliceName, Status>, status: Status) -> usize {
+    ladders.values().filter(|s| **s == status).count()
 }
 
 fn assemble(
-    plan: &Plan, counts: StatusCounts, active: Option<&Entry>, resolution: Resolution,
+    plan: &Plan, counts: StatusCounts, active: Option<&Entry>,
+    ladders: &std::collections::HashMap<SliceName, Status>, resolution: Resolution,
 ) -> StatusBody {
     let next_action = match (resolution.action, &resolution.slice, &resolution.stop) {
         (NextActionKind::Drained, ..) => "drained".to_string(),
@@ -121,7 +135,7 @@ fn assemble(
         action: resolution.action,
         current_step: current_step(&resolution),
         last_completed: resolution.last_completed,
-        resume: resume_point(plan, &resolution),
+        resume: resume_point(plan, ladders, &resolution),
         slice: resolution.slice,
         project: resolution.project,
         stop: resolution.stop,
@@ -153,12 +167,14 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 
 /// `resume`: the next valid resume point as a literal command.
 /// `None` when no single command makes progress.
-fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
+fn resume_point(
+    plan: &Plan, ladders: &std::collections::HashMap<SliceName, Status>, resolution: &Resolution,
+) -> Option<String> {
     let slice = resolution.slice.as_deref();
-    // A fresh plan (no entry has left `pending`) resumes through the
-    // execute loop, not a phase breakout — the projected
+    // A fresh plan (no entry has left projected `pending`) resumes
+    // through the execute loop, not a phase breakout — the projected
     // `next-action` still names the phase the loop will run first.
-    if plan.entries.iter().all(|e| e.status == Status::Pending)
+    if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,
             NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge
