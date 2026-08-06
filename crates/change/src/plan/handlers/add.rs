@@ -10,7 +10,7 @@ use omnia_guest::api::operation::Operation;
 use project::config::with_state;
 use project::handler::{Anchor, Ctx};
 use project::journal;
-use project::plan::{AuthorityOverride, Entry, Plan, Status, authority_override, entry_mut};
+use project::plan::{AuthorityOverride, Entry, Plan, authority_override, entry_mut};
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -87,7 +87,6 @@ impl<P: Anchor> Operation<P> for Add {
         let entry = Entry {
             name: name.into(),
             project,
-            status: Status::Pending,
             depends_on: depends_on.into_iter().map(Into::into).collect(),
             sources,
             context,

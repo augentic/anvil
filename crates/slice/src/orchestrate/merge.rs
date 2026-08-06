@@ -289,9 +289,7 @@ fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
     }
     let archive_path = latest_archive(&layout.archive_dir(), slice)?;
     let metadata = project::slice::SliceMetadata::load(&archive_path).ok()?;
-    if metadata.merged_at.is_none() {
-        return None;
-    }
+    metadata.merged_at?;
     Some(MergeOutcome {
         merged: vec![],
         decisions: vec![],

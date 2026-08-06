@@ -50,12 +50,8 @@ impl Patch<String> {
 /// Patch applied by the internal plan amendment kernel to an existing entry.
 ///
 /// Wholesale-replacement fields are `Option<Vec<...>>`; nullable fields use
-/// the three-way [`Patch`] enum. `status` is deliberately absent —
-/// status transitions are made via the internal transition kernel, never
-/// through `amend`.
-///
-/// The absence of a `status` field is a type-system guarantee: `amend`
-/// cannot mutate status.
+/// the three-way [`Patch`] enum. Progress is projected from facts
+/// (RFC-86 D2) and is not an amendable field.
 #[derive(Debug, Default, Clone)]
 pub struct EntryPatch {
     /// Replace `depends_on` wholesale when `Some`.

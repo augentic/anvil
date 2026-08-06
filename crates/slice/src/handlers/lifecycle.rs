@@ -45,7 +45,7 @@ impl<P: Anchor> Operation<P> for Drop {
             slice_actions::discard(&slice_dir, &archive_dir, reason.as_deref(), cx.now())?;
         Ok(DropBody {
             name,
-            status: metadata.status,
+            status: LifecycleStatus::project(&slice_dir, &metadata),
             archive_path,
             drop_reason: metadata.drop_reason,
         })
@@ -58,7 +58,7 @@ impl<P: Anchor> Operation<P> for Drop {
 pub struct DropBody {
     /// Dropped slice.
     pub name: String,
-    /// Persisted lifecycle state.
+    /// Projected lifecycle label after the drop stamp.
     pub status: LifecycleStatus,
     /// Archived slice location.
     pub archive_path: PathBuf,

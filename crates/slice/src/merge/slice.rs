@@ -255,7 +255,7 @@ pub fn commit(
     write_baselines(&merged)?;
     let opaque_counts = commit_opaque(classes)?;
 
-    // RFC-86 D2: do not rewrite LifecycleStatus; stamp merge times only.
+    // RFC-86 D2 / D11: no stored lifecycle field; stamp merge times only.
     if metadata.completed_at.is_none() {
         metadata.completed_at = Some(now);
     }

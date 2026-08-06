@@ -397,13 +397,14 @@ async fn until_plan_leaves_entries_pending() {
     .expect("the plan-stopped workflow case passes");
 
     let root = sandbox.join("greeting");
-    let plan = project::plan::Plan::load(&project::config::Layout::new(&root).plan_path())
-        .expect("plan.yaml");
+    let layout = project::config::Layout::new(&root);
+    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
     assert!(!plan.entries.is_empty(), "the authored plan carries entries");
+    let events = project::plan::collect_events(&plan, layout).expect("events");
+    let ladders = project::plan::project_ladders(&plan, &events);
     assert!(
-        plan.entries.iter().all(|entry| entry.status == Status::Pending),
-        "no entry advanced: {:?}",
-        plan.entries
+        ladders.values().all(|status| *status == Status::Pending),
+        "no entry advanced: ladders={ladders:?}"
     );
     assert!(!journal(&root).contains("plan.entry.advanced"), "no entry advanced before execution");
 }

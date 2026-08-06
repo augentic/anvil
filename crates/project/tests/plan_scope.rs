@@ -1,5 +1,6 @@
-//! RFC-86 S4/S6: shared in-scope membership (D24), retirement of the
-//! plan-wide single-active-entry gate (D23), and fact-based advance.
+//! RFC-86 S4/S7: shared in-scope membership (D24), retirement of the
+//! plan-wide single-active-entry gate (D23), and fact-based advance
+//! with no stored status fields (D2 / D11).
 
 use std::collections::BTreeMap;
 
@@ -9,13 +10,12 @@ use project::config::{Layout, ProjectConfig};
 use project::handler::Anchor;
 use project::journal::{self, Event, EventKind};
 use project::plan::{Entry, Plan, Status, advance_gate, advance_next, in_scope, project_ladders};
-use project::slice::{LifecycleStatus, SliceMetadata};
+use project::slice::SliceMetadata;
 
-fn entry(name: &str, status: Status) -> Entry {
+fn entry(name: &str) -> Entry {
     Entry {
         name: name.into(),
         project: Some("default".into()),
-        status,
         depends_on: vec![],
         sources: vec![],
         context: vec![],
@@ -34,10 +34,9 @@ fn plan(entries: Vec<Entry>) -> Plan {
     }
 }
 
-fn meta(status: LifecycleStatus) -> SliceMetadata {
+fn meta() -> SliceMetadata {
     SliceMetadata {
         target: "demo@1.0.0".into(),
-        status,
         created_at: None,
         defined_at: None,
         completed_at: None,
@@ -83,7 +82,7 @@ fn seed_in_progress(root: &std::path::Path, plan_name: &str, slice: &str, second
 
 #[test]
 fn multiple_in_progress_is_not_a_validate_finding() {
-    let plan = plan(vec![entry("a", Status::InProgress), entry("b", Status::InProgress)]);
+    let plan = plan(vec![entry("a"), entry("b")]);
     let findings = project::plan::doctor::doctor(&plan, None, None, None);
     assert!(
         findings.iter().all(|f| f.rule_id.as_deref() != Some("multiple-in-progress")),
@@ -98,27 +97,23 @@ fn multiple_in_progress_is_not_a_validate_finding() {
 
 #[test]
 fn in_scope_requires_plan_membership_and_not_dropped() {
-    let plan = plan(vec![entry("orders", Status::Pending)]);
+    let plan = plan(vec![entry("orders")]);
     let on_plan = &plan.entries[0];
 
     assert!(in_scope(&plan, on_plan, None), "absent metadata is not dropped");
-    assert!(
-        in_scope(&plan, on_plan, Some(&meta(LifecycleStatus::Refined))),
-        "refined stays in-scope"
-    );
-    let mut dropped = meta(LifecycleStatus::Refining);
+    assert!(in_scope(&plan, on_plan, Some(&meta())), "live metadata stays in-scope");
+    let mut dropped = meta();
     dropped.dropped_at = Some(Timestamp::from_second(1_700_000_000).expect("timestamp"));
     assert!(!in_scope(&plan, on_plan, Some(&dropped)), "dropped_at excludes membership");
 
-    let orphan = entry("ghost", Status::Pending);
+    let orphan = entry("ghost");
     assert!(!in_scope(&plan, &orphan, None), "absent from the plan is not in-scope");
 }
 
 #[test]
 fn advance_starts_second_entry_while_another_is_in_progress() {
     let session = Session::scripted("demo", Vec::new());
-    // Stored status stays pending — progress is claimed via facts.
-    let staged = plan(vec![entry("a", Status::Pending), entry("b", Status::Pending)]);
+    let staged = plan(vec![entry("a"), entry("b")]);
     write_plan(session.root(), &staged);
     seed_in_progress(session.root(), "test", "a", 1_700_000_000);
 
@@ -130,11 +125,8 @@ fn advance_starts_second_entry_while_another_is_in_progress() {
     assert!(body.active.is_none(), "fresh advance, not a mid-slice resume");
 
     let loaded = Plan::load(&Layout::new(session.root()).plan_path()).expect("reload plan");
-    assert!(
-        loaded.entries.iter().all(|e| e.status == Status::Pending),
-        "advance must not rewrite stored Entry.status: {:?}",
-        loaded.entries
-    );
+    let yaml = std::fs::read_to_string(session.root().join("plan.yaml")).expect("plan.yaml");
+    assert!(!yaml.contains("status:"), "plan.yaml must not carry a stored status field: {yaml}");
     let events =
         project::plan::collect_events(&loaded, Layout::new(session.root())).expect("events");
     let ladders = project_ladders(&loaded, &events);
@@ -148,10 +140,10 @@ fn advance_starts_second_entry_while_another_is_in_progress() {
 fn advance_resumes_in_progress_when_no_pending_is_eligible() {
     let session = Session::scripted("demo", Vec::new());
     let staged = plan(vec![
-        entry("a", Status::Pending),
+        entry("a"),
         Entry {
             depends_on: vec!["a".into()],
-            ..entry("b", Status::Pending)
+            ..entry("b")
         },
     ]);
     write_plan(session.root(), &staged);

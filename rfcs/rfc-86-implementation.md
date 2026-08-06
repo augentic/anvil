@@ -32,8 +32,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S4 | In-scope predicate; retire single-active-entry | `done` | plan validate / advance tests | `refactor(plan): retire single-active-entry; add in-scope predicate` |
 | S5 | Fact-based plan status projection | `done` | `crates/change/tests/plan_status.rs` | `feat(plan): compute plan status from artifacts and facts` |
 | S6 | Writers stop mutating stored status ladders | `done` | full_loop / refine / build / merge tests | `refactor(workflow): express advance and phase progress as facts` |
-| S7 | Delete stored status/lifecycle fields | `next` | `cargo make check` | `refactor!: remove stored plan-entry and slice lifecycle status fields` |
-| S8 | Multi-actor claim/union fixtures | `pending` | new mock/change integration tests | `test(mock): multi-actor claim and fact-union fixtures for RFC-86` |
+| S7 | Delete stored status/lifecycle fields | `done` | `cargo make check` | `refactor!: remove stored plan-entry and slice lifecycle status fields` |
+| S8 | Multi-actor claim/union fixtures | `next` | new mock/change integration tests | `test(mock): multi-actor claim and fact-union fixtures for RFC-86` |
 | S9 | Source cid pins at plan author | `pending` | author/reconciliation pin assertions | `feat(change): record source cid pins at plan author` |
 | S10 | Refine writes base.yaml | `pending` | refine integration test asserts `base.yaml` | `feat(slice): write refine-time base.yaml pins` |
 | S11 | Slice-local REQ ids + MODIFIED digests | `pending` | synthesis local-id + modified-digest tests | `feat(slice): mint slice-local requirement ids until wave commit` |
@@ -85,6 +85,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-06 — S6
 - Finding: `plan advance` claims the eligible slice (`slice.claimed` + `plan.entry.advanced`) from fact-projected ladders and no longer rewrites `plan.yaml` `Entry.status`. `plan undo` walks projected rungs via `fact.retracted` (+ label `plan.transition.undone`) without status writes; ladder / active-window projection skip retracted lines. Refine/build stamp phase timestamps + facts only (leave stored `LifecycleStatus` untouched); merge gates on `build/patch.yaml` / projected in-progress, emits `slice.archive.created` for `done`, and dropped the `stamp_plan_entry_done` path. `in_scope` and archive outstanding-work now key off `dropped_at` / projected ladders. Stored status/lifecycle fields remain on disk for S7's hard cut.
 - Plan change: none beyond status (S6=done, S7=next).
+
+### 2026-08-06 — S7
+- Finding: Hard-cut removed `Entry.status` from `plan.yaml` and `SliceMetadata.status` from `metadata.yaml`. `Status` / `LifecycleStatus` remain as projection labels only (`project_ladders` / `LifecycleStatus::project` from artifacts + timestamps). Deleted `plan/transitions.rs` (stored-status writers). `is_replaceable` / `plan remove` / `propose_from` now gate on projected ladders. Validate dropped `missing-slice-dir-for-in-progress` (it read stored status). Operator docs that still show `status: pending` / `metadata.status` stay for S22.
+- Plan change: none beyond status (S7=done, S8=next).
 ```
 
 ### Session template (copy into each agent prompt)

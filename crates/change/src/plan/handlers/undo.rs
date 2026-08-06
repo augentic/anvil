@@ -3,7 +3,7 @@
 //! Forward progress is expressed as facts (`plan advance` claims;
 //! refine/build/merge append phase facts; archive facts project
 //! `done`). Undo retracts those facts — it does not rewrite stored
-//! `Entry.status`.
+//! `plan.yaml`.
 
 use std::io::Write;
 

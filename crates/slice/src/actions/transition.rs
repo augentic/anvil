@@ -1,5 +1,5 @@
-//! Phase stamp helper: record `*_at` timestamps and refine facts without
-//! treating `LifecycleStatus` as authority (RFC-86 D2 / S6).
+//! Phase stamp helper: record `*_at` timestamps and refine facts
+//! (RFC-86 D2 / D11). Lifecycle labels are projected, never stored.
 
 use std::path::Path;
 
@@ -13,9 +13,10 @@ use crate::{LifecycleStatus, SLICES_DIR_NAME, SliceMetadata};
 /// Stamp the phase timestamp for `target` and, for `Refined`, append
 /// `slice.transition.refined`.
 ///
-/// Stored `metadata.status` is left untouched — progress projects from
-/// artifacts and facts (RFC-86 D2). Timestamps remain for operators and
-/// for drop detection (`dropped_at`).
+/// `target` selects which timestamp to stamp — it is not persisted as
+/// a status field. Progress projects from artifacts and facts
+/// (RFC-86 D2). Timestamps remain for operators and for drop detection
+/// (`dropped_at`).
 ///
 /// Returns the updated `SliceMetadata`.
 ///

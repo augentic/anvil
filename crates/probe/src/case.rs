@@ -145,9 +145,11 @@ async fn run_workflow(
 
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
+    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
-        plan.entries.iter().all(|entry| entry.status == Status::Pending),
-        "plan author must leave every entry pending: {:?}",
+        ladders.values().all(|status| *status == Status::Pending),
+        "plan author must leave every entry pending: ladders={ladders:?}; entries={:?}",
         plan.entries
     );
     let slices_dir = Layout::new(root).slices_dir();
@@ -171,8 +173,7 @@ async fn run_workflow(
     let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
         ladders.values().all(|status| *status == Status::Done),
-        "execute must drain the plan (projected done): ladders={ladders:?}; stored={:?}",
-        plan.entries
+        "execute must drain the plan (projected done): ladders={ladders:?}"
     );
     grade::provenance(&grade::baseline(root)?)?;
     telemetry::report(&telemetry.counts(), plan.entries.len());

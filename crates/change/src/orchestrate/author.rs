@@ -21,7 +21,7 @@ use project::journal::{self, Event, EventKind};
 use project::name::SliceName;
 use project::plan::{
     GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
-    author_gate, build_request, resolve_topology,
+    author_gate, build_request, collect_events, project_ladders, resolve_topology,
 };
 use project::registry::Registry;
 use project::seam::Source;
@@ -99,6 +99,8 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let request = build_request(&discovery, &topology)?;
 
     let plan = Plan::load(&layout.plan_path())?;
+    let events = collect_events(&plan, layout)?;
+    let ladders = project_ladders(&plan, &events);
     let context = GateContext {
         plan: plan.name.as_str(),
         sources: &plan.sources,
@@ -109,7 +111,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     // repaired in-loop rather than surfacing after the call.
     let mut response = propose::reconcile(model, &request, Some(context), |candidate| {
         let mut throwaway = plan.clone();
-        throwaway.propose_from(candidate.clone(), &discovery, &topology)?;
+        throwaway.propose_from(candidate.clone(), &discovery, &topology, &ladders)?;
         check_gate(candidate, name, &discovery)
     })
     .await?;
@@ -123,7 +125,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     // `propose_from` replaces `plan.entries`, `with_state` writes
     // `plan.yaml` on Ok and rolls back on any Err.
     let outcome = with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
-        plan.propose_from(response, &discovery, &topology).map(Mutation::changed)
+        plan.propose_from(response, &discovery, &topology, &ladders).map(Mutation::changed)
     })?;
     tracing::info!(slices = outcome.slice_names.len(), "plan written");
 

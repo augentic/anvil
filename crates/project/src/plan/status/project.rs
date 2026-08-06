@@ -29,8 +29,7 @@ use crate::name::SliceName;
 /// not classify).
 ///
 /// Ladder labels and the awaited phase are computed from the fact
-/// union and slice artifacts. Stored `Entry.status` /
-/// `LifecycleStatus` fields are not read.
+/// union and slice artifacts.
 ///
 /// `layout` resolves the plan root and the work root: an entry bound
 /// to a materialised workspace slot reads that slot's slice artifacts

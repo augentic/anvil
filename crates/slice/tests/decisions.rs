@@ -56,7 +56,7 @@ async fn merge_promotes_and_supersedes() {
     let baseline = project.root().join(".emery/decisions");
     fs::create_dir_all(&staged).expect("create staged decisions");
     fs::create_dir_all(&baseline).expect("create baseline decisions");
-    fs::write(slice.join("metadata.yaml"), "target: mock\nstatus: built\ntouched-specs: []\n")
+    fs::write(slice.join("metadata.yaml"), "target: mock\ntouched-specs: []\n")
         .expect("stage built metadata");
     write_decision(
         &baseline.join("DEC-0001-old-choice.md"),

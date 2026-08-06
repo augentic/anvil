@@ -67,11 +67,10 @@ pub fn plan_with_changes(changes: Vec<project::plan::Entry>) -> project::plan::P
 
 /// A minimal plan entry bound to project `default`.
 #[must_use]
-pub fn change(name: &str, status: project::plan::Status) -> project::plan::Entry {
+pub fn change(name: &str) -> project::plan::Entry {
     project::plan::Entry {
         name: name.into(),
         project: Some("default".into()),
-        status,
         depends_on: vec![],
         sources: vec![],
         context: vec![],
@@ -84,10 +83,8 @@ pub fn change(name: &str, status: project::plan::Status) -> project::plan::Entry
 
 /// [`change()`] plus a `depends-on` list.
 #[must_use]
-pub fn change_with_deps(
-    name: &str, status: project::plan::Status, deps: &[&str],
-) -> project::plan::Entry {
-    let mut entry = change(name, status);
+pub fn change_with_deps(name: &str, deps: &[&str]) -> project::plan::Entry {
+    let mut entry = change(name);
     entry.depends_on = deps.iter().map(|s| (*s).into()).collect();
     entry
 }

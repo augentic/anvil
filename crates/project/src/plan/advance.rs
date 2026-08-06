@@ -2,8 +2,7 @@
 //! the execute loop (RFC-86 D2 / D7 / D23).
 //!
 //! Advance claims the next eligible slice and appends
-//! `plan.entry.advanced` — it does **not** rewrite stored
-//! `Entry.status`. Ladder labels project from the fact union.
+//! `plan.entry.advanced`. Ladder labels project from the fact union.
 
 use std::collections::HashMap;
 use std::hash::BuildHasher;

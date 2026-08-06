@@ -9,7 +9,7 @@
 //! topology, slice artifacts, journal events) on every call.
 //!
 //! **Authority (RFC-86 D2):** progress is computed from artifacts and
-//! the fact union. Stored `Entry.status` / `LifecycleStatus` fields
+//! the fact union. No stored entry or slice status fields are read
 //! are not read. Ladder labels (`pending` / `in-progress` / `done`)
 //! project from claim / advance / undo / archive facts; the awaited
 //! phase projects from slice artifacts plus refine/build success
@@ -141,7 +141,7 @@ pub fn collect_events(plan: &Plan, layout: Layout<'_>) -> Result<Vec<Event>, Err
 
 /// Project per-entry ladder labels from the fact union (RFC-86 D2).
 ///
-/// Does not read stored `Entry.status`. `done` comes from archive /
+/// `done` comes from archive /
 /// postflight-failed facts (and undo walks them back by retracting);
 /// `in-progress` comes from advance / a live claim; everything else is
 /// `pending`. Retracted facts (`fact.retracted`) are omitted.
@@ -282,8 +282,7 @@ pub(super) fn resolve_work_root(layout: Layout<'_>, entry: &Entry) -> PathBuf {
 }
 
 /// Highest completed phase projected from slice artifacts (and, when
-/// provided, active-window success facts). Never reads
-/// `LifecycleStatus`.
+/// provided, active-window success facts).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Phase {
     None,

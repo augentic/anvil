@@ -17,7 +17,7 @@ use diagnostics::{
 use error::{Error, Result};
 use petgraph::graph::DiGraph;
 
-use super::model::{Divergence, Entry, Plan, Status};
+use super::model::{Divergence, Entry, Plan};
 use crate::registry::Registry;
 
 /// Build a plan-domain diagnostic on the neutral currency.
@@ -84,11 +84,6 @@ impl Plan {
     /// consistency checks against `slices_dir` when provided. Plan-wide
     /// “at most one `in-progress` entry” is retired (RFC-86 D23) —
     /// exclusivity is per-slice claim only.
-    ///
-    /// Note on "well-formed status values": `Status` is an enum, so
-    /// every in-memory instance is well-formed by construction. serde
-    /// rejects invalid statuses at parse time, which is not reachable
-    /// in-process — so nothing is emitted for it.
     #[must_use]
     pub(crate) fn validate(
         &self, slices_dir: Option<&Path>, registry: Option<&Registry>,
@@ -436,23 +431,6 @@ fn slices_dir_consistency(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
                 format!("slice directory '{name}' has no plan entry"),
                 Some(name.clone()),
             ));
-        }
-    }
-
-    for entry in &plan.entries {
-        if entry.status == Status::InProgress {
-            let candidate = slices_dir.join(entry.name.as_str());
-            if !candidate.is_dir() {
-                out.push(finding(
-                    "missing-slice-dir-for-in-progress",
-                    Severity::Suggestion,
-                    format!(
-                        "in-progress entry '{}' has no slice directory (may briefly be absent during phase start-up)",
-                        entry.name
-                    ),
-                    Some(entry.name.to_string()),
-                ));
-            }
         }
     }
 

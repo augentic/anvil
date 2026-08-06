@@ -60,8 +60,9 @@ impl Plan {
     /// invariant code listed above that the response violates.
     pub fn propose_from(
         &mut self, response: ProposalResponse, discovery: &Discovery, topology: &[ProjectRef],
+        ladders: &HashMap<crate::name::SliceName, Status>,
     ) -> Result<ProposeOutcome> {
-        if !self.is_replaceable() {
+        if !Self::is_replaceable(ladders) {
             return Err(Error::validation_failed(
                 "plan-reconcile-plan-not-replaceable",
                 "lead reconciliation requires a replaceable plan",
@@ -398,7 +399,6 @@ fn build_entries(
         .map(|(idx, slice)| Entry {
             name: names[idx].clone().into(),
             project: (!sole_project).then(|| bound[idx].name.clone()),
-            status: Status::Pending,
             depends_on: slice.depends_on.into_iter().map(Into::into).collect(),
             sources: slice
                 .sources

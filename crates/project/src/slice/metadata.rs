@@ -17,13 +17,14 @@ use crate::slice::OutcomeKind;
 pub const SLICES_DIR_NAME: &str = "slices";
 
 /// On-disk representation of `<slice_dir>/metadata.yaml`.
+///
+/// Progress is not stored here — lifecycle labels project from phase
+/// timestamps and slice artifacts (RFC-86 D2 / D11).
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct SliceMetadata {
     /// Target-adapter identifier (e.g. `omnia@1.0.0`).
     pub target: String,
-    /// Current lifecycle state.
-    pub status: crate::slice::LifecycleStatus,
     /// When the slice was created.
     #[serde(
         skip_serializing_if = "Option::is_none",

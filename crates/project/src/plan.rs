@@ -1,10 +1,9 @@
-//! The `plan.yaml` data model and its state machine.
+//! The `plan.yaml` data model and its operations.
 //!
 //! On-disk representation of `plan.yaml` and the in-memory [`Plan`]
 //! that wraps it, plus the four `plan validate` health diagnostics
 //! (`doctor`). Per-entry ladder labels project from the fact union
-//! (RFC-86 D2); stored `Entry::status` is a non-authority bridge field
-//! until the hard cut removes it.
+//! (RFC-86 D2 / D11) — `plan.yaml` carries no stored status field.
 
 pub mod advance;
 pub mod amend;
@@ -20,7 +19,6 @@ pub mod remove;
 pub mod scaffold;
 pub mod scope;
 pub mod status;
-pub mod transitions;
 pub mod undo;
 pub mod validate;
 

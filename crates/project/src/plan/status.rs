@@ -4,8 +4,7 @@
 //! the fact union into a deterministic `next-action` —
 //! `refine|build|merge <slice>`, `stop <reason>`, or `drained` — so
 //! the execute loop renders the dispatch instead of deriving it
-//! (RFC-86 D2). Writes nothing. Stored `Entry.status` /
-//! `LifecycleStatus` fields are not authority for this view.
+//! (RFC-86 D2 / D11). Writes nothing.
 //!
 //! This module owns the wire types; the per-entry decision kernel
 //! lives in the shared `execution` projection and the body assembly

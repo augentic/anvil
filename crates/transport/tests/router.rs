@@ -288,7 +288,7 @@ fn project(fixture: Fixture) -> TempDir {
     if matches!(fixture, Fixture::Cycle) {
         fs::write(
             project.path().join("plan.yaml"),
-            "name: cycle\nsources: {}\nslices:\n  - name: first\n    status: pending\n    depends-on: [second]\n  - name: second\n    status: pending\n    depends-on: [first]\n",
+            "name: cycle\nsources: {}\nslices:\n  - name: first\n    depends-on: [second]\n  - name: second\n    depends-on: [first]\n",
         )
         .expect("write cyclic plan");
     }

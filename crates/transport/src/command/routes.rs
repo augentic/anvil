@@ -250,12 +250,7 @@ where
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`.\n\nProjects `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (slot-aware in workspace mode), and the journal tail. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` / `slice.merge.postflight-failed` journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing — `plan advance` stays the only writer of per-entry `in-progress`."
     );
-    route!(
-        ["plan", "add"],
-        plan::AddArgs,
-        ::change::plan::handlers::Add,
-        "Add a new plan entry (status: pending)"
-    );
+    route!(["plan", "add"], plan::AddArgs, ::change::plan::handlers::Add, "Add a new plan entry");
     route!(
         ["plan", "amend"],
         plan::AmendArgs,

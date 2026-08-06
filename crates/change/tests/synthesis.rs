@@ -245,11 +245,6 @@ async fn decisions_exact_set() {
     // replacement clears both the generated record and any stray file.
     let slice_dir = root.join(".emery/slices/session-policy");
     fs::write(slice_dir.join("decisions/stale.md"), "stale").expect("plant stray file");
-    let metadata_path = slice_dir.join("metadata.yaml");
-    let metadata = fs::read_to_string(&metadata_path).expect("read metadata");
-    fs::write(&metadata_path, metadata.replace("status: refined", "status: refining"))
-        .expect("rewind lifecycle for the re-refine");
-
     run::<slice::handlers::Refine, _, _>(
         session.provider(),
         slice::handlers::RefineInput {

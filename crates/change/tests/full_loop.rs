@@ -93,19 +93,16 @@ async fn author_approve_execute_drains() {
         ]
     );
 
-    // Plan progress projects `done` from archive facts — stored
-    // Entry.status is not rewritten (RFC-86 D2 / S6).
-    let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
-    )
-    .expect("parse plan.yaml");
+    // Plan progress projects `done` from archive facts (RFC-86 D2 / D11).
+    let plan_yaml = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
+    assert!(!plan_yaml.contains("status:"), "plan.yaml has no stored status: {plan_yaml}");
+    let plan: change::Plan = serde_saphyr::from_str(&plan_yaml).expect("parse plan.yaml");
     let events =
         project::plan::collect_events(&plan, project::config::Layout::new(&root)).expect("events");
     let ladders = project::plan::project_ladders(&plan, &events);
     assert!(
         ladders.values().all(|status| *status == Status::Done),
-        "projected ladders: {ladders:?}; stored entries: {:?}",
-        plan.entries
+        "projected ladders: {ladders:?}"
     );
 
     // Baseline merge output with complete provenance.
@@ -318,8 +315,7 @@ async fn postflight_terminal() {
     let ladders = project::plan::project_ladders(&plan, &events);
     assert!(
         ladders.values().all(|status| *status == Status::Done),
-        "projected ladders: {ladders:?}; stored entries: {:?}",
-        plan.entries
+        "projected ladders: {ladders:?}"
     );
 
     // Failed postflight report persists beside the archive.

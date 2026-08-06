@@ -21,7 +21,7 @@ pub struct AdvanceInput {}
 /// `plan.entry.advanced`), or — when nothing pending is eligible —
 /// return an existing in-progress entry for mid-slice resume.
 /// Concurrent in-progress entries are legal (RFC-86 D23); exclusivity
-/// is per-slice claim only. Does not rewrite stored `Entry.status`.
+/// is per-slice claim only. Does not rewrite `plan.yaml`.
 #[derive(Clone, Copy, Debug)]
 pub struct Advance;
 

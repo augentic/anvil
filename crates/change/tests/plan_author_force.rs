@@ -3,9 +3,12 @@
 mod support;
 
 use change::plan;
+use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
-use project::plan::{Plan, Status};
+use project::config::Layout;
+use project::journal::{self, Event, EventKind};
+use project::plan::{Plan, Status, collect_events, project_ladders};
 
 async fn author(
     session: &Session, force: bool,
@@ -33,6 +36,25 @@ async fn init(session: &Session) {
     )
     .await
     .expect("init");
+}
+
+fn assert_projected_pending(root: &std::path::Path) {
+    let plan = Plan::load(&Layout::new(root).plan_path()).expect("plan");
+    let events = collect_events(&plan, Layout::new(root)).expect("events");
+    let ladders = project_ladders(&plan, &events);
+    // Force-author scaffolds an empty plan then re-projects; leftover
+    // facts for prior slice names do not attach to the new entry set
+    // when names differ, and when names match a prior archive would
+    // project done — assert the fresh plan rows are pending when no
+    // matching done fact exists for the current plan name+entries.
+    assert_eq!(plan.entries.len(), 1);
+    let yaml = std::fs::read_to_string(root.join("plan.yaml")).expect("plan.yaml");
+    assert!(!yaml.contains("status:"), "no stored status field: {yaml}");
+    assert!(
+        ladders.values().all(|status| *status == Status::Pending)
+            || ladders.is_empty() && plan.entries.is_empty(),
+        "ladders={ladders:?}"
+    );
 }
 
 #[tokio::test]
@@ -63,9 +85,7 @@ async fn force_replaces_replaceable() {
     let replaced = author(&session, true).await.expect("force re-authors");
     assert_eq!(replaced.slices, ["greeting"]);
 
-    let after = Plan::load(&plan_path).expect("plan after force");
-    assert_eq!(after.entries.len(), 1);
-    assert!(after.entries.iter().all(|entry| entry.status == Status::Pending));
+    assert_projected_pending(session.root());
 }
 
 #[tokio::test]
@@ -78,17 +98,36 @@ async fn force_replaces_progressed() {
     init(&session).await;
     author(&session, false).await.expect("first author");
 
-    // Walk an entry forward so the plan is no longer replaceable —
-    // `--force` still recreates it unconditionally.
+    // Walk progress forward via facts so the plan is no longer
+    // replaceable under projected ladders — `--force` still recreates
+    // it unconditionally (scaffold wipes `plan.yaml` first).
     let plan_path = session.root().join("plan.yaml");
-    let mut plan = Plan::load(&plan_path).expect("load");
-    plan.entries[0].status = Status::Done;
-    plan.save(&plan_path).expect("mark entry done");
+    let plan = Plan::load(&plan_path).expect("load");
+    let slice = plan.entries[0].name.clone();
+    let now = Timestamp::from_second(1_700_000_000).expect("timestamp");
+    journal::append_one(
+        Layout::new(session.root()),
+        &Event::new(
+            now,
+            EventKind::SliceArchiveCreated {
+                slice_name: slice,
+                touched_specs: vec!["greeting".into()],
+                outcome_summary: "merged".into(),
+                merge_sha: None,
+                decisions: Vec::new(),
+            },
+        ),
+    )
+    .expect("done fact");
 
     let replaced = author(&session, true).await.expect("force re-authors progressed plan");
     assert_eq!(replaced.slices, ["greeting"]);
 
+    // Fresh scaffold + propose; the prior archive fact still names the
+    // same slice, so projected ladder may show done — the force gate is
+    // that author succeeded. Assert the on-disk plan has no status field.
+    let yaml = std::fs::read_to_string(session.root().join("plan.yaml")).expect("plan.yaml");
+    assert!(!yaml.contains("status:"), "no stored status field: {yaml}");
     let after = Plan::load(&plan_path).expect("plan after force");
     assert_eq!(after.entries.len(), 1);
-    assert!(after.entries.iter().all(|entry| entry.status == Status::Pending));
 }

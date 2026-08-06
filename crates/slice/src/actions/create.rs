@@ -7,7 +7,7 @@ use jiff::Timestamp;
 use project::name::validate_name;
 use serde::Serialize;
 
-use crate::{LifecycleStatus, SliceMetadata};
+use crate::SliceMetadata;
 
 /// What to do when slice creation finds an existing directory at the
 /// target path. Rides the wire typed on both transports (kebab-case
@@ -121,7 +121,6 @@ pub fn create(
     std::fs::create_dir_all(slice_dir.join("specs"))?;
     let metadata = SliceMetadata {
         target: target.to_string(),
-        status: LifecycleStatus::Refining,
         created_at: Some(now),
         defined_at: None,
         completed_at: None,
