@@ -7,7 +7,7 @@
 ## Non-negotiable operating rules
 
 1. **Strict sequence.** Never start session *N+1* until session *N* is `done` and the operator has committed (or explicitly waived a commit for a docs-only/no-op).
-2. **One session per agent run.** Load only that session’s context pack + the status table; do not pre-implement later sessions.
+2. **One session per agent run.** Load that session’s section, status table, Context pack code files, and every RFC subsection the session cites; do not pre-implement later sessions or substitute the digest for cited RFC text.
 3. **No automated git staging/commits/pushes.** End every session with a **Commit handoff** block for the operator. Do not run `git add` / `git commit` / `git push`.
 4. **Keep CI green per session.** Prefer `cargo make ci` when affordable; at minimum the session’s named gate must pass.
 5. **Hard cut, no shims** (RFC D11). Temporary dual-write is allowed only inside a session (or as an explicit bridge removed by the next session). Do not leave “read old status fields forever” code.
@@ -57,18 +57,26 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-06 — S0
 - Finding: Materialized this living plan from the Cursor seed plan; no prior `rfcs/rfc-86-implementation.md` existed.
 - Plan change: none (initial write). Status: S0=done, S1=next.
+
+### 2026-08-06 — plan wording
+- Finding: Session template + risk controls could be read as forbidding RFC reads, leaving only the living-plan digest — too thin for wire-accurate implementation.
+- Plan change: Session template now requires opening every cited D# / Acceptance / appendix subsection; digest marked orientation-only; RFC wins on conflict. Risk controls updated to match.
 ```
 
 ### Session template (copy into each agent prompt)
 
 ```text
 You are implementing RFC-86 session <ID> only.
-1. Read rfcs/rfc-86-implementation.md — Status table + this session + Discovery log.
-2. Read only the Context pack files listed for this session.
-3. Implement Deliverables; do not start the next session.
-4. Run the named Gate.
-5. Update Status table (this session → done; next → next) and Discovery log if needed.
-6. Output a Commit handoff (files + suggested message). Do NOT git add/commit/push.
+1. Read rfcs/rfc-86-implementation.md — Status table + this session’s section + Discovery log.
+2. Open every RFC decision / Acceptance item / appendix subsection this session cites
+   (e.g. “RFC D3”, “Acceptance #2”, “appendix wire ids”) in rfcs/rfc-86-change-facts.md.
+   Read those subsections for normative detail; do not skim-substitute from the living-plan digest alone.
+3. Read the Context pack source files listed for this session (code paths). Do not pre-load
+   unrelated crates or later sessions.
+4. Implement Deliverables to match the cited RFC wording. If the digest and RFC disagree, the RFC wins.
+5. Run the named Gate.
+6. Update Status table (this session → done; next → next) and Discovery log if needed.
+7. Output a Commit handoff (files + suggested message). Do NOT git add/commit/push.
 ```
 
 ## Architecture target (what “done” means)
@@ -93,7 +101,7 @@ RFC phases map to sessions:
 - **Phase B** — pins, waves, REQ identity, retire freeze/`patch.yaml` (`crates/slice` + pin writers) — S9–S15
 - **Phase C** — epoch, gap gate, waivers, shift-left fixtures, D20 docs (`crates/change` + prose) — S16–S23
 
-Product decisions and wire detail live in the RFC (D1–D27, Acceptance #1–15, Appendix Implementation notes). This plan is the session schedule; agents still open the RFC when a session’s context pack or deliverables cite a D# / appendix subsection.
+This plan is the **session schedule and progress tracker**, not a substitute product contract. Normative decisions, wire ids, coverage shapes, and acceptance criteria live in [`rfc-86-change-facts.md`](rfc-86-change-facts.md) (D1–D27, Acceptance #1–15, Appendix). Each session’s Context line cites the decisions it owns — open those subsections before coding. The condensed digest at the bottom of this file is orientation only; **RFC wording wins on conflict.**
 
 ---
 
@@ -343,7 +351,7 @@ EOF
 
 ## Risk controls for context limits
 
-- Each session lists a **Context pack** ≤ ~8 files; agents must not read the entire RFC unless the session says so (prefer the linked D# / appendix subsection).
+- Each session lists a **Context pack** ≤ ~8 code files plus the RFC subsections it cites. **Must** open every cited D# / Acceptance / appendix subsection before implementing. **Must not** re-read the entire RFC every session, invent wire shapes from the digest, or treat Deliverables bullets as complete without the cited RFC text.
 - Prefer crate-local `nextest` filters before full `cargo make ci` (S23 owns full CI).
 - If a session discovers >1 session of work: stop, split into `Sxx` + `Sxx.1` in the living plan, mark current `blocked` or finish a thin vertical slice, and hand off — do not silently expand scope mid-session.
 - Merge orchestration is a collision point with future RFC-88 work — finish S12–S14 before any parallel RFC-88 merge edits.
@@ -359,7 +367,7 @@ EOF
 
 ## Implementation notes (RFC appendix — digest for implementers)
 
-Copied/condensed from RFC-86 Appendix: Implementation notes so later sessions can stay in this file + targeted context packs. Prefer the RFC when wording conflicts.
+Orientation only — condensed from RFC-86 Appendix: Implementation notes. **Not normative.** Before coding a session, open the cited D# / Acceptance / appendix text in [`rfc-86-change-facts.md`](rfc-86-change-facts.md); that document wins on any conflict with this digest or with abbreviated Deliverables bullets.
 
 **Already landed (RFC-87) — consume, do not reinvent**
 
