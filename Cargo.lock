@@ -1207,8 +1207,12 @@ name = "emery-mock"
 version = "0.38.0"
 dependencies = [
  "emery-adapter",
+ "emery-change",
+ "emery-error",
  "emery-native",
  "emery-project",
+ "emery-slice",
+ "jiff",
  "omnia-guest",
  "omnia-testkit",
  "serde_json",

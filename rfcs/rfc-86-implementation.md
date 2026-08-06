@@ -33,8 +33,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S5 | Fact-based plan status projection | `done` | `crates/change/tests/plan_status.rs` | `feat(plan): compute plan status from artifacts and facts` |
 | S6 | Writers stop mutating stored status ladders | `done` | full_loop / refine / build / merge tests | `refactor(workflow): express advance and phase progress as facts` |
 | S7 | Delete stored status/lifecycle fields | `done` | `cargo make check` | `refactor!: remove stored plan-entry and slice lifecycle status fields` |
-| S8 | Multi-actor claim/union fixtures | `next` | new mock/change integration tests | `test(mock): multi-actor claim and fact-union fixtures for RFC-86` |
-| S9 | Source cid pins at plan author | `pending` | author/reconciliation pin assertions | `feat(change): record source cid pins at plan author` |
+| S8 | Multi-actor claim/union fixtures | `done` | new mock/change integration tests | `test(mock): multi-actor claim and fact-union fixtures for RFC-86` |
+| S9 | Source cid pins at plan author | `next` | author/reconciliation pin assertions | `feat(change): record source cid pins at plan author` |
 | S10 | Refine writes base.yaml | `pending` | refine integration test asserts `base.yaml` | `feat(slice): write refine-time base.yaml pins` |
 | S11 | Slice-local REQ ids + MODIFIED digests | `pending` | synthesis local-id + modified-digest tests | `feat(slice): mint slice-local requirement ids until wave commit` |
 | S12 | One-member wave manifests + target.wave.opened | `pending` | wave write/load tests | `feat(project): one-member target wave manifests and open fact` |
@@ -89,6 +89,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-06 — S7
 - Finding: Hard-cut removed `Entry.status` from `plan.yaml` and `SliceMetadata.status` from `metadata.yaml`. `Status` / `LifecycleStatus` remain as projection labels only (`project_ladders` / `LifecycleStatus::project` from artifacts + timestamps). Deleted `plan/transitions.rs` (stored-status writers). `is_replaceable` / `plan remove` / `propose_from` now gate on projected ladders. Validate dropped `missing-slice-dir-for-in-progress` (it read stored status). Operator docs that still show `status: pending` / `metadata.status` stay for S22.
 - Plan change: none beyond status (S7=done, S8=next).
+
+### 2026-08-07 — S8
+- Finding: Acceptance #2 fixtures land in `crates/mock/tests/multi_actor.rs` (mock↔change integration via cyclic dev-deps). Two authored copies claim/refine disjoint slices (`login-flow` / `password-reset`) under `alice`/`bob`, then union bob's per-actor log + slice tree; both project `Refined` with live dual ownership. Same-slice second claim → `slice-claim-conflict`. Sibling `plan advance` while a peer claim is live proves no plan-wide single-active-entry. Claims use `append_for` (fixture surface); refine stamps via `EMERY_ACTOR`. Base-drift injection stays S15. Added `login_flow_synthesis` / `password_reset_synthesis` to `mock::answers` (claim ids must match mock evidence, e.g. `login.flow`).
+- Plan change: none beyond status (S8=done, S9=next).
 ```
 
 ### Session template (copy into each agent prompt)
