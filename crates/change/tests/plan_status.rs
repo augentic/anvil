@@ -6,6 +6,8 @@
 //!
 //! Progress is computed from artifacts and facts (RFC-86 D2 / D11) —
 //! `plan.yaml` and `metadata.yaml` carry no stored status fields.
+//! Ready / Authorized milestones follow D22 / D26 — never an
+//! `approved` rung.
 //!
 //! The base happy-path dispatch arms (fresh-active-refine,
 //! per-entry refine/build/merge, drained,
@@ -13,18 +15,21 @@
 //! crate's orchestrate suites. What stays here is the dispatch and
 //! overlay classification that has no CLI status fixture: stuck
 //! dependency graphs, dropped slices, failure-overlay precedence, the
-//! torn merge-incomplete state, re-entry resume points, and workspace
-//! slot routing.
+//! torn merge-incomplete state, re-entry resume points, Ready /
+//! Authorized, and workspace slot routing.
 
 mod support;
 
 use change::plan::handlers::{Status as StatusOp, StatusInput};
-use change::{LoopStep, Plan, StatusBody};
+use change::{LoopStep, NextActionKind, Plan, StatusBody};
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
-use project::journal::{DEFAULT_ACTOR, Event as JournalEvent, EventKind, append_for};
+use project::journal::{
+    ClosedPlanCoverage, DEFAULT_ACTOR, Event as JournalEvent, EventKind, LeafSpecCoverage,
+    append_for,
+};
 use support::{change, change_with_deps, plan_with_changes};
 
 struct Event;
@@ -553,6 +558,192 @@ mod re_entry {
         assert_eq!(body.current_step, None);
         assert_eq!(body.last_completed, None);
         assert_eq!(body.resume, None);
+    }
+}
+
+mod milestones {
+    use std::collections::BTreeMap;
+
+    use super::*;
+
+    fn write_model(root: &std::path::Path, name: &str, model: &str) {
+        let slice_dir = root.join(".emery").join("slices").join(name);
+        std::fs::create_dir_all(&slice_dir).expect("slice dir");
+        std::fs::write(slice_dir.join("metadata.yaml"), "target: demo-target@1.0.0\n")
+            .expect("metadata");
+        std::fs::write(slice_dir.join("model.yaml"), model).expect("model");
+    }
+
+    #[tokio::test]
+    async fn refined_clean_is_ready_not_authorized() {
+        // Clean gaps + refined → Ready. No plan.execute.started yet →
+        // not Authorized. Resume stays at execute (D22 / D26).
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-001
+    title: login works
+    status: agreed
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(body.ready, "clean refined plan must be Ready");
+        assert!(!body.authorized, "no epoch yet → not Authorized");
+        assert_eq!(body.next_action, "build a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert!(!serde_json::to_string(&body).expect("json").contains("approved"));
+    }
+
+    #[tokio::test]
+    async fn open_unknowns_not_ready_review_gaps() {
+        // Refined + open unknowns → not Ready; next-action is
+        // review-gaps; resume points at per-req --waive (D22).
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready);
+        assert!(!body.authorized);
+        assert_eq!(body.action, NextActionKind::ReviewGaps);
+        assert_eq!(body.next_action, "review-gaps");
+        let resume = body.resume.as_deref().expect("resume");
+        assert!(
+            resume.contains("emery plan execute")
+                && resume.contains("--waive a/REQ-003")
+                && resume.contains("--reason"),
+            "resume must suggest waive path, got: {resume}"
+        );
+        let mut out = Vec::new();
+        project::handler::Render::render(&body, &mut out).expect("render");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(text.contains("ready: false"));
+        assert!(text.contains("authorized: false"));
+        assert!(!text.contains("approved"), "never project approved: {text}");
+    }
+
+    #[tokio::test]
+    async fn conflict_resume_re_refine_not_waive() {
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-002
+    title: auth disagree
+    status: conflict
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready);
+        assert_eq!(body.next_action, "review-gaps");
+        assert_eq!(body.resume.as_deref(), Some("emery slice refine a"));
+    }
+
+    #[tokio::test]
+    async fn divergence_alone_does_not_block_ready() {
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-004
+    title: authority chose
+    status: divergence
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(body.ready, "divergence is listed but does not block Ready");
+        assert_eq!(body.next_action, "build a");
+    }
+
+    #[tokio::test]
+    async fn dropped_excluded_from_ready() {
+        // Drop the gappy slice; the remaining refined sibling makes
+        // the change Ready (D24).
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", SliceArt::Dropped);
+        write_model(
+            project.root(),
+            "b",
+            r"requirements:
+  - id: REQ-001
+    title: ok
+    status: agreed
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a"), change("b")]);
+        let body = status(&project, &plan).await;
+        assert!(body.ready);
+        assert!(body.gaps.rows.is_empty());
+    }
+
+    #[tokio::test]
+    async fn epoch_fact_projects_authorized_without_ready() {
+        // Hand-stamped plan.execute.started → Authorized even while
+        // unknowns keep Ready false (D22). Execute writer is S18.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+        );
+        let mut specs = BTreeMap::new();
+        specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
+        append(
+            project.root(),
+            &[Event::event(
+                ts(0),
+                EventKind::PlanExecuteStarted {
+                    coverage: ClosedPlanCoverage::ClosedPlan {
+                        plan_digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+                        specs,
+                        unknown_waivers: Vec::new(),
+                    },
+                    discovery_digest: None,
+                },
+            )],
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready, "waivers/epoch must not backfill Ready");
+        assert!(body.authorized);
+        let json = serde_json::to_string(&body).expect("json");
+        assert!(!json.contains("\"approved\""), "{json}");
+    }
+
+    #[tokio::test]
+    async fn fresh_unrefined_resume_execute() {
+        // D26: post-author resume stays /emery:execute; next-action
+        // may still name slice refine.
+        let project = Session::scripted("demo", Vec::new());
+        let body = status(&project, &plan_with_changes(vec![change("a")])).await;
+        assert!(!body.ready);
+        assert!(!body.authorized);
+        assert_eq!(body.next_action, "refine a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
     }
 }
 

@@ -38,7 +38,10 @@ use serde_json::Value;
 
 pub use self::append::{append_batch, append_for, append_one};
 pub use self::emit::{bracket, emit_best_effort};
-pub use self::event::{AuthorityOverrideAction, Event, EventKind, FactEpochRef, IdentityMap};
+pub use self::event::{
+    AuthorityOverrideAction, ClosedPlanCoverage, Event, EventKind, FactEpochRef, IdentityMap,
+    LeafSpecCoverage, UnknownWaiver,
+};
 use crate::config::Layout;
 
 /// Stable local default when `EMERY_ACTOR` is unset or empty.

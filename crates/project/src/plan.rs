@@ -28,6 +28,7 @@ pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
 pub use doctor::{advance_gate, author_gate, detect, full_report};
 pub use execution::{collect_events, project_ladders};
+pub use gaps::{GapRow, GapsBody, SharedLeadRollup, plan_gaps_body};
 pub use model::{
     AuthorityOverride, Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Patch, Plan,
     SliceSourceBinding, SourceBinding, Status,
@@ -38,7 +39,6 @@ pub use propose::{
     resolve_target, resolve_topology,
 };
 pub use scaffold::scaffold;
-pub use gaps::{GapRow, GapsBody, SharedLeadRollup, plan_gaps_body};
 pub use scope::in_scope;
 pub use status::{
     LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,

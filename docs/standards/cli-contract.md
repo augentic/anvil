@@ -103,7 +103,7 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 
 | Family | Event ids | Emitted by |
 |---|---|---|
-| Plan | `plan.transition.undone`, `plan.entry.advanced`, `plan.reconcile.completed`, `plan.amend.authority-override`, `plan.amend.divergence` | `emery plan undo`, `emery plan advance`, the `plan author` reconcile kernel, `emery plan amend` |
+| Plan | `plan.transition.undone`, `plan.entry.advanced`, `plan.reconcile.completed`, `plan.amend.authority-override`, `plan.amend.divergence`, `plan.execute.started`, `plan.merge-postflight.acknowledged` | `emery plan undo`, `emery plan advance`, the `plan author` reconcile kernel, `emery plan amend`, `emery plan execute` (authorization epoch at start — RFC-86 D6; writer lands with the waive CLI) |
 | Claim | `slice.claimed`, `slice.released`, `fact.retracted` | exclusive per-slice claim / release / retract facts (RFC-86 D7 / D23); later wired through plan advance/undo and refine |
 | Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `slice refine` synthesis leg and its `refined` transition, `emery source extract` |
 | Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed` | the guest-routed `emery slice build` orchestration |

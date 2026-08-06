@@ -54,14 +54,8 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
 
     let staged = plan(vec![
-        entry(
-            "auth-login",
-            vec![SliceSourceBinding::structured("docs", "conventions")],
-        ),
-        entry(
-            "payments",
-            vec![SliceSourceBinding::structured("docs", "conventions")],
-        ),
+        entry("auth-login", vec![SliceSourceBinding::structured("docs", "conventions")]),
+        entry("payments", vec![SliceSourceBinding::structured("docs", "conventions")]),
     ]);
 
     let auth = root.join(".emery/slices/auth-login");
@@ -151,34 +145,31 @@ fn dropped_slice_excluded_from_inventory() {
 
     let staged = plan(vec![
         entry("live", vec![SliceSourceBinding::structured("docs", "conventions")]),
-        entry(
-            "abandoned",
-            vec![SliceSourceBinding::structured("docs", "conventions")],
-        ),
+        entry("abandoned", vec![SliceSourceBinding::structured("docs", "conventions")]),
     ]);
 
     let live = root.join(".emery/slices/live");
     write_meta(&live, false);
     write_model(
         &live,
-        r#"requirements:
+        r"requirements:
   - id: REQ-001
     title: thin path
     status: unknown
     sources: [docs]
-"#,
+",
     );
 
     let abandoned = root.join(".emery/slices/abandoned");
     write_meta(&abandoned, true);
     write_model(
         &abandoned,
-        r#"requirements:
+        r"requirements:
   - id: REQ-009
     title: also thin
     status: unknown
     sources: [docs]
-"#,
+",
     );
 
     let meta = SliceMetadata::load(&abandoned).expect("load dropped meta");

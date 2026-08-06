@@ -275,10 +275,11 @@ const fn is_gap(status: RequirementStatus) -> bool {
 fn contributing_leads(entry: &Entry, sources: &[String]) -> BTreeSet<(String, String)> {
     let mut leads = BTreeSet::new();
     for source in sources {
-        let lead = entry.sources.iter().find(|b| b.source == *source).map_or_else(
-            || entry.name.to_string(),
-            |b| b.lead(entry.name.as_str()).to_string(),
-        );
+        let lead = entry
+            .sources
+            .iter()
+            .find(|b| b.source == *source)
+            .map_or_else(|| entry.name.to_string(), |b| b.lead(entry.name.as_str()).to_string());
         leads.insert((source.clone(), lead));
     }
     leads

@@ -18,7 +18,7 @@ fn ts() -> Timestamp {
     Timestamp::from_second(1_700_000_000).expect("valid timestamp")
 }
 
-fn baseline_body() -> &'static str {
+const fn baseline_body() -> &'static str {
     "### Requirement: User can log in\n\n\
      ID: REQ-007\n\n\
      Authentication via email and password only.\n\n\
@@ -35,7 +35,7 @@ fn baseline_body() -> &'static str {
      - THEN the session is invalidated\n"
 }
 
-fn delta_with_local_ids() -> &'static str {
+const fn delta_with_local_ids() -> &'static str {
     "# Auth slice\n\n\
      ## MODIFIED Requirements\n\n\
      ### Requirement: User can log in\n\n\
@@ -113,7 +113,7 @@ fn stage_built_slice(session: &Session, digest: &str) {
     let baseline_digest = format!("sha256:{}", sha256_hex(body.as_bytes()));
 
     let model = format!(
-        r#"version: 1
+        r"version: 1
 slice: login-flow
 requirements:
   - id: REQ-001
@@ -149,7 +149,7 @@ tasks:
   - id: TASK-002
     text: Wire reset entry.
     satisfies: [REQ-002]
-"#
+"
     );
     fs::write(slice_dir.join("model.yaml"), model).expect("model");
     fs::write(
@@ -264,7 +264,7 @@ async fn two_slices_merge_without_req_collision() {
         fs::write(
             slice_dir.join("model.yaml"),
             format!(
-                r#"version: 1
+                r"version: 1
 slice: {slice}
 requirements:
   - id: REQ-001
@@ -283,7 +283,7 @@ tasks:
   - id: TASK-001
     text: Implement {title}.
     satisfies: [REQ-001]
-"#
+"
             ),
         )
         .expect("model");

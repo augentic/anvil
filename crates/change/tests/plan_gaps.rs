@@ -34,22 +34,22 @@ async fn gaps_operation_projects_multi_homed_lead() {
     write_slice_model(
         project.root(),
         "auth-login",
-        r#"requirements:
+        r"requirements:
   - id: REQ-003
     title: password-reset path not evidenced
     status: unknown
     sources: [docs]
-"#,
+",
     );
     write_slice_model(
         project.root(),
         "payments",
-        r#"requirements:
+        r"requirements:
   - id: REQ-008
     title: reset copy not evidenced
     status: unknown
     sources: [docs]
-"#,
+",
     );
 
     let body: GapsBody =

@@ -485,6 +485,61 @@ pub enum EventKind {
         /// The sole member's slice name.
         slice_name: SliceName,
     },
+    /// `emery plan execute` opened an authorization epoch at start
+    /// (RFC-86 D6 / D22). Presence projects the Authorized milestone;
+    /// the writer and `--waive` CLI land in a later session. Never
+    /// named `plan.approved`.
+    #[serde(rename = "plan.execute.started", rename_all = "kebab-case")]
+    PlanExecuteStarted {
+        /// Typed `closed-plan` coverage over the reviewed plan.
+        coverage: ClosedPlanCoverage,
+        /// Detached discovery digest when present (RFC-88).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        discovery_digest: Option<String>,
+    },
+}
+
+/// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`]
+/// (RFC-86 D6).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum ClosedPlanCoverage {
+    /// One reviewed plan digest with per-leaf spec coverage.
+    ClosedPlan {
+        /// Content digest of the reviewed `plan.yaml`.
+        plan_digest: String,
+        /// Sorted per-leaf coverage: `existing { digest }` or
+        /// `refine-under-epoch`.
+        specs: std::collections::BTreeMap<String, LeafSpecCoverage>,
+        /// Per-requirement unknown waivers nested on this epoch (D17).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        unknown_waivers: Vec<UnknownWaiver>,
+    },
+}
+
+/// Per-leaf spec coverage inside [`ClosedPlanCoverage::ClosedPlan`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum LeafSpecCoverage {
+    /// Leaf already has a reviewed spec at this digest.
+    Existing {
+        /// Spec-tree digest (`sha256:…`).
+        digest: String,
+    },
+    /// Authorize refine-before-build for this leaf under the epoch.
+    RefineUnderEpoch,
+}
+
+/// One `[unknown]` waiver recorded on `plan.execute.started` (D17).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct UnknownWaiver {
+    /// Slice that owns the requirement.
+    pub slice: String,
+    /// Requirement id (`REQ-NNN`).
+    pub req: String,
+    /// Operator reason — required on the CLI.
+    pub reason: String,
 }
 
 /// One slice-local → baseline requirement identity mapping on

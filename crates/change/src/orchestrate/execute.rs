@@ -242,7 +242,12 @@ fn dispatch_status(
             })
         }
         NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
-        NextActionKind::Build => ControlFlow::Continue(Some(LoopStep::Build)),
+        // ReviewGaps is status when refined but not Ready (D22). Until
+        // the execute gap gate lands, keep walking build — S19 owns
+        // blocking on unresolved gaps.
+        NextActionKind::Build | NextActionKind::ReviewGaps => {
+            ControlFlow::Continue(Some(LoopStep::Build))
+        }
         NextActionKind::Merge => ControlFlow::Continue(Some(LoopStep::Merge)),
     }
 }
