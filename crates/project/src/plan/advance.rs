@@ -21,19 +21,15 @@ use crate::plan::advance_gate;
 impl Plan {
     /// First entry in list order whose dependencies are all `done` and
     /// whose own status is `pending`. Returns `None` when nothing is
-    /// eligible (plan finished, blocked, empty) **or when any entry is
-    /// currently `in-progress`** — the driver must not pick a new
-    /// change while one is active. The in-progress check runs before
-    /// dependency eligibility checks.
+    /// eligible (plan finished, blocked, or empty).
     ///
-    /// An unknown `depends_on` target is treated as "not done", so the
-    /// entry is not eligible. Orphan-reference diagnostics belong to
-    /// `Plan::validate`.
+    /// Other entries may already be `in-progress` — plan-wide
+    /// single-active-entry is retired (RFC-86 D23); exclusivity is
+    /// per-slice claim only. An unknown `depends_on` target is treated
+    /// as "not done", so the entry is not eligible. Orphan-reference
+    /// diagnostics belong to `Plan::validate`.
     #[must_use]
     pub(crate) fn next_eligible(&self) -> Option<&Entry> {
-        if self.entries.iter().any(|c| c.status == Status::InProgress) {
-            return None;
-        }
         let status_by_name: HashMap<&str, Status> =
             self.entries.iter().map(|c| (c.name.as_str(), c.status)).collect();
         self.entries.iter().find(|c| {
@@ -44,17 +40,17 @@ impl Plan {
         })
     }
 
-    /// Atomically advance the plan: if there is no active in-progress
-    /// entry, transition the next eligible `Pending` entry to
-    /// `InProgress` and return it; otherwise return the existing
-    /// active entry without writing anything.
+    /// Atomically advance the plan: transition the next eligible
+    /// `Pending` entry to `InProgress` and return it. When no pending
+    /// entry is eligible, return an existing `in-progress` entry for
+    /// mid-slice resume (list order) without writing; return `None`
+    /// when the plan is drained or stuck.
     ///
-    /// This is the **only** writer of per-entry `InProgress` per
-    /// workflow §CLI surface — `plan add` / `amend` write `Pending`
-    /// only, and `slice merge` writes `Done` only.
-    ///
-    /// Returns `None` when the plan is drained (no active and no
-    /// eligible pending entry).
+    /// Concurrent `in-progress` entries are legal (RFC-86 D23) — a
+    /// second eligible pending may advance while another entry is
+    /// already active. This is the **only** writer of per-entry
+    /// `InProgress` per workflow §CLI surface — `plan add` / `amend`
+    /// write `Pending` only, and `slice merge` writes `Done` only.
     ///
     /// # Errors
     ///
@@ -63,14 +59,11 @@ impl Plan {
     /// `Pending` entries and the only legal edge from `Pending` is
     /// `→ InProgress`.
     pub(crate) fn advance(&mut self) -> Result<Option<&Entry>, Error> {
-        if self.is_executing() {
-            return Ok(self.entries.iter().find(|e| e.status == Status::InProgress));
+        if let Some(name) = self.next_eligible().map(|e| e.name.clone()) {
+            self.transition(&name, Status::InProgress)?;
+            return Ok(self.entries.iter().find(|e| e.name == name));
         }
-        let Some(name) = self.next_eligible().map(|e| e.name.clone()) else {
-            return Ok(None);
-        };
-        self.transition(&name, Status::InProgress)?;
-        Ok(self.entries.iter().find(|e| e.name == name))
+        Ok(self.entries.iter().find(|e| e.status == Status::InProgress))
     }
 }
 
@@ -119,10 +112,13 @@ pub struct AdvanceBody {
 
 /// One-shot `emery plan advance` projection behind the dispatcher.
 ///
-/// Validates the plan, advances to the next eligible entry (the sole
-/// writer of per-entry `in-progress` per workflow §CLI surface), and
-/// builds the wire [`AdvanceBody`] the dispatcher renders. The handler
-/// keeps only the journal/emit bracket around this call.
+/// Validates the plan, advances the next eligible pending entry (the
+/// sole writer of per-entry `in-progress` per workflow §CLI surface),
+/// and builds the wire [`AdvanceBody`] the dispatcher renders. When no
+/// pending entry is eligible, returns an existing in-progress entry as
+/// `active` for mid-slice resume. Concurrent in-progress entries are
+/// legal (RFC-86 D23). The handler keeps only the journal/emit bracket
+/// around this call.
 ///
 /// `slices_dir` enables the on-disk slice cross-reference checks;
 /// `config` + `project_dir` resolve the advanced entry's `$TARGET` from
@@ -145,10 +141,9 @@ pub fn plan_advance_body(
         return Err(structural_errors());
     }
 
-    // workflow §CLI surface: "plan advance returns the active
-    // in-progress entry before selecting a new pending entry, and
-    // reports drained only when no active or pending entries remain."
-    let was_executing = plan.is_executing();
+    // Capture eligibility before mutate: a resumed in-progress return
+    // and a fresh advance both surface `Some(entry)`.
+    let starting_fresh = plan.next_eligible().is_some();
     let plan_name = plan.name.to_string();
     let advanced = plan.advance()?;
     Ok(match advanced {
@@ -161,7 +156,7 @@ pub fn plan_advance_body(
                 ..AdvanceBody::default()
             }
         }
-        Some(entry) if was_executing => AdvanceBody {
+        Some(entry) if !starting_fresh => AdvanceBody {
             plan: plan_name,
             reason: Some(AdvanceReason::InProgress),
             active: Some(entry.name.to_string()),

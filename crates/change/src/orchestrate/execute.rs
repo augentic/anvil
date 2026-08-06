@@ -117,16 +117,25 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         let counts = status.counts;
         let total = counts.pending + counts.in_progress + counts.done;
         let entry = (counts.done + 1).min(total.max(1));
+        // A single execute process still walks entries one-by-one
+        // (RFC-86 D23). When status already names an in-progress entry,
+        // resume it — do not call advance, which would start a different
+        // eligible pending sibling now that plan-wide single-active is
+        // retired.
+        let resume = status.active.clone();
         let step = match dispatch_status(layout, now, status, &phases) {
             ControlFlow::Break(outcome) => return Ok(outcome),
             ControlFlow::Continue(None) => continue, // postflight ack
             ControlFlow::Continue(Some(step)) => step,
         };
 
-        // Advance: `plan advance` before every phase, exactly as the
-        // hand-driven fallback does (returns the active entry
-        // unchanged mid-slice).
-        let Some(advanced) = advance(caps.resolver, paths, now)? else {
+        let Some(advanced) = (match resume {
+            Some(slice) => {
+                let target = project::target_policy::resumed(layout, &slice).ok();
+                Some(Advanced { slice, target })
+            }
+            None => advance(caps.resolver, paths, now)?,
+        }) else {
             // The status projection targeted a phase but the advance
             // found nothing runnable — plan state moved underneath us.
             // Surface it as the stuck stop rather than spinning.

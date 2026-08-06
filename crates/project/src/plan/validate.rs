@@ -80,9 +80,10 @@ impl Plan {
     ///
     /// Findings are accumulated — no check short-circuits another. Order
     /// is structural checks first (duplicate names, unknown
-    /// depends-on / sources, duplicate source keys, multiple
-    /// in-progress) followed by consistency checks against `slices_dir`
-    /// when provided.
+    /// depends-on / sources, duplicate source keys) followed by
+    /// consistency checks against `slices_dir` when provided. Plan-wide
+    /// “at most one `in-progress` entry” is retired (RFC-86 D23) —
+    /// exclusivity is per-slice claim only.
     ///
     /// Note on "well-formed status values": `Status` is an enum, so
     /// every in-memory instance is well-formed by construction. serde
@@ -97,7 +98,6 @@ impl Plan {
         results.extend(unknown_depends_on(&self.entries));
         results.extend(unknown_sources(self));
         results.extend(duplicate_source_keys(&self.entries));
-        results.extend(single_in_progress(&self.entries));
         results.extend(context_paths(&self.entries));
         results.extend(orphan_authority_override_keys(&self.entries));
         results.extend(divergence_consistency(&self.entries));
@@ -238,25 +238,6 @@ pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
         code: first.rule_id.clone().unwrap_or_default().into(),
         detail,
     })
-}
-
-fn single_in_progress(changes: &[Entry]) -> Vec<Diagnostic> {
-    let offenders: Vec<&Entry> =
-        changes.iter().filter(|c| c.status == Status::InProgress).collect();
-    if offenders.len() <= 1 {
-        return Vec::new();
-    }
-    offenders
-        .into_iter()
-        .map(|c| {
-            finding(
-                "multiple-in-progress",
-                Severity::Important,
-                "multiple in-progress entries: at most one allowed per plan",
-                Some(c.name.to_string()),
-            )
-        })
-        .collect()
 }
 
 fn project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {

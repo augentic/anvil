@@ -148,23 +148,12 @@ pub struct Entry {
 
 impl Plan {
     /// Computed predicate (workflow §Workflow vocabulary): `true` when
-    /// at least one entry is currently `in-progress`.
-    ///
-    /// "Currently executing" is not stored — it's derived from
-    /// per-entry [`Status`] every time it's read, so race-prone
-    /// duplication between plan-level and per-entry state is
-    /// impossible by construction.
-    #[must_use]
-    pub(crate) fn is_executing(&self) -> bool {
-        self.entries.iter().any(|e| e.status == Status::InProgress)
-    }
-
-    /// Computed predicate (workflow §Workflow vocabulary): `true` when
     /// every entry has reached terminal `done` status.
     ///
     /// Empty plans report drained vacuously — there is no work left
-    /// to drain. Like [`Plan::is_executing`], "drained" is derived
-    /// from per-entry [`Status`] at read time and never stored.
+    /// to drain. "Drained" is derived from per-entry [`Status`] at
+    /// read time and never stored. Concurrent `in-progress` entries
+    /// are legal (RFC-86 D23); drained means every entry is `done`.
     #[must_use]
     pub(crate) fn is_drained(&self) -> bool {
         self.entries.iter().all(|e| e.status == Status::Done)

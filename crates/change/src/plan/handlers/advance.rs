@@ -17,11 +17,13 @@ pub struct AdvanceInput {}
 
 /// `emery plan advance`.
 ///
-/// Return the active in-progress entry, or advance the next eligible
-/// `Pending` entry to `InProgress` and return it. The only writer of
-/// per-entry `in-progress` per workflow §CLI surface. The projection,
-/// persist decision, and conditional `plan.entry.advanced` event all
-/// live in the shared `advance_next` kernel.
+/// Advance the next eligible `Pending` entry to `InProgress`, or — when
+/// nothing pending is eligible — return an existing in-progress entry
+/// for mid-slice resume. Concurrent in-progress entries are legal
+/// (RFC-86 D23); exclusivity is per-slice claim only. The only writer
+/// of per-entry `in-progress` per workflow §CLI surface. The
+/// projection, persist decision, and conditional `plan.entry.advanced`
+/// event all live in the shared `advance_next` kernel.
 #[derive(Clone, Copy, Debug)]
 pub struct Advance;
 

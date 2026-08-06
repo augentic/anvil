@@ -29,8 +29,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S1 | Per-actor event log I/O | `done` | `cargo nextest run -p emery-project` (journal focus); lint if cheap | `feat(project): per-actor event logs with union read` |
 | S2 | Retarget emit + journal show | `done` | journal/show + emit tests; `rg journal\\.jsonl` | `feat(project): route journal emit and show through per-actor logs` |
 | S3 | Claim/release/retract + claim kernel | `done` | claim conflict + concurrent different-slice tests | `feat(project): exclusive per-slice claim facts` |
-| S4 | In-scope predicate; retire single-active-entry | `next` | plan validate / advance tests | `refactor(plan): retire single-active-entry; add in-scope predicate` |
-| S5 | Fact-based plan status projection | `pending` | `crates/change/tests/plan_status.rs` | `feat(plan): compute plan status from artifacts and facts` |
+| S4 | In-scope predicate; retire single-active-entry | `done` | plan validate / advance tests | `refactor(plan): retire single-active-entry; add in-scope predicate` |
+| S5 | Fact-based plan status projection | `next` | `crates/change/tests/plan_status.rs` | `feat(plan): compute plan status from artifacts and facts` |
 | S6 | Writers stop mutating stored status ladders | `pending` | full_loop / refine / build / merge tests | `refactor(workflow): express advance and phase progress as facts` |
 | S7 | Delete stored status/lifecycle fields | `pending` | `cargo make check` | `refactor!: remove stored plan-entry and slice lifecycle status fields` |
 | S8 | Multi-actor claim/union fixtures | `pending` | new mock/change integration tests | `test(mock): multi-actor claim and fact-union fixtures for RFC-86` |
@@ -73,6 +73,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-06 — S3
 - Finding: Appendix names `fact.retracted` explicitly and lists claim/release without dotted ids; wired as `slice.claimed` / `slice.released` / `fact.retracted` (payloads `slice-name`; retract targets `{ actor, sequence }`). Pure kernel at `journal::claim` projects live ownership from the union (release by owner; retracted facts omitted via fixed-point), and `claim` / `ensure_claimable` refuse same-slice second actors with `slice-claim-conflict` (exit 2). Not yet wired into plan advance/undo (S6) or refine (later).
 - Plan change: none beyond status (S3=done, S4=next).
+
+### 2026-08-06 — S4
+- Finding: Removed `single_in_progress` / `multiple-in-progress` validate findings and the `next_eligible` / `advance` “any in-progress blocks” gate. `advance` now starts the next eligible pending even when siblings are already `in-progress`, and resumes an existing in-progress only when nothing pending is eligible. Shared `plan::in_scope` (on plan ∧ not dropped) lands for later gaps/Ready/execute consumers. Execute mid-slice resume now follows `status.active` rather than calling `advance` (so one process still walks one-by-one without reimposing the plan-wide gate). Operator docs that still mention “at most one in-progress” stay for S22.
+- Plan change: none beyond status (S4=done, S5=next).
 ```
 
 ### Session template (copy into each agent prompt)
