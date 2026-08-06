@@ -26,8 +26,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | ID | Title | Status | Gate | Commit |
 | -- | ----- | ------ | ---- | ------ |
 | S0 | Materialize living plan | `done` | file exists; S0=done, S1=next | `docs(rfc-86): add multi-session implementation plan` |
-| S1 | Per-actor event log I/O | `next` | `cargo nextest run -p emery-project` (journal focus); lint if cheap | `feat(project): per-actor event logs with union read` |
-| S2 | Retarget emit + journal show | `pending` | journal/show + emit tests; `rg journal\\.jsonl` | `feat(project): route journal emit and show through per-actor logs` |
+| S1 | Per-actor event log I/O | `done` | `cargo nextest run -p emery-project` (journal focus); lint if cheap | `feat(project): per-actor event logs with union read` |
+| S2 | Retarget emit + journal show | `next` | journal/show + emit tests; `rg journal\\.jsonl` | `feat(project): route journal emit and show through per-actor logs` |
 | S3 | Claim/release/retract + claim kernel | `pending` | claim conflict + concurrent different-slice tests | `feat(project): exclusive per-slice claim facts` |
 | S4 | In-scope predicate; retire single-active-entry | `pending` | plan validate / advance tests | `refactor(plan): retire single-active-entry; add in-scope predicate` |
 | S5 | Fact-based plan status projection | `pending` | `crates/change/tests/plan_status.rs` | `feat(plan): compute plan status from artifacts and facts` |
@@ -61,6 +61,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-06 — plan wording
 - Finding: Session template + risk controls could be read as forbidding RFC reads, leaving only the living-plan digest — too thin for wire-accurate implementation.
 - Plan change: Session template now requires opening every cited D# / Acceptance / appendix subsection; digest marked orientation-only; RFC wins on conflict. Risk controls updated to match.
+
+### 2026-08-06 — S1
+- Finding: Primary write path is `.emery/events/<actor>.jsonl` with wire `actor` + 1-based `sequence`; default actor id is `local` when `EMERY_ACTOR` is unset. Existing `journal show` / identity readers still consume the legacy single file, so append dual-writes stamped lines to `.emery/journal.jsonl` as an explicit S1→S2 bridge.
+- Plan change: none beyond status (S1=done, S2=next). S2 owns deleting the dual-write, retargeting show/emit/read_recent to `read_union`, and updating tests that open `journal.jsonl`.
 ```
 
 ### Session template (copy into each agent prompt)

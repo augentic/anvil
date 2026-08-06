@@ -14,14 +14,25 @@ use crate::adapter::operation::SourceOperation;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
 
-/// One row of the journal. Serialises as `{ timestamp, event,
-/// payload }` — workflow §Wire format pins `timestamp` first so a
-/// `head -1` on the file is enough to confirm the run window.
+/// One row of a per-actor event log.
+///
+/// Serialises as `{ timestamp, actor, sequence, event, payload }` —
+/// RFC-86 pins `timestamp` first so a `head -1` on the file is enough
+/// to confirm the run window; `actor` + `sequence` identify the line
+/// inside that actor's append-only file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Event {
     /// Second-precision UTC timestamp (`%Y-%m-%dT%H:%M:%SZ`).
     #[serde(with = "crate::serde_time::rfc3339")]
     pub timestamp: Timestamp,
+    /// Actor that appended this line (`EMERY_ACTOR` or the stable
+    /// local default). Empty only on in-memory values before
+    /// [`super::append_for`] stamps the wire fields.
+    pub actor: String,
+    /// Monotonic per-actor sequence (1-based) inside that actor's
+    /// `.jsonl` file. Zero only on in-memory values before append
+    /// stamps the wire fields.
+    pub sequence: u64,
     /// Event id + payload, adjacently tagged so `event` and `payload`
     /// sit side by side in the JSON object.
     #[serde(flatten)]
@@ -29,11 +40,20 @@ pub struct Event {
 }
 
 impl Event {
-    /// Build an [`Event`] at `timestamp` carrying `kind`. Tests pin
-    /// the timestamp; production callers pass `Timestamp::now()`.
+    /// Build an [`Event`] at `timestamp` carrying `kind`.
+    ///
+    /// `actor` and `sequence` stay unset (`""` / `0`) until
+    /// [`super::append_for`] (or [`super::append_one`]) stamps them
+    /// for the calling actor's file. Tests pin the timestamp;
+    /// production callers pass an injected `now`.
     #[must_use]
     pub const fn new(timestamp: Timestamp, kind: EventKind) -> Self {
-        Self { timestamp, kind }
+        Self {
+            timestamp,
+            actor: String::new(),
+            sequence: 0,
+            kind,
+        }
     }
 }
 

@@ -207,6 +207,22 @@ impl<'a> Layout<'a> {
         self.emery_dir().join("archive")
     }
 
+    /// Absolute path to `<project_dir>/.emery/events/` — per-actor
+    /// append-only fact logs (`<actor>.jsonl`). Pre-RFC-88 stand-in
+    /// home (flat `.emery/`); the two-root cut moves these under the
+    /// change tree.
+    #[must_use]
+    pub fn events_dir(&self) -> PathBuf {
+        self.emery_dir().join("events")
+    }
+
+    /// Absolute path to one actor's event log,
+    /// `<project_dir>/.emery/events/<actor>.jsonl`.
+    #[must_use]
+    pub fn actor_events_path(&self, actor: &str) -> PathBuf {
+        self.events_dir().join(format!("{actor}.jsonl"))
+    }
+
     /// Absolute path to `<project_dir>/registry.yaml` — the platform
     /// catalogue. Platform-level artifact, lives at the repo root.
     #[must_use]

@@ -1,19 +1,28 @@
 //! Workflow journal events.
 //!
-//! Append-only newline-delimited JSON at `.emery/journal.jsonl`,
-//! shared by every plan-, slice-, propose-, extract-, and synthesis-
-//! related signal listed in [workflow §Observability]. One line per
-//! [`Event`]; readers tail the file and skip blank lines.
+//! Append-only newline-delimited JSON at `.emery/events/<actor>.jsonl`
+//! (RFC-86 D3). Each actor appends only their own file; readers union
+//! every actor file ordered by `(timestamp, actor, sequence)`.
 //!
-//! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
+//! **Actor id.** The calling actor is `EMERY_ACTOR` when that
+//! environment variable is set to a non-empty value; otherwise the
+//! stable local default [`DEFAULT_ACTOR`] (`"local"`). Multi-actor
+//! fixtures pass an explicit id to [`append_for`] instead of reading
+//! the environment. Until the RFC-88 two-root cut, these logs live
+//! under the flat `.emery/events/` stand-in (not `.emery/change/events/`).
+//!
+//! A legacy `.emery/journal.jsonl` dual-write bridge keeps existing
+//! single-file readers compiling until that path is retired. The
+//! closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
 //! `event`; the append plus dropped-event sidecar in `append`; the
 //! best-effort emit helpers in `emit`; the `emery journal show`
 //! operation in [`handlers`]. Writes route through the internal
 //! appenders only — CLI verbs append their own events as a side
-//! effect of the operation. This root owns the read side (forward
-//! reads, backward recent reads, and the private filtered `show`
-//! projection behind `emery journal show`) and re-exports the public
-//! surface so callers keep importing `crate::journal::*`.
+//! effect of the operation. This root owns the read side (per-actor
+//! union, forward reads, backward recent reads, and the private
+//! filtered `show` projection behind `emery journal show`) and
+//! re-exports the public surface so callers keep importing
+//! `crate::journal::*`.
 //!
 //! [workflow §Observability]: ../../../../docs/standards/workflow.md#observability
 
@@ -29,36 +38,128 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use serde_json::Value;
 
-pub use self::append::{append_batch, append_one};
+pub use self::append::{append_batch, append_for, append_one};
 pub use self::emit::{bracket, emit_best_effort};
 pub use self::event::{AuthorityOverrideAction, Event, EventKind};
 use crate::config::Layout;
 
-/// Project-relative path the journal lives at.
+/// Stable local default when `EMERY_ACTOR` is unset or empty.
+pub const DEFAULT_ACTOR: &str = "local";
+
+/// Legacy single-file journal path — dual-write bridge only.
 const JOURNAL_FILE_NAME: &str = "journal.jsonl";
 
-/// Absolute path to the journal at `<project_dir>/.emery/journal.jsonl`.
+/// Resolve the calling actor id at the journal-append boundary.
+///
+/// A non-empty `EMERY_ACTOR` wins; otherwise [`DEFAULT_ACTOR`]. The
+/// wasm32 guest has no process environment for this variable and
+/// always uses the default — pass an explicit actor to [`append_for`]
+/// when a guest-side identity is required.
+#[must_use]
+pub fn actor_id() -> String {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        if let Ok(value) = std::env::var("EMERY_ACTOR") {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return trimmed.to_string();
+            }
+        }
+    }
+    DEFAULT_ACTOR.to_string()
+}
+
+/// Absolute path to one actor's log at
+/// `<project_dir>/.emery/events/<actor>.jsonl`.
+#[must_use]
+pub(crate) fn actor_log_path(layout: Layout<'_>, actor: &str) -> PathBuf {
+    layout.actor_events_path(actor)
+}
+
+/// Absolute path to the legacy journal at
+/// `<project_dir>/.emery/journal.jsonl` (dual-write bridge).
 #[must_use]
 pub(crate) fn path(layout: Layout<'_>) -> PathBuf {
     layout.emery_dir().join(JOURNAL_FILE_NAME)
 }
 
-/// Read every parseable [`Event`] from the journal at
+/// Refuse actor ids that cannot be a single path segment under
+/// `.emery/events/`.
+pub(crate) fn validate_actor(actor: &str) -> Result<(), Error> {
+    if actor.is_empty()
+        || actor == "."
+        || actor == ".."
+        || actor.contains('/')
+        || actor.contains('\\')
+        || actor.contains('\0')
+    {
+        return Err(Error::Diag {
+            code: "journal-actor-invalid",
+            detail: format!(
+                "actor id {actor:?} must be a non-empty single path segment \
+                 (no `/`, `\\`, or NUL)"
+            ),
+        });
+    }
+    Ok(())
+}
+
+/// Read every parseable [`Event`] from every per-actor log under
+/// `.emery/events/`, ordered by `(timestamp, actor, sequence)`.
+///
+/// A missing events directory yields an empty vector. Blank lines and
+/// lines that fail to parse as an [`Event`] are skipped rather than
+/// failing the whole read, so a log written by a newer binary still
+/// yields the events this binary understands.
+///
+/// # Errors
+///
+/// Propagates I/O failures other than a missing events directory.
+pub fn read_union(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
+    let dir = layout.events_dir();
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        Err(err) if err.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(err) => return Err(Error::Io(err)),
+    };
+    let mut events = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(Error::Io)?;
+        let path = entry.path();
+        if !entry.file_type().is_ok_and(|kind| kind.is_file()) {
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
+            continue;
+        }
+        events.extend(read_file(&path)?);
+    }
+    events.sort_by(|left, right| {
+        (left.timestamp, left.actor.as_str(), left.sequence).cmp(&(
+            right.timestamp,
+            right.actor.as_str(),
+            right.sequence,
+        ))
+    });
+    Ok(events)
+}
+
+/// Read every parseable [`Event`] from the legacy journal at
 /// `<project_dir>/.emery/journal.jsonl`, in append (file) order.
 ///
-/// A missing journal yields an empty vector. Blank lines are skipped.
-/// Lines that fail to parse as an [`Event`] are skipped rather than
-/// failing the whole read, so a journal written by a newer binary
-/// (carrying event kinds this binary does not know) still yields the
-/// events it does understand — the read stays forward-compatible and,
-/// for a given file, deterministic.
+/// Bridge reader for `journal show` / identity projections until they
+/// retarget to [`read_union`]. A missing journal yields an empty
+/// vector. Blank and unparseable lines are skipped.
 ///
 /// # Errors
 ///
 /// Propagates I/O failures other than a missing file.
 pub(crate) fn read(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
-    let path = path(layout);
-    let contents = match std::fs::read_to_string(&path) {
+    read_file(&path(layout))
+}
+
+fn read_file(path: &Path) -> Result<Vec<Event>, Error> {
+    let contents = match std::fs::read_to_string(path) {
         Ok(contents) => contents,
         Err(err) if err.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
         Err(err) => return Err(Error::Io(err)),
@@ -78,17 +179,9 @@ const TAIL_CHUNK: usize = 8192;
 /// Read the most recent journal [`Event`]s that `select` maps to a value,
 /// returning at most `limit` of them in append (file) order.
 ///
-/// Tails the journal backward (via the private `for_each_line_rev`) and stops as
-/// soon as `limit` matches are collected, so the bytes touched are bounded
-/// by how far back the `limit`-th match sits — not by total history. This
-/// keeps the projection cost flat as the journal grows.
-///
-/// Blank lines are skipped and lines that fail to parse as an [`Event`]
-/// are skipped rather than failing the read — identical leniency to
-/// [`read`], so a journal written by a newer binary still yields the
-/// matches this binary understands. A missing journal yields an empty
-/// vector. This is the read side the identity projection
-/// (`recent[]`) and `show` consume.
+/// Tails the legacy journal backward (via the private `for_each_line_rev`)
+/// and stops as soon as `limit` matches are collected. Bridge reader —
+/// union-aware recent reads land when `journal show` retargets.
 ///
 /// # Errors
 ///
@@ -122,12 +215,7 @@ pub(crate) fn read_recent<T>(
 /// Visit journal [`Event`]s newest-first until `visit` breaks or the
 /// head of the file is reached.
 ///
-/// The backward tail reader bounds the bytes touched by how far back
-/// `visit` keeps scanning, so a fold that stops at a known boundary
-/// event (e.g. the execution projection's active window) stays flat as
-/// the journal grows. Reader leniency matches [`read`]: blank and
-/// unparseable lines are skipped and a missing journal yields no
-/// visits.
+/// Bridge reader over the legacy single-file journal.
 ///
 /// # Errors
 ///

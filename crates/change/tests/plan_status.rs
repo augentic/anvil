@@ -28,7 +28,7 @@ struct Event;
 
 impl Event {
     const fn event(timestamp: Timestamp, kind: EventKind) -> JournalEvent {
-        JournalEvent { timestamp, kind }
+        JournalEvent::new(timestamp, kind)
     }
 }
 
