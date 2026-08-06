@@ -50,7 +50,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Journal
 
-- `emery journal show` — the observability surface over `.emery/journal.jsonl`: the read-only projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events).
+- `emery journal show` — the observability surface over `.emery/events/<actor>.jsonl`: the read-only union projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events).
 
 Today the per-slice verbs live under `emery slice *` and the umbrella verbs live under `emery plan *`.
 
@@ -93,7 +93,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 ## Journal events
 
-Durable run telemetry is the newline-delimited JSON journal at `.emery/journal.jsonl`. Each line serialises `timestamp` first, then `event`, then the kebab-case `payload`:
+Durable run telemetry is the newline-delimited JSON per-actor event log at `.emery/events/<actor>.jsonl`. Each line serialises `timestamp` first, then `actor` and `sequence`, then `event`, then the kebab-case `payload`:
 
 ```json
 {"timestamp": "2026-06-11T00:00:00Z", "event": "slice.build.started", "payload": {"slice": "user-auth"}}

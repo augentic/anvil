@@ -303,7 +303,21 @@ fn stage_case(cases: &Path, id: &str, body: &str) {
 }
 
 fn journal(root: &Path) -> String {
-    fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal.jsonl")
+    let dir = root.join(".emery/events");
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return String::new();
+    };
+    let mut chunks = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
+            continue;
+        }
+        if let Ok(text) = fs::read_to_string(path) {
+            chunks.push(text);
+        }
+    }
+    chunks.join("")
 }
 
 #[tokio::test]

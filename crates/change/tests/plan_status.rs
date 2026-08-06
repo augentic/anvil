@@ -20,7 +20,8 @@ use change::{LoopStep, Plan, Status, StatusBody};
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
-use project::journal::{Event as JournalEvent, EventKind};
+use project::config::Layout;
+use project::journal::{DEFAULT_ACTOR, Event as JournalEvent, EventKind, append_for};
 use slice::LifecycleStatus;
 use support::{change, change_with_deps, plan_with_changes};
 
@@ -60,13 +61,7 @@ fn ts(seconds: i64) -> Timestamp {
 }
 
 fn append(root: &std::path::Path, events: &[JournalEvent]) {
-    let body = events
-        .iter()
-        .map(|event| serde_json::to_string(event).expect("serialize journal event"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    std::fs::write(root.join(".emery/journal.jsonl"), format!("{body}\n"))
-        .expect("write journal events");
+    append_for(Layout::new(root), DEFAULT_ACTOR, events).expect("write journal events");
 }
 
 fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {

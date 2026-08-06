@@ -80,7 +80,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     NamespaceHelp::new(&["plan"], "Executable plan operations — `plan.yaml` lifecycle"),
     NamespaceHelp::new(
         &["journal"],
-        "Workflow journal at `.emery/journal.jsonl`. Read-only: `show` projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
+        "Workflow journal at `.emery/events/<actor>.jsonl`. Read-only: `show` merges the per-actor union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
     NamespaceHelp::new(&["registry"], "Platform registry at `registry.yaml` (repo root)"),
 ];
@@ -300,8 +300,8 @@ where
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
-        "Read events from `.emery/journal.jsonl` in append order",
-        "Read events from `.emery/journal.jsonl` in append order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing journal yields no events."
+        "Read events from `.emery/events/<actor>.jsonl` (union order)",
+        "Read events from `.emery/events/<actor>.jsonl`, merging every actor file in `(timestamp, actor, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, actor, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
     );
     route!(
         ["registry", "validate"],

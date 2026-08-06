@@ -23,6 +23,17 @@ fn suite_answers() -> Vec<String> {
     vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
 }
 
+/// Concatenate the per-actor union as JSONL text for substring asserts.
+fn journal_text(root: &std::path::Path) -> String {
+    let events =
+        project::journal::read_union(project::config::Layout::new(root)).expect("journal union");
+    events
+        .iter()
+        .map(|event| serde_json::to_string(event).expect("serialize journal event"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// Scaffold a project bound to the mock target and author the
 /// single-slice plan (left for operator review — running execute is
 /// the approval) — the shared preamble of every loop test.
@@ -126,7 +137,7 @@ async fn author_approve_execute_drains() {
     // apply event.
     let patch = fs::read_to_string(archive.join("build/patch.yaml")).expect("archived code patch");
     assert!(patch.contains("mock-build/greeting.md"), "{patch}");
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    let journal = journal_text(&root);
     assert!(journal.contains("slice.code.applied"), "{journal}");
 
     // Guidance dispatch proof, stronger than a call log: the mock
@@ -184,7 +195,7 @@ async fn execute_reentry_noop() {
     // lifecycle key and the journal carries no approval event.
     let raw = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
     assert!(!raw.contains("lifecycle"), "{raw}");
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    let journal = journal_text(&root);
     assert!(!journal.contains("plan.transition.approved"), "{journal}");
 
     // Re-entry on the drained plan is a no-op: drained again, no
@@ -317,7 +328,7 @@ async fn postflight_terminal() {
     assert_eq!(status.resume.as_deref(), Some("emery plan execute"));
 
     // The journal makes the irreversible state explicit; no ack yet.
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    let journal = journal_text(&root);
     assert!(journal.contains("slice.merge.postflight-failed"), "{journal}");
     assert!(!journal.contains("slice.merge.succeeded"), "{journal}");
     assert!(!journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
@@ -332,7 +343,7 @@ async fn postflight_terminal() {
     .await
     .expect("second execute acknowledges and drains");
     assert_eq!(resumed.status, "drained");
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    let journal = journal_text(&root);
     assert!(journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
 }
 

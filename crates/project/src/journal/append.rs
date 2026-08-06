@@ -5,7 +5,7 @@ use std::path::Path;
 
 use error::Error;
 
-use super::{Event, actor_log_path, path, validate_actor};
+use super::{Event, actor_log_path, validate_actor};
 use crate::config::Layout;
 
 /// Project-relative path of the dropped-event recovery sidecar.
@@ -15,11 +15,9 @@ pub(super) const DROPPED_FILE_NAME: &str = "journal.dropped";
 ///
 /// Resolves the actor via [`super::actor_id`], stamps monotonic
 /// `actor` / `sequence` on each line, and writes only that actor's
-/// `.emery/events/<actor>.jsonl` file. Also dual-writes the same
-/// stamped lines to the legacy `.emery/journal.jsonl` bridge so
-/// existing readers keep working until that path is retired.
+/// `.emery/events/<actor>.jsonl` file.
 ///
-/// Empty batches do not create either file.
+/// Empty batches do not create the file.
 ///
 /// # Errors
 ///
@@ -44,7 +42,6 @@ pub fn append_one(layout: Layout<'_>, event: &Event) -> Result<(), Error> {
 /// Primary write surface for multi-actor fixtures and any caller that
 /// already knows the actor id. Stamps monotonic `sequence` values
 /// (1-based) continuing from the last line in that actor's file.
-/// Dual-writes the stamped lines to the legacy `journal.jsonl` bridge.
 ///
 /// # Errors
 ///
@@ -75,9 +72,6 @@ pub fn append_for(layout: Layout<'_>, actor: &str, events: &[Event]) -> Result<(
         payload.push('\n');
     }
     append_bytes(&actor_path, payload.as_bytes())?;
-    // Legacy bridge — removed when journal.jsonl authority is retired.
-    std::fs::create_dir_all(layout.emery_dir())?;
-    append_bytes(&path(layout), payload.as_bytes())?;
     Ok(())
 }
 
@@ -114,11 +108,7 @@ fn append_bytes(path: &Path, bytes: &[u8]) -> Result<(), Error> {
 /// The sidecar is also best-effort; stderr still reports its failure
 /// without changing the calling verb's exit code.
 pub(super) fn record_dropped(layout: Layout<'_>, scope: &str, event: &Event, err: &Error) {
-    let actor = if event.actor.is_empty() {
-        super::actor_id()
-    } else {
-        event.actor.clone()
-    };
+    let actor = if event.actor.is_empty() { super::actor_id() } else { event.actor.clone() };
     let journal = actor_log_path(layout, &actor);
     let sidecar = layout.emery_dir().join(DROPPED_FILE_NAME);
     if append_dropped(layout, event).is_ok() {
