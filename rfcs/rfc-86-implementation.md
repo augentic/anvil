@@ -45,8 +45,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S17 | Ready/Authorized + status next-actions | `done` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
 | S18 | plan.execute.started + --waive CLI | `done` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
 | S19 | Execute gap gate before build | `done` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
-| S20 | refine-under-epoch + shift-left fixtures | `next` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
-| S21 | Remaining Phase C acceptance fixtures | `pending` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
+| S20 | refine-under-epoch + shift-left fixtures | `done` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
+| S21 | Remaining Phase C acceptance fixtures | `next` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
 | S22 | D20 sibling docs + operator prose | `pending` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
 | S23 | Full cargo make ci + acceptance closeout | `pending` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
 | S24 | Open single full-RFC implementation PR | `pending` | PR URL returned | none (operator-directed) |
@@ -137,6 +137,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S19
 - Finding: Execute calls `enforce_before_build` immediately before `slice::orchestrate::build` (hard `Err`, not `plan-execute-stopped`). Policy is per leaf being built: `[conflict]` → `plan-gaps-unresolved` (never waiveable); `[unknown]` blocks unless a matching waiver nests on the newest covering `plan.execute.started`; `[divergence]` listed on failure detail / inventory but allowed. Epoch freshness: `plan-digest` + every in-scope `existing` spec digest must match live artifacts (`plan-epoch-stale`); `refine-under-epoch` leaves skip digest compare. Failure detail renders the full gap inventory. Public `change::orchestrate::enforce_before_build` supports the stale fixture without mid-loop mutation (execute always restamps a fresh epoch at start). ReviewGaps still maps to Build so waived unknowns can proceed.
 - Plan change: none beyond status (S19=done, S20=next).
+
+### 2026-08-07 — S20
+- Finding: Acceptance #5 fixtures in `crates/change/tests/shift_left.rs`. Preferred path: author is topology-only (no model/base/synthesize facts) → `slice refine` → clean gaps / Ready → execute stamps `existing` coverage and runs Build+Merge only. Under-epoch: execute over unspec'd leaf stamps `refine-under-epoch`, phases Refine→Build→Merge (gap gate before build). CLI absence: `emery plan approve` / `emery plan refine` exit 2 and are absent from `plan --help` (`transport/tests/router.rs`); bumped stale http_parity route count 30→31 (plan gaps).
+- Plan change: none beyond status (S20=done, S21=next).
 ```
 
 ### Session template (copy into each agent prompt)
