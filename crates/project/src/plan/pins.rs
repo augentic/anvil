@@ -61,6 +61,29 @@ pub fn file_cid(path: &str, bytes: &[u8]) -> SnapshotId {
     SnapshotId::from_digest(&sha256_hex(encode(&entries).as_bytes()))
 }
 
+/// Content-addressed identity of a directory tree (digest-only).
+///
+/// Absent or non-directory paths share the empty-tree identity so a
+/// greenfield baseline `specs/` (not yet created) pins stably. Digests
+/// match [`crate::workspace::Store::snapshot`] for ordinary directory
+/// trees — refine's `base.yaml` baseline-spec pin uses this.
+///
+/// # Errors
+///
+/// Filesystem / path-shape failures from the tree walk.
+pub fn dir_cid(dir: &Path) -> Result<SnapshotId, Error> {
+    if !dir.is_dir() {
+        return Ok(empty_cid());
+    }
+    tree_cid(dir)
+}
+
+/// Identity of the empty tree manifest.
+#[must_use]
+pub fn empty_cid() -> SnapshotId {
+    SnapshotId::from_digest(&sha256_hex(encode(&BTreeMap::new()).as_bytes()))
+}
+
 fn cid_for(key: &str, binding: &SourceBinding, project_root: &Path) -> Result<SnapshotId, Error> {
     if let Some(path) = binding.path.as_deref() {
         return path_cid(key, path, project_root);

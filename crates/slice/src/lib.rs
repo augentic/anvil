@@ -8,6 +8,7 @@
 
 pub(crate) mod actions;
 pub mod answers;
+pub mod base;
 pub(crate) mod build;
 pub(crate) mod design_system;
 pub mod handlers;
@@ -21,6 +22,7 @@ pub(crate) mod synthesis;
 pub(crate) mod validate;
 
 pub(crate) use actions::CreateIfExists;
+pub use base::Base;
 pub(crate) use build::assemble::build_request;
 pub(crate) use model::SliceModel;
 pub(crate) use project::seam::wire::BuildRequest;

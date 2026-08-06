@@ -35,8 +35,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S7 | Delete stored status/lifecycle fields | `done` | `cargo make check` | `refactor!: remove stored plan-entry and slice lifecycle status fields` |
 | S8 | Multi-actor claim/union fixtures | `done` | new mock/change integration tests | `test(mock): multi-actor claim and fact-union fixtures for RFC-86` |
 | S9 | Source cid pins at plan author | `done` | author/reconciliation pin assertions | `feat(change): record source cid pins at plan author` |
-| S10 | Refine writes base.yaml | `next` | refine integration test asserts `base.yaml` | `feat(slice): write refine-time base.yaml pins` |
-| S11 | Slice-local REQ ids + MODIFIED digests | `pending` | synthesis local-id + modified-digest tests | `feat(slice): mint slice-local requirement ids until wave commit` |
+| S10 | Refine writes base.yaml | `done` | refine integration test asserts `base.yaml` | `feat(slice): write refine-time base.yaml pins` |
+| S11 | Slice-local REQ ids + MODIFIED digests | `next` | synthesis local-id + modified-digest tests | `feat(slice): mint slice-local requirement ids until wave commit` |
 | S12 | One-member wave manifests + target.wave.opened | `pending` | wave write/load tests | `feat(project): one-member target wave manifests and open fact` |
 | S13 | Build from pins; retire freeze + patch.yaml | `pending` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
 | S14 | Wave commit + identity maps; keep apply | `pending` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
@@ -97,6 +97,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S9
 - Finding: Source pins close after survey during `plan author`: `SourceBinding.cid` (`SnapshotId` on wire as `cid`) is stamped on every `plan.yaml.sources.<key>` via `project::plan::close_source_pins`. Value bindings digest a one-file tree entry `content`; path files use basename; path dirs walk with the same `.git`/`.emery` ignore policy as the snapshot store (digest-only — store population deferred to prepare consumers). Path digests match `Store::snapshot` for directory trees. Exact YAML home is the plan source binding (plan-adjacent), not a separate pin file.
 - Plan change: none beyond status (S9=done, S10=next).
+
+### 2026-08-07 — S10
+- Finding: Refine writes `.emery/slices/<slice>/base.yaml` before extract via `slice::Base::assemble` — copies closed plan `cid`s for every entry binding plus `baseline-spec` (`dir_cid` of the ThreeWayMerge baseline `specs/` tree; missing/empty → `empty_cid`). Shape: `{ sources: { <key>: sha256:… }, baseline-spec: sha256:… }`. Drift diagnostics stay S15.
+- Plan change: none beyond status (S10=done, S11=next).
 ```
 
 ### Session template (copy into each agent prompt)

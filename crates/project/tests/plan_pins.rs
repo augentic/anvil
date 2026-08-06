@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use project::plan::{Plan, SourceBinding, close_source_pins, file_cid, value_cid};
+use project::plan::{
+    Plan, SourceBinding, close_source_pins, dir_cid, empty_cid, file_cid, value_cid,
+};
 use project::snapshot::SnapshotId;
 use project::workspace::Store;
 
@@ -52,10 +54,8 @@ fn path_dir_matches_store_snapshot() {
     std::fs::write(docs.join("a.md"), b"alpha").expect("write");
     std::fs::write(docs.join("b.md"), b"beta").expect("write");
 
-    let mut plan = plan_with(BTreeMap::from([(
-        "docs".into(),
-        binding_path(docs.to_str().expect("utf8")),
-    )]));
+    let mut plan =
+        plan_with(BTreeMap::from([("docs".into(), binding_path(docs.to_str().expect("utf8")))]));
     close_source_pins(&mut plan, root.path()).expect("close");
     let cid = plan.sources["docs"].cid.clone().expect("cid");
 
@@ -70,23 +70,15 @@ fn path_file_is_one_file_tree() {
     let file = root.path().join("notes.md");
     std::fs::write(&file, b"body").expect("write");
 
-    let mut plan = plan_with(BTreeMap::from([(
-        "docs".into(),
-        binding_path(file.to_str().expect("utf8")),
-    )]));
+    let mut plan =
+        plan_with(BTreeMap::from([("docs".into(), binding_path(file.to_str().expect("utf8")))]));
     close_source_pins(&mut plan, root.path()).expect("close");
-    assert_eq!(
-        plan.sources["docs"].cid.as_ref(),
-        Some(&file_cid("notes.md", b"body"))
-    );
+    assert_eq!(plan.sources["docs"].cid.as_ref(), Some(&file_cid("notes.md", b"body")));
 }
 
 #[test]
 fn missing_path_refuses() {
-    let mut plan = plan_with(BTreeMap::from([(
-        "docs".into(),
-        binding_path("missing-docs"),
-    )]));
+    let mut plan = plan_with(BTreeMap::from([("docs".into(), binding_path("missing-docs"))]));
     let err = close_source_pins(&mut plan, Path::new("/tmp")).expect_err("missing");
     assert!(err.to_string().contains("source-pin-missing"), "{err}");
 }
@@ -96,4 +88,23 @@ fn value_cid_is_stable_snapshot_id() {
     let a = value_cid("x");
     let b = SnapshotId::parse(a.as_str()).expect("parse");
     assert_eq!(a, b);
+}
+
+#[test]
+fn missing_dir_shares_empty_tree_cid() {
+    let root = tempfile::tempdir().expect("tempdir");
+    let missing = root.path().join("no-specs");
+    assert_eq!(dir_cid(&missing).expect("cid"), empty_cid());
+}
+
+#[test]
+fn dir_cid_matches_store_snapshot() {
+    let root = tempfile::tempdir().expect("tempdir");
+    let specs = root.path().join("specs");
+    let domain = specs.join("a");
+    std::fs::create_dir_all(&domain).expect("mkdir");
+    std::fs::write(domain.join("spec.md"), b"body").expect("write");
+
+    let store = Store::new(root.path().join("snapshots"));
+    assert_eq!(dir_cid(&specs).expect("dir cid"), store.snapshot(&specs).expect("store snapshot"));
 }
