@@ -4,7 +4,8 @@
 //! every binding on the slice, records the baseline-spec tree digest,
 //! and freezes the product tree into a target-base pin. Build prepares
 //! from that recorded pin (D27) — never ambient `freeze` at build
-//! start. Drift validation is a later session.
+//! start. Validate reports `slice-base-drifted` /
+//! `slice-evidence-stale` when pins go stale (RFC-86 D4 / D25).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

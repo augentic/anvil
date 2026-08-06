@@ -40,8 +40,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S12 | One-member wave manifests + target.wave.opened | `done` | wave write/load tests | `feat(project): one-member target wave manifests and open fact` |
 | S13 | Build from pins; retire freeze + patch.yaml | `done` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
 | S14 | Wave commit + identity maps; keep apply | `done` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
-| S15 | Pin drift diagnostics + Phase B fixtures | `next` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
-| S16 | Gap inventory + shared-lead rollup | `pending` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
+| S15 | Pin drift diagnostics + Phase B fixtures | `done` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
+| S16 | Gap inventory + shared-lead rollup | `next` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
 | S17 | Ready/Authorized + status next-actions | `pending` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
 | S18 | plan.execute.started + --waive CLI | `pending` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
 | S19 | Execute gap gate before build | `pending` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
@@ -117,6 +117,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S14
 - Finding: Merge revalidates the build record's one-member wave (`Wave::load_for_merge`), finalizes requirement identity (`merge::identity::finalize` — MODIFIED keeps `baseline-id` after `merge-base-drifted` digest check; ADDED takes next free baseline `REQ-NNN`), rewrites slice specs/`model.yaml`/`tasks.md`, then deterministic commit → strict `target.merge.wave-committed` (identity maps + commit-authorization reusing wave build-authorization until S18) → postflight `target.merge.wave-succeeded` / `target.merge.wave-postflight-failed`. Hard-cut replaced `slice.merge.postflight-failed`. Interim `apply` still runs after successful postflight. Failures before wave-committed leave no merged projection. Ladder/sticky-debt/undo readers updated; `cli-contract` event table lists the new ids.
 - Plan change: none beyond status (S14=done, S15=next).
+
+### 2026-08-07 — S15
+- Finding: Validate folds non-blocking review signals `slice-base-drifted` (baseline-spec pin ≠ live `.emery/specs/` digest) and `slice-evidence-stale` (bound source pin ≠ live `source_cid`) when `base.yaml` exists — Adapter-path advisories like synopsis-thin, so validate still PASSes. Exported `project::plan::source_cid` for live recompute. Phase B fixtures: `change/tests/pin_build_record.rs` (refine→build→merge asserts base.yaml + BuildRecord + wave facts + interim apply + no `patch.yaml` authority; drift injection for both review codes); `slice/tests/merge_identity.rs` adds two-slice ADDED collision-free wave commit (Acceptance #3). `merge-base-drifted` already landed in S14.
+- Plan change: none beyond status (S15=done, S16=next).
 ```
 
 ### Session template (copy into each agent prompt)

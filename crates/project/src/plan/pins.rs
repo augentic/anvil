@@ -84,6 +84,21 @@ pub fn empty_cid() -> SnapshotId {
     SnapshotId::from_digest(&sha256_hex(encode(&BTreeMap::new()).as_bytes()))
 }
 
+/// Live content-addressed identity of one source binding.
+///
+/// Same digest as [`close`] would stamp onto `binding.cid`. Used by
+/// pin-drift validation to compare `base.yaml` pins against the
+/// current path/value tree without rewriting the plan.
+///
+/// # Errors
+///
+/// Same taxonomy as [`close`] for a single binding.
+pub fn source_cid(
+    key: &str, binding: &SourceBinding, project_root: &Path,
+) -> Result<SnapshotId, Error> {
+    cid_for(key, binding, project_root)
+}
+
 fn cid_for(key: &str, binding: &SourceBinding, project_root: &Path) -> Result<SnapshotId, Error> {
     if let Some(path) = binding.path.as_deref() {
         return path_cid(key, path, project_root);

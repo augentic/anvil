@@ -31,7 +31,7 @@ pub use model::{
     AuthorityOverride, Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Patch, Plan,
     SliceSourceBinding, SourceBinding, Status,
 };
-pub use pins::{close as close_source_pins, dir_cid, empty_cid, file_cid, value_cid};
+pub use pins::{close as close_source_pins, dir_cid, empty_cid, file_cid, source_cid, value_cid};
 pub use propose::{
     GateProse, ProjectRef, ProposalRequest, ProposalResponse, apply_greenfield_seed, build_request,
     resolve_target, resolve_topology,

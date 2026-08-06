@@ -220,6 +220,115 @@ async fn wave_commit_assigns_baseline_ids_and_records_maps() {
     );
 }
 
+/// Acceptance #3 — two slices refined against the same baseline merge
+/// without requirement-id collision (each keeps slice-local `REQ-001`
+/// until wave commit assigns distinct baseline numbers).
+#[tokio::test]
+async fn two_slices_merge_without_req_collision() {
+    let session = Session::scripted("mock", Vec::new());
+    let root = session.root();
+    fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline");
+    fs::write(root.join(".emery/specs/auth/spec.md"), baseline_body()).expect("baseline body");
+
+    let added_a = "# Slice A\n\n## ADDED Requirements\n\n\
+         ### Requirement: Passkey login\n\n\
+         ID: REQ-001\n\n\
+         Passkey authentication.\n\n\
+         #### Scenario: Passkey\n\n\
+         - GIVEN a passkey\n\
+         - WHEN the user authenticates\n\
+         - THEN a session starts\n";
+    let added_b = "# Slice B\n\n## ADDED Requirements\n\n\
+         ### Requirement: Reset entry\n\n\
+         ID: REQ-001\n\n\
+         Password reset entry on login.\n\n\
+         #### Scenario: Open reset\n\n\
+         - GIVEN the login screen\n\
+         - WHEN the user opens reset\n\
+         - THEN the reset flow starts\n";
+
+    for (slice, delta, title) in
+        [("slice-a", added_a, "Passkey login"), ("slice-b", added_b, "Reset entry")]
+    {
+        let snapshot = session.provider().freeze().await.expect("freeze");
+        stage_wave_and_record(&session, slice, snapshot);
+        let slice_dir = root.join(".emery/slices").join(slice);
+        let specs = slice_dir.join("specs/auth");
+        fs::create_dir_all(&specs).expect("specs");
+        fs::write(specs.join("spec.md"), delta).expect("delta");
+        fs::write(
+            slice_dir.join("metadata.yaml"),
+            "target: mock\ntouched-specs:\n  - name: auth\n    type: new\n",
+        )
+        .expect("metadata");
+        fs::write(
+            slice_dir.join("model.yaml"),
+            format!(
+                r#"version: 1
+slice: {slice}
+requirements:
+  - id: REQ-001
+    title: {title}
+    status: agreed
+    domain: auth
+    sources: [docs]
+    claims:
+      - source: docs
+        id: {slice}.claim
+        kind: requirement
+    statement: {title}.
+    scenarios:
+      - scenario
+tasks:
+  - id: TASK-001
+    text: Implement {title}.
+    satisfies: [REQ-001]
+"#
+            ),
+        )
+        .expect("model");
+        fs::write(slice_dir.join("tasks.md"), "# Tasks\n\n- TASK-001 satisfies REQ-001\n")
+            .expect("tasks");
+
+        run::<MergeRun, _, _>(
+            session.provider(),
+            MergeRunInput {
+                name: slice.into(),
+                allow_composition_replace: false,
+                preview: false,
+                conflict_check: false,
+            },
+        )
+        .await
+        .unwrap_or_else(|err| panic!("merge {slice}: {err}"));
+    }
+
+    let merged = fs::read_to_string(root.join(".emery/specs/auth/spec.md")).expect("merged");
+    assert!(merged.contains("ID: REQ-007"), "{merged}");
+    assert!(merged.contains("ID: REQ-008"), "{merged}");
+    // Both ADDED rows take distinct next-free baseline ids.
+    assert!(merged.contains("ID: REQ-009"), "{merged}");
+    assert!(merged.contains("ID: REQ-010"), "{merged}");
+    assert!(merged.contains("Passkey"), "{merged}");
+    assert!(merged.contains("Reset entry") || merged.contains("reset"), "{merged}");
+
+    let layout = project::config::Layout::new(root);
+    let events = read_union(layout).expect("union");
+    let maps: Vec<_> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            EventKind::TargetMergeWaveCommitted { identity_maps, .. } => Some(identity_maps),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(maps.len(), 2, "one wave-committed per slice: {maps:?}");
+    let baselines: Vec<&str> =
+        maps.iter().flat_map(|m| m.iter().map(|row| row.baseline.as_str())).collect();
+    assert!(baselines.contains(&"REQ-009"), "{baselines:?}");
+    assert!(baselines.contains(&"REQ-010"), "{baselines:?}");
+    assert_eq!(baselines.len(), 2, "no shared baseline id: {baselines:?}");
+}
+
 #[tokio::test]
 async fn drifted_modified_rejects_before_wave_committed() {
     let session = Session::scripted("mock", Vec::new());
