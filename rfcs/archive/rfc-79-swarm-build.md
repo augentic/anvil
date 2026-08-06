@@ -4,7 +4,7 @@
 >
 > Owns: the target-build execution model that replaces the fat sequential legs: decomposition of one build into focused judgment requests, the convergence gate that supersedes the in-prompt verify-repair channel, the backend concurrency substrate (agent pool, workspace policy), and the deployment expression that runs workers on remote nodes.
 >
-> Depends: [RFC-78](rfc-78-prompt-budget.md) (the enabling layer — per-request byte budget, timeout semantics, session model), [RFC-60](../rfc-90-verify-profiles.md) (**promoted from deferred** — host-owned verify is this RFC's convergence gate), [RFC-55](rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the multi-node unlock).
+> Depends: [RFC-78](rfc-78-prompt-budget.md) (the enabling layer — per-request byte budget, timeout semantics, session model), the then-proposed RFC-60 host-owned verify gate (superseded by [RFC-90's](../rfc-90-build-verification.md) engine-owned model-assisted phase machine), and [RFC-55](rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the multi-node unlock).
 >
 > Related: [RFC-18](../future/rfc-18-slm.md) (per-worker model selection is this RFC's hook for cheaper backends), [RFC-80](rfc-80-synthesis-redesign.md) (applies the same decomposition pattern at refine time and consumes this RFC's concurrency substrate).
 
@@ -44,7 +44,7 @@ Two workers never share write ownership of a path. Ownership conflicts are an or
 
 ### Convergence
 
-The shared verify-repair channel is replaced by a **host-owned convergence gate** over [RFC-60](../rfc-90-verify-profiles.md) verify profiles:
+The shared verify-repair channel is replaced by a **host-owned convergence gate** over [RFC-60](../rfc-90-build-verification.md) verify profiles:
 
 1. Workers complete their focused writes and answer with typed outcomes (no cargo commands in worker prompts — the RFC-60 posture).
 2. The orchestrator requests predefined verify profiles (`build`, `clippy`, `test`, …) through the host; the host runs them sandboxed and returns normalized findings.
@@ -74,7 +74,7 @@ Move leg sequencing from five hardcoded fat legs to a partition → dispatch →
 
 ### D2 — Convergence gate over RFC-60 verify profiles (engine + Omnia host)
 
-Activate [RFC-60](../rfc-90-verify-profiles.md): predefined profile names, host-owned argv, sandboxed execution, normalized findings. The adapter requests profiles through the model tool loop's `verify` grant (stubbed today); cargo command text leaves worker prompts entirely. Findings carry artifact-relative locations the orchestrator maps to owning workers.
+Activate [RFC-60](../rfc-90-build-verification.md): predefined profile names, host-owned argv, sandboxed execution, normalized findings. The adapter requests profiles through the model tool loop's `verify` grant (stubbed today); cargo command text leaves worker prompts entirely. Findings carry artifact-relative locations the orchestrator maps to owning workers.
 
 ### D3 — Write-ownership partitioning (adapters)
 

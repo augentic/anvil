@@ -4,7 +4,7 @@
 >
 > Owns: multi-node placement of RFC-91's completed local execution model: fact, planning-artifact, domain-round, and snapshot transport; fenced claims; remote private workspaces and worker pools; attach, resume, and detach. It adds no scheduler, convergence, merge, authority, or lifecycle semantics.
 >
-> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-88](rfc-88-detached-changes.md), [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-verify-profiles.md), and [RFC-91](rfc-91-concurrent-execution.md).
+> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-88](rfc-88-detached-changes.md), [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-concurrent-execution.md).
 >
 > Related: [RFC-89](rfc-89-publication-sets.md) binds publication across repositories after this RFC's distributed execution; [RM-18](roadmap.md#rm-18-cloud-hosted-execute-loop) is the first hosted deployment.
 
@@ -74,9 +74,9 @@ slices:
     depends-on: [add-refund-endpoint]
 ```
 
-RFC-88's decomposition places the first two entries under one `payment-behaviour` domain inside the `payments-api` target domain. They share the recorded base and have disjoint write manifests, so RFC-91 may run them concurrently whether both workers are local or one is remote. At the round boundary, the same RFC-91 kernel composes their patches, writes the domain-round record, runs RFC-90 verification, and folds the result upward.
+RFC-88's decomposition places the first two entries under one `payment-behaviour` domain inside the `payments-api` target domain. They share the recorded base and have disjoint write manifests, so RFC-91 may run them concurrently whether both workers are local or one is remote. At the round boundary, the same RFC-91 kernel composes their patches, writes the domain-round record, dispatches RFC-90's model-assisted `verify`, and folds the result upward.
 
-The `mobile` dependency controls scheduling only. Once `add-refund-endpoint` has produced the required result, `adopt-refund-ui` may run against the `mobile` base. Emery never applies the payments patch to the mobile repository. Trial integration creates a separate `mobile` candidate and runs the mobile verify profiles.
+The `mobile` dependency controls scheduling only. Once `add-refund-endpoint` has produced the required result, `adopt-refund-ui` may run against the `mobile` base. Emery never applies the payments patch to the mobile repository. Trial integration creates a separate `mobile` candidate and dispatches the mobile target's verification phase.
 
 The root coordination domain receives the same aggregated advisory report as a desktop-only run. Every finding names its target, nearest domain, and owning entry. Cross-repository CI is outside this gate, and RFC-88's target-wave commit retains accepted-CID authority.
 
@@ -185,7 +185,7 @@ This makes RFC-92 directly operable without waiting for RM-18's background-submi
 - Place completed RFC-91 worker pools on remote nodes without changing their ownership or composition contracts. Every worker receives a private workspace and returns a result snapshot through the value plane.
 - Place RFC-91 eligible leaves, workers, and domain operations remotely without changing readiness or composition. Require authorization epoch, fencing generation, and complete RFC-91 input fences on claimed results; require the deterministic operation key and claimless compare-and-set publication on domain results.
 - Replicate retained lead/decomposition revisions, amendment proposals, and domain-round records through the coordination-artifact store before exposing their referencing facts; replicate every reachable CID through the value plane.
-- Use an Omnia/Rust multi-project change, where RFC-90 verification and RFC-91 remote pools are available, as the completion workload. A project with unavailable verify profiles runs serially and emits typed trial-integration unavailability; it never silently bypasses a claimed gate.
+- Use an Omnia/Rust multi-project change, where RFC-90's `build` / `repair` / `verify` / `review` loop and RFC-91 remote pools are available, as the completion workload. Every remote verification and repair dispatch records the same typed phase report as its local equivalent; distribution never upgrades model-assisted evidence into a deterministic claim.
 
 ## Acceptance criteria
 
