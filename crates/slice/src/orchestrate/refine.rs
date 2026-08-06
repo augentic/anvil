@@ -15,7 +15,7 @@ use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::journal::{self, EventKind};
-use project::plan::{Entry, Plan, Status, resolve_topology};
+use project::plan::{Entry, Plan, Status, collect_events, project_ladders, resolve_topology};
 use project::registry::topology::{Decision, Surface};
 use project::seam::{Source, Target};
 
@@ -196,10 +196,10 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 /// breakout of `/emery:refine`.
 ///
 /// Entry semantics mirror the standalone `slice build <name>` posture:
-/// the verb acts on the named slice directly against a `pending` or
-/// `in-progress` plan entry, never advancing per-entry status (`plan
-/// advance` stays the only `in-progress` writer), and refuses a `done`
-/// entry. The target is caller-free: it resolves from the slice's own
+/// the verb acts on the named slice directly against a projected
+/// `pending` or `in-progress` plan entry (never claiming — `plan
+/// advance` owns the claim), and refuses a projected `done` entry.
+/// The target is caller-free: it resolves from the slice's own
 /// `metadata.yaml` when the slice already exists (a resumed
 /// `refining` breakout), else from the bound project's topology — the
 /// same resolution `plan advance` hands the execute loop.
@@ -215,12 +215,16 @@ pub async fn refine_breakout<P: Model, S: Source, T: Target, R: Resolver>(
 ) -> Result<RefineOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     let entry = load_entry(layout, slice)?;
-    if entry.status == Status::Done {
+    let plan = Plan::load(&layout.plan_path())?;
+    let events = collect_events(&plan, layout)?;
+    let ladders = project_ladders(&plan, &events);
+    let status = ladders.get(&entry.name).copied().unwrap_or(Status::Pending);
+    if status == Status::Done {
         return Err(Error::validation_failed(
             "slice-refine-entry-done",
             "the plan entry is still open",
             format!(
-                "plan entry `{slice}` is already `done`; walk it back with `emery plan undo \
+                "plan entry `{slice}` projects `done`; walk it back with `emery plan undo \
                  {slice}` before re-refining"
             ),
         ));

@@ -1,5 +1,5 @@
-//! RFC-86 S4: shared in-scope membership (D24) and retirement of the
-//! plan-wide single-active-entry gate (D23).
+//! RFC-86 S4/S6: shared in-scope membership (D24), retirement of the
+//! plan-wide single-active-entry gate (D23), and fact-based advance.
 
 use std::collections::BTreeMap;
 
@@ -7,7 +7,8 @@ use jiff::Timestamp;
 use mock::session::Session;
 use project::config::{Layout, ProjectConfig};
 use project::handler::Anchor;
-use project::plan::{Entry, Plan, Status, advance_gate, advance_next, in_scope};
+use project::journal::{self, Event, EventKind};
+use project::plan::{Entry, Plan, Status, advance_gate, advance_next, in_scope, project_ladders};
 use project::slice::{LifecycleStatus, SliceMetadata};
 
 fn entry(name: &str, status: Status) -> Entry {
@@ -54,6 +55,32 @@ fn write_plan(root: &std::path::Path, plan: &Plan) {
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices dir");
 }
 
+fn seed_in_progress(root: &std::path::Path, plan_name: &str, slice: &str, seconds: i64) {
+    let now = Timestamp::from_second(seconds).expect("timestamp");
+    let layout = Layout::new(root);
+    journal::append_one(
+        layout,
+        &Event::new(
+            now,
+            EventKind::SliceClaimed {
+                slice_name: slice.into(),
+            },
+        ),
+    )
+    .expect("claim");
+    journal::append_one(
+        layout,
+        &Event::new(
+            now,
+            EventKind::PlanEntryAdvanced {
+                plan_name: plan_name.into(),
+                slice_name: slice.into(),
+            },
+        ),
+    )
+    .expect("advance fact");
+}
+
 #[test]
 fn multiple_in_progress_is_not_a_validate_finding() {
     let plan = plan(vec![entry("a", Status::InProgress), entry("b", Status::InProgress)]);
@@ -79,10 +106,9 @@ fn in_scope_requires_plan_membership_and_not_dropped() {
         in_scope(&plan, on_plan, Some(&meta(LifecycleStatus::Refined))),
         "refined stays in-scope"
     );
-    assert!(
-        !in_scope(&plan, on_plan, Some(&meta(LifecycleStatus::Dropped))),
-        "dropped excludes membership"
-    );
+    let mut dropped = meta(LifecycleStatus::Refining);
+    dropped.dropped_at = Some(Timestamp::from_second(1_700_000_000).expect("timestamp"));
+    assert!(!in_scope(&plan, on_plan, Some(&dropped)), "dropped_at excludes membership");
 
     let orphan = entry("ghost", Status::Pending);
     assert!(!in_scope(&plan, &orphan, None), "absent from the plan is not in-scope");
@@ -91,40 +117,48 @@ fn in_scope_requires_plan_membership_and_not_dropped() {
 #[test]
 fn advance_starts_second_entry_while_another_is_in_progress() {
     let session = Session::scripted("demo", Vec::new());
-    let staged = plan(vec![entry("a", Status::InProgress), entry("b", Status::Pending)]);
+    // Stored status stays pending — progress is claimed via facts.
+    let staged = plan(vec![entry("a", Status::Pending), entry("b", Status::Pending)]);
     write_plan(session.root(), &staged);
+    seed_in_progress(session.root(), "test", "a", 1_700_000_000);
 
     let config = ProjectConfig::load(session.root()).expect("project.yaml");
-    let now = Timestamp::from_second(1_700_000_000).expect("timestamp");
+    let now = Timestamp::from_second(1_700_000_001).expect("timestamp");
     let body = advance_next(session.provider(), session.provider().paths(), now, &config)
         .expect("advance sibling");
     assert_eq!(body.advanced.as_deref(), Some("b"));
     assert!(body.active.is_none(), "fresh advance, not a mid-slice resume");
 
     let loaded = Plan::load(&Layout::new(session.root()).plan_path()).expect("reload plan");
-    let statuses: Vec<(&str, Status)> =
-        loaded.entries.iter().map(|e| (e.name.as_str(), e.status)).collect();
-    assert_eq!(
-        statuses,
-        vec![("a", Status::InProgress), ("b", Status::InProgress)],
-        "both entries may be in-progress concurrently"
+    assert!(
+        loaded.entries.iter().all(|e| e.status == Status::Pending),
+        "advance must not rewrite stored Entry.status: {:?}",
+        loaded.entries
     );
+    let events =
+        project::plan::collect_events(&loaded, Layout::new(session.root())).expect("events");
+    let ladders = project_ladders(&loaded, &events);
+    let a: project::name::SliceName = "a".into();
+    let b: project::name::SliceName = "b".into();
+    assert_eq!(ladders.get(&a).copied(), Some(Status::InProgress));
+    assert_eq!(ladders.get(&b).copied(), Some(Status::InProgress));
 }
 
 #[test]
 fn advance_resumes_in_progress_when_no_pending_is_eligible() {
     let session = Session::scripted("demo", Vec::new());
     let staged = plan(vec![
-        entry("a", Status::InProgress),
+        entry("a", Status::Pending),
         Entry {
             depends_on: vec!["a".into()],
             ..entry("b", Status::Pending)
         },
     ]);
     write_plan(session.root(), &staged);
+    seed_in_progress(session.root(), "test", "a", 1_700_000_000);
 
     let config = ProjectConfig::load(session.root()).expect("project.yaml");
-    let now = Timestamp::from_second(1_700_000_000).expect("timestamp");
+    let now = Timestamp::from_second(1_700_000_001).expect("timestamp");
     let body = advance_next(session.provider(), session.provider().paths(), now, &config)
         .expect("resume active");
     assert_eq!(body.active.as_deref(), Some("a"));

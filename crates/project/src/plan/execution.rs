@@ -26,6 +26,7 @@
 //! a failure of the awaited phase parks the matching stop.
 
 use std::collections::{BTreeSet, HashMap};
+use std::hash::BuildHasher;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
@@ -40,10 +41,10 @@ use crate::slice::SliceMetadata;
 
 /// Whether the active-window journal overlay applies to the candidate
 /// entry. Only an in-progress entry (projected from facts) carries an
-/// active window (`plan.entry.advanced`) that scopes phase-terminal
-/// events to the current plan; not-yet-advanced candidates skip the
-/// overlay so stale same-name events from earlier plans cannot
-/// classify.
+/// active window (`plan.entry.advanced` / live claim) that scopes
+/// phase-terminal events to the current plan; not-yet-advanced
+/// candidates skip the overlay so stale same-name events from earlier
+/// plans cannot classify.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum JournalOverlay {
     Apply,
@@ -118,7 +119,7 @@ impl Resolution {
 /// # Errors
 ///
 /// Propagates journal I/O failures from any root.
-pub(super) fn collect_events(plan: &Plan, layout: Layout<'_>) -> Result<Vec<Event>, Error> {
+pub fn collect_events(plan: &Plan, layout: Layout<'_>) -> Result<Vec<Event>, Error> {
     let mut roots = BTreeSet::new();
     roots.insert(layout.project_dir().to_path_buf());
     for entry in &plan.entries {
@@ -141,15 +142,19 @@ pub(super) fn collect_events(plan: &Plan, layout: Layout<'_>) -> Result<Vec<Even
 /// Project per-entry ladder labels from the fact union (RFC-86 D2).
 ///
 /// Does not read stored `Entry.status`. `done` comes from archive /
-/// postflight-failed facts (and undo can walk it back); `in-progress`
-/// comes from advance / undo / a live claim; everything else is
-/// `pending`.
+/// postflight-failed facts (and undo walks them back by retracting);
+/// `in-progress` comes from advance / a live claim; everything else is
+/// `pending`. Retracted facts (`fact.retracted`) are omitted.
 #[must_use]
-pub(super) fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Status> {
+pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Status> {
     let ownership = claim::project(events);
+    let retracted = claim::retracted_targets(events);
     let mut ladders: HashMap<SliceName, Status> =
         plan.entries.iter().map(|e| (e.name.clone(), Status::Pending)).collect();
     for event in events {
+        if retracted.contains(&(event.actor.as_str(), event.sequence)) {
+            continue;
+        }
         match &event.kind {
             EventKind::PlanEntryAdvanced {
                 plan_name,
@@ -192,15 +197,12 @@ pub(super) fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceNam
 /// whose dependencies are all projected `done`. An unknown
 /// `depends_on` target is treated as not done.
 #[must_use]
-pub(super) fn next_eligible<'a>(
-    plan: &'a Plan, ladders: &HashMap<SliceName, Status>,
+pub fn next_eligible<'a, S: BuildHasher>(
+    plan: &'a Plan, ladders: &HashMap<SliceName, Status, S>,
 ) -> Option<&'a Entry> {
     plan.entries.iter().find(|entry| {
         ladders.get(&entry.name).copied() == Some(Status::Pending)
-            && entry
-                .depends_on
-                .iter()
-                .all(|dep| ladders.get(dep).copied() == Some(Status::Done))
+            && entry.depends_on.iter().all(|dep| ladders.get(dep).copied() == Some(Status::Done))
     })
 }
 
@@ -351,9 +353,13 @@ struct WindowFacts {
 /// Backward-fold `events` (newest-first walk over a chronologically
 /// ordered union) over this entry's active window.
 fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName) -> WindowFacts {
+    let retracted = claim::retracted_targets(events);
     let mut facts = WindowFacts::default();
     let mut terminal_seen = false;
     for event in events.iter().rev() {
+        if retracted.contains(&(event.actor.as_str(), event.sequence)) {
+            continue;
+        }
         match &event.kind {
             EventKind::PlanEntryAdvanced {
                 plan_name: p,
@@ -364,6 +370,7 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
                 slice_name: s,
                 ..
             } if p == plan_name && s == slice => break,
+            EventKind::SliceClaimed { slice_name: s } if s == slice => break,
             EventKind::SliceMergeSucceeded { slice_name: s } if s == slice => {
                 facts.merged = true;
             }
@@ -432,9 +439,7 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
 
 /// Scan the union newest-first until `select` breaks — shared by the
 /// sticky postflight-debt projection in `status::project`.
-pub(super) fn scan_union(
-    events: &[Event], mut select: impl FnMut(&Event) -> ControlFlow<()>,
-) {
+pub(super) fn scan_union(events: &[Event], mut select: impl FnMut(&Event) -> ControlFlow<()>) {
     for event in events.iter().rev() {
         if select(event).is_break() {
             break;

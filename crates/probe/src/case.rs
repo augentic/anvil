@@ -28,7 +28,7 @@ use anyhow::{Context as _, Result, bail, ensure};
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use project::config::Layout;
 use project::plan::Status;
-use project::slice::{LifecycleStatus, SliceMetadata};
+use project::slice::SliceMetadata;
 use tracing::Instrument as _;
 
 use crate::telemetry::{self, Telemetry};
@@ -167,9 +167,11 @@ async fn run_workflow(
     invoke(root, model, catalog, &["plan", "execute"]).await?;
 
     let plan = sandbox::read_plan(root)?;
+    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
-        plan.entries.iter().all(|entry| entry.status == Status::Done),
-        "execute must drain the plan, leaving every entry done: {:?}",
+        ladders.values().all(|status| *status == Status::Done),
+        "execute must drain the plan (projected done): ladders={ladders:?}; stored={:?}",
         plan.entries
     );
     grade::provenance(&grade::baseline(root)?)?;
@@ -191,12 +193,6 @@ async fn run_build(
     let slice_dir = Layout::new(root).slice_dir(&case.slice);
     let metadata =
         SliceMetadata::load(&slice_dir).context("loading the slice metadata after the build")?;
-    ensure!(
-        metadata.status == LifecycleStatus::Built,
-        "slice `{}` is `{}` after the build, expected `built`",
-        case.slice,
-        metadata.status
-    );
     let report = slice_dir.join("build").join("report.yaml");
     ensure!(report.is_file(), "no authoritative build report at {}", report.display());
 
@@ -205,6 +201,11 @@ async fn run_build(
     // Materialize the result beside the sandbox for the artifact gate
     // and operator inspection.
     let patch_path = slice_dir.join("build").join("patch.yaml");
+    ensure!(
+        patch_path.is_file() || metadata.completed_at.is_some(),
+        "slice `{}` has no build/patch.yaml (or completed_at) after the build",
+        case.slice,
+    );
     let patch: project::snapshot::CodePatch = serde_saphyr::from_str(
         &fs::read_to_string(&patch_path)
             .with_context(|| format!("reading the captured patch {}", patch_path.display()))?,

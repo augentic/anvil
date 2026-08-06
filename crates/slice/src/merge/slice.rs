@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::MergeResult;
-use crate::{LifecycleStatus, Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
+use crate::{Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
 
 mod parse;
 mod read;
@@ -173,10 +173,10 @@ pub struct BaselineConflict {
 /// every file that would be promoted by an
 /// [`MergeStrategy::OpaqueReplace`] class.
 ///
-/// Unlike [`commit`] this does not gate on
-/// `LifecycleStatus::Built` — the refine / build / merge skill pipeline
-/// previews while the slice is still `refined` or `built` so the
-/// human can confirm operations before the merge skill commits.
+/// Unlike [`commit`] this does not gate on a build record — the
+/// refine / build / merge skill pipeline previews while the slice is
+/// still mid-phase so the human can confirm operations before the
+/// merge skill commits.
 ///
 /// # Errors
 ///
@@ -191,10 +191,9 @@ pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewRes
 
 /// Atomic multi-class merge plus archive.
 ///
-/// Gates on `LifecycleStatus::Built`, runs [`preview`]'s
-/// in-memory plan, writes each merged baseline, transitions status to
-/// `Merged` with `merged_at`/`completed_at` timestamps, stamps an
-/// `Outcome { phase: Merge, outcome: Success }` into
+/// Gates on `build/patch.yaml`, runs [`preview`]'s in-memory plan,
+/// writes each merged baseline, stamps `merged_at`/`completed_at` and
+/// an `Outcome { phase: Merge, outcome: Success }` into
 /// `metadata.yaml`, then archives the slice directory via
 /// `crate::actions::archive`.
 ///
@@ -223,10 +222,15 @@ pub fn commit(
     allow_composition_replace: bool,
 ) -> Result<MergeCommit, Error> {
     let mut metadata = SliceMetadata::load(slice_dir)?;
-    if metadata.status != LifecycleStatus::Built {
+    // RFC-86 D2: "built" projects from the build record, not stored
+    // LifecycleStatus.
+    if !slice_dir.join("build").join("patch.yaml").is_file() {
         return Err(Error::Diag {
             code: "slice-lifecycle",
-            detail: format!("cannot merge: slice is `{}`, expected `built`", metadata.status),
+            detail: format!(
+                "cannot merge: slice `{}` has no build/patch.yaml (not yet built)",
+                slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown")
+            ),
         });
     }
 
@@ -251,7 +255,7 @@ pub fn commit(
     write_baselines(&merged)?;
     let opaque_counts = commit_opaque(classes)?;
 
-    metadata.status = metadata.status.transition(LifecycleStatus::Merged)?;
+    // RFC-86 D2: do not rewrite LifecycleStatus; stamp merge times only.
     if metadata.completed_at.is_none() {
         metadata.completed_at = Some(now);
     }

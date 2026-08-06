@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use jiff::Timestamp;
 
+use super::execution::{collect_events, project_ladders};
 use super::model::{Plan, Status};
+use crate::config::Layout;
 use crate::fs::move_atomic;
 
 impl Plan {
@@ -14,15 +16,16 @@ impl Plan {
     /// directory and the `change.md` brief — into
     /// `<archive_dir>/<plan.name>-<YYYYMMDD>{.yaml,/}`.
     ///
-    /// Non-`Done` entries refuse the move (`plan-has-outstanding-work`)
-    /// unless `force`. Destination collisions error before any file
-    /// moves. Returns the archived plan path plus `Some(dir)` iff a
-    /// working directory or brief was co-moved.
+    /// Entries that do not project `done` from the fact union refuse
+    /// the move (`plan-has-outstanding-work`) unless `force`.
+    /// Destination collisions error before any file moves. Returns the
+    /// archived plan path plus `Some(dir)` iff a working directory or
+    /// brief was co-moved.
     ///
     /// # Errors
     ///
-    /// `plan-has-outstanding-work` on non-`Done` entries without
-    /// `force`, `plan-archive-target-exists` on a destination
+    /// `plan-has-outstanding-work` on non-`done` projected entries
+    /// without `force`, `plan-archive-target-exists` on a destination
     /// collision, plus load and move I/O failures.
     pub fn archive(
         path: &Path, change_brief_path: &Path, archive_dir: &Path, force: bool, now: Timestamp,
@@ -30,11 +33,14 @@ impl Plan {
         let plan = Self::load(path)?;
 
         if !force {
+            let project_root = path.parent().unwrap_or(path);
+            let events = collect_events(&plan, Layout::new(project_root))?;
+            let ladders = project_ladders(&plan, &events);
             let entries: Vec<String> = plan
                 .entries
                 .iter()
-                .filter(|c| c.status != Status::Done)
-                .map(|c| c.name.to_string())
+                .filter(|entry| ladders.get(&entry.name).copied() != Some(Status::Done))
+                .map(|entry| entry.name.to_string())
                 .collect();
             if !entries.is_empty() {
                 return Err(Error::Diag {

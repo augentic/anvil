@@ -114,7 +114,7 @@ pub fn claim(ownership: &Ownership, slice: SliceName, actor: &str) -> Result<Eve
 
 /// Fixed-point set of `(actor, sequence)` pairs whose lines are
 /// retracted by a live `fact.retracted` fact.
-fn retracted_targets(events: &[Event]) -> BTreeSet<(&str, u64)> {
+pub(crate) fn retracted_targets(events: &[Event]) -> BTreeSet<(&str, u64)> {
     let mut retracted = BTreeSet::new();
     loop {
         let mut next = BTreeSet::new();

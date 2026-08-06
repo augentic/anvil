@@ -258,7 +258,11 @@ async fn merge_failure_parks_built() {
     let metadata =
         std::fs::read_to_string(session.root().join(".emery/slices/greeting/metadata.yaml"))
             .expect("slice still present");
-    assert!(metadata.contains("status: built"), "no commit happened:\n{metadata}");
+    assert!(metadata.contains("completed-at:"), "no commit happened:\n{metadata}");
+    assert!(
+        session.root().join(".emery/slices/greeting/build/patch.yaml").is_file(),
+        "build record must remain when merge parks"
+    );
     assert!(!session.root().join(".emery/specs/greeting/spec.md").exists(), "no baseline write");
 }
 

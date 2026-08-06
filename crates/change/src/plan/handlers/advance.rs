@@ -1,4 +1,4 @@
-//! `plan advance` — the only writer of per-entry `in-progress`.
+//! `plan advance` — claim the next eligible slice (RFC-86 D7).
 
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
@@ -17,13 +17,11 @@ pub struct AdvanceInput {}
 
 /// `emery plan advance`.
 ///
-/// Advance the next eligible `Pending` entry to `InProgress`, or — when
-/// nothing pending is eligible — return an existing in-progress entry
-/// for mid-slice resume. Concurrent in-progress entries are legal
-/// (RFC-86 D23); exclusivity is per-slice claim only. The only writer
-/// of per-entry `in-progress` per workflow §CLI surface. The
-/// projection, persist decision, and conditional `plan.entry.advanced`
-/// event all live in the shared `advance_next` kernel.
+/// Claim the next eligible pending entry (`slice.claimed` +
+/// `plan.entry.advanced`), or — when nothing pending is eligible —
+/// return an existing in-progress entry for mid-slice resume.
+/// Concurrent in-progress entries are legal (RFC-86 D23); exclusivity
+/// is per-slice claim only. Does not rewrite stored `Entry.status`.
 #[derive(Clone, Copy, Debug)]
 pub struct Advance;
 

@@ -93,12 +93,20 @@ async fn author_approve_execute_drains() {
         ]
     );
 
-    // Plan lifecycle: every entry is `done`.
+    // Plan progress projects `done` from archive facts — stored
+    // Entry.status is not rewritten (RFC-86 D2 / S6).
     let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
-    assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
+    let events =
+        project::plan::collect_events(&plan, project::config::Layout::new(&root)).expect("events");
+    let ladders = project::plan::project_ladders(&plan, &events);
+    assert!(
+        ladders.values().all(|status| *status == Status::Done),
+        "projected ladders: {ladders:?}; stored entries: {:?}",
+        plan.entries
+    );
 
     // Baseline merge output with complete provenance.
     let baseline = root.join(".emery/specs/greeting/spec.md");
@@ -233,10 +241,14 @@ async fn preflight_parks_built() {
     .expect_err("execute parks on the failed preflight gate");
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
 
-    // Nothing merged: the slice stays `built`, no baseline, no archive.
+    // Nothing merged: the build record remains, no baseline, no archive.
     let metadata = fs::read_to_string(root.join(".emery/slices/greeting/metadata.yaml"))
         .expect("slice still present");
-    assert!(metadata.contains("status: built"), "{metadata}");
+    assert!(metadata.contains("completed-at:"), "{metadata}");
+    assert!(
+        root.join(".emery/slices/greeting/build/patch.yaml").is_file(),
+        "build record must remain after a parked preflight"
+    );
     assert!(!root.join(".emery/specs/greeting/spec.md").exists());
 
     // Clear the gate and resume through the breakout merge, then the
@@ -294,14 +306,21 @@ async fn postflight_terminal() {
     );
 
     // Non-rollback: the merge committed before the gate ran — baseline
-    // written, slice archived, plan entry `done`.
+    // written, slice archived, plan entry projects `done`.
     assert!(root.join(".emery/specs/greeting/spec.md").is_file());
     assert!(!root.join(".emery/slices/greeting").exists());
     let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
-    assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
+    let events =
+        project::plan::collect_events(&plan, project::config::Layout::new(&root)).expect("events");
+    let ladders = project::plan::project_ladders(&plan, &events);
+    assert!(
+        ladders.values().all(|status| *status == Status::Done),
+        "projected ladders: {ladders:?}; stored entries: {:?}",
+        plan.entries
+    );
 
     // Failed postflight report persists beside the archive.
     let archive = fs::read_dir(root.join(".emery/archive"))

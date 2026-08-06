@@ -49,10 +49,8 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         in_progress: count(&ladders, Status::InProgress),
         done: count(&ladders, Status::Done),
     };
-    let active = plan
-        .entries
-        .iter()
-        .find(|e| ladders.get(&e.name).copied() == Some(Status::InProgress));
+    let active =
+        plan.entries.iter().find(|e| ladders.get(&e.name).copied() == Some(Status::InProgress));
 
     let resolution = match active {
         Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply, &events)?,
@@ -82,30 +80,28 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
 /// project the sticky `merge-postflight-failed` stop for that slice.
 fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
     let mut resolution = None;
-    scan_union(events, |event| {
-        match &event.kind {
-            EventKind::SliceMergePostflightFailed { slice_name, reason }
-                if plan.entries.iter().any(|e| e.name == *slice_name) =>
-            {
-                let entry = plan.entries.iter().find(|e| e.name == *slice_name);
-                if let Some(entry) = entry {
-                    resolution = Some(Resolution::stop_for(
-                        StopReason::MergePostflightFailed,
-                        Some(reason.clone()),
-                        entry,
-                        Some(LoopStep::Merge),
-                    ));
-                }
-                ControlFlow::Break(())
+    scan_union(events, |event| match &event.kind {
+        EventKind::SliceMergePostflightFailed { slice_name, reason }
+            if plan.entries.iter().any(|e| e.name == *slice_name) =>
+        {
+            let entry = plan.entries.iter().find(|e| e.name == *slice_name);
+            if let Some(entry) = entry {
+                resolution = Some(Resolution::stop_for(
+                    StopReason::MergePostflightFailed,
+                    Some(reason.clone()),
+                    entry,
+                    Some(LoopStep::Merge),
+                ));
             }
-            EventKind::PlanMergePostflightAcknowledged { slice_name }
-                if plan.entries.iter().any(|e| e.name == *slice_name) =>
-            {
-                resolution = None;
-                ControlFlow::Break(())
-            }
-            _ => ControlFlow::Continue(()),
+            ControlFlow::Break(())
         }
+        EventKind::PlanMergePostflightAcknowledged { slice_name }
+            if plan.entries.iter().any(|e| e.name == *slice_name) =>
+        {
+            resolution = None;
+            ControlFlow::Break(())
+        }
+        _ => ControlFlow::Continue(()),
     });
     resolution
 }

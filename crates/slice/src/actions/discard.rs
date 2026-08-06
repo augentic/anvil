@@ -6,7 +6,7 @@ use error::Error;
 use jiff::Timestamp;
 
 use super::archive::archive;
-use crate::{LifecycleStatus, SliceMetadata};
+use crate::SliceMetadata;
 
 /// Transition a slice to `Dropped`, record the optional reason, then
 /// archive. Returns the final archive path.
@@ -25,7 +25,8 @@ pub fn discard(
     slice_dir: &Path, archive_dir: &Path, reason: Option<&str>, now: Timestamp,
 ) -> Result<(SliceMetadata, PathBuf), Error> {
     let mut metadata = SliceMetadata::load(slice_dir)?;
-    metadata.status = metadata.status.transition(LifecycleStatus::Dropped)?;
+    // RFC-86 D2 / D24: drop membership is `dropped_at`, not the stored
+    // lifecycle enum. Leave `status` untouched as a non-authority field.
     metadata.dropped_at = Some(now);
     if let Some(text) = reason {
         metadata.drop_reason = Some(text.to_string());

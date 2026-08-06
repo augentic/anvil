@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 
 use error::Error;
 use jiff::Timestamp;
-use project::config::{Layout, Mutation, with_state};
+use project::config::Layout;
 use project::journal::{self, EventKind};
-use project::plan::{Plan, Status};
+use project::plan::{Plan, Status, collect_events, project_ladders};
 use project::seam::{self, MergePhase, Target, Workspaces};
 use project::snapshot::CodePatch;
 
@@ -31,31 +31,30 @@ pub struct MergeOutcome {
 /// Merge one built slice (`emery slice merge`).
 ///
 /// Runs target preflight gate → deterministic `slice_merge::commit`
-/// → plan entry `done` → target postflight gate, with each gate's
-/// report schema-gated and persisted. Both gates read the built
+/// (archive fact projects `done`) → target postflight gate, with each
+/// gate's report schema-gated and persisted. Both gates read the built
 /// result code through one read-only private-workspace view of the
 /// slice's captured result snapshot (`build/patch.yaml`); after a
 /// successful postflight, the interim apply writes the patch's
 /// touched paths onto the product tree (journal-visible; deleted when
 /// RFC-89 publication sets own the final seal).
 ///
-/// A preflight failure aborts with the slice still `built`; a
+/// A preflight failure aborts with the slice still built; a
 /// postflight failure (`target-merge-postflight-failed`) is terminal
 /// but non-rollback — the merge stands. A parseable postflight report
 /// is persisted to the archive (including `status: failure`) before
 /// the terminal error returns.
 ///
 /// Re-entry heals a torn merge: when the deterministic commit already
-/// landed (the slice tree is archived at lifecycle `merged`) but the
-/// per-entry `done` stamp is missing, the run stamps the entry and
+/// landed (the slice tree is archived with `merged_at`) the run
 /// returns without a second baseline merge or gate dispatch.
 ///
 /// # Errors
 ///
-/// Completion-gate and preflight failures (slice not `built`,
-/// `target-merge-preflight-failed`), the terminal
-/// `target-merge-postflight-failed`, plus commit, plan-stamp, and
-/// archive I/O failures.
+/// Completion-gate and preflight failures (slice not built / not
+/// claimed in-progress, `target-merge-preflight-failed`), the terminal
+/// `target-merge-postflight-failed`, plus commit and archive I/O
+/// failures.
 #[tracing::instrument(
     name = "slice.merge",
     skip_all,
@@ -67,8 +66,7 @@ pub async fn merge<T: Target + Workspaces>(
     tracing::info!("merge started");
     preflight_completion(layout, slice)?;
     if let Some(outcome) = heal_torn_merge(layout, slice) {
-        stamp_plan_entry_done(layout, slice)?;
-        tracing::info!("merge completed: torn merge healed, entry stamped done");
+        tracing::info!("merge completed: torn merge healed (archive already present)");
         return Ok(outcome);
     }
     let slice_dir = layout.slice_dir(slice);
@@ -280,21 +278,18 @@ fn journal_on_failure<V>(
     result
 }
 
-/// Detect a torn merge left by a crash between the deterministic
-/// commit and the per-entry `done` stamp: the slice tree is gone from
-/// `.emery/slices/` and its newest archive reads lifecycle `merged`.
-/// Returns the outcome to hand back after the caller re-stamps the
-/// entry; the baseline fold and archive stand, so no merge work (and
-/// no gate dispatch) re-runs. Detection is best-effort read-only —
-/// any unreadable archive falls through to the normal merge path and
-/// its errors.
+/// Detect a torn merge left by a crash after the deterministic commit:
+/// the slice tree is gone from `.emery/slices/` and its newest archive
+/// carries `merged_at`. Returns the outcome without re-running merge
+/// work. Detection is best-effort read-only — any unreadable archive
+/// falls through to the normal merge path and its errors.
 fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
     if layout.slice_dir(slice).exists() {
         return None;
     }
     let archive_path = latest_archive(&layout.archive_dir(), slice)?;
     let metadata = project::slice::SliceMetadata::load(&archive_path).ok()?;
-    if metadata.status != project::slice::LifecycleStatus::Merged {
+    if metadata.merged_at.is_none() {
         return None;
     }
     Some(MergeOutcome {
@@ -322,11 +317,11 @@ fn latest_archive(archive_dir: &Path, slice: &str) -> Option<PathBuf> {
 }
 
 /// Read-only completion preflight, run before the `slice.merge.*`
-/// bracket and any baseline write: a plan-owned merge must be able to
-/// stamp its entry `done` (`in-progress → done` is the only legal
-/// edge), so an absent or not-yet-advanced entry refuses here instead
-/// of failing after the baseline and archive have already been mutated.
-/// Standalone merges (no `plan.yaml`) skip the gate entirely.
+/// bracket and any baseline write: a plan-owned merge requires the
+/// entry to project `in-progress` from the fact union (claim /
+/// advance), so an absent or not-yet-advanced entry refuses here
+/// instead of failing after the baseline and archive have already been
+/// mutated. Standalone merges (no `plan.yaml`) skip the gate entirely.
 fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     if !layout.plan_path().exists() {
         return Ok(());
@@ -335,13 +330,16 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     let Some(entry) = plan.entries.iter().find(|e| e.name == slice) else {
         return Err(plan.entry_not_found(slice));
     };
-    if entry.status != Status::InProgress {
+    let events = collect_events(&plan, layout)?;
+    let ladders = project_ladders(&plan, &events);
+    let status = ladders.get(&entry.name).copied().unwrap_or(Status::Pending);
+    if status != Status::InProgress {
         return Err(Error::validation_failed(
             "slice-merge-entry-not-in-progress",
-            "a plan-owned merge stamps its entry `done` from `in-progress`",
+            "a plan-owned merge requires a projected `in-progress` entry",
             format!(
-                "plan entry `{slice}` is `{}`; advance it with `emery plan advance` before merging",
-                entry.status
+                "plan entry `{slice}` projects `{status}`; advance it with `emery plan advance` \
+                 before merging"
             ),
         ));
     }
@@ -349,8 +347,8 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
 }
 
 /// Validator + apply core: commit the deltas, journal the skipped git
-/// leg, append the outcome-ledger entry, and stamp the plan entry
-/// `done`.
+/// leg, and append the outcome-ledger entry (`slice.archive.created`
+/// projects plan-entry `done`).
 fn commit_run(
     layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
 ) -> Result<MergeOutcome, Error> {
@@ -374,8 +372,6 @@ fn commit_run(
     );
 
     emit_archive_created(layout, now, slice, &merged);
-
-    stamp_plan_entry_done(layout, slice)?;
 
     let today = now.strftime("%Y-%m-%d").to_string();
     let archive_path = archive_dir.join(format!("{today}-{slice}"));
@@ -416,20 +412,4 @@ fn emit_archive_created(layout: Layout<'_>, now: Timestamp, slice: &str, merged:
         },
         "slice.archive.created",
     );
-}
-
-/// workflow §Workflow: the merge step is the sole writer of per-entry
-/// `done`. Standalone merges without `plan.yaml` skip this step
-/// silently, matching the native verb. [`preflight_completion`]
-/// guarantees the entry exists and is `in-progress` before any merge
-/// write; `Plan::transition` re-checks the edge on the re-read state.
-fn stamp_plan_entry_done(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
-    if !layout.plan_path().exists() {
-        return Ok(());
-    }
-    with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
-        plan.transition(slice, Status::Done)?;
-        Ok(Mutation::changed(()))
-    })?;
-    Ok(())
 }

@@ -11,7 +11,7 @@ use omnia_testkit::model::Harness;
 use probe::ModelFactory;
 use probe::case::{self, Case, WorkflowUntil};
 use project::plan::Status;
-use project::slice::{LifecycleStatus, SliceMetadata};
+use project::slice::SliceMetadata;
 use tempfile::TempDir;
 
 fn catalog() -> Catalog {
@@ -347,7 +347,10 @@ async fn build_case_reaches_built() {
     let root = sandbox.join("greeting-build");
     let metadata = SliceMetadata::load(&root.join(".emery/slices/greeting"))
         .expect("slice metadata after build");
-    assert_eq!(metadata.status, LifecycleStatus::Built);
+    assert!(
+        metadata.completed_at.is_some(),
+        "build stamps completed_at (LifecycleStatus is not authority)"
+    );
     assert!(
         root.join(".emery/slices/greeting/build/report.yaml").is_file(),
         "the authoritative build report is persisted"

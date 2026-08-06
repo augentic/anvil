@@ -1,7 +1,8 @@
-//! Lifecycle state machine for slice progression
-//! (`Refining → Refined → Built → Merged`, plus `* → Dropped` from any
-//! non-terminal state). [`LifecycleStatus::transition`] is the only
-//! sanctioned mutator.
+//! Stored lifecycle labels on `metadata.yaml` (non-authority bridge).
+//!
+//! Progress projects from artifacts and facts (RFC-86 D2).
+//! [`LifecycleStatus::transition`] remains for edge validation; phase
+//! writers no longer treat the enum as authority.
 
 use error::Error;
 

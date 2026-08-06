@@ -147,18 +147,6 @@ pub struct Entry {
 }
 
 impl Plan {
-    /// Computed predicate (workflow §Workflow vocabulary): `true` when
-    /// every entry has reached terminal `done` status.
-    ///
-    /// Empty plans report drained vacuously — there is no work left
-    /// to drain. "Drained" is derived from per-entry [`Status`] at
-    /// read time and never stored. Concurrent `in-progress` entries
-    /// are legal (RFC-86 D23); drained means every entry is `done`.
-    #[must_use]
-    pub(crate) fn is_drained(&self) -> bool {
-        self.entries.iter().all(|e| e.status == Status::Done)
-    }
-
     /// The shared `plan-entry-not-found` failure for `name`: the
     /// detail lists the plan's entry names so a typo'd entry reads as
     /// a typo, not a missing plan.
