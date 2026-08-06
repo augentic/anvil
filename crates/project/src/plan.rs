@@ -14,6 +14,7 @@ pub mod doctor;
 mod execution;
 pub mod io;
 pub mod model;
+pub mod pins;
 pub mod propose;
 pub mod remove;
 pub mod scaffold;
@@ -34,6 +35,7 @@ pub use propose::{
     GateProse, ProjectRef, ProposalRequest, ProposalResponse, apply_greenfield_seed, build_request,
     resolve_target, resolve_topology,
 };
+pub use pins::{close as close_source_pins, file_cid, value_cid};
 pub use scaffold::scaffold;
 pub use scope::in_scope;
 pub use status::{

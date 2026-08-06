@@ -1,6 +1,6 @@
 //! The plan-authoring orchestrator behind `/emery:plan`: scaffold →
-//! survey fan-out → reconciliation judgment → persist → review prose →
-//! `plan validate` doctor sweep.
+//! survey fan-out → source `cid` pin close → reconciliation judgment →
+//! persist → review prose → `plan validate` doctor sweep.
 //!
 //! The run exits with the plan authored and the outcome carrying the
 //! literal execute hint — the orchestrator never runs the plan
@@ -93,6 +93,13 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     }
     scaffold(layout, name, bindings, force)?;
     let surveyed = super::survey_all(sources, resolver, paths, now).await?;
+
+    // Source set is closed: record per-source tree `cid` pins before
+    // reconciliation (RFC-86 D4 / D25). Refine later copies these into
+    // `base.yaml`; exact store population is not this step's job.
+    with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
+        project::plan::close_source_pins(plan, paths.project_root()).map(Mutation::changed)
+    })?;
 
     let discovery = Discovery::load(&layout.discovery_path())?;
     let topology = load_topology(resolver, paths)?;

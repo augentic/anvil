@@ -81,9 +81,19 @@ async fn force_replaces_replaceable() {
     let plan_path = session.root().join("plan.yaml");
     let before = Plan::load(&plan_path).expect("plan after first author");
     assert!(!before.entries.is_empty(), "first author wrote slices");
+    let main = before.sources.get("main").expect("main source");
+    let first_cid = main.cid.clone().expect("main cid after author");
+    assert_eq!(first_cid, project::plan::value_cid("The greeting service."));
 
     let replaced = author(&session, true).await.expect("force re-authors");
     assert_eq!(replaced.slices, ["greeting"]);
+
+    let after = Plan::load(&plan_path).expect("plan after force");
+    assert_eq!(
+        after.sources.get("main").and_then(|b| b.cid.as_ref()),
+        Some(&first_cid),
+        "force re-author re-pins the same value to the same cid"
+    );
 
     assert_projected_pending(session.root());
 }

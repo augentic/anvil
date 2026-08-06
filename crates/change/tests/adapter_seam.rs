@@ -106,6 +106,7 @@ async fn survey_ensures_pinned_binding() {
             version: Some(semver::Version::new(1, 0, 0)),
             path: None,
             value: Some("The greeting service.".to_string()),
+            cid: None,
         },
     );
     let plan_path = session.root().join("plan.yaml");

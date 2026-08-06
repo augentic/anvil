@@ -56,9 +56,11 @@ pub struct Plan {
     /// Optional in the YAML; defaults to an empty map.
     ///
     /// Each value is a structured [`SourceBinding`] carrying the
-    /// kebab-case source adapter name plus exactly one of `path`
+    /// kebab-case source adapter name, exactly one of `path`
     /// (filesystem path or repo location) or `value` (literal payload
-    /// supplied directly to the adapter — used by `intent`).
+    /// supplied directly to the adapter — used by `intent`), and —
+    /// after plan author closes the source set — the tree `cid`
+    /// (RFC-86 D4 / D25).
     #[serde(default)]
     pub sources: BTreeMap<String, SourceBinding>,
     /// Ordered list of plan entries. Order is the intended execution
