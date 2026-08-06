@@ -44,8 +44,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S16 | Gap inventory + shared-lead rollup | `done` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
 | S17 | Ready/Authorized + status next-actions | `done` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
 | S18 | plan.execute.started + --waive CLI | `done` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
-| S19 | Execute gap gate before build | `next` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
-| S20 | refine-under-epoch + shift-left fixtures | `pending` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
+| S19 | Execute gap gate before build | `done` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
+| S20 | refine-under-epoch + shift-left fixtures | `next` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
 | S21 | Remaining Phase C acceptance fixtures | `pending` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
 | S22 | D20 sibling docs + operator prose | `pending` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
 | S23 | Full cargo make ci + acceptance closeout | `pending` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
@@ -133,6 +133,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S18
 - Finding: `plan execute` validates `--waive` / `--reason` before `guest.lock`, then appends `plan.execute.started` with `closed-plan` coverage (`plan-digest` = sha256 of `plan.yaml` bytes; per in-scope leaf `existing{dir_cid(specs)}` when model/spec artifacts exist else `refine-under-epoch`; optional `unknown-waivers`). CLI: repeatable `--waive <slice>/<req>` + required `--reason` (one reason applied to every selector). `plan-waiver-invalid` for orphan reason, missing reason, absent gap, or non-unknown (incl. conflict). Wave `build-authorization` now binds the newest covering epoch (sequence `0` only for breakout builds with no epoch). Gap gate before build stays S19 (`plan-epoch-stale` deferred). No `plan approve` / `plan refine`.
 - Plan change: none beyond status (S18=done, S19=next).
+
+### 2026-08-07 — S19
+- Finding: Execute calls `enforce_before_build` immediately before `slice::orchestrate::build` (hard `Err`, not `plan-execute-stopped`). Policy is per leaf being built: `[conflict]` → `plan-gaps-unresolved` (never waiveable); `[unknown]` blocks unless a matching waiver nests on the newest covering `plan.execute.started`; `[divergence]` listed on failure detail / inventory but allowed. Epoch freshness: `plan-digest` + every in-scope `existing` spec digest must match live artifacts (`plan-epoch-stale`); `refine-under-epoch` leaves skip digest compare. Failure detail renders the full gap inventory. Public `change::orchestrate::enforce_before_build` supports the stale fixture without mid-loop mutation (execute always restamps a fresh epoch at start). ReviewGaps still maps to Build so waived unknowns can proceed.
+- Plan change: none beyond status (S19=done, S20=next).
 ```
 
 ### Session template (copy into each agent prompt)

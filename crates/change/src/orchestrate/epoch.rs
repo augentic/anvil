@@ -2,7 +2,8 @@
 //!
 //! Assembles typed `closed-plan` coverage, validates per-requirement
 //! `--waive` selectors against the gap inventory, and appends
-//! `plan.execute.started`. Gap gating before build stays S19.
+//! `plan.execute.started`. Gap gating before build is
+//! [`super::gap_gate`].
 
 use std::collections::BTreeMap;
 use std::path::Path;

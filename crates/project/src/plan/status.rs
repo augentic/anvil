@@ -34,7 +34,8 @@ pub enum NextActionKind {
     /// In-scope slices are refined but the clean gap policy fails —
     /// close conflicts / unknowns, or start execute with per-req
     /// `--waive` for unknowns (RFC-86 D22). Not an execute-loop
-    /// phase; the loop maps this to build until the gap gate lands.
+    /// phase; the loop maps this to build and the gap gate enforces
+    /// waivers / refuses unresolved findings.
     ReviewGaps,
     /// Halt the loop; [`StatusBody::stop`] carries the reason.
     Stop,
@@ -194,10 +195,7 @@ pub struct StatusBody {
     pub ready: bool,
     /// Authorized milestone (RFC-86 D22): a covering
     /// `plan.execute.started` epoch exists. Distinct from Ready even
-    /// when the waive list is empty. The execute writer that appends
-    /// the fact lands in a later session — until then this stays
-    /// `false` unless a fixture stamps the event. Never named
-    /// `approved`.
+    /// when the waive list is empty. Never named `approved`.
     pub authorized: bool,
     /// Stop classification, populated when [`Self::action`] is
     /// [`NextActionKind::Stop`].

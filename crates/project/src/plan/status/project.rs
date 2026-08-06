@@ -188,8 +188,8 @@ fn assemble(
     gaps: super::super::gaps::GapsBody, milestones: Milestones,
 ) -> StatusBody {
     // When every in-scope slice is refined but Ready fails, surface
-    // review-gaps instead of build (D22). Execute still maps
-    // ReviewGaps → build until the gap gate lands (S19).
+    // review-gaps instead of build (D22). Execute maps ReviewGaps →
+    // build; the gap gate enforces waivers / refuses unresolved gaps.
     if milestones.all_refined
         && !milestones.ready
         && matches!(resolution.action, NextActionKind::Build)

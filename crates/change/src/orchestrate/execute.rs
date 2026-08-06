@@ -174,6 +174,12 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                     .map(drop)
             }
             LoopStep::Build => {
+                // D13 / D15–D17: gap policy + epoch freshness refuse
+                // build before the target orchestration runs. Hard
+                // validation (not a typed stop) so drivers see
+                // `plan-gaps-unresolved` / `plan-epoch-stale`.
+                let plan = Plan::load(&layout.plan_path())?;
+                super::enforce_before_build(layout, &plan, &slice)?;
                 slice::orchestrate::build(caps.targets, layout, now, &slice, &adapter.manifest)
                     .instrument(span)
                     .await
@@ -250,9 +256,9 @@ fn dispatch_status(
             })
         }
         NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
-        // ReviewGaps is status when refined but not Ready (D22). Until
-        // the execute gap gate lands, keep walking build — S19 owns
-        // blocking on unresolved gaps.
+        // ReviewGaps is status when refined but not Ready (D22). The
+        // loop still attempts build; `enforce_before_build` applies
+        // waivers on the covering epoch and refuses unresolved gaps.
         NextActionKind::Build | NextActionKind::ReviewGaps => {
             ControlFlow::Continue(Some(LoopStep::Build))
         }
