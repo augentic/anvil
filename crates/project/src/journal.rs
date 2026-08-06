@@ -13,8 +13,9 @@
 //!
 //! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
 //! `event`; the append plus dropped-event sidecar in `append`; the
-//! best-effort emit helpers in `emit`; the `emery journal show`
-//! operation in [`handlers`]. Writes route through the internal
+//! exclusive per-slice claim projection in [`claim`] (RFC-86 D7 /
+//! D23); the best-effort emit helpers in `emit`; the `emery journal
+//! show` operation in [`handlers`]. Writes route through the internal
 //! appenders only — CLI verbs append their own events as a side
 //! effect of the operation. This root owns the read side (per-actor
 //! union, forward reads, recent-tail projection, and the private
@@ -25,6 +26,7 @@
 //! [workflow §Observability]: ../../../../docs/standards/workflow.md#observability
 
 mod append;
+pub mod claim;
 mod emit;
 mod event;
 pub mod handlers;

@@ -28,8 +28,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S0 | Materialize living plan | `done` | file exists; S0=done, S1=next | `docs(rfc-86): add multi-session implementation plan` |
 | S1 | Per-actor event log I/O | `done` | `cargo nextest run -p emery-project` (journal focus); lint if cheap | `feat(project): per-actor event logs with union read` |
 | S2 | Retarget emit + journal show | `done` | journal/show + emit tests; `rg journal\\.jsonl` | `feat(project): route journal emit and show through per-actor logs` |
-| S3 | Claim/release/retract + claim kernel | `next` | claim conflict + concurrent different-slice tests | `feat(project): exclusive per-slice claim facts` |
-| S4 | In-scope predicate; retire single-active-entry | `pending` | plan validate / advance tests | `refactor(plan): retire single-active-entry; add in-scope predicate` |
+| S3 | Claim/release/retract + claim kernel | `done` | claim conflict + concurrent different-slice tests | `feat(project): exclusive per-slice claim facts` |
+| S4 | In-scope predicate; retire single-active-entry | `next` | plan validate / advance tests | `refactor(plan): retire single-active-entry; add in-scope predicate` |
 | S5 | Fact-based plan status projection | `pending` | `crates/change/tests/plan_status.rs` | `feat(plan): compute plan status from artifacts and facts` |
 | S6 | Writers stop mutating stored status ladders | `pending` | full_loop / refine / build / merge tests | `refactor(workflow): express advance and phase progress as facts` |
 | S7 | Delete stored status/lifecycle fields | `pending` | `cargo make check` | `refactor!: remove stored plan-entry and slice lifecycle status fields` |
@@ -69,6 +69,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-06 — S2
 - Finding: Dual-write and legacy `path` / single-file `read` / reverse-tail helpers removed. `show`, `read_recent`, and `scan_recent` now load `read_union`. Emit already went through `append_one` — only the bridge write needed deleting. Remaining `journal.jsonl` mentions in Rust are negative assertions (file must not exist); `docs/reference/*` layout trees still name the old file and are deferred to S22 with the broader operator-prose pass.
 - Plan change: none beyond status (S2=done, S3=next).
+
+### 2026-08-06 — S3
+- Finding: Appendix names `fact.retracted` explicitly and lists claim/release without dotted ids; wired as `slice.claimed` / `slice.released` / `fact.retracted` (payloads `slice-name`; retract targets `{ actor, sequence }`). Pure kernel at `journal::claim` projects live ownership from the union (release by owner; retracted facts omitted via fixed-point), and `claim` / `ensure_claimable` refuse same-slice second actors with `slice-claim-conflict` (exit 2). Not yet wired into plan advance/undo (S6) or refine (later).
+- Plan change: none beyond status (S3=done, S4=next).
 ```
 
 ### Session template (copy into each agent prompt)

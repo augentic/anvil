@@ -147,6 +147,9 @@ impl Error {
                 "init-adapter-required" => Some(
                     "`emery init <adapter>` for a regular project, or `emery init --workspace` for a workspace.\nsee: docs/init.md",
                 ),
+                "slice-claim-conflict" => Some(
+                    "claim a different slice, or wait for the current owner to release / retract their claim",
+                ),
                 _ => None,
             },
             _ => None,

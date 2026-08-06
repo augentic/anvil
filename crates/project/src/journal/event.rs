@@ -411,6 +411,32 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         decisions: Vec<String>,
     },
+    /// An actor claimed exclusive ownership of one slice (RFC-86 D7 /
+    /// D23). The claiming actor is the event's envelope `actor`, not a
+    /// payload field. Claims never create build/merge authorization.
+    #[serde(rename = "slice.claimed", rename_all = "kebab-case")]
+    SliceClaimed {
+        /// Claimed slice.
+        slice_name: SliceName,
+    },
+    /// The claiming actor released its exclusive ownership of one
+    /// slice. Only a live claim by the releasing envelope `actor`
+    /// clears ownership under the claim kernel.
+    #[serde(rename = "slice.released", rename_all = "kebab-case")]
+    SliceReleased {
+        /// Released slice.
+        slice_name: SliceName,
+    },
+    /// A previously appended fact is treated as absent for projection.
+    /// Identifies the retracted line by its per-actor `(actor,
+    /// sequence)` identity inside the fact union.
+    #[serde(rename = "fact.retracted", rename_all = "kebab-case")]
+    FactRetracted {
+        /// Actor file that holds the retracted line.
+        actor: String,
+        /// 1-based sequence of the retracted line in that actor's file.
+        sequence: u64,
+    },
 }
 
 /// Closed `action` enum on [`EventKind::PlanAmendAuthorityOverride`].
