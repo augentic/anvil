@@ -273,7 +273,7 @@ pub(super) fn resolve_entry(
 /// project-bound and the slot exists, else the project root. Mirrors
 /// the workspace routing under which phase work wrote the slice tree
 /// and journal.
-pub(super) fn resolve_work_root(layout: Layout<'_>, entry: &Entry) -> PathBuf {
+pub fn resolve_work_root(layout: Layout<'_>, entry: &Entry) -> PathBuf {
     if let Some(project) = &entry.project {
         let slot = layout.project_dir().join("workspace").join(project);
         if slot.is_dir() {

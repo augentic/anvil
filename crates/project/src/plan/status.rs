@@ -12,6 +12,8 @@
 
 use serde::Serialize;
 
+use super::gaps::GapsBody;
+
 mod project;
 
 pub use project::plan_status_body;
@@ -181,6 +183,9 @@ pub struct StatusBody {
     /// [`NextActionKind::Stop`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<StopBody>,
+    /// Typed gap inventory for in-scope slices (RFC-86 Gaps / D18 /
+    /// D19 / D24). Same projection as `emery plan gaps`.
+    pub gaps: GapsBody,
 }
 
 /// Stop-conditions drained string: `drained — run /emery:finalize <name>`.
@@ -220,6 +225,10 @@ impl crate::handler::Render for StatusBody {
             && let Some(resume) = &self.resume
         {
             writeln!(w, "resume: {resume}")?;
+        }
+        if !self.gaps.is_empty() {
+            writeln!(w)?;
+            self.gaps.render(w)?;
         }
         Ok(())
     }

@@ -12,6 +12,7 @@ pub mod authority_override;
 pub mod create;
 pub mod doctor;
 mod execution;
+pub mod gaps;
 pub mod io;
 pub mod model;
 pub mod pins;
@@ -37,6 +38,7 @@ pub use propose::{
     resolve_target, resolve_topology,
 };
 pub use scaffold::scaffold;
+pub use gaps::{GapRow, GapsBody, SharedLeadRollup, plan_gaps_body};
 pub use scope::in_scope;
 pub use status::{
     LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,

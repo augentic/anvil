@@ -250,6 +250,13 @@ where
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`.\n\nProjects `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (slot-aware in workspace mode), and the journal tail. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` / `target.merge.wave-postflight-failed` journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing — `plan advance` stays the only writer of per-entry `in-progress`."
     );
+    route!(
+        ["plan", "gaps"],
+        plan::GapsArgs,
+        ::change::plan::handlers::Gaps,
+        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions",
+        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions.\n\nDerived from on-disk `model.yaml` / `specs/<domain>/spec.md` — not a second file to keep in sync. Dropped slices are excluded. Shared-lead rollup is presentation only; waivers and the execute gap gate stay per-requirement."
+    );
     route!(["plan", "add"], plan::AddArgs, ::change::plan::handlers::Add, "Add a new plan entry");
     route!(
         ["plan", "amend"],
@@ -367,6 +374,7 @@ convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than,
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
 convert!(plan::AdvanceArgs => ::change::plan::handlers::AdvanceInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
+convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
 convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });

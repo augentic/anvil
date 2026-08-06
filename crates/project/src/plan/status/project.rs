@@ -9,6 +9,7 @@ use super::super::execution::{
     JournalOverlay, Resolution, collect_events, next_eligible, project_ladders, resolve_entry,
     scan_union,
 };
+use super::super::gaps::plan_gaps_body;
 use super::super::model::{Entry, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
@@ -70,7 +71,8 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
             }
         }
     };
-    Ok(assemble(plan, counts, active, &ladders, resolution))
+    let gaps = plan_gaps_body(plan, layout)?;
+    Ok(assemble(plan, counts, active, &ladders, resolution, gaps))
 }
 
 /// When the chronologically latest among
@@ -112,6 +114,7 @@ fn count(ladders: &std::collections::HashMap<SliceName, Status>, status: Status)
 fn assemble(
     plan: &Plan, counts: StatusCounts, active: Option<&Entry>,
     ladders: &std::collections::HashMap<SliceName, Status>, resolution: Resolution,
+    gaps: super::super::gaps::GapsBody,
 ) -> StatusBody {
     let next_action = match (resolution.action, &resolution.slice, &resolution.stop) {
         (NextActionKind::Drained, ..) => "drained".to_string(),
@@ -134,6 +137,7 @@ fn assemble(
         slice: resolution.slice,
         project: resolution.project,
         stop: resolution.stop,
+        gaps,
     }
 }
 

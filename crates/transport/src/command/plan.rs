@@ -121,6 +121,14 @@ pub struct AdvanceArgs {}
 )]
 pub struct StatusArgs {}
 
+/// Arguments for `plan gaps`.
+#[derive(Clone, Copy, Debug, Args)]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "clap's `Args` derive requires a braced struct"
+)]
+pub struct GapsArgs {}
+
 /// Arguments for `plan execute`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(

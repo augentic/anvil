@@ -41,8 +41,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S13 | Build from pins; retire freeze + patch.yaml | `done` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
 | S14 | Wave commit + identity maps; keep apply | `done` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
 | S15 | Pin drift diagnostics + Phase B fixtures | `done` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
-| S16 | Gap inventory + shared-lead rollup | `next` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
-| S17 | Ready/Authorized + status next-actions | `pending` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
+| S16 | Gap inventory + shared-lead rollup | `done` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
+| S17 | Ready/Authorized + status next-actions | `next` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
 | S18 | plan.execute.started + --waive CLI | `pending` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
 | S19 | Execute gap gate before build | `pending` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
 | S20 | refine-under-epoch + shift-left fixtures | `pending` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
@@ -121,6 +121,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S15
 - Finding: Validate folds non-blocking review signals `slice-base-drifted` (baseline-spec pin ≠ live `.emery/specs/` digest) and `slice-evidence-stale` (bound source pin ≠ live `source_cid`) when `base.yaml` exists — Adapter-path advisories like synopsis-thin, so validate still PASSes. Exported `project::plan::source_cid` for live recompute. Phase B fixtures: `change/tests/pin_build_record.rs` (refine→build→merge asserts base.yaml + BuildRecord + wave facts + interim apply + no `patch.yaml` authority; drift injection for both review codes); `slice/tests/merge_identity.rs` adds two-slice ADDED collision-free wave commit (Acceptance #3). `merge-base-drifted` already landed in S14.
 - Plan change: none beyond status (S15=done, S16=next).
+
+### 2026-08-07 — S16
+- Finding: Gap inventory lands in `project::plan::gaps` — pure projection of in-scope `(slice, req, status)` for `unknown|conflict|divergence` from `model.yaml` (else `specs/*/spec.md`), joined to contributing `(source, lead)` via plan bindings. Shared-lead presentation rollup annotates multi-homed rows and suggests re-refine selectors (D19); dropped slices excluded via `in_scope` (D24). Surfaced on `plan status` (`StatusBody.gaps`) and a dedicated read-only `emery plan gaps` verb. Execute gap gate / Ready stay later sessions.
+- Plan change: none beyond status (S16=done, S17=next).
 ```
 
 ### Session template (copy into each agent prompt)
