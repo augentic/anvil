@@ -437,6 +437,20 @@ pub enum EventKind {
         /// 1-based sequence of the retracted line in that actor's file.
         sequence: u64,
     },
+    /// An immutable one-member target wave was written before build
+    /// (RFC-86 D9). The manifest lives at
+    /// `.emery/targets/<target>/waves/<digest>.yaml`; `digest` is the
+    /// content address (`sha256:…`) of that YAML.
+    #[serde(rename = "target.wave.opened", rename_all = "kebab-case")]
+    TargetWaveOpened {
+        /// Target key under `.emery/targets/` (project name in the
+        /// in-place cut).
+        target: String,
+        /// Manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// The sole member's slice name.
+        slice_name: SliceName,
+    },
 }
 
 /// Closed `action` enum on [`EventKind::PlanAmendAuthorityOverride`].

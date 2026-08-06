@@ -37,8 +37,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S9 | Source cid pins at plan author | `done` | author/reconciliation pin assertions | `feat(change): record source cid pins at plan author` |
 | S10 | Refine writes base.yaml | `done` | refine integration test asserts `base.yaml` | `feat(slice): write refine-time base.yaml pins` |
 | S11 | Slice-local REQ ids + MODIFIED digests | `done` | synthesis local-id + modified-digest tests | `feat(slice): mint slice-local requirement ids until wave commit` |
-| S12 | One-member wave manifests + target.wave.opened | `next` | wave write/load tests | `feat(project): one-member target wave manifests and open fact` |
-| S13 | Build from pins; retire freeze + patch.yaml | `pending` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
+| S12 | One-member wave manifests + target.wave.opened | `done` | wave write/load tests | `feat(project): one-member target wave manifests and open fact` |
+| S13 | Build from pins; retire freeze + patch.yaml | `next` | slice build tests + `cargo make check` affected | `feat(slice): build from recorded pins into fact-substrate records` |
 | S14 | Wave commit + identity maps; keep apply | `pending` | merge identity + postflight tests | `feat(slice): commit one-member waves with requirement identity maps` |
 | S15 | Pin drift diagnostics + Phase B fixtures | `pending` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
 | S16 | Gap inventory + shared-lead rollup | `pending` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
@@ -105,6 +105,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S11
 - Finding: Synthesis `IdAllocator` is slice-local (`REQ-001..N` in declaration order; baseline numbers ignored). `baseline-id` stays on the projected model for MODIFIED rows; kernel stamps `baseline-digest: sha256:…` over the baseline requirement body from `BaselineIndex` (index now stores bodies, not titles). Render classifies MODIFIED via `baseline_id.is_some()` (projected ids no longer match baseline). Wave-commit remapping / drifted-MODIFIED rejection remain S14/S15. Embedded synthesis prompts updated to match.
 - Plan change: none beyond status (S11=done, S12=next).
+
+### 2026-08-07 — S12
+- Finding: One-member wave types land in `project::wave` at `.emery/targets/<target>/waves/<bare-hex>.yaml` (stand-in under flat `.emery/`). Manifest fields: `target`, `base` (`SnapshotId`), `members[]` (`slice` + `inputs.spec`), `depends-on`, `build-authorization` (`{ actor, sequence }` epoch ref). `Wave::open` write-onces the content-addressed YAML and appends `target.wave.opened` (`target`, `digest`, `slice-name`). Not wired into build orchestration (S13). `cli-contract` event table updated for the new id; broader workflow/AGENTS event prose stays S22.
+- Plan change: none beyond status (S12=done, S13=next).
 ```
 
 ### Session template (copy into each agent prompt)

@@ -17,7 +17,7 @@ fn header() -> ProjectionHeader {
     }
 }
 
-fn baseline_spec() -> &'static str {
+const fn baseline_spec() -> &'static str {
     "### Requirement: Session timeout\n\n\
      ID: REQ-007\n\
      Sources: [docs]\n\
@@ -53,7 +53,7 @@ fn draft(yaml: &str) -> SliceModel {
 fn mints_slice_local_ids_ignoring_baseline_numbers() {
     let (_tmp, baseline) = stage_baseline(baseline_spec());
     let model = draft(
-        r#"
+        r"
 requirements:
   - title: sessions expire after inactivity
     domain: auth
@@ -81,7 +81,7 @@ tasks:
   - id: TASK-002
     text: Wire the reset entry.
     satisfies: [REQ-002]
-"#,
+",
     );
 
     let evidence = BTreeMap::from([
@@ -89,15 +89,9 @@ tasks:
         (("docs".into(), "reset.entry".into()), ClaimKind::Requirement),
     ]);
 
-    let projected = project(
-        model,
-        header(),
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        &evidence,
-        &baseline,
-    )
-    .expect("projects");
+    let projected =
+        project(model, header(), &BTreeMap::new(), &BTreeMap::new(), &evidence, &baseline)
+            .expect("projects");
 
     assert_eq!(projected.requirements[0].id.as_deref(), Some("REQ-001"));
     assert_eq!(projected.requirements[1].id.as_deref(), Some("REQ-002"));
@@ -117,7 +111,7 @@ fn modified_keeps_baseline_id_and_records_body_digest() {
     let expected = format!("sha256:{}", sha256_hex(body.as_bytes()));
 
     let model = draft(
-        r#"
+        r"
 requirements:
   - title: sessions expire after inactivity
     domain: auth
@@ -133,21 +127,15 @@ tasks:
   - id: TASK-001
     text: Align the session TTL.
     satisfies: [REQ-001]
-"#,
+",
     );
 
     let evidence =
         BTreeMap::from([(("docs".into(), "session.timeout".into()), ClaimKind::Requirement)]);
 
-    let projected = project(
-        model,
-        header(),
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        &evidence,
-        &baseline,
-    )
-    .expect("projects");
+    let projected =
+        project(model, header(), &BTreeMap::new(), &BTreeMap::new(), &evidence, &baseline)
+            .expect("projects");
 
     let req = &projected.requirements[0];
     assert_eq!(req.id.as_deref(), Some("REQ-001"));
@@ -162,7 +150,7 @@ fn parallel_slices_may_mint_the_same_local_ids() {
         BTreeMap::from([(("docs".into(), "session.timeout".into()), ClaimKind::Requirement)]);
 
     let left = draft(
-        r#"
+        r"
 requirements:
   - title: left slice change
     domain: auth
@@ -178,10 +166,10 @@ tasks:
   - id: TASK-001
     text: Left task.
     satisfies: [REQ-001]
-"#,
+",
     );
     let right = draft(
-        r#"
+        r"
 requirements:
   - title: right slice change
     domain: auth
@@ -197,7 +185,7 @@ tasks:
   - id: TASK-001
     text: Right task.
     satisfies: [REQ-001]
-"#,
+",
     );
 
     let left = project(
@@ -243,7 +231,7 @@ tasks:
 fn additive_row_clears_baseline_fields() {
     let (_tmp, baseline) = stage_baseline(baseline_spec());
     let model = draft(
-        r#"
+        r"
 requirements:
   - title: brand-new behaviour
     domain: auth
@@ -258,20 +246,14 @@ tasks:
   - id: TASK-001
     text: Implement it.
     satisfies: [REQ-001]
-"#,
+",
     );
     let evidence =
         BTreeMap::from([(("docs".into(), "reset.entry".into()), ClaimKind::Requirement)]);
 
-    let projected = project(
-        model,
-        header(),
-        &BTreeMap::new(),
-        &BTreeMap::new(),
-        &evidence,
-        &baseline,
-    )
-    .expect("projects");
+    let projected =
+        project(model, header(), &BTreeMap::new(), &BTreeMap::new(), &evidence, &baseline)
+            .expect("projects");
 
     assert_eq!(projected.requirements[0].id.as_deref(), Some("REQ-001"));
     assert_eq!(projected.requirements[0].baseline_id, None);

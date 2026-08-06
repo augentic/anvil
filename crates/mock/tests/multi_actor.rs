@@ -40,15 +40,17 @@ impl ActorEnv {
 }
 
 impl Drop for ActorEnv {
-    #[expect(
-        unsafe_code,
-        reason = "restore EMERY_ACTOR after the fixture's actor window"
-    )]
+    #[expect(unsafe_code, reason = "restore EMERY_ACTOR after the fixture's actor window")]
     fn drop(&mut self) {
-        // SAFETY: pair with `ActorEnv::set`; single-threaded test body.
         match &self.prev {
-            Some(value) => unsafe { std::env::set_var("EMERY_ACTOR", value) },
-            None => unsafe { std::env::remove_var("EMERY_ACTOR") },
+            Some(value) => {
+                // SAFETY: pair with `ActorEnv::set`; single-threaded test body.
+                unsafe { std::env::set_var("EMERY_ACTOR", value) };
+            }
+            None => {
+                // SAFETY: pair with `ActorEnv::set`; single-threaded test body.
+                unsafe { std::env::remove_var("EMERY_ACTOR") };
+            }
         }
     }
 }
@@ -115,7 +117,11 @@ fn copy_recursive(from: &Path, to: &Path) {
 }
 
 fn assert_no_git(root: &Path) {
-    assert!(!root.join(".git").exists(), "fixture must not require Git metadata: {}", root.display());
+    assert!(
+        !root.join(".git").exists(),
+        "fixture must not require Git metadata: {}",
+        root.display()
+    );
 }
 
 fn project_lifecycle(root: &Path, slice: &str) -> LifecycleStatus {
@@ -166,8 +172,8 @@ async fn disjoint_refine_after_fact_union() {
             },
         )
         .await
-        .expect("alice refines login-flow");
-    }
+        .expect("alice refines login-flow")
+    };
 
     claim_slice(bob.root(), "bob", "auth", "password-reset", 1);
     {
@@ -179,8 +185,8 @@ async fn disjoint_refine_after_fact_union() {
             },
         )
         .await
-        .expect("bob refines password-reset");
-    }
+        .expect("bob refines password-reset")
+    };
 
     // Lossless fact-tree union: fold bob's actor log + refined slice
     // into alice's change tree.
@@ -270,4 +276,3 @@ async fn sibling_advance_while_peer_claimed() {
     assert_eq!(ladders.get(&login).copied(), Some(Status::InProgress));
     assert_eq!(ladders.get(&session_policy).copied(), Some(Status::InProgress));
 }
-

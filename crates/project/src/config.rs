@@ -223,6 +223,29 @@ impl<'a> Layout<'a> {
         self.events_dir().join(format!("{actor}.jsonl"))
     }
 
+    /// Absolute path to `<project_dir>/.emery/targets/` — per-target
+    /// wave manifests (RFC-86 D9). Pre-RFC-88 stand-in home under the
+    /// flat `.emery/` root.
+    #[must_use]
+    pub fn targets_dir(&self) -> PathBuf {
+        self.emery_dir().join("targets")
+    }
+
+    /// Absolute path to `<project_dir>/.emery/targets/<target>/waves/`.
+    #[must_use]
+    pub fn target_waves_dir(&self, target: &str) -> PathBuf {
+        self.targets_dir().join(target).join("waves")
+    }
+
+    /// Absolute path to one wave manifest,
+    /// `<project_dir>/.emery/targets/<target>/waves/<digest>.yaml`
+    /// where `digest` is the bare 64-hex content address (no `sha256:`
+    /// scheme).
+    #[must_use]
+    pub fn target_wave_path(&self, target: &str, digest: &str) -> PathBuf {
+        self.target_waves_dir(target).join(format!("{digest}.yaml"))
+    }
+
     /// Absolute path to `<project_dir>/registry.yaml` — the platform
     /// catalogue. Platform-level artifact, lives at the repo root.
     #[must_use]
