@@ -289,8 +289,8 @@ where
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Run the drained execute loop in the engine guest: advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). Running execute on an authored plan is the approval — there is no recorded approval state",
-        "Run the drained execute loop in the engine guest: advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nRunning execute on an authored plan is the approval — nothing is stamped or recorded. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch), then advance → refine → build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--waive <slice>/<req>` + `--reason` for open `[unknown]`s",
+        "Run the drained execute loop in the engine guest.\n\nAt start appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6) — per-leaf `existing` spec digests or `refine-under-epoch`, plus any `--waive` unknown-waivers (D17). Then advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nRepeatable `--waive <slice>/<req>` with required `--reason` waives open `[unknown]` requirements only (`[conflict]` is never waiveable; `plan-waiver-invalid` on misuse). No `plan approve` / `plan refine` verbs. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
@@ -375,7 +375,7 @@ convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
 convert!(plan::AdvanceArgs => ::change::plan::handlers::AdvanceInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
 convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { waive, reason });
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });

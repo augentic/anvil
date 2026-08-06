@@ -101,12 +101,20 @@ pub enum ExecuteOutcome {
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
+    waive: &[super::WaiveSelector], reason: Option<&str>,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     refuse_workspace_routing(layout)?;
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
+    // Validate waivers before taking the marker so a bad `--waive`
+    // fails closed without holding `guest.lock`.
+    let plan = Plan::load(&layout.plan_path())?;
+    let unknown_waivers = super::epoch::validate_waivers(layout, &plan, waive, reason)?;
     let _marker = GuestMarker::acquire(layout, now)?;
+    // D6: every execute path appends `plan.execute.started` at start
+    // with typed `closed-plan` coverage (optional unknown-waivers).
+    super::epoch::append_started(layout, &plan, now, unknown_waivers)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {

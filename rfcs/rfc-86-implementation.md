@@ -43,8 +43,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S15 | Pin drift diagnostics + Phase B fixtures | `done` | new fixtures; no `patch.yaml` authority | `test(slice): pin drift and wave-commit fixtures for RFC-86 Phase B` |
 | S16 | Gap inventory + shared-lead rollup | `done` | projection tests incl. multi-homed lead | `feat(plan): typed gap inventory with shared-lead rollup` |
 | S17 | Ready/Authorized + status next-actions | `done` | plan_status + Ready/Authorized fixtures | `feat(plan): project Ready and Authorized milestones` |
-| S18 | plan.execute.started + --waive CLI | `next` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
-| S19 | Execute gap gate before build | `pending` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
+| S18 | plan.execute.started + --waive CLI | `done` | execute-start fact + waive validation | `feat(change): record plan.execute.started authorization epoch` |
+| S19 | Execute gap gate before build | `next` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
 | S20 | refine-under-epoch + shift-left fixtures | `pending` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
 | S21 | Remaining Phase C acceptance fixtures | `pending` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
 | S22 | D20 sibling docs + operator prose | `pending` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
@@ -129,6 +129,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S17
 - Finding: `StatusBody` now carries `ready` / `authorized` (D22). Ready = all in-scope refined + clean gaps (no conflict/unknown; divergence allowed); Authorized = any `plan.execute.started` in the fact union (coverage wire types landed so fixtures can stamp the fact; execute writer + `--waive` stay S18). Refined-but-not-Ready rewrites Build → `review-gaps`; resume suggests `slice refine` for conflicts or `plan execute --waive <slice>/<req> --reason …` for unknowns; post-author / Ready resume stays `/emery:execute` (D26). Never projects `approved`. Execute maps `ReviewGaps` → build until S19's gap gate.
 - Plan change: none beyond status (S17=done, S18=next).
+
+### 2026-08-07 — S18
+- Finding: `plan execute` validates `--waive` / `--reason` before `guest.lock`, then appends `plan.execute.started` with `closed-plan` coverage (`plan-digest` = sha256 of `plan.yaml` bytes; per in-scope leaf `existing{dir_cid(specs)}` when model/spec artifacts exist else `refine-under-epoch`; optional `unknown-waivers`). CLI: repeatable `--waive <slice>/<req>` + required `--reason` (one reason applied to every selector). `plan-waiver-invalid` for orphan reason, missing reason, absent gap, or non-unknown (incl. conflict). Wave `build-authorization` now binds the newest covering epoch (sequence `0` only for breakout builds with no epoch). Gap gate before build stays S19 (`plan-epoch-stale` deferred). No `plan approve` / `plan refine`.
+- Plan change: none beyond status (S18=done, S19=next).
 ```
 
 ### Session template (copy into each agent prompt)

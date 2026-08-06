@@ -129,13 +129,30 @@ pub struct StatusArgs {}
 )]
 pub struct GapsArgs {}
 
+/// Parse `--waive <slice>/<req>` into a [`change::orchestrate::WaiveSelector`].
+fn waive_selector(raw: &str) -> Result<::change::orchestrate::WaiveSelector, String> {
+    let (slice, req) =
+        raw.split_once('/').ok_or_else(|| format!("--waive must be <slice>/<req>, got `{raw}`"))?;
+    if slice.is_empty() || req.is_empty() {
+        return Err(format!("--waive must be <slice>/<req> with non-empty parts, got `{raw}`"));
+    }
+    Ok(::change::orchestrate::WaiveSelector {
+        slice: slice.to_string(),
+        req: req.to_string(),
+    })
+}
+
 /// Arguments for `plan execute`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct ExecuteArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct ExecuteArgs {
+    /// Waive one open `[unknown]` requirement (`<slice>/<req>`). Repeatable.
+    /// Requires `--reason`. Conflicts are never waiveable (RFC-86 D17).
+    #[arg(long = "waive", action = ArgAction::Append, value_name = "SLICE/REQ", value_parser = waive_selector)]
+    pub waive: Vec<::change::orchestrate::WaiveSelector>,
+    /// Operator reason applied to every `--waive` on this invocation.
+    #[arg(long, value_name = "REASON")]
+    pub reason: Option<String>,
+}
 
 /// Arguments for `plan remove`.
 #[derive(Debug, Args)]

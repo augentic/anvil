@@ -175,15 +175,34 @@ fn open_wave(
         SliceName::from(slice),
         dir_cid(&specs_dir)?,
         entry.depends_on.clone(),
-        // Breakout / pre–S18 stand-in: `plan.execute.started` epochs
-        // land in S18; until then sequence `0` marks an unbound
-        // build-authorization ref for the calling actor.
-        EpochRef {
-            actor: journal::actor_id(),
-            sequence: 0,
-        },
+        covering_epoch(layout),
     );
     Ok(wave.open(layout, now)?.digest)
+}
+
+/// Newest `plan.execute.started` in the fact union, else an unbound
+/// `{ actor, sequence: 0 }` ref for breakout builds without an epoch.
+fn covering_epoch(layout: Layout<'_>) -> EpochRef {
+    let Ok(events) = journal::read_union(layout) else {
+        return EpochRef {
+            actor: journal::actor_id(),
+            sequence: 0,
+        };
+    };
+    events
+        .iter()
+        .rev()
+        .find_map(|event| match event.kind {
+            EventKind::PlanExecuteStarted { .. } => Some(EpochRef {
+                actor: event.actor.clone(),
+                sequence: event.sequence,
+            }),
+            _ => None,
+        })
+        .unwrap_or(EpochRef {
+            actor: journal::actor_id(),
+            sequence: 0,
+        })
 }
 
 /// Map a workspace-capability failure onto the build's diagnostic

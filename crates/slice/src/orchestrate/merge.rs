@@ -268,9 +268,9 @@ async fn apply_result(
 
 /// Append `target.merge.wave-committed` with identity maps.
 ///
-/// Commit-authorization reuses the wave's build-authorization until
-/// S18's `plan.execute.started` epochs land (serial execution normally
-/// uses the same epoch).
+/// Commit-authorization reuses the wave's build-authorization
+/// (serial execution normally uses the covering `plan.execute.started`
+/// epoch bound at wave open).
 fn emit_wave_committed(
     layout: Layout<'_>, now: Timestamp, slice: &str, commit: &WaveCommit, maps: &[IdentityMap],
 ) -> Result<(), Error> {

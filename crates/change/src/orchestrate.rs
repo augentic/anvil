@@ -11,6 +11,7 @@
 //! never reads the clock.
 
 mod author;
+mod epoch;
 mod execute;
 mod routing;
 mod survey;
@@ -18,5 +19,6 @@ mod survey;
 pub use project::seam::Capabilities;
 
 pub use self::author::{AuthorOutcome, author};
+pub use self::epoch::WaiveSelector;
 pub use self::execute::{ExecuteOutcome, execute};
 pub use self::survey::{SurveyedSource, survey, survey_all};

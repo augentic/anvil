@@ -486,9 +486,9 @@ pub enum EventKind {
         slice_name: SliceName,
     },
     /// `emery plan execute` opened an authorization epoch at start
-    /// (RFC-86 D6 / D22). Presence projects the Authorized milestone;
-    /// the writer and `--waive` CLI land in a later session. Never
-    /// named `plan.approved`.
+    /// (RFC-86 D6 / D22). Presence projects the Authorized milestone.
+    /// Optional `unknown-waivers` nest on the coverage payload (D17).
+    /// Never named `plan.approved`.
     #[serde(rename = "plan.execute.started", rename_all = "kebab-case")]
     PlanExecuteStarted {
         /// Typed `closed-plan` coverage over the reviewed plan.
