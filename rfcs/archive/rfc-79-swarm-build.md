@@ -4,7 +4,7 @@
 >
 > Owns: the target-build execution model that replaces the fat sequential legs: decomposition of one build into focused judgment requests, the convergence gate that supersedes the in-prompt verify-repair channel, the backend concurrency substrate (agent pool, workspace policy), and the deployment expression that runs workers on remote nodes.
 >
-> Depends: [RFC-78](rfc-78-prompt-budget.md) (the enabling layer — per-request byte budget, timeout semantics, session model), [RFC-60](../rfc-90-verify-profiles.md) (**promoted from deferred** — host-owned verify is this RFC's convergence gate), [RFC-55](rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the multi-node unlock).
+> Depends: [RFC-78](rfc-78-prompt-budget.md) (the enabling layer — per-request byte budget, timeout semantics, session model), the then-proposed RFC-60 host-owned verify gate (superseded by [RFC-90's](../rfc-90-build-verification.md) engine-owned model-assisted phase machine), and [RFC-55](rfc-55-working-tree.md) (materialized working trees — per-worker isolation and the multi-node unlock).
 >
 > Related: [RFC-18](../future/rfc-18-slm.md) (per-worker model selection is this RFC's hook for cheaper backends), [RFC-80](rfc-80-synthesis-redesign.md) (applies the same decomposition pattern at refine time and consumes this RFC's concurrency substrate).
 
@@ -44,10 +44,10 @@ Two workers never share write ownership of a path. Ownership conflicts are an or
 
 ### Convergence
 
-The shared verify-repair channel is replaced by a **host-owned convergence gate** over [RFC-60](../rfc-90-verify-profiles.md) verify profiles:
+The shared verify-repair channel is replaced by a **host-owned convergence gate** over [RFC-60](../rfc-90-build-verification.md) verify profiles:
 
 1. Workers complete their focused writes and answer with typed outcomes (no cargo commands in worker prompts — the RFC-60 posture).
-2. The orchestrator requests closed verify profiles (`build`, `clippy`, `test`, …) through the host; the host runs them sandboxed and returns normalized findings.
+2. The orchestrator requests predefined verify profiles (`build`, `clippy`, `test`, …) through the host; the host runs them sandboxed and returns normalized findings.
 3. Findings route back **to the owning worker** (by write-ownership manifest) as focused repair requests — resume + findings delta per RFC-78 D5, never a fresh full prompt.
 4. Rounds are bounded by an explicit convergence budget; exhaustion is a typed `failure` report with the residual findings attached.
 
@@ -74,7 +74,7 @@ Move leg sequencing from five hardcoded fat legs to a partition → dispatch →
 
 ### D2 — Convergence gate over RFC-60 verify profiles (engine + Omnia host)
 
-Activate [RFC-60](../rfc-90-verify-profiles.md): closed profile names, host-owned argv, sandboxed execution, normalized findings. The adapter requests profiles through the model tool loop's `verify` grant (stubbed today); cargo command text leaves worker prompts entirely. Findings carry artifact-relative locations the orchestrator maps to owning workers.
+Activate [RFC-60](../rfc-90-build-verification.md): predefined profile names, host-owned argv, sandboxed execution, normalized findings. The adapter requests profiles through the model tool loop's `verify` grant (stubbed today); cargo command text leaves worker prompts entirely. Findings carry artifact-relative locations the orchestrator maps to owning workers.
 
 ### D3 — Write-ownership partitioning (adapters)
 
@@ -113,7 +113,7 @@ Nothing in D1–D5 may assume process-locality beyond the stage it ships in. Val
 ## Acceptance criteria
 
 1. An omnia build for a slice the size of `at-r9k-position-adapter` completes as a set of focused worker requests, each with a spilled prompt **≤ ~15 KB**, and no worker prompt contains cargo command text.
-2. Verify runs only through closed RFC-60 profiles; findings route to the owning worker; the convergence budget is host/orchestrator policy and exhaustion produces a typed `failure` report with residual findings.
+2. Verify runs only through predefined RFC-60 profiles; findings route to the owning worker; the convergence budget is host/orchestrator policy and exhaustion produces a typed `failure` report with residual findings.
 3. Review specialists are individually observable in logs/journal and individually timeout-able; no nested in-agent `Task` team remains in the omnia review path.
 4. Two workers with overlapping ownership manifests are rejected before dispatch; an out-of-manifest write surfaces as a blocking finding.
 5. Stage B: two workers run concurrently against one tree with isolated MCP config and no shared-file races; pool cancellation reaps all in-flight workers.
@@ -123,7 +123,7 @@ Nothing in D1–D5 may assume process-locality beyond the stage it ships in. Val
 ## Risks and invariants
 
 - **The convergence gate must exist before the split.** A swarm without host-owned verify is the fat leg's verify-repair loop deleted, not replaced — Stage A ships with D2, not before it.
-- **Verify is a security boundary** (RFC-60's posture verbatim): closed profiles, sandboxed, no model-supplied argv. The swarm multiplies how often verify runs; it must not widen what verify accepts.
+- **Verify is a security boundary** (RFC-60's posture verbatim): predefined profiles, sandboxed, no model-supplied argv. The swarm multiplies how often verify runs; it must not widen what verify accepts.
 - **Ownership is exclusive and checked.** Concurrency safety comes from partition discipline, not merge cleverness; overlap is an error, never a three-way merge.
 - **Deterministic orchestration.** The orchestrator never consults a model to decide dispatch; budget, ordering, and routing are compiled-in policy, auditable in the journal.
 - **Values-only distribution.** Stage C workers share nothing but `revision` / `changeset` values; any design that needs a shared live handle across nodes is out of contract.

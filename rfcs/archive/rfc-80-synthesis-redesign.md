@@ -6,7 +6,7 @@
 >
 > Depends: [RFC-78](rfc-78-prompt-budget.md) D8 (path-first evidence — lands first, independently), [RFC-79](rfc-79-swarm-build.md) D4 (the backend concurrency substrate the fan-outs consume).
 >
-> Related: [RFC-55](rfc-55-working-tree.md) (distributed nodes — the same values-only constraints apply to refine-time operations), [RFC-60](../rfc-90-verify-profiles.md) (not consumed here — synthesis produces prose artifacts, not code to verify).
+> Related: [RFC-55](rfc-55-working-tree.md) (distributed nodes — the same values-only constraints apply to refine-time operations), [RFC-60](../rfc-90-build-verification.md) (not consumed here — synthesis produces prose artifacts, not code to verify).
 
 ## Intent
 
@@ -59,7 +59,7 @@ The RFC-79 pattern applied to refine: partition synthesis per domain (or per req
 
 - The mechanical evidence-inlining cut — [RFC-78](rfc-78-prompt-budget.md) D8 owns it and lands first.
 - Target-build decomposition, convergence, and the concurrency substrate — [RFC-79](rfc-79-swarm-build.md).
-- Verify profiles ([RFC-60](../rfc-90-verify-profiles.md)) — synthesis artifacts are validated by the engine's own kernel and sweep, not by toolchain verification.
+- Verify profiles ([RFC-60](../rfc-90-build-verification.md)) — synthesis artifacts are validated by the engine's own kernel and sweep, not by toolchain verification.
 - Changing the synthesis judgment's authority model, the `[conflict]` / `[divergence]` / `[unknown]` taxonomy, or the provenance contract — this RFC moves bytes and channels, not semantics.
 
 ## Ownership
