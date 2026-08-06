@@ -3,6 +3,10 @@
 //! Built from the bound project's `.emery/specs/` tree at synthesize
 //! time. Each domain with an on-disk `spec.md` is [`DomainKind::Modified`];
 //! domains absent from the baseline are [`DomainKind::New`].
+//!
+//! Requirement ids minted at synthesize are slice-local (RFC-86 D5);
+//! this index supplies baseline `REQ` identity and body digests for
+//! `MODIFIED` rows — wave commit assigns final baseline numbers later.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -27,8 +31,9 @@ pub struct DomainBaseline {
     /// `modified` when a baseline `spec.md` exists.
     pub kind: DomainKind,
     /// Highest `REQ-NNN` numeric suffix in the baseline (0 when empty).
+    /// Advisory for synthesis inputs; slice-local allocation ignores it.
     pub max_req_num: u32,
-    /// Baseline `REQ` id → requirement title.
+    /// Baseline `REQ` id → requirement body (for `MODIFIED` digests).
     pub ids: BTreeMap<String, String>,
 }
 
@@ -79,6 +84,12 @@ impl BaselineIndex {
         self.domains.get(domain).is_some_and(|baseline| baseline.ids.contains_key(id))
     }
 
+    /// Baseline requirement body for `id` in `domain`, when present.
+    #[must_use]
+    pub fn body(&self, domain: &str, id: &str) -> Option<&str> {
+        self.domains.get(domain).and_then(|baseline| baseline.ids.get(id).map(String::as_str))
+    }
+
     /// Iterate every indexed domain in slug order.
     pub fn domains(&self) -> impl Iterator<Item = (&str, &DomainBaseline)> {
         self.domains.iter().map(|(domain, baseline)| (domain.as_str(), baseline))
@@ -103,7 +114,7 @@ fn domain_baseline_from_spec(text: &str) -> DomainBaseline {
         if req.id.is_empty() {
             continue;
         }
-        ids.insert(req.id.clone(), req.name);
+        ids.insert(req.id.clone(), req.body);
         if let Some(num) = req_num(&req.id) {
             max_req_num = max_req_num.max(num);
         }

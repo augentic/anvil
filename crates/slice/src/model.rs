@@ -57,11 +57,12 @@ pub struct SliceModel {
 /// One `requirements[]` entry.
 ///
 /// The agent authors the behavioral prose (`title`, `statement`,
-/// `scenarios`, `notes`, `domain`), the `agreement` verdict, and the
-/// contributing `claims`; the kernel-owned fields (`id`, `status`,
-/// `sources`, claim `winner`) are optional because the agent omits them
-/// and the kernel re-derives them on projection. The `resolution` label
-/// is not stored here — the provenance projection recomputes it.
+/// `scenarios`, `notes`, `domain`), the `agreement` verdict, optional
+/// `baseline-id`, and the contributing `claims`; the kernel-owned
+/// fields (`id`, `baseline-digest`, `status`, `sources`, claim `winner`)
+/// are optional because the agent omits them and the kernel re-derives
+/// them on projection. The `resolution` label is not stored here — the
+/// provenance projection recomputes it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct ModelRequirement {
@@ -82,10 +83,16 @@ pub struct ModelRequirement {
     pub domain: Option<String>,
     /// Agent-authored baseline `REQ` id when modifying an existing
     /// requirement in a domain that already has a merged baseline.
-    /// The kernel takes the projected id from here; omitted for additive
-    /// requirements in modified domains.
+    /// The kernel keeps this reference and mints a slice-local `id`;
+    /// omitted for additive requirements. Wave commit assigns the final
+    /// baseline number later (RFC-86 D5).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub baseline_id: Option<String>,
+    /// Kernel-stamped `sha256:…` digest of the baseline requirement body
+    /// named by [`Self::baseline_id`]. Present only on `MODIFIED` rows;
+    /// wave commit rejects drift when the baseline body no longer matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline_digest: Option<String>,
     /// Kernel-projected rendered source list (highest authority first).
     #[serde(default)]
     pub sources: Vec<String>,

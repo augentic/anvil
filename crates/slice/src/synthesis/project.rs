@@ -6,10 +6,16 @@
 //!
 //! Projection is pure and target-independent. It rejects only invalid
 //! evidence anchors, cross-references, and closed-form ids.
+//!
+//! Requirement ids are slice-local until target-wave commit (RFC-86 D5):
+//! synthesize mints `REQ-001..N` in declaration order without consulting
+//! baseline numbers. Each `MODIFIED` row keeps its agent-authored
+//! `baseline-id` and records a digest of that baseline requirement body.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use artifacts::evidence::{AuthorityClass, ClaimKind};
+use diagnostics::digest::sha256_hex;
 use error::{Error, Result};
 
 use crate::model::{ModelClaim, ModelRequirement, SliceModel};
@@ -36,7 +42,7 @@ pub struct ProjectionHeader {
 /// violation:
 ///
 /// 1. Anchor claim ids and kinds to Evidence.
-/// 2. Assign requirement ids.
+/// 2. Assign slice-local requirement ids (and `MODIFIED` digests).
 /// 3. Derive authority outcomes and source order.
 /// 4. Stamp the header.
 /// 5. Validate cross-references, uniqueness, and id grammar.
@@ -51,13 +57,16 @@ pub fn project(
 ) -> Result<SliceModel> {
     check_claim_anchors(&model, evidence_claims)?;
 
-    let mut allocator = IdAllocator::new(baseline_index);
+    let mut allocator = IdAllocator::new();
 
     for requirement in &mut model.requirements {
         let domain = requirement_domain(requirement);
         let assigned = assign_requirement_id(requirement, &domain, baseline_index, &mut allocator)?;
-        requirement.id = Some(assigned);
-        requirement.baseline_id = None;
+        requirement.id = Some(assigned.id);
+        requirement.baseline_digest = assigned.baseline_digest;
+        if requirement.baseline_digest.is_none() {
+            requirement.baseline_id = None;
+        }
 
         let claim_refs: Vec<ClaimRef> = requirement
             .claims
@@ -93,49 +102,35 @@ fn requirement_domain(requirement: &ModelRequirement) -> String {
     requirement.domain.clone().unwrap_or_else(|| DEFAULT_DOMAIN.to_string())
 }
 
-/// Slice-global id allocation seeded from baseline requirement ids.
+/// Slice-scoped id allocation — declaration order, ignoring baseline numbers.
 struct IdAllocator {
-    used: BTreeSet<u32>,
-    next_additive: BTreeMap<String, u32>,
+    next: u32,
 }
 
 impl IdAllocator {
-    fn new(baseline_index: &BaselineIndex) -> Self {
-        let mut used = BTreeSet::new();
-        for (_, baseline) in baseline_index.domains() {
-            for id in baseline.ids.keys() {
-                if let Some(num) = req_num(id) {
-                    used.insert(num);
-                }
-            }
-        }
-        let mut next_additive = BTreeMap::new();
-        for (domain, baseline) in baseline_index.domains() {
-            if baseline.kind == DomainKind::Modified {
-                next_additive.insert(domain.to_string(), baseline.max_req_num.saturating_add(1));
-            }
-        }
-        Self { used, next_additive }
+    const fn new() -> Self {
+        Self { next: 1 }
     }
 
-    fn allocate(&mut self, floor: u32) -> String {
-        let mut candidate = floor.max(1);
-        while self.used.contains(&candidate) {
-            candidate += 1;
-        }
-        self.used.insert(candidate);
-        format!("REQ-{candidate:03}")
+    fn allocate(&mut self) -> String {
+        let id = format!("REQ-{:03}", self.next);
+        self.next = self.next.saturating_add(1);
+        id
     }
 }
 
-fn req_num(id: &str) -> Option<u32> {
-    id.strip_prefix("REQ-")?.parse().ok()
+/// One projected requirement identity.
+struct Assigned {
+    /// Slice-local `REQ-NNN`.
+    id: String,
+    /// Digest of the baseline body when this row is `MODIFIED`.
+    baseline_digest: Option<String>,
 }
 
 fn assign_requirement_id(
     requirement: &ModelRequirement, domain: &str, baseline_index: &BaselineIndex,
     allocator: &mut IdAllocator,
-) -> Result<String> {
+) -> Result<Assigned> {
     if let Some(baseline_id) = requirement.baseline_id.as_deref() {
         if !matches_grammar(baseline_id, "REQ-") {
             return Err(id_grammar_error("baseline_id", baseline_id));
@@ -156,24 +151,23 @@ fn assign_requirement_id(
                 format!("baseline_id '{baseline_id}' is not in the baseline for domain '{domain}'"),
             ));
         }
-        return Ok(baseline_id.to_string());
-    }
-
-    if baseline_index.domain_kind(domain) == DomainKind::Modified {
-        let floor = *allocator.next_additive.entry(domain.to_string()).or_insert_with(|| {
-            baseline_index
-                .domains()
-                .find(|(name, _)| *name == domain)
-                .map_or(1, |(_, baseline)| baseline.max_req_num.saturating_add(1))
+        let body = baseline_index.body(domain, baseline_id).ok_or_else(|| {
+            Error::validation_failed(
+                "slice-model-baseline-id-orphan",
+                "baseline_id names an existing baseline requirement in a modified domain",
+                format!("baseline_id '{baseline_id}' has no body in domain '{domain}'"),
+            )
+        })?;
+        return Ok(Assigned {
+            id: allocator.allocate(),
+            baseline_digest: Some(format!("sha256:{}", sha256_hex(body.as_bytes()))),
         });
-        let id = allocator.allocate(floor);
-        if let Some(num) = req_num(&id) {
-            allocator.next_additive.insert(domain.to_string(), num.saturating_add(1));
-        }
-        return Ok(id);
     }
 
-    Ok(allocator.allocate(1))
+    Ok(Assigned {
+        id: allocator.allocate(),
+        baseline_digest: None,
+    })
 }
 
 fn check_unique_ids(model: &SliceModel) -> Result<()> {

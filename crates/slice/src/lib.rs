@@ -24,19 +24,19 @@ pub(crate) mod validate;
 pub(crate) use actions::CreateIfExists;
 pub use base::Base;
 pub(crate) use build::assemble::build_request;
-pub(crate) use model::SliceModel;
+pub use model::SliceModel;
 pub(crate) use project::seam::wire::BuildRequest;
 pub use project::seam::wire::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 pub use project::slice::LifecycleStatus;
 pub(crate) use project::slice::{
     Outcome, OutcomeKind, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec,
 };
-pub(crate) use synthesis::baseline::BaselineIndex;
+pub use synthesis::baseline::BaselineIndex;
 pub(crate) use synthesis::evidence::{read_evidence_index, read_source_inputs};
 pub(crate) use synthesis::persist::{
     failure_reason as synthesize_failure_reason, persist_synthesized,
 };
-pub(crate) use synthesis::project::{ProjectionHeader, project};
+pub use synthesis::project::{ProjectionHeader, project};
 pub(crate) use synthesis::render::provenance_lines;
 pub(crate) use synthesis::wire::{
     DomainDetail, SourceInput, SynthesisInputs, SynthesisResponse, inputs,
