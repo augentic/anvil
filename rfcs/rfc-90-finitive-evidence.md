@@ -1,12 +1,14 @@
 # RFC-90 scoping input: evidence from the Finitive local-model harness
 
-> Status: Discussion input — not an RFC. Feeds scoping for [RFC-90 Verify Profiles](rfc-90-verify-profiles.md); touches [RFC-91](rfc-91-concurrent-execution.md) and [RFC-18](future/rfc-18-slm.md) where noted.
+> Status: Discussion input — **not an RFC** and not the series RFC-90. The in-force series document is [RFC-90: Build Verification](rfc-90-build-verification.md). This note feeds scoping for that RFC's deferred deterministic native-verification follow-on (D8) and related host-tool concerns; it also touches [RFC-91](rfc-91-concurrent-execution.md) and [RFC-18](future/rfc-18-slm.md) where noted. There is no separate `rfc-90-verify-profiles.md`.
 >
-> Purpose: give an implementing agent or engineer the empirical context from an external local-model harness experiment ("Finitive") and a concrete list of recommended RFC-90 adjustments to scope. The experiment's code is not available to readers of this document; every finding it contributes is described inline and this document is the complete record. Each recommendation names the RFC decision it touches and the Emery seam it lands in.
+> Purpose: give an implementing agent or engineer the empirical context from an external local-model harness experiment ("Finitive") and a concrete list of recommended adjustments to scope when host-owned verify profiles land. The experiment's code is not available to readers of this document; every finding it contributes is described inline and this document is the complete record. Each recommendation names the series decision it touches and the Emery seam it lands in.
 
 ## Context
 
-**RFC-90 (Verify Profiles)** defines host-owned verification: the model requests a closed profile name (`fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, `ci`), the host selects vetted commands from the bound target/platform, runs them in a disposable RFC-87 workspace against the candidate snapshot, and returns normalized findings (`source: tool`, `kind: violation`). The model repairs within a budget. Decisions D1–D8 in the RFC.
+**Series RFC-90 (Build Verification)** lands the engine-owned `build` / `repair` / `verify` / `review` phase machine with **model-assisted** verification. Its D8 defers deterministic native verification until a suitable WASI execution capability exists.
+
+**Verify-profiles follow-on (scoped here, not a separate RFC number)** would then define host-owned verification: the model requests a closed profile name (`fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, `ci`), the host selects vetted commands from the bound target/platform, runs them in a disposable RFC-87 workspace against the candidate snapshot, and returns normalized findings (`source: tool`, `kind: violation`). The model repairs within a budget. The decision labels D1–D8 below refer to that deferred profile design, not to the series RFC-90's identically numbered decisions.
 
 **Finitive** is a private research harness (Python) for spec → Rust code generation with a small local model (`qwen3-coder:30b` served by Ollama), actively developed along a research path with every design decision pinned by instrumented A/B runs. Its architecture, in enough detail to evaluate the evidence without repo access:
 
@@ -106,4 +108,4 @@ State these so the evidence is not over-read:
 ## Evidence sources
 
 - **Finitive** is a private experiment; its repository is not available to readers of this document. All findings it contributes are stated inline above — treat this document as the complete record of that evidence. Questions about the underlying runs or decision log go to the experiment's owner.
-- Emery: [`rfcs/rfc-90-verify-profiles.md`](rfc-90-verify-profiles.md) (D1–D8), [`rfcs/platform.md`](platform.md) (series fit; RFC-90 → RFC-91 gate), [`rfcs/future/rfc-18-slm.md`](future/rfc-18-slm.md) (`score-crate`, reward shape), `crates/diagnostics/` (report substrate), `crates/project/src/journal.rs` (event taxonomy), `crates/project/src/workspace/` (RFC-87 kernel).
+- Emery: [`rfcs/rfc-90-build-verification.md`](rfc-90-build-verification.md) (series RFC-90; D8 defers native verify), [`rfcs/platform.md`](platform.md) (series fit; RFC-90 → RFC-91 gate), [`rfcs/future/rfc-18-slm.md`](future/rfc-18-slm.md) (`score-crate`, reward shape), `crates/diagnostics/` (report substrate), `crates/project/src/journal.rs` (event taxonomy), `crates/project/src/workspace/` (RFC-87 kernel).

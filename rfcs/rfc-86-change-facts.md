@@ -2,7 +2,7 @@
 
 > **Status:** Implementation in progress — substrate D1–D11 and product D12–D27 closed and landed through Phase C; D20 sibling-doc pass complete (shipped operator prose aligned with `plan.execute.started`, gap gates, claims, computed status, pins/waves). Product acceptance checklist closeout remains the final gate (`cargo make ci` / living-plan S23).
 >
-> **Series:** Step 1 of the [platform-migration series](platform.md) by product ownership — the fact substrate every later step consumes. [RFC-87](rfc-87-working-trees.md) (Private Workspaces) has **already landed** with interim stand-ins for this RFC’s recorded pins, build records, and wave-shaped merge facts; this document is the contract those stand-ins await. [RFC-88](rfc-88-detached-changes.md) and later series RFCs already assume this substrate’s authorization epoch, per-leaf coverage, and one-member target waves — completing this RFC retires the stand-ins those documents currently describe against.
+> **Series:** Step 1 of the [platform-migration series](platform.md) by product ownership — the fact substrate every later step consumes. Phases A–C are landed against [RFC-87](rfc-87-working-trees.md)’s workspace contract: recorded `base.yaml` pins, content-addressed `builds/<digest>.yaml` records, and one-member waves. The remaining series stand-ins live in later RFCs — merge-time `apply` and the flat `.emery/` change home ([RFC-88](rfc-88-detached-changes.md) deletes `apply` and relocates the change home). Later series RFCs assume this substrate’s authorization epoch, per-leaf coverage, and one-member target waves.
 >
 > **Owns:** the fact-based change substrate — projected status, per-actor event logs, claims (ownership, not authority), `plan.execute.started` as an explicit authorization epoch with typed `closed-plan` coverage, one-member target-wave merge facts, pinned judgment inputs (landed RFC-87 `SnapshotId` / wire `cid`), merge-finalized requirement identity, shift-left refine practice / gap gate before build (no separate `approve` or `plan refine` verb), and the single-actor desktop as the degenerate case of the same substrate.
 >
@@ -27,17 +27,16 @@ Together: better specs before generation, and a state model that can travel — 
 
 Emery already treats specs as the contract that drives build. Real projects show that **build quality tracks spec quality**. Today that contract is created too late, and known holes do not stop generation.
 
-### What happens today
+### Problems this RFC closed (pre-landing baseline)
+
+Before Phases A–C landed, the operator loop looked like:
 
 ```text
 /emery:plan            survey sources → propose slices → review the plan
 emery plan execute     for each slice: refine → build → merge
 ```
 
-Build and merge already run through [RFC-87](rfc-87-working-trees.md)’s private workspaces (`prepare` / `capture` / `discard` over content-addressed `SnapshotId`s). What they do **not** yet have is this RFC’s recorded pin, authorization-epoch, and wave-shaped merge substrate — so the landed path uses interim stand-ins: build **self-freezes** the product tree at start instead of reading a recorded base pin, persists the code patch at `.emery/slices/<slice>/build/patch.yaml`, and merge applies that result via an interim `apply` ([RFC-88](rfc-88-detached-changes.md) deletes `apply` in its cut; older prose assigned that to [RFC-89](rfc-89-publication-sets.md)). Coordination state is still the pre–RFC-86 shape: one `.emery/journal.jsonl`, stored plan-entry / slice lifecycle fields, and “running execute is approval” with no durable digest-bound epoch.
-
-Problems:
-
+Build and merge already used [RFC-87](rfc-87-working-trees.md) private workspaces, but coordination and pins did not yet follow this RFC. The pre-landing path self-froze at build, persisted `build/patch.yaml`, used one `.emery/journal.jsonl`, stored plan-entry / slice lifecycle fields, and treated “running execute” as approval with no digest-bound epoch.
 
 | Problem                              | In plain terms                                                                                                                                                                                                                    |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -46,8 +45,21 @@ Problems:
 | Execute leaves no durable start fact | Running `plan execute` *is* the operator gesture that starts privileged work (and stays that way — see D6), but nothing records *which* digests / per-leaf coverage / gap outcome that gesture authorized.                        |
 | Status is hard to share              | Progress is stored as fields in YAML files. Two people cannot safely collaborate on one change, and the same pattern will not scale to multiple machines.                                                                         |
 | Requirement IDs collide              | Two slices refined against the same baseline can mint the same `REQ-NNN` numbers. Merge can silently overwrite.                                                                                                                   |
-| Pins are not recorded                | Refine does not write `base.yaml`. Build freezes an ambient tree at call time. Drift between refine and build is not a typed gate — only an interim freeze that this RFC retires.                                                 |
-| Merge has no wave shape              | Today’s merge is a single-slice write-back. Series RFCs need an immutable one-member target wave (build authorization vs commit authorization) so RFC-88 can attach accepted-CID semantics and RFC-91 can widen membership later. |
+| Pins are not recorded                | Refine does not write `base.yaml`. Build freezes an ambient tree at call time. Drift between refine and build is not a typed gate.                                                                                                 |
+| Merge has no wave shape              | Merge is a single-slice write-back. Series RFCs need an immutable one-member target wave (build authorization vs commit authorization) so RFC-88 can attach accepted-CID semantics and RFC-91 can widen membership later.         |
+
+### Landed substrate (Phases A–C)
+
+Those problems are closed in code. The in-force path is:
+
+- Per-actor logs at `.emery/events/<actor>.jsonl` (no authoritative `journal.jsonl`)
+- Computed plan / slice status (no stored status fields to edit)
+- `plan.execute.started` with typed `closed-plan` coverage at execute start
+- Refine-authored `base.yaml`; build prepares from the recorded `target_base` (no ambient freeze-at-build)
+- Content-addressed `builds/<digest>.yaml` (`BuildRecord`) as build-outcome authority (no `build/patch.yaml`)
+- One-member waves at `.emery/targets/<target>/waves/<digest>.yaml` with `target.wave.opened` / `target.merge.wave-committed`
+
+Still deferred to later series RFCs: merge-time `apply` and the flat `.emery/` change home ([RFC-88](rfc-88-detached-changes.md)); publication seals ([RFC-89](rfc-89-publication-sets.md)); engine-owned verify/repair phases ([RFC-90](rfc-90-build-verification.md)).
 
 
 
@@ -65,7 +77,7 @@ Also allowed     execute with refine-under-epoch (RFC-88) for leaves still missi
 - There is **no** `emery plan approve` **(or other** `approve`**) CLI verb** and **no** `emery plan refine` **verb**. The public plan surface stays three verbs with RFC-88. Starting `emery plan execute` appends `plan.execute.started` **at execute start** with typed `closed-plan` coverage (existing spec digests and/or `refine-under-epoch`, plus any unknown-waivers) — durable authorization without a second ceremony (see D6). There is no projected `approved` rung and no `approvals/` artifact tree.
 - One person on a laptop and a multi-person (later multi-node) change use the **same** rules.
 
-Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc.), the meaning of refine / build / merge as verbs, and the landed RFC-87 workspace contract (`prepare` / `capture` / `discard`, `SnapshotId`, code patch as `{ base, result, touched paths }`). Wire documents name that tree identity `cid` ([RFC-88](rfc-88-detached-changes.md)); Rust may keep the `SnapshotId` type. What changes is **when** refine is preferred (before build, via `slice refine` — not folded into author, and not a new plan verb), **whether** gaps may enter build, **how** progress is stored, **how** pins / build outcomes are recorded so those workspaces consume durable facts instead of interim self-freeze, and **how** merge projects through an immutable one-member target wave. Alignment with RFC-88’s `refine-under-epoch` means execute is not forbidden from authorizing refine for unspec’d leaves; it is forbidden from **building** over undealt typed gaps.
+Unchanged: source and target adapters, artifact shapes (`spec.md`, Evidence, etc.), the meaning of refine / build / merge as verbs, and the landed RFC-87 workspace contract (`prepare` / `capture` / `discard`, `SnapshotId`, code patch as `{ base, result, touched paths }`). Wire documents name that tree identity `cid` ([RFC-88](rfc-88-detached-changes.md)); Rust may keep the `SnapshotId` type. What this RFC changed is **when** refine is preferred (before build, via `slice refine` — not folded into author, and not a new plan verb), **whether** gaps may enter build, **how** progress is stored, **how** pins / build outcomes are recorded so workspaces consume durable facts, and **how** merge projects through an immutable one-member target wave. Alignment with RFC-88’s `refine-under-epoch` means execute is not forbidden from authorizing refine for unspec’d leaves; it is forbidden from **building** over undealt typed gaps.
 
 ---
 
@@ -230,9 +242,8 @@ Illustrative coordination layout (D1 — layout-neutral; concrete homes from [RF
     base.yaml               # refine-time pin assembly (sources + baseline)
     evidence/…
     spec.md, design.md, tasks.md, model.yaml
-    builds/<digest>.yaml    # build record: base/result values + touched paths + report
-                            # today (RFC-87 interim): build/patch.yaml + report.yaml
-                            # Phase B (D27) re-homes into fact-substrate build records
+    builds/<digest>.yaml    # BuildRecord: base/result + touched + wave digest + report (D27)
+                            # (retired build/patch.yaml as outcome authority)
 ```
 
 Durable project state (`project.yaml`, baseline `specs/`, `decisions/`) stays outside the change home. Sharing a change is ordinary file exchange of that home (push / pull / PR / copy when the operator versions it). The change-tree contract requires no Git metadata — two people’s event logs union without fighting over one journal file. Versioning and transport are deployment or operator policy, not workflow prerequisites ([RFC-88](rfc-88-detached-changes.md) amends any prior “must be a git repo” reading).
@@ -246,7 +257,7 @@ Durable project state (`project.yaml`, baseline `specs/`, `decisions/`) stays ou
 | Refined (per slice) | Validated specs exist for that slice, pinned to known inputs (`slice refine`)                                                                                                                                                                                                                                                                    |
 | Ready               | Every in-scope slice is refined, and the **clean** gap policy passes: no conflicts, **zero** open unknowns. Artifact-derived only — waivers are not part of Ready (see D22). In-scope is on the plan and not dropped (see D24)                                                                                                                   |
 | Authorized          | A covering `plan.execute.started` epoch exists for the current plan with typed per-leaf coverage (may carry unknown-waivers and/or `refine-under-epoch`). Distinct from Ready even when the waive list is empty — Ready means “clean path to build”; Authorized means “execute has opened a covering epoch” (D6 / D22). **Not** named `approved` |
-| Built / merged      | Build records and a `target.merge.wave-committed` fact exist for that slice (referencing RFC-87 base/result ids). Phase B retires today’s interim `build/patch.yaml` signal (D27)                                                                                                                                                                |
+| Built / merged      | A content-addressed `builds/<digest>.yaml` `BuildRecord` and a `target.merge.wave-committed` fact exist for that slice (referencing RFC-87 base/result ids). D27 retired `build/patch.yaml` as outcome authority                                                                                                                                  |
 
 
 `plan status` next actions: after a fresh author, **resume** is `emery plan execute` / `/emery:execute` (D26); while in-scope slices are unrefined, next-actions may name `emery slice refine <slice>`; then review-gaps; then `plan execute` (build → merge) once gates pass — or execute with refine-under-epoch when following the RFC-88 authorization shape. Open unknowns mean the change is **not** Ready; resume points at closing gaps *or* `plan execute` with per-requirement `--waive` (skipping Ready). Clean Ready resumes at `emery plan execute`. There is no resume point at a separate `approve` or `plan refine` verb, and no projected `approved` rung.
@@ -514,12 +525,12 @@ Settled patterns this RFC borrows, without adopting their full machinery:
 
 For engine contributors. Not required to evaluate the product intent.
 
-**Already landed (RFC-87) — consume, do not reinvent**
+**Already landed (RFC-87 + Phases A–C) — consume, do not reinvent**
 
 - Value vocabulary: `project::snapshot::{SnapshotId, CodePatch}` (`sha256:…` tree digest; code patch = `{ base, result, touched paths }`). Wire documents say `cid` for the same identity ([RFC-88](rfc-88-detached-changes.md)).
-- Workspace capability: `project::seam::Workspaces` — `freeze` / `prepare` / `capture` / `discard` / interim `apply`; host backend in `project::workspace` + `launcher::Workspaces` + `wasi-workspaces`.
-- Build orchestration (`crates/slice/src/orchestrate/target.rs`) today brackets finalize with prepare → capture → discard and writes `.emery/slices/<slice>/build/{request,report,patch}.yaml`, freezing the ambient tree at start. Phase B (D27): delete the interim `seam.freeze()`; read the recorded base pin; persist outcomes in content-addressed fact-substrate build records (retire `build/patch.yaml` as authority); open the one-member wave before build.
-- Merge orchestration today loads `build/patch.yaml`, prepares a read-only view of `patch.result`, and applies touched paths via interim `apply`. Phase B: load base/result from the build record / wave member; still call interim `apply` for write-back (deleted by [RFC-88](rfc-88-detached-changes.md), not by this RFC). Identity finalization and one-member waves land on this merge path — do not reintroduce ambient checkout writes.
+- Workspace capability: `project::seam::Workspaces` — `freeze` (refine pin authorship) / `prepare` / `capture` / `discard` / interim `apply`; host backend in `project::workspace` + `launcher::Workspaces` + `wasi-workspaces`.
+- Build orchestration (`crates/slice/src/orchestrate/target.rs`) opens a one-member wave, prepares from the recorded `base.yaml` `target_base` pin, dispatches `target.build`, captures, and persists `builds/<digest>.yaml` (`BuildRecord`). No ambient freeze-at-build; no `build/patch.yaml` authority.
+- Merge orchestration loads the `BuildRecord`, revalidates the wave, commits `target.merge.wave-committed`, and still calls interim `apply` for write-back (deleted by [RFC-88](rfc-88-detached-changes.md), not by this RFC). Do not reintroduce ambient checkout writes.
 
 **Layout and writers**
 
@@ -533,7 +544,7 @@ For engine contributors. Not required to evaluate the product intent.
 
 - Plan authoring (in-place) or detached discovery / plan-author intake closes per-source `SnapshotId` / `cid` pins at plan scope when the source set is known (D4 / D25). There is no `change approve` pin-close site.
 - Refine writes `base.yaml` by copying those source pins and adding the baseline-spec digest **before** extract — assembly, not the first writer of source snapshot ids.
-- Build reads the recorded target-base pin and passes it to `prepare` — delete the interim `seam.freeze()` at build start in the same Phase B cut that re-homes `build/patch.yaml` into fact-substrate build records (D27). “Built” projects from those records + wave facts only. Do not scope interim `apply` deletion into this RFC — [RFC-88](rfc-88-detached-changes.md) owns that cut.
+- Build reads the recorded target-base pin and passes it to `prepare` (D27 landed). “Built” projects from `BuildRecord`s + wave facts only. Do not scope interim `apply` deletion into this RFC — [RFC-88](rfc-88-detached-changes.md) owns that cut.
 - Before build, write `targets/<target>/waves/<digest>.yaml` naming the target (current project in the in-place cut), pinned base, ordered member set (one member), exact member inputs, dependency frontier, and build-authorization epoch; append `target.wave.opened`. Merge revalidates, names a `closed-plan` commit-authorization epoch (which may differ from build authorization; serial execution normally uses the same epoch), performs the deterministic merge, and appends one `target.merge.wave-committed` fact carrying every identity map. Postflight then appends succeeded or postflight-failed; failure is non-rollback and uses the existing acknowledgement stop. [RFC-88](rfc-88-detached-changes.md) attaches base/result `cid`s and accepted-`cid` semantics to this fact.
 - Synthesis today: `IdAllocator` in `crates/slice/src/synthesis/project.rs` mints global `REQ-NNN` against the baseline. Phase B: mint slice-scoped ids; each `MODIFIED` records a digest of the baseline requirement body it changed; wave commit assigns baseline `REQ-NNN`, records the id map on the committed fact, rejects drifted `MODIFIED` bases.
 - Validate gains `slice-base-drifted` / `slice-evidence-stale` (review signals); merge blocks on `merge-base-drifted` where needed.
@@ -559,7 +570,7 @@ For engine contributors. Not required to evaluate the product intent.
 
 **Sibling series (D20)**
 
-- Spine/`platform.md` authority and chronology are already refreshed (closed item 1): D6 / D17 win; 87 landed with stand-ins; ownership order ≠ landing chronology. Phase C / living-plan S22 reviewed remaining series RFCs and shipped operator docs (`AGENTS.md`, `workflow.md`, CLI help, skills, reference/tutorial prose) for leftover `plan approve` / projected `approved` / invented `plan refine` / “nothing is stamped” wording and aligned them with `plan.execute.started`. Follow [RFC-88](rfc-88-detached-changes.md) when reconciling siblings — it has no `change approve`, uses execute as the sole authorization surface, keeps the three-verb public workflow, defines `refine-under-epoch`, and routes accepted-`cid` through this RFC’s D9 waves (closed items 16–19).
+- Spine/`platform.md` authority and chronology are already refreshed (closed item 1): D6 / D17 win; 87 landed; Phase B retired freeze / `patch.yaml`; remaining stand-in is merge-time `apply` (plus flat change home until RFC-88); ownership order ≠ landing chronology. Phase C / living-plan S22 reviewed remaining series RFCs and shipped operator docs (`AGENTS.md`, `workflow.md`, CLI help, skills, reference/tutorial prose) for leftover `plan approve` / projected `approved` / invented `plan refine` / “nothing is stamped” wording and aligned them with `plan.execute.started`. Follow [RFC-88](rfc-88-detached-changes.md) when reconciling siblings — it has no `change approve`, uses execute as the sole authorization surface, keeps the three-verb public workflow, defines `refine-under-epoch`, and routes accepted-`cid` through this RFC’s D9 waves (closed items 16–19).
 
 **Hard cut**
 

@@ -183,6 +183,8 @@ Each task-scoped `build` or `repair` returns an RFC-90 phase report. The engine 
 
 The report's ordinal also emits RFC-90's `slice.build.phase-completed` event. Tasks have no independent terminal report. The engine aggregates their reports into the attempt's one terminal result.
 
+On terminal success, that aggregated result feeds one RFC-86 `BuildRecord` at `builds/<digest>.yaml` for the slice attempt — base/result/`touched` of the composed candidate, the open wave digest, and the terminal report. Tasks never mint their own `BuildRecord`, wave, or merge fact.
+
 The validated graph record is independent of any attempt. Its key is the decomposition operation key.
 
 Every re-entry creates a new RFC-90 attempt id, new workspaces, and new continuations. The next attempt may reuse the completed graph when its profile digest is unchanged after:
@@ -476,9 +478,9 @@ flowchart LR
 
 The first implementation scans canonical target and leaf order up to the pool cap. It adds no optimizer or fairness policy.
 
-The immutable wave manifest exists before claims and builds.
+The immutable wave manifest exists before claims and builds. RFC-86's landed cut enforces `members.len() == 1` (`target-wave-member-count`). This RFC retires that one-member-only gate for the concurrent executor: the same manifest schema, open fact, commit fact, and per-member `BuildRecord` revalidation accept a frozen multi-member set. Merge facts and accepted-CID semantics do not change.
 
-A slice-build failure creates a new slice attempt under D1. It does not change wave membership.
+A slice-build failure creates a new slice attempt under D1. It does not change wave membership. Each successful member still writes its own `BuildRecord`; wave commit consumes the complete member set.
 
 Membership stays frozen until atomic commit or operator amendment. An amendment retracts the whole uncommitted wave. It does not shrink the wave.
 
@@ -538,7 +540,7 @@ A target drains only when:
 ## Implementation requirements
 
 - **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add profile-scored task complexity, digest-bound graph and phase records, engine-private `compose`, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
-- **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Use the same scheduler path for both. Add initial survey, focused resurvey, extract, affected-domain, review, task, and repair fan-outs. Add canonical bounded-antichain scheduling, domain records, and multi-member target waves. Cancellation must reap every call.
+- **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Use the same scheduler path for both. Add initial survey, focused resurvey, extract, affected-domain, review, task, and repair fan-outs. Add canonical bounded-antichain scheduling, domain records, and multi-member target waves (retire `Wave::enforce_one_member` for the concurrent executor only; keep the same manifest and `target.merge.wave-committed` shape). Aggregate each slice attempt into one `BuildRecord`. Cancellation must reap every call.
 - **Synthesis implements D7–D8.** Land the engine shelf and pass `omnia-r9k`. Then land staged synthesis and pass `orders-contracts`. Neither final grade may regress.
 - Derive closed graph and domain schemas from Rust DTOs. Reject unknown fields.
 - Persist validated-content digests, operation keys, task-scoped phase events, and domain records as specified above. Add no extension map or second domain-state artifact.

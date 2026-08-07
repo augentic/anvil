@@ -4,7 +4,7 @@
 >
 > Owns: the engine-owned build phase machine, separate `target.build` / `target.repair` / `target.verify` / `target.review` WIT operations, bounded verification and repair rounds, typed intermediate reports, and removal of repair-loop control from adapter prose.
 >
-> Builds on completed [RFC-87](rfc-87-working-trees.md). The observable sequential gate becomes [RFC-91](rfc-91-concurrent-execution.md)'s worker and conflict-domain convergence loop; [RFC-92](rfc-92-node-sync.md) transports its phase records without redefining it. Deterministic native-tool verification is deferred until WASI exposes an execution API suitable for host toolchains.
+> Builds on completed [RFC-86](rfc-86-change-facts.md) (recorded `base.yaml` pins, one-member waves, content-addressed `BuildRecord` at `builds/<digest>.yaml`) and completed [RFC-87](rfc-87-working-trees.md). The observable sequential gate becomes [RFC-91](rfc-91-concurrent-execution.md)'s worker and conflict-domain convergence loop; [RFC-92](rfc-92-node-sync.md) transports its phase records without redefining it. Deterministic native-tool verification is deferred until WASI exposes an execution API suitable for host toolchains (see also the non-series scoping note [rfc-90-finitive-evidence.md](rfc-90-finitive-evidence.md)).
 
 
 
@@ -14,7 +14,9 @@ Move build verification and repair control out of opaque agent prose and into th
 
 ### Today
 
-The engine dispatches one `target.build` call for a slice. Inside that call the Omnia target runs preparation, generation, optional replay, verification and repair, standards review, and review remediation. Cargo commands, retry counts, failure routing, and stopping conditions live in prompt text. The engine observes only the final report.
+RFC-86 / RFC-87 already bracket each slice build: refine records `base.yaml` (including `target_base`); build opens a one-member target wave (`target.wave.opened`), prepares a private workspace from that pin, dispatches one `target.build`, gates the report, captures a code patch, persists a content-addressed `BuildRecord` at `builds/<digest>.yaml`, and projects `built`. Merge commits the wave and still uses interim `apply` until RFC-88.
+
+What this RFC changes is the **adapter call shape**, not that substrate. Inside today's single `target.build`, the Omnia target still runs preparation, generation, optional replay, verification and repair, standards review, and review remediation. Cargo commands, retry counts, failure routing, and stopping conditions live in prompt text. The engine observes only the final report.
 
 That shape hides the most important control loop from lifecycle policy and makes RFC-91 concurrency unsafe: splitting writers before replacing the loop would remove the only mechanism that currently returns failed checks to the code writer.
 
@@ -34,13 +36,13 @@ Verification in this RFC remains **model-assisted**. During a `verify` call, the
 
 ## Flow and terms
 
-1. The engine prepares one writable RFC-87 **build workspace** from the recorded target base and one attempt-local **artifact stage** seeded from the slice tree. Product code writes go to the workspace; every target-authored slice-artifact write goes to the stage.
+1. Under a covering `plan.execute.started` epoch, the engine opens (or reuses) the RFC-86 one-member target wave for the slice, prepares one writable RFC-87 **build workspace** from the recorded `base.yaml` `target_base` pin, and seeds one attempt-local **artifact stage** from the slice tree. Product code writes go to the workspace; every target-authored slice-artifact write goes to the stage.
 2. It dispatches `build` once. Adapter-internal preparation and target-specific writer ordering may remain inside that call, but generation may not run a verification or repair loop.
 3. It dispatches `verify` once. The adapter runs one check pass and returns one phase report.
 4. Blocking verification findings cause one `repair` dispatch with `origin: verification` carrying those exact findings, followed by another `verify`, while the verification-repair budget remains.
 5. A passing verification dispatches `review` once. Blocking review findings route through one `repair` dispatch with `origin: review`, then `verify`, then `review`, while the review-remediation budget remains. If the post-repair verification fails, it enters the ordinary verification-repair loop and consumes the same verification budget as any other failed verification.
-6. The engine assembles `build/report.yaml` by the fixed projection in D2, applies the existing blocking-finding and output-existence gates, captures the workspace result, validates the staged artifact diff, atomically promotes that diff, and completes the `built` transition.
-7. Budget exhaustion returns a typed failed build report with the unresolved findings. Product-code and artifact workspaces are discarded without changing authoritative target code, slice intent, target-owned slice outputs, or lifecycle state. Engine-owned attempt reports remain as audit evidence under `build/attempts/`.
+6. The engine assembles `build/report.yaml` by the fixed projection in D2, applies the existing blocking-finding and output-existence gates, captures the workspace result, validates the staged artifact diff, atomically promotes that diff, writes the content-addressed RFC-86 `BuildRecord` at `builds/<digest>.yaml` (base/result/`touched`, wave digest, terminal report), and completes the `built` transition.
+7. Budget exhaustion returns a typed failed build report with the unresolved findings. Product-code and artifact workspaces are discarded without changing authoritative target code, slice intent, target-owned slice outputs, or lifecycle state. Engine-owned attempt reports remain as audit evidence under `build/attempts/`; a failed attempt does not write or replace a successful `BuildRecord`.
 
 A **build phase** is one engine-selected target operation: `build`, `verify`, `repair`, or `review`. A **phase report** is the typed result of exactly one operation. A **repair round** is one repair dispatch followed by the verification and, when applicable, review needed to decide whether that repair succeeded. A **terminal report** is the engine-authored `BuildReport` projected from the build phase plus the latest verification and review reports; superseded failed rounds remain only in the attempt record.
 
@@ -190,13 +192,15 @@ The engine captures product code and promotes staged artifacts only after the te
 
 Engine-owned request, phase, and terminal reports are audit records, not target-authored slice intent. They may persist for a failed attempt without violating this rule.
 
-### D6 — Phase reports are durable and the final report stays authoritative
+### D6 — Phase reports are durable; `BuildRecord` remains outcome authority
 
-Each invocation receives the next monotonic attempt id and writes under `.emery/slices/<slice>/build/attempts/<attempt>/`. The engine copies the immutable `build/request.yaml` into that attempt, writes every returned report as `phases/<ordinal>-<operation>.yaml`, and emits a `slice.build.phase-completed` event naming the attempt, ordinal, operation, source, and report digest. A retry creates a new attempt; it never appends to, clears, or reuses a prior attempt or continuation.
+Each invocation receives the next monotonic attempt id and writes under `.emery/slices/<slice>/build/attempts/<attempt>/`. The engine copies the immutable `build/request.yaml` into that attempt, writes every returned report as `phases/<ordinal>-<operation>.yaml`, and emits a `slice.build.phase-completed` event naming the attempt, ordinal, operation, source, and report digest. Existing `slice.build.started` / `.succeeded` / `.failed` facts remain the attempt lifecycle envelope; phase-completed events are ordinal evidence inside that envelope. A retry creates a new attempt; it never appends to, clears, or reuses a prior attempt or continuation.
 
-The engine writes the attempt's terminal report beside its phases and projects that same body to the canonical `build/report.yaml`. A new terminal attempt atomically replaces the canonical projection; immutable attempt records retain the complete history. The engine alone assembles both copies. Later lifecycle gates consume the canonical report, while RFC-91 domain convergence may cite immutable phase or attempt-report digests.
+The engine writes the attempt's terminal report beside its phases and projects that same body to the canonical `build/report.yaml`. A new terminal attempt atomically replaces the canonical projection; immutable attempt records retain the complete history. The engine alone assembles both copies.
 
-Attempt ids are zero-padded ordinals allocated by atomically creating the next absent attempt directory; an existing id is never reused, even when its attempt has no terminal report. Every request, phase report, and terminal report write is atomic. On re-entry, an attempt without a terminal report is **abandoned**: its returned phase reports remain immutable evidence, its continuation is never loaded, and the engine starts the next attempt from the recorded base in fresh product and artifact workspaces. It does not try to infer whether an interrupted adapter call wrote unreported files. The canonical `build/report.yaml` remains the projection of the latest terminal attempt and is unchanged by an abandoned attempt.
+On terminal success, the engine also writes the RFC-86 content-addressed `BuildRecord` at `.emery/slices/<slice>/builds/<digest>.yaml` — base/result/`touched`, the open wave's digest, and the terminal report body. That record remains build-outcome authority for merge revalidation and the `built` projection (D27). Attempt trees are orchestration audit; they do not replace `builds/<digest>.yaml`. A failed or abandoned attempt may leave attempt-local reports and a failed canonical `build/report.yaml` without writing or replacing a successful `BuildRecord`. Later lifecycle gates consume the canonical report; merge and wave revalidation consume the `BuildRecord`; RFC-91 domain convergence may cite immutable phase, attempt-report, or `BuildRecord` digests.
+
+Attempt ids are zero-padded ordinals allocated by atomically creating the next absent attempt directory; an existing id is never reused, even when its attempt has no terminal report. Every request, phase report, and terminal report write is atomic. On re-entry, an attempt without a terminal report is **abandoned**: its returned phase reports remain immutable evidence, its continuation is never loaded, and the engine starts the next attempt from the recorded `base.yaml` pin in fresh product and artifact workspaces (still under the same open wave unless that wave was retracted). It does not try to infer whether an interrupted adapter call wrote unreported files. The canonical `build/report.yaml` remains the projection of the latest terminal attempt and is unchanged by an abandoned attempt.
 
 An orderly failure writes the failed terminal report before discarding its writable trees. Abrupt process loss may leave an unterminated attempt and disposable workspace directories; the next invocation applies the abandonment rule and RFC-87 garbage collection removes the directories. Attempt records archive with the slice and follow the existing archive-retention policy; build re-entry never prunes them in place.
 
@@ -220,19 +224,20 @@ When that capability exists, a follow-up replaces the model-assisted implementat
 
 - Extend `wit/emery.wit`, target metadata, the adapter SDK `Target` trait and export macro, the guest provider, native provider, mock catalog, and wire DTOs with `repair`, `verify`, and `review`, the closed D2 phase vocabulary, `writable-artifacts[]`, and `workspace.artifact-stage`.
 - Replace the single target-build dispatch in `slice::orchestrate` with D1's exact engine-owned phase machine, including the shared verification-repair counter, review-remediation counter, repair-origin routing, continuation replacement rules, and deterministic terminal-report projection.
-- Persist immutable attempt-scoped phase reports and continuations, abandon rather than resume unterminated attempts, add the enriched `slice.build.phase-completed` event, and keep canonical `build/report.yaml` as the latest terminal engine-assembled authority.
-- Keep one RFC-87 product workspace and one artifact stage for the complete loop; capture and transactionally promote only on terminal success, and discard both on every failure or cooperative cancellation path.
+- Persist immutable attempt-scoped phase reports and continuations, abandon rather than resume unterminated attempts, add the enriched `slice.build.phase-completed` event, and keep canonical `build/report.yaml` as the latest terminal engine-assembled projection.
+- On terminal success only, write the RFC-86 `BuildRecord` at `builds/<digest>.yaml` from the captured patch, open wave digest, and terminal report; do not invent a parallel outcome path. Preserve `slice.build.started` / `.succeeded` / `.failed` beside phase-completed events.
+- Keep one RFC-87 product workspace and one artifact stage for the complete loop, prepared from the recorded `base.yaml` pin under the open one-member wave; capture and transactionally promote only on terminal success, and discard both on every failure or cooperative cancellation path.
 - Split Omnia, Vectis, and contracts target implementations across `build` / `repair` / `verify` / `review` without moving specialist prompts or engineering standards into Emery.
 - Move Omnia's `tasks.md`, Vectis's `tasks.md` / `composition.yaml` / build bookkeeping, and Contracts' `tasks.md` / `contracts/` writes onto the artifact stage; reject undeclared target-authored slice writes.
 - Delete verification, retry, writer re-entry, and review-remediation loops from adapter prose. An operation prompt may perform one pass only.
-- Preserve the existing final blocking-finding, declared-output, patch-capture, and `refined → built` gates.
+- Preserve the existing final blocking-finding, declared-output, patch-capture, wave, `BuildRecord`, and `refined → built` gates.
 - Require and validate report-level `phase-source`, include the terminal verification source in text and JSON operator output even on a clean pass, and do not claim deterministic, sandboxed, or trusted native execution.
 
 
 
 ## Acceptance criteria
 
-1. One build produces an ordered persisted sequence of engine-selected `build`, `verify`, optional `repair`, and `review` phase reports before one final build report.
+1. One build produces an ordered persisted sequence of engine-selected `build`, `verify`, optional `repair`, and `review` phase reports before one final build report. On terminal success it also writes one RFC-86 `BuildRecord` at `builds/<digest>.yaml` from the captured patch, open wave digest, and terminal report; failed attempts do not replace a prior successful record.
 2. No target prompt contains a verification-repair or review-remediation retry loop; injected failures return to the engine after one operation.
 3. Verification failures route as full, unfolded typed findings to `repair(origin: verification)`, then back through `verify`; review findings route to `repair(origin: review)`, then through `verify → review`. A failed verification after review repair consumes the shared verification budget. The fourth verification repair and second review remediation are never dispatched.
 4. The adapter cannot select the next operation, alter the attempt count, reset a budget, or write the terminal build report.

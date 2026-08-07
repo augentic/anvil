@@ -1,6 +1,6 @@
 # RFC-87: Private Workspaces
 
-> Status: Implemented — landed with interim RFC-86 stand-ins (build-time base self-pinning, slice-local `build/patch.yaml`, merge-time apply); step 2 of the platform-migration series ([platform.md](platform.md)). [RFC-88](rfc-88-detached-changes.md) proposes amendments: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 admit the project repository's durable state into the tree, plan/discovery artifacts name the tree identity a **CID** (`SnapshotId` is that value), and the interim `apply` is deleted.
+> Status: Implemented — step 2 of the platform-migration series ([platform.md](platform.md)). [RFC-86](rfc-86-change-facts.md) Phase B retired the interim build-time ambient freeze and slice-local `build/patch.yaml`; recorded `base.yaml` pins and content-addressed `builds/<digest>.yaml` records are the authority. The remaining interim is merge-time `apply` (deleted by [RFC-88](rfc-88-detached-changes.md)). RFC-88 also proposes amendments: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 admit the project repository's durable state into the tree, and plan/discovery artifacts name the tree identity a **CID** (`SnapshotId` is that value).
 >
 > Owns: materializing an immutable code snapshot into a private workspace, granting separate read-only artifact access, capturing the resulting code snapshot and touched paths, and discarding the workspace.
 >
@@ -10,7 +10,7 @@
 
 A work directory is disposable execution machinery, never workflow state. Durable code state consists only of immutable snapshots.
 
-Today build and merge run in the operator's checkout. That ambient mutable directory cannot safely support concurrent workers or remote nodes. RFC-87 replaces it with one location-neutral contract:
+Before this RFC, build and merge wrote the operator's checkout. That ambient mutable directory cannot safely support concurrent workers or remote nodes. RFC-87 replaces it with one location-neutral contract:
 
 ```text
 prepare(repository, base snapshot, access manifest) → private workspace
