@@ -4,7 +4,7 @@ Inspect and edit a plan after `/emery:plan` and before executing it.
 
 **Prerequisites:** An authored plan whose entries are all `pending`; completed [Quick start](../tutorials/quick-start.md).
 
-The pause between plan authoring and execution is the operator review step. `/emery:plan` exits after authoring; you run `emery plan execute` — running it is your approval — only after the plan looks right.
+The pause between plan authoring and execution is the operator review step. `/emery:plan` exits after authoring; you run `emery plan execute` — opening the authorization epoch — only after the plan looks right.
 
 ## Which verb when
 
@@ -68,7 +68,7 @@ Surface Error-level findings before executing.
 emery plan execute
 ```
 
-Invoking execute on the reviewed plan is the approval — it drives the slices; nothing is stamped or recorded.
+Invoking execute on the reviewed plan journals `plan.execute.started` and drives the slices under gap gates.
 
 ## Splitting one slice into two
 

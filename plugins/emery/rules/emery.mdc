@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Emery workflow skills: initialize a project, plan a change, execute the plan, check where a plan stands, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output; `/emery:execute` wraps the `emery plan execute` loop (running it is the operator's approval of the authored plan), and `/emery:status` is the read-only "where am I / what next" probe.
+This plugin provides the core Emery workflow skills: initialize a project, plan a change, execute the plan, check where a plan stands, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output; `/emery:execute` wraps the `emery plan execute` loop (opens `plan.execute.started` and drives refine → build → merge under gap gates), and `/emery:status` is the read-only "where am I / what next" probe over computed progress.
 
 **Purpose**: Drive the `plan -> execute` rhythm (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
 
@@ -22,7 +22,7 @@ Each directory contains operation prompts under `prose/prompts/`; adapter identi
 
 ## Slice lifecycle
 
-Slices track lifecycle in `metadata.yaml`. The fixed loop is `refine -> build -> merge`, with `drop` as the rollback path:
+The fixed loop is `refine -> build -> merge`, with `drop` as the abandon path. Lifecycle labels project from phase timestamps, artifacts, and facts — they are not stored status fields on `metadata.yaml` / `plan.yaml`:
 
 ```text
 refining -> refined -> built -> merged
@@ -31,12 +31,12 @@ refining -> refined -> built -> merged
 ```
 
 - **refining**: Slice directory created; `/emery:refine` extract + synthesis in flight
-- **refined**: Proposal, spec, design, and tasks are validated
-- **built**: All tasks done, ready to merge
-- **merged**: Delta specs merged into baseline, slice archived
+- **refined**: Proposal, spec, design, and tasks are validated (`base.yaml` pins recorded)
+- **built**: Build record + wave facts present; ready to merge
+- **merged**: Wave committed, deltas applied, slice archived
 - **dropped**: Slice archived without merging into baseline
 
-Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata.yaml`.
+Per-entry `pending` / `in-progress` / `done` are the same kind of projection (claims + merge/archive facts).
 
 ## Workflow
 
@@ -46,7 +46,7 @@ Per-entry `pending` / `in-progress` / `done` lives in `plan.yaml`, not `metadata
 /emery:plan <name> source ...      (authors change.md + plan.yaml; exits for operator review)
 
 /emery:execute                     (the refine -> build -> merge loop; CLI equivalent:
-                                   emery plan execute — running it is the approval)
+                                   emery plan execute — opens the authorization epoch)
 
 /emery:finalize <name>             (confirm publication, archive plan)
 ```

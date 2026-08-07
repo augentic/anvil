@@ -1,28 +1,34 @@
 //! [`Plan::remove`]: drop one pending plan entry while the plan is still
 //! replaceable (plan-review curation).
 
+use std::collections::HashMap;
+use std::hash::BuildHasher;
+
 use error::Error;
 
 use super::model::{Plan, Status};
+use crate::name::SliceName;
 
 impl Plan {
     /// Whether the plan accepts wholesale slice replacement (the
     /// reconciliation kernel) or per-entry removal (`plan remove`) —
-    /// true while no entry has left `pending`.
+    /// true while every projected ladder label is still `pending`.
     #[must_use]
-    pub(crate) fn is_replaceable(&self) -> bool {
-        self.entries.iter().all(|e| e.status == Status::Pending)
+    pub fn is_replaceable<S: BuildHasher>(ladders: &HashMap<SliceName, Status, S>) -> bool {
+        ladders.values().all(|status| *status == Status::Pending)
     }
 
-    /// Remove the entry named `name`. Allowed only while
-    /// `Plan::is_replaceable` holds.
+    /// Remove the entry named `name`. Allowed only while every
+    /// projected ladder is still `pending`.
     ///
     /// # Errors
     ///
     /// Errors when the plan is not replaceable, the entry is missing,
     /// or another entry lists `name` in `depends-on`.
-    pub fn remove(&mut self, name: &str) -> Result<(), Error> {
-        if !self.is_replaceable() {
+    pub fn remove<S: BuildHasher>(
+        &mut self, name: &str, ladders: &HashMap<SliceName, Status, S>,
+    ) -> Result<(), Error> {
+        if !Self::is_replaceable(ladders) {
             return Err(Error::validation_failed(
                 "plan-remove-plan-not-replaceable",
                 "plan remove requires a replaceable plan",

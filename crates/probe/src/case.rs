@@ -28,7 +28,7 @@ use anyhow::{Context as _, Result, bail, ensure};
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use project::config::Layout;
 use project::plan::Status;
-use project::slice::{LifecycleStatus, SliceMetadata};
+use project::slice::SliceMetadata;
 use tracing::Instrument as _;
 
 use crate::telemetry::{self, Telemetry};
@@ -145,9 +145,11 @@ async fn run_workflow(
 
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
+    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
-        plan.entries.iter().all(|entry| entry.status == Status::Pending),
-        "plan author must leave every entry pending: {:?}",
+        ladders.values().all(|status| *status == Status::Pending),
+        "plan author must leave every entry pending: ladders={ladders:?}; entries={:?}",
         plan.entries
     );
     let slices_dir = Layout::new(root).slices_dir();
@@ -167,10 +169,11 @@ async fn run_workflow(
     invoke(root, model, catalog, &["plan", "execute"]).await?;
 
     let plan = sandbox::read_plan(root)?;
+    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
-        plan.entries.iter().all(|entry| entry.status == Status::Done),
-        "execute must drain the plan, leaving every entry done: {:?}",
-        plan.entries
+        ladders.values().all(|status| *status == Status::Done),
+        "execute must drain the plan (projected done): ladders={ladders:?}"
     );
     grade::provenance(&grade::baseline(root)?)?;
     telemetry::report(&telemetry.counts(), plan.entries.len());
@@ -191,28 +194,23 @@ async fn run_build(
     let slice_dir = Layout::new(root).slice_dir(&case.slice);
     let metadata =
         SliceMetadata::load(&slice_dir).context("loading the slice metadata after the build")?;
-    ensure!(
-        metadata.status == LifecycleStatus::Built,
-        "slice `{}` is `{}` after the build, expected `built`",
-        case.slice,
-        metadata.status
-    );
     let report = slice_dir.join("build").join("report.yaml");
     ensure!(report.is_file(), "no authoritative build report at {}", report.display());
 
-    // RFC-87: build writes land in the captured result snapshot, never
-    // the sandbox product tree (code reaches it only at merge).
-    // Materialize the result beside the sandbox for the artifact gate
-    // and operator inspection.
-    let patch_path = slice_dir.join("build").join("patch.yaml");
-    let patch: project::snapshot::CodePatch = serde_saphyr::from_str(
-        &fs::read_to_string(&patch_path)
-            .with_context(|| format!("reading the captured patch {}", patch_path.display()))?,
-    )
-    .context("parsing build/patch.yaml")?;
+    // RFC-87 / RFC-86 D27: build writes land in the captured result
+    // snapshot, never the sandbox product tree (code reaches it only
+    // at merge). Materialize the result beside the sandbox for the
+    // artifact gate and operator inspection.
+    ensure!(
+        project::build_record::BuildRecord::present(&slice_dir) || metadata.completed_at.is_some(),
+        "slice `{}` has no builds/<digest>.yaml (or completed_at) after the build",
+        case.slice,
+    );
+    let record = project::build_record::BuildRecord::load_latest(&slice_dir)
+        .context("loading the fact-substrate build record")?;
     let result_dir = root.join("build-result");
     project::workspace::Store::new(paths(root).locations().snapshots_root())
-        .materialize(&patch.result, &result_dir)
+        .materialize(&record.result, &result_dir)
         .context("materializing the captured result snapshot")?;
     enforce_expected(id, &result_dir, &case.expect)?;
 

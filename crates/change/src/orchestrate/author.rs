@@ -1,6 +1,6 @@
 //! The plan-authoring orchestrator behind `/emery:plan`: scaffold →
-//! survey fan-out → reconciliation judgment → persist → review prose →
-//! `plan validate` doctor sweep.
+//! survey fan-out → source `cid` pin close → reconciliation judgment →
+//! persist → review prose → `plan validate` doctor sweep.
 //!
 //! The run exits with the plan authored and the outcome carrying the
 //! literal execute hint — the orchestrator never runs the plan
@@ -21,7 +21,7 @@ use project::journal::{self, Event, EventKind};
 use project::name::SliceName;
 use project::plan::{
     GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
-    author_gate, build_request, resolve_topology,
+    author_gate, build_request, collect_events, project_ladders, resolve_topology,
 };
 use project::registry::Registry;
 use project::seam::Source;
@@ -94,11 +94,20 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     scaffold(layout, name, bindings, force)?;
     let surveyed = super::survey_all(sources, resolver, paths, now).await?;
 
+    // Source set is closed: record per-source tree `cid` pins before
+    // reconciliation (RFC-86 D4 / D25). Refine later copies these into
+    // `base.yaml`; exact store population is not this step's job.
+    with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
+        project::plan::close_source_pins(plan, paths.project_root()).map(Mutation::changed)
+    })?;
+
     let discovery = Discovery::load(&layout.discovery_path())?;
     let topology = load_topology(resolver, paths)?;
     let request = build_request(&discovery, &topology)?;
 
     let plan = Plan::load(&layout.plan_path())?;
+    let events = collect_events(&plan, layout)?;
+    let ladders = project_ladders(&plan, &events);
     let context = GateContext {
         plan: plan.name.as_str(),
         sources: &plan.sources,
@@ -109,7 +118,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     // repaired in-loop rather than surfacing after the call.
     let mut response = propose::reconcile(model, &request, Some(context), |candidate| {
         let mut throwaway = plan.clone();
-        throwaway.propose_from(candidate.clone(), &discovery, &topology)?;
+        throwaway.propose_from(candidate.clone(), &discovery, &topology, &ladders)?;
         check_gate(candidate, name, &discovery)
     })
     .await?;
@@ -123,7 +132,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     // `propose_from` replaces `plan.entries`, `with_state` writes
     // `plan.yaml` on Ok and rolls back on any Err.
     let outcome = with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
-        plan.propose_from(response, &discovery, &topology).map(Mutation::changed)
+        plan.propose_from(response, &discovery, &topology, &ladders).map(Mutation::changed)
     })?;
     tracing::info!(slices = outcome.slice_names.len(), "plan written");
 
@@ -153,7 +162,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
 fn gate_hint(name: &str) -> String {
     format!(
         "Plan `{name}` is authored. Review it, then run `emery plan execute` \
-         to drive the slices (running it is your approval)."
+         to open the authorization epoch and drive the slices."
     )
 }
 

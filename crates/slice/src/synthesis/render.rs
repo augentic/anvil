@@ -62,7 +62,7 @@ pub fn render_spec_files(model: &SliceModel, baseline_index: &BaselineIndex) -> 
         .map(|domain| {
             let reqs = by_domain.remove(&domain).unwrap_or_default();
             let content = if baseline_index.domain_kind(&domain) == DomainKind::Modified {
-                render_modified_domain(&domain, &reqs, baseline_index)
+                render_modified_domain(&reqs)
             } else {
                 render_flat_domain(&reqs)
             };
@@ -77,14 +77,13 @@ fn render_flat_domain(reqs: &[&ModelRequirement]) -> String {
     content
 }
 
-fn render_modified_domain(
-    domain: &str, reqs: &[&ModelRequirement], baseline_index: &BaselineIndex,
-) -> String {
+fn render_modified_domain(reqs: &[&ModelRequirement]) -> String {
     let mut added: Vec<String> = Vec::new();
     let mut modified: Vec<String> = Vec::new();
     for req in reqs {
-        let id = req.id.as_deref().unwrap_or_default();
-        if baseline_index.is_baseline_req(domain, id) {
+        // Slice-local ids never match baseline numbers; `baseline-id`
+        // marks a MODIFIED row until wave commit remaps identity.
+        if req.baseline_id.is_some() {
             modified.push(render_block(req));
         } else {
             added.push(render_block(req));

@@ -17,7 +17,7 @@ use diagnostics::{
 use error::{Error, Result};
 use petgraph::graph::DiGraph;
 
-use super::model::{Divergence, Entry, Plan, Status};
+use super::model::{Divergence, Entry, Plan};
 use crate::registry::Registry;
 
 /// Build a plan-domain diagnostic on the neutral currency.
@@ -80,14 +80,10 @@ impl Plan {
     ///
     /// Findings are accumulated — no check short-circuits another. Order
     /// is structural checks first (duplicate names, unknown
-    /// depends-on / sources, duplicate source keys, multiple
-    /// in-progress) followed by consistency checks against `slices_dir`
-    /// when provided.
-    ///
-    /// Note on "well-formed status values": `Status` is an enum, so
-    /// every in-memory instance is well-formed by construction. serde
-    /// rejects invalid statuses at parse time, which is not reachable
-    /// in-process — so nothing is emitted for it.
+    /// depends-on / sources, duplicate source keys) followed by
+    /// consistency checks against `slices_dir` when provided. Plan-wide
+    /// “at most one `in-progress` entry” is retired (RFC-86 D23) —
+    /// exclusivity is per-slice claim only.
     #[must_use]
     pub(crate) fn validate(
         &self, slices_dir: Option<&Path>, registry: Option<&Registry>,
@@ -97,7 +93,6 @@ impl Plan {
         results.extend(unknown_depends_on(&self.entries));
         results.extend(unknown_sources(self));
         results.extend(duplicate_source_keys(&self.entries));
-        results.extend(single_in_progress(&self.entries));
         results.extend(context_paths(&self.entries));
         results.extend(orphan_authority_override_keys(&self.entries));
         results.extend(divergence_consistency(&self.entries));
@@ -238,25 +233,6 @@ pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
         code: first.rule_id.clone().unwrap_or_default().into(),
         detail,
     })
-}
-
-fn single_in_progress(changes: &[Entry]) -> Vec<Diagnostic> {
-    let offenders: Vec<&Entry> =
-        changes.iter().filter(|c| c.status == Status::InProgress).collect();
-    if offenders.len() <= 1 {
-        return Vec::new();
-    }
-    offenders
-        .into_iter()
-        .map(|c| {
-            finding(
-                "multiple-in-progress",
-                Severity::Important,
-                "multiple in-progress entries: at most one allowed per plan",
-                Some(c.name.to_string()),
-            )
-        })
-        .collect()
 }
 
 fn project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
@@ -455,23 +431,6 @@ fn slices_dir_consistency(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
                 format!("slice directory '{name}' has no plan entry"),
                 Some(name.clone()),
             ));
-        }
-    }
-
-    for entry in &plan.entries {
-        if entry.status == Status::InProgress {
-            let candidate = slices_dir.join(entry.name.as_str());
-            if !candidate.is_dir() {
-                out.push(finding(
-                    "missing-slice-dir-for-in-progress",
-                    Severity::Suggestion,
-                    format!(
-                        "in-progress entry '{}' has no slice directory (may briefly be absent during phase start-up)",
-                        entry.name
-                    ),
-                    Some(entry.name.to_string()),
-                ));
-            }
         }
     }
 

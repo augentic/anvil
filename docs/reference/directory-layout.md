@@ -9,7 +9,7 @@ Emery draws a clear boundary between **operator-facing platform artifacts**, gen
 ```text
 registry.yaml                               # Workspace catalogue (workspace mode only)
 change.md                                   # Operator brief for the active change
-plan.yaml                                   # Change plan (lifecycle + slices[])
+plan.yaml                                   # Change plan (topology + slices[]; progress is projected)
 discovery.md                                # Plan-time lead inventory
 AGENTS.md                                   # Generated agent context with operator prose outside fences
 
@@ -36,7 +36,8 @@ workspace/                                  # Workspace slots (workspace mode on
 │
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
-│       ├── metadata.yaml                  # Slice lifecycle (managed by CLI)
+│       ├── metadata.yaml                  # Phase timestamps + target (managed by CLI; no stored status)
+│       ├── base.yaml                       # Refine-time source + baseline-spec + target-base pins
 │       ├── proposal.md                     # Why this slice exists
 │       ├── model.yaml                      # Structured synthesis model (inline provenance; spec.md is authoritative)
 │       ├── design.md                       # Technical design
@@ -45,16 +46,21 @@ workspace/                                  # Workspace slots (workspace mode on
 │       │   └── <source>.yaml
 │       ├── specs/                          # Behavioral specs (one per domain)
 │       │   └── <domain>/spec.md
+│       ├── builds/                         # Content-addressed fact-substrate build records
+│       │   └── <digest>.yaml
 │       └── contracts/                      # Per-slice contract delta (when API interactions exist)
 │           ├── schemas/
 │           ├── http/
 │           └── messages/
 │
+├── targets/                                # Target-wave manifests (RFC-86 D9 stand-in under flat `.emery/`)
+│   └── <target>/waves/<digest>.yaml
+│
 ├── specs/                                  # Merged baseline specs (committable; system of record)
 │   └── <domain>/spec.md                    # Accumulated behavioral requirements
 │
-├── journal.jsonl                           # Append-only event log; also the outcome ledger
-│                                           #   (slice.archive.created: slice, touched-specs, summary, merge SHA)
+├── events/                                 # Per-actor append-only fact logs (union via `emery journal show`)
+│   └── <actor>.jsonl                       #   (slice.archive.created, plan.execute.started, claims, waves, …)
 │
 └── archive/                                # Prunable cache of merged/dropped slices + finalized plans
     ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `emery archive prune`)
@@ -88,7 +94,7 @@ $EMERY_HOME/cache/<project-id>/                 # (default home: ~/.emery)
 
 Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the `emery slice refine` orchestration, which mints the directory (re-entry safe) immediately before per-source `extract`. `emery plan add` does not create the slice directory — before execution the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; the synthesis persist tail inside `emery slice refine` / `emery plan execute` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, and `metadata.yaml` for lifecycle state. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; the synthesis persist tail inside `emery slice refine` / `emery plan execute` is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, refine-time `base.yaml` pins, content-addressed `builds/<digest>.yaml` records, and `metadata.yaml` for phase timestamps (lifecycle labels project from those plus artifacts/facts). Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 
@@ -116,7 +122,7 @@ Slots are read-only during planning and writable during execution. Branch creati
 
 ### `archive/`
 
-A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.emery/specs/` baseline plus the append-only **outcome ledger** in `journal.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `emery archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound.
+A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.emery/specs/` baseline plus the append-only **outcome ledger** in `.emery/events/<actor>.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `emery archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound.
 
 ## Files that do not live under `.emery/`
 

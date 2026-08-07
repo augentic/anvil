@@ -11,7 +11,7 @@ use omnia_testkit::model::Harness;
 use probe::ModelFactory;
 use probe::case::{self, Case, WorkflowUntil};
 use project::plan::Status;
-use project::slice::{LifecycleStatus, SliceMetadata};
+use project::slice::SliceMetadata;
 use tempfile::TempDir;
 
 fn catalog() -> Catalog {
@@ -303,7 +303,21 @@ fn stage_case(cases: &Path, id: &str, body: &str) {
 }
 
 fn journal(root: &Path) -> String {
-    fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal.jsonl")
+    let dir = root.join(".emery/events");
+    let Ok(entries) = fs::read_dir(&dir) else {
+        return String::new();
+    };
+    let mut chunks = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
+            continue;
+        }
+        if let Ok(text) = fs::read_to_string(path) {
+            chunks.push(text);
+        }
+    }
+    chunks.join("")
 }
 
 #[tokio::test]
@@ -333,14 +347,21 @@ async fn build_case_reaches_built() {
     let root = sandbox.join("greeting-build");
     let metadata = SliceMetadata::load(&root.join(".emery/slices/greeting"))
         .expect("slice metadata after build");
-    assert_eq!(metadata.status, LifecycleStatus::Built);
+    assert!(
+        metadata.completed_at.is_some(),
+        "build stamps completed_at (LifecycleStatus is not authority)"
+    );
     assert!(
         root.join(".emery/slices/greeting/build/report.yaml").is_file(),
         "the authoritative build report is persisted"
     );
     assert!(
-        root.join(".emery/slices/greeting/build/patch.yaml").is_file(),
-        "the captured code patch is persisted"
+        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
+        "the fact-substrate build record is persisted"
+    );
+    assert!(
+        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        "patch.yaml is not build-outcome authority"
     );
     assert!(
         !root.join("mock-build/greeting.md").exists(),
@@ -380,13 +401,14 @@ async fn until_plan_leaves_entries_pending() {
     .expect("the plan-stopped workflow case passes");
 
     let root = sandbox.join("greeting");
-    let plan = project::plan::Plan::load(&project::config::Layout::new(&root).plan_path())
-        .expect("plan.yaml");
+    let layout = project::config::Layout::new(&root);
+    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
     assert!(!plan.entries.is_empty(), "the authored plan carries entries");
+    let events = project::plan::collect_events(&plan, layout).expect("events");
+    let ladders = project::plan::project_ladders(&plan, &events);
     assert!(
-        plan.entries.iter().all(|entry| entry.status == Status::Pending),
-        "no entry advanced: {:?}",
-        plan.entries
+        ladders.values().all(|status| *status == Status::Pending),
+        "no entry advanced: ladders={ladders:?}"
     );
     assert!(!journal(&root).contains("plan.entry.advanced"), "no entry advanced before execution");
 }

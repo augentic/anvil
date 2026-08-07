@@ -1,9 +1,11 @@
-//! `Plan::next_eligible` (single-step scheduler), the
-//! [`plan_advance_body`] one-shot projection, and the
-//! [`advance_next`] kernel behind `emery plan advance` and the
-//! execute loop.
+//! Fact-based [`advance_next`] kernel behind `emery plan advance` and
+//! the execute loop (RFC-86 D2 / D7 / D23).
+//!
+//! Advance claims the next eligible slice and appends
+//! `plan.entry.advanced`. Ladder labels project from the fact union.
 
 use std::collections::HashMap;
+use std::hash::BuildHasher;
 use std::path::Path;
 
 use diagnostics::has_blocking;
@@ -11,68 +13,14 @@ use error::Error;
 use jiff::Timestamp;
 use serde::Serialize;
 
+use super::execution::{collect_events, next_eligible, project_ladders};
 use super::model::{Entry, Plan, SliceSourceBinding, Status};
 use crate::adapter::Resolver;
-use crate::config::{Layout, Mutation, ProjectConfig, with_state};
+use crate::config::{Layout, ProjectConfig};
 use crate::handler::ExecutionPaths;
-use crate::journal::{self, Event, EventKind};
+use crate::journal::{self, Event, EventKind, claim};
+use crate::name::SliceName;
 use crate::plan::advance_gate;
-
-impl Plan {
-    /// First entry in list order whose dependencies are all `done` and
-    /// whose own status is `pending`. Returns `None` when nothing is
-    /// eligible (plan finished, blocked, empty) **or when any entry is
-    /// currently `in-progress`** — the driver must not pick a new
-    /// change while one is active. The in-progress check runs before
-    /// dependency eligibility checks.
-    ///
-    /// An unknown `depends_on` target is treated as "not done", so the
-    /// entry is not eligible. Orphan-reference diagnostics belong to
-    /// `Plan::validate`.
-    #[must_use]
-    pub(crate) fn next_eligible(&self) -> Option<&Entry> {
-        if self.entries.iter().any(|c| c.status == Status::InProgress) {
-            return None;
-        }
-        let status_by_name: HashMap<&str, Status> =
-            self.entries.iter().map(|c| (c.name.as_str(), c.status)).collect();
-        self.entries.iter().find(|c| {
-            c.status == Status::Pending
-                && c.depends_on
-                    .iter()
-                    .all(|dep| status_by_name.get(dep.as_str()).copied() == Some(Status::Done))
-        })
-    }
-
-    /// Atomically advance the plan: if there is no active in-progress
-    /// entry, transition the next eligible `Pending` entry to
-    /// `InProgress` and return it; otherwise return the existing
-    /// active entry without writing anything.
-    ///
-    /// This is the **only** writer of per-entry `InProgress` per
-    /// workflow §CLI surface — `plan add` / `amend` write `Pending`
-    /// only, and `slice merge` writes `Done` only.
-    ///
-    /// Returns `None` when the plan is drained (no active and no
-    /// eligible pending entry).
-    ///
-    /// # Errors
-    ///
-    /// Errors when the underlying state transition is illegal —
-    /// in practice unreachable since `next_eligible` filters for
-    /// `Pending` entries and the only legal edge from `Pending` is
-    /// `→ InProgress`.
-    pub(crate) fn advance(&mut self) -> Result<Option<&Entry>, Error> {
-        if self.is_executing() {
-            return Ok(self.entries.iter().find(|e| e.status == Status::InProgress));
-        }
-        let Some(name) = self.next_eligible().map(|e| e.name.clone()) else {
-            return Ok(None);
-        };
-        self.transition(&name, Status::InProgress)?;
-        Ok(self.entries.iter().find(|e| e.name == name))
-    }
-}
 
 /// Why `emery plan advance` returned no freshly advanced entry.
 ///
@@ -117,69 +65,57 @@ pub struct AdvanceBody {
     pub sources: Option<Vec<SliceSourceBinding>>,
 }
 
-/// One-shot `emery plan advance` projection behind the dispatcher.
-///
-/// Validates the plan, advances to the next eligible entry (the sole
-/// writer of per-entry `in-progress` per workflow §CLI surface), and
-/// builds the wire [`AdvanceBody`] the dispatcher renders. The handler
-/// keeps only the journal/emit bracket around this call.
-///
-/// `slices_dir` enables the on-disk slice cross-reference checks;
-/// `config` + `project_dir` resolve the advanced entry's `$TARGET` from
-/// the bound project's topology. Target resolution is best-effort: an
-/// unresolvable topology leaves `target: None` rather than failing
-/// (mirroring the pre-removal behaviour for entries that carried no
-/// target — the build phase re-resolves the target before use).
+/// Select the advance outcome from a loaded plan + fact-projected
+/// ladders. Does not append facts — [`advance_next`] owns the claim /
+/// `plan.entry.advanced` writes.
 ///
 /// # Errors
 ///
-/// - [`Error::Validation`] `plan-structural-errors` when the plan has
-///   blocking validate findings or a dependency cycle.
-/// - Whatever `Plan::advance` surfaces (in practice unreachable —
-///   `next_eligible` only selects `Pending` entries).
-pub fn plan_advance_body(
-    resolver: &impl Resolver, plan: &mut Plan, slices_dir: &Path, config: &ProjectConfig,
-    paths: &ExecutionPaths,
+/// [`Error::Validation`] `plan-structural-errors` when the plan has
+/// blocking validate findings or a dependency cycle.
+pub fn plan_advance_body<S: BuildHasher>(
+    resolver: &impl Resolver, plan: &Plan, slices_dir: &Path, config: &ProjectConfig,
+    paths: &ExecutionPaths, ladders: &HashMap<SliceName, Status, S>,
 ) -> Result<AdvanceBody, Error> {
     if has_blocking(&advance_gate(plan, slices_dir)) {
         return Err(structural_errors());
     }
 
-    // workflow §CLI surface: "plan advance returns the active
-    // in-progress entry before selecting a new pending entry, and
-    // reports drained only when no active or pending entries remain."
-    let was_executing = plan.is_executing();
     let plan_name = plan.name.to_string();
-    let advanced = plan.advance()?;
-    Ok(match advanced {
-        None => {
-            let reason =
-                if plan.is_drained() { AdvanceReason::Drained } else { AdvanceReason::Stuck };
-            AdvanceBody {
-                plan: plan_name,
-                reason: Some(reason),
-                ..AdvanceBody::default()
-            }
-        }
-        Some(entry) if was_executing => AdvanceBody {
+    if let Some(entry) = next_eligible(plan, ladders) {
+        let target = crate::target_policy::best_effort_advance(resolver, config, paths, entry);
+        return Ok(AdvanceBody {
+            plan: plan_name,
+            advanced: Some(entry.name.to_string()),
+            project: entry.project.clone(),
+            target,
+            description: entry.description.clone(),
+            sources: Some(entry.sources.clone()),
+            ..AdvanceBody::default()
+        });
+    }
+
+    if let Some(entry) = first_in_progress(plan, ladders) {
+        return Ok(AdvanceBody {
             plan: plan_name,
             reason: Some(AdvanceReason::InProgress),
             active: Some(entry.name.to_string()),
             ..AdvanceBody::default()
-        },
-        Some(entry) => {
-            let target = crate::target_policy::best_effort_advance(resolver, config, paths, entry);
-            AdvanceBody {
-                plan: plan_name,
-                advanced: Some(entry.name.to_string()),
-                project: entry.project.clone(),
-                target,
-                description: entry.description.clone(),
-                sources: Some(entry.sources.clone()),
-                ..AdvanceBody::default()
-            }
-        }
+        });
+    }
+
+    let drained = plan.entries.is_empty() || ladders.values().all(|status| *status == Status::Done);
+    Ok(AdvanceBody {
+        plan: plan_name,
+        reason: Some(if drained { AdvanceReason::Drained } else { AdvanceReason::Stuck }),
+        ..AdvanceBody::default()
     })
+}
+
+fn first_in_progress<'a, S: BuildHasher>(
+    plan: &'a Plan, ladders: &HashMap<SliceName, Status, S>,
+) -> Option<&'a Entry> {
+    plan.entries.iter().find(|entry| ladders.get(&entry.name).copied() == Some(Status::InProgress))
 }
 
 fn structural_errors() -> Error {
@@ -193,39 +129,41 @@ fn structural_errors() -> Error {
 /// Advance the plan one entry: the shared kernel behind both `emery
 /// plan advance` and the execute loop's per-phase advance.
 ///
-/// Runs [`plan_advance_body`] inside the atomic state loop —
-/// `plan.yaml` is rewritten only when an entry actually advanced
-/// (`pending → in-progress`); returning the active entry or reporting
-/// drained/stuck leaves the file untouched. workflow §Observability:
-/// `plan.entry.advanced` fires only on a fresh advance, so a parked
-/// loop leaves no advance event behind.
+/// Claims the next eligible slice (`slice.claimed`) and appends
+/// `plan.entry.advanced`. Does **not** rewrite `plan.yaml` entry
+/// status (RFC-86 D2 / D7). Returning the active entry or reporting
+/// drained/stuck emits nothing.
 ///
 /// # Errors
 ///
 /// - [`Error::ArtifactNotFound`] when `plan.yaml` is absent.
-/// - `plan-structural-errors` and transition failures from
-///   [`plan_advance_body`].
-/// - journal append failures for the advance event.
+/// - `plan-structural-errors` from structural validate.
+/// - `slice-claim-conflict` when another actor owns the eligible slice.
+/// - journal append failures for the claim / advance facts.
 pub fn advance_next(
     resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp, config: &ProjectConfig,
 ) -> Result<AdvanceBody, Error> {
     let layout = Layout::new(paths.project_root());
-    let slices_dir = layout.slices_dir();
-    let (body, plan_name) = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
-        let body = plan_advance_body(resolver, plan, &slices_dir, config, paths)?;
-        let changed = body.advanced.is_some();
-        let pair = (body, plan.name.clone());
-        Ok(if changed { Mutation::changed(pair) } else { Mutation::unchanged(pair) })
-    })?;
+    let plan = Plan::load(&layout.plan_path())?;
+    let events = collect_events(&plan, layout)?;
+    let ladders = project_ladders(&plan, &events);
+    let body = plan_advance_body(resolver, &plan, &layout.slices_dir(), config, paths, &ladders)?;
     if let Some(advanced) = &body.advanced {
-        let event = Event::new(
-            now,
-            EventKind::PlanEntryAdvanced {
-                plan_name,
-                slice_name: advanced.clone().into(),
-            },
-        );
-        journal::append_one(layout, &event)?;
+        let slice: SliceName = advanced.clone().into();
+        let actor = journal::actor_id();
+        let ownership = claim::project(&events);
+        let claimed = claim::claim(&ownership, slice.clone(), &actor)?;
+        journal::append_one(layout, &Event::new(now, claimed))?;
+        journal::append_one(
+            layout,
+            &Event::new(
+                now,
+                EventKind::PlanEntryAdvanced {
+                    plan_name: plan.name,
+                    slice_name: slice,
+                },
+            ),
+        )?;
     }
     Ok(body)
 }

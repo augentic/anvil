@@ -1,5 +1,7 @@
 //! `plan execute` — the drained refine → build → merge loop over the
-//! plan.
+//! plan. At start appends `plan.execute.started` with typed
+//! `closed-plan` coverage (RFC-86 D6); optional `--waive` / `--reason`
+//! nest unknown-waivers on that payload (D17).
 
 use std::io::Write;
 
@@ -13,15 +15,19 @@ use project::plan::LoopStep;
 use project::seam::{Source, Target, Workspaces};
 use serde::{Deserialize, Serialize};
 
-use crate::orchestrate::{self, ExecuteOutcome};
+use crate::orchestrate::{self, ExecuteOutcome, WaiveSelector};
 
-/// Wire input for `plan execute` (no fields).
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "serde deserialises the wire `{}` object into a braced struct only"
-)]
-pub struct ExecuteInput {}
+/// Wire input for `plan execute`.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ExecuteInput {
+    /// Repeatable `--waive <slice>/<req>` selectors (D17).
+    #[serde(default)]
+    pub waive: Vec<WaiveSelector>,
+    /// Required when `waive` is non-empty; applied to every selector.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
 
 /// `emery plan execute` → the internal execute orchestration — the
 /// drained refine → build → merge loop.
@@ -34,11 +40,13 @@ impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> f
     type Output = ExecuteBody;
 
     async fn call(
-        _input: Self::Input, context: CallContext<'_, P>,
+        input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, &cx.paths, cx.now()).await?;
+        let outcome =
+            orchestrate::execute(caps, &cx.paths, cx.now(), &input.waive, input.reason.as_deref())
+                .await?;
         match outcome {
             ExecuteOutcome::Drained { plan, phases } => Ok(ExecuteBody {
                 status: "drained",

@@ -13,14 +13,14 @@ mod list {
     #[tokio::test]
     async fn sorted_with_status() {
         let project = Session::scripted("mock", Vec::new());
-        for (name, status) in [("beta", "refined"), ("alpha", "refining")] {
+        for (name, refined) in [("beta", true), ("alpha", false)] {
             let slice = project.root().join(".emery/slices").join(name);
             fs::create_dir_all(&slice).expect("create slice");
-            fs::write(
-                slice.join("metadata.yaml"),
-                format!("target: demo@1.0.0\nstatus: {status}\ntouched-specs: []\n"),
-            )
-            .expect("stage metadata");
+            fs::write(slice.join("metadata.yaml"), "target: demo@1.0.0\ntouched-specs: []\n")
+                .expect("stage metadata");
+            if refined {
+                fs::write(slice.join("model.yaml"), "requirements: []\n").expect("model");
+            }
         }
         fs::create_dir_all(project.root().join(".emery/slices/not-a-slice"))
             .expect("stage stray dir");
@@ -57,7 +57,7 @@ mod timestamps {
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
             slice.join("metadata.yaml"),
-            "target: demo\nstatus: refining\ncreated-at: 2026-06-02T01:02:03+00:00\n\
+            "target: demo\ncreated-at: 2026-06-02T01:02:03+00:00\n\
          touched-specs: []\noutcome:\n  phase: guidance\n  outcome: success\n  \
          at: 2026-06-02T01:02:03+00:00\n  summary: ready\n",
         )
@@ -92,7 +92,7 @@ mod timestamps {
         fs::create_dir_all(&slice).expect("create slice");
         fs::write(
             slice.join("metadata.yaml"),
-            "target: demo\nstatus: refining\ncreated-at: not-a-timestamp\ntouched-specs: []\n",
+            "target: demo\ncreated-at: not-a-timestamp\ntouched-specs: []\n",
         )
         .expect("stage metadata");
 

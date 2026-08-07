@@ -141,7 +141,7 @@
       "type": "object"
     },
     "ModelRequirement": {
-      "description": "One `requirements[]` entry.\n\nThe agent authors the behavioral prose (`title`, `statement`,\n`scenarios`, `notes`, `domain`), the `agreement` verdict, and the\ncontributing `claims`; the kernel-owned fields (`id`, `status`,\n`sources`, claim `winner`) are optional because the agent omits them\nand the kernel re-derives them on projection. The `resolution` label\nis not stored here — the provenance projection recomputes it.",
+      "description": "One `requirements[]` entry.\n\nThe agent authors the behavioral prose (`title`, `statement`,\n`scenarios`, `notes`, `domain`), the `agreement` verdict, optional\n`baseline-id`, and the contributing `claims`; the kernel-owned\nfields (`id`, `baseline-digest`, `status`, `sources`, claim `winner`)\nare optional because the agent omits them and the kernel re-derives\nthem on projection. The `resolution` label is not stored here — the\nprovenance projection recomputes it.",
       "properties": {
         "agreement": {
           "anyOf": [
@@ -154,8 +154,15 @@
           ],
           "description": "Agent-authored agreement verdict over the contributing claims.\nPresent only when more than one claim contributes."
         },
+        "baseline-digest": {
+          "description": "Kernel-stamped `sha256:…` digest of the baseline requirement body\nnamed by [`Self::baseline_id`]. Present only on `MODIFIED` rows;\nwave commit rejects drift when the baseline body no longer matches.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "baseline-id": {
-          "description": "Agent-authored baseline `REQ` id when modifying an existing\nrequirement in a domain that already has a merged baseline.\nThe kernel takes the projected id from here; omitted for additive\nrequirements in modified domains.",
+          "description": "Agent-authored baseline `REQ` id when modifying an existing\nrequirement in a domain that already has a merged baseline.\nThe kernel keeps this reference and mints a slice-local `id`;\nomitted for additive requirements. Wave commit assigns the final\nbaseline number later (RFC-86 D5).",
           "type": [
             "string",
             "null"

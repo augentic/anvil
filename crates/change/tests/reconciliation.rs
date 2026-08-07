@@ -84,6 +84,14 @@ async fn overlap_merges() {
     )
     .expect("parse plan.yaml");
 
+    // Source set closed at author: each binding carries a tree `cid`
+    // (RFC-86 D4 / D25). Value bindings digest a one-file `content` tree.
+    for (key, value) in [("code", "The code source."), ("docs", "The docs source.")] {
+        let binding = plan.sources.get(key).unwrap_or_else(|| panic!("source `{key}`"));
+        let cid = binding.cid.as_ref().unwrap_or_else(|| panic!("{key} cid"));
+        assert_eq!(cid, &project::plan::value_cid(value), "{key} cid");
+    }
+
     // The overlap merged: one slice carries both sources' leads.
     let login = plan.entries.iter().find(|e| e.name == "login-flow").expect("login slice");
     let mut login_sources: Vec<(String, String)> = login

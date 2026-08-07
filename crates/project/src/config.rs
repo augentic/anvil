@@ -207,6 +207,60 @@ impl<'a> Layout<'a> {
         self.emery_dir().join("archive")
     }
 
+    /// Absolute path to `<project_dir>/.emery/events/` — per-actor
+    /// append-only fact logs (`<actor>.jsonl`). Pre-RFC-88 stand-in
+    /// home (flat `.emery/`); the two-root cut moves these under the
+    /// change tree.
+    #[must_use]
+    pub fn events_dir(&self) -> PathBuf {
+        self.emery_dir().join("events")
+    }
+
+    /// Absolute path to one actor's event log,
+    /// `<project_dir>/.emery/events/<actor>.jsonl`.
+    #[must_use]
+    pub fn actor_events_path(&self, actor: &str) -> PathBuf {
+        self.events_dir().join(format!("{actor}.jsonl"))
+    }
+
+    /// Absolute path to `<project_dir>/.emery/targets/` — per-target
+    /// wave manifests (RFC-86 D9). Pre-RFC-88 stand-in home under the
+    /// flat `.emery/` root.
+    #[must_use]
+    pub fn targets_dir(&self) -> PathBuf {
+        self.emery_dir().join("targets")
+    }
+
+    /// Absolute path to `<project_dir>/.emery/targets/<target>/waves/`.
+    #[must_use]
+    pub fn target_waves_dir(&self, target: &str) -> PathBuf {
+        self.targets_dir().join(target).join("waves")
+    }
+
+    /// Absolute path to one wave manifest,
+    /// `<project_dir>/.emery/targets/<target>/waves/<digest>.yaml`
+    /// where `digest` is the bare 64-hex content address (no `sha256:`
+    /// scheme).
+    #[must_use]
+    pub fn target_wave_path(&self, target: &str, digest: &str) -> PathBuf {
+        self.target_waves_dir(target).join(format!("{digest}.yaml"))
+    }
+
+    /// Absolute path to one slice's build-record directory,
+    /// `<project_dir>/.emery/slices/<name>/builds/` (RFC-86 D27).
+    #[must_use]
+    pub fn slice_builds_dir(&self, name: &str) -> PathBuf {
+        self.slice_dir(name).join("builds")
+    }
+
+    /// Absolute path to one content-addressed build record,
+    /// `<project_dir>/.emery/slices/<name>/builds/<digest>.yaml`
+    /// where `digest` is the bare 64-hex content address.
+    #[must_use]
+    pub fn slice_build_record_path(&self, name: &str, digest: &str) -> PathBuf {
+        self.slice_builds_dir(name).join(format!("{digest}.yaml"))
+    }
+
     /// Absolute path to `<project_dir>/registry.yaml` — the platform
     /// catalogue. Platform-level artifact, lives at the repo root.
     #[must_use]

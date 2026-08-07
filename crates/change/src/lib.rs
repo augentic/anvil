@@ -16,6 +16,6 @@ pub mod source;
 // native host and crate-level tests drive.
 pub use project::plan::{
     AdvanceBody, AdvanceReason, AuthorityOverride, Disagreement, DisagreementValue, Divergence,
-    Entry, EntryPatch, LoopStep, NextActionKind, Patch, Plan, SliceSourceBinding, SourceBinding,
-    Status, StatusBody, StatusCounts, StopBody, StopReason,
+    Entry, EntryPatch, GapRow, GapsBody, LoopStep, NextActionKind, Patch, Plan, SharedLeadRollup,
+    SliceSourceBinding, SourceBinding, Status, StatusBody, StatusCounts, StopBody, StopReason,
 };

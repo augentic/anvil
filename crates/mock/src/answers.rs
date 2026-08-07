@@ -118,3 +118,73 @@ pub fn adversarial_grouping() -> String {
     }))
     .expect("grouping serialises")
 }
+
+/// Synthesis for the adversarial `login-flow` slice (agreed, both
+/// sources).
+///
+/// # Panics
+///
+/// Panics when the synthesis value stops serialising.
+#[must_use]
+pub fn login_flow_synthesis() -> String {
+    serde_json::to_string(&json!({
+        "version": 2,
+        "kind": "response",
+        "slice": "login-flow",
+        "model": {
+            "requirements": [{
+                "title": "users sign in with email and password",
+                "domain": "auth",
+                "claims": [
+                    { "source": "docs", "id": "login.flow", "kind": "requirement" },
+                    { "source": "code", "id": "login.flow", "kind": "requirement" }
+                ],
+                "statement": "Users authenticate with an email address and password.",
+                "scenarios": ["A valid email and password yield an authenticated session"]
+            }],
+            "tasks": [
+                { "id": "TASK-001", "text": "Implement email/password sign-in.", "satisfies": ["REQ-001"] }
+            ]
+        },
+        "artifacts": {
+            "proposal": "# login-flow\n\n## Why\n\nBoth sources describe sign-in.\n\n## Domains\n\n- auth — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
+            "design": "# Design\n\nHow login-flow lands.\n",
+            "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Implement sign-in (TASK-001)\n",
+            "specs": [{ "domain": "auth", "content": "## auth\nAgent prose body.\n" }]
+        }
+    }))
+    .expect("synthesis serialises")
+}
+
+/// Synthesis for the adversarial `password-reset` slice (evidence gap).
+///
+/// # Panics
+///
+/// Panics when the synthesis value stops serialising.
+#[must_use]
+pub fn password_reset_synthesis() -> String {
+    serde_json::to_string(&json!({
+        "version": 2,
+        "kind": "response",
+        "slice": "password-reset",
+        "model": {
+            "requirements": [{
+                "title": "password reset behaviour",
+                "domain": "password-reset",
+                "claims": [],
+                "statement": "A password reset flow exists; its behaviour is not evidenced.",
+                "scenarios": ["A user requests a password reset (behaviour unspecified)"]
+            }],
+            "tasks": [
+                { "id": "TASK-001", "text": "Emery the password reset flow.", "satisfies": ["REQ-001"] }
+            ]
+        },
+        "artifacts": {
+            "proposal": "# password-reset\n\n## Why\n\nDocs mention it without detail.\n\n## Domains\n\n- password-reset — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
+            "design": "# Design\n\nHow password-reset lands.\n",
+            "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Emery the flow (TASK-001)\n",
+            "specs": [{ "domain": "password-reset", "content": "## password-reset\nAgent prose body.\n" }]
+        }
+    }))
+    .expect("synthesis serialises")
+}

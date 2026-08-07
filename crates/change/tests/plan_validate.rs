@@ -11,30 +11,18 @@ use support::report_rule_ids;
 #[tokio::test]
 async fn structural_findings() {
     let cases = [
-        (
-            "duplicate-name",
-            "slices:\n  - name: alpha\n    status: pending\n  - name: alpha\n    status: pending\n",
-        ),
-        (
-            "unknown-depends-on",
-            "slices:\n  - name: alpha\n    depends-on: [missing]\n    status: pending\n",
-        ),
-        (
-            "unknown-source",
-            "slices:\n  - name: alpha\n    sources: [missing]\n    status: pending\n",
-        ),
+        ("duplicate-name", "slices:\n  - name: alpha\n  - name: alpha\n"),
+        ("unknown-depends-on", "slices:\n  - name: alpha\n    depends-on: [missing]\n"),
+        ("unknown-source", "slices:\n  - name: alpha\n    sources: [missing]\n"),
         (
             "duplicate-source-key",
-            "sources:\n  docs:\n    adapter: demo-source\n    path: /tmp/docs\nslices:\n  - name: alpha\n    sources: [docs, docs]\n    status: pending\n",
+            "sources:\n  docs:\n    adapter: demo-source\n    path: /tmp/docs\nslices:\n  - name: alpha\n    sources: [docs, docs]\n",
         ),
         (
             "cycle-in-depends-on",
-            "slices:\n  - name: alpha\n    depends-on: [beta]\n    status: pending\n  - name: beta\n    depends-on: [alpha]\n    status: pending\n",
+            "slices:\n  - name: alpha\n    depends-on: [beta]\n  - name: beta\n    depends-on: [alpha]\n",
         ),
-        (
-            "cycle-in-depends-on",
-            "slices:\n  - name: alpha\n    depends-on: [alpha]\n    status: pending\n",
-        ),
+        ("cycle-in-depends-on", "slices:\n  - name: alpha\n    depends-on: [alpha]\n"),
     ];
 
     for (expected, body) in cases {

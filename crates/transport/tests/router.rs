@@ -60,7 +60,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 30);
+    assert_eq!(http_types.len(), 31);
 }
 
 #[tokio::test]
@@ -114,9 +114,25 @@ async fn detailed_help() {
         &["emery", "workspace", "prepare"][..],
         &["emery", "workspace", "push"][..],
         &["emery", "workspace", "sync"][..],
+        // RFC-86 D14 / D6 — never shipped; shift-left uses `slice refine`.
+        &["emery", "plan", "approve"][..],
+        &["emery", "plan", "refine"][..],
     ] {
         assert_eq!(router.execute(removed.iter().copied()).await.exit, 2, "{removed:?}");
     }
+
+    let plan_help = router.execute(["emery", "plan", "--help"]).await;
+    assert_eq!(plan_help.exit, 0);
+    let plan_help = String::from_utf8_lossy(&plan_help.stdout);
+    assert!(!plan_help.contains("approve"), "no plan approve subcommand: {plan_help}");
+    // `refine` must not appear as a plan subcommand (slice refine is fine elsewhere).
+    assert!(
+        !plan_help.lines().any(|line| {
+            let trimmed = line.trim_start();
+            trimmed.starts_with("approve") || trimmed.starts_with("refine")
+        }),
+        "plan help must not list approve/refine: {plan_help}"
+    );
 }
 
 #[tokio::test]
@@ -288,7 +304,7 @@ fn project(fixture: Fixture) -> TempDir {
     if matches!(fixture, Fixture::Cycle) {
         fs::write(
             project.path().join("plan.yaml"),
-            "name: cycle\nsources: {}\nslices:\n  - name: first\n    status: pending\n    depends-on: [second]\n  - name: second\n    status: pending\n    depends-on: [first]\n",
+            "name: cycle\nsources: {}\nslices:\n  - name: first\n    depends-on: [second]\n  - name: second\n    depends-on: [first]\n",
         )
         .expect("write cyclic plan");
     }

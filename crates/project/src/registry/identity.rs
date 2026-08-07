@@ -54,7 +54,8 @@ pub struct Projection {
 /// by slug, each carrying up to [`SURFACE_TITLE_CAP`] requirement
 /// titles in `REQ-NNN` id order plus a `more` count when capped.
 /// `recent` is the last [`RECENT_TAIL`] `slice.archive.created`
-/// outcome summaries from `.emery/journal.jsonl`, in append order.
+/// outcome summaries from the per-actor event-log union, in union
+/// order.
 /// A project with no baseline yields two empty vectors — greenfield
 /// reconciliation degrades cleanly to `description` only.
 ///

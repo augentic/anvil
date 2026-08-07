@@ -1,11 +1,15 @@
-//! Lifecycle state machine for slice progression
-//! (`Refining → Refined → Built → Merged`, plus `* → Dropped` from any
-//! non-terminal state). [`LifecycleStatus::transition`] is the only
-//! sanctioned mutator.
+//! Projected slice lifecycle labels (RFC-86 D2 / D11).
+//!
+//! Not stored on `metadata.yaml`. CLI surfaces that still name a
+//! lifecycle rung (`slice list`, `slice drop`) project it from
+//! artifacts and phase timestamps.
 
-use error::Error;
+use std::path::Path;
 
-/// Lifecycle states a slice passes through.
+use super::metadata::SliceMetadata;
+use crate::build_record::BuildRecord;
+
+/// Lifecycle labels a slice may project.
 #[derive(
     Debug,
     Clone,
@@ -23,11 +27,11 @@ use error::Error;
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum LifecycleStatus {
-    /// Slice directory created; `/emery:refine` extract + synthesis in flight.
+    /// Slice directory created; refine in flight or not yet stamped.
     Refining,
-    /// Canonical artifacts validated; ready for `/emery:build`.
+    /// Canonical artifacts validated; ready for build.
     Refined,
-    /// Tasks complete; ready for `/emery:merge`.
+    /// Build completed; ready for merge.
     Built,
     /// Specs merged into baseline and slice archived.
     Merged,
@@ -36,28 +40,28 @@ pub enum LifecycleStatus {
 }
 
 impl LifecycleStatus {
-    /// Attempt a transition. Legal edges: `Refining → Refined`,
-    /// `Refined → Built`, `Built → Merged`, and
-    /// `{Refining, Refined, Built} → Dropped`.
-    ///
-    /// # Errors
-    /// `Error::Diag { code = "slice-lifecycle", .. }` when not
-    /// reachable; detail carries the rejected edge verbatim.
-    pub fn transition(self, target: Self) -> Result<Self, Error> {
-        use LifecycleStatus::{Built, Dropped, Merged, Refined, Refining};
-        if matches!(
-            (self, target),
-            (Refining, Refined)
-                | (Refined, Built)
-                | (Built, Merged)
-                | (Refining | Refined | Built, Dropped)
-        ) {
-            Ok(target)
-        } else {
-            Err(Error::Diag {
-                code: "slice-lifecycle",
-                detail: format!("cannot transition slice from `{self}` to `{target}`"),
-            })
+    /// Project the lifecycle label from phase timestamps and slice
+    /// artifacts. Never reads a stored status field.
+    #[must_use]
+    pub fn project(slice_dir: &Path, metadata: &SliceMetadata) -> Self {
+        if metadata.dropped_at.is_some() {
+            return Self::Dropped;
         }
+        if metadata.merged_at.is_some() {
+            return Self::Merged;
+        }
+        // RFC-86 D27: “built” projects from fact-substrate build
+        // records (or the completed_at stamp refine/build write), never
+        // from a leftover `build/patch.yaml` path check.
+        if metadata.completed_at.is_some() || BuildRecord::present(slice_dir) {
+            return Self::Built;
+        }
+        if metadata.defined_at.is_some()
+            || slice_dir.join("model.yaml").is_file()
+            || slice_dir.join("spec.md").is_file()
+        {
+            return Self::Refined;
+        }
+        Self::Refining
     }
 }

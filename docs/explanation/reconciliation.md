@@ -27,7 +27,7 @@ Three rules keep this predictable:
 
 This is why a one-source, one-lead change and a twelve-slice migration use exactly the same machinery — the only difference is how many leads `survey` produced.
 
-You review and adjust the proposed slices before running `emery plan execute` — running it is your approval.
+You review and adjust the proposed slices before running `emery plan execute` — that opens the authorization epoch and drives privileged work.
 
 ## Slice time: evidence becomes a spec
 

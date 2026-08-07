@@ -116,6 +116,7 @@ pub(crate) fn source_map(
                 version,
                 path,
                 value,
+                cid: None,
             },
         );
     }

@@ -5,7 +5,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::config::{Mutation, with_state};
 use project::handler::{Anchor, Ctx};
-use project::plan::Plan;
+use project::plan::{Plan, collect_events, project_ladders};
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -34,6 +34,7 @@ impl<P: Anchor> Operation<P> for Remove {
         let cx = Ctx::load(context.provider)?;
         let name = input.name;
         let plan_path = require_file(&cx)?;
+        let events = collect_events(&Plan::load(&plan_path)?, cx.layout())?;
         let body = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
             let removed = plan
                 .entries
@@ -41,7 +42,8 @@ impl<P: Anchor> Operation<P> for Remove {
                 .find(|e| e.name == name)
                 .cloned()
                 .ok_or_else(|| plan.entry_not_found(&name))?;
-            plan.remove(&name)?;
+            let ladders = project_ladders(plan, &events);
+            plan.remove(&name, &ladders)?;
             Ok(Mutation::changed(EntryBody {
                 plan: plan_ref(plan, &plan_path),
                 action: Action::Remove,

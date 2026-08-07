@@ -5,6 +5,7 @@
 mod artifact_class;
 mod composition;
 mod engine;
+pub mod identity;
 pub mod slice;
 mod validate;
 

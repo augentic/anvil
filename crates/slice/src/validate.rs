@@ -2,8 +2,9 @@
 //! guest refine orchestrator.
 //!
 //! [`run`] collects the ordered pre-adapter gates, then folds adapter
-//! findings with non-blocking synopsis advisories. Rendering, journaling,
-//! and error envelopes remain at the caller boundaries.
+//! findings with non-blocking synopsis and pin-drift advisories.
+//! Rendering, journaling, and error envelopes remain at the caller
+//! boundaries.
 
 use std::path::{Path, PathBuf};
 
@@ -19,6 +20,7 @@ use crate::synthesis::evidence::read_evidence_dir;
 mod catalog;
 mod decisions;
 mod model_drift;
+mod pin_drift;
 mod pre_adapter;
 mod spec_location;
 
@@ -90,11 +92,12 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
     }
 
     // Adapter validation findings — `validate_slice` returns one
-    // `violation` diagnostic per structural Fail. The non-blocking
-    // `discovery-lead-synopsis-thin` advisories ride this surface too;
-    // only a blocking diagnostic gates the caller's exit.
+    // `violation` diagnostic per structural Fail. Non-blocking review
+    // advisories (thin discovery synopses; pin drift) ride this surface
+    // too; only a blocking diagnostic gates the caller's exit.
     let mut findings = artifacts::validate::validate_slice(&slice_dir)?;
     findings.append(&mut pre_adapter::synopsis_thin(layout)?);
+    findings.append(&mut pin_drift::findings(layout, &slice_dir, name)?);
     Ok(Validation::Adapter {
         findings,
         synthesis_tags,

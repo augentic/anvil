@@ -89,17 +89,14 @@ slices:
     sources:
       - source: docs
         lead: account-registration
-    status: pending
   - name: password-reset
     sources:
       - source: docs
         lead: password-reset
-    status: pending
   - name: account-audit-log
     sources:
       - source: docs
         lead: account-audit-log
-    status: pending
 ```
 
 Each slice row maps one lead from `discovery.md` to a unit of work. `discovery.md` (at the project root) lists the full lead inventory the survey found:
@@ -118,7 +115,7 @@ Sources: 1. Leads: 3.
 - synopsis: Email/password registration with confirmation flow
 ```
 
-Survey and reconciliation are model-driven, so your lead names and synopses will vary with your notes — the *shape* is what to check: one lead per note, one slice per lead, every slice `pending`.
+Survey and reconciliation are model-driven, so your lead names and synopses will vary with your notes — the *shape* is what to check: one lead per note, one slice per lead (entries project `pending` until claimed).
 </div>
 
 
@@ -134,7 +131,7 @@ Survey and reconciliation are model-driven, so your lead names and synopses will
 | `plan.yaml` | Three slices, sensible names, each bound to one `docs` lead |
 | `discovery.md` | The lead inventory matches your three notes |
 
-This pause is the operator review step. When the plan looks right, approving it *is* running `emery plan execute`. If the grouping is wrong — say survey merged two notes into one lead — fix the notes and re-run `/emery:plan` (it confirms before replacing), or curate entries with the CLI; see [Amend a plan before executing](../how-to/amend-a-plan.md).
+This pause is the operator review step. When the plan looks right, start privileged work with `emery plan execute` (it journals `plan.execute.started`). If the grouping is wrong — say survey merged two notes into one lead — fix the notes and re-run `/emery:plan` (it confirms before replacing), or curate entries with the CLI; see [Amend a plan before executing](../how-to/amend-a-plan.md).
 </div>
 
 
@@ -146,7 +143,7 @@ This pause is the operator review step. When the plan looks right, approving it 
 emery plan execute
 ```
 
-Execute drives each slice through refine → build → merge in plan order. Only one entry is `in-progress` at a time; each slice gets its own directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
+Execute opens the authorization epoch, then drives each slice through refine → build → merge in plan order (a single execute process walks entries one-by-one; other actors may still claim different slices). Each slice gets its own directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
 
 Check progress at any time from a second terminal:
 
@@ -154,11 +151,12 @@ Check progress at any time from a second terminal:
 emery plan status
 ```
 
-Expected shape mid-run — the entry counts walk from `3 pending` toward `3 done`, and `next-action` names the current phase:
+Expected shape mid-run — the projected entry counts walk from `3 pending` toward `3 done`, and `next-action` names the current phase:
 
 ```text
-plan: account-revamp (approved)
+plan: account-revamp
 entries: 1 done / 1 in-progress / 1 pending
+ready: false  authorized: true
 next-action: build password-reset
 resume: /emery:build password-reset
 ```

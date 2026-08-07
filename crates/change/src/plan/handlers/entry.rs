@@ -40,7 +40,7 @@ impl Render for EntryBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         let name = &self.entry.name;
         match self.action {
-            Action::Create => writeln!(w, "created plan entry `{name}` (status: pending)")?,
+            Action::Create => writeln!(w, "created plan entry `{name}`")?,
             Action::Amend => writeln!(w, "amended plan entry `{name}`")?,
             Action::Remove => writeln!(w, "removed plan entry `{name}`")?,
         }

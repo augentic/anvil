@@ -56,7 +56,7 @@ async fn merge_promotes_and_supersedes() {
     let baseline = project.root().join(".emery/decisions");
     fs::create_dir_all(&staged).expect("create staged decisions");
     fs::create_dir_all(&baseline).expect("create baseline decisions");
-    fs::write(slice.join("metadata.yaml"), "target: mock\nstatus: built\ntouched-specs: []\n")
+    fs::write(slice.join("metadata.yaml"), "target: mock\ntouched-specs: []\n")
         .expect("stage built metadata");
     write_decision(
         &baseline.join("DEC-0001-old-choice.md"),
@@ -66,16 +66,44 @@ async fn merge_promotes_and_supersedes() {
         &staged.join("new-choice.md"),
         "slug: new-choice\nstatus: accepted\nsupersedes: [DEC-0001]\n",
     );
-    // A merge needs the build's captured code patch; this test stages
-    // `built` by hand, so freeze the fixture tree as a no-op patch
-    // (base == result).
+    // A merge needs a fact-substrate build record + revalidated
+    // one-member wave; this test stages `built` by hand, so freeze the
+    // fixture tree as a no-op patch (base == result), open a matching
+    // wave, and wrap both in a BuildRecord.
     let snapshot = project.provider().freeze().await.expect("freeze fixture tree");
-    fs::create_dir_all(slice.join("build")).expect("create build dir");
-    fs::write(
-        slice.join("build/patch.yaml"),
-        format!("base: {snapshot}\nresult: {snapshot}\ntouched: []\n"),
-    )
-    .expect("stage patch.yaml");
+    let layout = project::config::Layout::new(project.root());
+    let wave = project::wave::Wave::one_member(
+        "demo",
+        snapshot.clone(),
+        project::name::SliceName::from("demo"),
+        project::snapshot::SnapshotId::from_digest(&"b".repeat(64)),
+        vec![],
+        project::wave::EpochRef {
+            actor: "local".into(),
+            sequence: 0,
+        },
+    );
+    let opened = wave
+        .open(layout, jiff::Timestamp::from_second(1_700_000_000).expect("ts"))
+        .expect("open wave");
+    let record = project::build_record::BuildRecord::from_capture(
+        project::snapshot::CodePatch {
+            base: snapshot.clone(),
+            result: snapshot,
+            touched: vec![],
+        },
+        opened.digest,
+        project::seam::wire::BuildReport {
+            version: 1,
+            slice: "demo".into(),
+            target: "mock@0.0.0".into(),
+            status: project::seam::wire::BuildStatus::Success,
+            findings: vec![],
+            outputs: vec![],
+            ui_surface: None,
+        },
+    );
+    record.write(&slice).expect("stage build record");
 
     let body = run::<slice::handlers::MergeRun, _, _>(
         project.provider(),

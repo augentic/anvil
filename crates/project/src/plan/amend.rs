@@ -14,18 +14,16 @@ impl Plan {
     /// Nullable fields (`project`, `target`, `description`) take a
     /// three-way [`Patch`](super::model::Patch): `Keep` leaves the field
     /// alone, `Clear` sets it to `None`, `Set(v)` replaces it with
-    /// `Some(v)`. `status` is intentionally not patchable — see
-    /// [`EntryPatch`] and [`Plan::transition`] for the
-    /// single-writer-for-status note.
+    /// `Some(v)`. Progress is projected from facts (RFC-86 D2) and is
+    /// not an amendable field — see [`EntryPatch`].
     ///
     /// After mutation, the plan is re-validated. Any `Error`-level
     /// finding reverts the single-entry mutation (we snapshot the
     /// pre-mutation entry at the top of the function and write it
     /// back on failure) and returns an `Error::Diag`.
     ///
-    /// `amend` does not consult `Entry::status` — it is legal to
-    /// amend the currently-`in-progress` entry's non-status fields,
-    /// per the execution spec's §"Phase Boundary → Rule 2".
+    /// It is legal to amend an in-progress entry's identity fields
+    /// while a claim / advance fact is live.
     ///
     /// # Errors
     ///

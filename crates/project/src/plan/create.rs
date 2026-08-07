@@ -6,16 +6,15 @@ use std::collections::BTreeMap;
 use diagnostics::is_blocking;
 use error::Error;
 
-use super::model::{Entry, Plan, SourceBinding, Status};
+use super::model::{Entry, Plan, SourceBinding};
 use crate::name::validate_name;
 use crate::plan::detect;
 
 impl Plan {
     /// Create an empty plan with the given name and optional named sources.
     ///
-    /// Every entry starts with `status: pending`; this just initialises the
-    /// top-level struct. The name is validated with
-    /// [`crate::name::validate_name`] so it obeys the same kebab-case
+    /// This just initialises the top-level struct. The name is validated
+    /// with [`crate::name::validate_name`] so it obeys the same kebab-case
     /// rules as change names.
     ///
     /// Does NOT write anything to disk. Call [`Plan::save`] afterwards.
@@ -35,11 +34,7 @@ impl Plan {
     }
 
     /// Append a new entry to the plan, rejecting duplicate names and
-    /// invalid kebab-case names. The incoming `status` is forced to
-    /// [`Status::Pending`] (and `status_reason` cleared) so that
-    /// creation cannot introduce a pre-occupied lifecycle state — the
-    /// single-writer-for-status invariant documented in
-    /// [`Plan::transition`].
+    /// invalid kebab-case names.
     ///
     /// After mutation, the plan is re-validated. Any `Error`-level
     /// finding (unknown `depends_on`/`sources`, cycle introduced by the
@@ -60,9 +55,6 @@ impl Plan {
                 detail: format!("plan already contains an entry named `{}`", change.name),
             });
         }
-
-        let mut change = change;
-        change.status = Status::Pending;
 
         self.entries.push(change);
         let errors: Vec<_> = self.validate(None, None).into_iter().filter(is_blocking).collect();

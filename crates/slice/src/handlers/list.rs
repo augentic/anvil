@@ -43,7 +43,7 @@ impl<P: Anchor> Operation<P> for List {
                 let name = dir.file_name().unwrap_or_default().to_string_lossy().into_owned();
                 slices.push(ListEntry {
                     name,
-                    status: metadata.status,
+                    status: LifecycleStatus::project(&dir, &metadata),
                     target: metadata.target,
                 });
             }
@@ -67,7 +67,7 @@ pub struct ListBody {
 pub struct ListEntry {
     /// Slice directory name.
     pub name: String,
-    /// Lifecycle status from `metadata.yaml`.
+    /// Projected lifecycle label (artifacts + phase timestamps).
     pub status: LifecycleStatus,
     /// Recorded target value (e.g. `omnia@1.0.0`).
     pub target: String,

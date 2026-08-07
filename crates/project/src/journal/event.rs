@@ -14,14 +14,25 @@ use crate::adapter::operation::SourceOperation;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
 
-/// One row of the journal. Serialises as `{ timestamp, event,
-/// payload }` — workflow §Wire format pins `timestamp` first so a
-/// `head -1` on the file is enough to confirm the run window.
+/// One row of a per-actor event log.
+///
+/// Serialises as `{ timestamp, actor, sequence, event, payload }` —
+/// RFC-86 pins `timestamp` first so a `head -1` on the file is enough
+/// to confirm the run window; `actor` + `sequence` identify the line
+/// inside that actor's append-only file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Event {
     /// Second-precision UTC timestamp (`%Y-%m-%dT%H:%M:%SZ`).
     #[serde(with = "crate::serde_time::rfc3339")]
     pub timestamp: Timestamp,
+    /// Actor that appended this line (`EMERY_ACTOR` or the stable
+    /// local default). Empty only on in-memory values before
+    /// [`super::append_for`] stamps the wire fields.
+    pub actor: String,
+    /// Monotonic per-actor sequence (1-based) inside that actor's
+    /// `.jsonl` file. Zero only on in-memory values before append
+    /// stamps the wire fields.
+    pub sequence: u64,
     /// Event id + payload, adjacently tagged so `event` and `payload`
     /// sit side by side in the JSON object.
     #[serde(flatten)]
@@ -29,11 +40,20 @@ pub struct Event {
 }
 
 impl Event {
-    /// Build an [`Event`] at `timestamp` carrying `kind`. Tests pin
-    /// the timestamp; production callers pass `Timestamp::now()`.
+    /// Build an [`Event`] at `timestamp` carrying `kind`.
+    ///
+    /// `actor` and `sequence` stay unset (`""` / `0`) until
+    /// [`super::append_for`] (or [`super::append_one`]) stamps them
+    /// for the calling actor's file. Tests pin the timestamp;
+    /// production callers pass an injected `now`.
     #[must_use]
     pub const fn new(timestamp: Timestamp, kind: EventKind) -> Self {
-        Self { timestamp, kind }
+        Self {
+            timestamp,
+            actor: String::new(),
+            sequence: 0,
+            kind,
+        }
     }
 }
 
@@ -265,16 +285,50 @@ pub enum EventKind {
         snapshot: String,
     },
     /// The target's postflight merge gate raised a blocking finding
-    /// **after** the deterministic commit: the slice is already merged,
-    /// archived, and stamped `done`, so this is a terminal diagnostic —
-    /// never a rollback. `reason` carries a short human reason or
-    /// finding code; the merged baseline stands.
-    #[serde(rename = "slice.merge.postflight-failed", rename_all = "kebab-case")]
-    SliceMergePostflightFailed {
-        /// Affected slice — already merged and archived.
+    /// **after** `target.merge.wave-committed` (RFC-86 D9): the member
+    /// is already merged, so this is a terminal diagnostic — never a
+    /// rollback. `reason` carries a short human reason or finding code;
+    /// the merged baseline stands.
+    #[serde(rename = "target.merge.wave-postflight-failed", rename_all = "kebab-case")]
+    TargetMergeWavePostflightFailed {
+        /// Target key under `.emery/targets/`.
+        target: String,
+        /// Wave manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// Sole member's slice — already merged and archived.
         slice_name: SliceName,
         /// Short human reason / finding code for the failed gate.
         reason: String,
+    },
+    /// Deterministic wave commit finalized requirement identity maps
+    /// (RFC-86 D5 / D9). Projects the member merged; failures before
+    /// this fact leave no merged projection. Carries every local→
+    /// baseline `REQ-NNN` mapping for the wave's sole member.
+    #[serde(rename = "target.merge.wave-committed", rename_all = "kebab-case")]
+    TargetMergeWaveCommitted {
+        /// Target key under `.emery/targets/`.
+        target: String,
+        /// Wave manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// Sole member's slice name.
+        slice_name: SliceName,
+        /// Closed-plan commit-authorization epoch (may differ from the
+        /// wave's build-authorization; serial execution normally reuses
+        /// the same epoch).
+        commit_authorization: FactEpochRef,
+        /// Slice-local id → final baseline `REQ-NNN` for every
+        /// requirement in the member.
+        identity_maps: Vec<IdentityMap>,
+    },
+    /// Target postflight gate succeeded after wave commit (RFC-86 D9).
+    #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
+    TargetMergeWaveSucceeded {
+        /// Target key under `.emery/targets/`.
+        target: String,
+        /// Wave manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// Sole member's slice name.
+        slice_name: SliceName,
     },
     /// The `source survey` finalize tail validated and merged
     /// one source's lead set into `discovery.md`. The plan-time peer
@@ -353,8 +407,8 @@ pub enum EventKind {
     /// `emery plan execute` acknowledged a sticky
     /// `merge-postflight-failed` stop and is continuing the queue.
     /// Clears the plan-wide postflight debt projected by `plan status`
-    /// until the next `slice.merge.postflight-failed`. No new CLI verb —
-    /// re-running execute is the ack.
+    /// until the next `target.merge.wave-postflight-failed`. No new CLI
+    /// verb — re-running execute is the ack.
     #[serde(rename = "plan.merge-postflight.acknowledged", rename_all = "kebab-case")]
     PlanMergePostflightAcknowledged {
         /// Slice whose postflight debt was acknowledged — already
@@ -391,6 +445,126 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         decisions: Vec<String>,
     },
+    /// An actor claimed exclusive ownership of one slice (RFC-86 D7 /
+    /// D23). The claiming actor is the event's envelope `actor`, not a
+    /// payload field. Claims never create build/merge authorization.
+    #[serde(rename = "slice.claimed", rename_all = "kebab-case")]
+    SliceClaimed {
+        /// Claimed slice.
+        slice_name: SliceName,
+    },
+    /// The claiming actor released its exclusive ownership of one
+    /// slice. Only a live claim by the releasing envelope `actor`
+    /// clears ownership under the claim kernel.
+    #[serde(rename = "slice.released", rename_all = "kebab-case")]
+    SliceReleased {
+        /// Released slice.
+        slice_name: SliceName,
+    },
+    /// A previously appended fact is treated as absent for projection.
+    /// Identifies the retracted line by its per-actor `(actor,
+    /// sequence)` identity inside the fact union.
+    #[serde(rename = "fact.retracted", rename_all = "kebab-case")]
+    FactRetracted {
+        /// Actor file that holds the retracted line.
+        actor: String,
+        /// 1-based sequence of the retracted line in that actor's file.
+        sequence: u64,
+    },
+    /// An immutable one-member target wave was written before build
+    /// (RFC-86 D9). The manifest lives at
+    /// `.emery/targets/<target>/waves/<digest>.yaml`; `digest` is the
+    /// content address (`sha256:…`) of that YAML.
+    #[serde(rename = "target.wave.opened", rename_all = "kebab-case")]
+    TargetWaveOpened {
+        /// Target key under `.emery/targets/` (project name in the
+        /// in-place cut).
+        target: String,
+        /// Manifest content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// The sole member's slice name.
+        slice_name: SliceName,
+    },
+    /// `emery plan execute` opened an authorization epoch at start
+    /// (RFC-86 D6 / D22). Presence projects the Authorized milestone.
+    /// Optional `unknown-waivers` nest on the coverage payload (D17).
+    /// Never named `plan.approved`.
+    #[serde(rename = "plan.execute.started", rename_all = "kebab-case")]
+    PlanExecuteStarted {
+        /// Typed `closed-plan` coverage over the reviewed plan.
+        coverage: ClosedPlanCoverage,
+        /// Detached discovery digest when present (RFC-88).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        discovery_digest: Option<String>,
+    },
+}
+
+/// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`]
+/// (RFC-86 D6). Wire fields use explicit kebab-case renames — container
+/// `rename_all` does not reach internally-tagged variant fields.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum ClosedPlanCoverage {
+    /// One reviewed plan digest with per-leaf spec coverage.
+    ClosedPlan {
+        /// Content digest of the reviewed `plan.yaml`.
+        #[serde(rename = "plan-digest")]
+        plan_digest: String,
+        /// Sorted per-leaf coverage: `existing { digest }` or
+        /// `refine-under-epoch`.
+        specs: std::collections::BTreeMap<String, LeafSpecCoverage>,
+        /// Per-requirement unknown waivers nested on this epoch (D17).
+        #[serde(rename = "unknown-waivers", default, skip_serializing_if = "Vec::is_empty")]
+        unknown_waivers: Vec<UnknownWaiver>,
+    },
+}
+
+/// Per-leaf spec coverage inside [`ClosedPlanCoverage::ClosedPlan`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum LeafSpecCoverage {
+    /// Leaf already has a reviewed spec at this digest.
+    Existing {
+        /// Spec-tree digest (`sha256:…`).
+        digest: String,
+    },
+    /// Authorize refine-before-build for this leaf under the epoch.
+    RefineUnderEpoch,
+}
+
+/// One `[unknown]` waiver recorded on `plan.execute.started` (D17).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct UnknownWaiver {
+    /// Slice that owns the requirement.
+    pub slice: String,
+    /// Requirement id (`REQ-NNN`).
+    pub req: String,
+    /// Operator reason — required on the CLI.
+    pub reason: String,
+}
+
+/// One slice-local → baseline requirement identity mapping on
+/// [`EventKind::TargetMergeWaveCommitted`] (RFC-86 D5 / D9).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct IdentityMap {
+    /// Slice-local `REQ-NNN` minted at synthesize.
+    pub local: String,
+    /// Final baseline `REQ-NNN` assigned at wave commit.
+    pub baseline: String,
+}
+
+/// Fact-log identity of an authorization epoch (`actor` + 1-based
+/// `sequence`), carried on wave commit facts. Same shape as the wave
+/// manifest's `build-authorization` / commit-authorization refs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct FactEpochRef {
+    /// Actor file that holds the epoch fact.
+    pub actor: String,
+    /// 1-based sequence of the epoch fact in that actor's file.
+    pub sequence: u64,
 }
 
 /// Closed `action` enum on [`EventKind::PlanAmendAuthorityOverride`].

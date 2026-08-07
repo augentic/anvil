@@ -1,6 +1,6 @@
 # Lifecycle
 
-Emery carries two stacked lifecycles. The per-entry lifecycle drives the loop; the slice lifecycle stamps each per-slice phase. All transitions are enforced by the `emery` CLI — skills never write state directly.
+Emery projects two stacked ladders from artifacts and facts. The per-entry ladder drives the loop; the slice ladder names each per-slice phase. All transitions are enforced by the `emery` CLI — skills never write state directly. Neither ladder is a stored status field on `plan.yaml` or `metadata.yaml` (RFC-86 D2).
 
 <div class="pipeline">
 
@@ -11,54 +11,54 @@ Emery carries two stacked lifecycles. The per-entry lifecycle drives the loop; t
 
 Emery's layered design is explained in [The Layered Stack](../explanation/layered-stack.md).
 
-## Plan review
+## Plan review and authorization
 
-The plan itself carries no stored lifecycle. The pause between `/emery:plan` and `emery plan execute` is the operator review seam — running execute is the approval, and nothing is stamped or recorded. "Currently executing" and "drained" are computed from per-entry status.
+The plan itself carries no stored lifecycle and no projected `approved` rung. The pause between `/emery:plan` and `emery plan execute` is the human topology-review seam. Starting execute opens the `plan.execute.started` authorization epoch (typed `closed-plan` coverage) and drives privileged work under gap gates — there is no separate `plan approve` verb. "Currently executing", Ready / Authorized, and "drained" are computed from artifacts and the per-actor fact union.
 
-## Per-entry lifecycle
+## Per-entry ladder
 
-Each row under `plan.yaml.slices[]` carries its own status:
+Each row under `plan.yaml.slices[]` projects a ladder label:
 
-- `pending` is written by the reconcile leg inside `emery plan author` (the default slice writer, which replaces all rows on a replaceable plan), `emery plan add`, and `emery plan amend`.
-- `in-progress` is written only by `emery plan advance`. `plan advance` returns the existing `in-progress` entry before selecting a new `pending` row.
-- `done` is written only by `emery slice merge` after a successful merge.
-- Build failures and merge conflicts leave the active entry `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.
+- `pending` — default before claim / advance facts.
+- `in-progress` — projected from `plan.entry.advanced` / a live `slice.claimed` (written by `emery plan advance`). Different slices may be in flight at once; a second actor claiming the same slice fails with `slice-claim-conflict`.
+- `done` — projected from `slice.archive.created` / wave-commit facts (written by `emery slice merge`).
+- Build failures and merge conflicts leave the active entry projecting `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.
 
-A plan is **drained** when no entry is `pending` or `in-progress`; `/emery:finalize` becomes legal at that point.
+A plan is **drained** when no in-scope entry projects `pending` or `in-progress`; `/emery:finalize` becomes legal at that point.
 
-## Slice lifecycle
+## Slice ladder
 
-Each slice's `metadata.yaml` tracks an independent lifecycle:
+Each slice's phase timestamps and artifacts project an independent lifecycle:
 
 | State      | Meaning                                                                 | Next states                  |
 | ---------- | ----------------------------------------------------------------------- | ---------------------------- |
 | `refining` | Slice directory created; `/emery:refine` in-flight (extract + synthesize) | `refined`, `dropped`         |
-| `refined`  | Canonical artifacts present and validated; ready for build              | `built`, `dropped`           |
-| `built`    | Tasks complete; ready for merge                                         | `merged`, `dropped`          |
-| `merged`   | Specs applied to baseline; slice archived                               | (terminal)                   |
+| `refined`  | Canonical artifacts present and validated; `base.yaml` pins recorded    | `built`, `dropped`           |
+| `built`    | Fact-substrate build record + wave facts; ready for merge               | `merged`, `dropped`          |
+| `merged`   | Wave committed; specs applied to baseline; slice archived               | (terminal)                   |
 | `dropped`  | Slice discarded; archived without merging                               | (terminal)                   |
 
-`refining` is the transient state used while `/emery:refine` runs. If extract fails for any bound source, the slice stays in `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still transitions to `refined`.
+`refining` is the transient state used while `/emery:refine` runs. If extract fails for any bound source, the slice stays projecting `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still projects `refined`. Open gaps block **build** under execute (or require an explicit `--waive` for `[unknown]`).
 
 ## Transitions
 
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
-| `emery plan advance` picks next pending row       | per-entry: `pending → in-progress` | `emery plan advance`                              |
+| `emery plan advance` claims next eligible row     | per-entry: `pending → in-progress` | `emery plan advance` (claim facts)               |
 | `/emery:refine` creates slice                      | slice: (none) → `refining`         | the `emery slice refine` orchestration          |
 | `/emery:refine` completes synthesis                | slice: `refining → refined`        | the `emery slice refine` orchestration          |
-| `/emery:build` completes tasks                     | slice: `refined → built`           | the `emery slice build` orchestration           |
-| `/emery:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `emery slice merge`                            |
+| `/emery:build` completes                           | slice: `refined → built`           | the `emery slice build` orchestration           |
+| `/emery:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `emery slice merge` (wave-commit + archive facts) |
 | `/emery:drop` invoked                              | slice: `* → dropped`               | `emery slice drop <name> --reason "..."`       |
 
 ## `metadata.yaml`
 
 Each slice directory contains a `metadata.yaml` file managed exclusively by the CLI. It records:
 
-- **`status`** — the current slice lifecycle state.
-- **`created_at`** / **`updated_at`** — ISO 8601 timestamps.
+- **Phase timestamps** — `created_at` / `defined_at` / `completed_at` / `merged_at` / `dropped_at` (ISO 8601); lifecycle labels project from these plus artifacts.
 - **`target`** — the target adapter identifier used for this slice.
 - **`touched_specs`** — the list of spec files this slice affects.
+- **`outcome`** — latest phase outcome surface (optional).
 
 Never hand-edit `metadata.yaml`. All writes flow through the CLI.
 
@@ -70,6 +70,6 @@ Both terminal slice states (`merged` and `dropped`) result in the slice director
 .emery/archive/YYYY-MM-DD-<slice-name>/
 ```
 
-The full slice directory is preserved, including all artifacts and `metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the append-only **outcome ledger** (`.emery/journal.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.emery/specs/` baseline plus that ledger, so archived folders can be reclaimed with `emery archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
+The full slice directory is preserved, including all artifacts and `metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the per-actor **outcome ledger** (`.emery/events/<actor>.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.emery/specs/` baseline plus that ledger, so archived folders can be reclaimed with `emery archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
 
 For plans, `emery plan archive` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.emery/archive/plans/<YYYYMMDD>-<name>/`.

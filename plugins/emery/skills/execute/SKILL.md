@@ -5,7 +5,7 @@ description: Execute a plan by invoking the `emery plan execute` loop and relayi
 
 # Execute Skill
 
-The CLI orchestration owns the whole loop — the run lock, refine → build → merge per entry, and every stop it reports. Running `emery plan execute` on an authored plan is itself the operator's approval; there is no separate approval step, state, or confirmation. This skill invokes the loop and relays its output.
+The CLI orchestration owns the whole loop — the run lock, `plan.execute.started` authorization epoch at start, gap gate before build, refine → build → merge per entry, and every stop it reports. There is no separate `plan approve` verb or projected `approved` rung. This skill invokes the loop and relays its output.
 
 ## Invocation
 

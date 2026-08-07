@@ -14,9 +14,9 @@ use crate::name::is_kebab;
 ///
 /// Checks the kebab-case name, then applies the overwrite policy:
 /// an existing `plan.yaml` is refused unless `force`; with `force`
-/// the existing plan is recreated unconditionally, whatever its
-/// entry statuses. Writes nothing — the caller decides
-/// what to mutate before the single atomic [`Plan::save`].
+/// the existing plan is recreated unconditionally. Writes nothing —
+/// the caller decides what to mutate before the single atomic
+/// [`Plan::save`].
 ///
 /// # Errors
 ///

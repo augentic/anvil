@@ -17,13 +17,14 @@ use crate::slice::OutcomeKind;
 pub const SLICES_DIR_NAME: &str = "slices";
 
 /// On-disk representation of `<slice_dir>/metadata.yaml`.
+///
+/// Progress is not stored here — lifecycle labels project from phase
+/// timestamps and slice artifacts (RFC-86 D2 / D11).
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct SliceMetadata {
     /// Target-adapter identifier (e.g. `omnia@1.0.0`).
     pub target: String,
-    /// Current lifecycle state.
-    pub status: crate::slice::LifecycleStatus,
     /// When the slice was created.
     #[serde(
         skip_serializing_if = "Option::is_none",
@@ -67,7 +68,7 @@ pub struct SliceMetadata {
     pub touched_specs: Vec<TouchedSpec>,
     /// Latest phase outcome. Written atomically by
     /// the merge commit tail (stamps `Success` before the archive move).
-    /// History lives in `.emery/journal.jsonl` (workflow §Observability).
+    /// History lives in `.emery/events/<actor>.jsonl` (workflow §Observability).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<Outcome>,
 }

@@ -119,6 +119,7 @@ where
         .route("/plan/validate", get!(::change::plan::handlers::Validate))
         .route("/plan/advance", post!(::change::plan::handlers::Advance))
         .route("/plan/status", get!(::change::plan::handlers::Status))
+        .route("/plan/gaps", get!(::change::plan::handlers::Gaps))
         .route("/plan/{name}/add", post!(::change::plan::handlers::Add))
         .route("/plan/{name}/amend", post!(::change::plan::handlers::Amend))
         .route("/plan/{name}/remove", post!(::change::plan::handlers::Remove))

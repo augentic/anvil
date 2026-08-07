@@ -4,18 +4,21 @@
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE};
+use crate::snapshot::SnapshotId;
 
 /// One top-level [`super::Plan::sources`] binding.
 ///
 /// Carries the kebab-case source adapter name plus exactly one of
 /// `path` (filesystem path or repo location) or `value` (literal
 /// payload supplied directly to the adapter, used by the `intent`
-/// source).
+/// source), and — once plan author closes the source set — the
+/// content-addressed tree identity of that input (`cid`, RFC-86 D4 /
+/// D25; Rust type [`SnapshotId`]).
 ///
 /// On the wire (workflow §Source) the binding is always the structured
-/// `{ adapter, path?, value? }` object form. `path` and `value` are
-/// mutually exclusive; the CLI never writes both and readers treat a
-/// `path` binding as taking precedence.
+/// `{ adapter, path?, value?, cid? }` object form. `path` and `value`
+/// are mutually exclusive; the CLI never writes both and readers treat
+/// a `path` binding as taking precedence.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SourceBinding {
@@ -35,6 +38,12 @@ pub struct SourceBinding {
     /// `path`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    /// Content-addressed identity of the bound source tree
+    /// (`sha256:…`). Wire field `cid` (RFC-86 D25). Absent until plan
+    /// author closes the source set; refine copies these pins into
+    /// `base.yaml`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cid: Option<SnapshotId>,
 }
 
 impl SourceBinding {

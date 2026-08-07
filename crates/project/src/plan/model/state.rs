@@ -1,5 +1,5 @@
-//! Plan state: the `Plan` / `Entry` documents and their closed
-//! `Status` state enum.
+//! Plan state: the `Plan` / `Entry` documents and the projected
+//! [`Status`] ladder labels (RFC-86 D2 / D11).
 
 use std::collections::BTreeMap;
 
@@ -9,18 +9,13 @@ use super::reconciliation::{AuthorityOverride, Disagreement, Divergence};
 use super::source::{SliceSourceBinding, SourceBinding};
 use crate::name::{PlanName, SliceName};
 
-/// Lifecycle state of a single entry in [`Plan::entries`].
+/// Projected per-entry ladder label (RFC-86 D2).
 ///
-/// workflow collapses the per-entry state machine to three states:
-/// `pending` (default after `plan add` / `plan amend`), `in-progress`
-/// (written only by `plan advance`), and `done` (written by `slice
-/// merge` — the final per-entry transition). Build failures and merge
-/// conflicts leave the active entry `in-progress`; v1 has no per-entry
-/// `blocked`, `failed`, or `skipped` state.
-///
-/// The enum is `Copy + Eq + Hash` so it can appear in `HashSet`s,
-/// `match` guards, and hash-keyed lookups without clones. Transition
-/// table methods live alongside the internal transition kernel.
+/// Not stored on `plan.yaml`. `plan status`, advance eligibility, and
+/// undo walk these labels from the fact union: `pending` (default),
+/// `in-progress` (advance / live claim), `done` (archive /
+/// postflight-failed). The enum stays `Copy + Eq + Hash` for
+/// hash-keyed ladder maps and `match` guards.
 #[derive(
     Debug,
     Clone,
@@ -37,16 +32,11 @@ use crate::name::{PlanName, SliceName};
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Status {
-    /// Not yet started. Written by `plan add` / `plan amend` (forward)
-    /// and `plan undo <entry>` (reverse from `InProgress`).
+    /// Not yet claimed or advanced.
     Pending,
-    /// Currently being executed. Written by `plan advance` (forward)
-    /// and `plan undo <entry>` (reverse from `Done`).
+    /// Claimed / advanced; phase work may be in flight.
     InProgress,
-    /// Completed successfully. Written by `slice merge` (forward
-    /// only — `plan undo` walks back to `InProgress` so the slice can
-    /// be re-built and re-merged without inventing a `Reopened`
-    /// state).
+    /// Merged (archive or postflight-failed fact).
     Done,
 }
 
@@ -54,10 +44,9 @@ pub enum Status {
 ///
 /// A `Plan` is an ordered, dependency-aware list of [`Entry`]s plus
 /// a named map of [`Plan::sources`] (local paths or git URLs) that the
-/// entries draw from. There is no plan-level lifecycle state: running
-/// `emery plan execute` on an authored plan *is* the approval, and
-/// "executing" / "drained" are computed from per-entry [`Status`] at
-/// read time.
+/// entries draw from. There is no plan-level lifecycle state and no
+/// per-entry stored status — progress projects from artifacts and
+/// facts (RFC-86 D2).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Plan {
@@ -67,13 +56,15 @@ pub struct Plan {
     /// Optional in the YAML; defaults to an empty map.
     ///
     /// Each value is a structured [`SourceBinding`] carrying the
-    /// kebab-case source adapter name plus exactly one of `path`
+    /// kebab-case source adapter name, exactly one of `path`
     /// (filesystem path or repo location) or `value` (literal payload
-    /// supplied directly to the adapter — used by `intent`).
+    /// supplied directly to the adapter — used by `intent`), and —
+    /// after plan author closes the source set — the tree `cid`
+    /// (RFC-86 D4 / D25).
     #[serde(default)]
     pub sources: BTreeMap<String, SourceBinding>,
     /// Ordered list of plan entries. Order is the intended execution
-    /// order; `Plan::next_eligible` applies dependency eligibility.
+    /// order; eligibility applies dependency + projected ladders.
     #[serde(rename = "slices")]
     pub entries: Vec<Entry>,
 }
@@ -96,10 +87,8 @@ pub struct Entry {
     /// regular project) by the internal target-resolution kernel.
     #[serde(default)]
     pub project: Option<String>,
-    /// Current lifecycle state of this entry.
-    pub status: Status,
-    /// Names of other plan entries that must reach `done` before this
-    /// entry is eligible.
+    /// Names of other plan entries that must reach projected `done`
+    /// before this entry is eligible.
     #[serde(default)]
     pub depends_on: Vec<SliceName>,
     /// (source, lead) bindings (workflow §`Slice.sources`).
@@ -147,29 +136,6 @@ pub struct Entry {
 }
 
 impl Plan {
-    /// Computed predicate (workflow §Workflow vocabulary): `true` when
-    /// at least one entry is currently `in-progress`.
-    ///
-    /// "Currently executing" is not stored — it's derived from
-    /// per-entry [`Status`] every time it's read, so race-prone
-    /// duplication between plan-level and per-entry state is
-    /// impossible by construction.
-    #[must_use]
-    pub(crate) fn is_executing(&self) -> bool {
-        self.entries.iter().any(|e| e.status == Status::InProgress)
-    }
-
-    /// Computed predicate (workflow §Workflow vocabulary): `true` when
-    /// every entry has reached terminal `done` status.
-    ///
-    /// Empty plans report drained vacuously — there is no work left
-    /// to drain. Like [`Plan::is_executing`], "drained" is derived
-    /// from per-entry [`Status`] at read time and never stored.
-    #[must_use]
-    pub(crate) fn is_drained(&self) -> bool {
-        self.entries.iter().all(|e| e.status == Status::Done)
-    }
-
     /// The shared `plan-entry-not-found` failure for `name`: the
     /// detail lists the plan's entry names so a typo'd entry reads as
     /// a typo, not a missing plan.
