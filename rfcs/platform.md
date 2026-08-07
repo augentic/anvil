@@ -27,7 +27,7 @@ The architecture makes five related shifts:
 1. **State becomes facts.** A change is a self-contained, version-control-neutral fact tree. Workflow status is projected from those facts, so a hosted service never becomes lifecycle authority.
 2. **Trees become values.** Every operation starts from an immutable snapshot in a private workspace and captures another snapshot. A code patch is the relation between the two; no shared working directory crosses an operation.
 3. **Location becomes disposable.** Plan authoring can begin in an empty directory, discover the participating repositories, and record their exact revisions. Execution creates private workspaces on demand. Archive leaves only merged baselines and forge history.
-4. **Verification becomes host-owned.** Closed, sandboxed profiles replace toolchain commands embedded in prompts. They return normalized findings that any orchestrator can route.
+4. **Build repair becomes engine-owned.** Generation, model-assisted verification, repair, and review become separate target WIT operations in a bounded engine loop rather than retries hidden in adapter prose. Deterministic native verification follows when WASI can execute host toolchains safely.
 5. **Judgment becomes recursive.** Plan authoring surveys the pinned source set and partitions it until every terminal scope is a buildable slice. Target adapters may repeat the same pattern inside a slice with focused, path-owning workers.
 
 ### Scaling invariant
@@ -44,7 +44,7 @@ A **conflict domain** is one such parent scope: child results may interact insid
 This gives Emery two recursive levels without introducing nested workflows:
 
 - **Planning recursion** turns the surveyed estate into conflict domains and buildable slice leaves.
-- **Build recursion** turns one slice into focused workers and one verified result.
+- **Build recursion** turns one slice into focused workers and one explicitly gated result.
 
 Internal domains have no slice lifecycle, claim, or nested plan. They only describe containment and convergence.
 
@@ -62,7 +62,7 @@ The engine owns the loop: **partition → validate → recurse → project**. Ju
 
 Ready leaves run in private workspaces. Results move upward through their recorded domain ancestry:
 
-- worker results pass the slice's verification gate;
+- worker results pass the slice's engine-owned model-assisted verification gate;
 - same-target child patches compose at their nearest domain;
 - multi-target domains aggregate target results and dependency health without mixing repository trees;
 - every completed gate writes an immutable domain-round record for retry or remote resume.
@@ -96,8 +96,8 @@ flowchart TB
     WA <-->|snapshot ids + code patches| V["Convergence plane<br/>content-addressed store"]
     WB <-->|snapshot ids + code patches| V
 
-    WA --> VA["Slice verify gates"]
-    WB --> VB["Slice verify gates"]
+    WA --> VA["Model-assisted slice verify gates"]
+    WB --> VB["Model-assisted slice verify gates"]
     VA --> TA["Target A domain gates"]
     VB --> TB["Target B domain gates"]
 
@@ -126,24 +126,24 @@ Authorization for the series follows [RFC-86](rfc-86-change-facts.md) D6 / D17: 
 | 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets   | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                                                              | 88 (member derivation)                          |
 
 
-### Scale track — concurrency (verification fans out after 87; joins recursive authoring at 91)
+### Scale track — concurrency (build orchestration separates after 87; joins recursive authoring at 91)
 
 
-| Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                                                                                                               | Depends on                          |
-| ---- | ---------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| 5    | [RFC-90](rfc-90-verify-profiles.md)      | Verify Profiles      | Complete Omnia/Rust path for closed, sandboxed, host-owned verification with normalized findings and typed unavailability elsewhere                                                                                                                                                                                    | landed 87                           |
-| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node recursive swarm: focused workers, write ownership, local pool, concurrent leaf scheduling, deterministic code-patch composition, durable domain rounds, bottom-up convergence, multi-member target waves, recursive plan decomposition, refine/plan fan-outs, and synthesis payload restructuring | completed 86; landed 87; 88; 90     |
-| 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Distribution of the completed RFC-91 model: fact, artifact, and value transport between nodes; fenced claims; hosted trees; and remote pools — no new scheduler, convergence, acceptance, authority, or lifecycle semantics                                                                                            | completed 86; landed 87; 88; 90; 91 |
+| Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                                                                                                               | Depends on                   |
+| ---- | ---------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| 5    | [RFC-90](rfc-90-build-verification.md)   | Build Verification   | Engine-owned build loop over separate `build` / `repair` / `verify` / `review` WIT ops; bounded repair policy; durable intermediate reports; final report assembly; deterministic native verification explicitly deferred                                                                                                  | completed 87                 |
+| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node recursive swarm: focused workers, write ownership, local pool, concurrent leaf scheduling, deterministic code-patch composition, durable domain rounds, bottom-up convergence, multi-member target waves, recursive plan decomposition, refine/plan fan-outs, and synthesis payload restructuring | completed 86, 87, 88, 90     |
+| 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Distribution of the completed RFC-91 model: fact, artifact, and value transport between nodes; fenced claims; hosted trees; and remote pools — no new scheduler, convergence, acceptance, authority, or lifecycle semantics                                                                                            | completed 86, 87, 88, 90, 91 |
 
 
 Sequencing notes:
 
 - **RFC-86 is product-ownership step 1** — the fact substrate every later step consumes (projected status, per-actor logs, `plan.execute.started`, recorded pins, one-member waves). Completing it deletes the mechanics later steps would otherwise have to synchronize (stored status, the single journal file, synthesis-time identity, unrecorded execute starts) and delivers the shift-left refine / gap-gate flow.
 - **RFC-87 is the shared workspace stem and has already landed** with interim stand-ins (build-time base self-freeze, slice-local `build/patch.yaml`, merge-time `apply`). Private workspaces do **not** wait on “completed 86”; RFC-86 Phase B retires the freeze / `patch.yaml` stand-ins against the landed `SnapshotId` / `prepare` / `capture` / `discard` contract. Do not re-litigate whether workspaces “depend on finished 86.”
-- **After the stem, the series is a braid, not two independent pipelines:** RFC-88 settles recursive authoring while RFC-90 settles host-owned verification; RFC-89 may follow 88 independently, while **RFC-91 joins 88 and 90** to make the recursive shape concurrent on one node. RFC-92 then distributes that completed local model. RFC-89 (publication) and RFC-92 (multi-node execution) remain orthogonal — 92 does not wait on 89.
+- **After the stem, the series is a braid, not two independent pipelines:** RFC-88 settles recursive authoring while RFC-90 settles engine-owned build verification and repair orchestration; RFC-89 may follow 88 independently, while **RFC-91 joins 88 and 90** to make the recursive shape concurrent on one node. RFC-92 then distributes that completed local model. RFC-89 (publication) and RFC-92 (multi-node execution) remain orthogonal — 92 does not wait on 89.
 
 ```text
-RFC-86  (fact substrate — product ownership step 1; in progress)
+RFC-86  (fact substrate — product ownership step 1; landing)
    ↕    stand-in seam: 87 landed; 86 Phase B retires freeze / patch.yaml
 RFC-87  (workspace stem — landed; both tracks need it)
    │
@@ -167,7 +167,7 @@ Product-ownership edges stay as the tables and diagram above; landing chronology
 | Track                      | Owner          | Sequence | Notes                                                                                                     |
 | -------------------------- | -------------- | -------- | --------------------------------------------------------------------------------------------------------- |
 | Location / product         | Team A         | 88 → 89  | Detached change home, recursive decomposition, leaf/member bindings, then project seal / publication sets |
-| Verification               | Team B         | 90       | Host-owned profiles and normalized findings, parallel with RFC-88                                         |
+| Verification               | Team B         | 90       | Staged build WIT contract, engine phase machine, and prompt-loop removal, parallel with RFC-88             |
 | Concurrency / distribution | Team C (later) | 91 → 92  | Start 91 when **both** 88 and 90 are complete; distribute only the completed local recursive model        |
 
 
@@ -178,7 +178,7 @@ Product-ownership edges stay as the tables and diagram above; landing chronology
 
 **Within RFC-86**, Phase A (per-actor logs, projection kernel, claim/retraction facts) is journal-and-plan territory in `crates/project`; Phase B's identity work (slice-scoped requirement ids, `MODIFIED` base digests, merge-time finalization) plus stand-in retirement (recorded pins, fact-substrate build records, one-member waves) is synthesis-and-merge-engine territory in `crates/slice`; the one shared contract is the merge / wave fact that records the identity map. Phase C (`plan.execute.started`, gap gate, multi-actor) sits on top of A.
 
-**Slack absorbers** — real work with no ordering constraint on the critical edge: RFC-90's profile taxonomy, findings normalization, and Omnia `wasi-model` verify plumbing (buildable against the landed workspace contract); RFC-86's multi-actor fixtures in `crates/mock` (two actors, disjoint slices, merged change trees, claim-conflict and base-drift injections); RFC-89's record design (its implementation genuinely needs RFC-88's member bindings).
+**Slack absorbers** — real work with no ordering constraint on the critical edge: RFC-90's `build` / `repair` / `verify` / `review` WIT types, phase-report persistence, engine phase machine, and adapter prompt split (buildable against a plain directory before 87's disposable workspaces land; the vertical cut still waits on 87); RFC-86's multi-actor fixtures in `crates/mock` (two actors, disjoint slices, merged change trees, claim-conflict and base-drift injections); RFC-89's record design (its implementation genuinely needs RFC-88's member bindings).
 
 **Collision points** — sequence explicitly, don't parallelize: the merge orchestration (`crates/slice/src/orchestrate/merge/` — RFC-86 adds identity finalization and the wave/merge fact over the landed workspace tree; rebase as Phase B lands), and RFC-88 itself — the convergence point needing the fact tree as the change home *and* operation-local workspaces.
 

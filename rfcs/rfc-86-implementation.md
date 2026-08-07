@@ -153,6 +153,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S23
 - Finding: `cargo make ci` green (fmt + lint + nextest + doctest + doc + links + vet + deny; ~271s). No code stragglers. Acceptance #1–15 checked against prior session fixtures + CI: #1 S5/S7; #2 `mock/tests/multi_actor.rs`; #3 `slice/tests/merge_identity.rs`; #4 `change/tests/pin_build_record.rs`; #5–6 `shift_left.rs` + `gap_gate.rs`; #7/#9/#10 contract (no topology-approve / same verbs / human prose outside engine); #8/#12–15 `phase_c_acceptance.rs`; #11 S16 gaps rollup. Branch is PR-ready for S24 (operator-directed single full-RFC PR).
 - Plan change: none beyond status (S23=done, S24=next); acceptance checklist filled.
+
+### 2026-08-07 — S24 prep (merge main)
+- Finding: `origin/main` was one commit ahead (`062a0bb3` RFC-90 build verification #252). Earlier main landings (#249–#251) were already on `rfc-86`. Merge touched only prose/WIT wrap; sole conflict was `rfcs/platform.md` (3 hunks). Resolution: took main’s RFC-90 filename/title/delivers and slack-absorber WIT wording; kept the 86∥87 landed-stem sequencing bullets with RFC-90 rephrased as engine-owned build verification; diagram status nudged to “landing”. No engine/Rust overlap with #252.
+- Plan change: none beyond merge; S24 remains next until the PR URL lands.
 ```
 
 ### Session template (copy into each agent prompt)

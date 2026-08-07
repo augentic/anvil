@@ -427,7 +427,8 @@ interface target {
   /// `create` call with the workspace lent by path and references served
   /// from its MCP export. The report carries only judgment — the
   /// resulting delta lives in the workspace, captured by the engine.
-  build: async func(id: adapter-id, slice: string, inputs: list<input>, context: build-context, workspace: workspace) -> result<report, error>;
+  build: async func(id: adapter-id, slice: string, inputs: list<input>, 
+    context: build-context, workspace: workspace) -> result<report, error>;
 
   /// Run one target-specific merge gate around the engine's deterministic
   /// core merge. Dispatched twice per slice merge: `preflight` before the
@@ -437,7 +438,8 @@ interface target {
   /// through its `"."` preopen; the report carries only judgment —
   /// lifecycle transitions, baseline spec merging, and archive moves stay
   /// engine-owned.
-  merge: async func(id: adapter-id, slice: string, phase: merge-phase, workspace: workspace) -> result<report, error>;
+  merge: async func(id: adapter-id, slice: string, phase: merge-phase, 
+    workspace: workspace) -> result<report, error>;
 }
 
 /// A source adapter component: one axis interface plus the MCP reference
