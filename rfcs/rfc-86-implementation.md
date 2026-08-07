@@ -49,7 +49,7 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S21 | Remaining Phase C acceptance fixtures | `done` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
 | S22 | D20 sibling docs + operator prose | `done` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
 | S23 | Full cargo make ci + acceptance closeout | `done` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
-| S24 | Open single full-RFC implementation PR | `next` | PR URL returned | none (operator-directed) |
+| S24 | Open single full-RFC implementation PR | `done` | PR URL returned | https://github.com/augentic/emery/pull/253 |
 
 ### Discovery log (append-only)
 
@@ -157,6 +157,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S24 prep (merge main)
 - Finding: `origin/main` was one commit ahead (`062a0bb3` RFC-90 build verification #252). Earlier main landings (#249–#251) were already on `rfc-86`. Merge touched only prose/WIT wrap; sole conflict was `rfcs/platform.md` (3 hunks). Resolution: took main’s RFC-90 filename/title/delivers and slack-absorber WIT wording; kept the 86∥87 landed-stem sequencing bullets with RFC-90 rephrased as engine-owned build verification; diagram status nudged to “landing”. No engine/Rust overlap with #252.
 - Plan change: none beyond merge; S24 remains next until the PR URL lands.
+
+### 2026-08-07 — S24
+- Finding: Opened single full-RFC implementation PR after merge + `cargo make links` green: https://github.com/augentic/emery/pull/253
+- Plan change: none beyond status (S24=done). Living plan complete.
 ```
 
 ### Session template (copy into each agent prompt)
