@@ -14,7 +14,7 @@
 >
 > Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), and [RFC-90](rfc-90-build-verification.md).
 >
-> [RFC-78](archive/rfc-78-prompt-budget.md) supplies request budgets, timeout semantics, and sessions. This RFC absorbs [RFC-79](archive/rfc-79-swarm-build.md) and [RFC-80](archive/rfc-80-synthesis-redesign.md).
+> Path-first evidence and lent-tree synthesis inputs are already landed ([workflow](../docs/standards/workflow.md); [CLI output shapes](../docs/reference/cli-output-shapes.md)). Request timeout and session-resume semantics live in the Cursor model backend. This RFC absorbs the former swarm-build and synthesis-redesign scope.
 >
 > Amends RFC-90 D1, D2, D5, and D6. The target adds `decompose`, which is model-assisted for Omnia. `build` and `repair` each receive one validated task.
 >

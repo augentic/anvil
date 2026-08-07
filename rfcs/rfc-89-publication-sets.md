@@ -196,7 +196,7 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 - Render the projection before archive mutation and gate unverified publication with `publication-unverified`; journal the `--unverified` bypass.
 - Append `plan.publication.projected` and `plan.publication.member-landed` through the existing per-actor fact logs.
 - Publish and validate the shared record schema for external producers.
-- Exercise the WIT-breaking release order from [RFC-77](rfc-77-release-process.md) across `augentic/emery` and `augentic/emery-adapters` as the in-house fixture. The first real release dogfoods the settled path but does not gate RFC completion.
+- Exercise the WIT-breaking release order from [docs/release.md](../docs/release.md#three-release-shapes) across `augentic/emery` and `augentic/emery-adapters` as the in-house fixture. The first real release dogfoods the settled path but does not gate RFC completion.
 
 ## Acceptance criteria
 

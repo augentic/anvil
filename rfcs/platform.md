@@ -18,7 +18,7 @@ Everything Emery already is stays load-bearing: the slice loop (`refine → buil
 
 ## Where we are
 
-RFC-86 Phases A–C and RFC-87 are landed: per-actor facts, `plan.execute.started`, recorded pins, one-member waves, `BuildRecord`s, and private `prepare` / `capture` / `discard` workspaces. What remains for the series is product detach (RFC-88/89) and scale: one change still runs in one repository (or a hand-tended workspace of them), serially — one model call at a time, verify as prompt text inside the agent loop, publication tracked in the operator's head. The measured walls (RFC-78's `wasm-omnia-r9k` runs): a ~30-minute serialized build with an unobservable nested review team, an 11–54 minute synthesis call, and no way to run two of anything at once.
+RFC-86 Phases A–C and RFC-87 are landed: per-actor facts, `plan.execute.started`, recorded pins, one-member waves, `BuildRecord`s, and private `prepare` / `capture` / `discard` workspaces. What remains for the series is product detach (RFC-88/89) and scale: one change still runs in one repository (or a hand-tended workspace of them), serially — one model call at a time, verify as prompt text inside the agent loop, publication tracked in the operator's head. The measured walls (`cargo make wasm-omnia-r9k`): a ~30-minute serialized build with an unobservable nested review team, an 11–54 minute synthesis call, and no way to run two of anything at once.
 
 ## Target architecture
 
@@ -215,8 +215,8 @@ Starting execute is the operator authorization gesture ([RFC-86](rfc-86-change-f
 
 Unchanged and orthogonal — not part of this arc, not blocked by it:
 
-- **[RFC-71 Self-Assembling Wasm Deployment](rfc-71-deployment.md)** — largely landed; Stage 2 diagnostics remain draft.
-- **[RFC-77 Release Process](rfc-77-release-process.md)** — operational policy for releasing Emery itself; its WIT-breaking shape becomes RFC-89's first in-house publication set.
+- **[CLI architecture](../docs/contributing/cli-architecture.md)** / [`crates/launcher`](../crates/launcher/) — shipped deployment (embedded engine, fail-closed resolver, pull-on-miss); remaining: persisted resolution record and `deployment show|doctor`.
+- **[Release process](../docs/release.md)** — operational policy for releasing Emery itself; its WIT-breaking shape becomes RFC-89's first in-house publication set.
 - **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** (future) — an optional cost lever behind RFC-91's per-task model-selection hook; a ratchet rung, not a stage.
 - **[RFC-93 Host Verification Profiles](rfc-93-host-verification.md)** (future) — deterministic host-tool verification after the platform series, gated on a suitable standardized WASI execution capability.
 - **[RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md)** (future) — content-triggered vectis work, independent of this series.
