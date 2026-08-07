@@ -109,7 +109,7 @@ Task graphs and plan domains gain records. They do not gain lifecycle status or 
 
 ## Worked examples
 
-One Omnia slice asks for a Rust library, its integration tests, and a WASI guest:
+One Omnia slice asks for a Rust library, its integration tests, and a WASI guest. An initial candidate decomposition might be:
 
 ```text
 crate writer  owns tree crates/payments/src
@@ -117,15 +117,15 @@ test writer   owns tree crates/payments/tests
 guest writer  owns tree guests/payments
 ```
 
-The decomposition answer proposes three tasks because they are agent-sized implementation scopes. They are not independently acceptable slices.
+The candidate answer proposes three tasks because they are agent-sized implementation scopes. They are not independently acceptable slices.
 
 One task also owns build-level reporting. This designation does not create another task.
 
-All three tasks start from `sha256:base`. The engine captures their disjoint patches and composes them into `sha256:composed`. Only this composed candidate receives slice-wide verification.
+When graph validation finds no shared-path interaction, all three tasks start from `sha256:base`. The engine captures their disjoint patches and composes them into `sha256:composed`. Only this composed candidate receives slice-wide verification.
 
 A finding at `crates/payments/src/client.rs` routes to the crate task. That task receives the complete candidate, but may change only its grant.
 
-If every task needs `crates/payments/src/lib.rs`, that file cannot remain under the crate writer's `tree crates/payments/src` grant. A `tree` grant already includes the file, and the closed `file | tree` grammar has no exclusion form. Decomposition therefore replaces the tree with exact file grants for the parallel layer and assigns `lib.rs` exclusively to a later fan-in task:
+If several writers need to change `crates/payments/src/lib.rs`, the initial candidate is invalid: that file cannot remain under the crate writer's `tree crates/payments/src` grant. A `tree` grant already includes the file, and the closed `file | tree` grammar has no exclusion form. Before preparing any workspace, bounded answer repair returns a complete replacement graph—it does not subtract a path from the tree grant. The replacement uses exact file grants for the parallel layer and assigns `lib.rs` exclusively to a later fan-in task:
 
 ```text
 layer 1
