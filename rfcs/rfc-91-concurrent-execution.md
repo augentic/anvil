@@ -2,21 +2,52 @@
 
 > Status: Draft — step 6 of the platform-migration series, on the scale track ([platform.md](platform.md))
 >
-> Owns: single-node concurrent execution — engine-orchestrated target workers, private workspaces and composition, domain convergence and multi-member target waves, the shared local pool and fan-outs, and the synthesis payload redesign.
+> Owns:
 >
-> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), and [RFC-90](rfc-90-build-verification.md). [RFC-78](archive/rfc-78-prompt-budget.md) supplies request budgets, timeout semantics, and sessions. This RFC absorbs [RFC-79](archive/rfc-79-swarm-build.md) and [RFC-80](archive/rfc-80-synthesis-redesign.md).
+> - single-node concurrent execution
+> - engine-orchestrated, target-proposed build-task decomposition
+> - private workspaces and code-patch composition
+> - domain convergence and multi-member target waves
+> - the shared local pool and its fan-outs
+> - the synthesis payload redesign
 >
-> Amends RFC-90 D1, D2, D5, and D6 for partitioned targets: the target adds deterministic `partition` plus worker context on `build` and `repair`; the engine retains the repair loop, workspace lifecycle, composition, budgets, and terminal report.
+> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), and [RFC-90](rfc-90-build-verification.md).
 >
-> [RFC-92](rfc-92-node-sync.md) may place these workers on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-worker model-selection hook.
+> [RFC-78](archive/rfc-78-prompt-budget.md) supplies request budgets, timeout semantics, and sessions. This RFC absorbs [RFC-79](archive/rfc-79-swarm-build.md) and [RFC-80](archive/rfc-80-synthesis-redesign.md).
+>
+> Amends RFC-90 D1, D2, D5, and D6. The target adds `decompose`, which is model-assisted for Omnia. `build` and `repair` each receive one validated task.
+>
+> The engine still owns the slice build attempt, repair loop, workspace lifecycle, composition, budgets, and terminal report.
+>
+> Extends RFC-88 D8. Decomposition escalation becomes a second author of inert amendment proposals.
+>
+> [RFC-92](rfc-92-node-sync.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
 
 ## Intent
 
-Replace large, multi-purpose judgment legs with focused workers that converge on one verified result.
+The slice remains Emery's smallest buildable, verifiable, repairable, and mergeable lifecycle unit.
 
-Today one Omnia generation conversation combines crate, test, and guest writing with an opaque verify-repair loop; observed builds serialized about 30 minutes of agent time and failed inside a hidden review team. Synthesis likewise took 11–54 minutes while repeatedly carrying about 50 KB of playbook and artifact bodies. Survey and extract remain serial.
+This RFC replaces large, multi-purpose model calls with focused agent tasks. Those tasks converge on one slice result.
 
-The target now proposes a worker graph; the engine validates and executes it in private workspaces, composes captured patches, and owns RFC-90's bounded verify-repair loop. The same pool runs independent plan leaves, review specialists, survey, extract, and decomposition judgments. Synthesis remains one cross-domain judgment, but fetches its playbook lazily and writes artifacts through staging.
+Plan authoring already decomposes surveyed leads recursively. Each terminal scope is one coherent, independently buildable slice. Refinement then produces its Evidence, `spec.md`, `design.md`, and `tasks.md`.
+
+Some implementation complexity appears only after refinement. One behavioural slice may require coordinated crate, test, and guest work. That work may be too large for one agent request, yet incoherent as separately accepted slices.
+
+Today, one Omnia generation conversation combines all of this work with an opaque verify-repair loop. Observed builds serialized about 30 minutes of agent time. They could then fail inside a hidden review team.
+
+Synthesis has taken 11–54 minutes while repeatedly carrying about 50 KB of playbook and artifact bodies. Survey and extract also remain serial.
+
+Under this RFC, the engine invokes `target.decompose` at most once per slice-build attempt. The operation returns a complete `graph | escalate` answer.
+
+Omnia uses a model-assisted prompt. An adapter that needs no decomposition may return a deterministic singleton graph.
+
+The engine validates and executes the graph in private workspaces. It then runs RFC-90's slice-wide verify-repair-review loop.
+
+Escalation routes an incoherent slice back to plan authoring. A later build attempt reuses the persisted graph unless the previous attempt exposed a graph-attributable failure.
+
+One shared pool also runs independent plan leaves, decomposition calls, review specialists, survey, and extract. All concurrent consumers use the same scheduling and cancellation contract.
+
+Synthesis remains one cross-domain model call. It fetches its playbook lazily and writes artifacts through staging.
 
 ## Flow and terms
 
@@ -24,31 +55,52 @@ The target now proposes a worker graph; the engine validates and executes it in 
 sequenceDiagram
     participant E as Engine
     participant T as Target adapter
-    participant W as Workspace provider
+    participant W as Engine-private workspace provider
 
-    E->>T: partition(slice, base)
-    T-->>E: worker graph
-    loop ready worker layer
-        E->>W: prepare(base)
-        E->>T: build(worker, workspace)
+    E->>T: decompose(slice)
+    T-->>E: complete graph or escalate
+    E->>E: validate complete graph
+    loop ready task layer
+        E->>W: prepare(candidate)
+        E->>T: build(task, workspace)
         T-->>E: phase report
         E->>W: capture(workspace)
+        E->>W: compose(layer base, patches)
+        W-->>E: next candidate
     end
-    E->>W: compose(base, patches)
-    W-->>E: candidate CID
-    E->>T: verify(candidate)
-    loop blocking findings within RFC-90 budget
-        E->>W: prepare(candidate)
-        E->>T: repair(owner, findings, continuation)
-        E->>W: capture and compose repairs
-        E->>T: verify(next candidate)
-    end
-    E->>T: review(candidate)
+    E->>E: run RFC-90 phase machine on candidate
+    Note over E,T: verify and review inspect the whole candidate
+    Note over E,W: task-scoped repairs use fresh workspaces, then capture and compose
 ```
 
-A **worker** is one focused judgment request with a thin brief, path-first inputs, an exact write grant, MCP-lazy references, and a typed answer. A target-proposed **worker graph** orders workers into same-base **worker layers**; a later **fan-in task** exclusively owns any shared path. Each worker returns RFC-87's **code patch** `{ base snapshot, result snapshot, touched paths }`.
+A **slice build** is one `emery slice build` attempt. It has one terminal report and one lifecycle outcome.
 
-RFC-91 adds deterministic `partition` and worker context to RFC-90's `build` and `repair`; it adds no second repair, verification, or review operation. At plan level, a **domain round** records convergence over child results, while a **target wave** is RFC-88's frozen same-target leaf set accepted atomically. Internal domains gain records, not lifecycle status or claims.
+A **task** is an ephemeral, agent-sized leaf in a target-proposed **task graph**. It carries:
+
+- a thin brief
+- path-first inputs
+- exact product and artifact write grants
+- MCP-lazy references
+
+A **worker** is one engine-dispatched `target.build` or `target.repair` call. It is scoped to a validated task and returns a typed phase report.
+
+Tasks need not be independently buildable or mergeable. The composed slice candidate is the first result eligible for verification and acceptance.
+
+A task graph orders tasks into same-base **task layers**. A later **fan-in task** exclusively owns any shared path.
+
+A completed writing worker yields an RFC-87 **code patch**:
+
+```text
+{ base snapshot, result snapshot, touched paths }
+```
+
+A singleton graph preserves RFC-90's single-writer shape. It runs one `target.build` before the slice-wide verify-repair-review loop.
+
+At plan level, a **domain round** records convergence over child slice results.
+
+A **target wave** is RFC-88's frozen same-target leaf set. The set is accepted atomically.
+
+Task graphs and plan domains gain records. They do not gain lifecycle status or claims.
 
 ## Worked examples
 
@@ -60,68 +112,334 @@ test writer   owns tree crates/payments/tests
 guest writer  owns tree guests/payments
 ```
 
-All three start from `sha256:base`; the engine captures their disjoint patches and deterministically composes `sha256:composed`. A verification finding at `crates/payments/src/client.rs` routes to the crate writer, which receives the complete candidate and may change only its grant.
+The decomposition answer proposes three tasks because they are agent-sized implementation scopes. They are not independently acceptable slices.
 
-If all workers need `crates/payments/src/lib.rs`, the partitioner removes that path from the parallel layer:
+One task also owns build-level reporting. This designation does not create another task.
+
+All three tasks start from `sha256:base`. The engine captures their disjoint patches and composes them into `sha256:composed`. Only this composed candidate receives slice-wide verification.
+
+A finding at `crates/payments/src/client.rs` routes to the crate task. That task receives the complete candidate, but may change only its grant.
+
+If every task needs `crates/payments/src/lib.rs`, the decomposition answer removes that path from the parallel layer:
 
 ```text
 layer 1
   crate writer · test writer · guest writer
 layer 2
-  integration worker owns crates/payments/src/lib.rs
+  integration task owns crates/payments/src/lib.rs and build reporting
 ```
 
-Unexpected overlap rejects the complete layer before composition. The engine routes an ownership finding to every contributor; repaired patches omit the shared path, then the fan-in task integrates it. No subset or textual auto-merge becomes authoritative.
+Layer 2 starts from Layer 1's composed candidate. Its integration patch therefore names the intermediate snapshot as its base, not `sha256:base`.
+
+Unexpected overlap rejects the entire layer and fails the attempt before composition. The engine records an ownership finding for every contributor.
+
+Those findings become input to the next complete graph proposal. The new proposal can remove the shared path from the writers and assign it to the fan-in task.
+
+No subset of a failed layer becomes authoritative. The engine does not use textual auto-merge.
 
 ## Decisions
 
-### D1 — The engine owns worker and phase orchestration
+### D1 — The engine owns one slice build and its task-graph phase
 
-RFC-90's phase machine gains `partition → validate → dispatch → capture → compose` before its first `verify`. The engine owns ordering, workspaces, retries, budgets, aggregation, and slice transition. The model-free target `partition` operation returns closed worker records with roles, dependencies, and grants; each `build` or `repair` executes one selected worker. SDK helpers provide a singleton graph, so only Omnia must partition initially.
+RFC-90's single build attempt gains one engine-owned phase before verification:
 
-### D2 — RFC-90's model-assisted `verify` is the convergence gate
+```text
+decompose → validate → execute
+```
 
-Writer and repair workers receive findings, not Cargo commands. The engine dispatches RFC-90 `verify`, maps each located finding to its unique owner, and resumes that worker from the current candidate. Ownership conflicts route to every contributor; unlocated or unowned blocking findings fail the first cut. Same-round repairs must remain disjoint, and a continuation cannot cross worker or attempt identity. Verification is model-assisted evidence, not a deterministic proof or security boundary.
+The engine executes the graph one ready layer at a time. Each layer follows RFC-87:
 
-### D3 — Every worker has exclusive, enforced write ownership
+```text
+prepare → target.build → capture → compose
+```
 
-Each worker has RFC-90 `file | tree` grants; predicted overlap becomes a dependency or fan-in task, and ambiguous ownership fails partitioning. One terminal worker owns build-level artifacts, outputs, and UI-surface declaration. Captured touched paths are authoritative: out-of-grant writes block, and overlap rejects the whole layer into RFC-90 repair. A model never chooses the partition, and no textual merge resolves ownership.
+Every task in a layer starts from the same current candidate. The composed result becomes the base for the next layer.
 
-### D4 — Local concurrency lands as Stage A → Stage B
+These are orchestration steps, not new lifecycle states. `prepare` and `capture` come from RFC-87. For a singleton graph, composition is the identity.
 
-**Stage A** runs focused Omnia workers, repairs, and review specialists serially, but gives every writing pass a fresh RFC-87 workspace and composes immutable patches before verification. **Stage B** changes only dispatch: a bounded local pool runs same-base writers and read-only specialists concurrently with isolated MCP and prompt state. Workers never share a writable tree or live handle; RFC-92 owns remote placement.
+The engine owns:
 
-### D5 — Review specialists are host-visible workers
+- graph validation and ordering
+- workspaces and retries
+- budgets
+- report aggregation
+- verification
+- the terminal report
+- the slice transition
 
-Omnia's Security, Correctness, and Quality specialists become separately observable model calls with typed findings, budgets, and timeouts. The antagonist waits for all outcomes, then compiled adapter code returns one review report. Blocking findings follow RFC-90's engine-owned `repair(origin: review) → verify → review` route.
+The target adapter owns one-pass target behavior:
+
+- the decomposition prompt
+- task-specific build and repair
+- candidate-wide verify and review
+
+Before preparing a writable workspace, the engine validates the graph. It binds the graph digest to the slice revision, target identity, resolved inputs, and base snapshot.
+
+Each task-scoped `build` or `repair` returns an RFC-90 phase report. The engine persists it under the slice-build attempt with the graph digest and task id.
+
+The report's ordinal also emits RFC-90's `slice.build.phase-completed` event. Tasks have no independent terminal report. The engine aggregates their reports into the attempt's one terminal result.
+
+The validated graph record is independent of any attempt. Its key is the decomposition operation key.
+
+Every re-entry creates a new RFC-90 attempt id, new workspaces, and new continuations. The next attempt may reuse the completed graph after:
+
+- an abandoned attempt
+- an infrastructure or dispatch failure
+- an invalid phase report
+- an exhausted repair budget where existing task grants cover the findings
+
+The following failures are **graph-attributable**:
+
+- an out-of-grant write
+- overlap within a layer
+- an unresolved finding that no task grant covers
+
+After a graph-attributable failure, the next attempt calls `decompose` again. It supplies the prior graph and findings as planning evidence. The new operation key covers both digests.
+
+A deterministic adapter may return the same singleton graph under the new key.
+
+The replacement graph's base depends on the failure point. Overlap and out-of-grant writes happen before composition, so the next attempt restarts from the recorded base.
+
+An unowned residual finding happens after the engine has composed and verified a candidate. In this case, the replacement graph may use that immutable candidate as its base snapshot.
+
+This carries completed work forward. The follow-up graph can often contain one small fan-in task that owns the previously unowned path.
+
+A task has no slice lifecycle, plan status, claim, independent terminal report, or merge authority.
+
+### D2 — Target decomposition proposes one complete graph
+
+`target.decompose` receives:
+
+- the refined slice, including `tasks.md` and `spec.md`
+- target guidance
+- path-first target context
+
+After a graph-attributable failure, it also receives the prior graph and relevant findings. If the failure happened after composition, it receives the prior composed candidate as the proposed base.
+
+Decomposition never edits the candidate. `target.repair` remains the separate, attempt-scoped writer. It may write only within one validated task grant.
+
+Decomposition returns one typed `graph | escalate` answer. A graph contains the complete task set and all dependency edges.
+
+The adapter owns its prompt and its interpretation of target architecture. The engine accepts a graph only if:
+
+- every `tasks.md` entry is covered
+- every refined `spec.md` requirement id is covered
+- the task count is within the fixed budget
+- dependencies are acyclic
+- every grant is inside the slice's authorized ownership envelope
+- predicted interaction has no ambiguous path ownership
+
+An `escalate` answer states that the refined slice is not coherent. It includes a typed rationale. The work either has independently acceptable boundaries or exceeds the target's bounded build envelope.
+
+The engine validates the escalation and writes one inert RFC-88 amendment proposal. The proposal names the slice leaf, its nearest domain, and the proposed boundary.
+
+The engine then fails the attempt with a typed `decomposition-escalated` terminal report. It does so before preparing any writable workspace.
+
+Escalation cannot edit the plan, spawn slices, execute work, or alter a frozen wave. The operator applies or discards the proposal through `emery plan amend --proposal`.
+
+Tasks never become slices. A boundary mistake routes up to plan authoring, not down into the task graph.
+
+Re-decomposition has a fixed budget. The engine permits at most two graph-attributable re-decompositions per slice revision. No adapter or model can reset that engine constant.
+
+A third graph-attributable failure parks the slice for the operator. The operator can amend the plan or use the standing escalation path.
+
+Repeated decomposition failure is evidence of a boundary problem. The engine does not retry it indefinitely.
+
+Each validated task record contains:
+
+- a stable task id
+- a role and brief
+- covered scope
+- path-first inputs
+- exact product and artifact grants
+- dependencies
+- whether the task owns build-level reporting
+
+Exactly one task owns build-level reporting. That designation alone creates no extra layer.
+
+The model may propose task values only within the slice's authorized ownership envelope. It cannot dispatch workers, select budgets, create lifecycle state, or broaden the envelope.
+
+Invalid answers enter the ordinary bounded answer-repair path before any product write.
+
+SDK helpers provide a deterministic singleton graph whose task owns build-level reporting. Adapters therefore need not decompose work merely because the operation exists.
+
+An adapter may also assemble a candidate graph from deterministic target metadata. For Omnia, that may be the Cargo workspace member graph. A model call can then validate and adjust the candidate instead of inventing one.
+
+### D3 — Every task has exclusive, enforced write ownership
+
+The engine lowers RFC-88's slice ownership envelope into RFC-90's exact `file | tree` grammar. Task grants contain no globs and must remain within that envelope.
+
+Predicted interaction between disjoint grants becomes a dependency.
+
+If several writers need the same path, the graph removes that path from their grants. It assigns the path exclusively to a fan-in task. A dependency alone does not authorize shared-path writes.
+
+Ambiguous ownership fails graph validation.
+
+Only the graph's report owner may write the artifact stage during `build` or a later task-scoped `repair`.
+
+Only that task's `build` report may return outputs or a UI-surface declaration. Every other `build` report must leave those fields empty. Every `repair` report must also leave them empty, as required by RFC-90.
+
+Non-owner reports may still list product-workspace writes. They may not list artifact writes.
+
+When integration work is needed, the report owner may be the terminal fan-in task. Otherwise, an existing writer can own reporting without adding a task.
+
+The engine aggregates findings from every task report. It takes outputs and UI-surface only from the report owner's `build` report.
+
+RFC-90's output-existence gate checks the fully composed candidate. It does not check the report owner's private workspace.
+
+Captured touched paths are authoritative. An out-of-grant write or layer overlap fails the attempt before composition. It also invalidates the graph for the next attempt.
+
+A model may propose the graph, but only engine validation authorizes it. Textual merge never resolves ownership.
+
+### D4 — Concurrency changes dispatch, not semantics
+
+The engine uses one scheduler and one bounded local pool. The concurrency cap changes dispatch only. It does not select a different orchestration path.
+
+A cap of one provides the serial reference mode. Higher caps run ready same-base writers concurrently. After verification passes, specialist model calls inside one `target.review` may also run concurrently.
+
+The shipped default cap is four. Cap-one/four equivalence is an acceptance gate, not a separate delivery stage. The same task outcomes must produce the same ordered composition and slice result.
+
+Workers never share a writable tree, live handle, MCP state, or prompt state. RFC-92 owns remote placement.
+
+This replaces RFC-90 D5's one physical workspace for the complete loop. A build attempt instead has one logical candidate:
+
+- a code snapshot
+- a staged-artifact tree
+
+The engine materializes that candidate into a fresh private workspace for every build, repair, verify, or review operation.
+
+During initial graph execution, only the report owner receives a writable artifact stage. Every other task sees staged artifacts as read-only.
+
+The engine carries captured code and the report owner's validated artifact diff forward. Later operations therefore observe the same logical candidate.
+
+No two operations share a writable directory or artifact-stage handle. Intermediate snapshots and artifact diffs remain inert execution values.
+
+The engine records the final code result and promotes staged artifacts through one success gate.
+
+A `build` or `repair` continuation may resume only for the same task, attempt, and graph. It resumes against the current logical candidate.
+
+The candidate-wide `review` continuation is scoped to its attempt and graph.
+
+No continuation may encode or depend on a workspace path or live handle. Every resumed operation receives a newly materialized workspace.
+
+### D5 — RFC-90 verification and review converge the complete slice
+
+Writer and repair workers receive findings, not Cargo commands.
+
+After the complete graph produces one composed candidate, the engine dispatches RFC-90 `verify`.
+
+For one blocking verify report, the engine groups located findings by their unique task owner. It may run pairwise-disjoint repairs concurrently:
+
+```text
+target.repair(origin: verification, task, findings, continuation)
+```
+
+All repairs caused by one report consume one RFC-90 verification-repair round, regardless of worker count.
+
+The engine captures and composes the repair patches. It then verifies the next complete candidate.
+
+A task continuation cannot cross task, attempt, or graph identity. Verification is model-assisted evidence, not deterministic proof or a security boundary.
+
+Some blocking findings cannot be routed:
+
+- unlocated findings
+- located findings on paths that no task grant covers
+
+These remain typed residual failures. The engine does not broaden an arbitrary task's authority.
+
+Residual failures invalidate the graph. They become planning evidence for the next attempt's decomposition call. Under D1, the follow-up graph may use the composed candidate as its base.
+
+Findings already covered by a task grant do not invalidate the graph.
+
+The engine never widens a task grant or mutates the graph during an attempt.
+
+Repair grants produced by one report must remain pairwise disjoint. Captured overlap fails the attempt.
+
+After verification passes, the engine dispatches one `target.review`.
+
+Inside that dispatch, Omnia may run Security, Correctness, and Quality as separate specialist model calls. Each call is observable and has its own timeout. Compiled adapter code joins their results into one review phase report.
+
+Blocking review findings use the same task-owner routing:
+
+```text
+target.repair(origin: review, task, findings, continuation)
+```
+
+All repairs caused by one review report consume RFC-90's one review-remediation round. The engine then returns to `verify → review`.
+
+The terminal report contains:
+
+- aggregated task-build findings
+- the latest verification findings
+- the latest review findings
+
+RFC-90's existing projection rules still apply.
+
+Task-repair findings and superseded verify or review rounds remain in attempt-scoped phase records. No task passes independently.
 
 ### D6 — Code-patch composition is one reusable deterministic kernel
 
-The engine-private RFC-87 capability gains pure `compose(base, patches)`: require one base and disjoint touched paths, copy exact result-tree values in fixed order, capture the candidate, and discard the temporary workspace. Base mismatch or overlap fails before verification. Worker layers and single-target domain rounds share this kernel; `augentic/backends` owns pooling and cancellation, not composition.
+The engine-private RFC-87 capability gains `compose(base, patches)`.
+
+The operation requires one base and disjoint touched paths. It copies exact result-tree values in fixed order, captures the candidate, and discards the temporary workspace.
+
+A base mismatch or overlap fails before verification.
+
+The same kernel combines code patches for:
+
+- task layers
+- single-target frontier rounds
+- final target-wave commit
+
+Domain verdicts and RFC-88's spec fold remain separate operations.
+
+`augentic/backends` owns pooling and cancellation. It does not own composition.
 
 ### D7 — The synthesis playbook moves to an engine references shelf
 
-An engine shelf such as `/mcp/engine/synthesis` serves embedded guidance through `list_docs` / `read_doc`. The prompt keeps `synthesize.md`, its contract, answer schema, and a measured inline minimum; it fetches the remaining roughly 50 KB lazily. Emery owns the shelf and grants.
+An engine shelf such as `/mcp/engine/synthesis` serves embedded guidance through `list_docs` and `read_doc`.
+
+The prompt keeps `synthesize.md`, its contract, its answer schema, and a measured inline minimum. It fetches the remaining roughly 50 KB only when needed.
+
+Emery owns the shelf and its grants.
 
 ### D8 — Synthesis artifacts use a lent staging tree and an outcome-only answer
 
-The host lends synthesis an execution-local staging tree; the answer carries only an outcome. The deterministic tail validates the whole tree, promotes it atomically on success, or returns findings so the same agent can repair in place. D8 follows D7's live-eval gate and changes neither synthesis authority nor provenance semantics.
+The host lends synthesis an execution-local staging tree. The answer carries only an outcome.
 
-### D9 — Survey and extract fan out through the Stage B pool
+The deterministic tail validates the whole tree. On success, it promotes the tree atomically. On failure, it returns findings so the same agent can repair the tree in place.
 
-After RFC-88 pins topology, Author slices surveys bound sources concurrently and Refine concurrently extracts per-source Evidence. Results merge in canonical binding or `(source, parent lead, child lead)` order, never completion order. RFC-88's Discover-topology host reads retain their separate budget.
+D8 follows D7's live-eval gate. It changes neither synthesis authority nor provenance semantics.
+
+### D9 — Survey and extract fan out through the shared pool
+
+After RFC-88 pins topology, `plan author` runs independent initial and focused source surveys concurrently.
+
+`slice refine` extracts each bound source's Evidence concurrently.
+
+Results merge in canonical order, never completion order. The order is either binding order or `(source, parent lead, child lead)` order.
+
+RFC-88's Discover-topology host reads retain their separate budget.
 
 ### D10 — Recursive plan decomposition is bounded engine orchestration
 
-After the initial inventory, one compiled orchestration evaluates independent RFC-88 conflict domains concurrently. Each bounded judgment receives one domain and returns typed `split | leaf`; the engine owns queueing, budgets, scope reduction, coverage, identity, and ordering. `decomposition.yaml` and `plan.yaml` publish together only after the complete tree passes. Partial publication and model-spawned recursion are deferred.
+After the initial inventory, one compiled orchestration evaluates independent RFC-88 conflict domains concurrently.
+
+Each bounded model call receives one domain and returns a typed `split | leaf` answer.
+
+The engine owns queueing, budgets, scope reduction, coverage, identity, and ordering.
+
+`decomposition.yaml` and `plan.yaml` publish together only after the complete tree passes.
+
+Partial publication and model-spawned recursion remain deferred.
 
 ### D11 — The local scheduler folds ready leaves through domain gates
 
 ```mermaid
 flowchart LR
     A[Ready leaves] --> B[Frozen same-target wave]
-    B --> C[Build and verify members]
-    C --> D[Frontier domain round]
+    B --> C[Build members<br/>slice verify and review included]
+    C --> D[Frontier domain gates]
     D --> E[Atomic wave commit]
     E --> F[Accepted target CID]
     F --> G{Domain complete?}
@@ -130,45 +448,105 @@ flowchart LR
     H --> I[Parent domain or target drain]
 ```
 
-`plan execute` opens at most one wave per target from a bounded antichain whose dependencies are accepted and whose ownership envelopes share the accepted base. The first cut greedily scans canonical target and leaf order up to the pool cap; it adds no optimizer or fairness policy. The immutable manifest precedes claims and builds. Failure retries the same frozen wave; operator amendment retracts the whole uncommitted wave rather than shrinking it.
+`plan execute` opens at most one wave per target. It chooses from a bounded antichain where:
 
-A single-target `frontier` round composes only the wave's same-base patches, verifies the candidate, and may gate that wave while dependant children remain. Multi-target rounds aggregate ordered target results without composing trees. A `complete` round verifies the current accepted tree and its committed frontier chain only after every child and dependency is complete; it never recomposes cross-base patches. Failure preserves accepted waves but blocks dependants and drain until an operator-reviewed repair or fan-in leaf advances a new epoch.
+- dependencies are accepted
+- ownership envelopes share the accepted base
+
+The first implementation scans canonical target and leaf order up to the pool cap. It adds no optimizer or fairness policy.
+
+The immutable wave manifest exists before claims and builds.
+
+A slice-build failure creates a new slice attempt under D1. It does not change wave membership.
+
+Membership stays frozen until atomic commit or operator amendment. An amendment retracts the whole uncommitted wave. It does not shrink the wave.
+
+After member builds, the engine groups results by their nearest frontier domain.
+
+A single-target `frontier` round composes only that domain's same-base child patches. It then dispatches one `target.verify` over the composed candidate.
+
+This domain convergence gate checks interaction above the completed slice-wide verify/review loops. It is not another slice build.
+
+One wave may therefore require several frontier rounds.
+
+Multi-target rounds do not compose trees or dispatch cross-target verification. They aggregate ordered target results and dependency health.
+
+For a single-target domain, a `complete` round runs the same domain-level `target.verify`. It verifies the current accepted tree and committed frontier chain.
+
+The engine runs this round only after every child and dependency is complete. It never recomposes cross-base patches.
+
+A multi-target `complete` round only aggregates ordered child verdicts and dependency health.
+
+A frontier failure blocks the current frozen wave.
+
+A complete-round failure preserves accepted waves. It blocks dependants and drain until an operator-reviewed repair or fan-in leaf advances a new epoch.
 
 ### D12 — Domain rounds are durable and target waves accept atomically
 
-Before `domain.convergence.recorded`, the engine atomically writes one closed `frontier | complete` record containing its revisions, child digests, authorization anchors, bases, patch or committed-wave chain, result CIDs, report digests, and verdict. The digest of validated inputs and accepted frontier is its operation key. Re-entry reuses a completed record; the key does not imply deterministic model output. Live records root candidate snapshots.
+Before emitting `domain.convergence.recorded`, the engine atomically writes one closed `frontier | complete` record.
 
-After all frontier gates pass, RFC-86's target-wave merge revalidates every member and exact commit authorization, composes the frozen set, and publishes one `target.merge.wave-committed` fact that advances the accepted CID and projects every member merged. No prefix is authoritative. A target drains only after all leaves merge, postflight failures are acknowledged, and every root domain has a passing `complete` round for the current revision and CID.
+The record contains:
+
+- revisions
+- child slice-attempt or domain-record digests
+- authorization anchors
+- bases
+- the patch chain or committed-wave chain
+- result CIDs
+- the domain-level `target.verify` report digest, when verification ran
+- the verdict
+
+The digest of the validated inputs and accepted frontier is the operation key.
+
+On re-entry, the engine reuses a completed record. It does not rerun composition or the domain gate.
+
+The operation key does not imply deterministic model output. Live records root candidate snapshots.
+
+After all frontier gates pass, RFC-86's target-wave merge revalidates every member and its exact commit authorization.
+
+The engine composes the frozen set and publishes one `target.merge.wave-committed` fact. This fact advances the accepted CID and projects every member as merged.
+
+No prefix of the wave is authoritative.
+
+A target drains only when:
+
+- all leaves have merged
+- postflight failures have been acknowledged
+- every root domain has a passing `complete` round for the current revision and CID
 
 ## Implementation requirements
 
-- **Stage A:** add closed worker records, deterministic `partition`, worker context on RFC-90 `build` / `repair`, and engine-private `compose`; implement the serial Omnia worker submachine with private workspaces, RFC-90's existing three verification-repair rounds and one review-remediation round, and typed residual failure.
-- **Stage B:** add one isolated host pool (default cap four), concurrent build/review/survey/extract/decomposition calls, canonical bounded-antichain scheduling, closed `frontier | complete` domain records, and multi-member target waves. Pool cancellation reaps every call; provider implementation is chosen from Stage B evidence.
-- **Stage C:** land D7's engine shelf, pass `omnia-r9k`, then land D8's staging tree and outcome-only answer and pass `orders-contracts`. Neither final grade may regress from its recorded baseline.
-- Derive the closed domain-round schema from its Rust DTO; reject unknown fields and compute record and operation digests only from validated content. Add no extension map or second domain-state artifact.
-- Scope continuations to one attempt and worker, use the project model by default, enforce worker inactivity timeouts, and journal compiled budgets, ordering, and routing. Successful workspaces are captured then discarded; RFC-87 garbage-collects abrupt leftovers.
-- Emery owns orchestration, workspace lifecycle, records, scheduling, composition, synthesis staging, and fan-outs; adapters own partition proposals and one-pass target behavior; backends own pooling and cancellation. Do not add remote placement, hosted execution, a new model backend, domain-partitioned synthesis, duplicate RFC-90 operations, or mandatory Vectis/Contracts swarms.
+- **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add digest-bound graph and phase records, engine-private `compose`, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
+- **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Use the same scheduler path for both. Add the specified fan-outs, canonical bounded-antichain scheduling, domain records, and multi-member target waves. Cancellation must reap every call.
+- **Synthesis implements D7–D8.** Land the engine shelf and pass `omnia-r9k`. Then land staged synthesis and pass `orders-contracts`. Neither final grade may regress.
+- Derive closed graph and domain schemas from Rust DTOs. Reject unknown fields.
+- Persist validated-content digests, operation keys, task-scoped phase events, and domain records as specified above. Add no extension map or second domain-state artifact.
+- Enforce D4's continuation scopes, logical-candidate scopes, worker inactivity timeouts, and capture-then-discard lifecycle.
+- Use the project model by default. Journal compiled budgets, decomposition decisions, ordering, and routing.
 
 ## Acceptance criteria
 
-1. An Omnia build the size of `at-r9k-position-adapter` uses focused engine-dispatched workers with spilled prompts no larger than 15 KiB. Cargo commands appear only in RFC-90 `verify`; findings return through `repair`, budget exhaustion preserves residual findings, and review specialists are individually observable.
-2. Predicted overlap becomes a dependency or fan-in. Captured overlap rejects the whole layer and routes findings to every contributor; three disjoint writers needing one shared module converge through one later exclusive owner with no textual merge.
-3. The engine composes only same-base, disjoint patches. A target never receives `prepare`, `capture`, `compose`, or `discard`; cancellation and failure expose no authoritative workspace or staged-artifact changes.
-4. In Stage B, two target workers run concurrently in isolated RFC-87 workspaces and pool cancellation reaps both. Serial and concurrent runs produce the same ordered composition from the same patches.
-5. Synthesis loads nonessential playbook prose from the engine shelf, returns no artifact bodies, and promotes its staged tree only after validation.
-6. Concurrent survey and extract preserve canonical output order. Three-level decomposition evaluates independent nodes concurrently, publishes no partial plan, and yields the same canonical artifacts from the same answers.
-7. Independent leaves pass through two same-target domain gates. Restart after each boundary reuses its digest-bound record and candidate without repeating composition or verification.
-8. Two same-base leaves enter one frozen wave and become merged under one commit fact only after both complete. Retry preserves membership; amendment retracts the whole uncommitted wave; replay creates no duplicate acceptance.
-9. A producer commits in an earlier frontier wave, its dependant builds from the new accepted CID, and the complete round validates the committed chain without cross-base composition. Complete-round failure blocks drain and RFC-89 sealing without rolling back accepted waves.
-10. `cargo make ci` passes in every touched repository, D8 goldens regenerate, and the `omnia-r9k` and `orders-contracts` live grades do not regress.
+1. **Omnia decomposition.** A build the size of `at-r9k-position-adapter` produces one complete graph through one model-assisted decomposition operation. Spilled build prompts remain at or below 15 KiB. Exactly one task owns build-level reporting. No task independently passes. RFC-90 retains verification, repair budgets, and observable review specialists.
+2. **Invalid graphs and re-entry.** Invalid graphs produce no writable workspace. Escalation creates only its inert proposal and terminal report. Re-entry always creates a fresh attempt. It reuses the graph unless an out-of-grant write, layer overlap, or unowned finding requires new decomposition. That call receives the prior graph and findings under a new operation key. After a post-composition failure, the follow-up graph builds from the composed candidate without rerunning completed tasks. A third graph-attributable failure parks the slice without another decomposition call.
+3. **Ownership.** Predicted interaction creates dependencies. Shared paths have one fan-in owner. Captured overlap rejects the whole layer and attempt, then informs the next graph proposal. No textual merge occurs.
+4. **Residual findings.** A located blocking finding on an unowned path fails the attempt as a typed residual failure. The next attempt's complete graph proposal receives it as typed input. No task grant or graph mutates in place.
+5. **Private composition.** The engine composes only same-base, disjoint patches. Every target operation receives a fresh private materialization of the candidate. Targets never receive workspace lifecycle operations. Failure exposes no authoritative workspace or staged-artifact change.
+6. **Concurrent target tasks.** With the pool cap set to four, two target tasks run concurrently in isolated workspaces. Cancellation reaps both. Caps of one and four produce the same ordered composition and one slice-wide result.
+7. **Synthesis staging.** Synthesis loads nonessential playbook prose from the engine shelf. Its answer returns no artifact bodies. The engine promotes its staged tree only after validation.
+8. **Concurrent discovery.** Concurrent survey and extract preserve canonical order. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
+9. **Domain restart.** Independent leaves pass both same-target domain gates. On restart, the engine reuses each digest-bound record and candidate without repeating composition or verification.
+10. **Atomic waves.** Two same-base leaves merge under one wave commit only after both complete. Retry preserves membership. Amendment retracts the uncommitted wave. Replay is idempotent. Dependencies use accepted bases. Complete-round failure blocks drain and RFC-89 sealing without rolling back accepted waves.
+11. **Quality gates.** `cargo make ci` passes in every touched repository. D8 goldens regenerate. The `omnia-r9k` and `orders-contracts` live grades do not regress.
 
 ## Rejected alternatives
 
-- **Keep fat generation/review legs or add a lead agent** — preserves opaque nested work; deterministic engine policy must own partition validation, queueing, budgets, and termination.
-- **Adapter-owned workspaces or repair loops** — crosses the workflow boundary and hides retries from RFC-90 phase records.
-- **Shared writable trees or textual auto-merge** — makes safety timing-dependent; private trees, exclusive ownership, and immutable patches are the invariant.
-- **Compose an overlap-free subset** — exposes partial state from a failed layer; repair the complete layer atomically.
-- **Cargo commands in writers or full repair prompts** — recreates the hidden loop and repeats payload; `verify` owns commands and repairs resume with finding deltas.
-- **Partition synthesis** — cross-domain reconciliation is the purchased judgment; D7–D8 reduce payload without changing it.
-- **New worker repair/verify operations or mandatory target swarms** — RFC-90 already supplies the phase vocabulary, and only Omnia has evidence for partitioning.
-- **Remote workers** — RFC-92 owns placement after the single-node contract settles.
+- **Require model-free decomposition.** Fixed role templates are useful as singleton graphs or fast paths. Arbitrary refined tasks and target architecture still require bounded model reasoning. The engine validates and bounds the call instead of treating its output as deterministic.
+- **Promote agent tasks to slices.** Crate, test, guest, and integration tasks may share one behavioural contract. They become valid only after composition. Giving them lifecycle or merge authority would duplicate the workflow below its smallest acceptance unit.
+- **Keep large generation and review calls, or let an adapter recursively spawn workers.** This preserves opaque nested work. One adapter `decompose` operation returns a complete `graph | escalate` answer. Compiled engine policy owns validation, budgets, dispatch, and termination.
+- **Force a mis-scoped slice through task decomposition.** When refinement reveals independently acceptable boundaries, tasks would hide a planning mistake. `escalate` routes the decision to an operator-applied RFC-88 amendment.
+- **Always decompose after terminal failure, mutate the graph in place, or retry decomposition without a bound.** Technical failures and covered findings do not invalidate a graph. Repeated graph failure signals a boundary problem. A graph-attributable failure triggers a fresh, budgeted proposal for the next attempt. The engine neither widens tasks nor accepts an overlap-free subset.
+- **Let adapters own workspaces or loops, share writable trees, or use textual merge.** These choices cross the workflow boundary, hide retries, and make safety depend on timing.
+- **Add task phase operations, writer commands, or full repair prompts.** RFC-90 already owns verification and repair. Another loop would duplicate vocabulary and payload.
+- **Partition synthesis.** Cross-domain reconciliation is the reason for the model call. D7–D8 reduce payload without changing that call.
+- **Require task graphs from every target.** Only Omnia has evidence for non-singleton decomposition.
+- **Add remote workers now.** RFC-92 owns placement after the single-node contract settles.

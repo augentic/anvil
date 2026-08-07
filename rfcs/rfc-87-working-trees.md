@@ -97,7 +97,7 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies worker decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 
