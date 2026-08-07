@@ -22,7 +22,7 @@ Canonical skill bodies live under [`plugins/emery/skills/`](../../../plugins/eme
 | Skill | Purpose | Canonical body | CLI |
 | ----- | ------- | -------------- | --- |
 | `/emery:plan` | Survey sources, propose slices, exit at `pending` | [`plan/SKILL.md`](../../../plugins/emery/skills/plan/SKILL.md) | [emery plan](../cli/plan.md) |
-| `/emery:execute` | Drive the plan through refine → build → merge (running it is the approval) | [`execute/SKILL.md`](../../../plugins/emery/skills/execute/SKILL.md) | [plan execute](../cli/plan.md#emery-plan-execute) |
+| `/emery:execute` | Drive the plan through refine → build → merge (opens the authorization epoch) | [`execute/SKILL.md`](../../../plugins/emery/skills/execute/SKILL.md) | [plan execute](../cli/plan.md#emery-plan-execute) |
 | `/emery:status` | Report where the plan stands and the literal next command (read-only) | [`status/SKILL.md`](../../../plugins/emery/skills/status/SKILL.md) | [plan status](../cli/plan.md#emery-plan-status) |
 | `/emery:finalize` | Confirm publication is complete, then archive the plan (publication is operator-owned, outside Emery) | [`finalize/SKILL.md`](../../../plugins/emery/skills/finalize/SKILL.md) | [emery plan](../cli/plan.md) |
 

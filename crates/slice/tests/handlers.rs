@@ -294,9 +294,8 @@ mod init {
 mod journal {
     use super::*;
 
-    /// Stage one taxonomy event on disk — writes route through the
-    /// internal appenders in production, so the fixture writes the
-    /// same JSONL line those appenders produce.
+    /// Stage one taxonomy event through the real appender so the
+    /// fixture matches production per-actor wiring.
     fn stage_event(root: &Path) {
         let event = project::journal::Event::new(
             jiff::Timestamp::from_second(1_700_000_000).expect("valid timestamp"),
@@ -304,10 +303,8 @@ mod journal {
                 slice_name: "billing".into(),
             },
         );
-        let dir = root.join(".emery");
-        fs::create_dir_all(&dir).expect("create .emery");
-        let line = serde_json::to_string(&event).expect("serialize event");
-        fs::write(dir.join("journal.jsonl"), format!("{line}\n")).expect("stage journal");
+        project::journal::append_one(project::config::Layout::new(root), &event)
+            .expect("stage journal");
     }
 
     #[tokio::test]
@@ -334,6 +331,17 @@ mod journal {
         .await
         .expect("a filter with no matches still succeeds");
         assert_eq!(unmatched.count, 0, "no plan events were staged");
-        assert!(project.root().join(".emery/journal.jsonl").is_file(), "the journal persists");
+        assert!(
+            project
+                .root()
+                .join(".emery/events")
+                .join(format!("{}.jsonl", project::journal::DEFAULT_ACTOR))
+                .is_file(),
+            "the per-actor journal persists"
+        );
+        assert!(
+            !project.root().join(".emery/journal.jsonl").exists(),
+            "single-file journal is retired"
+        );
     }
 }

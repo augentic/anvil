@@ -44,10 +44,11 @@ fn argv(args: &[&str]) -> Vec<String> {
 async fn executes_a_verb() {
     let (_tmp, root) = project();
     let paths = paths(&root);
+    fs::create_dir_all(root.join(".emery/events")).expect("events dir");
     fs::write(
-        root.join(".emery/journal.jsonl"),
-        "{\"timestamp\":\"2026-01-01T00:00:00Z\",\"event\":\"slice.build.started\",\
-         \"payload\":{\"slice-name\":\"demo\"}}\n",
+        root.join(".emery/events/local.jsonl"),
+        "{\"timestamp\":\"2026-01-01T00:00:00Z\",\"actor\":\"local\",\"sequence\":1,\
+         \"event\":\"slice.build.started\",\"payload\":{\"slice-name\":\"demo\"}}\n",
     )
     .expect("stage journal");
     let response = native::command::execute(

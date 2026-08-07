@@ -1,5 +1,5 @@
-//! `transition` verb: validate a lifecycle edge and stamp the matching
-//! `*_at` timestamp.
+//! Phase stamp helper: record `*_at` timestamps and refine facts
+//! (RFC-86 D2 / D11). Lifecycle labels are projected, never stored.
 
 use std::path::Path;
 
@@ -10,27 +10,23 @@ use project::journal::{Event, EventKind, append_one};
 
 use crate::{LifecycleStatus, SLICES_DIR_NAME, SliceMetadata};
 
-/// Transition a slice to `target` status and write the matching timestamp.
+/// Stamp the phase timestamp for `target` and, for `Refined`, append
+/// `slice.transition.refined`.
 ///
-/// The transition is validated by
-/// [`LifecycleStatus::transition`](crate::LifecycleStatus::transition) —
-/// illegal edges return `Error::Diag` with `code = "slice-lifecycle"` without
-/// touching disk. On success the metadata's `status` is updated, the
-/// appropriate `*_at` timestamp is filled in (idempotent: an existing
-/// non-`None` timestamp is preserved), and `metadata.yaml` is rewritten
-/// atomically.
+/// `target` selects which timestamp to stamp — it is not persisted as
+/// a status field. Progress projects from artifacts and facts
+/// (RFC-86 D2). Timestamps remain for operators and for drop detection
+/// (`dropped_at`).
 ///
 /// Returns the updated `SliceMetadata`.
 ///
 /// # Errors
 ///
-/// `Error::Diag` with `code = "slice-lifecycle"` for an illegal edge; otherwise
-/// propagates load / save failures from `SliceMetadata`.
+/// Propagates load / save failures from `SliceMetadata`.
 pub fn transition(
     slice_dir: &Path, target: LifecycleStatus, now: Timestamp,
 ) -> Result<SliceMetadata, Error> {
     let mut metadata = SliceMetadata::load(slice_dir)?;
-    metadata.status = metadata.status.transition(target)?;
     let stamp = now;
     match target {
         LifecycleStatus::Refining => {

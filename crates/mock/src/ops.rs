@@ -85,7 +85,17 @@ macro_rules! mock_target {
                 _model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input],
                 _context: &BuildContext, workspace: &Workspace,
             ) -> Result<Report, Error> {
-                behaviour::build(workspace.root_path(), ctx.adapter_id, slice, inputs)
+                // Artifact writes land in the private workspace; fail-
+                // build markers are control-plane on the project tree
+                // (RFC-86 D27: build prepares from a recorded pin, so
+                // ambient markers must not require re-freeze).
+                behaviour::build(
+                    workspace.root_path(),
+                    ctx.project_root,
+                    ctx.adapter_id,
+                    slice,
+                    inputs,
+                )
             }
 
             async fn merge<P: Model>(

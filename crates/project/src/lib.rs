@@ -10,6 +10,7 @@
 pub mod adapter;
 pub(crate) mod agents;
 pub mod answers;
+pub mod build_record;
 pub(crate) mod cmd;
 pub mod config;
 pub mod decisions;
@@ -27,6 +28,7 @@ pub mod serde_time;
 pub mod slice;
 pub mod snapshot;
 pub mod target_policy;
+pub mod wave;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod workspace;
 

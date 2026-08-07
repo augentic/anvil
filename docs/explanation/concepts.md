@@ -63,9 +63,9 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
 <div class="rhythm-step" data-step="02">
 <div class="rhythm-num">02</div>
 <div class="rhythm-label">Review</div>
-<h4 class="rhythm-title">Human approval</h4>
+<h4 class="rhythm-title">Human review</h4>
 
-Operator approves by running `emery plan execute` — running it is the approval. Nothing executes until then.
+Operator reviews topology, then runs `emery plan execute` to open the authorization epoch. Nothing privileged runs until then.
 </div>
 
 
@@ -74,7 +74,7 @@ Operator approves by running `emery plan execute` — running it is the approval
 <div class="rhythm-label">Execute</div>
 <h4 class="rhythm-title">Build in the loop</h4>
 
-`emery plan execute` drives refine → build → merge per slice until drained.
+`emery plan execute` journals `plan.execute.started`, enforces gap gates before build, and drives refine → build → merge per slice until drained.
 </div>
 
 
@@ -90,11 +90,11 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 
 ![Change rhythm](../assets/diagrams/concepts/change-rhythm.svg)
 
-<p class="pipeline-caption">/emery:plan exits for review; emery plan execute is the approval and drives slices; /emery:finalize closes the change.</p>
+<p class="pipeline-caption">/emery:plan exits for review; emery plan execute opens the authorization epoch and drives slices; /emery:finalize closes the change.</p>
 </div>
 
 
-`/emery:plan` surveys each bound source, proposes `slices[]`, and exits for operator review. The operator approves by running the guest-routed `emery plan execute` — running it is the approval — which drives the per-slice loop until every entry is `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
+`/emery:plan` surveys each bound source, proposes `slices[]`, and exits for operator review (topology-only — no refine). The operator starts privileged work with the guest-routed `emery plan execute` — which journals `plan.execute.started` and drives the per-slice loop until every entry projects `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
 
 A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `emery plan execute` runs the same single-slice rhythm.
 

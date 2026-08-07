@@ -23,6 +23,17 @@ fn suite_answers() -> Vec<String> {
     vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
 }
 
+/// Concatenate the per-actor union as JSONL text for substring asserts.
+fn journal_text(root: &std::path::Path) -> String {
+    let events =
+        project::journal::read_union(project::config::Layout::new(root)).expect("journal union");
+    events
+        .iter()
+        .map(|event| serde_json::to_string(event).expect("serialize journal event"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 /// Scaffold a project bound to the mock target and author the
 /// single-slice plan (left for operator review — running execute is
 /// the approval) — the shared preamble of every loop test.
@@ -82,12 +93,17 @@ async fn author_approve_execute_drains() {
         ]
     );
 
-    // Plan lifecycle: every entry is `done`.
-    let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
-    )
-    .expect("parse plan.yaml");
-    assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
+    // Plan progress projects `done` from archive facts (RFC-86 D2 / D11).
+    let plan_yaml = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
+    assert!(!plan_yaml.contains("status:"), "plan.yaml has no stored status: {plan_yaml}");
+    let plan: change::Plan = serde_saphyr::from_str(&plan_yaml).expect("parse plan.yaml");
+    let events =
+        project::plan::collect_events(&plan, project::config::Layout::new(&root)).expect("events");
+    let ladders = project::plan::project_ladders(&plan, &events);
+    assert!(
+        ladders.values().all(|status| *status == Status::Done),
+        "projected ladders: {ladders:?}"
+    );
 
     // Baseline merge output with complete provenance.
     let baseline = root.join(".emery/specs/greeting/spec.md");
@@ -120,14 +136,28 @@ async fn author_approve_execute_drains() {
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
 
-    // RFC-87: the artifact arrived through capture + the interim
-    // post-merge apply, never an ambient checkout write — the archived
-    // code patch records the touched path and the journal carries the
-    // apply event.
-    let patch = fs::read_to_string(archive.join("build/patch.yaml")).expect("archived code patch");
-    assert!(patch.contains("mock-build/greeting.md"), "{patch}");
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    // RFC-87 / RFC-86 D27: the artifact arrived through capture + the
+    // interim post-merge apply, never an ambient checkout write — the
+    // archived fact-substrate build record records the touched path
+    // and the journal carries the apply event.
+    let builds = archive.join("builds");
+    let record_path = fs::read_dir(&builds)
+        .expect("archived builds/")
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .find(|p| p.extension().and_then(|ext| ext.to_str()) == Some("yaml"))
+        .expect("archived build record");
+    let record = fs::read_to_string(&record_path).expect("read build record");
+    assert!(record.contains("mock-build/greeting.md"), "{record}");
+    assert!(
+        !archive.join("build/patch.yaml").exists(),
+        "patch.yaml must not be build-outcome authority"
+    );
+    let journal = journal_text(&root);
     assert!(journal.contains("slice.code.applied"), "{journal}");
+    assert!(journal.contains("target.wave.opened"), "{journal}");
+    assert!(journal.contains("target.merge.wave-committed"), "{journal}");
+    assert!(journal.contains("target.merge.wave-succeeded"), "{journal}");
 
     // Guidance dispatch proof, stronger than a call log: the mock
     // target's guidance brief reached the recorded synthesis prompt.
@@ -155,8 +185,8 @@ async fn author_approve_execute_drains() {
     session.model().assert_exhausted();
 }
 
-// Executing is approving: nothing is stamped or journaled for the
-// approval, and a re-entrant execute on the drained plan is a no-op.
+// Execute opens plan.execute.started (never projects `approved` /
+// plan.transition.approved); re-entrant execute on drained is a no-op.
 #[tokio::test]
 async fn execute_reentry_noop() {
     let session = Session::bare(suite_answers());
@@ -184,7 +214,7 @@ async fn execute_reentry_noop() {
     // lifecycle key and the journal carries no approval event.
     let raw = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
     assert!(!raw.contains("lifecycle"), "{raw}");
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    let journal = journal_text(&root);
     assert!(!journal.contains("plan.transition.approved"), "{journal}");
 
     // Re-entry on the drained plan is a no-op: drained again, no
@@ -222,10 +252,18 @@ async fn preflight_parks_built() {
     .expect_err("execute parks on the failed preflight gate");
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
 
-    // Nothing merged: the slice stays `built`, no baseline, no archive.
+    // Nothing merged: the build record remains, no baseline, no archive.
     let metadata = fs::read_to_string(root.join(".emery/slices/greeting/metadata.yaml"))
         .expect("slice still present");
-    assert!(metadata.contains("status: built"), "{metadata}");
+    assert!(metadata.contains("completed-at:"), "{metadata}");
+    assert!(
+        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
+        "build record must remain after a parked preflight"
+    );
+    assert!(
+        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        "patch.yaml is not authority"
+    );
     assert!(!root.join(".emery/specs/greeting/spec.md").exists());
 
     // Clear the gate and resume through the breakout merge, then the
@@ -283,14 +321,20 @@ async fn postflight_terminal() {
     );
 
     // Non-rollback: the merge committed before the gate ran — baseline
-    // written, slice archived, plan entry `done`.
+    // written, slice archived, plan entry projects `done`.
     assert!(root.join(".emery/specs/greeting/spec.md").is_file());
     assert!(!root.join(".emery/slices/greeting").exists());
     let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
-    assert!(plan.entries.iter().all(|entry| entry.status == Status::Done), "{:?}", plan.entries);
+    let events =
+        project::plan::collect_events(&plan, project::config::Layout::new(&root)).expect("events");
+    let ladders = project::plan::project_ladders(&plan, &events);
+    assert!(
+        ladders.values().all(|status| *status == Status::Done),
+        "projected ladders: {ladders:?}"
+    );
 
     // Failed postflight report persists beside the archive.
     let archive = fs::read_dir(root.join(".emery/archive"))
@@ -317,8 +361,10 @@ async fn postflight_terminal() {
     assert_eq!(status.resume.as_deref(), Some("emery plan execute"));
 
     // The journal makes the irreversible state explicit; no ack yet.
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
-    assert!(journal.contains("slice.merge.postflight-failed"), "{journal}");
+    let journal = journal_text(&root);
+    assert!(journal.contains("target.merge.wave-committed"), "{journal}");
+    assert!(journal.contains("target.merge.wave-postflight-failed"), "{journal}");
+    assert!(!journal.contains("target.merge.wave-succeeded"), "{journal}");
     assert!(!journal.contains("slice.merge.succeeded"), "{journal}");
     assert!(!journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
 
@@ -332,7 +378,7 @@ async fn postflight_terminal() {
     .await
     .expect("second execute acknowledges and drains");
     assert_eq!(resumed.status, "drained");
-    let journal = fs::read_to_string(root.join(".emery/journal.jsonl")).expect("journal");
+    let journal = journal_text(&root);
     assert!(journal.contains("plan.merge-postflight.acknowledged"), "{journal}");
 }
 

@@ -1,31 +1,45 @@
-//! The status projection: plan entries + the shared execution-state
-//! kernel → one [`StatusBody`].
+//! The status projection: plan topology + artifacts + the fact union
+//! → one [`StatusBody`] (RFC-86 D2 / D22 / D26).
 
 use std::ops::ControlFlow;
+use std::path::Path;
 
+use artifacts::spec::provenance::RequirementStatus;
 use error::Error;
 
-use super::super::execution::{JournalOverlay, Resolution, resolve_entry};
+use super::super::execution::{
+    JournalOverlay, Resolution, collect_events, next_eligible, project_ladders, resolve_entry,
+    resolve_work_root, scan_union,
+};
+use super::super::gaps::plan_gaps_body;
+use super::super::in_scope;
 use super::super::model::{Entry, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::config::Layout;
-use crate::journal::{self, EventKind};
+use crate::journal::{Event, EventKind};
+use crate::name::SliceName;
+use crate::slice::SliceMetadata;
 
 /// Project the read-only `emery plan status` body.
 ///
-/// Selection: the active `in-progress` entry, else sticky
+/// Selection: the first projected `in-progress` entry, else sticky
 /// `merge-postflight-failed` when the newest plan-scoped postflight
-/// debt event is unacked, else the next eligible `pending` entry
-/// (what `plan advance` would advance), else `drained` / `stop
-/// stuck`. The per-entry decision — slot-aware slice lifecycle plus
-/// (for the active entry) the folded active-window journal facts — is
+/// debt event is unacked, else the next eligible projected `pending`
+/// entry (what `plan advance` would advance), else `drained` /
+/// `stop stuck`. The per-entry decision — artifact phase plus (for
+/// an in-progress entry) the folded active-window journal facts — is
 /// the shared `resolve_entry` execution kernel; not-yet-advanced
 /// candidates skip the journal overlay (nothing has run under the
 /// current activation; stale same-name events from earlier plans must
 /// not classify).
 ///
+/// Ladder labels and the awaited phase are computed from the fact
+/// union and slice artifacts. Ready / Authorized are plan-wide
+/// milestones (D22): Ready is clean-gap only; Authorized is a
+/// covering `plan.execute.started` — never an `approved` rung.
+///
 /// `layout` resolves the plan root and the work root: an entry bound
-/// to a materialised workspace slot reads that slot's slice metadata
+/// to a materialised workspace slot reads that slot's slice artifacts
 /// and journal, mirroring where phase work writes them.
 ///
 /// # Errors
@@ -34,79 +48,162 @@ use crate::journal::{self, EventKind};
 /// ([`Error::YamlDe`]); a missing slice directory is the fresh-slice
 /// signal, not an error.
 pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, Error> {
+    let events = collect_events(plan, layout)?;
+    let ladders = project_ladders(plan, &events);
     let counts = StatusCounts {
-        pending: count(plan, Status::Pending),
-        in_progress: count(plan, Status::InProgress),
-        done: count(plan, Status::Done),
+        pending: count(&ladders, Status::Pending),
+        in_progress: count(&ladders, Status::InProgress),
+        done: count(&ladders, Status::Done),
     };
-    let active = plan.entries.iter().find(|e| e.status == Status::InProgress);
+    let active =
+        plan.entries.iter().find(|e| ladders.get(&e.name).copied() == Some(Status::InProgress));
 
     let resolution = match active {
-        Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply)?,
+        Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply, &events)?,
         None => {
             // Sticky postflight debt: after a non-rollback postflight
             // failure the entry is already `done`, so nothing is
             // in-progress — project the stop until execute acknowledges.
-            if let Some(debt) = postflight_debt(layout, plan)? {
+            if let Some(debt) = postflight_debt(plan, &events) {
                 debt
             } else {
-                match plan.next_eligible() {
-                    Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Skip)?,
-                    None if plan.is_drained() => Resolution::drained(),
+                match next_eligible(plan, &ladders) {
+                    Some(entry) => {
+                        resolve_entry(plan, entry, layout, JournalOverlay::Skip, &events)?
+                    }
+                    None if ladders.values().all(|s| *s == Status::Done) => Resolution::drained(),
                     None => Resolution::stop(StopReason::Stuck),
                 }
             }
         }
     };
-    Ok(assemble(plan, counts, active, resolution))
+    let gaps = plan_gaps_body(plan, layout)?;
+    let all_refined = all_in_scope_refined(plan, layout)?;
+    let milestones = Milestones {
+        all_refined,
+        ready: all_refined && clean_gaps(&gaps),
+        authorized: project_authorized(&events),
+    };
+    Ok(assemble(plan, counts, active, &ladders, resolution, gaps, milestones))
+}
+
+/// Plan-wide Ready / Authorized inputs for [`assemble`] (RFC-86 D22).
+#[derive(Clone, Copy)]
+struct Milestones {
+    all_refined: bool,
+    ready: bool,
+    authorized: bool,
 }
 
 /// When the chronologically latest among
-/// `{slice.merge.postflight-failed, plan.merge-postflight.acknowledged}`
+/// `{target.merge.wave-postflight-failed, plan.merge-postflight.acknowledged}`
 /// (restricted to slices named in this plan) is a postflight failure,
 /// project the sticky `merge-postflight-failed` stop for that slice.
-fn postflight_debt(layout: Layout<'_>, plan: &Plan) -> Result<Option<Resolution>, Error> {
+fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
     let mut resolution = None;
-    journal::scan_recent(layout, |event| {
-        match event.kind {
-            EventKind::SliceMergePostflightFailed { slice_name, reason }
-                if plan.entries.iter().any(|e| e.name == slice_name) =>
-            {
-                let entry = plan.entries.iter().find(|e| e.name == slice_name);
-                // Entry presence is gated above; reconstruct the stop
-                // with the plan entry's project binding when found.
-                if let Some(entry) = entry {
-                    resolution = Some(Resolution::stop_for(
-                        StopReason::MergePostflightFailed,
-                        Some(reason),
-                        entry,
-                        Some(LoopStep::Merge),
-                    ));
-                }
-                ControlFlow::Break(())
+    scan_union(events, |event| match &event.kind {
+        EventKind::TargetMergeWavePostflightFailed {
+            slice_name, reason, ..
+        } if plan.entries.iter().any(|e| e.name == *slice_name) => {
+            let entry = plan.entries.iter().find(|e| e.name == *slice_name);
+            if let Some(entry) = entry {
+                resolution = Some(Resolution::stop_for(
+                    StopReason::MergePostflightFailed,
+                    Some(reason.clone()),
+                    entry,
+                    Some(LoopStep::Merge),
+                ));
             }
-            EventKind::PlanMergePostflightAcknowledged { slice_name }
-                if plan.entries.iter().any(|e| e.name == slice_name) =>
-            {
-                resolution = None;
-                ControlFlow::Break(())
-            }
-            _ => ControlFlow::Continue(()),
+            ControlFlow::Break(())
         }
-    })?;
-    Ok(resolution)
+        EventKind::PlanMergePostflightAcknowledged { slice_name }
+            if plan.entries.iter().any(|e| e.name == *slice_name) =>
+        {
+            resolution = None;
+            ControlFlow::Break(())
+        }
+        _ => ControlFlow::Continue(()),
+    });
+    resolution
 }
 
-fn count(plan: &Plan, status: Status) -> usize {
-    plan.entries.iter().filter(|e| e.status == status).count()
+fn count(ladders: &std::collections::HashMap<SliceName, Status>, status: Status) -> usize {
+    ladders.values().filter(|s| **s == status).count()
+}
+
+/// Ready's clean-gap policy: no conflicts and zero open unknowns.
+/// Divergence is listed but does not block Ready (D22).
+fn clean_gaps(gaps: &super::super::gaps::GapsBody) -> bool {
+    !gaps
+        .rows
+        .iter()
+        .any(|row| matches!(row.status, RequirementStatus::Unknown | RequirementStatus::Conflict))
+}
+
+/// Every in-scope entry has refined artifacts (model.yaml or spec.md).
+/// Empty in-scope set is vacuously refined.
+fn all_in_scope_refined(plan: &Plan, layout: Layout<'_>) -> Result<bool, Error> {
+    for entry in &plan.entries {
+        let work_root = resolve_work_root(layout, entry);
+        let work_layout = Layout::new(&work_root);
+        let slice_dir = work_layout.slice_dir(entry.name.as_str());
+        let meta = load_meta(&slice_dir)?;
+        if !in_scope(plan, entry, meta.as_ref()) {
+            continue;
+        }
+        if !is_refined(&slice_dir) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
+    match SliceMetadata::load(slice_dir) {
+        Ok(m) => Ok(Some(m)),
+        Err(
+            Error::ArtifactNotFound { .. }
+            | Error::Diag {
+                code: "slice-not-found",
+                ..
+            },
+        ) => Ok(None),
+        Err(err) => Err(err),
+    }
+}
+
+fn is_refined(slice_dir: &Path) -> bool {
+    slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file()
+}
+
+/// Authorized when any `plan.execute.started` fact is in the union.
+/// Covering / stale validation lands with the execute writer (S18/S19).
+fn project_authorized(events: &[Event]) -> bool {
+    events.iter().any(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }))
 }
 
 fn assemble(
-    plan: &Plan, counts: StatusCounts, active: Option<&Entry>, resolution: Resolution,
+    plan: &Plan, counts: StatusCounts, active: Option<&Entry>,
+    ladders: &std::collections::HashMap<SliceName, Status>, mut resolution: Resolution,
+    gaps: super::super::gaps::GapsBody, milestones: Milestones,
 ) -> StatusBody {
+    // When every in-scope slice is refined but Ready fails, surface
+    // review-gaps instead of build (D22). Execute maps ReviewGaps →
+    // build; the gap gate enforces waivers / refuses unresolved gaps.
+    if milestones.all_refined
+        && !milestones.ready
+        && matches!(resolution.action, NextActionKind::Build)
+    {
+        resolution.action = NextActionKind::ReviewGaps;
+        resolution.slice = None;
+        resolution.project = None;
+        resolution.last_completed = Some(LoopStep::Refine);
+    }
+
     let next_action = match (resolution.action, &resolution.slice, &resolution.stop) {
         (NextActionKind::Drained, ..) => "drained".to_string(),
         (NextActionKind::Stop, _, Some(stop)) => format!("stop {}", stop.reason),
+        (NextActionKind::ReviewGaps, ..) => "review-gaps".to_string(),
         (action, Some(slice), _) => format!("{action} {slice}"),
         // Unreachable by construction: every non-stop, non-drained
         // resolution carries a slice. Render the bare verb if it ever
@@ -121,10 +218,13 @@ fn assemble(
         action: resolution.action,
         current_step: current_step(&resolution),
         last_completed: resolution.last_completed,
-        resume: resume_point(plan, &resolution),
+        resume: resume_point(plan, ladders, &resolution, &gaps, milestones.ready),
+        ready: milestones.ready,
+        authorized: milestones.authorized,
         slice: resolution.slice,
         project: resolution.project,
         stop: resolution.stop,
+        gaps,
     }
 }
 
@@ -135,7 +235,7 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
         NextActionKind::Refine => Some(LoopStep::Refine),
         NextActionKind::Build => Some(LoopStep::Build),
         NextActionKind::Merge => Some(LoopStep::Merge),
-        NextActionKind::Drained => None,
+        NextActionKind::ReviewGaps | NextActionKind::Drained => None,
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
             StopReason::RefineFailed => Some(LoopStep::Refine),
             StopReason::BuildFailed => Some(LoopStep::Build),
@@ -153,23 +253,32 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 
 /// `resume`: the next valid resume point as a literal command.
 /// `None` when no single command makes progress.
-fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
+fn resume_point(
+    plan: &Plan, ladders: &std::collections::HashMap<SliceName, Status>, resolution: &Resolution,
+    gaps: &super::super::gaps::GapsBody, ready: bool,
+) -> Option<String> {
     let slice = resolution.slice.as_deref();
-    // A fresh plan (no entry has left `pending`) resumes through the
-    // execute loop, not a phase breakout — the projected
-    // `next-action` still names the phase the loop will run first.
-    if plan.entries.iter().all(|e| e.status == Status::Pending)
+    // A fresh plan (no entry has left projected `pending`) resumes
+    // through the execute loop, not a phase breakout — the projected
+    // `next-action` still names the phase the loop will run first
+    // (D26). When Ready, keep `/emery:execute`. When refined but not
+    // Ready, point at waive / gap closure instead.
+    if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,
-            NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge
+            NextActionKind::Refine
+                | NextActionKind::Build
+                | NextActionKind::Merge
+                | NextActionKind::ReviewGaps
         )
     {
-        return Some("/emery:execute".to_string());
+        return Some(fresh_plan_resume(gaps, ready, resolution.action));
     }
     match resolution.action {
         NextActionKind::Refine => slice.map(|s| format!("/emery:refine {s}")),
         NextActionKind::Build => slice.map(|s| format!("/emery:build {s}")),
         NextActionKind::Merge => slice.map(|s| format!("/emery:merge {s}")),
+        NextActionKind::ReviewGaps => Some(gap_resume(gaps)),
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
             StopReason::RefineFailed => slice.map(|s| format!("/emery:refine {s}")),
@@ -180,4 +289,40 @@ fn resume_point(plan: &Plan, resolution: &Resolution) -> Option<String> {
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
     }
+}
+
+/// Post-author / all-pending resume (D26 / D22).
+fn fresh_plan_resume(
+    gaps: &super::super::gaps::GapsBody, ready: bool, action: NextActionKind,
+) -> String {
+    if action == NextActionKind::ReviewGaps || (!ready && action == NextActionKind::Build) {
+        return gap_resume(gaps);
+    }
+    // Unrefined or Ready: resume at execute (D26). Next-action may
+    // still name `slice refine <slice>` while unrefined.
+    "/emery:execute".to_string()
+}
+
+/// Resume when the change is not Ready: conflicts → re-refine
+/// selectors; unknowns-only → execute with per-req `--waive`.
+fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
+    let conflicts: Vec<_> =
+        gaps.rows.iter().filter(|r| r.status == RequirementStatus::Conflict).collect();
+    if !conflicts.is_empty() {
+        let mut slices: Vec<&str> = conflicts.iter().map(|r| r.slice.as_str()).collect();
+        slices.sort_unstable();
+        slices.dedup();
+        return format!("emery slice refine {}", slices.join(" "));
+    }
+    let unknowns: Vec<_> =
+        gaps.rows.iter().filter(|r| r.status == RequirementStatus::Unknown).collect();
+    if unknowns.is_empty() {
+        return "emery plan gaps".to_string();
+    }
+    let mut parts = vec!["emery plan execute".to_string()];
+    for row in unknowns {
+        parts.push(format!("--waive {}/{}", row.slice, row.req));
+    }
+    parts.push("--reason <reason>".to_string());
+    parts.join(" ")
 }

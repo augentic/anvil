@@ -104,14 +104,12 @@ slices:
     sources:
       - source: docs
         lead: auth-token-issue
-    status: pending
   - name: billing-auth-check
     project: billing-svc
     depends-on: [auth-token-issue]
     sources:
       - source: docs
         lead: billing-auth-check
-    status: pending
 ```
 
 During plan review, check the `project:` routing along with the usual scope review. If a slice is routed to the wrong project, fix it with `emery plan amend <entry> --project <name>`; a missing `project` on a multi-project registry is caught by `emery plan validate` (`project-missing-multi-repo`).

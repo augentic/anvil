@@ -106,6 +106,7 @@ async fn survey_ensures_pinned_binding() {
             version: Some(semver::Version::new(1, 0, 0)),
             path: None,
             value: Some("The greeting service.".to_string()),
+            cid: None,
         },
     );
     let plan_path = session.root().join("plan.yaml");
@@ -258,7 +259,11 @@ async fn merge_failure_parks_built() {
     let metadata =
         std::fs::read_to_string(session.root().join(".emery/slices/greeting/metadata.yaml"))
             .expect("slice still present");
-    assert!(metadata.contains("status: built"), "no commit happened:\n{metadata}");
+    assert!(metadata.contains("completed-at:"), "no commit happened:\n{metadata}");
+    assert!(
+        project::build_record::BuildRecord::present(&session.root().join(".emery/slices/greeting")),
+        "build record must remain when merge parks"
+    );
     assert!(!session.root().join(".emery/specs/greeting/spec.md").exists(), "no baseline write");
 }
 

@@ -23,7 +23,7 @@ Every requirement **must** include ≥1 `#### Scenario:` heading — including `
 
 Invariants the kernel guarantees and the parser re-checks:
 
-- **`ID:`** matches `^REQ-\d{3}$`. Unique across the slice. **New domains** receive slice-global `REQ-001..N` in declaration order. **Modified domains** assign additive ids from `max(baseline REQ)+1` per domain; set `baseline-id` when refining an existing baseline requirement — the kernel preserves that id under `## MODIFIED Requirements`.
+- **`ID:`** matches `^REQ-\d{3}$`. Unique across the slice. The kernel mints slice-local `REQ-001..N` in declaration order (not baseline numbers — wave commit assigns final baseline ids). Set `baseline-id` when refining an existing baseline requirement; the kernel keeps that reference, records a digest of the baseline body, and places the row under `## MODIFIED Requirements`.
 - **`Sources:`** YAML-flow kebab-case keys resolving against `plan.yaml.slices[].sources[]`, highest-authority first. `[]` only when `Status: unknown`.
 - **`Status:`** closed enum `agreed | unknown | conflict | divergence`.
 - **Tag coherence:** headline tag matches `Status:` per [`tags.md`](tags.md). `Status: agreed` carries no tag.
@@ -73,8 +73,8 @@ A password reset flow exists; its behaviour is not evidenced.
 
 When the bound project already owns `specs/<domain>/spec.md`, the kernel renders merge-ready deltas:
 
-- Net-new behaviour → `## ADDED Requirements` with ids continuing from the baseline max.
-- Refining a baseline requirement → set `baseline-id: REQ-NNN`; kernel keeps the id under `## MODIFIED Requirements`.
+- Net-new behaviour → `## ADDED Requirements` with a fresh slice-local id.
+- Refining a baseline requirement → set `baseline-id: REQ-NNN`; kernel mints a slice-local id, records the baseline-body digest, and places the row under `## MODIFIED Requirements`.
 
 Greenfield domains still render flat `### Requirement:` blocks. `emery slice merge` rejects flat deltas against a non-empty baseline (`merge-delta-headers-required`).
 

@@ -1,8 +1,9 @@
 //! The refine-phase orchestrator behind `/emery:refine`: slice create
-//! (re-entry safe), per-binding extract fan-out, the synthesis
-//! judgment leg, the persist tail, the validate gate sweep, and the
-//! `refined` transition. A validate failure leaves the slice
-//! `refining` and fires no `slice.synthesize.failed`.
+//! (re-entry safe), refine-time `base.yaml` pin assembly, per-binding
+//! extract fan-out, the synthesis judgment leg, the persist tail, the
+//! validate gate sweep, and the `refined` transition. A validate
+//! failure leaves the slice `refining` and fires no
+//! `slice.synthesize.failed`.
 
 use std::path::{Path, PathBuf};
 
@@ -15,16 +16,16 @@ use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::journal::{self, EventKind};
-use project::plan::{Entry, Plan, Status, resolve_topology};
+use project::plan::{Entry, Plan, Status, collect_events, project_ladders, resolve_topology};
 use project::registry::topology::{Decision, Surface};
-use project::seam::{Source, Target};
+use project::seam::{Source, Target, Workspaces};
 
 use super::synthesize::SynthesizeRequest;
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
 use crate::validate::{Validation, append_synthesis_journal};
 use crate::{
-    BaselineIndex, CreateIfExists, DomainDetail, LifecycleStatus, ProjectionHeader,
+    Base, BaselineIndex, CreateIfExists, DomainDetail, LifecycleStatus, ProjectionHeader,
     actions as slice_actions, persist_synthesized, read_evidence_index, read_source_inputs,
     synthesize_failure_reason,
 };
@@ -88,18 +89,28 @@ impl TagCounts {
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `slice-lifecycle` gate error from the `refined` transition.
 #[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
-pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
+pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str,
 ) -> Result<RefineOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     tracing::info!("refine started");
-    let entry = load_entry(layout, slice)?;
+    let (plan, entry) = load_entry(layout, slice)?;
     let parent_dir = layout.slices_dir();
     std::fs::create_dir_all(&parent_dir).map_err(Error::Io)?;
     let created =
         slice_actions::create(&parent_dir, slice, target_value, CreateIfExists::Continue, now)?;
     let slice_dir = created.dir;
+
+    // Pin assembly before extract (RFC-86 D4 / D25 / D27): copy closed
+    // plan source cids, baseline-spec digest, and freeze the product
+    // tree as the target-base pin build will prepare from.
+    let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
+    let target_base = caps.targets.freeze().await.map_err(|err| Error::Diag {
+        code: "slice-base-freeze-failed",
+        detail: format!("freezing the product tree for slice `{slice}` base.yaml failed: {err}"),
+    })?;
+    Base::assemble(&plan, &entry, &baseline_specs_dir, target_base)?.write(&slice_dir)?;
 
     // Extract fan-out, serially in binding declaration order (the
     // skill's no-parallelism rule).
@@ -115,7 +126,6 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     let source_inputs = read_source_inputs(layout, &entry)?;
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();
-    let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
     let (baseline, baseline_decisions) = baseline_identity(caps.resolver, paths, &entry)?;
     let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
@@ -196,10 +206,10 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 /// breakout of `/emery:refine`.
 ///
 /// Entry semantics mirror the standalone `slice build <name>` posture:
-/// the verb acts on the named slice directly against a `pending` or
-/// `in-progress` plan entry, never advancing per-entry status (`plan
-/// advance` stays the only `in-progress` writer), and refuses a `done`
-/// entry. The target is caller-free: it resolves from the slice's own
+/// the verb acts on the named slice directly against a projected
+/// `pending` or `in-progress` plan entry (never claiming — `plan
+/// advance` owns the claim), and refuses a projected `done` entry.
+/// The target is caller-free: it resolves from the slice's own
 /// `metadata.yaml` when the slice already exists (a resumed
 /// `refining` breakout), else from the bound project's topology — the
 /// same resolution `plan advance` hands the execute loop.
@@ -210,17 +220,20 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 /// - `slice-create-target-missing` when neither the slice metadata nor
 ///   the topology resolves a target.
 /// - everything [`refine`] surfaces.
-pub async fn refine_breakout<P: Model, S: Source, T: Target, R: Resolver>(
+pub async fn refine_breakout<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
 ) -> Result<RefineOutcome, Error> {
     let layout = Layout::new(paths.project_root());
-    let entry = load_entry(layout, slice)?;
-    if entry.status == Status::Done {
+    let (plan, entry) = load_entry(layout, slice)?;
+    let events = collect_events(&plan, layout)?;
+    let ladders = project_ladders(&plan, &events);
+    let status = ladders.get(&entry.name).copied().unwrap_or(Status::Pending);
+    if status == Status::Done {
         return Err(Error::validation_failed(
             "slice-refine-entry-done",
             "the plan entry is still open",
             format!(
-                "plan entry `{slice}` is already `done`; walk it back with `emery plan undo \
+                "plan entry `{slice}` projects `done`; walk it back with `emery plan undo \
                  {slice}` before re-refining"
             ),
         ));
@@ -289,11 +302,11 @@ fn validate(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<TagCounts
     }
 }
 
-/// Load the named slice's plan entry — the binding that carries the
-/// slice's bound `sources[]`, `project`, and per-slice
+/// Load the plan and the named slice's entry — the binding that
+/// carries the slice's bound `sources[]`, `project`, and per-slice
 /// `authority-override`. Mirrors the native synthesize handler's
 /// errors.
-fn load_entry(layout: Layout<'_>, slice: &str) -> Result<Entry, Error> {
+fn load_entry(layout: Layout<'_>, slice: &str) -> Result<(Plan, Entry), Error> {
     let plan_path = layout.plan_path();
     if !plan_path.exists() {
         return Err(Error::validation_failed(
@@ -306,13 +319,14 @@ fn load_entry(layout: Layout<'_>, slice: &str) -> Result<Entry, Error> {
         ));
     }
     let plan = Plan::load(&plan_path)?;
-    plan.entries.into_iter().find(|e| e.name == slice).ok_or_else(|| {
+    let entry = plan.entries.iter().find(|e| e.name == slice).cloned().ok_or_else(|| {
         Error::validation_failed(
             "slice-synthesize-entry-missing",
             "the slice has a matching plan entry",
             format!("plan.yaml has no entry named `{slice}`"),
         )
-    })
+    })?;
+    Ok((plan, entry))
 }
 
 /// The `ThreeWayMerge` baseline `specs/` directory — the same path

@@ -1,8 +1,13 @@
 //! Integration coverage for the read-only `plan status` projection,
 //! exercised through the `plan status` operation (the public
-//! boundary): each test stages `plan.yaml`, slice metadata, and
+//! boundary): each test stages `plan.yaml`, slice artifacts, and
 //! journal events on disk, invokes the operation, and asserts the
 //! projected `StatusBody`.
+//!
+//! Progress is computed from artifacts and facts (RFC-86 D2 / D11) —
+//! `plan.yaml` and `metadata.yaml` carry no stored status fields.
+//! Ready / Authorized milestones follow D22 / D26 — never an
+//! `approved` rung.
 //!
 //! The base happy-path dispatch arms (fresh-active-refine,
 //! per-entry refine/build/merge, drained,
@@ -10,25 +15,28 @@
 //! crate's orchestrate suites. What stays here is the dispatch and
 //! overlay classification that has no CLI status fixture: stuck
 //! dependency graphs, dropped slices, failure-overlay precedence, the
-//! torn merge-incomplete state, re-entry resume points, and workspace
-//! slot routing.
+//! torn merge-incomplete state, re-entry resume points, Ready /
+//! Authorized, and workspace slot routing.
 
 mod support;
 
 use change::plan::handlers::{Status as StatusOp, StatusInput};
-use change::{LoopStep, Plan, Status, StatusBody};
+use change::{LoopStep, NextActionKind, Plan, StatusBody};
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
-use project::journal::{Event as JournalEvent, EventKind};
-use slice::LifecycleStatus;
+use project::config::Layout;
+use project::journal::{
+    ClosedPlanCoverage, DEFAULT_ACTOR, Event as JournalEvent, EventKind, LeafSpecCoverage,
+    append_for,
+};
 use support::{change, change_with_deps, plan_with_changes};
 
 struct Event;
 
 impl Event {
     const fn event(timestamp: Timestamp, kind: EventKind) -> JournalEvent {
-        JournalEvent { timestamp, kind }
+        JournalEvent::new(timestamp, kind)
     }
 }
 
@@ -44,15 +52,51 @@ async fn status(project: &Session, plan: &Plan) -> StatusBody {
     run::<StatusOp, _, _>(project.provider(), StatusInput {}).await.expect("status")
 }
 
-fn write_slice(root: &std::path::Path, name: &str, status: LifecycleStatus) {
+/// Stage a live slice directory with optional abandon / refine / build
+/// artifact signals (not lifecycle status — projection ignores that).
+fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
     let slice_dir = root.join(".emery").join("slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
-    let status = serde_saphyr::to_string(&status).expect("serialize lifecycle").trim().to_string();
-    std::fs::write(
-        slice_dir.join("metadata.yaml"),
-        format!("target: demo-target@1.0.0\nstatus: {status}\n"),
-    )
-    .expect("write metadata");
+    let mut meta = String::from("target: demo-target@1.0.0\n");
+    match kind {
+        SliceArt::Dropped => {
+            meta.push_str("dropped-at: \"2024-01-01T00:00:00Z\"\n");
+        }
+        SliceArt::Refined => {
+            std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
+                .expect("write model.yaml");
+        }
+        SliceArt::Built => {
+            std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
+                .expect("write model.yaml");
+            // Minimal fact-substrate build record (RFC-86 D27). Report
+            // fields satisfy the closed BuildReport shape.
+            let builds = slice_dir.join("builds");
+            std::fs::create_dir_all(&builds).expect("create builds dir");
+            std::fs::write(
+                builds.join("aa.yaml"),
+                "base: sha256:aa\n\
+                 result: sha256:bb\n\
+                 touched: []\n\
+                 wave: sha256:cc\n\
+                 report:\n\
+                   version: 1\n\
+                   slice: a\n\
+                   target: demo-target@1.0.0\n\
+                   status: success\n\
+                   findings: []\n",
+            )
+            .expect("write build record");
+        }
+    }
+    std::fs::write(slice_dir.join("metadata.yaml"), meta).expect("write metadata");
+}
+
+#[derive(Clone, Copy)]
+enum SliceArt {
+    Dropped,
+    Refined,
+    Built,
 }
 
 fn ts(seconds: i64) -> Timestamp {
@@ -60,13 +104,7 @@ fn ts(seconds: i64) -> Timestamp {
 }
 
 fn append(root: &std::path::Path, events: &[JournalEvent]) {
-    let body = events
-        .iter()
-        .map(|event| serde_json::to_string(event).expect("serialize journal event"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    std::fs::write(root.join(".emery/journal.jsonl"), format!("{body}\n"))
-        .expect("write journal events");
+    append_for(Layout::new(root), DEFAULT_ACTOR, events).expect("write journal events");
 }
 
 fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {
@@ -75,6 +113,19 @@ fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {
         EventKind::PlanEntryAdvanced {
             plan_name: plan.into(),
             slice_name: slice.into(),
+        },
+    )
+}
+
+fn archived(seconds: i64, slice: &str) -> JournalEvent {
+    Event::event(
+        ts(seconds),
+        EventKind::SliceArchiveCreated {
+            slice_name: slice.into(),
+            touched_specs: Vec::new(),
+            outcome_summary: "merged".into(),
+            merge_sha: None,
+            decisions: Vec::new(),
         },
     )
 }
@@ -95,7 +146,7 @@ mod next_action {
     #[tokio::test]
     async fn unmet_deps_stuck() {
         let project = Session::scripted("demo", Vec::new());
-        let plan = plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]);
+        let plan = plan_with_changes(vec![change_with_deps("b", &["missing"])]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop stuck");
     }
@@ -103,8 +154,9 @@ mod next_action {
     #[tokio::test]
     async fn dropped_slice_stops() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Dropped);
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        write_slice(project.root(), "a", SliceArt::Dropped);
+        append(project.root(), &[advanced(0, "test", "a")]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
     }
@@ -115,7 +167,7 @@ mod next_action {
         // `/emery:execute`; the `resume:` line is the only
         // start-execution hint — no approval footer.
         let project = Session::scripted("demo", Vec::new());
-        let body = status(&project, &plan_with_changes(vec![change("a", Status::Pending)])).await;
+        let body = status(&project, &plan_with_changes(vec![change("a")])).await;
         assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
         let mut out = Vec::new();
         project::handler::Render::render(&body, &mut out).expect("render");
@@ -129,7 +181,8 @@ mod next_action {
         // The drained projection and the literal stop-conditions
         // drained string, asserted through the text rendering.
         let project = Session::scripted("demo", Vec::new());
-        let plan = plan_with_changes(vec![change("a", Status::Done)]);
+        append(project.root(), &[archived(0, "a")]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "drained");
         let mut out = Vec::new();
@@ -148,7 +201,7 @@ mod failure_overlay {
     #[tokio::test]
     async fn merge_failure_conflict() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Built);
+        write_slice(project.root(), "a", SliceArt::Built);
         append(
             project.root(),
             &[
@@ -162,7 +215,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-conflict");
     }
@@ -183,7 +236,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop refine-failed");
     }
@@ -191,7 +244,7 @@ mod failure_overlay {
     #[tokio::test]
     async fn later_success_clears_failure() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Refined);
+        write_slice(project.root(), "a", SliceArt::Refined);
         append(
             project.root(),
             &[
@@ -205,19 +258,22 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
-        assert_eq!(body.next_action, "build a", "newest marker is a success — dispatch resumes");
+        assert_eq!(
+            body.next_action, "merge a",
+            "build.succeeded projects built — dispatch advances to merge"
+        );
     }
 
     #[tokio::test]
     async fn non_awaited_failure_ignored() {
-        // The slice was hand-advanced past the failed phase; the stale
-        // failure must not pin the projection.
+        // The slice already carries a built artifact; a stale build
+        // failure must not pin the projection off merge.
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Built);
+        write_slice(project.root(), "a", SliceArt::Built);
         append(project.root(), &[advanced(0, "test", "a"), build_failed(10, "a", "stale")]);
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "merge a");
     }
@@ -226,19 +282,19 @@ mod failure_overlay {
     async fn reclaim_shadows_old_failure() {
         // A fresh `plan.entry.advanced` (re-claim after undo, or a new
         // plan reusing the slice name) is newer than the failure, so
-        // dispatch falls back to the lifecycle.
+        // dispatch falls back to the artifact phase.
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Refined);
+        write_slice(project.root(), "a", SliceArt::Refined);
         append(project.root(), &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "build a");
     }
 
     #[tokio::test]
     async fn unstamped_merge_stops() {
-        // Torn state: the merge landed (slice dir archived) but the
-        // entry is still in-progress.
+        // Torn state: the merge landed (merge.succeeded) but the
+        // archive / done stamp has not.
         let project = Session::scripted("demo", Vec::new());
         append(
             project.root(),
@@ -252,7 +308,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-incomplete");
     }
@@ -283,7 +339,7 @@ mod failure_overlay {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-incomplete");
     }
@@ -295,14 +351,17 @@ mod failure_overlay {
         let project = Session::scripted("demo", Vec::new());
         append(
             project.root(),
-            &[Event::event(
-                ts(0),
-                EventKind::SliceMergeSucceeded {
-                    slice_name: "b".into(),
-                },
-            )],
+            &[
+                archived(0, "a"),
+                Event::event(
+                    ts(0),
+                    EventKind::SliceMergeSucceeded {
+                        slice_name: "b".into(),
+                    },
+                ),
+            ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::Done), change("b", Status::Pending)]);
+        let plan = plan_with_changes(vec![change("a"), change("b")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine b");
     }
@@ -321,13 +380,17 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::SliceMergePostflightFailed {
+                EventKind::TargetMergeWavePostflightFailed {
+                    target: "demo".into(),
+                    digest:
+                        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                     slice_name: "a".into(),
                     reason: "target-merge-postflight-failed".to_string(),
                 },
             )],
         );
-        let plan = plan_with_changes(vec![change("a", Status::Done)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-postflight-failed");
         assert_eq!(body.slice.as_deref(), Some("a"));
@@ -351,7 +414,10 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::SliceMergePostflightFailed {
+                    EventKind::TargetMergeWavePostflightFailed {
+                        target: "demo".into(),
+                        digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                         slice_name: "a".into(),
                         reason: "target-merge-postflight-failed".to_string(),
                     },
@@ -364,7 +430,7 @@ mod postflight_debt {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::Done)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "drained");
         assert_eq!(body.resume.as_deref(), Some("/emery:finalize test"));
@@ -379,13 +445,17 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::SliceMergePostflightFailed {
+                EventKind::TargetMergeWavePostflightFailed {
+                    target: "demo".into(),
+                    digest:
+                        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                     slice_name: "a".into(),
                     reason: "target-merge-postflight-failed".to_string(),
                 },
             )],
         );
-        let plan = plan_with_changes(vec![change("a", Status::Done), change("b", Status::Pending)]);
+        let plan = plan_with_changes(vec![change("a"), change("b")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop merge-postflight-failed");
         assert_eq!(body.slice.as_deref(), Some("a"));
@@ -399,7 +469,10 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::SliceMergePostflightFailed {
+                    EventKind::TargetMergeWavePostflightFailed {
+                        target: "demo".into(),
+                        digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                            .into(),
                         slice_name: "a".into(),
                         reason: "target-merge-postflight-failed".to_string(),
                     },
@@ -412,7 +485,7 @@ mod postflight_debt {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::Done), change("b", Status::Pending)]);
+        let plan = plan_with_changes(vec![change("a"), change("b")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine b");
     }
@@ -436,7 +509,7 @@ mod re_entry {
                 ),
             ],
         );
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, Some(LoopStep::Merge));
         assert_eq!(body.last_completed, Some(LoopStep::Merge));
@@ -446,7 +519,8 @@ mod re_entry {
     #[tokio::test]
     async fn drained_finalize() {
         let project = Session::scripted("demo", Vec::new());
-        let plan = plan_with_changes(vec![change("a", Status::Done)]);
+        append(project.root(), &[archived(0, "a")]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, None);
         assert_eq!(body.last_completed, None);
@@ -459,7 +533,7 @@ mod re_entry {
         // `/emery:execute` rather than a phase breakout — the loop, not
         // a single phase, is the natural entry point.
         let project = Session::scripted("demo", Vec::new());
-        let plan = plan_with_changes(vec![change("a", Status::Pending)]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine a");
         assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
@@ -470,19 +544,206 @@ mod re_entry {
         // `stuck` and `slice-dropped` need operator repair — no single
         // command makes progress, so `resume` stays empty.
         let project = Session::scripted("demo", Vec::new());
-        let plan = plan_with_changes(vec![change_with_deps("b", Status::Pending, &["missing"])]);
+        let plan = plan_with_changes(vec![change_with_deps("b", &["missing"])]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop stuck");
         assert_eq!(body.resume, None);
 
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Dropped);
-        let plan = plan_with_changes(vec![change("a", Status::InProgress)]);
+        write_slice(project.root(), "a", SliceArt::Dropped);
+        append(project.root(), &[advanced(0, "test", "a")]);
+        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "stop slice-dropped");
         assert_eq!(body.current_step, None);
         assert_eq!(body.last_completed, None);
         assert_eq!(body.resume, None);
+    }
+}
+
+mod milestones {
+    use std::collections::BTreeMap;
+
+    use super::*;
+
+    fn write_model(root: &std::path::Path, name: &str, model: &str) {
+        let slice_dir = root.join(".emery").join("slices").join(name);
+        std::fs::create_dir_all(&slice_dir).expect("slice dir");
+        std::fs::write(slice_dir.join("metadata.yaml"), "target: demo-target@1.0.0\n")
+            .expect("metadata");
+        std::fs::write(slice_dir.join("model.yaml"), model).expect("model");
+    }
+
+    #[tokio::test]
+    async fn refined_clean_is_ready_not_authorized() {
+        // Clean gaps + refined → Ready. No plan.execute.started yet →
+        // not Authorized. Resume stays at execute (D22 / D26).
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-001
+    title: login works
+    status: agreed
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(body.ready, "clean refined plan must be Ready");
+        assert!(!body.authorized, "no epoch yet → not Authorized");
+        assert_eq!(body.next_action, "build a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert!(!serde_json::to_string(&body).expect("json").contains("approved"));
+    }
+
+    #[tokio::test]
+    async fn open_unknowns_not_ready_review_gaps() {
+        // Refined + open unknowns → not Ready; next-action is
+        // review-gaps; resume points at per-req --waive (D22).
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready);
+        assert!(!body.authorized);
+        assert_eq!(body.action, NextActionKind::ReviewGaps);
+        assert_eq!(body.next_action, "review-gaps");
+        let resume = body.resume.as_deref().expect("resume");
+        assert!(
+            resume.contains("emery plan execute")
+                && resume.contains("--waive a/REQ-003")
+                && resume.contains("--reason"),
+            "resume must suggest waive path, got: {resume}"
+        );
+        let mut out = Vec::new();
+        project::handler::Render::render(&body, &mut out).expect("render");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(text.contains("ready: false"));
+        assert!(text.contains("authorized: false"));
+        assert!(!text.contains("approved"), "never project approved: {text}");
+    }
+
+    #[tokio::test]
+    async fn conflict_resume_re_refine_not_waive() {
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-002
+    title: auth disagree
+    status: conflict
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready);
+        assert_eq!(body.next_action, "review-gaps");
+        assert_eq!(body.resume.as_deref(), Some("emery slice refine a"));
+    }
+
+    #[tokio::test]
+    async fn divergence_alone_does_not_block_ready() {
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-004
+    title: authority chose
+    status: divergence
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(body.ready, "divergence is listed but does not block Ready");
+        assert_eq!(body.next_action, "build a");
+    }
+
+    #[tokio::test]
+    async fn dropped_excluded_from_ready() {
+        // Drop the gappy slice; the remaining refined sibling makes
+        // the change Ready (D24).
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "a", SliceArt::Dropped);
+        write_model(
+            project.root(),
+            "b",
+            r"requirements:
+  - id: REQ-001
+    title: ok
+    status: agreed
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a"), change("b")]);
+        let body = status(&project, &plan).await;
+        assert!(body.ready);
+        assert!(body.gaps.rows.is_empty());
+    }
+
+    #[tokio::test]
+    async fn epoch_fact_projects_authorized_without_ready() {
+        // Hand-stamped plan.execute.started → Authorized even while
+        // unknowns keep Ready false (D22). Execute writer is S18.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+        );
+        let mut specs = BTreeMap::new();
+        specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
+        append(
+            project.root(),
+            &[Event::event(
+                ts(0),
+                EventKind::PlanExecuteStarted {
+                    coverage: ClosedPlanCoverage::ClosedPlan {
+                        plan_digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+                        specs,
+                        unknown_waivers: Vec::new(),
+                    },
+                    discovery_digest: None,
+                },
+            )],
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready, "waivers/epoch must not backfill Ready");
+        assert!(body.authorized);
+        let json = serde_json::to_string(&body).expect("json");
+        assert!(!json.contains("\"approved\""), "{json}");
+    }
+
+    #[tokio::test]
+    async fn fresh_unrefined_resume_execute() {
+        // D26: post-author resume stays /emery:execute; next-action
+        // may still name slice refine.
+        let project = Session::scripted("demo", Vec::new());
+        let body = status(&project, &plan_with_changes(vec![change("a")])).await;
+        assert!(!body.ready);
+        assert!(!body.authorized);
+        assert_eq!(body.next_action, "refine a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
     }
 }
 
@@ -494,10 +755,10 @@ mod workspace_routing {
         let project = Session::scripted("demo", Vec::new());
         let slot = project.root().join("workspace").join("storefront");
         std::fs::create_dir_all(&slot).expect("create slot");
-        write_slice(&slot, "a", LifecycleStatus::Refined);
+        write_slice(&slot, "a", SliceArt::Refined);
         append(&slot, &[advanced(0, "test", "a"), build_failed(10, "a", "slot failure")]);
 
-        let mut entry = change("a", Status::InProgress);
+        let mut entry = change("a");
         entry.project = Some("storefront".to_string());
         let plan = plan_with_changes(vec![entry]);
         let body = status(&project, &plan).await;
@@ -510,8 +771,9 @@ mod workspace_routing {
     #[tokio::test]
     async fn missing_slot_falls_back() {
         let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", LifecycleStatus::Built);
-        let mut entry = change("a", Status::InProgress);
+        write_slice(project.root(), "a", SliceArt::Built);
+        append(project.root(), &[advanced(0, "test", "a")]);
+        let mut entry = change("a");
         entry.project = Some("storefront".to_string());
         let plan = plan_with_changes(vec![entry]);
         let body = status(&project, &plan).await;

@@ -1,6 +1,6 @@
 # Emery Workflow
 
-Emery routes workflow state changes through `/emery:*` wrappers over the `emery` CLI. `/emery:init` scaffolds a project. `/emery:plan` authors `change.md` + `plan.yaml` through `emery plan author` and exits so the operator can review them. `/emery:execute` runs `emery plan execute` — running it is the operator's approval of the authored plan — and drives the per-slice loop to completion through that one verb. `/emery:status` is the read-only orientation probe. The per-slice breakouts — `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop` — invoke the matching `emery slice` verbs one slice at a time. Repository publication (commit, push, review, merge) is operator-owned outside Emery; `/emery:finalize` confirms publication is complete, then archives the plan.
+Emery routes workflow state changes through `/emery:*` wrappers over the `emery` CLI. `/emery:init` scaffolds a project. `/emery:plan` authors `change.md` + `plan.yaml` through `emery plan author` and exits so the operator can review them. `/emery:execute` runs `emery plan execute` — opens the `plan.execute.started` authorization epoch and drives the per-slice loop under gap gates. `/emery:status` is the read-only orientation probe over computed progress (Ready / Authorized, never `approved`). The per-slice breakouts — `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop` — invoke the matching `emery slice` verbs one slice at a time. Repository publication (commit, push, review, merge) is operator-owned outside Emery; `/emery:finalize` confirms publication is complete, then archives the plan.
 
 Every skill is an ultrathin invoke-and-relay wrapper: it elicits any missing arguments, invokes the corresponding `emery` command, and relays the output verbatim. Workflow sequencing, artifact synthesis, and validation all live in the CLI's orchestrations.
 
@@ -12,7 +12,7 @@ Display ownership is split three ways: the CLI's rendered output owns facts and 
 |-------|---------|-------------|
 | [init](skills/init/SKILL.md) | `/emery:init` | Initialize Emery in a project (`emery init`) |
 | [plan](skills/plan/SKILL.md) | `/emery:plan` | Author `change.md` + `plan.yaml`, stop for operator review (`emery plan author`) |
-| [execute](skills/execute/SKILL.md) | `/emery:execute` | Drive the per-slice loop to completion (`emery plan execute` — running it is the approval) |
+| [execute](skills/execute/SKILL.md) | `/emery:execute` | Drive the per-slice loop to completion (`emery plan execute` — opens the authorization epoch) |
 | [status](skills/status/SKILL.md) | `/emery:status` | Report where the plan stands and the literal next command (`emery plan status`, read-only) |
 | [refine](skills/refine/SKILL.md) | `/emery:refine` | Extract, synthesize, validate, and transition one slice to `refined` (`emery slice refine`) |
 | [build](skills/build/SKILL.md) | `/emery:build` | Build one slice through its target adapter (`emery slice build`) |
