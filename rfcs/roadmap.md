@@ -7,7 +7,7 @@
 
 Emery should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-The local substrate is credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, and layered skills are all in place. The **enforcement** and **reconciliation** pillars are in place too — `validate` uses the `diagnostics` crate while keeping distinct gate authority from consumer-project engineering standards, and core owns how sources reconcile into slices. Durable specs live in [docs/standards/workflow.md](../docs/standards/workflow.md), [Workflow, standards, and artifacts](../docs/explanation/standards-layer.md), and [From sources to slices](../docs/explanation/reconciliation.md). The next phase makes the loop observable and portable across teams, forges, agents, and catalogs.
+The local substrate is credible: slice/change vocabulary, fact-projected status, pinned inputs, private workspaces, target waves, adapter resolution, and layered skills are all in place. The **enforcement** and **reconciliation** pillars are in place too — `validate` uses the `diagnostics` crate while keeping distinct gate authority from consumer-project engineering standards, and core owns how sources reconcile into slices. Durable specs live in [docs/standards/workflow.md](../docs/standards/workflow.md), [Workflow, standards, and artifacts](../docs/explanation/standards-layer.md), and [From sources to slices](../docs/explanation/reconciliation.md). The next phase detaches multi-repository changes, makes build control observable, and carries the same semantics from one desktop to a fleet.
 
 At scale, Emery spans three connected layers:
 
@@ -19,18 +19,19 @@ Emery owns the workflow semantics across those layers: intent becomes artifacts;
 
 ## Principles
 
-- **Keep the CLI authoritative for workflow state.** Skills, MCP servers, CI, and cloud runners may orchestrate `emery`; they must not reimplement lifecycle transitions, plan validation, registry validation, or merge behavior. Repository checkout and publication remain operator-owned.
-- **One authored home per fact; derive the rest.** Each repository's durable intent (`adapter`, `description`, `product`) lives in `.emery/project.yaml`; routing identity (`surface[]`, `decisions[]`, `recent[]`) is a deterministic baseline projection committed as `.emery/topology.lock`. A detached change records its pinned repositories, exact revisions, and resolved target topology once under `plan.yaml.projects`; RFC-88 removes committed `registry.yaml` and tended workspace slots from multi-repository coordination. Rich catalog metadata can still live in Backstage or another catalog; Emery consumes reviewable projections at the boundary.
+- **Keep the CLI authoritative for workflow state.** Skills, MCP servers, CI, and cloud runners may orchestrate `emery`; they must not reimplement lifecycle transitions, discovery/decomposition validation, plan projection, or merge behavior. Forge publication remains operator-owned.
+- **One authored home per fact; derive the rest.** Each repository's durable product state lives in `.emery/project.yaml`, `.emery/specs/`, and `.emery/decisions/`. A detached change pins source and target topology in `discovery.yaml`, records conflict domains in `decomposition.yaml`, and projects only executable leaves into `plan.yaml`. No committed registry, `.emery/topology.lock`, or tended workspace slot is coordination authority. Rich catalog metadata can still live in Backstage or another catalog; Emery consumes bounded, reviewable inputs at discovery.
 - **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
 - **Optimize for local first, cloud later.** `emery plan execute` remains the proving ground, but guest locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Eval coverage should exercise realistic multi-repo flows, not just isolated command behavior.
+- **Measure accepted outcomes, not agent activity.** Compare harness and model changes on the same inputs, time budget, and blind acceptance set. Project cost, latency, rework, contention, and generated structure from raw events; do not make an eval score lifecycle authority.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
 - **Keep enforcement surfaces distinct.** Framework-repo consistency (the mdBook links gate) and consumer-project **engineering standards** (embedded in each target adapter and applied by its build review prompts) never share gate authority: `validate` gates lifecycle transitions and is non-silenceable, while standards review is lifecycle-neutral and silenceable. See [docs/explanation/standards-layer.md](../docs/explanation/standards-layer.md).
 - **Core owns reconciliation.** If a rule decides how sources combine, how evidence becomes artifacts, or how one slice drives multiple outputs, it belongs in the CLI or a CLI-owned schema — not only in a skill body. This does not move *any grouping judgment* off the agent: the agent owns "are these two leads the same work?" and expresses it in `slices[]`; the CLI computes no groupings. What core owns is the typed schema those judgments are recorded in, the coverage guarantee over the result, and the audit trail around that judgment. The lead-side fields are agent-authored typed facts a deterministic layer *checks and surfaces*, never a deterministic replacement for the agent's grouping. See [From sources to slices](../docs/explanation/reconciliation.md).
 
 ## Effect-oriented architecture
 
-The runtime architecture — Emery as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). Formerly deferred, now sequenced in the platform-migration series ([platform.md](platform.md)): critical path [RFC-86](rfc-86-change-facts.md) → [RFC-87](rfc-87-working-trees.md) → [RFC-88](rfc-88-detached-changes.md) → [RFC-89](rfc-89-publication-sets.md); scale track [RFC-90](rfc-90-build-verification.md) → [RFC-91](rfc-91-concurrent-execution.md) → [RFC-92](rfc-92-node-sync.md). [RFC-93](future/rfc-93-host-verification.md) is the post-series native-verification follow-on.
+The runtime architecture — Emery as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). Formerly deferred, now sequenced in the platform-migration series ([platform.md](platform.md)): critical path [RFC-86](rfc-86-change-facts.md) → [RFC-87](rfc-87-working-trees.md) → [RFC-88](rfc-88-detached-changes.md) → [RFC-89](rfc-89-publication-sets.md); scale track [RFC-90](rfc-90-build-verification.md) → [RFC-91](rfc-91-concurrent-execution.md) → [RFC-92](rfc-92-node-sync.md). [RFC-93](rfc-93-host-verification.md) is the post-series native-verification follow-on.
 
 ### Cross-repo coordination
 
@@ -51,19 +52,20 @@ Items are identified as `RM-NN`. Earlier items unblock later ones unless noted o
 
 ### Current priorities
 
-The near-term focus is observability and portability (RM-14 / RM-15 / RM-18): a known build of the operator-facing surfaces over the existing `journal` substrate — the substrate exists; the surfaces do not.
+The near-term focus is the detached product path (RFC-88 / RFC-89) plus local observability (RM-14 / RM-15). RFC-90 can proceed in parallel with RFC-88 over the landed private-workspace stem. RFC-91 begins only after RFC-88's recursive authoring contract and RFC-90's build gate settle; RFC-92 then distributes that completed local model. RM-18 remains a hosted-product follow-on to RFC-92.
 
 In parallel, the migration critical path is [RFC-86 Change Facts](rfc-86-change-facts.md) → [RFC-87 Private Workspaces](rfc-87-working-trees.md) → [RFC-88 Detached Changes](rfc-88-detached-changes.md) → [RFC-89 Publication Sets](rfc-89-publication-sets.md) (see [platform.md](platform.md)). Installation already works ([RFC-71](rfc-71-deployment.md)); Stage 2 diagnostics (`resolution.json` / `deployment show|doctor`) stay separate. Omnia stays free of Emery vocabulary throughout.
 
-Target experience: thin prior context (forge auth/org + source material) → bare change directory → discover (migrate or ongoing-change mode) → record members (create repos when needed) → plan → prepare private workspaces on execute → publish → finalize. RFC-88 also removes operator-authored source keys and lets ordinary single-project planning reuse its deterministic local source selector. Binding constraint is **adapter inventory** — today one code source (`typescript`) and no web target.
+Target experience: thin prior context (forge auth/org + source material) → operator creates any missing member repositories with `product:` membership → bare change directory → discover and pin → recursively author the plan → prepare private workspaces on execute → operator publishes → archive. RFC-88 removes operator-authored source keys and lets ordinary single-project planning reuse its deterministic local source selector. Binding constraint is **adapter inventory** — today one code source (`typescript`) and no web target.
 
-Delivery is strictly sequential: finish every decision and acceptance criterion in one RFC before implementing the next. Later RFCs consume settled capabilities; no RFC retains a phase gated on a successor.
+Delivery follows explicit dependency edges, not one serial queue. Work may proceed in parallel where [the platform braid](platform.md#working-in-parallel) permits it; each consumer still waits for the exact predecessor contract it uses, and no RFC retains a phase gated on a successor.
 
 #### Deferred until trigger conditions or prerequisites
 
 - [RFC-46a](future/rfc-46a-web-asset.md) — web asset materialization; deferred until a web shell scaffold exists.
-- Scale-track concurrency ([RFC-90](rfc-90-build-verification.md) / [RFC-91](rfc-91-concurrent-execution.md) / [RFC-92](rfc-92-node-sync.md)) — after the migrate/change location story works on the critical path.
-- [RFC-93](future/rfc-93-host-verification.md) — host verification profiles; deferred until a standardized WASI capability can enforce native process, sandbox, cancellation, and resource policy.
+- [RFC-91](rfc-91-concurrent-execution.md) — waits for RFC-88's recursive authoring contract and RFC-90's engine-owned build gate; RFC-90 itself may proceed after the landed RFC-87 stem.
+- [RFC-92](rfc-92-node-sync.md) — waits for RFC-91's complete local scheduler, convergence, and worker model.
+- [RFC-93](rfc-93-host-verification.md) — host verification profiles; deferred until a standardized WASI capability can enforce native process, sandbox, cancellation, and resource policy.
 - RM-12 / RM-13 — catalog import and read-oriented MCP.
 
 ---
@@ -112,28 +114,21 @@ emery plan impact --change <name>
 #### RM-12: Catalog import: Backstage adapter
 
 **Goal:** Enrich Emery planning from external catalogs without making Emery a developer portal.
-**Target surface:**
-
-```bash
-emery registry import backstage
-emery registry import <source>
-emery registry diff <source>
-```
-
-**Mapping:** Backstage `System` to platform/product boundary; `Component` to registry project; `API` to interface inventory; ownership/domain/dependencies to routing and review signals.
-**Output:** explicit registry diff for operator review before planning or execution.
+**Boundary:** Catalog data may help an operator author bounded RFC-88 discovery selector rows or enrich topology judgment. It does not restore `registry.yaml`, workspace slots, or a second member authority beside `discovery.yaml` and the executable plan projection.
+**Mapping:** Backstage `System` to product boundary; `Component` to target candidates; `API`, ownership, domain, and dependencies to discovery and decomposition context.
+**Output:** an explicit, reviewable authoring-scope projection consumed by `emery plan author`. Exact CLI shape remains deferred until one catalog fixture proves that this adds value beyond RFC-88's forge markers and selector rows.
 
 #### RM-13: Read-oriented Emery MCP server
 
 **Goal:** Make Emery state available to agents through MCP without duplicating business logic.
 **Substrate:** every adapter guest can export `wasi:http/incoming-handler` over `omnia_guest::mcp`. Ordinary-path derived MCP route projection (`/mcp/<axis>/<name>[@<version>]` via `launcher::mcp_route`) is already landed ([RFC-71](rfc-71-deployment.md)). This item becomes another route on that deployment (plausibly an export of the engine guest), not a standalone server.
-**Initial tools:** direct readers for `plan.yaml` (including detached `projects`), materialized slot status, and slice metadata, plus wrappers around `emery plan status` and `emery slice validate`.
+**Initial tools:** direct readers for `discovery.yaml`, `decomposition.yaml`, `plan.yaml` target/source bindings and executable leaves, and slice metadata, plus wrappers around `emery plan status` and `emery slice validate`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
 #### RM-17: Operator-owned forge integration
 
 **Goal:** Support branch transport, PR/MR creation, and finalize beyond GitHub CLI.
-**Provider extension covers:** branch transport, push permissions, PR/MR create-or-update, CI/mergeability status, and provider links over RFC-88's forge capability. RFC-88 already owns GitHub discovery/create and RFC-89 already owns the PR reads needed for verification; neither waits for this item.
+**Provider extension covers:** branch transport, push permissions, PR/MR create-or-update, CI/mergeability status, and provider links over RFC-88's forge capability. RFC-88 owns GitHub discovery and exact-revision reads but deliberately does not create repositories; RFC-89 owns the PR reads needed for verification. Neither waits for this item.
 **Target surface:**
 
 ```bash
@@ -194,6 +189,9 @@ Each is one paragraph of intent. An idea graduates to active roadmap work only w
 - **Omnia plan composition.** Teach `plan.yaml` to express the composition shape Omnia migrations produce — services composed of crates composed of handlers — without a parallel artifact or breaking existing plans.
 - **Standards baseline.** The cross-run lint lifecycle: acknowledging a body of legitimate findings as baseline debt, diffing scans against prior runs, and staging remediation across releases. Deferred — no consumers under fix-before-release on Emery-native codebases.
 - **Orchestration replay coverage.** Canonical scenarios separate hard assertions from semantic rubrics. `ModelDefault` provides deterministic request-key replay at the `wasi-model` boundary; native and composed profiles reuse that contract without capturing editor transcripts. Live profiles remain outside ordinary CI.
+- **Evidence-guided model routing and review lenses.** RFC-91 records the route, model, timing, and available usage while keeping the project model and fixed specialist set as the first policy. Activate per-operation routing or another decorrelated review lens only when same-input live fixtures show better accepted outcomes per cost.
+- **Semantic decision ownership and bounded shared learning.** If platform runs show split-brain concepts or repeated rediscovery, assign each cross-cutting decision one owning domain and add immutable, line-budgeted advisory observations bound into consuming operation keys. Reuse repository `decisions/`; require operator promotion rather than introducing a mutable shared Field Guide.
+- **Reviewed-domain streaming and standing amendment policy.** Complete-plan publication and operator-applied proposals remain the default. Revisit domain-level streaming or narrowly pre-authorized mechanical proposal classes only when time-to-first-result, revision-staleness, or proposal-rate measurements show the operator boundary is the material bottleneck.
 
 ## Non-Goals
 

@@ -251,6 +251,8 @@ For a `boundary` escalation, the engine uses RFC-88's refinement feedback path. 
 
 For an `envelope` escalation with no coherent split, the inert proposal records the blocking profile and target envelope. It carries no invented child leads. The operator may change the model-capability profile, target, or change scope through a legal amendment.
 
+An envelope escalation may specifically identify an architectural obstruction outside the reviewed slice ownership envelope: a path, API, or design decision that must change before any valid task graph can implement the slice. The answer names the obstruction and nearest affected conflict domain as evidence only. It cannot widen a grant or license an out-of-scope patch; RFC-88's inert proposal and operator amendment boundary decide whether to introduce or reorder prerequisite work.
+
 The engine then fails the attempt with a typed `decomposition-escalated` terminal report. It does so before preparing any writable workspace.
 
 Escalation cannot edit the plan, execute product work, or alter a frozen wave. The operator applies or discards the proposal through `emery plan amend --proposal`.
@@ -322,6 +324,8 @@ A cap of one provides the serial reference mode. Higher caps run ready same-base
 
 The shipped default cap is four. Cap-one/four equivalence is an acceptance gate, not a separate delivery stage. The same task outcomes must produce the same ordered composition and slice result.
 
+The first implementation uses the project model for every operation. Retained telemetry records the effective route and model identity when the backend exposes them, but the scheduler does not choose a model from price or task labels. The per-task model-selection hook remains inert until comparative evaluation shows a stable benefit; RFC-18 or another follow-on may activate it without changing task, ownership, or lifecycle semantics. Capability profiles continue to size work for a model class and are not overloaded with provider routing policy.
+
 Workers never share a writable tree, live handle, MCP state, or prompt state. RFC-92 owns remote placement.
 
 This replaces RFC-90 D5's one physical workspace for the complete loop. A build attempt instead has one logical candidate:
@@ -383,6 +387,8 @@ Repair grants produced by one report must remain pairwise disjoint. Captured ove
 After verification passes, the engine dispatches one `target.review`.
 
 Inside that dispatch, Omnia may run Security, Correctness, and Quality as separate specialist model calls. Each call is observable and has its own timeout. Compiled adapter code joins their results into one review phase report.
+
+Those specialists provide concern-based lenses in the first cut. Live evaluation may compare decorrelated inputs or model classes—for example candidate-only against candidate-plus-slice-artifacts—but the adapter still returns one bounded review report under RFC-90's single review budget. Another lens graduates only when it finds additional blocking defects at acceptable marginal cost; the runtime does not multiply reviewers or remediation rounds from a model response.
 
 Blocking review findings use the same global RFC-90 repair-brief projection and task-owner routing:
 
@@ -550,6 +556,21 @@ A target drains only when:
 - postflight failures have been acknowledged
 - every root domain has a passing `complete` round for the current revision and CID
 
+### D13 — Harness evaluation measures accepted outcomes and coordination cost
+
+The cap-one reference path and cap-four path run comparative live fixtures with the same source set, model configuration, time budget, and blind acceptance set. Blind inputs remain unavailable to planning, decomposition, build, repair, verify, and review; they grade the completed attempt outside workflow authority.
+
+The retained facts, build phases, graphs, domain records, and available model-backend observations project:
+
+- merged requirements and accepted CIDs per wall-clock hour and per reported model cost
+- time to first accepted result
+- planner/decomposition calls and the worker tokens and cost they induce
+- graph reuse, graph-attributable re-decomposition, residual findings, and amendment proposals
+- touched-path heat, fan-in depth, ownership overlap, and waves per target
+- generated code and module growth as coordination signals, not quality verdicts
+
+Missing provider usage remains unknown. Raw model calls, worker count, commits, and generated lines are activity, not success. These projections neither gate lifecycle nor select a model. They establish the evidence needed to tune fixed budgets, activate model routing, add review lenses, or revisit RFC-88's complete-plan publication in later work.
+
 ## Implementation requirements
 
 - **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add profile-scored task complexity, digest-bound graph and phase records, engine-private `compose`, operator-reviewed protected verification inputs and oracle digests, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
@@ -558,7 +579,8 @@ A target drains only when:
 - Derive closed graph and domain schemas from Rust DTOs. Reject unknown fields.
 - Persist validated-content digests, operation keys, task-scoped phase events, canonical protected-input closures, and domain records as specified above. Add no extension map or second domain-state artifact.
 - Enforce D4's continuation scopes, logical-candidate scopes, worker inactivity timeouts, and capture-then-discard lifecycle.
-- Use the project model by default. Journal compiled budgets, decomposition decisions, ordering, and routing.
+- Use the project model by default. Journal compiled budgets, decomposition decisions, and ordering; correlate them with backend-provided effective routing/model identity when available. Do not activate per-task model choice in this RFC.
+- Extend the live fixtures with D13's same-input cap-one/cap-four comparison and blind acceptance grading. Project metrics from existing facts and phase/backend telemetry rather than writing a score into workflow artifacts.
 
 ## Acceptance criteria
 
@@ -573,6 +595,7 @@ A target drains only when:
 9. **Domain restart.** Independent leaves pass both same-target domain gates. Each operation key and record bind the canonical protected-input closure. On restart, the engine reuses each digest-bound record and candidate without repeating composition or verification.
 10. **Atomic waves.** Two same-base leaves merge under one wave commit only after both complete. Retry preserves membership. Amendment retracts the uncommitted wave. Replay is idempotent. Dependencies use accepted bases. Complete-round failure blocks drain and RFC-89 sealing without rolling back accepted waves.
 11. **Quality gates.** `cargo make ci` passes in every touched repository. D8 goldens regenerate. The `omnia-r9k` and `orders-contracts` live grades do not regress.
+12. **Harness economics.** Cap-one and cap-four live fixtures use the same source set, model configuration, time budget, and blind acceptance set. The acceptance set is unavailable to every workflow model call and does not affect lifecycle. Results report D13's accepted-outcome, induced-worker-cost, graph-stability, amendment, and contention projections when their raw observations exist; missing provider usage stays unknown.
 
 ## Rejected alternatives
 

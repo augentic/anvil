@@ -64,6 +64,8 @@ Operation order, repair routing, budgets, terminal success, and terminal failure
 
 The initial policy permits at most three verification repair dispatches and one review remediation dispatch. These are engine constants, not fields supplied by a model or adapter.
 
+Those constants are conservative first-run pins, not claims of optimality. Retained phase histories and blind live-evaluation results measure success after each repair round, unresolved-finding recurrence, latency, and model usage. A later RFC may revise a constant from that evidence; adapters and models still never choose or reset it at runtime.
+
 The complete transition algorithm is:
 
 ```text
@@ -176,6 +178,8 @@ Separating `verify` and `review` keeps mechanical checks and standards judgment 
 
 A model-assisted verification pass may execute tests stored in the candidate workspace, including tests authored or edited by the same build. A green result therefore means **the candidate passes its own reported checks**, not that it passed an independent or protected oracle. The report source and operator output must preserve that assurance boundary. RFC-91 may protect independently governed verification inputs through its write-ownership envelope; RFC-93 defines host-owned profile and protected-oracle evidence.
 
+Write protection is not the same as held-out evaluation. Any input mounted into a build, repair, review, or verification workspace is visible to that operation even when the engine prevents mutation. Harness evaluation therefore keeps its blind acceptance inputs outside every target and model context, runs them only after the workflow attempt, and records their grade separately from `BuildReport`, `BuildRecord`, and lifecycle projection. A blind grade can compare harness or model mixes; it cannot turn a failed workflow gate into success or become an undisclosed production requirement.
+
 ### D4 — Complete reports gate; bounded repair briefs focus
 
 Phase findings use the shared diagnostic shape and artifact-relative locations. The complete D2-canonical phase report remains immutable gate and audit authority. Before `repair`, the engine projects a deterministic repair brief:
@@ -204,6 +208,8 @@ Engine-owned request, phase, and terminal reports are audit records, not target-
 ### D6 — Phase reports are durable; `BuildRecord` remains outcome authority
 
 Each invocation receives the next monotonic attempt id and writes under `.emery/slices/<slice>/build/attempts/<attempt>/`. The engine copies the immutable `build/request.yaml` into that attempt, writes every returned report as `phases/<ordinal>-<operation>.yaml`, and emits a `slice.build.phase-completed` event naming the attempt, ordinal, operation, source, report digest, and engine-measured `elapsed-ms`. Elapsed time is raw telemetry outside the report digest and lifecycle projection; distributions are derived from retained events rather than emitted as authority. Existing `slice.build.started` / `.succeeded` / `.failed` facts remain the attempt lifecycle envelope; phase-completed events are ordinal evidence inside that envelope. A retry creates a new attempt; it never appends to, clears, or reuses a prior attempt or continuation.
+
+The phase event is also the join anchor for model-backend telemetry when the deployment exposes it: effective route and model identity, input and output tokens, and reported cost. Missing usage data remains missing rather than estimated by the engine. These observations stay outside report digests and lifecycle projection; RFC-91's harness comparison derives cost per accepted result and worker spend induced by decomposition instead of optimizing per-call price.
 
 The engine writes the attempt's terminal report beside its phases and projects that same body to the canonical `build/report.yaml`. A new terminal attempt atomically replaces the canonical projection; immutable attempt records retain the complete history. The engine alone assembles both copies.
 
@@ -242,6 +248,7 @@ When that capability exists, RFC-93 replaces the model-assisted evidence inside 
 - Delete verification, retry, writer re-entry, and review-remediation loops from adapter prose. An operation prompt may perform one pass only.
 - Preserve the existing final blocking-finding, declared-output, patch-capture, wave, `BuildRecord`, and `refined → built` gates.
 - Require and validate report-level `phase-source`, include the terminal verification source in text and JSON operator output even on a clean pass, identify candidate-owned checks as self-consistency evidence rather than an independent oracle, and do not claim deterministic, sandboxed, or trusted native execution.
+- Keep blind evaluation inputs outside every target/model workspace and lifecycle gate. Correlate their post-attempt grades with phase timing and available backend usage through retained event identities; do not expose the acceptance set to build, repair, verify, review, or decomposition.
 
 
 
@@ -257,8 +264,8 @@ When that capability exists, RFC-93 replaces the model-assisted evidence inside 
 8. Omnia/Rust preserves its current generation, replay, Cargo-check, repair, standards-review, output, and finding behavior through the four operations.
 9. Vectis and contracts implement every operation, using typed non-applicability where an operation has no target-specific work, and all three first-party targets declare and obey their writable artifact scopes.
 10. Native and Wasm integration suites cover success, verification repair, review remediation, post-review verification failure, both budget exhaustions, both repair origins, canonical ordering, repair-brief deduplication and truncation without gate suppression, continuation preserve/replace/clear and size rejection, attempt isolation, interrupted-attempt abandonment, canonical-report preservation across interruption, source-assurance validation, phase-report persistence, artifact promotion/rollback, workspace discard, and final report assembly.
-11. Every phase-completed event records engine-measured elapsed milliseconds outside the report digest. `wasm-omnia-r9k` records operation count, model calls, repair routing, and phase timings; every formerly hidden retry is visible as an engine phase.
-12. Documentation describes this gate as model-assisted, calls candidate-owned checks self-consistency evidence rather than an independent oracle, and identifies RFC-93 as the deterministic native-verification follow-on.
+11. Every phase-completed event records engine-measured elapsed milliseconds outside the report digest and can correlate available backend route, model, token, and reported-cost observations without inventing missing values. `wasm-omnia-r9k` records operation count, model calls, repair routing, phase timings, and available usage; every formerly hidden retry is visible as an engine phase.
+12. A blind live-evaluation acceptance set is unavailable to decomposition, build, repair, verify, and review, and its post-attempt grade remains outside build reports, records, and lifecycle projection. Documentation describes the workflow gate as model-assisted, calls candidate-owned checks self-consistency evidence rather than an independent oracle, and identifies RFC-93 as the deterministic native-verification follow-on.
 
 
 

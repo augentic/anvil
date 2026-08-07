@@ -1,6 +1,6 @@
 # Next Stage: Platform-Scale Migration
 
-> Status: Planning spine for the RFC-86…RFC-92 series — each RFC owns its own decisions; this document owns the sequence and the fit. RFC numbers follow implementation order.
+> Status: Planning spine for the RFC-86…RFC-92 series — each RFC owns its own decisions; this document owns the sequence and the fit. RFC numbers follow product-ownership and reading order; landing follows the dependency braid below.
 >
 > Audience: contributors starting work on the series; operators evaluating what Emery is becoming
 
@@ -8,7 +8,7 @@
 
 Point Emery at a legacy system — a mobile app, a realtime platform, any estate of repositories that together comprise one product — and have it migrate that system: discover the repositories, profile them, survey every source, recursively decompose the result into bounded conflict domains, and execute the buildable leaves with a **swarm of concurrent agents** working across **multiple repositories** on **multiple nodes**, converging on verified, published changes.
 
-Then keep changing that platform the same way, from a disposable change directory — prior context intentionally thin (forge authentication and organisation plus source material), creating member repositories when the change needs ones that do not exist yet.
+Then keep changing that platform the same way, from a disposable change directory — prior context intentionally thin (forge authentication and organisation plus source material). When a change needs a repository that does not yet exist, the operator creates it on the forge with `product:` membership before authoring; Emery discovers and pins it but does not provision it.
 
 Concretely, the exemplar workload is a migration the size of AT's mobile app or AT's realtime platform: tens of repositories, hundreds of slices, weeks of wall-clock — infeasible as today's serial, single-repo, operator-tended loop, and exactly what the series below makes routine.
 
@@ -27,7 +27,7 @@ The architecture makes five related shifts:
 1. **State becomes facts.** A change is a self-contained, version-control-neutral fact tree. Workflow status is projected from those facts, so a hosted service never becomes lifecycle authority.
 2. **Trees become values.** Every operation starts from an immutable snapshot in a private workspace and captures another snapshot. A code patch is the relation between the two; no shared working directory crosses an operation.
 3. **Location becomes disposable.** Plan authoring can begin in an empty directory, discover the participating repositories, and record their exact revisions. Execution creates private workspaces on demand. Archive leaves only merged baselines and forge history.
-4. **Build repair becomes engine-owned.** Generation, model-assisted verification, repair, and review become separate target WIT operations in a bounded engine loop rather than retries hidden in adapter prose. [RFC-93](future/rfc-93-host-verification.md) follows with deterministic native verification when WASI can execute host toolchains safely.
+4. **Build repair becomes engine-owned.** Generation, model-assisted verification, repair, and review become separate target WIT operations in a bounded engine loop rather than retries hidden in adapter prose. [RFC-93](rfc-93-host-verification.md) follows with deterministic native verification when WASI can execute host toolchains safely.
 5. **Model work becomes explicit.** Plan authoring surveys the pinned source set and recursively partitions it until every terminal scope is a buildable slice. During the singular slice build, `target.decompose` proposes one complete task graph and the engine validates it before dispatch.
 
 ### Scaling invariant
@@ -47,6 +47,14 @@ This gives Emery recursive planning and graph-shaped build execution without int
 - **Build decomposition** turns one slice into a complete graph of focused agent tasks through one target-provided operation, then converges them into one explicitly gated slice result.
 
 Internal domains and agent tasks have no slice lifecycle, claim, or nested plan. They only describe containment and convergence.
+
+### Evidence and iteration posture
+
+The first cut optimizes for a legible harness, not maximum agent activity. Concurrency, commit count, and model-call count are not success measures by themselves. Evaluation compares the cap-one reference path and concurrent path with the same inputs, models, and time budget, then projects outcome and coordination cost from retained facts and phase events: merged requirements and accepted CIDs, time to first accepted result, model tokens and cost when the backend reports them, re-decomposition, residual findings, amendment proposals, touched-path heat, fan-in pressure, and generated structure size.
+
+Lifecycle verification and harness grading stay separate. RFC-91's protected inputs prevent workers from changing reviewed tests or fixtures, but material visible to build or verification agents is not held out. Live evaluation therefore keeps a blind acceptance set outside every planning, build, repair, review, and verification context. It grades harness and model changes; it never becomes workflow authority or a hidden production gate.
+
+The shipped policy remains deliberately simple: one project model by default, fixed engine repair budgets, complete-plan publication, and operator-applied amendments. RFC-90 and RFC-91 record enough raw timing, routing, usage, and failure evidence to compare alternatives. Model mixes, additional review lenses, streaming domain publication, and standing amendment policies graduate only after real runs show a specific bottleneck; no cost or quality metric changes lifecycle state.
 
 #### Planning: hierarchy first, executable leaves second
 
@@ -131,7 +139,7 @@ Authorization for the series follows [RFC-86](rfc-86-change-facts.md) D6 / D17: 
 
 | Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                                                                                                               | Depends on                   |
 | ---- | ---------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| 5    | [RFC-90](rfc-90-build-verification.md)   | Build Verification   | Engine-owned build loop over separate `build` / `repair` / `verify` / `review` WIT ops; bounded repair policy; durable intermediate reports; final report assembly; deterministic native verification handed to [RFC-93](future/rfc-93-host-verification.md)                                                               | completed 87                 |
+| 5    | [RFC-90](rfc-90-build-verification.md)   | Build Verification   | Engine-owned build loop over separate `build` / `repair` / `verify` / `review` WIT ops; bounded repair policy; durable intermediate reports; final report assembly; deterministic native verification handed to [RFC-93](rfc-93-host-verification.md)                                                                      | completed 87                 |
 | 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node engine-orchestrated swarm: profile-sized target tasks, at most one target decomposition per slice attempt (model-assisted for Omnia), engine-owned graph validation and execution, write ownership, local pool, concurrent leaf scheduling and refinement feedback, deterministic code-patch composition, durable domain rounds, bottom-up convergence, multi-member target waves, and synthesis payload restructuring | completed 86, 87, 88, 90     |
 | 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Distribution of the completed RFC-91 model: fact, artifact, and value transport between nodes; fenced claims; hosted trees; and remote pools — no new scheduler, convergence, acceptance, authority, or lifecycle semantics                                                                                            | completed 86, 87, 88, 90, 91 |
 
@@ -210,7 +218,15 @@ Unchanged and orthogonal — not part of this arc, not blocked by it:
 - **[RFC-71 Self-Assembling Wasm Deployment](rfc-71-deployment.md)** — largely landed; Stage 2 diagnostics remain draft.
 - **[RFC-77 Release Process](rfc-77-release-process.md)** — operational policy for releasing Emery itself; its WIT-breaking shape becomes RFC-89's first in-house publication set.
 - **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** (future) — an optional cost lever behind RFC-91's per-task model-selection hook; a ratchet rung, not a stage.
-- **[RFC-93 Host Verification Profiles](future/rfc-93-host-verification.md)** (future) — deterministic host-tool verification after the platform series, gated on a suitable standardized WASI execution capability.
+- **[RFC-93 Host Verification Profiles](rfc-93-host-verification.md)** (future) — deterministic host-tool verification after the platform series, gated on a suitable standardized WASI execution capability.
 - **[RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md)** (future) — content-triggered vectis work, independent of this series.
 
 Known external reference: `augentic/remedium` RFC-81 cites "RFC-82" for what is now RFC-89's publication-set record; update that citation when next touching that repo.
+
+### Evidence-triggered follow-ons
+
+Three learnings from Cursor's [agent-swarm model economics](https://cursor.com/blog/agent-swarm-model-economics) are useful but intentionally do not expand RFC-86…RFC-92's first implementation:
+
+- **Semantic decision ownership** — path grants prevent textual collisions, not two domains choosing incompatible concepts. If split-brain decisions appear in evaluation, a follow-on may give cross-cutting decisions one owning domain and digest-bind dependants to the result, reusing repository `decisions/` where possible.
+- **Bounded shared learning** — if workers repeatedly rediscover the same estate-specific surprises, a follow-on may add immutable, line-budgeted, change-scoped advisory observations. They remain below artifacts in authority, enter operation keys when consumed, and reach durable `decisions/` only through operator promotion; there is no mutable ambient Field Guide in this series.
+- **Earlier partial execution** — RFC-88 retains immutable lead and decomposition revisions so reviewed closed domains can support a later streaming epoch. Time-to-first-result and plan-staleness measurements must justify that mode before it weakens complete-tree publication.

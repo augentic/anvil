@@ -112,6 +112,8 @@ A worker records its result only after `capture` has stored and verified the sna
 
 Coordination latency is therefore the round length plus transport latency. This matches the existing cold-spawn-per-leg agent backend and leaves publication reserved for the forge boundary.
 
+Hosted evaluation separates judgment time, claim wait, object transfer, and round-publication latency. It compares local and remote placement with the same model configuration and blind acceptance set defined by RFC-91; worker or commit throughput alone is not a success measure. These observations guide backend and placement tuning without changing readiness, fencing, or acceptance.
+
 ### D5 — The value plane is transport-neutral with one shipped binding
 
 Nothing in `emery:adapter` or the engine guest names a transport. This RFC ships NATS JetStream Object Store as the first complete value backend.
@@ -198,6 +200,7 @@ This makes RFC-92 directly operable without waiting for RM-18's background-submi
 7. Process loss at every phase boundary resumes from per-actor fact sequences, the claim generation, and content-addressed values without shared filesystem state.
 8. Failure injection before namespace creation, after artifact upload, and mid-stream resumes idempotently without duplicate change ids, duplicated facts, or forge or tree mutations. A node that streams, detaches after synchronization, and reattaches observes the same projection at each step.
 9. `cargo make ci` is green in touched repositories. Two-node integration tests cover attach and resume, fact replication, fencing, value integrity, remote materialization, worker placement, concurrent entries, and trial integration.
+10. Local and two-node live fixtures with the same source set, model configuration, time budget, and blind acceptance set report judgment, claim-wait, object-transfer, and round-publication latency separately. The blind grade and transport metrics remain outside workflow authority and placement does not upgrade model-assisted assurance.
 
 ## Rejected alternatives
 
