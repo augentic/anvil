@@ -268,7 +268,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 - Cross-platform-repo ledger sharing (the ledger is per-platform-repo).
 - A `confidence` field on ledger entries (review findings live in their own surface).
 - Driving execution from the ledger (the ledger is read-only for every executor-side path).
-- Backstage / external catalogue export (deferred; consistent shape with [RM-12](../roadmap.md#rm-12-catalog-import-backstage-adapter)).
+- Backstage / external catalogue export (deferred pending a demonstrated catalog-assisted discovery need).
 - Replacing operator review with ledger-driven decisions in propose. The ledger is advisory throughout.
 - A general "migration timeline" UI or report. The JSON envelope on `emery migration-log show` is sufficient for downstream tooling to build that.
 - Retroactively rewriting ledger entries when a change is dropped post-finalize (drops happen pre-merge; post-merge edits are out of scope).
@@ -289,7 +289,6 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 - [`docs/standards/workflow.md`](../../docs/standards/workflow.md) — the source-adapter flow and merge/archive writers this RFC's ledger annotates.
 - [`engine/crates/project/src/journal/event.rs`](../../crates/project/src/journal/event.rs) — the `slice.archive.created` outcome-ledger event a rewrite should project the migration ledger over.
 - [RFC-21: Source Catalogue and Source-Clone Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache the ledger annotates.
-- [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.
 - [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) — the source/target axis split the ledger annotates.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
 - [`schemas/plan/plan.schema.json`](../../schemas/plan/plan.schema.json) — the schema this RFC additively extends with `mapping`.

@@ -223,7 +223,7 @@ A lease records:
 - acquisition and expiry time;
 - last journal event.
 
-The lease **contract** is deployment-neutral; its first **implementation** is deliberately small. Locally, a lease is an advisory lock file plus the cleanliness classification below — there is no expiry reaper, and recovery is always the explicit `lease recover` path. The expiry field exists for the hosted backend, where an abandoned remote run must eventually release its slot with no operator at the machine; local execution records it but does not act on it. Serial local migration therefore pays for a lock file, not a distributed lease system, while hosted execution (roadmap RM-18) slots into the same contract unchanged.
+The lease **contract** is deployment-neutral; its first **implementation** is deliberately small. Locally, a lease is an advisory lock file plus the cleanliness classification below — there is no expiry reaper, and recovery is always the explicit `lease recover` path. The expiry field exists for the hosted backend, where an abandoned remote run must eventually release its slot with no operator at the machine; local execution records it but does not act on it. Serial local migration therefore pays for a lock file, not a distributed lease system, while hosted execution ([RFC-92](../rfc-92-node-sync.md)) slots into the same contract unchanged.
 
 Lease files under the project cache are the authoritative ownership record; the journal carries the durable audit trail. Recovery validates both, but a journal event never grants ownership by itself — `lease recover` rewrites the cache record only after validating that tree, branch, base, and journal agree.
 
@@ -365,7 +365,7 @@ An in-house team can ship the first migration programs on **operator-prepared sl
 | Stage 1 — `workspace sync\|inspect` | Cloning / linking many targets is the dominant friction |
 | Stage 2 — prepare + exclusive lease | Two changes contend for one slot, or the coordinator should own branches |
 | Stage 3 — program-integrated materialize-next | Sync+lease exist and idle slots need lifecycle |
-| Stage 4 — hosted backend | Roadmap RM-18 |
+| Stage 4 — hosted backend | [RFC-92](../rfc-92-node-sync.md) |
 
 Program sequencing: [platform-migration series](../platform.md).
 
@@ -395,7 +395,7 @@ Operator-prepared slots satisfy first delivery. These stages backfill cloning an
 3. Release idle slots while retaining reproducible source snapshots.
 4. Surface next operator publication actions in migration status.
 
-### Stage 4 — Hosted backend (gated on RM-18)
+### Stage 4 — Hosted backend (superseded by RFC-92)
 
 1. Implement opaque working-tree leases over hosted clones.
 2. Preserve exact base and change-set semantics.

@@ -225,7 +225,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Put the cache under `.emery/adapters/sources/` rather than `.emery/cache/sources/`.** Rejected. Nesting under `.emery/cache/` (the existing adapter resolver cache, gitignored as a whole) makes it clear the directory is framework-managed, regenerable scratch rather than authored or curated state.
 
-**Auto-populate `sources.yaml` from a Backstage import.** Deferred to future RFC alignment with [RM-12 Catalog import: Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter). The shape of `sources.yaml` is consistent with that direction; the import path is orthogonal.
+**Auto-populate `sources.yaml` from a Backstage import.** Deferred without an active roadmap item. RFC-88's bounded forge discovery supersedes a generic catalog import until a real estate demonstrates that it is insufficient.
 
 **Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`emery slice merge` and `emery plan archive`) that make `status` honest.
 
@@ -238,7 +238,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 - A `status` field on `sources[]` entries (covered by RFC-22).
 - Source-tree mutation (the source-clone cache stays read-only).
 - Cross-platform-repo source sharing (sources are per-platform-repo).
-- Backstage / external catalogue import (deferred; consistent shape with [RM-12](../roadmap.md#rm-12-catalog-import-backstage-adapter)).
+- Backstage / external catalogue import (deferred pending evidence that bounded forge discovery is insufficient).
 - Source-clone cache eviction policies beyond `emery source remove` (operators may delete `.emery/cache/sources/<key>/` by hand if they need to).
 - Driving execution from `sources.yaml` (the catalogue is read-only for every executor-side path).
 - Parallel multi-plan output.
@@ -256,7 +256,6 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 ## References
 
 - [`docs/standards/workflow.md`](../../docs/standards/workflow.md) — the source-adapter flow (`survey` / `extract`) and the `--source` binding grammar this RFC extends.
-- [RM-12: Catalog import — Backstage adapter](../roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
 - [`docs/explanation/adapter-anatomy.md`](../../docs/explanation/adapter-anatomy.md) — the source/target axis split the source-clone cache refines.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
 - [`engine/crates/project/src/registry/catalog.rs`](../../crates/project/src/registry/catalog.rs) — reference implementation for the `Registry` posture `Sources` mirrors.
