@@ -19,7 +19,7 @@
 >
 > The engine still owns the slice build attempt, repair loop, workspace lifecycle, composition, budgets, and terminal report.
 >
-> Extends RFC-88 D8. Decomposition escalation becomes a second author of inert amendment proposals.
+> Extends RFC-88 D8. Target decomposition becomes another author of inert amendment proposals alongside ownership recovery and refinement boundary escalation.
 >
 > [RFC-92](rfc-92-node-sync.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
 
@@ -29,9 +29,11 @@ The slice remains Emery's smallest buildable, verifiable, repairable, and mergea
 
 This RFC replaces large, multi-purpose model calls with focused agent tasks. Those tasks converge on one slice result.
 
-Plan authoring already decomposes surveyed leads recursively. Each terminal scope is one coherent, independently buildable slice. Refinement then produces its Evidence, `spec.md`, `design.md`, and `tasks.md`.
+Plan authoring already decomposes surveyed leads recursively. RFC-88 refinement can send a leaf back through focused survey when its Evidence reveals separately acceptable child boundaries.
 
-Some implementation complexity appears only after refinement. One behavioural slice may require coordinated crate, test, and guest work. That work may be too large for one agent request, yet incoherent as separately accepted slices.
+A successful refinement produces one coherent slice with its Evidence, `spec.md`, `design.md`, and `tasks.md`. That slice remains the lifecycle and acceptance unit.
+
+Some implementation complexity appears only after refinement. One behavioural slice may require coordinated crate, test, and guest work. The work may be too large for one model request but incoherent as separately accepted slices. This RFC divides that implementation into tasks without changing the slice boundary.
 
 Today, one Omnia generation conversation combines all of this work with an opaque verify-repair loop. Observed builds serialized about 30 minutes of agent time. They could then fail inside a hidden review team.
 
@@ -173,7 +175,7 @@ The target adapter owns one-pass target behavior:
 - task-specific build and repair
 - candidate-wide verify and review
 
-Before preparing a writable workspace, the engine validates the graph. It binds the graph digest to the slice revision, target identity, resolved inputs, and base snapshot.
+Before preparing a writable workspace, the engine validates the graph. It binds the graph digest to the slice revision, target identity, model-capability-profile digest, resolved inputs, and base snapshot.
 
 Each task-scoped `build` or `repair` returns an RFC-90 phase report. The engine persists it under the slice-build attempt with the graph digest and task id.
 
@@ -181,7 +183,7 @@ The report's ordinal also emits RFC-90's `slice.build.phase-completed` event. Ta
 
 The validated graph record is independent of any attempt. Its key is the decomposition operation key.
 
-Every re-entry creates a new RFC-90 attempt id, new workspaces, and new continuations. The next attempt may reuse the completed graph after:
+Every re-entry creates a new RFC-90 attempt id, new workspaces, and new continuations. The next attempt may reuse the completed graph when its profile digest is unchanged after:
 
 - an abandoned attempt
 - an infrastructure or dispatch failure
@@ -213,6 +215,7 @@ A task has no slice lifecycle, plan status, claim, independent terminal report, 
 - the refined slice, including `tasks.md` and `spec.md`
 - target guidance
 - path-first target context
+- the pinned model-capability profile and task-complexity threshold
 
 After a graph-attributable failure, it also receives the prior graph and relevant findings. If the failure happened after composition, it receives the prior composed candidate as the proposed base.
 
@@ -225,11 +228,16 @@ The adapter owns its prompt and its interpretation of target architecture. The e
 - every `tasks.md` entry is covered
 - every refined `spec.md` requirement id is covered
 - the task count is within the fixed budget
+- every task carries the closed complexity assessment and fits the profile's task threshold
 - dependencies are acyclic
 - every grant is inside the slice's authorized ownership envelope
 - predicted interaction has no ambiguous path ownership
 
-An `escalate` answer states that the refined slice is not coherent. It includes a typed rationale. The work either has independently acceptable boundaries or exceeds the target's bounded build envelope.
+The adapter proposes task complexity dimensions and rationale. The engine computes each score from the pinned profile. Neither the adapter nor the model selects thresholds or broadens the profile.
+
+Exceeding one task's threshold is a reason to add or split tasks inside the graph. It is not by itself a reason to create more slices.
+
+An `escalate` answer states that the refined slice is not coherent. It includes a typed rationale. The Evidence either supports independently acceptable boundaries, or no bounded task graph can fit the target's complete build and verification envelope.
 
 The engine validates the escalation and writes one inert RFC-88 amendment proposal. The proposal names the slice leaf, its nearest domain, and the proposed boundary.
 
@@ -250,6 +258,7 @@ Each validated task record contains:
 - a stable task id
 - a role and brief
 - covered scope
+- the closed complexity assessment and engine-computed score
 - path-first inputs
 - exact product and artifact grants
 - dependencies
@@ -419,6 +428,12 @@ After RFC-88 pins topology, `plan author` runs independent initial and focused s
 
 Results merge in canonical order, never completion order. The order is either binding order or `(source, parent lead, child lead)` order.
 
+RFC-88's refinement boundary assessment runs only after all bound Evidence has joined successfully. A failed extract fails refinement through the ordinary path. No partial Evidence set can author a boundary proposal.
+
+A validated boundary escalation promotes no synthesis artifacts and performs no `refined` transition. The engine fans out the requested focused surveys through the same pool, merges child leads canonically, and evaluates independent affected domains concurrently.
+
+All affected leads and candidate domain revisions join into one RFC-88 amendment proposal. Completion order cannot change its content. Cancellation reaps every focused survey and decomposition call if proposal assembly fails.
+
 RFC-88's Discover-topology host reads retain their separate budget.
 
 ### D10 — Recursive plan decomposition is bounded engine orchestration
@@ -428,6 +443,8 @@ After the initial inventory, one compiled orchestration evaluates independent RF
 Each bounded model call receives one domain and returns a typed `split | leaf` answer.
 
 The engine owns queueing, budgets, scope reduction, coverage, identity, and ordering.
+
+Each call's operation key covers the relevant model-capability profile digests. A profile change cannot reuse a decomposition result from the previous planning revision.
 
 `decomposition.yaml` and `plan.yaml` publish together only after the complete tree passes.
 
@@ -516,8 +533,8 @@ A target drains only when:
 
 ## Implementation requirements
 
-- **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add digest-bound graph and phase records, engine-private `compose`, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
-- **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Use the same scheduler path for both. Add the specified fan-outs, canonical bounded-antichain scheduling, domain records, and multi-member target waves. Cancellation must reap every call.
+- **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add profile-scored task complexity, digest-bound graph and phase records, engine-private `compose`, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
+- **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Use the same scheduler path for both. Add initial survey, focused resurvey, extract, affected-domain, review, task, and repair fan-outs. Add canonical bounded-antichain scheduling, domain records, and multi-member target waves. Cancellation must reap every call.
 - **Synthesis implements D7–D8.** Land the engine shelf and pass `omnia-r9k`. Then land staged synthesis and pass `orders-contracts`. Neither final grade may regress.
 - Derive closed graph and domain schemas from Rust DTOs. Reject unknown fields.
 - Persist validated-content digests, operation keys, task-scoped phase events, and domain records as specified above. Add no extension map or second domain-state artifact.
@@ -526,14 +543,14 @@ A target drains only when:
 
 ## Acceptance criteria
 
-1. **Omnia decomposition.** A build the size of `at-r9k-position-adapter` produces one complete graph through one model-assisted decomposition operation. Spilled build prompts remain at or below 15 KiB. Exactly one task owns build-level reporting. No task independently passes. RFC-90 retains verification, repair budgets, and observable review specialists.
+1. **Omnia decomposition.** A build the size of `at-r9k-position-adapter` produces one complete graph through one model-assisted decomposition operation. Every task fits the pinned profile's task-complexity threshold. Spilled build prompts remain at or below 15 KiB. Exactly one task owns build-level reporting. No task independently passes. RFC-90 retains verification, repair budgets, and observable review specialists.
 2. **Invalid graphs and re-entry.** Invalid graphs produce no writable workspace. Escalation creates only its inert proposal and terminal report. Re-entry always creates a fresh attempt. It reuses the graph unless an out-of-grant write, layer overlap, or unowned finding requires new decomposition. That call receives the prior graph and findings under a new operation key. After a post-composition failure, the follow-up graph builds from the composed candidate without rerunning completed tasks. A third graph-attributable failure parks the slice without another decomposition call.
 3. **Ownership.** Predicted interaction creates dependencies. Shared paths have one fan-in owner. Captured overlap rejects the whole layer and attempt, then informs the next graph proposal. No textual merge occurs.
 4. **Residual findings.** A located blocking finding on an unowned path fails the attempt as a typed residual failure. The next attempt's complete graph proposal receives it as typed input. No task grant or graph mutates in place.
 5. **Private composition.** The engine composes only same-base, disjoint patches. Every target operation receives a fresh private materialization of the candidate. Targets never receive workspace lifecycle operations. Failure exposes no authoritative workspace or staged-artifact change.
 6. **Concurrent target tasks.** With the pool cap set to four, two target tasks run concurrently in isolated workspaces. Cancellation reaps both. Caps of one and four produce the same ordered composition and one slice-wide result.
 7. **Synthesis staging.** Synthesis loads nonessential playbook prose from the engine shelf. Its answer returns no artifact bodies. The engine promotes its staged tree only after validation.
-8. **Concurrent discovery.** Concurrent survey and extract preserve canonical order. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
+8. **Concurrent discovery and refinement feedback.** Concurrent survey and extract preserve canonical order. A refinement boundary escalation runs focused surveys and affected-domain decomposition concurrently, then produces one byte-stable inert proposal without promoting slice artifacts. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
 9. **Domain restart.** Independent leaves pass both same-target domain gates. On restart, the engine reuses each digest-bound record and candidate without repeating composition or verification.
 10. **Atomic waves.** Two same-base leaves merge under one wave commit only after both complete. Retry preserves membership. Amendment retracts the uncommitted wave. Replay is idempotent. Dependencies use accepted bases. Complete-round failure blocks drain and RFC-89 sealing without rolling back accepted waves.
 11. **Quality gates.** `cargo make ci` passes in every touched repository. D8 goldens regenerate. The `omnia-r9k` and `orders-contracts` live grades do not regress.
@@ -543,7 +560,7 @@ A target drains only when:
 - **Require model-free decomposition.** Fixed role templates are useful as singleton graphs or fast paths. Arbitrary refined tasks and target architecture still require bounded model reasoning. The engine validates and bounds the call instead of treating its output as deterministic.
 - **Promote agent tasks to slices.** Crate, test, guest, and integration tasks may share one behavioural contract. They become valid only after composition. Giving them lifecycle or merge authority would duplicate the workflow below its smallest acceptance unit.
 - **Keep large generation and review calls, or let an adapter recursively spawn workers.** This preserves opaque nested work. One adapter `decompose` operation returns a complete `graph | escalate` answer. Compiled engine policy owns validation, budgets, dispatch, and termination.
-- **Force a mis-scoped slice through task decomposition.** When refinement reveals independently acceptable boundaries, tasks would hide a planning mistake. `escalate` routes the decision to an operator-applied RFC-88 amendment.
+- **Force a mis-scoped slice through task decomposition.** When refinement reveals independently acceptable boundaries, tasks would hide a planning mistake. `escalate` routes the decision to an operator-applied RFC-88 amendment. Complexity above one task's threshold does not qualify by itself because a coherent slice may use several tasks.
 - **Always decompose after terminal failure, mutate the graph in place, or retry decomposition without a bound.** Technical failures and covered findings do not invalidate a graph. Repeated graph failure signals a boundary problem. A graph-attributable failure triggers a fresh, budgeted proposal for the next attempt. The engine neither widens tasks nor accepts an overlap-free subset.
 - **Let adapters own workspaces or loops, share writable trees, or use textual merge.** These choices cross the workflow boundary, hide retries, and make safety depend on timing.
 - **Add task phase operations, writer commands, or full repair prompts.** RFC-90 already owns verification and repair. Another loop would duplicate vocabulary and payload.

@@ -2,11 +2,11 @@
 
 > Status: Draft — step 3 of the platform-migration series ([platform.md](platform.md))
 >
-> Owns: the detached change home; discovery and immutable pinning of targets, sources, and adapters; recursive conflict-domain decomposition; the deterministic buildable-leaf projection into `plan.yaml`; and per-target execution over accepted CIDs.
+> Owns: the detached change home; discovery and immutable pinning of targets, sources, and adapters; capability-profile-bound conflict-domain decomposition; refinement feedback into focused child leads; the deterministic buildable-leaf projection into `plan.yaml`; and per-target execution over accepted CIDs.
 >
 > Builds on [RFC-86](rfc-86-change-facts.md)'s facts, explicit execution-authorization epoch, and per-leaf input fences and [RFC-87](rfc-87-working-trees.md)'s content-addressed trees and private workspaces. [RFC-89](rfc-89-publication-sets.md) publishes the results; [RFC-92](rfc-92-node-sync.md) transports them between nodes.
 >
-> Amends RFC-86 D1 (the in-place change home is `.emery/change/`, not all of `.emery/`) and RFC-87: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 include the target repository's durable state in its tree, the tree identity is named a **CID** in plan and discovery artifacts (RFC-87's `SnapshotId` is that CID), and the interim `apply` is deleted.
+> Amends RFC-86 D1 (the in-place change home is `.emery/change/`, not all of `.emery/`) and D6 (closed-plan coverage transitively binds model-capability profiles). Amends RFC-87: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 include the target repository's durable state in its tree, the tree identity is named a **CID** in plan and discovery artifacts (RFC-87's `SnapshotId` is that CID), and the interim `apply` is deleted.
 
 ## Intent
 
@@ -92,7 +92,7 @@ Detached artifacts live at the change root, with no synthetic project configurat
 
 `plan.yaml` copies the discovered topology, carries matching `leads-digest` and `decomposition-digest`, and adds exactly the terminal slice projection. Domain dependencies compile into leaf `depends-on` edges; the deterministic projector expands a dependency from one domain to another as edges from the source domain's exit leaves (terminal descendants with no successor inside that domain) to the destination domain's entry leaves (terminal descendants with no predecessor inside that domain).
 
-`domains/<domain>/rounds/` contains RFC-91's immutable convergence records, not domain lifecycle state. `planning/proposals/` contains deterministic amendments proposed by overlap recovery or the operator; a proposal has no authority until `emery plan amend --proposal <digest>` validates and applies it.
+`domains/<domain>/rounds/` contains RFC-91's immutable convergence records, not domain lifecycle state. `planning/proposals/` contains validated but unapplied amendments proposed by overlap recovery, refinement boundary escalation, or the operator. RFC-91 adds target-decomposition escalation as another author. A proposal has no authority until `emery plan amend --proposal <digest>` validates and applies it.
 
 `targets/<target>/waves/` contains RFC-86's immutable wave manifests. A manifest closes the member leaves, accepted base CID, planning revisions, dependency frontier, and build-authorization epoch before any member build starts. The committed fact separately names its closed-plan commit authorization, so a future streaming-built member may be reviewed and committed under a later epoch. RFC-86's initial executor creates one-member waves; RFC-91 may select several independent ready leaves into one manifest without changing merge facts or accepted-CID semantics.
 
@@ -119,7 +119,7 @@ The initial `survey` runs with no focus and emits source-local planning leads; a
 
 Each leaf still binds at most one lead from any source because refinement persists exactly one `evidence/<source>.yaml`. Internal domains may retain broad parent leads as planning context, but a leaf that needs a focused child from that source binds only the child; the adapter's child scope includes the inherited parent context needed for extraction. Cross-cutting guidance may be multi-homed into several leaves, but never beside another lead from the same source in one leaf. `extract` names that one terminal `(source, lead)` pair, so Evidence remains focused and cannot overwrite a sibling extraction.
 
-### D3 — Discovery and survey precede recursive leaf authoring
+### D3 — Discovery, survey, and refinement feed recursive leaf authoring
 
 Detached `emery plan author` initializes the change home when needed, then runs three internal phases:
 
@@ -127,11 +127,37 @@ Detached `emery plan author` initializes the change home when needed, then runs 
 2. **Survey sources** — survey every pinned source into `leads.md`; RFC-91 may fan these independent calls out without changing their stable merge order.
 3. **Decompose and project** — create one root over the complete lead catalog, recursively partition it into conflict domains, persist the validated hierarchy in `decomposition.yaml`, and deterministically project its terminal domains into `plan.yaml.slices`.
 
-For each open domain, the judgment response is typed `split` or `leaf`. The engine validates it before continuing. A split must preserve at-least-once lead coverage, retain every cross-cutting lead on each child it informs, bind every child inside its parent's target set, strictly reduce a normalized scope measure, and stay within fixed depth, node, repair, and judgment budgets. Siblings predicted to touch the same ownership scope must carry an explicit order or fan-in child; ambiguous overlap blocks authoring. A leaf must bind exactly one target, state one coherent behavioural outcome, fit the target's bounded build and verification envelope, expose an ownership manifest and reviewable acceptance boundary, and carry at most one terminal lead per source.
+Before decomposition, the engine resolves one closed, versioned model-capability profile for each target. A profile contains the complexity scoring policy and operation-specific thresholds for the configured model class. This RFC consumes its slice-split threshold. RFC-91 also consumes its task threshold. The profile is an engine input, not a model answer.
+
+The profile scores a closed assessment of behavioural breadth, coupling, uncertainty, context volume, and verification surface. Each dimension is an integer from zero through ten. The judgment supplies those dimensions and a rationale. The engine computes the weighted sum and applies the operation threshold. Lines of code and advertised context-window size are not scoring policies by themselves.
+
+`decomposition.yaml` records each profile's closed body, id, and digest. `plan.yaml` copies the ids and digests. Decomposition operation keys cover the relevant profile digests. Changing a profile creates new planning revisions and invalidates the old execution epoch.
+
+For each open domain, the judgment response is typed `split` or `leaf`. The engine validates it before continuing.
+
+A split must preserve at-least-once lead coverage, retain every cross-cutting lead on each child it informs, bind every child inside its parent's target set, and strictly reduce a normalized scope measure. It must also stay within fixed depth, node, repair, and judgment budgets.
+
+Siblings predicted to touch the same ownership scope must carry an explicit order or fan-in child. Ambiguous overlap blocks authoring.
+
+A leaf must bind exactly one target, state one coherent behavioural outcome, fit the target's bounded build and verification envelope, expose an ownership manifest and reviewable acceptance boundary, and carry at most one terminal lead per source. Its provisional complexity assessment is evaluated against the bound target's profile.
+
+A provisional score above the slice-split threshold sends the candidate leaf through one bounded boundary review before it may close. When the review identifies separately acceptable source-local boundaries, the engine runs focused surveys and requeues the domain with their child leads. When no coherent split exists but the complete slice still fits the target envelope, the leaf may close with the rationale recorded. An over-envelope leaf that cannot split is unready and blocks authoring.
 
 Containment and execution order are separate relations. Parent/child edges explain recursive decomposition. Dependency edges order siblings or domains. Only the latter compile into `plan.yaml.depends-on`; neither relation creates status for an internal node. A one-slice change is the degenerate root → leaf tree.
 
 The deterministic engine owns the queue, termination tests, validation, and projection. Judgment proposes one bounded partition at a time; there is no lead agent that may recursively spawn arbitrary workers. Uncertain boundaries, estimates, or source-to-target assignments are preserved in `change.md` for operator review rather than silently accepted.
+
+Refinement reassesses the leaf after `extract` has produced Evidence for every bound source. `extract` still returns Evidence for one terminal `(source, lead)` pair. It does not author child leads or mutate planning artifacts.
+
+Before promoting `proposal.md`, `spec.md`, `design.md`, `tasks.md`, or `model.yaml`, the refinement judgment returns a typed `proceed | boundary-escalation` outcome. The boundary assessment uses the same closed complexity dimensions and pinned profile, now informed by the complete Evidence set.
+
+Complexity is a trigger for boundary review, not sole authority over lifecycle shape. A score above the split threshold causes escalation only when the Evidence supports separately acceptable behavioural boundaries or shows that the complete slice exceeds the target's bounded verification envelope. If the work remains one coherent acceptance unit, refinement proceeds as one slice. RFC-91 may then divide its implementation into model-sized tasks.
+
+A validated boundary escalation names the affected terminal `(source, lead)` pairs and gives a typed rationale. The engine runs focused `survey` for those parents, producing stable source-local child leads. It then reruns decomposition for the nearest affected domain.
+
+The resulting candidate lead-catalog and decomposition revisions remain inert inside one amendment proposal. The current `leads.md`, `decomposition.yaml`, and `plan.yaml` do not change. Refinement promotes no synthesis artifacts, performs no `refined` transition, and starts no build work.
+
+Focused resurvey and re-decomposition use the ordinary depth, node, judgment, and repair budgets. Exhaustion parks the leaf for the operator instead of retrying indefinitely.
 
 This decision owns phase order and the `discovery.yaml` / `decomposition.yaml` / `plan.yaml` contract, not dispatch concurrency. Independent Discover-topology reads may proceed concurrently under D9's discovery limits; results still merge into one validated `discovery.yaml`. RFC-91 owns parallel initial and focused survey calls and may evaluate independent open domains concurrently, but deterministic ordering and byte-stable artifacts do not change.
 
@@ -161,6 +187,19 @@ For a one-leaf result, `decomposition.yaml` is still present:
 ```yaml
 version: 1
 leads-digest: sha256:…
+model-capability-profiles:
+  orders:
+    id: frontier-large-v1
+    digest: sha256:…
+    weights:
+      behavioural-breadth: 3
+      coupling: 4
+      uncertainty: 2
+      context-volume: 1
+      verification-surface: 3
+    thresholds:
+      slice-split: 80
+      task: 35
 root: orders-modernization
 nodes:
   orders-modernization:
@@ -190,6 +229,9 @@ targets:
     adapter: emery:omnia@1.4.0
     locator: https://github.com/acme/orders@0123456789abcdef0123456789abcdef01234567
     cid: sha256:…
+    model-capability-profile:
+      id: frontier-large-v1
+      digest: sha256:…
 sources:
   orders-code:
     adapter: emery:typescript@1.2.0
@@ -246,9 +288,27 @@ Target-wave merge prepares the verified composed result, runs every member's sli
 
 ### D8 — Plan execution is the only privileged-start surface
 
-`emery plan execute` verifies that the plan matches `discovery.yaml`, binds the retained lead revision, and is the exact leaf projection of `decomposition.yaml`, then appends RFC-86's `plan.execute.started` with `closed-plan` coverage. The detached event carries `plan-digest`, required `discovery-digest`, and sorted per-leaf spec coverage: an existing digest or `refine-under-epoch`. The plan digest transitively binds the plan's `leads-digest` and `decomposition-digest`; execution validates those fields against the retained revisions but does not duplicate them on the event. Only then may Emery execute slices. Any covered change (amended lead catalog, decomposition, plan, discovery, existing spec, or refinement output) requires the operator to run execute again in this cut.
+`emery plan execute` verifies that the plan matches `discovery.yaml`, binds the retained lead revision, and is the exact leaf projection of `decomposition.yaml`. It then appends RFC-86's `plan.execute.started` with `closed-plan` coverage.
 
-Runtime ownership overlap writes a validated amendment proposal naming the nearest domain, new dependency or fan-in leaf, expected planning digests, expected accepted CID per target, the complete committed leaf→wave set, and the affected open-wave and claim frontier. It cannot edit authority or execute hidden work. The operator first quiesces or retracts affected claims and uncommitted waves, then applies it with `emery plan amend --proposal <digest>`; the command compare-and-sets every expected revision and accepted frontier, refuses any live affected work, preserves every committed leaf's identity, source binding, target, dependencies, and terminal mapping, writes and retains a new decomposition revision, reprojects `plan.yaml`, and invalidates the old closed-plan epoch. Accepted leaves may gain new dependants but cannot be removed, rebound, reordered behind new work, or disappear from publication membership. Existing direct leaf `plan add` / `amend` / `remove` operations must lower to the same domain mutation and preservation checks or refuse when no unambiguous hierarchy edit exists. Repository-host writes (create, push, branch, PR, merge) remain out of scope — create on the forge if you need a new target; RFC-89 owns publication.
+The detached event carries `plan-digest`, required `discovery-digest`, and sorted per-leaf spec coverage: an existing digest or `refine-under-epoch`. The plan digest transitively binds the plan's lead, decomposition, and model-capability profile digests. Execution validates those fields against the retained revisions but does not duplicate them on the event.
+
+Only then may Emery execute slices. Any covered change requires the operator to run execute again. Covered changes include the lead catalog, decomposition, plan, discovery, model-capability profile, existing spec, and refinement output.
+
+Runtime ownership overlap writes a validated amendment proposal naming the nearest domain, new dependency or fan-in leaf, expected planning digests, expected accepted CID per target, the complete committed leaf→wave set, and the affected open-wave and claim frontier.
+
+Refinement boundary escalation writes a proposal containing the failed leaf, its assessment and profile digest, the candidate child-lead catalog, the candidate nearest-domain decomposition, and the same expected planning and execution frontiers.
+
+Neither proposal can edit authority or execute hidden work. The operator first quiesces or retracts affected claims and uncommitted waves. The operator then applies the proposal with `emery plan amend --proposal <digest>`.
+
+The command compare-and-sets every expected revision and accepted frontier. It refuses any live affected work. For a boundary proposal, it atomically activates the candidate lead catalog and decomposition before reprojecting `plan.yaml`.
+
+Application preserves every committed leaf's identity, source binding, target, dependencies, and terminal mapping. It writes and retains the new planning revisions and invalidates the old closed-plan epoch.
+
+Accepted leaves may gain new dependants. They cannot be removed, rebound, reordered behind new work, or disappear from publication membership.
+
+Existing direct leaf `plan add` / `amend` / `remove` operations must lower to the same domain mutation and preservation checks. They refuse when no unambiguous hierarchy edit exists.
+
+Repository-host writes remain out of scope. Create a new target on the forge when needed. RFC-89 owns push, branch, pull-request, merge, and other publication writes.
 
 ### D9 — Reads are bounded and the change home is disposable
 
@@ -261,14 +321,14 @@ After RFC-89 publishes and archives the change, no coordination state is require
 ## Implementation requirements
 
 - The public workflow remains `emery plan author → emery plan execute → emery plan archive`; RFC-89 owns the seal and successful archive gate after execute.
-- `Plan` gains `targets`, `discovery-digest`, `leads-digest`, `decomposition-digest`, exact source pins with `cid`, and singular `slices[].target`; `ProjectConfig` gains a unique kebab-case `product` list. The current `discovery.md` lead inventory becomes the canonically digestible `leads.md`. Validation checks discovery, retained lead revision, decomposition, and leaf projection as one unit.
-- Add the closed `decomposition.yaml` shape, canonical digest, bounded recursive partition kernel, leaf-readiness gate, domain-dependency compiler, exact projection validator, and RFC-89 target-contraction cycle check. CLI plan mutations must update the decomposition and reproject the plan or refuse; hand-edited drift never executes.
-- Retain every referenced lead and decomposition revision by digest. Add closed planning-proposal DTOs and `emery plan amend --proposal <digest>` with compare-current-planning-digests, accepted-target-frontier, committed-leaf-set, and affected-work-quiescence application; runtime recovery may author proposals but never apply them.
+- `Plan` gains `targets`, `discovery-digest`, `leads-digest`, `decomposition-digest`, model-capability profile ids and digests, exact source pins with `cid`, and singular `slices[].target`; `ProjectConfig` gains a unique kebab-case `product` list. The current `discovery.md` lead inventory becomes the canonically digestible `leads.md`. Validation checks discovery, retained lead revision, profiles, decomposition, and leaf projection as one unit.
+- Add the closed `decomposition.yaml` shape, canonical digest, bounded recursive partition kernel, closed complexity assessment, profile-scored leaf-readiness gate, domain-dependency compiler, exact projection validator, and RFC-89 target-contraction cycle check. CLI plan mutations must update the decomposition and reproject the plan or refuse; hand-edited drift never executes.
+- Retain every referenced lead and decomposition revision by digest. Add closed ownership and refinement-boundary proposal DTOs plus `emery plan amend --proposal <digest>`. Application compare-and-sets current planning digests, accepted-target frontiers, the committed-leaf set, and affected-work quiescence. Runtime recovery may author proposals but never apply them.
 - Route every detached target through RFC-86's immutable one-member wave and accepted-CID projection. Preserve separate build and commit authorization anchors plus stable per-member preflight/postflight report sequencing so RFC-91 can widen membership without changing the merge WIT operation.
 - Operations take explicit target (product) and change roots. Detached roots are unrelated; in-place changes use `<product>/.emery/change/`. Detached homes have no synthetic `project.yaml`.
 - Target trees ignore only `.git` and a nested change home. `.emery/` is otherwise included.
 - Repository ingestion accepts an exact revision; workspace preparation accepts an explicit target and CID. Builds no longer `freeze` ambient roots, and merges update the baseline inside the workspace. `Workspaces::apply` and its write-back machinery are removed.
-- The source WIT receives either a read-only workspace or inline value. Extend `survey` with an optional parent-lead focus and stable child-lead response so the engine can request source-local detail without adding a third source operation; `extract` continues to consume a terminal lead. Target-axis adapters continue to receive a prepared workspace and read-only change artifacts.
+- The source WIT receives either a read-only workspace or inline value. Extend `survey` with an optional parent-lead focus and stable child-lead response so the engine can request source-local detail without adding a third source operation. `extract` continues to consume a terminal lead and return Evidence. The refinement judgment adds the typed `proceed | boundary-escalation` outcome. Target-axis adapters continue to receive a prepared workspace and read-only change artifacts.
 - Plan CIDs remain GC roots for the change lifetime. Resolution exposes exact adapter package pins; the host supplies bounded discovery access, the adapter catalog, and repository-host access.
 - Discovery DTOs reject unknown fields and use typed canonical digests. Integration tests use local repository-host, HTTP, content-addressed store, and component fixtures.
 - Artifact field `cid` is the RFC-87 tree identity; keep `SnapshotId` as the Rust type alias or rename in a follow-on cut — wire documents say `cid`.
@@ -279,15 +339,15 @@ After RFC-89 publishes and archives the change, no coordination state is require
 2. Every location-backed source resolves once to a CID; inline values remain under the plan digest. Source operations receive only the pinned read-only root or inline value. A repository used as both target and source reuses one CID.
 3. Source inference selects exactly one adapter or omits the source with an ephemeral no-match or ambiguity diagnostic without removing its target. Generated keys are deterministic, stable across later collisions, and reject duplicate bindings.
 4. Before survey, `discovery.yaml` records the pinned targets and sources with CIDs and adapter package pins. Edits, unknown fields, stale revisions, or changed adapter pins block execution.
-5. A broad source lead can be focused into stable child leads. A multi-target migration recursively decomposes into at least three domain levels, preserves every lead, terminates within configured budgets, and projects byte-stable buildable leaves and `depends-on` edges. Every leaf has at most one terminal lead per source. Leaf cycles, target-contraction publication cycles, lost coverage, non-reducing splits, duplicate source bindings, ambiguous ownership, an unready leaf, and lead/decomposition/plan drift block authoring or execution.
+5. A broad source lead can be focused into stable child leads. A multi-target migration recursively decomposes into at least three domain levels, preserves every lead, terminates within configured budgets, and projects byte-stable buildable leaves and `depends-on` edges. Every leaf has at most one terminal lead per source. The selected model-capability profiles and their digests are planning inputs, and changing one invalidates the old decomposition and execution epoch. Leaf cycles, target-contraction publication cycles, lost coverage, non-reducing splits, duplicate source bindings, ambiguous ownership, an unready leaf, and lead/decomposition/plan drift block authoring or execution.
 6. Referencing a lead or decomposition digest retains byte-identical source content at its immutable revision path. Editing a source key, lead id, synopsis, topic, parent relation, focus, domain, or leaf creates a new digest and invalidates every closed-plan execution and result that consumed the old current view.
 7. The serial executor opens a one-member wave before build. Exactly one committed fact advances the accepted CID and projects its member merged; failure before that fact projects no merge, while postflight failure after it leaves the accepted CID in force and records the resumable stop. A dependent leaf opens later against that result. The change home and ambient product trees are never write targets.
 8. `plan execute` is the only privileged-start action (`plan.execute.started`). Its closed-plan coverage transitively binds the lead and decomposition revisions and does not create forge repositories; a live claim without that epoch cannot build or merge.
-9. A runtime overlap produces an inert amendment proposal. Applying it through `plan amend --proposal` compare-and-sets the expected planning revisions, accepted target CIDs, committed leaf set, and affected open-work frontier; refuses live affected claims or waves; preserves every accepted leaf and prior revision; reprojects only legal remaining work; and requires a new execution epoch. Stale, malformed, cyclic, accepted-history-changing, or ambiguous proposals change nothing.
+9. A runtime overlap produces an inert ownership amendment proposal. A refinement whose Evidence reveals separately acceptable child boundaries produces one inert boundary proposal with focused child leads and a candidate nearest-domain decomposition. It promotes no synthesis artifacts and performs no `refined` transition. Applying either proposal through `plan amend --proposal` compare-and-sets the expected planning revisions, accepted target CIDs, committed leaf set, and affected open-work frontier; refuses live affected claims or waves; preserves every accepted leaf and prior revision; activates only legal candidate revisions; and requires a new execution epoch. Stale, malformed, cyclic, accepted-history-changing, or ambiguous proposals change nothing.
 10. Repository-host and source reads obey recorded limits and fail closed. Host markers narrow discovery but never override pinned `project.yaml.product`, and execution never repeats membership discovery.
 11. Execution ends with one accepted CID per touched target and no commit or branch; RFC-89 publishes it. Copying the change home before RFC-92 does not transport source or result tree objects.
 12. Removed concepts stay removed: workspace registries and slots, ambient product roots, authored source keys, engine-owned adapter inventories, separate discovery or approve commands, plan-approval vocabulary (`plan.approved`, projected `approved`), authoring-scope `--create` / discovery `action: create` / execute-time repository provisioning, a second source-digest scheme, discovery `mode` / catalog-digest / policy-digest / disposition fields, persisted exclusion rows, nested `adapter.package` / `adapter.component-digest`, the artifact field name `snapshot` for tree identity, baseline writes outside workspaces, `apply`, and repository-host publication writes.
-13. `cargo make ci` passes with crate-level integration coverage for discovery, pinning, lead/decomposition revision retention, bounded decomposition, leaf projection, proposal application, immutable one-member wave creation, commit/postflight crash boundaries, execution, and `plan.execute.started` coverage.
+13. `cargo make ci` passes with crate-level integration coverage for discovery, pinning, capability-profile binding, lead/decomposition revision retention, bounded decomposition, refinement boundary escalation, leaf projection, proposal application, immutable one-member wave creation, commit/postflight crash boundaries, execution, and `plan.execute.started` coverage.
 
 ## Rejected alternatives
 
@@ -296,6 +356,8 @@ After RFC-89 publishes and archives the change, no coordination state is require
 - **A single `discover.root` with intersecting filters, or arbitrary repository globs** — one root cannot express the union "every namespace repository with this product, plus these exact repositories" in one change, and mid-path patterns (`acme/orders-`*) unbound the namespace guarantee name filters were never meant to carry. Selector rows union, filters within a row intersect, and the only glob is a trailing namespace `/*`.
 - **Origin-specific source schemas or target-bound sources as the only source form** — cannot represent local documents, HTTPS material, inline intent, or several inputs from one repository uniformly.
 - **One-shot reconciliation directly from flat leads to slices** — assumes each source already knows the global target and conflict boundaries, loses the hierarchy needed for bounded scheduling and convergence, and cannot focus an oversized lead without guessing from its synopsis.
+- **Let complexity alone define slice boundaries** — model capacity sizes execution work, while behavioural coherence and independent acceptance define lifecycle units. A high score triggers boundary review but cannot manufacture a meaningful split.
+- **Let the model choose its threshold, or derive it from lines of code or context-window size** — makes the same inputs produce different plans under an unrecorded policy. The engine applies a pinned, versioned capability profile to closed assessment dimensions.
 - **Nested plans or lifecycle-bearing internal domains** — duplicate claims, status, approval, and archive semantics at every level. Domains explain partition and convergence; only terminal domains become ordinary slices under one plan.
 - **Live source reads or ambient checkouts during operations** — make judgments and builds depend on mutable location rather than pinned values.
 - **Git revision as a CID or a mutable target head in** `plan.yaml` — conflates publication identity, tree identity, and state already computed from facts.
