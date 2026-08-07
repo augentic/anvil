@@ -59,7 +59,7 @@ Omnia is built on Wasmtime. Its design centers on pluggable host services behind
 - **Instance-per-call execution**: a fresh instance spins up every time a guest is called, so a host→guest callback can never *recursively* re-enter an instance already on the stack — the one kind of reentrance the component model still traps (*sibling* reentrance, into a component whose other tasks are suspended, is allowed under the async ABI) — avoiding a class of aliasing complexity by construction.
 - **Stateless guests, host-held state**: guests cannot hold state in memory between calls. Persistent data lives in a host service — filesystem-backed locally, or Redis / S3 in the cloud. This decoupling is what lets Emery move from a desktop tool to a horizontally scalable service unchanged.
 
-Emery extends this surface in exactly one sanctioned way: **custom backends behind Omnia's host interfaces** — a snapshot-backed workspace provider that prepares the [private workspace](#the-private-workspace), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core.
+Emery extends this surface through provider-backed host capabilities: a snapshot-backed workspace provider that prepares the [private workspace](#the-private-workspace), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core. Future [host verification](future/rfc-93-host-verification.md) adds a third deployment-provider capability only after a standardized WASI execution API can enforce its sandbox contract.
 
 ## Judgment: the `wasi-model` host
 
@@ -70,7 +70,7 @@ Model evaluation is a host capability like any other. Omnia exposes a `wasi-mode
 eval: func(prompt: prompt) -> result<answer, error>;
 ```
 
-Behind the host sits a **swappable model backend**. The backend runs an LLM tool-use loop: it drives a model through its API, advertises a typed tool surface, dispatches the model's tool calls, runs the verify-repair cycle, and returns a validated, typed answer to the calling guest. The guest treats `eval` exactly like `wasi:keyvalue.get` — a typed call whose backend it never sees.
+Behind the host sits a **swappable model backend**. The backend runs one judgment leg: it drives a model through its API, advertises a typed tool surface, dispatches the model's tool calls, applies its bounded answer-shape repair, and returns a validated typed answer to the calling guest. RFC-90's engine guest—not the model backend—owns build verification, findings-directed repair dispatch, budgets, and stopping conditions. The guest treats `eval` exactly like `wasi:keyvalue.get` — a typed call whose backend it never sees.
 
 ### Resolving references — the host calls back into a guest
 
@@ -85,7 +85,7 @@ Because recursively re-entering a live instance would trap, this resolution land
 
 Logical sequence: extract
 
-The model reads and mutates a private workspace through the same tool surface — `read` / `list` to scan existing code, `write` to accumulate an edit, `verify` to check itself — so it never holds a descriptor or an OS path. A filesystem-capable spawned-agent backend instead reads and writes the private workspace directly through the `local-path` it receives.
+The model reads and mutates a private workspace through the backend's tool surface — `read` / `list` to scan existing code and `write` to accumulate an edit — so it never holds a descriptor or an OS path. Backend-specific checks may help one judgment leg, but they carry no lifecycle or repair-loop authority. A filesystem-capable spawned-agent backend instead reads and writes the private workspace directly through the `local-path` it receives.
 
 ### The model backend is swappable
 
@@ -141,15 +141,14 @@ Logical sequence: build
 
 A `build` flows like this:
 
-1. The engine guest resolves the slice to a base snapshot and asks the host to prepare a [private workspace](#the-private-workspace); the slice and its inputs stay pure, node-independent data.
-2. It runs any deterministic setup (a `tool` adapter export, reached by host-mediated dynamic linking).
-3. For the judgment leg it calls `wasi-model.eval` with the `build` brief.
-4. The model backend drives the model. `resolve` follows the brief's references (the adapter's `references` export); `read` / `list` scan existing code through the private workspace; `write` accumulates an edit.
-5. When the brief calls for it the model emits `verify(<check>)`; the backend runs that vetted, sandboxed profile and feeds the severity-tiered `report` back; the model repairs and re-verifies.
-6. `eval` returns the validated, typed answer to the guest.
-7. The report carries only judgment (status and findings); the host captures the result snapshot and touched paths against the immutable base, and the guest requests the lifecycle `transition` effect.
+1. The engine guest resolves the slice to its recorded base snapshot and asks the host to prepare a [private workspace](#the-private-workspace); the slice and its inputs stay pure, node-independent data.
+2. It dispatches one target `build` operation. The target's generation judgment calls `wasi-model.eval`; the backend resolves references and lets the model edit only that private candidate.
+3. RFC-90's engine-owned phase machine dispatches a separate target `verify`. In RFC-90 this remains model-assisted: the verification agent selects, runs, and interprets commands, then returns one typed report.
+4. Blocking findings pass through the engine's bounded repair-brief projection into one target `repair`, followed by another engine-selected `verify`; fixed engine budgets decide when to stop.
+5. A passing verification dispatches the separate standards `review`, with the same explicit repair return path. RFC-91 materializes each operation from the logical candidate in a fresh workspace and composes only captured, grant-valid patches.
+6. On terminal success the engine captures the result, promotes staged artifacts, writes the content-addressed build record, and performs the single `refined → built` transition.
 
-In short: deterministic control lives in guest code, judgment is a typed `eval` call, references load lazily through the references server, and what crosses out is a typed report plus immutable base/result snapshot identities.
+In short: deterministic control lives in engine guest code, each judgment is one typed operation, references load lazily through the references server, and what crosses operation boundaries is a typed report plus immutable base/result snapshot identities. RFC-93 later replaces model-assisted verify evidence with directly resolved host attestations; it does not return repair-loop authority to the model backend.
 
 ## The private workspace
 
@@ -193,7 +192,7 @@ This enables progressive optimisation: as a transformation becomes well-understo
 
 ## CLI bootstrapping
 
-Because "Emery is Omnia compiled with Emery-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `emery` binary is one `omnia::runtime!` command-mode invocation (`src/main.rs` — no handwritten `main`): the engine guest rides the macro's `guests:` key as embedded component bytes, `program:` forwards raw argv (minus the reserved host log flags `--debug` / `--quiet`, peeled into the host log preset), and the mounts and the fail-closed `GuestResolver` are expressions the `launcher` crate evaluates once per process. Every invocation runs in the engine guest — help, version, grammar rejections, and `adapter add` (over its read-only seed preopen) included — with envelopes and exit codes passing through verbatim. The host layer carries no Emery vocabulary; it reads only the macro's deployment keys. See [RFC-71](rfc-71-deployment.md) and [CLI architecture](../docs/contributing/cli-architecture.md).
+Because "Emery is Omnia compiled with Emery-specific backends," there is no separate runtime to download — the binary *is* the runtime, linked with its backends. The shipped `emery` binary is one `omnia::runtime!` command-mode invocation (`src/main.rs` — no handwritten `main`): the engine guest rides the macro's `guests:` key as embedded component bytes, `program:` forwards raw argv (minus the reserved host log flags `--debug` / `--quiet`, peeled into the host log preset), and the mounts and the fail-closed `GuestResolver` are expressions the `launcher` crate evaluates once per process. Every invocation runs in the engine guest — help, version, grammar rejections, and `adapter add` (over its read-only seed preopen) included — with envelopes and exit codes passing through verbatim. Today the Omnia runtime core and macro carry no Emery vocabulary; Emery-specific deployment policy lives in the launcher/provider expressions. RFC-93 later adds its named profile registry to that deployment layer without teaching Omnia core those names. See [RFC-71](rfc-71-deployment.md) and [CLI architecture](../docs/contributing/cli-architecture.md).
 
 The runtime admits adapter guests by **resolver-backed admission on first dispatch** ([RFC-71](rfc-71-deployment.md)): pinned identities resolve the **global single-file store** at `$HOME/.emery/store` (relocatable via `$EMERY_HOME`) with launcher pull-on-miss from the fixed first-party GHCR mapping ([RFC-76](archive/rfc-76-adapter-install.md)); bare names resolve local-first — project component cache seed, else newest installed store version, else pull-latest provisioning; component selectors resolve the project component cache only.
 
@@ -203,7 +202,7 @@ The runtime admits adapter guests by **resolver-backed admission on first dispat
 
 ## Deferred relatives
 
-The fact-based change substrate is step 1 of the platform-migration critical path — [RFC-86](rfc-86-change-facts.md): projected status, per-actor event logs, pinned judgment inputs, and digest-bound `plan.execute.started`. Private snapshot-backed workspaces follow ([RFC-87](rfc-87-working-trees.md)), before single-node detached forge discovery and source selection ([RFC-88](rfc-88-detached-changes.md)). [RFC-92](rfc-92-node-sync.md) later adds fact and snapshot transport for multi-node execution over the same state model. RFC-90 moves model-assisted build verification and repair into an engine-owned loop over separate `build` / `repair` / `verify` / `review` operations ([RFC-90](rfc-90-build-verification.md)); deterministic native-tool verification remains deferred on a suitable WASI execution capability. See [platform.md](platform.md) for the full sequence.
+The fact-based change substrate is step 1 of the platform-migration critical path — [RFC-86](rfc-86-change-facts.md): projected status, per-actor event logs, pinned judgment inputs, and digest-bound `plan.execute.started`. Private snapshot-backed workspaces follow ([RFC-87](rfc-87-working-trees.md)), before single-node detached forge discovery and source selection ([RFC-88](rfc-88-detached-changes.md)). [RFC-92](rfc-92-node-sync.md) later adds fact and snapshot transport for multi-node execution over the same state model. RFC-90 moves model-assisted build verification and repair into an engine-owned loop over separate `build` / `repair` / `verify` / `review` operations ([RFC-90](rfc-90-build-verification.md)); [RFC-93](future/rfc-93-host-verification.md) owns deterministic native-tool verification once a suitable WASI execution capability exists. See [platform.md](platform.md) for the full sequence.
 
 ## Key trade-offs
 

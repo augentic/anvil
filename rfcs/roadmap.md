@@ -30,16 +30,16 @@ Emery owns the workflow semantics across those layers: intent becomes artifacts;
 
 ## Effect-oriented architecture
 
-The runtime architecture — Emery as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). Formerly deferred, now sequenced in the platform-migration series ([platform.md](platform.md)): critical path [RFC-86](rfc-86-change-facts.md) → [RFC-87](rfc-87-working-trees.md) → [RFC-88](rfc-88-detached-changes.md) → [RFC-89](rfc-89-publication-sets.md); scale track [RFC-90](rfc-90-build-verification.md) → [RFC-91](rfc-91-concurrent-execution.md) → [RFC-92](rfc-92-node-sync.md).
+The runtime architecture — Emery as a family of Wasm guests on the Omnia runtime, with **judgment as the `wasi-model` host effect** behind a swappable model backend — is fixed in [architecture.md](architecture.md). Formerly deferred, now sequenced in the platform-migration series ([platform.md](platform.md)): critical path [RFC-86](rfc-86-change-facts.md) → [RFC-87](rfc-87-working-trees.md) → [RFC-88](rfc-88-detached-changes.md) → [RFC-89](rfc-89-publication-sets.md); scale track [RFC-90](rfc-90-build-verification.md) → [RFC-91](rfc-91-concurrent-execution.md) → [RFC-92](rfc-92-node-sync.md). [RFC-93](future/rfc-93-host-verification.md) is the post-series native-verification follow-on.
 
 ### Cross-repo coordination
 
 Realising the architecture spans four repositories, coordinated only through versioned WIT seams — never a shared build or a lockstep release.
 
-- **`augentic/emery`** (this repo) — owns the typed contract (the `emery:adapter` package), the Emery runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the engine guest, and the operator CLI surface.
-- **`augentic/omnia`** — owns the generic runtime library (the Wasmtime interpreter, the pluggable host-service framework, multi-guest deployments, host-mediated linking) and the general-purpose host interfaces, including `wasi-model` (`omnia:model/completion.create`). It carries zero Emery domain knowledge and zero model knowledge.
+- **`augentic/emery`** (this repo) — owns the typed contract (the `emery:adapter` package), the Emery runtime binary (the `runtime!` deployment that binds the model backend and serves the MCP routes), the engine guest, and the operator CLI surface. RFC-93 also places its deployment-neutral verifier seam and first-party profile-policy/parser registry here, outside the engine crates.
+- **`augentic/omnia`** — owns the generic runtime library (the Wasmtime interpreter, the pluggable host-service framework, multi-guest deployments, host-mediated linking) and the general-purpose host interfaces, including `wasi-model` (`omnia:model/completion.create`). It carries zero Emery domain knowledge and zero model knowledge. A future standardized native-execution capability remains generic here; Emery's named profiles and policies do not.
 - **`augentic/backends`** — owns the model backends behind `wasi-model`: `omnia-cursor` (spawns `cursor-agent` against the private workspace with MCP grants) and `omnia-genai` (frontier / hosted APIs); Omnia's in-tree `ModelDefault` covers deterministic replay.
-- **`augentic/emery-adapters`** — consumes the `emery:adapter` package as a pinned dependency and ships a WASM component per adapter: its axis world plus the `wasi:http` MCP export serving its compiled-in references.
+- **`augentic/emery-adapters`** — consumes the `emery:adapter` package as a pinned dependency and ships a WASM component per adapter: its axis world plus the `wasi:http` MCP export serving its compiled-in references. Under RFC-93, target metadata declares semantic profile names and target code relays opaque host attestations; components contain no native argv or host parser policy.
 
 One Emery-owned seam is versioned across the boundary: `emery:adapter` (this repo → adapters). Land a published `emery:adapter` pin before the adapter components that consume it, and treat the seam as a contract so neither repo blocks the other. The Omnia runtime — including the `wasi-model` host interface — is consumed as an ordinary upstream dependency.
 
@@ -63,6 +63,7 @@ Delivery is strictly sequential: finish every decision and acceptance criterion 
 
 - [RFC-46a](future/rfc-46a-web-asset.md) — web asset materialization; deferred until a web shell scaffold exists.
 - Scale-track concurrency ([RFC-90](rfc-90-build-verification.md) / [RFC-91](rfc-91-concurrent-execution.md) / [RFC-92](rfc-92-node-sync.md)) — after the migrate/change location story works on the critical path.
+- [RFC-93](future/rfc-93-host-verification.md) — host verification profiles; deferred until a standardized WASI capability can enforce native process, sandbox, cancellation, and resource policy.
 - RM-12 / RM-13 — catalog import and read-oriented MCP.
 
 ---
