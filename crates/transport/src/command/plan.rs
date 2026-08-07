@@ -147,10 +147,17 @@ fn waive_selector(raw: &str) -> Result<::change::orchestrate::WaiveSelector, Str
 pub struct ExecuteArgs {
     /// Waive one open `[unknown]` requirement (`<slice>/<req>`). Repeatable.
     /// Requires `--reason`. Conflicts are never waiveable (RFC-86 D17).
-    #[arg(long = "waive", action = ArgAction::Append, value_name = "SLICE/REQ", value_parser = waive_selector)]
+    #[arg(
+        long = "waive",
+        action = ArgAction::Append,
+        value_name = "SLICE/REQ",
+        value_parser = waive_selector,
+        requires = "reason"
+    )]
     pub waive: Vec<::change::orchestrate::WaiveSelector>,
     /// Operator reason applied to every `--waive` on this invocation.
-    #[arg(long, value_name = "REASON")]
+    /// Requires at least one `--waive`.
+    #[arg(long, value_name = "REASON", requires = "waive")]
     pub reason: Option<String>,
 }
 
