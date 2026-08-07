@@ -237,13 +237,15 @@ The adapter proposes task complexity dimensions and rationale. The engine comput
 
 Exceeding one task's threshold is a reason to add or split tasks inside the graph. It is not by itself a reason to create more slices.
 
-An `escalate` answer states that the refined slice is not coherent. It includes a typed rationale. The Evidence either supports independently acceptable boundaries, or no bounded task graph can fit the target's complete build and verification envelope.
+An `escalate` answer states that the refined slice is not coherent. It includes a typed `boundary | envelope` rationale. A `boundary` escalation says the Evidence supports independently acceptable children. An `envelope` escalation says no bounded task graph can fit the target's complete build and verification envelope.
 
-The engine validates the escalation and writes one inert RFC-88 amendment proposal. The proposal names the slice leaf, its nearest domain, and the proposed boundary.
+For a `boundary` escalation, the engine uses RFC-88's refinement feedback path. Focused source surveys author child leads, affected-domain decomposition authors candidate nodes, and one inert proposal carries those candidate planning revisions. The target answer cannot author leads or slices.
+
+For an `envelope` escalation with no coherent split, the inert proposal records the blocking profile and target envelope. It carries no invented child leads. The operator may change the model-capability profile, target, or change scope through a legal amendment.
 
 The engine then fails the attempt with a typed `decomposition-escalated` terminal report. It does so before preparing any writable workspace.
 
-Escalation cannot edit the plan, spawn slices, execute work, or alter a frozen wave. The operator applies or discards the proposal through `emery plan amend --proposal`.
+Escalation cannot edit the plan, execute product work, or alter a frozen wave. The operator applies or discards the proposal through `emery plan amend --proposal`.
 
 Tasks never become slices. A boundary mistake routes up to plan authoring, not down into the task graph.
 
