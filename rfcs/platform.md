@@ -18,7 +18,7 @@ Everything Emery already is stays load-bearing: the slice loop (`refine → buil
 
 ## Where we are
 
-Today one change runs in one repository (or a hand-tended workspace of them), serially: one judgment leg at a time, one working tree the operator prepared, verify as prompt text inside the agent loop, publication tracked in the operator's head. The measured walls (RFC-78's `wasm-omnia-r9k` runs): a ~30-minute serialized build with an unobservable nested review team, an 11–54 minute synthesis leg, and no way to run two of anything at once.
+Today one change runs in one repository (or a hand-tended workspace of them), serially: one model call at a time, one working tree the operator prepared, verify as prompt text inside the agent loop, publication tracked in the operator's head. The measured walls (RFC-78's `wasm-omnia-r9k` runs): a ~30-minute serialized build with an unobservable nested review team, an 11–54 minute synthesis call, and no way to run two of anything at once.
 
 ## Target architecture
 
@@ -28,7 +28,7 @@ The architecture makes five related shifts:
 2. **Trees become values.** Every operation starts from an immutable snapshot in a private workspace and captures another snapshot. A code patch is the relation between the two; no shared working directory crosses an operation.
 3. **Location becomes disposable.** Plan authoring can begin in an empty directory, discover the participating repositories, and record their exact revisions. Execution creates private workspaces on demand. Archive leaves only merged baselines and forge history.
 4. **Build repair becomes engine-owned.** Generation, model-assisted verification, repair, and review become separate target WIT operations in a bounded engine loop rather than retries hidden in adapter prose. Deterministic native verification follows when WASI can execute host toolchains safely.
-5. **Judgment becomes recursive.** Plan authoring surveys the pinned source set and partitions it until every terminal scope is a buildable slice. Target adapters may repeat the same pattern inside a slice with focused, path-owning workers.
+5. **Model work becomes explicit.** Plan authoring surveys the pinned source set and recursively partitions it until every terminal scope is a buildable slice. During the singular slice build, `target.decompose` proposes one complete task graph and the engine validates it before dispatch.
 
 ### Scaling invariant
 
@@ -39,14 +39,14 @@ Emery scales by repeating one bounded pattern:
 3. run independent children concurrently;
 4. converge their results before leaving the parent scope.
 
-A **conflict domain** is one such parent scope: child results may interact inside it, so the domain owns their dependency graph, ownership envelope, concurrency bound, and local convergence gate. A domain either partitions again or terminates as one buildable slice. A target adapter may repeat the pattern inside that slice for path-owned worker tasks.
+A **conflict domain** is one such parent scope: child results may interact inside it, so the domain owns their dependency graph, ownership envelope, concurrency bound, and local convergence gate. A domain either partitions again or terminates as one buildable slice. Inside that slice, one target-provided `decompose` operation proposes a complete graph of path-owned agent tasks for engine validation and execution.
 
-This gives Emery two recursive levels without introducing nested workflows:
+This gives Emery recursive planning and graph-shaped build execution without introducing nested workflows:
 
 - **Planning recursion** turns the surveyed estate into conflict domains and buildable slice leaves.
-- **Build recursion** turns one slice into focused workers and one explicitly gated result.
+- **Build decomposition** turns one slice into a complete graph of focused agent tasks through one target-provided operation, then converges them into one explicitly gated slice result.
 
-Internal domains have no slice lifecycle, claim, or nested plan. They only describe containment and convergence.
+Internal domains and agent tasks have no slice lifecycle, claim, or nested plan. They only describe containment and convergence.
 
 #### Planning: hierarchy first, executable leaves second
 
@@ -62,7 +62,7 @@ The engine owns the loop: **partition → validate → recurse → project**. Ju
 
 Ready leaves run in private workspaces. Results move upward through their recorded domain ancestry:
 
-- worker results pass the slice's engine-owned model-assisted verification gate;
+- task results compose before passing the slice's engine-owned model-assisted verification gate;
 - same-target child patches compose at their nearest domain;
 - multi-target domains aggregate target results and dependency health without mixing repository trees;
 - every completed gate writes an immutable domain-round record for retry or remote resume.
@@ -111,7 +111,7 @@ flowchart TB
 
 ## The series
 
-The tables list each RFC's hard dependencies and what it delivers. Step numbers are a **product-ownership / reading order** (fact substrate → workspace stem → product path, then scale), not a claim about landing chronology and not a single serial queue. [RFC-87](rfc-87-working-trees.md) has **already landed** with interim stand-ins for [RFC-86](rfc-86-change-facts.md)'s recorded pins, build records, and wave-shaped merge facts; completing RFC-86 (especially Phase B) retires those stand-ins. After the shared stem, RFC-88's recursive authoring contract and RFC-90's verification work can proceed in parallel; RFC-91 joins them for a complete local recursive swarm, and RFC-92 distributes that settled shape — see [Working in parallel](#working-in-parallel). Every later RFC still depends only on the contracts earlier steps own, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC.
+The tables list each RFC's hard dependencies and what it delivers. Step numbers are a **product-ownership / reading order** (fact substrate → workspace stem → product path, then scale), not a claim about landing chronology and not a single serial queue. [RFC-87](rfc-87-working-trees.md) has **already landed** with interim stand-ins for [RFC-86](rfc-86-change-facts.md)'s recorded pins, build records, and wave-shaped merge facts; completing RFC-86 (especially Phase B) retires those stand-ins. After the shared stem, RFC-88's recursive authoring contract and RFC-90's verification work can proceed in parallel; RFC-91 joins them for a complete local engine-orchestrated swarm, and RFC-92 distributes that settled shape — see [Working in parallel](#working-in-parallel). Every later RFC still depends only on the contracts earlier steps own, owns one deployable path, and has no acceptance criterion or phase gated on a later RFC.
 
 Authorization for the series follows [RFC-86](rfc-86-change-facts.md) D6 / D17: starting `emery plan execute` appends `plan.execute.started` with typed coverage; there is no separate `approve` verb, no projected `approved` rung, and no silent auto-waive of gaps. Historical “running execute is the approval” / “auto-approve” wording means that execute gesture (with gap gates), not a second mint path.
 
@@ -122,7 +122,7 @@ Authorization for the series follows [RFC-86](rfc-86-change-facts.md) D6 / D17: 
 | ---- | ------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts       | The substrate: the change as a version-control-neutral fact tree, projected status, per-actor event logs, explicit execution-authorization epochs, pinned per-leaf inputs, immutable one-member target-wave commit, merge-finalized requirement identity, desktop as the degenerate deployment | —                                               |
 | 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                                                             | 86 pin/epoch/wave facts (landed with stand-ins) |
-| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes   | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, recursive conflict-domain decomposition, a buildable leaf projection, and operation-local workspaces                    | completed 86; landed 87                         |
+| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes   | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, capability-profile-bound conflict-domain decomposition, refinement feedback through focused child leads, a buildable leaf projection, and operation-local workspaces | completed 86; landed 87                         |
 | 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets   | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                                                              | 88 (member derivation)                          |
 
 
@@ -132,7 +132,7 @@ Authorization for the series follows [RFC-86](rfc-86-change-facts.md) D6 / D17: 
 | Step | RFC                                      | Title                | Delivers                                                                                                                                                                                                                                                                                                               | Depends on                   |
 | ---- | ---------------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | 5    | [RFC-90](rfc-90-build-verification.md)   | Build Verification   | Engine-owned build loop over separate `build` / `repair` / `verify` / `review` WIT ops; bounded repair policy; durable intermediate reports; final report assembly; deterministic native verification explicitly deferred                                                                                                  | completed 87                 |
-| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node recursive swarm: focused workers, write ownership, local pool, concurrent leaf scheduling, deterministic code-patch composition, durable domain rounds, bottom-up convergence, multi-member target waves, recursive plan decomposition, refine/plan fan-outs, and synthesis payload restructuring | completed 86, 87, 88, 90     |
+| 6    | [RFC-91](rfc-91-concurrent-execution.md) | Concurrent Execution | Complete single-node engine-orchestrated swarm: profile-sized target tasks, at most one target decomposition per slice attempt (model-assisted for Omnia), engine-owned graph validation and execution, write ownership, local pool, concurrent leaf scheduling and refinement feedback, deterministic code-patch composition, durable domain rounds, bottom-up convergence, multi-member target waves, and synthesis payload restructuring | completed 86, 87, 88, 90     |
 | 7    | [RFC-92](rfc-92-node-sync.md)            | Node Sync            | Distribution of the completed RFC-91 model: fact, artifact, and value transport between nodes; fenced claims; hosted trees; and remote pools — no new scheduler, convergence, acceptance, authority, or lifecycle semantics                                                                                            | completed 86, 87, 88, 90, 91 |
 
 
@@ -201,7 +201,7 @@ emery plan archive    →  verify the publication set (RFC-89); archive
 rm -rf <dir>
 ```
 
-Starting execute is the operator authorization gesture ([RFC-86](rfc-86-change-facts.md) D6): it records `plan.execute.started` with typed coverage. There is no separate `approve` verb and no interactive auto-waive of gaps (D17). Once the scale track lands, execute gains concurrent workers, concurrent plan entries, and multi-node execution — same loop, higher throughput. Shift-left refinement distributes the same way: separate operators or nodes refine claimed slices against the same pinned bases and exchange facts through RFC-92's coordination plane.
+Starting execute is the operator authorization gesture ([RFC-86](rfc-86-change-facts.md) D6): it records `plan.execute.started` with typed coverage. There is no separate `approve` verb and no interactive auto-waive of gaps (D17). Once the scale track lands, execute gains concurrent build tasks, concurrent plan entries, and multi-node execution — same loop, higher throughput. Shift-left refinement distributes the same way: separate operators or nodes refine claimed slices against the same pinned bases and exchange facts through RFC-92's coordination plane.
 
 ## Outside the series
 
@@ -209,7 +209,7 @@ Unchanged and orthogonal — not part of this arc, not blocked by it:
 
 - **[RFC-71 Self-Assembling Wasm Deployment](rfc-71-deployment.md)** — largely landed; Stage 2 diagnostics remain draft.
 - **[RFC-77 Release Process](rfc-77-release-process.md)** — operational policy for releasing Emery itself; its WIT-breaking shape becomes RFC-89's first in-house publication set.
-- **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** (future) — an optional cost lever behind RFC-91's per-worker model-selection hook; a ratchet rung, not a stage.
+- **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** (future) — an optional cost lever behind RFC-91's per-task model-selection hook; a ratchet rung, not a stage.
 - **[RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md)** (future) — content-triggered vectis work, independent of this series.
 
 Known external reference: `augentic/remedium` RFC-81 cites "RFC-82" for what is now RFC-89's publication-set record; update that citation when next touching that repo.
