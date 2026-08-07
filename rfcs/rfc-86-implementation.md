@@ -48,8 +48,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S20 | refine-under-epoch + shift-left fixtures | `done` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
 | S21 | Remaining Phase C acceptance fixtures | `done` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
 | S22 | D20 sibling docs + operator prose | `done` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
-| S23 | Full cargo make ci + acceptance closeout | `next` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
-| S24 | Open single full-RFC implementation PR | `pending` | PR URL returned | none (operator-directed) |
+| S23 | Full cargo make ci + acceptance closeout | `done` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
+| S24 | Open single full-RFC implementation PR | `next` | PR URL returned | none (operator-directed) |
 
 ### Discovery log (append-only)
 
@@ -149,6 +149,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S22
 - Finding: D20 sibling-doc pass. Replaced shipped “nothing is stamped” / “running execute is the approval” / stored `status:` / `journal.jsonl` / single-active-entry / projected `(approved)` prose with `plan.execute.started` authorization epoch, gap gates, per-slice claims, computed ladders, pins/waves, and `.emery/events/<actor>.jsonl`. Touched `AGENTS.md`, `workflow.md`, `cli-contract.md`, CLI help (`routes.rs`), author hint, skills/plugin README, reference (lifecycle, directory-layout, cli/plan, quick-reference, configuration, glossary), tutorials/orientation/how-to/explanation, and RFC-86 status + appendix D20 notes. Series RFCs: `platform.md` already aligned; no leftover `plan approve` / invented `plan refine` in rfc-87..92 beyond decision-trail history. Did not cascade-rewrite RFC-88 design. Gate: `cargo make links` green.
 - Plan change: none beyond status (S22=done, S23=next).
+
+### 2026-08-07 — S23
+- Finding: `cargo make ci` green (fmt + lint + nextest + doctest + doc + links + vet + deny; ~271s). No code stragglers. Acceptance #1–15 checked against prior session fixtures + CI: #1 S5/S7; #2 `mock/tests/multi_actor.rs`; #3 `slice/tests/merge_identity.rs`; #4 `change/tests/pin_build_record.rs`; #5–6 `shift_left.rs` + `gap_gate.rs`; #7/#9/#10 contract (no topology-approve / same verbs / human prose outside engine); #8/#12–15 `phase_c_acceptance.rs`; #11 S16 gaps rollup. Branch is PR-ready for S24 (operator-directed single full-RFC PR).
+- Plan change: none beyond status (S23=done, S24=next); acceptance checklist filled.
 ```
 
 ### Session template (copy into each agent prompt)
@@ -394,23 +398,25 @@ This plan is the **session schedule and progress tracker**, not a substitute pro
 
 ## Acceptance checklist (product-level; fill at S23)
 
-Track against RFC Acceptance #1–15. Leave unchecked until S23 closeout proves each item.
+Track against RFC Acceptance #1–15. Checked at S23 closeout (`cargo make ci` green 2026-08-07). Proof column = session + fixture / contract.
 
-- [ ] #1 Progress is always computed from artifacts and facts — never a stored status field.
-- [ ] #2 Multi-slice, multi-actor claims: disjoint refine after fact union; same-slice → `slice-claim-conflict`; no Git metadata; no plan-wide single-active-entry.
-- [ ] #3 Two slices merge without REQ-id collision; drifted `MODIFIED` rejected; identity maps on `target.merge.wave-committed`.
-- [ ] #4 Pins + build records: `base.yaml`; build from recorded pin (no freeze); fact-substrate build records (no `patch.yaml` authority); pin-drift diagnostics; interim `apply` may remain.
-- [ ] #5 Shift-left practice: author does not refine; specs via `slice refine`; no `plan refine` CLI; under-epoch still allowed with gap gate on build.
-- [ ] #6 Gap gate: unknown blocks (or waive); conflict never waiveable; divergence listed/allowed; no silent waive.
-- [ ] #7 No topology-approve verb; refine not gated on topology approval.
-- [ ] #8 Authorization epoch: every execute path appends `plan.execute.started` at start; no `plan approve` / `approvals/` / projected `approved`.
-- [ ] #9 Same verbs/artifacts for solo laptop and directory-exchange collaboration.
-- [ ] #10 Human prose review outside engine; gap gate is typed statuses only.
-- [ ] #11 Shared-lead rollup is presentation only; waivers stay per-req.
-- [ ] #12 Ready (clean gaps) vs Authorized (covering epoch); waivers skip Ready; no `approved` milestone.
-- [ ] #13 In-scope = on plan and not dropped — shared by gaps / Ready / execute / unrefined next-actions.
-- [ ] #14 Post-author resume names `plan execute` / `/emery:execute`; status may suggest `slice refine`.
-- [ ] #15 One-member target waves: open before build; wave-committed; postflight non-rollback.
+- [x] #1 Progress is always computed from artifacts and facts — never a stored status field. — S5/S7 (`plan_status.rs`; stored fields removed).
+- [x] #2 Multi-slice, multi-actor claims: disjoint refine after fact union; same-slice → `slice-claim-conflict`; no Git metadata; no plan-wide single-active-entry. — S8 (`mock/tests/multi_actor.rs`).
+- [x] #3 Two slices merge without REQ-id collision; drifted `MODIFIED` rejected; identity maps on `target.merge.wave-committed`. — S14/S15 (`slice/tests/merge_identity.rs`).
+- [x] #4 Pins + build records: `base.yaml`; build from recorded pin (no freeze); fact-substrate build records (no `patch.yaml` authority); pin-drift diagnostics; interim `apply` may remain. — S13/S15 (`change/tests/pin_build_record.rs`).
+- [x] #5 Shift-left practice: author does not refine; specs via `slice refine`; no `plan refine` CLI; under-epoch still allowed with gap gate on build. — S20 (`change/tests/shift_left.rs` + router CLI absence).
+- [x] #6 Gap gate: unknown blocks (or waive); conflict never waiveable; divergence listed/allowed; no silent waive. — S19/S20 (`change/tests/gap_gate.rs`).
+- [x] #7 No topology-approve verb; refine not gated on topology approval. — S20/S21 (CLI absence; D21 contract).
+- [x] #8 Authorization epoch: every execute path appends `plan.execute.started` at start; no `plan approve` / `approvals/` / projected `approved`. — S18/S21 (`phase_c_acceptance.rs` coverage wire).
+- [x] #9 Same verbs/artifacts for solo laptop and directory-exchange collaboration. — D1/D23 contract; S8 no Git metadata.
+- [x] #10 Human prose review outside engine; gap gate is typed statuses only. — D18 contract; gap gate fixtures enforce statuses only.
+- [x] #11 Shared-lead rollup is presentation only; waivers stay per-req. — S16 (gaps projection + waive CLI shape).
+- [x] #12 Ready (clean gaps) vs Authorized (covering epoch); waivers skip Ready; no `approved` milestone. — S17/S21 (`phase_c_acceptance.rs` waive/Ready).
+- [x] #13 In-scope = on plan and not dropped — shared by gaps / Ready / execute / unrefined next-actions. — S4/S21 (drop excludes without `plan remove`).
+- [x] #14 Post-author resume names `plan execute` / `/emery:execute`; status may suggest `slice refine`. — S21 (`post_author_resume_names_execute`).
+- [x] #15 One-member target waves: open before build; wave-committed; postflight non-rollback. — S12–S14/S21 (`wave_opened_before_build_under_execute_postflight_keeps_commit`).
+
+**PR-ready:** S0–S23 are `done`. S24 (operator-directed) opens the single full-RFC implementation PR.
 
 ---
 
