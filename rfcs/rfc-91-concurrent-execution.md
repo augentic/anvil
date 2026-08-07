@@ -122,20 +122,22 @@ All three tasks start from `sha256:base`. The engine captures their disjoint pat
 
 A finding at `crates/payments/src/client.rs` routes to the crate task. That task receives the complete candidate, but may change only its grant.
 
-If every task needs `crates/payments/src/lib.rs`, the decomposition answer removes that path from the parallel layer:
+If every task needs `crates/payments/src/lib.rs`, that file cannot remain under the crate writer's `tree crates/payments/src` grant. A `tree` grant already includes the file, and the closed `file | tree` grammar has no exclusion form. Decomposition therefore replaces the tree with exact file grants for the parallel layer and assigns `lib.rs` exclusively to a later fan-in task:
 
 ```text
 layer 1
-  crate writer · test writer · guest writer
+  crate writer  owns file crates/payments/src/client.rs
+  test writer   owns tree crates/payments/tests
+  guest writer  owns tree guests/payments
 layer 2
-  integration task owns crates/payments/src/lib.rs and build reporting
+  integration task owns file crates/payments/src/lib.rs and build reporting
 ```
 
 Layer 2 starts from Layer 1's composed candidate. Its integration patch therefore names the intermediate snapshot as its base, not `sha256:base`.
 
 Unexpected overlap rejects the entire layer and fails the attempt before composition. The engine records an ownership finding for every contributor.
 
-Those findings become input to the next complete graph proposal. The new proposal can remove the shared path from the writers and assign it to the fan-in task.
+Those findings become input to the next complete graph proposal. The new proposal can narrow the writers' grants so they no longer cover the shared path and assign that path to the fan-in task.
 
 No subset of a failed layer becomes authoritative. The engine does not use textual auto-merge.
 
@@ -282,7 +284,7 @@ The engine lowers RFC-88's slice ownership envelope into RFC-90's exact `file | 
 
 Predicted interaction between disjoint grants becomes a dependency.
 
-If several writers need the same path, the graph removes that path from their grants. It assigns the path exclusively to a fan-in task. A dependency alone does not authorize shared-path writes.
+If several writers need the same path, the graph must not leave that path under any parallel writer's grant. A `tree` grant that would cover the shared path is replaced with narrower `file` or `tree` grants that do not cover it; the shared path is assigned exclusively to a fan-in task. A dependency alone does not authorize shared-path writes.
 
 Ambiguous ownership fails graph validation.
 
