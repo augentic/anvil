@@ -62,7 +62,7 @@ emery init contracts
 emery plan author first-contract \
   --intent "Author an HTTP API contract for a health endpoint that returns status and version."
 # review change.md, discovery.md, plan.yaml
-emery plan execute   # running it is the approval; drives the loop
+emery plan execute   # opens authorization epoch; drives the loop
 emery plan status     # must be drained
 emery plan archive    # after you publish via git
 ```
@@ -77,7 +77,7 @@ What you should see after execute: slice artifacts under `.emery/slices/…`, ge
                                     └─ per slice: refine → build → merge
 ```
 
-The pause after planning is the operator review step: nothing runs until you invoke `emery plan execute` — running it is your approval of the plan. A one-slice change uses the same steps as a twelve-slice migration. Code generation lives in target adapters, not in Cursor skills.
+The pause after planning is the operator review step: nothing privileged runs until you invoke `emery plan execute` — that journals `plan.execute.started` and drives the loop under gap gates. A one-slice change uses the same steps as a twelve-slice migration. Code generation lives in target adapters, not in Cursor skills.
 
 When `plan execute` parks, or you want to drive one slice without the drained loop, you can use the breakout skills: `/emery:refine`, `/emery:build`, `/emery:merge`, and `/emery:drop` (or their CLI equivalents).
 

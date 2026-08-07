@@ -18,7 +18,7 @@ Canonical JSON envelope shapes for `emery *` commands that skills shell out to. 
 
 Every `Render` impl follows one convention so operators can scan any command's output the same way:
 
-- **Result line first, lowercase, verb-first**: `created plan entry `foo` (status: pending)`, `dropped `checkout``, `archived plan `demo``. Reports keep their `PASS` / `FAIL` banner — the one uppercase exception, shared by `plan validate` and `slice validate`.
+- **Result line first, lowercase, verb-first**: `created plan entry `foo``, `dropped `checkout``, `archived plan `demo``. Reports keep their `PASS` / `FAIL` banner — the one uppercase exception, shared by `plan validate` and `slice validate`.
 - **Detail lines are indented `label: value` pairs** with kebab-case labels: `  plan: .emery/plan.yaml`, `  archived: .emery/archive/slices/…`, `  reason: superseded`.
 - **Names in backticks**, paths bare: `merged `checkout``, `  plan: <path>`.
 - **No trailing periods** on result or detail lines.
@@ -102,7 +102,7 @@ The guest-routed authoring orchestration: survey per bound source, reconcile lea
     { "source": "docs", "adapter": "documentation", "leads": ["identity-api"] }
   ],
   "slices": ["identity-contracts", "identity-service"],
-  "hint": "Plan `identity-revamp` is authored. Review it, then run `emery plan execute` to drive the slices (running it is your approval)."
+  "hint": "Plan `identity-revamp` is authored. Review it, then run `emery plan execute` to open the authorization epoch and drive the slices."
 }
 ```
 

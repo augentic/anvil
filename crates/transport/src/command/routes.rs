@@ -215,7 +215,7 @@ where
         slice::MergeArgs,
         ::slice::handlers::MergeRun,
         "Merge all delta specs for the slice into baseline and archive the slice",
-        "Merge all delta specs for the slice into baseline and archive the slice.\n\n`--preview` shows the merge operations that would be applied and `--conflict-check` reports `type: modified` baselines modified after this slice's `defined_at` — both are read-only dry-run modes that write nothing. Re-entry heals a torn merge: when the commit already landed but the per-entry `done` stamp is missing, the run stamps the entry and returns without a second baseline merge."
+        "Merge all delta specs for the slice into baseline and archive the slice.\n\n`--preview` shows the merge operations that would be applied and `--conflict-check` reports `type: modified` baselines modified after this slice's `defined_at` — both are read-only dry-run modes that write nothing. Revalidates the one-member wave, finalizes requirement identity maps on `target.merge.wave-committed`, then postflight (`target.merge.wave-succeeded` / `target.merge.wave-postflight-failed`). Re-entry is safe when archive / wave-commit facts already project `done`."
     );
     route!(
         ["slice", "drop"],
@@ -241,14 +241,14 @@ where
         ["plan", "advance"],
         plan::AdvanceArgs,
         ::change::plan::handlers::Advance,
-        "Advance the next eligible `pending` entry to `in-progress` and return it, or return the already-active entry unchanged. `plan advance` writes plan state — it is the only writer of per-entry `in-progress` (workflow §CLI surface); use `plan status` for the read-only projection"
+        "Claim the next eligible slice (`slice.claimed` + `plan.entry.advanced`) so it projects `in-progress`, or return an already-active entry. Progress is projected from facts — use `plan status` for the read-only view. Different slices may be claimed concurrently; same-slice second actor → `slice-claim-conflict`"
     );
     route!(
         ["plan", "status"],
         plan::StatusArgs,
         ::change::plan::handlers::Status,
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`.\n\nProjects `plan.yaml` entries, the candidate slice's `metadata.yaml` lifecycle (slot-aware in workspace mode), and the journal tail. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` / `target.merge.wave-postflight-failed` journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing — `plan advance` stays the only writer of per-entry `in-progress`."
+        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `review-gaps`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-actor fact union (slot-aware in workspace mode). Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from phase / wave journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
     );
     route!(
         ["plan", "gaps"],
@@ -269,14 +269,14 @@ where
         ["plan", "remove"],
         plan::RemoveArgs,
         ::change::plan::handlers::Remove,
-        "Remove a pending plan entry while the plan is still replaceable (every entry `pending`). Plan-review curation only — defers a lead without re-surveying `discovery.md`"
+        "Remove a plan entry while the plan is still replaceable (every entry still projects `pending`). Plan-review curation only — defers a lead without re-surveying `discovery.md`"
     );
     route!(
         ["plan", "undo"],
         plan::UndoArgs,
         ::change::plan::handlers::Undo,
         "Walk one plan entry backwards on per-entry status (one rung, or `--to <status>`)",
-        "Walk one plan entry backwards on per-entry status.\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`. Default is one rung; `--to <pending|in-progress>` walks rung by rung until the entry reaches the target. Either way, one `plan.transition.undone` journal event fires per rung, so the journal records every step.\n\nPer-entry `pending` is written only by `plan add` / `plan amend`; per-entry `in-progress` is written only by `plan advance`; per-entry `done` is written only by `slice merge`. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry `in-progress`."
+        "Walk one plan entry backwards on the projected ladder via `fact.retracted`.\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`. Default is one rung; `--to <pending|in-progress>` walks rung by rung until the projected label reaches the target. One `plan.transition.undone` label fires per rung.\n\nLadders project from claims / phase / merge facts — never stored status fields. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry projecting `in-progress`."
     );
     route!(
         ["plan", "author"],

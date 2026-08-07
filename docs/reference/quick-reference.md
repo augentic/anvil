@@ -23,11 +23,11 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/emery:init`             | One-time project setup; run `emery init --workspace` for a registry-only workspace               |
 | `/emery:plan`             | Survey sources, propose `slices[]`, exit for operator review                                 |
-| `/emery:execute`          | Drive the per-slice refine → build → merge loop (`emery plan execute` — running it is the approval) |
+| `/emery:execute`          | Drive the per-slice refine → build → merge loop (`emery plan execute` — opens the authorization epoch) |
 | `/emery:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
 | `/emery:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
 | `/emery:build`            | Breakout: validate artifacts, implement tasks                                                  |
-| `/emery:merge`            | Breakout: apply deltas to baseline, archive slice, stamp per-entry `done`                      |
+| `/emery:merge`            | Breakout: wave-commit, apply deltas to baseline, archive slice (projects `done`)               |
 | `/emery:drop`             | Discard a slice without merging                                                                |
 
 ## Artifacts
@@ -43,15 +43,15 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 | `tasks.md`          | In what sequence?                   | `.emery/slices/<name>/tasks.md`                                 |
 | `evidence/<key>.yaml` | What did this source say?         | `.emery/slices/<name>/evidence/<source>.yaml`               |
 
-## Lifecycle states
+## Lifecycle states (projected)
 
-Per-entry status:
+Per-entry ladder (from claims + merge/archive facts — not stored on `plan.yaml`):
 
 ```text
-pending --(plan advance)--> in-progress --(slice merge)--> done
+pending --(plan advance / claim)--> in-progress --(slice merge)--> done
 ```
 
-Slice lifecycle:
+Slice ladder (from phase timestamps + artifacts/facts — not a `metadata.yaml` status field):
 
 ```text
 refining --> refined --> built --> merged
@@ -73,9 +73,10 @@ emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + su
 emery plan add <entry> --sources <key>=<lead> --project <name>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 emery plan remove <entry>                                  # pre-execution deferral (replaceable plan only)
-emery plan execute                                     # the drained loop — running it is the approval
-emery plan status                                      # read-only next-action projection
-emery plan advance                                     # active in-progress, or advance next pending
+emery plan execute [--waive <slice>/<req> --reason …]  # authorization epoch + drained loop
+emery plan status                                      # read-only next-action + Ready/Authorized
+emery plan gaps                                        # typed gap inventory
+emery plan advance                                     # claim next eligible (or return active)
 emery plan archive
 
 # Slice management
@@ -118,9 +119,10 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
     ├── project.yaml      # project config (target, sources, workspace, emery-version)
     ├── guest.lock        # lock held by a running plan execute (a second driver gets guest-marker-held)
     ├── scratch/          # transient per-run working state (gitignored)
-    ├── slices/           # active slices (proposal/spec/design/tasks + evidence/)
+    ├── slices/           # active slices (proposal/spec/design/tasks + evidence/ + base.yaml + builds/)
+    ├── targets/          # one-member wave manifests
     ├── specs/            # merged baseline
-    ├── journal.jsonl     # append-only event log and outcome ledger
+    ├── events/           # per-actor fact logs (<actor>.jsonl)
     └── archive/          # finalized plans and merged or dropped slices
 ```
 

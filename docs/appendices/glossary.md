@@ -11,7 +11,7 @@ A versioned Emery extension. Emery splits adapters by direction: **source adapte
 A grammar leaf in the `emery` CLI — the executable command path (`slice build`, `journal show`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
 
 **Active slice**
-The plan entry currently `in-progress` per `plan.yaml.slices[].status`. `emery plan advance` writes `in-progress`; `/emery:refine` and the breakouts resolve the active slice before doing per-slice work.
+A plan entry that currently projects `in-progress` from claim / advance facts. `emery plan advance` claims the slice; `/emery:refine` and the breakouts resolve an active slice before doing per-slice work.
 
 **API contract**
 A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the contracts adapter's in-guest validator.
@@ -122,7 +122,7 @@ The operator-supplied free-form description that backs single-slice, intent-only
 ## J
 
 **Journal**
-The append-only event ledger the engine writes as verbs run (`slice.build.started`, `slice.merge.succeeded`, `slice.archive.created`, …). The durable record of what happened and when; inspected with `emery journal show`. The archive step's `slice.archive.created` entry is the outcome ledger for a completed slice.
+Per-actor append-only fact logs at `.emery/events/<actor>.jsonl` (union via `emery journal show`). Carries authorization (`plan.execute.started`), claims, phase events, waves, and the outcome ledger (`slice.archive.created`, …).
 
 ## L
 
@@ -130,12 +130,12 @@ The append-only event ledger the engine writes as verbs run (`slice.build.starte
 A slice-sized unit of work emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `discovery.md`, identified by its `(source, lead)` pair. Re-surveying the same source replaces that source's blocks. Cross-source lead matching happens later, in `propose`. See [From sources to slices](../explanation/reconciliation.md).
 
 **Lifecycle**
-Two stacked lifecycles: the per-entry lifecycle in `plan.yaml` (`pending → in-progress → done` — no per-entry `dropped`) and the slice lifecycle inside `metadata.yaml` (`refining → refined → built → merged`, or the terminal `dropped` stamped by `emery slice drop`). The plan itself stores no lifecycle — running `emery plan execute` is the approval. See [Lifecycle](../reference/lifecycle.md).
+Two stacked projected ladders: per-entry (`pending → in-progress → done` — no per-entry `dropped`) from claims / merge-archive facts, and per-slice (`refining → refined → built → merged`, or terminal `dropped` via `emery slice drop`) from phase timestamps and artifacts. Neither is a stored status field. Starting `emery plan execute` opens the authorization epoch — there is no projected `approved` rung. See [Lifecycle](../reference/lifecycle.md).
 
 ## M
 
 **Merge**
-The slice phase that applies spec deltas to the baseline, archives the slice, and stamps per-entry `done`. The only writer of `done`.
+The slice phase that wave-commits requirement identity, applies spec deltas to the baseline, archives the slice, and projects per-entry `done`.
 
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.

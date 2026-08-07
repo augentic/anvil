@@ -185,8 +185,8 @@ async fn author_approve_execute_drains() {
     session.model().assert_exhausted();
 }
 
-// Executing is approving: nothing is stamped or journaled for the
-// approval, and a re-entrant execute on the drained plan is a no-op.
+// Execute opens plan.execute.started (never projects `approved` /
+// plan.transition.approved); re-entrant execute on drained is a no-op.
 #[tokio::test]
 async fn execute_reentry_noop() {
     let session = Session::bare(suite_answers());

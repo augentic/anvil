@@ -106,7 +106,6 @@ sources:
 slices:
   - name: fix-typo
     sources: [intent]
-    status: pending
 ```
 
 **`discovery.md`** — what sources surveyed:
@@ -128,12 +127,12 @@ Sources: 1. Leads: 1.
 The skill exits after authoring and prints:
 
 ```text
-Plan `fix-typo` is authored. Review it, then run `emery plan execute` to drive the slices (running it is your approval).
+Plan `fix-typo` is authored. Review it, then run `emery plan execute` to open the authorization epoch and drive the slices.
 ```
 
 #### Operator review step
 
-Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step**. `/emery:plan` never starts execution itself; invoking `emery plan execute` is your approval — nothing is stamped or recorded.
+Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step**. `/emery:plan` never starts execution itself; invoking `emery plan execute` opens the authorization epoch (`plan.execute.started`) and drives the loop under gap gates.
 
 Alternatively, run `/emery:execute`: it invokes the same command and continues straight into the execute loop below.
 
@@ -196,15 +195,16 @@ Source code changes land in your project tree (not under `.emery/`). Task checkb
 
 - Spec deltas apply to `.emery/specs/`
 - The slice directory moves to `.emery/archive/`
-- `plan.yaml` marks the entry `done`
+- Facts project the entry `done` (no stored status field on `plan.yaml`)
 
 ##### Watching progress
 
 Check on the run at any time from a second terminal with `emery plan status` (read-only). Mid-run it names the current phase and the exact command that makes progress:
 
 ```text
-plan: fix-typo (approved)
+plan: fix-typo
 entries: 0 done / 1 in-progress / 0 pending
+ready: false  authorized: true
 next-action: build fix-typo
 resume: /emery:build fix-typo
 ```
@@ -212,8 +212,9 @@ resume: /emery:build fix-typo
 When the slice has merged, status projects the literal drained line:
 
 ```text
-plan: fix-typo (approved)
+plan: fix-typo
 entries: 1 done / 0 in-progress / 0 pending
+ready: true  authorized: true
 drained — run /emery:finalize fix-typo
 ```
 

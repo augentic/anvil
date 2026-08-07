@@ -60,7 +60,7 @@ Layer 2 carries every change through one rhythm: plan, review, execute, finalize
 | Skill            | Role                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------- |
 | `/emery:plan`     | Wrap `emery plan author`: survey each bound source, reconcile `slices[]`, validate; exit for review |
-| `emery plan execute` | The drive: running it is the operator's approval; runs the Layer 1 loop (guest-routed verb, wrapped by `/emery:execute`) |
+| `emery plan execute` | The drive: opens `plan.execute.started` and runs the Layer 1 loop under gap gates (guest-routed verb, wrapped by `/emery:execute`) |
 | `/emery:finalize` | Confirm operator-owned publication is complete, then archive the plan                                |
 
 The plan is the change's table of contents. `/emery:plan` produces it by invoking `emery plan author`, which surveys each source, reconciles leads across sources, and halts for operator review. It prints the literal `emery plan execute` command in its closing hint. The operator approves by running that verb — `/emery:plan` never runs it itself.
@@ -71,7 +71,7 @@ The matching CLI surface is **`emery plan {author, execute, add, amend, remove, 
 
 ### The operator review seam
 
-The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships — there is no separate approve verb; invoking execute is the approval, and nothing is stamped or recorded. [Core concepts](concepts.md) owns the full review story; [Amend a plan before executing](../how-to/amend-a-plan.md) covers the curation verbs available during the pause.
+The pause between `/emery:plan` and `emery plan execute` is the only review seam Emery ships — there is no separate approve verb; invoking execute journals the authorization epoch and enforces gap gates before build. [Core concepts](concepts.md) owns the full review story; [Amend a plan before executing](../how-to/amend-a-plan.md) covers the curation verbs available during the pause.
 
 ## The layers compose
 

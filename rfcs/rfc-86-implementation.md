@@ -47,8 +47,8 @@ When discovery forces a plan change: edit the affected future session in place, 
 | S19 | Execute gap gate before build | `done` | gap-gate integration tests | `feat(change): enforce gap policy before build under execute epoch` |
 | S20 | refine-under-epoch + shift-left fixtures | `done` | both fixtures; CLI absence assertions | `test(change): shift-left and refine-under-epoch execute fixtures` |
 | S21 | Remaining Phase C acceptance fixtures | `done` | listed fixtures green | `test(change): RFC-86 Phase C acceptance fixtures` |
-| S22 | D20 sibling docs + operator prose | `next` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
-| S23 | Full cargo make ci + acceptance closeout | `pending` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
+| S22 | D20 sibling docs + operator prose | `done` | `cargo make links`; prose checklist | `docs: align operator prose with RFC-86 change facts` |
+| S23 | Full cargo make ci + acceptance closeout | `next` | `cargo make ci` | `chore: RFC-86 implementation acceptance closeout` |
 | S24 | Open single full-RFC implementation PR | `pending` | PR URL returned | none (operator-directed) |
 
 ### Discovery log (append-only)
@@ -145,6 +145,10 @@ When discovery forces a plan change: edit the affected future session in place, 
 ### 2026-08-07 — S21
 - Finding: Remaining Acceptance #8–15 fixtures in `crates/change/tests/phase_c_acceptance.rs`: in-scope drop excludes gaps/Ready/gap-gate without `plan remove` (D24; membership via live `dropped_at`, matching prior fixtures); waive skips Ready then clearing unknowns projects Ready (D22); `plan.execute.started` wire shape asserts `kind: closed-plan` + kebab `plan-digest` / Existing specs + stale after spec change; post-author hint + status resume name execute (D26); under-execute wave.opened before build.succeeded + postflight-failed keeps wave-committed (D9). Coverage wire fix: internally-tagged `ClosedPlanCoverage` was emitting snake_case `plan_digest` — explicit `#[serde(rename = "plan-digest")]` / `unknown-waivers` so the journal matches the RFC appendix example.
 - Plan change: none beyond status (S21=done, S22=next).
+
+### 2026-08-07 — S22
+- Finding: D20 sibling-doc pass. Replaced shipped “nothing is stamped” / “running execute is the approval” / stored `status:` / `journal.jsonl` / single-active-entry / projected `(approved)` prose with `plan.execute.started` authorization epoch, gap gates, per-slice claims, computed ladders, pins/waves, and `.emery/events/<actor>.jsonl`. Touched `AGENTS.md`, `workflow.md`, `cli-contract.md`, CLI help (`routes.rs`), author hint, skills/plugin README, reference (lifecycle, directory-layout, cli/plan, quick-reference, configuration, glossary), tutorials/orientation/how-to/explanation, and RFC-86 status + appendix D20 notes. Series RFCs: `platform.md` already aligned; no leftover `plan approve` / invented `plan refine` in rfc-87..92 beyond decision-trail history. Did not cascade-rewrite RFC-88 design. Gate: `cargo make links` green.
+- Plan change: none beyond status (S22=done, S23=next).
 ```
 
 ### Session template (copy into each agent prompt)

@@ -29,7 +29,7 @@ You do not need to read this guide front to back. Pick the row that matches wher
 Every change flows through one rhythm:
 
 1. **Plan** — `/emery:plan` surveys sources and writes `plan.yaml`. Exits for review.
-2. **Operator review** — you review, then approve by running `emery plan execute` (running it is the approval).
+2. **Operator review** — you review, then run `emery plan execute` (opens the authorization epoch).
 3. **Execute** — the same `emery plan execute` loops per slice: refine → build → merge.
 4. **Finalize** — after operator-owned publication is complete, `/emery:finalize` archives the plan.
 
@@ -41,7 +41,7 @@ Every change flows through one rhythm:
 </div>
 
 <div class="callout">
-  <strong>Review.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits after authoring; invoking <code>emery plan execute</code> is your approval — nothing is stamped or recorded. Nothing executes until you invoke it.
+  <strong>Review.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits after authoring; invoking <code>emery plan execute</code> opens the authorization epoch and drives the loop under gap gates. Nothing privileged runs until you invoke it.
 </div>
 
 ## Why artifacts matter

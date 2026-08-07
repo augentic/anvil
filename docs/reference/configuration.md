@@ -41,7 +41,7 @@ description: |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
 
-A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored. In workspace mode, the committed `.emery/topology.lock` projects it deterministically from each project's baseline (`.emery/specs/` requirement titles + the `.emery/journal.jsonl` outcome ledger). Slot materialization and topology-lock regeneration are operator-owned setup outside Emery. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
+A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored. In workspace mode, the committed `.emery/topology.lock` projects it deterministically from each project's baseline (`.emery/specs/` requirement titles + the `.emery/events/<actor>.jsonl` outcome ledger). Slot materialization and topology-lock regeneration are operator-owned setup outside Emery. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
 ### Workspace shape
 
@@ -86,7 +86,6 @@ slices:
         lead: user-registration
       - source: legacy-monolith
         lead: user-registration
-    status: pending
   - name: identity-password-reset
     project: identity-svc
     sources:
@@ -95,14 +94,13 @@ slices:
       - source: legacy-monolith
         lead: account-pwd-reset
     divergence: likely
-    status: pending
 ```
 
 | Field (top-level)        | Required | Description |
 | ------------------------ | -------- | ----------- |
 | `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `sources`                | No       | Map of source → `{ adapter, path or value }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. |
+| `sources`                | No       | Map of source → `{ adapter, path or value, cid? }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. After author, each binding carries a closed tree `cid`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
 
 | Field (per slice)        | Required | Description |
@@ -110,9 +108,8 @@ slices:
 | `name`                   | Yes      | Slice name (kebab-case, unique within the plan). |
 | `project`                | No       | Project this slice binds. Required when the registry declares multiple projects; optional for single-project setups (an omitted value resolves to the sole topology project). The target adapter is resolved on demand from this project — it is not stored per slice. |
 | `sources`                | Yes      | List of `{ source, lead }` bindings; cardinality ≥ 1. Bare `<source>` shorthand allowed when the lead id equals the slice's `name`. |
-| `status`                 | Yes      | Per-entry status: `pending`, `in-progress`, or `done`. Written exclusively by CLI verbs. |
 | `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `emery plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |
-| `depends-on`             | No       | List of slice names that must be `done` first. |
+| `depends-on`             | No       | List of slice names that must project `done` first. |
 | `context`                | No       | List of baseline paths relevant to the slice; used as a focus hint by briefs. |
 | `description`            | No       | What this slice does (human-readable). |
 

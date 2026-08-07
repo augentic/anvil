@@ -162,7 +162,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
 fn gate_hint(name: &str) -> String {
     format!(
         "Plan `{name}` is authored. Review it, then run `emery plan execute` \
-         to drive the slices (running it is your approval)."
+         to open the authorization epoch and drive the slices."
     )
 }
 

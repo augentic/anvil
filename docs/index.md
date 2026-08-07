@@ -25,7 +25,7 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
   <div class="proof-item">
     <div class="proof-kicker">Control</div>
     <div class="proof-value">Review</div>
-    <div class="proof-copy">The operator reviews the plan; running <code>emery plan execute</code> is the approval.</div>
+    <div class="proof-copy">The operator reviews the plan; <code>emery plan execute</code> opens the authorization epoch.</div>
   </div>
   <div class="proof-item">
     <div class="proof-kicker">Trace</div>
@@ -122,8 +122,8 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
   --> writes change.md + plan.yaml + discovery.md, exits for review
 
 emery plan execute
-  --> running it is the operator's approval,
-      then /emery:refine + /emery:build + /emery:merge per slice until drained
+  --> opens plan.execute.started, then
+      /emery:refine + /emery:build + /emery:merge per slice until drained
 
 /emery:finalize fix-typo
   --> publish outside Emery, archive plan
