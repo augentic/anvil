@@ -1,11 +1,6 @@
-//! The change guest's embedded prompt corpus.
-//!
-//! Markdown stays the authoring source of truth: everything under this
-//! crate's `prompts/` tree is link-checked and embedded at build time
-//! into the generated [`DOCS`] table (see the `prose` build crate) —
-//! a dangling relative reference fails the build. The corpus is small,
-//! so it is pasted into the system prompt rather than shelved behind
-//! an MCP route.
+//! The change guest's embedded prompt corpus: the `prompts/` tree is
+//! link-checked and embedded at build time into the generated [`DOCS`]
+//! table; a dangling relative reference fails the build.
 
 /// One embedded prompt document.
 #[derive(Debug, Clone, Copy)]
@@ -38,11 +33,9 @@ pub fn propose() -> &'static str {
     doc("propose.md")
 }
 
-// Keep (private embed-table kernel): the generated `DOCS` table has no
-// public projection — "an embedded prompt assembles nowhere" is
-// unobservable at any CLI or crate boundary, so integration cannot own
-// this invariant. Link integrity is enforced separately at embed time
-// by the `prose` build crate.
+// Keep (private embed-table kernel): "an embedded prompt assembles
+// nowhere" is unobservable at any CLI or crate boundary, so
+// integration cannot own this invariant.
 #[cfg(test)]
 mod tests {
     use super::*;

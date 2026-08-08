@@ -1,8 +1,6 @@
-//! The refine-phase orchestrator behind `/emery:refine`: slice create
-//! (re-entry safe), refine-time `base.yaml` pin assembly, per-binding
-//! extract fan-out, the synthesis judgment leg, the persist tail, the
-//! validate gate sweep, and the `refined` transition. A validate
-//! failure leaves the slice `refining` and fires no
+//! The refine-phase orchestrator behind `/emery:refine`.
+//!
+//! A validate failure leaves the slice `refining` and fires no
 //! `slice.synthesize.failed`.
 
 use std::path::{Path, PathBuf};
@@ -150,11 +148,9 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         baseline_decisions: &baseline_decisions,
     };
 
-    // Synthesis is model-dispatched — record the handoff, then bracket
-    // the judgment-plus-persist leg with the native started /
-    // completed / failed pair. Emits are best-effort: a journal hiccup
-    // never shadows the synthesis outcome (the native handler's
-    // posture).
+    // Synthesis is model-dispatched: record the handoff, then bracket
+    // the judgment-plus-persist leg. Emits are best-effort — a journal
+    // hiccup never shadows the synthesis outcome.
     journal::emit_best_effort(
         layout,
         now,
@@ -205,14 +201,11 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
 /// Refine one named plan entry outside the execute loop — the guest
 /// breakout of `/emery:refine`.
 ///
-/// Entry semantics mirror the standalone `slice build <name>` posture:
-/// the verb acts on the named slice directly against a projected
-/// `pending` or `in-progress` plan entry (never claiming — `plan
-/// advance` owns the claim), and refuses a projected `done` entry.
-/// The target is caller-free: it resolves from the slice's own
-/// `metadata.yaml` when the slice already exists (a resumed
-/// `refining` breakout), else from the bound project's topology — the
-/// same resolution `plan advance` hands the execute loop.
+/// Acts on a projected `pending` or `in-progress` entry without
+/// claiming (`plan advance` owns the claim) and refuses a projected
+/// `done` entry. The target resolves from the slice's own
+/// `metadata.yaml` when the slice exists, else from the bound
+/// project's topology.
 ///
 /// # Errors
 ///

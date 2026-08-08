@@ -1,12 +1,6 @@
-//! Asynchronous native command execution over the shared typed
-//! Emery router.
-//!
-//! Value-consuming and runtime-free: the composition root owns Tokio,
-//! `std::env::args`, execution-path construction, model backend
-//! construction, and catalog construction. [`execute`] builds an
-//! online-references provider, runs the shared command router, and
-//! awaits reference-listener shutdown on every exit path before
-//! returning the typed transport response.
+//! Asynchronous native command execution over the shared typed Emery
+//! router. Runtime-free — the composition root owns Tokio; [`execute`]
+//! awaits reference-listener shutdown on every exit path.
 
 use std::io;
 use std::process::ExitCode;

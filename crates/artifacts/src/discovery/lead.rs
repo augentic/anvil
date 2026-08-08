@@ -1,11 +1,7 @@
 //! In-memory representation of one `## Lead inventory` block.
 //!
-//! One raw, unmerged lead as surfaced by one source: the `source` that
-//! produced it, the kebab-case `lead` (unique only within that
-//! `source`), and the content-bearing per-source `synopsis`. Identity
-//! is the `(source, lead)` pair; cross-source unification is deferred
-//! to plan time, where `/emery:plan`'s `propose` sub-step reads these
-//! leads but never edits `discovery.md`.
+//! Identity is the `(source, lead)` pair; cross-source unification is
+//! deferred to plan time, which reads leads but never edits `discovery.md`.
 
 use error::Error;
 use serde::{Deserialize, Serialize};

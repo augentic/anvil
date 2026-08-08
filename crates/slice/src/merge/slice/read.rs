@@ -203,22 +203,14 @@ fn merge_composition_delta(
     }
 }
 
-/// A3 precondition: refuse a whole-document (`screens:`) slice
-/// composition that would silently replace a non-empty baseline.
+/// Refuse a whole-document (`screens:`) slice composition that would
+/// silently replace a non-empty baseline.
 ///
-/// Reads the slice's top-level `composition.yaml` and the baseline at
-/// `class.baseline_dir/composition.yaml`. The gate fires — returning
-/// [`Error::Diag { code: "composition-baseline-overwrite-blocked" }`] —
-/// only when all three hold: the slice composition uses whole-document
-/// replacement format, the baseline is non-empty, and `allow_replace`
-/// is `false`. An absent slice file, an absent/empty baseline, a
-/// `delta:`-format slice composition, or `allow_replace == true` all
-/// pass.
-///
-/// This is a single-responsibility authorisation precondition — it
-/// carries no merge mechanism. The pure shape predicates it composes
-/// live in `crate::merge::composition`; this function adds only the
-/// file reads and the authorisation policy (composition overwrite-gate placement).
+/// The gate fires only when all three hold: the slice composition
+/// uses whole-document replacement format, the baseline is non-empty,
+/// and `allow_replace` is `false`. The pure shape predicates live in
+/// `crate::merge::composition`; this function adds only the file
+/// reads and the authorisation policy.
 ///
 /// # Errors
 ///

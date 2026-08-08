@@ -1,11 +1,7 @@
 //! [`RoutedId`] — the typed routed adapter identity.
 //!
-//! The engine names an adapter on every seam dispatch (and the
-//! deployment registers every adapter guest) by one exact, opaque id:
-//! `<axis>:<name>` for an unpinned cache-backed adapter, or
-//! `<axis>:<name>@<version>` for a pinned package identity. This
-//! kernel is the single formatter/parser for that grammar — engine
-//! code never hand-builds the string.
+//! One exact, opaque id (`<axis>:<name>[@<version>]`) names every seam
+//! dispatch; this kernel is the single formatter/parser for that grammar.
 
 use std::str::FromStr;
 

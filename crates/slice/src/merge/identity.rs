@@ -1,10 +1,7 @@
-//! Wave-commit requirement identity finalization (RFC-86 D5 / D9).
+//! Wave-commit requirement identity finalization.
 //!
-//! Before the deterministic delta fold, merge assigns final baseline
-//! `REQ-NNN` numbers: `MODIFIED` rows keep their `baseline-id` (after
-//! rejecting drifted baseline bodies), `ADDED` rows take the next free
-//! baseline numbers. Slice specs, `model.yaml`, and `tasks.md` are
-//! rewritten in place so the merge engine sees baseline ids.
+//! Merge rewrites slice specs, `model.yaml`, and `tasks.md` in place
+//! before the delta fold so the engine sees final baseline `REQ` ids.
 
 use std::collections::BTreeMap;
 use std::path::Path;

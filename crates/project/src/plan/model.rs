@@ -1,14 +1,7 @@
 //! Type definitions for `plan.yaml`, split by concern behind this
 //! stable facade.
 //!
-//! The facade re-exports `state` (`Plan` / `Entry` / `Status`),
-//! `source` (the source bindings), `reconciliation`
-//! (divergence and authority overrides), `target` (the resolved
-//! target reference), and `patch` (the amend builders). Validation
-//! findings are emitted on the neutral
-//! [`diagnostics::Diagnostic`] currency by the sibling
-//! `validate` / `doctor` modules; behaviour lives in the sibling
-//! submodules.
+//! Validation findings are emitted by the sibling `validate` / `doctor` modules.
 
 mod patch;
 mod reconciliation;

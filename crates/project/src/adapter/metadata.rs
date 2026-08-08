@@ -1,8 +1,7 @@
 //! Adapter metadata values and component-sidecar caching.
 //!
-//! Dispatch runs through an explicitly supplied [`Runner`], keeping
-//! deployment binding on the provider rather than in process-global
-//! state. Component answers are cached against the component SHA-256.
+//! Dispatch runs through an explicitly supplied [`Runner`] — never
+//! process-global state; answers cache against the component SHA-256.
 
 use std::path::{Path, PathBuf};
 
@@ -58,14 +57,10 @@ pub(crate) fn metadata_cache_path(component: &Path) -> PathBuf {
 /// Dispatch metadata by routed id, with no component file access and
 /// no sidecar cache.
 ///
-/// The dispatch-first resolve leg: dispatch happens *before* any
-/// component file is visible on the caller's side of the seam — under
-/// the shipped deployment the host resolver faults the component in
-/// during this dispatch (verify-and-load for a pinned store entry
-/// with pull-on-miss install; local-first resolution with a
-/// pull-latest provisioning leg for a bare cache-miss name), so a
-/// cold store resolves without a guest-visible store entry. There is
-/// no guest-visible file to digest-key, so no cache applies.
+/// Dispatch happens *before* any component file is visible on the
+/// caller's side of the seam — the host resolver faults the component
+/// in during this dispatch, so a cold store resolves without a
+/// guest-visible entry. No file means no digest key, so no cache applies.
 pub(super) fn dispatch(
     runner: Runner, axis: Axis, name: &str, version: Option<&semver::Version>,
 ) -> Result<Metadata, Error> {

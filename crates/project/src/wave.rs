@@ -1,13 +1,7 @@
-//! One-member target wave manifests (RFC-86 D9).
+//! One-member target wave manifests.
 //!
 //! Before build, the engine writes an immutable manifest at
-//! `.emery/targets/<target>/waves/<digest>.yaml` naming the target
-//! (project name in the in-place cut), pinned base, ordered member set
-//! (exactly one member in this cut), exact member inputs, dependency
-//! frontier, and build-authorization epoch, then appends
-//! `target.wave.opened`. Full build orchestration wires this helper in
-//! a later session; this module owns the schema, persistence, and open
-//! fact.
+//! `.emery/targets/<target>/waves/<digest>.yaml`, then appends `target.wave.opened`.
 
 use std::path::{Path, PathBuf};
 

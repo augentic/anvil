@@ -1,9 +1,5 @@
-//! `plan undo` — reverse one projected ladder rung via retract facts.
-//!
-//! Forward progress is expressed as facts (`plan advance` claims;
-//! refine/build/merge append phase facts; archive facts project
-//! `done`). Undo retracts those facts — it does not rewrite stored
-//! `plan.yaml`.
+//! `plan undo` — reverse one projected ladder rung by retracting the
+//! facts that expressed it; stored `plan.yaml` is never rewritten.
 
 use std::io::Write;
 

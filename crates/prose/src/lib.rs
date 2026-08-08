@@ -1,15 +1,7 @@
 //! Build-time codegen for embedded prompt corpora.
 //!
-//! A crate's `build.rs` calls [`emit`] with the name of its prose tree
-//! (e.g. `prompts`); every markdown document under
-//! `<manifest-dir>/<tree>/` is embedded — if it is in the tree, it
-//! ships. Table keys omit the tree prefix. Each body is link-checked
-//! (a dangling relative markdown reference fails the build instead of
-//! surfacing at runtime) and the walk writes `<out-dir>/prose_docs.rs`:
-//! one `Doc` entry per markdown file, sorted by tree-relative path,
-//! with the body pulled in by `include_str!`. The consumer defines the
-//! two-field `Doc { path, body }` struct and `include!`s the generated
-//! file.
+//! A crate's `build.rs` calls [`emit`]; every markdown document under the
+//! tree is embedded and link-checked (a dangling relative link fails the build).
 
 use std::fmt::Write as _;
 use std::fs;

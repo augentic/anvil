@@ -1,15 +1,7 @@
 //! Axis-split adapter identity model and post-resolve coherence gates.
 //!
-//! An adapter is a single WebAssembly component: identity
-//! lives in the wasm-pkg package reference (`emery:<name>@<semver>`),
-//! axis in the exported world (`source` xor `target`), and the
-//! remaining metadata (compatibility floor, build inputs, platforms
-//! in the component's own deterministic `metadata` export
-//! (see [`super::metadata`]). There is no on-disk manifest.
-//!
-//! Resolution lives in [`super::resolve`]; this module owns the typed
-//! identity structs, the location enum, and the post-resolve floor
-//! gate ([`check_requires_emery`]).
+//! Identity lives in the package reference, axis in the exported world
+//! (`source` xor `target`); there is no on-disk manifest.
 
 use std::path::PathBuf;
 
@@ -260,18 +252,11 @@ pub(super) fn parse_floor(
 
 /// Enforce an adapter's host-CLI compatibility floor.
 ///
-/// `floor` is the adapter's optional `emery` minimum from its
-/// metadata answer (already parsed into a typed `semver::Version`);
-/// `current` is the running binary's version (the resolve call sites
-/// pass `env!("CARGO_PKG_VERSION")`, the same source [`crate::config`]
-/// uses). When the binary is older than the floor the adapter cannot be
-/// honored, so resolution aborts with [`Error::AdapterCliTooOld`] on
-/// the exit-3 `EXIT_VERSION_TOO_OLD` path — the adapter-granularity
-/// analog of the `project.yaml` `emery` floor.
-///
-/// `current` is parsed permissively: an unparseable running version is
-/// treated as "not older" rather than bricking resolution, mirroring
-/// `config::version_is_older`. An absent `floor` is a clean pass.
+/// When the running binary is older than the adapter's declared
+/// `emery` floor, resolution aborts with [`Error::AdapterCliTooOld`]
+/// on the exit-3 `EXIT_VERSION_TOO_OLD` path. `current` is parsed
+/// permissively — an unparseable running version is treated as "not
+/// older" rather than bricking resolution; an absent floor passes.
 ///
 /// # Errors
 ///
@@ -296,12 +281,9 @@ pub(super) fn check_requires_emery(
     Ok(())
 }
 
-// Keep (CLI-unreachable defensive branch): `current` is always the
-// binary's own `env!("CARGO_PKG_VERSION")` in production, which is
-// always parseable — no CLI input can reach the permissive
-// unparseable-version arm. The reachable floor behavior
-// (`adapter-cli-too-old`, `adapter-floor-malformed`) is owned by
-// `crates/project/tests/adapter.rs` and `crates/native/tests/provider.rs`.
+// Keep (CLI-unreachable defensive branch): production `current` is the
+// binary's own always-parseable `env!("CARGO_PKG_VERSION")`, so no CLI
+// input can reach the permissive unparseable-version arm.
 #[cfg(test)]
 mod tests {
     use super::*;

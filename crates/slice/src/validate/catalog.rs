@@ -11,22 +11,12 @@ use crate::design_system::{ComponentStatus, ComponentsCatalog};
 use crate::synthesis::evidence::EvidenceDoc;
 
 /// Cross-reference Evidence `component:` directives against the
-/// project-level component catalog when present:
+/// project-level component catalog when present.
 ///
-/// - Slug absent from catalog → `slice-catalog-drift` finding.
-/// - Slug has `status: rejected` → `slice-catalog-drift` finding.
-///
-/// Claims carrying a slug in `notes.candidate_component` are exempt
-/// when the catalog entry is `rejected` — the operator has
-/// intentionally declined the promotion, and the note is purely
-/// informational.
-///
-/// When no catalog exists the check returns empty — the catalog is
-/// opt-in.
-///
-/// `evidence_docs` is the typed Evidence set the pre-adapter sweep
-/// already read and validated, so the `component:` directives are
-/// inspected without re-reading `evidence/*.yaml`.
+/// A slug absent from the catalog or carrying `status: rejected`
+/// yields a `slice-catalog-drift` finding; no catalog means the check
+/// returns empty (opt-in). `evidence_docs` is the already-validated
+/// typed Evidence set, so `evidence/*.yaml` is not re-read.
 pub(super) fn catalog_drift(
     layout: Layout<'_>, evidence_docs: &[EvidenceDoc],
 ) -> Result<Vec<Diagnostic>> {
@@ -58,11 +48,9 @@ pub(super) fn catalog_drift(
                 }
             }
 
-            // `notes.candidate_component` is purely informational
-            // (a hint from the adapter's stage-6 detection). It never
-            // triggers `slice-catalog-drift` regardless of whether
-            // the slug is in the catalog, absent, or rejected. Only
-            // hard `component:` directives above are checked.
+            // `notes.candidate_component` is informational only — it
+            // never triggers `slice-catalog-drift`; only hard
+            // `component:` directives above are checked.
         }
     }
 

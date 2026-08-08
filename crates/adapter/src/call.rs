@@ -1,8 +1,7 @@
 //! Shared judgment-call shape every adapter operation uses.
 //!
-//! Source legs use [`repaired`] (deterministic answer tail inside a
-//! bounded repair loop). Target legs use one-shot [`judgment`] — build
-//! and merge mutate the workspace, so they are never replayed.
+//! Source legs use [`repaired`] (bounded repair loop); target legs use
+//! one-shot [`judgment`] — build and merge mutate, so never replayed.
 
 use omnia_guest::Model;
 use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat, Tool};

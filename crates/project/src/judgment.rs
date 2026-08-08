@@ -1,16 +1,7 @@
 //! The engine guests' judgment kernel.
 //!
 //! Each leg is one schema-gated [`Model::create`] bracketed by
-//! deterministic tails (typed serde parse, projection kernel) inside a
-//! bounded repair loop: a tail failure re-prompts with the findings
-//! inlined, up to [`MAX_REPAIRS`] times. These legs are the sole
-//! judgment path, driven by the guest orchestrators — the propose leg
-//! in the change crate and the synthesize leg in the slice crate.
-//!
-//! The model capability is the upstream [`omnia_guest::Model`]: typed
-//! errors, the full `omnia:model/completion` request mirror, and a
-//! WASI-backed default body on `wasm32`. Native tests bind the scripted
-//! mock in each test binary's `mock` module.
+//! deterministic tails inside a bounded repair loop ([`MAX_REPAIRS`]).
 
 use error::Error;
 use omnia_guest::Model;
@@ -24,15 +15,11 @@ pub const MAX_REPAIRS: usize = 2;
 
 /// Issue one schema-gated judgment leg with a bounded repair loop.
 ///
-/// `tail` is the deterministic validation over the raw answer (typed
-/// serde parse, projection kernel). On a tail failure the leg
-/// re-prompts with the failed answer and the findings inlined; a model
-/// failure is never repaired (the request did not change).
-///
-/// The host `create` gate enforces the answer schema on the live
-/// backend (a schema-invalid answer surfaces there as
-/// `invalid-answer`, never reaching the tail); the tail's typed parse
-/// is the belt-and-braces check for the scripted backends, whose
+/// `tail` is the deterministic validation over the raw answer. On a
+/// tail failure the leg re-prompts with the failed answer and findings
+/// inlined; a model failure is never repaired (the request did not
+/// change). The host `create` gate enforces the schema on the live
+/// backend; the tail's typed parse covers the scripted backends, whose
 /// answers are unvalidated.
 ///
 /// # Errors

@@ -1,13 +1,7 @@
 //! The local content-addressed snapshot store.
 //!
-//! Objects — file blobs, symlink targets, and tree manifests — live as
-//! immutable files named by their SHA-256 digest under
-//! `<snapshots-root>/objects/<2-hex>/<62-hex>`. Writes are atomic and
-//! write-once (an existing object is never rewritten); reads verify
-//! the digest, so a corrupted object surfaces as a typed failure
-//! instead of a silently wrong tree. The store trait surface is
-//! deliberately narrow — put, get, snapshot, materialize — so a remote
-//! binding (RFC-92) slots in behind the same operations.
+//! Writes are atomic and write-once (an existing object is never
+//! rewritten); reads verify the digest, so corruption fails typed.
 
 use std::path::{Path, PathBuf};
 

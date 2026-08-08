@@ -304,13 +304,10 @@ impl<'a> Layout<'a> {
 /// workspace slot at `<platform>/workspace/<peer>/`.
 ///
 /// A slot is identified structurally: some ancestor's immediate parent
-/// is a `workspace/` directory whose own parent (the platform root)
-/// carries a `.emery/project.yaml`. The platform-config check
-/// disambiguates a real slot from an ordinary project that merely sits
-/// inside a directory named `workspace`, so this necessarily touches
-/// the filesystem. Context generation uses the shared posture to skip
-/// init-time `AGENTS.md` creation in materialised slots; callers that
-/// need a fully initialized slot can layer plan-file guards on top.
+/// is a `workspace/` directory whose own parent carries a
+/// `.emery/project.yaml`. That platform-config check (a filesystem
+/// touch) disambiguates a real slot from an ordinary project that
+/// merely sits inside a directory named `workspace`.
 #[must_use]
 pub fn is_slot(project_dir: &Path) -> bool {
     project_dir.ancestors().any(|candidate| {

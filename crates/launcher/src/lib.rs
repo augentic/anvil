@@ -1,32 +1,6 @@
 //! Deployment policy for the shipped `emery` binary: the macro-facing
-//! mount and resolver expressions behind a dynamic Omnia deployment.
-//!
-//! There is no host front door. The `omnia::runtime!` invocation in
-//! `src/main.rs` embeds the engine guest as static component bytes
-//! and evaluates this crate's expressions for everything the
-//! deployment needs before boot: the well-known mounts (anchored from
-//! argv and the working directory), the fail-closed guest
-//! [`Resolver`], the pre-bound HTTP trigger listener
-//! ([`http_listener`]), and the MCP reference-shelf path hook
-//! ([`mcp_route`]). Every invocation then runs in the guest — help,
-//! version, grammar rejections, and `adapter add` included; argv and
-//! the engine guest's exit code pass through byte-for-byte, except
-//! the reserved host log flags (`--debug` / `--quiet`), which Omnia
-//! peels before the guest sees argv.
-//!
-//! Pinned routed ids resolve the immutable global store and install a
-//! missing entry from the compiled first-party OCI registry
-//! (pull-on-miss — the launcher is the only downloader in the
-//! deployment); unpinned ids resolve the anchored project's seeded
-//! component cache, verify-and-load only. Store resolves stay
-//! digest-gated fail closed at load time, and the store itself is
-//! host-owned — the guest gets no store mount. The embedded engine
-//! never touches the resolver: it is registered statically at boot.
-//!
-//! `EMERY_HOME` remains a relocation override only — the Cargo
-//! model: everything anchors at the user home or the project root by
-//! default, and one invocation captures the layout exactly once
-//! ([`Policy::new`] over `Locations::from_env`).
+//! mount and resolver expressions evaluated by `src/main.rs`. One
+//! invocation captures the layout exactly once ([`Policy::new`]).
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -88,10 +62,9 @@ impl Policy {
     /// failures are left for the runtime's own preopen error.
     #[must_use]
     pub fn new(invoked_dir: &Path, argv: &[String], locations: Locations) -> Self {
-        // Omnia peels the reserved host log flags before the guest sees
-        // argv; the seed projection parses the guest grammar, so it must
-        // see the same peeled view or a stray `--debug` would fail the
-        // parse and drop the anchoring.
+        // The seed projection parses the guest grammar, so it must see
+        // the same peeled view Omnia gives the guest — a stray
+        // `--debug` would fail the parse and drop the anchoring.
         let argv: Vec<String> =
             argv.iter().filter(|arg| *arg != "--debug" && *arg != "--quiet").cloned().collect();
         let seed = seed_request(&argv);
@@ -183,8 +156,7 @@ fn refresh_names(argv: &[String], project_root: &Path) -> BTreeSet<String> {
     if request.all_bindings {
         // Same anchoring as the in-guest kernel: an explicit
         // `--project-dir` wins (relative values join the mounted
-        // project root — guest `with_root` against `.`), else the
-        // walked project root itself.
+        // project root), else the walked project root itself.
         let root = request.project_dir.map_or_else(
             || project_root.to_path_buf(),
             |dir| if dir.is_absolute() { dir } else { project_root.join(dir) },
@@ -226,18 +198,11 @@ fn current() -> &'static Policy {
 /// Macro expression: this invocation's pre-bound HTTP trigger
 /// listener, feeding the `/mcp/<axis>/<name>` reference shelves.
 ///
-/// One listener drives both ends of the loop — the trigger server
-/// adopts it, and Omnia injects its local address as the guest-visible
-/// `HTTP_ADDR` every adapter guest derives its grant URLs from — so
-/// concurrent `emery` invocations get distinct ports instead of
-/// contending on a fixed default, with no environment mutation and no
-/// drop-then-rebind window.
-///
-/// Split policy: an operator-set `HTTP_ADDR` must bind — an invalid or
-/// occupied address is a startup failure. Without one, bind an
-/// ephemeral loopback port. Writing the `http_listener:` key means
-/// supplying a listener, so any bind failure is a startup failure —
-/// there is no run-without-the-trigger fallback.
+/// Its local address becomes the guest-visible `HTTP_ADDR`, so
+/// concurrent invocations get distinct ports. An operator-set
+/// `HTTP_ADDR` must bind; without one, an ephemeral loopback port.
+/// Any bind failure is a startup failure — there is no
+/// run-without-the-trigger fallback.
 ///
 /// # Errors
 ///
@@ -294,18 +259,12 @@ pub fn resolver() -> Resolver {
 /// Macro expression: the deployment's `http_paths:` hook, mapping
 /// adapter MCP reference-shelf paths to guest identities.
 ///
-/// Every judgment dispatch grants the spawned agent
-/// `http://127.0.0.1:<port>/mcp/<axis>/<name>[@<version>]` (the
-/// adapter SDK's `mcp_url`, on this invocation's pre-bound listener
-/// port); this hook maps that path back onto the routed adapter id
-/// `<axis>:<name>[@<version>]` — the exact identity the adapter guest
-/// was faulted in under, so the registry lookup hits and the
-/// component's `wasi:http` `handle()` export serves the shelf. Fail
-/// closed: a path outside the routed grammar is `None`, an ordinary
-/// 404 — never a catch-all onto the engine guest — and a definitive
-/// resolver miss on a claimed identity stays a 404, while a genuine
-/// fault (resolution failure, or a routed guest without the
-/// `wasi:http` handler export) is Omnia's error-logged 500.
+/// `/mcp/<axis>/<name>[@<version>]` maps back onto the routed adapter
+/// id the guest was faulted in under, so the component's `wasi:http`
+/// export serves the shelf. Fail closed: a path outside the grammar
+/// or a definitive resolver miss is an ordinary 404 (never a
+/// catch-all onto the engine guest); a genuine fault on a claimed
+/// shelf is Omnia's error-logged 500.
 #[must_use]
 pub fn mcp_route(path: &str) -> Option<omnia::GuestId> {
     let rest = path.strip_prefix("/mcp/")?;

@@ -1,19 +1,6 @@
 //! Launcher-facing anchoring projection over the shared command
-//! grammar.
-//!
-//! Every invocation runs in the guest — help, version, grammar
-//! rejections, and `adapter add` included — so the launcher projects
-//! only pre-boot facts from argv: the `adapter add` seed request
-//! ([`seed_request`]), whose `--project-dir` anchors the project
-//! mount and whose component path earns a read-only preopen (the
-//! operator's component may live outside every other mount), and the
-//! adapter refresh set ([`refresh_request`]) naming the bare adapters
-//! an `adapter upgrade` / `init` invocation explicitly refreshes
-//! through the resolver's registry check. Rather than duplicating the clap
-//! surface, both parse argv through the *same* assembled router
-//! grammar the engine guest executes. Argv that fails the grammar
-//! projects nothing: the deployment falls back to cwd-anchored mounts
-//! and the guest renders the rejection.
+//! grammar (never a duplicated clap surface). Argv that fails the
+//! grammar projects nothing — the guest renders the rejection.
 
 use clap::FromArgMatches;
 use omnia_guest::api::invoke::Invoker;

@@ -1,28 +1,6 @@
-//! Workflow journal events.
-//!
-//! Append-only newline-delimited JSON at `.emery/events/<writer>.jsonl`
-//! (RFC-86 D3). Each journal writer appends only its own file; readers
-//! union every writer file ordered by `(timestamp, writer, sequence)`.
-//!
-//! **Writer id.** The calling writer is `EMERY_WRITER` when that
-//! environment variable is set to a non-empty value; otherwise the
-//! stable local default [`DEFAULT_WRITER`] (`"local"`). Multi-writer
-//! fixtures pass an explicit id to [`append_for`] instead of reading
-//! the environment. Until the RFC-88 two-root cut, these logs live
-//! under the flat `.emery/events/` stand-in (not `.emery/change/events/`).
-//!
-//! The closed [`Event`] / [`EventKind`] taxonomy and wire DTOs live in
-//! `event`; the append plus dropped-event sidecar in `append`; the
-//! exclusive per-slice claim projection in [`claim`] (RFC-86 D7 /
-//! D23); the best-effort emit helpers in `emit`; the `emery journal
-//! show` operation in [`handlers`]. Writes route through the internal
-//! appenders only — CLI verbs append their own events as a side
-//! effect of the operation. This root owns the read side (per-writer
-//! union, recent-tail projection, and the private filtered `show`
-//! projection behind `emery journal show`) and re-exports the public
-//! surface so callers keep importing `crate::journal::*`.
-//!
-//! [workflow §Observability]: ../../../../docs/standards/workflow.md#observability
+//! Workflow journal events: append-only newline-delimited JSON at
+//! `.emery/events/<writer>.jsonl`. Each writer appends only its own
+//! file; readers union all files by `(timestamp, writer, sequence)`.
 
 mod append;
 pub mod claim;

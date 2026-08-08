@@ -14,13 +14,9 @@ use crate::plan::Plan;
 /// `project_dir`.
 ///
 /// The set is the `project.yaml` target binding plus every
-/// `plan.yaml.sources.<key>` adapter, keeping only selectors that
-/// parse as bare names. Pinned bindings are immutable and local
-/// components refresh through `adapter add`, so neither joins the set.
-///
-/// A missing or unreadable `plan.yaml` contributes nothing — the
-/// project binding alone is a valid answer. Both the guest handler
-/// and the launcher's refresh widening call this kernel, so the
+/// `plan.yaml.sources.<key>` adapter that parses as a bare name; a
+/// missing or unreadable `plan.yaml` contributes nothing. The guest
+/// handler and the launcher's refresh widening both call this, so the
 /// refresh set and the resolve loop agree on the same names.
 ///
 /// # Errors

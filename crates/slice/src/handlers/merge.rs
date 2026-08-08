@@ -1,7 +1,7 @@
-//! `slice merge` (with the `--preview` / `--conflict-check`
-//! dry-run flags). Owns the merge-side JSON DTOs and summarisers; the
-//! default mode drives the deterministic [`crate::orchestrate::merge`]
-//! kernel.
+//! `slice merge` (with the `--preview` / `--conflict-check` dry-run
+//! flags).
+//!
+//! Owns the merge-side JSON DTOs and summarisers.
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -100,10 +100,9 @@ fn preview_body(cx: &Ctx, name: &str) -> Result<PreviewBody, Error> {
     let classes = artifact_classes(&cx.project_dir, &slice_dir);
     let result = slice::preview(&slice_dir, &classes)?;
 
-    // The JSON preview surface keeps its `specs` and `contracts` arrays
-    // by grouping the engine's class-tagged entries by their `class_name`.
-    // The literal output keys live here — alongside the omnia-default
-    // synthesiser — rather than in the engine.
+    // The JSON preview surface groups the engine's class-tagged
+    // entries into `specs` and `contracts` arrays; the literal output
+    // keys live here rather than in the engine.
     let specs: Vec<PreviewEntry> =
         result.three_way.into_iter().filter(|e| e.class_name == "specs").collect();
     let contracts: Vec<ContractItem> = result

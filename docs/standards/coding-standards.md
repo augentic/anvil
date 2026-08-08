@@ -37,7 +37,13 @@ fn step(...) { ... }
 
 ## Comments
 
-Comments answer "why does this look like this *today*?" — non-obvious intent, trade-offs, or constraints the code itself can't convey. Migration trails, old labels, and "this used to be X" rationale belong in commit messages — not in code or doc comments. Doc comments on items that surface in `--help` (clap `#[derive]` fields) must be operator-facing one-liners; rationale moves below the derive block where it doesn't leak into help output.
+Comments answer "why does this look like this *today?*" — non-obvious intent, trade-offs, or constraints the code itself can't convey. Migration trails, old labels, and "this used to be X" rationale belong in commit messages — not in code or doc comments. Doc comments on items that surface in `--help` (clap `#[derive]` fields) must be operator-facing one-liners; rationale moves below the derive block where it doesn't leak into help output.
+
+Density caps, mechanically enforced by the `doc_brevity` root-crate test (`tests/doc_brevity.rs`, part of `cargo make test`, so `check` and `ci` inherit it). WIT contracts (`wit/`, `crates/*/wit/`) are covered too: WIT `///` docs carry the item cap, `//` the line cap:
+
+- **Module `//!` docs** answer "what is this module today?" in **1–3 prose lines**. No deployment tours, no AGENTS.md restatements, no RFC archaeology — the crate graph and the workflow contract already own that prose; a module doc that repeats it goes stale and buries the one line the reader needed.
+- **Item `///` docs** keep the overview under **~8 lines** before any `#` section. `# Errors` / `# Panics` sections may list discriminants; keep each bullet one line.
+- **`//` comments** run **≤ 3 consecutive lines**. A tip lives next to the surprising branch it explains, never inside a preamble essay.
 
 ```rust
 // BAD
@@ -52,7 +58,21 @@ Comments answer "why does this look like this *today*?" — non-obvious intent, 
 //! owning verbs, not by `init`.
 ```
 
-Doc comments describe what this is today. Version-history tables, dated bumps, commit hashes, and migration notes belong in git log — not in `///` blocks. Keep `///` paragraphs on `pub` items under ~8 lines; longer prose belongs in the standards docs.
+The composition-root failure mode is the essay that restates architecture and hides the tip. Collapse the essay; keep the tip at the site that needs it:
+
+```rust
+// BAD — 22-line //! deployment tour restating AGENTS.md, with the one
+// operational fact (MCP fault mapping) buried in the middle.
+
+// GOOD
+//! The shipped `emery` executable: one `omnia::runtime!` invocation.
+
+// …inside the macro body:
+// Declined path / definitive miss → 404; fault on a claimed shelf → 500.
+http_paths: launcher::mcp_route,
+```
+
+Doc comments describe what this is today. Version-history tables, dated bumps, commit hashes, and migration notes belong in git log — not in `///` blocks. Longer prose belongs in the standards docs.
 
 `cargo doc` is part of `cargo make ci`, so doc comments must compile. Reference paths inside backticks (`` `Self::config_path` ``) are fine; bare links (`[Foo]`) need a corresponding intra-doc target or rustdoc fails the build.
 
@@ -84,7 +104,7 @@ The codebase optimises for short reading over short writing. Concretely:
 - **Field prefixes**: a struct named `RegistryAmendmentArgs` does not carry `proposed_` on every field — the struct name already says "proposal".
 - **Comment redundancy**: don't paraphrase a `match` arm's variant in a `// …` comment when the variant's doc-comment already explains it. The same rule applies to `Exit::code()`'s inline comments mirroring variant docs.
 
-`verbose-doc-paragraphs` (8-line cap on `pub` items) and `ritual-doc-paragraphs` (boilerplate "Returns an error if …") catch the mechanical cases. Brevity at the type, field, and variant level is on you.
+The `doc_brevity` root-crate test (see [Comments](#comments)) catches the mechanical density caps. Brevity at the type, field, and variant level is on you.
 
 ## Format dispatch
 

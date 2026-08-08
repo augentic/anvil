@@ -59,15 +59,11 @@ pub(crate) struct InitOptions<'a> {
     /// adapter declares `platforms.required`, this must be `Some`.
     pub platforms: Option<&'a [Platform]>,
     /// When `true`, run the re-entry **upgrade** path instead of a
-    /// fresh scaffold: bump `project.yaml.emery` to the
-    /// running binary's version over an already-populated `.emery/`,
-    /// preserving every other field (including `adapter:` / `workspace:`)
-    /// and every operator artifact (`slices/`, `specs/`, `archive/`,
-    /// `registry.yaml`, `.emery/design-system/*`, the adapter cache).
-    /// `AGENTS.md` is regenerated only when absent (handled at the
-    /// command layer). Mutually exclusive with the `<adapter>`
-    /// positional, `--workspace`, `--name`, and `--description` at the
-    /// clap surface. `--platforms` is legal alongside `--upgrade`.
+    /// fresh scaffold: bump `project.yaml.emery` to the running
+    /// binary's version over an already-populated `.emery/`, preserving
+    /// every other field and every operator artifact. Mutually
+    /// exclusive with the `<adapter>` positional, `--workspace`,
+    /// `--name`, and `--description`; `--platforms` stays legal.
     pub upgrade: bool,
 }
 
@@ -97,26 +93,15 @@ pub(crate) struct InitResult {
 ///
 /// Idempotent: a second call with identical options succeeds, creates no
 /// new directories, doesn't duplicate the `.gitignore` entry, and writes
-/// byte-identical `project.yaml` contents.
-///
-/// When [`InitOptions::upgrade`] is `true`, dispatches to the private
-/// upgrade runner (the re-entry version bump) ahead of the workspace /
-/// regular branch — one runner serves both regular and workspace
-/// projects because the preservation logic is identical (preserve every
-/// field, touch only `emery`).
-///
-/// When [`InitOptions::workspace`] is `true`, dispatches to the private
-/// workspace runner for the workspace on-disk shape.
+/// byte-identical `project.yaml` contents. [`InitOptions::upgrade`] and
+/// [`InitOptions::workspace`] dispatch to their private runners; the
+/// upgrade branch is checked first.
 ///
 /// # Errors
 ///
-/// Pre-condition: regular (non-workspace) init requires
-/// [`InitOptions::adapter`] to be set; the operation layer enforces
-/// this ahead of the call (the typed `init-adapter-required`), and
-/// `init` re-validates as a defence in depth
-/// (`init-requires-adapter-or-workspace`). Bubbles up
-/// filesystem, adapter resolution, and serialisation errors from
-/// the underlying calls.
+/// Regular (non-workspace) init requires [`InitOptions::adapter`]
+/// (`init-requires-adapter-or-workspace`). Bubbles up filesystem,
+/// adapter resolution, and serialisation errors.
 pub(crate) fn init(
     resolver: &impl crate::adapter::Resolver, opts: InitOptions<'_>,
 ) -> Result<InitResult, Error> {
@@ -135,14 +120,12 @@ pub(crate) fn init(
 }
 
 /// The value init records on `project.yaml.adapter` for one ensured
-/// binding: the selector as typed (a bare name stays bare — the
-/// deployment resolves it local-first at every use). A component path
-/// is recorded as its canonical
-/// `file://` form so the value outlives the CWD — read from the cache
-/// mirror's provenance sidecar when present, because the engine guest
-/// cannot canonicalize a host path that lives outside its mounts (the
-/// launcher mirrored and stamped it host-side before the runtime
-/// started); canonicalized directly otherwise.
+/// binding: the selector as typed (a bare name stays bare).
+///
+/// A component path is recorded as its canonical `file://` form so the
+/// value outlives the CWD — read from the cache mirror's provenance
+/// sidecar when present (the guest cannot canonicalize a host path
+/// outside its mounts); canonicalized directly otherwise.
 pub(crate) fn binding_value(
     ensured: &EnsuredAdapter, paths: &ExecutionPaths, project_dir: &Path,
 ) -> Result<String, Error> {

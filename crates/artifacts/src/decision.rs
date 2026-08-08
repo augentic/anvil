@@ -1,20 +1,7 @@
-//! Decision Record parser — front-matter + Nygard body.
+//! Decision Record parser — YAML front-matter + Nygard body.
 //!
-//! A Decision Record is a YAML front-matter header (schema-shaped via
-//! [`DecisionRecord`]) plus a Markdown body carrying `## Context` /
-//! `## Decision` / `## Consequences`. The slice authors `slug` plus
-//! `status: accepted | rejected` (and optional `supersedes:` /
-//! `related:`); `emery slice merge` stamps the durable `id` / `slice`
-//! / `date` and promotes the record into the append-only baseline
-//! catalogue at `.emery/decisions/DEC-NNNN-<slug>.md`.
-//!
-//! This parser owns the *per-file* findings the refine gate raises
-//! (`decision-record-schema`, `decision-record-section-missing`,
-//! `decision-slug-grammar`); the cross-file `decision-slug-collision`
-//! and baseline-resolved `decision-supersede-orphan` checks live in the
-//! workflow validate handler, which has the sibling set and the live
-//! baseline in hand. Like the spec provenance parser, findings
-//! aggregate so the operator sees every problem in one pass.
+//! Owns the *per-file* refine-gate findings, aggregated (not fail-fast);
+//! cross-file and baseline-resolved checks live in the workflow validate handler.
 
 use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};

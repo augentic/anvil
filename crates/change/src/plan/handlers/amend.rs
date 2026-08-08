@@ -1,7 +1,6 @@
-//! `emery plan amend` — routes wholesale edits through
-//! [`Plan::amend`], additive `add-source` / `remove-source` edits
-//! through direct entry mutation, and authority-override assignments
-//! through the shared domain engine.
+//! `emery plan amend` — wholesale edits via [`Plan::amend`], additive
+//! `add-source` / `remove-source` edits via direct entry mutation, and
+//! authority-override assignments via the shared domain engine.
 
 use artifacts::evidence::ClaimKind;
 use error::Error;
@@ -139,10 +138,9 @@ impl<P: Anchor> Operation<P> for Amend {
                 plan.amend(&name, patch)?;
 
                 apply_source_edits(plan, &plan_name, &name, add_bindings, &remove_source)?;
-                // `--add-source` mutates after `Plan::amend`'s own
-                // validate-and-rollback gate, so re-gate duplicate source
-                // keys here (a duplicate would silently overwrite
-                // `evidence/<source>.yaml` at refine time).
+                // `--add-source` mutates after `Plan::amend`'s validate-and-
+                // rollback gate, so re-gate duplicate keys here (a duplicate
+                // would silently overwrite `evidence/<source>.yaml` at refine).
                 reject_duplicate_source_keys(plan)?;
 
                 let override_journal = authority_override::mutate(

@@ -1,10 +1,6 @@
 //! Target build envelope kernel.
 //!
-//! Mirrors [`crate::synthesis`]: the pure, IO-free domain pieces
-//! the `emery slice build` verb composes. The closed-shape build
-//! request/report DTOs live in [`project::seam::wire`] (the typed
-//! serde parse is the envelope gate); [`assemble`]
-//! assembles a request from the bound target adapter's declared inputs
-//! against the slice tree.
+//! Pure, IO-free domain pieces composed by `emery slice build`; the
+//! closed-shape request/report DTOs live in [`project::seam::wire`].
 
 pub mod assemble;

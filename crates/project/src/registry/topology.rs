@@ -1,16 +1,7 @@
 //! `.emery/topology.lock` — the committed projection of each member
 //! project's identity.
 //!
-//! `registry.yaml` carries membership + location only. A project's
-//! authored intent (`adapter`, `description`) lives in its
-//! `.emery/project.yaml`; its derived identity — the `surface[]` of
-//! owned domains and a `recent[]` tail of merge outcomes — is a
-//! deterministic structural projection of its baseline
-//! (`.emery/specs/` + `.emery/events/<writer>.jsonl`). `emery workspace
-//! sync` resolves both into this committed lockfile so workspace plan-time
-//! topology (`workspace_topology`) reads a single derived source offline. The
-//! lockfile is machine-written (write-if-changed, mirroring
-//! `.emery/context.lock`); operators never hand-edit it.
+//! Machine-written (write-if-changed); operators never hand-edit it.
 
 use std::collections::HashMap;
 use std::fs;
@@ -267,21 +258,11 @@ fn validate_topology_platforms(
 /// Compare the committed `.emery/topology.lock` against each
 /// materialised slot's projection, returning staleness diagnostics.
 ///
-/// Compares the lock against each slot's current `project.yaml` *and
-/// baseline projection*
-/// (`surface[]` from `.emery/specs/`, `recent[]` from the journal
-/// ledger), returning a `topology-cache-stale` suggestion on divergence.
-/// Because the projection is deterministic, this is a regenerate-and-compare check:
-/// [`TopologyProject::resolve`] re-derives the fresh entry and any drift
-/// in `target` / `description` / `surface` / `recent` trips the warning.
-/// A slot whose topology cannot be re-derived yields a
-/// `workspace-slot-config-unreadable` important finding instead.
-/// The project's `project.yaml` plus its baseline are authoritative and
-/// the cache is the derived projection of them.
-///
-/// `workspace_base` is the top-level `workspace/`; `topology_lock_path` is
-/// `.emery/topology.lock`. The binary handler renders the returned
-/// diagnostics — it owns no projection logic of its own.
+/// The projection is deterministic, so this is regenerate-and-compare:
+/// any drift trips a `topology-cache-stale` suggestion; a slot whose
+/// topology cannot be re-derived yields a
+/// `workspace-slot-config-unreadable` important finding instead. The
+/// slot's `project.yaml` plus baseline are authoritative.
 #[must_use]
 pub fn cache_staleness(
     resolver: &impl Resolver, registry: &Registry, paths: &ExecutionPaths,
@@ -345,16 +326,12 @@ pub fn cache_staleness(
     results
 }
 
-/// The slot-binding reach check under ID-only guest resolution: the
-/// routed adapter id carries no slot, so a slot target dispatches only
-/// through an exact store pin or an identity resolvable at the
-/// deployment project's root (its seeded component cache, or a
-/// natively linked adapter). A binding that resolves slot-locally but
-/// not at the deployment root would pass topology derivation and then
-/// fail at dispatch — surface it here instead.
+/// The slot-binding reach check under ID-only guest resolution: a
+/// binding that resolves slot-locally but not at the deployment root
+/// would pass topology derivation and then fail at dispatch — surface
+/// it here instead.
 ///
-/// Package pins are exempt: the host resolver installs a store miss
-/// during dispatch (pull-on-miss), so a pin is always reachable by id.
+/// Package pins are exempt: pull-on-miss makes a pin always reachable by id.
 fn slot_binding_unresolvable(
     resolver: &impl Resolver, registry_name: &str, config: &ProjectConfig, paths: &ExecutionPaths,
 ) -> Option<Diagnostic> {

@@ -1,13 +1,7 @@
-//! Typed gap inventory projection (RFC-86 Gaps / D18 / D19 / D24).
+//! Typed gap inventory projection.
 //!
-//! Pure read of in-scope slice artifacts (`model.yaml` or
-//! `specs/<domain>/spec.md`) into `(slice, req, status)` rows for
-//! `unknown` / `conflict` / `divergence` only. Human prose-quality
-//! concerns stay outside the engine (D18). When open findings share a
-//! contributing `(source, lead)`, a presentation rollup annotates those
-//! rows and suggests re-refine selectors — navigation only; gate and
-//! waivers stay per-requirement (D19). Dropped slices are excluded via
-//! the shared [`super::in_scope`] predicate (D24).
+//! Pure read of in-scope slice artifacts into `(slice, req, status)` rows
+//! for `unknown` / `conflict` / `divergence`; dropped slices are excluded.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;

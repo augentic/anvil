@@ -1,18 +1,6 @@
-//! `emery init` — the project initialization operation.
-//!
-//! Owns every filesystem write of project-scoped state — `.emery/`,
-//! `project.yaml`, `registry.yaml` (workspace mode), `.gitignore`
-//! lines, the per-project derived component-mirror cache tenant, and
-//! the generated `AGENTS.md` context (plus its `.emery/context.lock`
-//! sidecar) when `AGENTS.md` is absent. `--upgrade` is the re-entry
-//! path: it bumps the `project.yaml.emery` pin over an existing
-//! project, preserving every operator artifact. Running plain `init`
-//! in an already-initialized project changes nothing and exits 0 with
-//! a message routing to `emery init --upgrade`.
-//!
-//! Unlike the project-scoped verbs, init runs *before* a project
-//! exists, so it anchors at the provider's raw
-//! [`Anchor::project_root`] instead of loading `crate::handler::Ctx`.
+//! `emery init` — the project initialization operation; owns every
+//! filesystem write of project-scoped state. Init runs before a project
+//! exists, so it anchors at [`Anchor::project_root`] instead of `Ctx`.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -108,11 +96,8 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
             })?;
 
         // Ensure the adapter binding ahead of the scaffold: fresh init
-        // ensures the requested `<adapter>` argument; `--upgrade`
-        // re-ensures the project's recorded binding (without rewriting
-        // it). Local-component mirroring is the provider's ensure
-        // policy; package installation is host-owned (the deployment
-        // resolver pulls a missing pin during metadata dispatch).
+        // ensures the requested `<adapter>`; `--upgrade` re-ensures the
+        // project's recorded binding without rewriting it.
         let binding =
             if upgrade { ProjectConfig::load(project_dir)?.adapter } else { adapter.clone() };
         let ensured = match binding.as_deref() {

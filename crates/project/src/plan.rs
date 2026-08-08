@@ -1,9 +1,7 @@
 //! The `plan.yaml` data model and its operations.
 //!
-//! On-disk representation of `plan.yaml` and the in-memory [`Plan`]
-//! that wraps it, plus the four `plan validate` health diagnostics
-//! (`doctor`). Per-entry ladder labels project from the fact union
-//! (RFC-86 D2 / D11) — `plan.yaml` carries no stored status field.
+//! Per-entry ladder labels project from the fact union — `plan.yaml`
+//! carries no stored status field.
 
 pub mod advance;
 pub mod amend;

@@ -1,9 +1,7 @@
 //! Line-oriented `discovery.md` parser.
 //!
-//! [`Parser`] walks the document line-by-line, preserving all prose
-//! outside the `## Lead inventory` section verbatim and collecting each
-//! `### <id>` block plus its bullet list as a [`Lead`]. The assembled
-//! [`Discovery`] is returned to [`super::Discovery::parse`].
+//! [`Parser`] preserves all prose outside `## Lead inventory` verbatim and
+//! collects each `### <id>` block plus its bullet list as a [`Lead`].
 
 use error::{Error, Result};
 

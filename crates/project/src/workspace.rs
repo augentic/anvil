@@ -1,13 +1,7 @@
-//! The private-workspace kernel (RFC-87): `prepare` / `capture` /
-//! `discard` over the content-addressed snapshot [`Store`].
+//! The private-workspace kernel: `prepare` / `capture` / `discard`
+//! over the content-addressed snapshot [`Store`]. Host-side only.
 //!
-//! A workspace is disposable execution machinery, never workflow
-//! state: `prepare` materializes an exact base snapshot into a fresh
-//! private directory, `capture` records the result tree as a new
-//! snapshot and derives the touched paths, and `discard` removes the
-//! directory. Durable code state is only the snapshots; no workspace
-//! path is ever persisted as workflow state. Host-side only — guests
-//! reach these operations through the seam's workspace capability.
+//! No workspace path is ever persisted as workflow state.
 
 mod manifest;
 mod store;

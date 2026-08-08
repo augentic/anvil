@@ -4,24 +4,13 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-/// Parsed `<name>[@<semver>]` target-adapter identifier (workflow
-/// §Adapter vocabulary).
+/// Parsed `<name>[@<semver>]` target-adapter identifier.
 ///
-/// This is the *resolved* target form, produced by
-/// [`crate::plan::resolve_target`] from a slice's bound
-/// project topology and surfaced by `emery plan advance`, the slice
-/// `metadata.yaml`, and the build request. It is not a stored
-/// `plan.yaml` field — a slice binds only a `project`, and the target
-/// adapter is resolved on demand.
-///
-/// Wire form is the single kebab string produced by
-/// `registry::topology::target_ref`: `name@<semver>` for a pinned
-/// identity (e.g. `omnia@1.0.0`) or the bare `name` for an unpinned
-/// cache resolve, with `name` matching `^[a-z][a-z0-9-]*$` and the
-/// version, when present, an exact semver. Deserialisation goes
-/// through `TargetRef::parse` so any payload that survives serde
-/// already matches the grammar. Components are private so every
-/// `TargetRef` value satisfies the wire regex by construction.
+/// The *resolved* target form produced by
+/// [`crate::plan::resolve_target`] — never a stored `plan.yaml` field.
+/// Wire form is the single kebab string `name[@<semver>]`.
+/// Deserialisation goes through `TargetRef::parse` and components are
+/// private, so every value satisfies the wire grammar by construction.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TargetRef {
     name: String,

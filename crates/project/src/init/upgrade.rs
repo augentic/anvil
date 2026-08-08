@@ -1,15 +1,6 @@
-//! Re-entry (`emery init --upgrade`) body: bumps `project.yaml.emery`
-//! to the running binary over an existing `.emery/` without re-scaffolding.
-//! Mutates only `project.yaml`; never touches slices, specs, archive, registry,
-//! or the adapter cache.
-//!
-//! One runner serves both regular and workspace projects: the
-//! preservation logic is identical, so the dispatcher routes here ahead
-//! of the workspace / regular branch. The recorded adapter binding was
-//! already re-ensured (and resolved) by the operation layer and is
-//! never rewritten — a bare record stays bare (the deployment resolves
-//! it local-first, refreshing to the newest published version as part
-//! of the upgrade invocation).
+//! Re-entry (`emery init --upgrade`): bumps `project.yaml.emery` over
+//! an existing `.emery/` without re-scaffolding. Mutates only
+//! `project.yaml`; the recorded adapter binding is never rewritten.
 
 use error::Error;
 

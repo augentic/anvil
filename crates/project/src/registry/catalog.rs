@@ -81,15 +81,12 @@ pub struct GreenfieldSeed {
 }
 
 /// Contract role declarations for a registry project.
-/// All fields are optional — a project may only produce, only consume,
-/// or have no contract relationships at all.
 ///
-/// The role set is exactly two: `produces` (this project authoritatively
-/// implements the contract) and `consumes` (this project calls or
-/// subscribes to the contract). A contract that no project produces is,
-/// by definition, externally authored — no separate `imports` field is
-/// needed to mark it. `#[serde(deny_unknown_fields)]` causes any
-/// surviving `imports:` key in `registry.yaml` to fail at parse time.
+/// All fields are optional. The role set is exactly two: `produces`
+/// (authoritative implementer) and `consumes` (caller/subscriber). A
+/// contract no project produces is by definition externally authored,
+/// so there is no `imports` field; `deny_unknown_fields` fails a
+/// surviving `imports:` key at parse time.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ContractRoles {

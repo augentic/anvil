@@ -1,15 +1,7 @@
-//! Target-resolution policy: which adapter identity serves a slice at
-//! each point in its life.
+//! Target-resolution policy: which adapter identity serves a slice.
 //!
-//! - [`project_adapter`] — the project's declared target adapter, the
-//!   identity every fresh resolution starts from.
-//! - [`fresh`] — before a slice exists, `$TARGET` resolves from the
-//!   bound project's topology.
-//! - [`resumed`] — after creation, the slice's recorded
-//!   `metadata.yaml` target is authoritative.
-//! - [`best_effort_advance`] — `plan advance`'s advisory `$TARGET`
-//!   projection; `None` when the topology cannot resolve (the build
-//!   phase re-resolves before use).
+//! Fresh resolution starts from the project's declared target; once a
+//! slice exists, its recorded `metadata.yaml` target is authoritative.
 
 use error::Error;
 

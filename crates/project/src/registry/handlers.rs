@@ -37,14 +37,9 @@ impl<P: Anchor> Operation<P> for Validate {
     async fn call(
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
-        // `emery registry validate` is allowed to run before `emery
-        // init`, so it anchors directly from the provider instead of
-        // loading `Ctx` (which requires `.emery/project.yaml`). An
-        // initialised ancestor still wins so the verb sees the same
-        // root as every other command — and its config load failures
-        // (parse errors, the `emery:` version floor) still propagate;
-        // only the genuinely uninitialised case falls back to the
-        // anchor directory with the base (non-workspace) shape check.
+        // `emery registry validate` may run before `emery init`, so it
+        // anchors from the provider instead of loading `Ctx`; an initialised
+        // ancestor still wins, and its config load failures propagate.
         let anchor = context.provider.project_root();
         let (project_dir, workspace_mode) = match ProjectConfig::find_root(anchor) {
             Some(root) => {
@@ -154,10 +149,9 @@ impl<P: Anchor> Operation<P> for Add {
             greenfield_seed: None,
         };
 
-        // `registry add` is "create or update": an absent `registry.yaml`
-        // is synthesised from the canonical empty shape so the first
-        // `add` against a fresh project succeeds without a separate
-        // bootstrap step.
+        // An absent `registry.yaml` is synthesised from the canonical
+        // empty shape so the first `add` against a fresh project
+        // succeeds without a separate bootstrap step.
         let mut registry = Registry::load(&cx.project_dir)?.unwrap_or_else(|| Registry {
             version: 1,
             projects: Vec::new(),
@@ -178,11 +172,9 @@ impl<P: Anchor> Operation<P> for Add {
         let added = candidate.clone();
         registry.projects.push(candidate);
 
-        // Surface validate_shape / validate_workspace errors verbatim —
-        // their diagnostic codes (`description-missing-multi-repo`,
-        // `workspace-cannot-be-project`, etc.) are the documented contract.
-        // Returning Err here aborts before the atomic write, so the
-        // on-disk registry is never left in a shape-invalid state.
+        // Surface validation errors verbatim — their diagnostic codes
+        // are the documented contract. Erroring here aborts before the
+        // atomic write, so the on-disk registry never goes shape-invalid.
         if workspace_mode {
             registry.validate_workspace()?;
         } else {
@@ -244,10 +236,9 @@ impl<P: Anchor> Operation<P> for Remove {
         let path = Registry::path(&cx.project_dir);
         let workspace_mode = cx.config.workspace;
 
-        // Pre-flight: surface the `registry-remove-no-registry`
-        // diagnostic when the file is absent. `with_state` would
-        // emit the generic `Error::ArtifactNotFound`; the registry-specific
-        // diag is part of the wire contract.
+        // Pre-flight: surface `registry-remove-no-registry` when the file
+        // is absent — `with_state` would emit the generic
+        // `Error::ArtifactNotFound`, but the specific diag is wire contract.
         if !path.exists() {
             return Err(Error::Diag {
                 code: "registry-remove-no-registry",

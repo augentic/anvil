@@ -1,10 +1,7 @@
 //! The operation-layer failure type.
 //!
-//! [`Error`] wraps the workspace [`error::Error`] taxonomy and adds
-//! the one shape the CLI's two-channel contract needs: a failing
-//! gate renders its stdout body ([`FailureBody`]) *and* the failure
-//! envelope on stderr, so the report rides the error to the transport
-//! instead of being written from inside the operation.
+//! [`Error`] wraps the workspace taxonomy; a failing gate's stdout body
+//! ([`FailureBody`]) rides the error to the transport beside the envelope.
 
 use serde::Serialize;
 

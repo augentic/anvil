@@ -1,9 +1,6 @@
-//! Authorization-epoch open at `plan execute` start (RFC-86 D6 / D17).
-//!
-//! Assembles typed `closed-plan` coverage, validates per-requirement
-//! `--waive` selectors against the gap inventory, and appends
-//! `plan.execute.started`. Gap gating before build is
-//! [`super::gap_gate`].
+//! Authorization-epoch open at `plan execute` start: assembles typed
+//! `closed-plan` coverage, validates `--waive` selectors against the
+//! gap inventory, and appends `plan.execute.started`.
 
 use std::collections::BTreeMap;
 use std::path::Path;

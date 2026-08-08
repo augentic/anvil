@@ -1,11 +1,7 @@
 //! Host-only session helpers over the offline native provider.
 //!
-//! A [`Session`] is a throw-away project tree plus an offline
-//! [`native::Provider`] over the full mock
-//! [`crate::registry::catalog`] and `omnia-testkit`'s FIFO `Scripted`
-//! model double. Reference mode is always [`ReferenceMode::Offline`],
-//! so native tests start no listeners; the recording model handle is
-//! held beside the provider (the provider exposes no model accessor).
+//! Reference mode is always [`ReferenceMode::Offline`], so native tests start
+//! no listeners; the recording model handle is held beside the provider.
 
 use std::path::{Path, PathBuf};
 

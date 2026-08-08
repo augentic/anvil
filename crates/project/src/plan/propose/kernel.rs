@@ -44,20 +44,16 @@ impl Plan {
     /// Project a validated agent reconciliation response onto
     /// `plan.yaml.slices[]`.
     ///
-    /// `response` is assumed to have already passed JSON-Schema
-    /// validation (`validate_proposal_json`) at the CLI boundary, so this
-    /// method enforces only the *semantic* invariants the schema cannot
-    /// express. The checks fire in this order, returning the first
-    /// violation: replaceable gate (`plan-reconcile-plan-not-replaceable`); lead-orphan (`plan-reconcile-lead-orphan`); per-slice same-source fusion (`plan-reconcile-slice-source-collision`); total lead coverage (`lead-coverage-orphan`); project auto-bind / orphan (`plan-reconcile-project-binding-required`, `plan-reconcile-project-orphan`); slice-name kebab-case + collision (`plan-reconcile-slice-name-invalid`, `plan-reconcile-slice-name-collision`); `depends-on` cycle (`plan-reconcile-depends-on-cycle`); and finally a backstop `Plan::validate` over the projected entries that rolls the plan back on any blocking finding.
-    ///
-    /// On success `self.entries` is the projected slice set in response
-    /// order and the returned `ProposeOutcome` carries the slice names
-    /// for the caller's `plan.reconcile.completed` journal event.
+    /// `response` already passed JSON-Schema validation at the CLI
+    /// boundary, so this enforces only the *semantic* invariants the
+    /// schema cannot express, returning the first violation; a backstop
+    /// `Plan::validate` rolls the plan back on any blocking finding. On
+    /// success `self.entries` is the projected slice set in response order.
     ///
     /// # Errors
     ///
     /// Returns an [`Error::Validation`] (exit 2) carrying the first
-    /// invariant code listed above that the response violates.
+    /// violated invariant code.
     pub fn propose_from(
         &mut self, response: ProposalResponse, discovery: &Discovery, topology: &[ProjectRef],
         ladders: &HashMap<crate::name::SliceName, Status>,
@@ -120,17 +116,13 @@ impl Plan {
     }
 }
 
-/// Join each slice's lead `topics[]` against its bound
-/// project's accepted-decision `topics[]`, emitting an advisory
+/// Join each slice's lead `topics[]` against its bound project's
+/// accepted-decision `topics[]`, emitting an advisory
 /// `lead-decision-topic-overlap` review finding per intersecting
 /// `(lead, decision)` pair.
 ///
-/// The CLI never groups on topics; this surfaces a lead whose topic is
-/// already governed by an accepted decision so the agent can confirm the
-/// slice aligns (or flags a contradiction) before the operator reviews
-/// the plan. Non-blocking
-/// `kind: review`; degrades to an empty vec until both surveyed leads and
-/// baseline decisions carry topics.
+/// Non-blocking `kind: review`; degrades to an empty vec until both
+/// surveyed leads and baseline decisions carry topics.
 fn topic_overlaps(
     slices: &[ResponseSlice], discovery: &Discovery, bound: &[&ProjectRef],
 ) -> Vec<Diagnostic> {
@@ -304,15 +296,11 @@ fn bind_projects<'a>(
 /// Resolve a single slice [`Entry`]'s target adapter from the project
 /// topology.
 ///
-/// A slice binds only a `project`; the target adapter (`name[@vN]`) is
-/// derived here from the bound project's [`ProjectRef::target`]. This is
-/// the single read-time resolver every consumer (`emery plan advance`,
-/// slice `metadata.yaml` population, the build request) routes through,
-/// so `plan.yaml` never needs to store the denormalised target.
-///
-/// Binding mirrors the propose kernel's project binding: an explicit
-/// [`Entry::project`] must exist in `topology`; an omitted project
-/// auto-binds the sole topology project.
+/// A slice binds only a `project`; the target (`name[@vN]`) derives
+/// from the bound project's [`ProjectRef::target`]. Every consumer
+/// routes through this single read-time resolver, so `plan.yaml` never
+/// stores the denormalised target. An explicit project must exist in
+/// `topology`; an omitted project auto-binds the sole topology project.
 ///
 /// # Errors
 ///
@@ -382,14 +370,10 @@ fn check_name_collisions(names: &[String]) -> Result<()> {
 /// Project the validated response into `plan.yaml.slices[]` entries in
 /// response order, consuming the response's slices.
 ///
-/// Each entry binds only its `project`; the target adapter is resolved
-/// on demand from the topology via [`resolve_target`] and is not
-/// written to disk. A sole-project topology (`sole_project: true`)
-/// writes no `project` key at all — the documented on-disk convention
-/// ([`Entry::project`]): an omitted value auto-binds the single
-/// project, and the execute loop reads an explicit `project` as
-/// workspace routing, which a single regular project must never
-/// trigger.
+/// A sole-project topology writes no `project` key at all: an omitted
+/// value auto-binds the single project, and the execute loop reads an
+/// explicit `project` as workspace routing, which a single regular
+/// project must never trigger.
 fn build_entries(
     slices: Vec<ResponseSlice>, names: &[String], bound: &[&ProjectRef], sole_project: bool,
 ) -> Vec<Entry> {

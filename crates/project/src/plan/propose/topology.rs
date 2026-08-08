@@ -1,10 +1,6 @@
 //! Project-topology resolution: normalise persisted project
-//! configuration into the request envelope's `projects[]`.
-//!
-//! Unlike the pure assembly in [`super::catalog`], every branch here
-//! touches the filesystem — the workspace branch reads the committed
-//! `.emery/topology.lock`; the regular branch resolves the project's
-//! target adapter under `project_dir`.
+//! configuration into the request envelope's `projects[]`. Unlike the
+//! pure assembly in [`super::catalog`], every branch touches the filesystem.
 
 use std::path::{Path, PathBuf};
 
@@ -21,24 +17,11 @@ use crate::registry::topology::{Surface, TopologyLock};
 /// Normalise persisted project configuration into the request's
 /// `projects[]` topology.
 ///
-/// Two branches, keyed on the workspace discriminator
-/// ([`ProjectConfig::workspace`]):
-///
-/// - **Workspace** — one [`ProjectRef`] per entry in the committed
-///   `.emery/topology.lock`, the projection of each member
-///   project's `project.yaml`.
-///   `name`, `target`, `description`, `surface[]`, `decisions[]`, and
-///   `recent[]` come from the cache. An absent cache fails `topology-cache-missing`
-///   before planning can continue.
-/// - **Single regular project** — one synthesised [`ProjectRef`]:
-///   `name` from `project.yaml.name`, `description` from `project.yaml`,
-///   `target` formed by resolving `project.yaml.adapter` through
-///   [`crate::adapter::Resolver::resolve_target`], plus the live baseline projection
-///   (`surface[]`, `decisions[]`, `recent[]`). A regular project reads its
-///   own `project.yaml` live as its single source of truth — no cache.
-///
-/// Both branches touch the filesystem: the workspace branch reads the lock,
-/// the regular branch resolves the target adapter under `project_dir`.
+/// A workspace projects one [`ProjectRef`] per entry in the committed
+/// `.emery/topology.lock` (an absent cache fails
+/// `topology-cache-missing`); a regular project synthesises one ref by
+/// reading its own `project.yaml` live and resolving its target
+/// adapter — no cache.
 ///
 /// # Errors
 ///
@@ -56,21 +39,11 @@ pub fn resolve_topology(
 
 /// Project greenfield-seed domains into seedless surfaces.
 ///
-/// For each topology project that names a `registry.yaml` entry carrying a
-/// non-empty `greenfield_seed.domains[]`, returning advisory
-/// `greenfield-seed-shadowed` findings for seeds a baseline supersedes:
-///
-/// - **Greenfield** (`surface[]` empty *and* no `.emery/specs/`): the
-///   seed domains project into `surface[]` as domains with empty
-///   `requirements[]`, the greenfield analog of the baseline domain list,
-///   so a fresh project still routes leads at plan time.
-/// - **Shadowed** (`.emery/specs/` exists): the real surface supersedes
-///   the seed, so the seed is ignored and a `greenfield-seed-shadowed`
-///   info finding suggests removing the now-stale seed.
-///
-/// `workspace` selects where each project's `.emery/specs/` lives:
-/// the project dir itself for a single regular project, or
-/// `workspace/<name>/` for a workspace member.
+/// A greenfield project (empty `surface[]`, no `.emery/specs/`) gets
+/// its seed domains projected into `surface[]` so a fresh project
+/// still routes leads at plan time; a project with `.emery/specs/` is
+/// shadowed — the seed is ignored and an advisory
+/// `greenfield-seed-shadowed` finding suggests removing it.
 #[must_use]
 pub fn apply_greenfield_seed(
     topology: &mut [ProjectRef], registry: &Registry, project_dir: &Path, workspace: bool,

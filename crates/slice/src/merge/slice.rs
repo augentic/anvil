@@ -27,17 +27,10 @@ use write::{commit_opaque, summary, write_baselines};
 /// One 3-way merged spec entry kept in memory by both
 /// [`preview`] and [`commit`].
 ///
-/// `class_name` carries the originating
-/// [`ArtifactClass::name`] so callers can group results without the
-/// engine having to know any per-domain vocabulary. `name` is the spec
-/// (or composition) identifier within that class.
-///
-/// The `Serialize` derive is the wire shape used by `slice merge`
-/// and `slice merge --preview`: `class_name` is a routing tag for the
-/// CLI's `filter().map()` step (skipped on the wire), `baseline_path`
-/// flows through `Path::display`, and `result` is flattened so the
-/// envelope exposes only `operations` (the merged text travels to
-/// disk via the commit writer, never to JSON callers).
+/// `class_name` is a routing tag for the CLI's grouping step (skipped
+/// on the wire); `result` is flattened so the envelope exposes only
+/// `operations` — the merged text travels to disk via the commit
+/// writer, never to JSON callers.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PreviewEntry {
@@ -167,16 +160,11 @@ pub struct BaselineConflict {
 
 /// Dry-run of the multi-class merge.
 ///
-/// Computes every in-memory [`PreviewEntry`] plus runs the
-/// baseline coherence validator on each merged output, **without**
-/// writing baselines, transitioning status, or archiving. Also reports
-/// every file that would be promoted by an
-/// [`MergeStrategy::OpaqueReplace`] class.
-///
-/// Unlike [`commit`] this does not gate on a build record — the
-/// refine / build / merge skill pipeline previews while the slice is
-/// still mid-phase so the human can confirm operations before the
-/// merge skill commits.
+/// Computes every in-memory [`PreviewEntry`], runs the baseline
+/// coherence validator, and reports opaque-replace promotions without
+/// writing baselines, transitioning status, or archiving. Unlike
+/// [`commit`] it does not gate on a build record, so a mid-phase
+/// slice can be previewed before the merge commits.
 ///
 /// # Errors
 ///
@@ -191,26 +179,13 @@ pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewRes
 
 /// Atomic multi-class merge plus archive.
 ///
-/// Gates on a fact-substrate build record, runs [`preview`]'s in-memory plan,
-/// writes each merged baseline, stamps `merged_at`/`completed_at` and
-/// an `Outcome { phase: Merge, outcome: Success }` into
-/// `metadata.yaml`, then archives the slice directory via
-/// `crate::actions::archive`.
-///
-/// The outcome stamp is written atomically with the status transition,
-/// before the archive move. This ensures the archived `metadata.yaml`
-/// carries the merge-success outcome so the plan execute loop can read
-/// it via direct `metadata.yaml` inspection (falling back to the archive
-/// when the active slice directory no longer exists).
-///
-/// `now` records the `merged_at`, `completed_at`, and outcome stamp;
-/// dispatchers pass `Timestamp::now` and tests pin a deterministic value.
-///
-/// `allow_composition_replace` authorises a whole-document (`screens:`)
-/// slice composition to overwrite a non-empty baseline. It threads no
-/// further than this function: the A3 `overwrite_gate`
-/// precondition reads it directly, and it never reaches the pure merge
-/// kernel (composition overwrite-gate placement).
+/// Gates on a fact-substrate build record, writes each merged
+/// baseline, stamps the merge outcome into `metadata.yaml`, then
+/// archives the slice directory. The outcome stamp is written before
+/// the archive move so the archived `metadata.yaml` carries the
+/// merge-success outcome the plan execute loop reads.
+/// `allow_composition_replace` threads only as far as the
+/// `overwrite_gate` precondition — never into the pure merge kernel.
 ///
 /// # Errors
 ///
@@ -243,13 +218,9 @@ pub fn commit(
 
     let merged = three_way(slice_dir, classes)?;
 
-    // Decisions pass — core (runs for every target), part of the
-    // same merge. Promotion is keyed on the slice name and writes into
-    // `.emery/decisions/`, derived from `archive_dir` (a sibling under
-    // `.emery/`). The supersede-orphan re-check aborts here before any
-    // baseline write, so a failure leaves the slice `Built` for a clean
-    // retry; the kernel's `(slice, slug)` guard keeps that retry from
-    // double-promoting.
+    // The supersede-orphan re-check aborts before any baseline write,
+    // leaving the slice `Built` for a clean retry; the kernel's
+    // `(slice, slug)` guard keeps that retry from double-promoting.
     let decisions = promote_decisions(slice_dir, archive_dir, now)?;
 
     write_baselines(&merged)?;
@@ -302,19 +273,12 @@ fn promote_decisions(
 }
 
 /// Check for baseline drift on the modified `touched_specs` and on
-/// every staged opaque-replace file.
-///
-/// For each `type: modified` `touched_spec`, the check reports whether
-/// the corresponding baseline file under each
-/// [`MergeStrategy::ThreeWayMerge`] class has been modified after the
-/// slice's `defined_at` timestamp. For each staged file under a
-/// [`MergeStrategy::OpaqueReplace`] class, the check reports the same
-/// drift against the matching baseline file.
+/// every staged opaque-replace file, against the slice's `defined_at`
+/// timestamp.
 ///
 /// Returns an empty `Vec` when nothing is stale, the slice has no
-/// `touched_specs`, or `defined_at` is missing (in which case the call
-/// is a silent no-op — the merge skill should refuse to proceed until
-/// define has run).
+/// `touched_specs`, or `defined_at` is missing — a silent no-op the
+/// merge skill should treat as "define has not run".
 ///
 /// # Errors
 ///

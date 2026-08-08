@@ -1,16 +1,7 @@
 //! Projection kernel — `project(response) -> SliceModel`.
 //!
-//! The agent decides which requirements exist and how claims reconcile.
-//! The kernel deterministically re-derives ids, authority outcomes,
-//! sources, and header fields rather than trusting agent-supplied values.
-//!
-//! Projection is pure and target-independent. It rejects only invalid
-//! evidence anchors, cross-references, and closed-form ids.
-//!
-//! Requirement ids are slice-local until target-wave commit (RFC-86 D5):
-//! synthesize mints `REQ-001..N` in declaration order without consulting
-//! baseline numbers. Each `MODIFIED` row keeps its agent-authored
-//! `baseline-id` and records a digest of that baseline requirement body.
+//! Pure and target-independent: it re-derives ids, authority outcomes,
+//! sources, and header fields rather than trusting agent values.
 
 use std::collections::{BTreeMap, BTreeSet};
 

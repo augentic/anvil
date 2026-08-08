@@ -22,25 +22,12 @@ use crate::slice::SliceMetadata;
 
 /// Project the read-only `emery plan status` body.
 ///
-/// Selection: the first projected `in-progress` entry, else sticky
-/// `merge-postflight-failed` when the newest plan-scoped postflight
-/// debt event is unacked, else the next eligible projected `pending`
-/// entry (what `plan advance` would advance), else `drained` /
-/// `stop stuck`. The per-entry decision — artifact phase plus (for
-/// an in-progress entry) the folded active-window journal facts — is
-/// the shared `resolve_entry` execution kernel; not-yet-advanced
-/// candidates skip the journal overlay (nothing has run under the
-/// current activation; stale same-name events from earlier plans must
-/// not classify).
-///
-/// Ladder labels and the awaited phase are computed from the fact
-/// union and slice artifacts. Ready / Authorized are plan-wide
-/// milestones (D22): Ready is clean-gap only; Authorized is a
-/// covering `plan.execute.started` — never an `approved` rung.
-///
-/// `layout` resolves the plan root and the work root: an entry bound
-/// to a materialised workspace slot reads that slot's slice artifacts
-/// and journal, mirroring where phase work writes them.
+/// Selection: first projected `in-progress` entry, else sticky
+/// unacked `merge-postflight-failed`, else the next eligible `pending`
+/// entry, else `drained` / `stop stuck`. Not-yet-advanced candidates
+/// skip the journal overlay — stale same-name events from earlier
+/// plans must not classify. An entry bound to a materialised workspace
+/// slot reads that slot's slice artifacts and journal.
 ///
 /// # Errors
 ///
@@ -239,10 +226,9 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
             StopReason::RefineFailed => Some(LoopStep::Refine),
             StopReason::BuildFailed => Some(LoopStep::Build),
-            // `merge-incomplete` parks inside merge: the spec merge
-            // landed but the per-entry `done` stamp — merge's last
-            // sub-step — has not. Postflight failure is past merge
-            // (`done` + archived) — no awaited phase.
+            // `merge-incomplete` parks inside merge: the spec merge landed
+            // but the per-entry `done` stamp has not. Postflight failure is
+            // past merge (`done` + archived) — no awaited phase.
             StopReason::MergeConflict | StopReason::MergeIncomplete => Some(LoopStep::Merge),
             StopReason::MergePostflightFailed | StopReason::SliceDropped | StopReason::Stuck => {
                 None
@@ -259,10 +245,8 @@ fn resume_point(
 ) -> Option<String> {
     let slice = resolution.slice.as_deref();
     // A fresh plan (no entry has left projected `pending`) resumes
-    // through the execute loop, not a phase breakout — the projected
-    // `next-action` still names the phase the loop will run first
-    // (D26). When Ready, keep `/emery:execute`. When refined but not
-    // Ready, point at waive / gap closure instead.
+    // through the execute loop, not a phase breakout. When refined but
+    // not Ready, point at waive / gap closure instead.
     if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,

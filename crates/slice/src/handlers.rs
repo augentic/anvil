@@ -1,9 +1,7 @@
 //! The `emery slice *` command operations, plus `archive prune`.
 //!
-//! The prune kernel lives in the private actions module; the refine /
-//! build / merge operations drive their internal kernels (slice
-//! create, lifecycle transitions, touched-spec scans, and task writes
-//! have no verb surface — the orchestrations own them).
+//! Slice create, lifecycle transitions, touched-spec scans, and task
+//! writes have no verb surface — the orchestrations own them.
 
 mod build;
 mod lifecycle;

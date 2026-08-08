@@ -1,9 +1,6 @@
-//! WIT-backed capabilities used by workflow orchestrators.
-//!
-//! Mappings live here so engine code remains wasm-free. Claims map
-//! onto the typed [`artifacts::evidence::Claim`], whose flattened
-//! extras preserve open per-kind fields. Compact build reports are
-//! widened with caller-owned envelope fields before validation.
+//! WIT-backed capabilities used by workflow orchestrators; mappings
+//! live here so engine code remains wasm-free. Compact build reports
+//! are widened with caller-owned envelope fields before validation.
 
 use std::future::Future;
 use std::sync::LazyLock;
@@ -24,7 +21,8 @@ use project::seam::{
 use project::snapshot::{CodePatch, SnapshotId};
 use slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
-use crate::bindings::emery::adapter::{source, target, types, workspaces};
+use crate::bindings::emery::adapter::{source, target, types};
+use crate::bindings::emery::workspaces::{types as workspaces_types, workspaces};
 
 /// Workflow capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -138,7 +136,7 @@ impl Target for Provider {
 
 impl seam::Workspaces for Provider {
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
-        async move { parse_revision(workspaces::freeze().await.map_err(map_error)?) }
+        async move { parse_revision(workspaces::freeze().await.map_err(map_workspaces_error)?) }
     }
 
     fn prepare(
@@ -147,7 +145,7 @@ impl seam::Workspaces for Provider {
         async move {
             let prepared = workspaces::prepare(base.as_str().to_string(), writable)
                 .await
-                .map_err(map_error)?;
+                .map_err(map_workspaces_error)?;
             // The record carries only what the host alone knows; the
             // deployment-local root derives from the workspaces mount.
             let root = format!("{GUEST_WORKSPACES_MOUNT}/{}", prepared.id);
@@ -161,7 +159,7 @@ impl seam::Workspaces for Provider {
 
     fn capture(&self, id: String) -> impl Future<Output = Result<CodePatch, seam::Error>> + Send {
         async move {
-            let patch = workspaces::capture(id).await.map_err(map_error)?;
+            let patch = workspaces::capture(id).await.map_err(map_workspaces_error)?;
             Ok(CodePatch {
                 base: parse_revision(patch.base)?,
                 result: parse_revision(patch.result)?,
@@ -171,7 +169,7 @@ impl seam::Workspaces for Provider {
     }
 
     fn discard(&self, id: String) -> impl Future<Output = Result<(), seam::Error>> + Send {
-        async move { workspaces::discard(id).await.map_err(map_error) }
+        async move { workspaces::discard(id).await.map_err(map_workspaces_error) }
     }
 
     fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), seam::Error>> + Send {
@@ -181,7 +179,7 @@ impl seam::Workspaces for Provider {
                 result: patch.result.into(),
                 touched: patch.touched,
             };
-            workspaces::apply(wire).await.map_err(map_error)
+            workspaces::apply(wire).await.map_err(map_workspaces_error)
         }
     }
 }
@@ -246,6 +244,14 @@ fn map_error(error: types::Error) -> seam::Error {
         types::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
         types::Error::Io(detail) => seam::Error::Io(detail),
         types::Error::Internal(detail) => seam::Error::Internal(detail),
+    }
+}
+
+fn map_workspaces_error(error: workspaces_types::Error) -> seam::Error {
+    match error {
+        workspaces_types::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
+        workspaces_types::Error::Io(detail) => seam::Error::Io(detail),
+        workspaces_types::Error::Internal(detail) => seam::Error::Internal(detail),
     }
 }
 

@@ -1,17 +1,6 @@
-//! The emery engine guest, as a library.
-//!
-//! One `wit_bindgen::generate!` over the `workflow` world (the
-//! `source` / `target` imports Omnia satisfies by host-mediated
-//! dispatch), the WIT-backed `Provider` those imports feed, and the
-//! `export!` macro that wires the shared typed transport routers
-//! onto `wasi:cli/run` + `wasi:http/incoming-handler`.
-//!
-//! The crate is `wasm32`-only: native builds see an empty crate.
-//!
-//! A deployment's guest crate is one invocation: `guest::export!();`.
-//! The engine's root `emery` cdylib is the sole caller — the wasm
-//! examples here and in `augentic/emery-adapters` drive that shipped
-//! binary rather than building their own guest.
+//! The emery engine guest, as a library: the `workflow`-world WIT
+//! bindings, the WIT-backed `Provider`, and the `export!` macro.
+//! `wasm32`-only — native builds see an empty crate.
 #![cfg(target_arch = "wasm32")]
 
 mod bindings {
@@ -34,13 +23,10 @@ pub use {omnia_guest, omnia_wasi_otel, transport, wasip3};
 ///
 /// Expands the deployment's only `wasi:cli/run` exporter plus the
 /// `wasi:http/incoming-handler` service, both routing through the
-/// [`Provider`]. The project root is the `"."` mount preopen: WASI
-/// resolves relative paths against it, so `project::handler::Ctx::load`
-/// finds `.emery/project.yaml` exactly as a native run from the
-/// project root would. Exit codes pass through verbatim — the command
-/// entry maps the route's numeric code onto
-/// `wasi:cli/exit#exit-with-code`, preserving the closed exit-code
-/// contract.
+/// [`Provider`]. WASI resolves relative paths against the `"."`
+/// project-root preopen, so config loads behave exactly like a native
+/// run from the project root; exit codes pass through verbatim via
+/// `wasi:cli/exit#exit-with-code`.
 #[macro_export]
 macro_rules! export {
     () => {

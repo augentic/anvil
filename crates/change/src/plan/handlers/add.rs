@@ -1,7 +1,6 @@
 //! `emery plan add` — append one slice entry to an existing
-//! `plan.yaml`. Authority-override seeding is delegated to the shared
-//! domain helper so the journal events match `plan amend`
-//! byte-for-byte.
+//! `plan.yaml`. Authority-override seeding uses the shared domain
+//! helper so journal events match `plan amend` byte-for-byte.
 
 use std::collections::BTreeMap;
 

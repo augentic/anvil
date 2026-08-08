@@ -1,13 +1,6 @@
 //! The native seam provider: project anchoring, ensure/resolve over
-//! the compiled catalog, model access, and adapter dispatch.
-//!
-//! Maps adapter seam DTOs onto engine seam DTOs like the wasm guest
-//! shim. Native ensure is a static package match, not a component
-//! store lookup: bare selectors resolve to the catalog entry's actual
-//! version, exact pins succeed only on the exact compiled `(name,
-//! version)` of a published (non-placeholder) identity, and everything
-//! else fails as `adapter-not-linked` before any cache mutation could
-//! occur.
+//! the compiled catalog, model access, and adapter dispatch. Native
+//! ensure is a static package match — misses fail `adapter-not-linked`.
 
 use adapter::seam::{self as aseam, Context};
 use error::Error;
@@ -131,10 +124,9 @@ impl Provider {
         }
     }
 
-    // Assemble the SDK context for one operation through this one place.
-    // The default lend is the project root itself (host path — the
-    // native stand-in for the guest's `"."` preopen); build and merge
-    // re-lend their prepared workspace.
+    // One assembly point for the SDK context. The default lend is the
+    // project root itself (the native stand-in for the guest's `"."`
+    // preopen); build and merge re-lend their prepared workspace.
     fn ctx<'a>(&'a self, id: &'a str, url: Option<String>) -> Context<'a> {
         Context {
             adapter_id: id,

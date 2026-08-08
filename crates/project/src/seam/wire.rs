@@ -1,9 +1,7 @@
 //! Closed-shape target build request/report wire DTOs and the
 //! success-blocking gate.
 //!
-//! These serde DTOs own both envelope shapes (`deny_unknown_fields`
-//! closes them); the report half also sources the generated `report`
-//! judgment-answer schema via [`crate::answers::report`].
+//! `deny_unknown_fields` closes both envelope shapes.
 
 use std::path::{Path, PathBuf};
 

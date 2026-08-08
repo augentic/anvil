@@ -1,8 +1,7 @@
-//! Fact-based `plan undo` kernel (RFC-86 D2 / D7).
+//! Fact-based `plan undo` kernel.
 //!
 //! Walks one projected ladder rung backwards by appending
-//! `fact.retracted` (and a projection-label `plan.transition.undone`)
-//! — it does **not** rewrite `plan.yaml`.
+//! `fact.retracted` — it never rewrites `plan.yaml`.
 
 use error::Error;
 use jiff::Timestamp;

@@ -1,8 +1,7 @@
 //! Fact-based [`advance_next`] kernel behind `emery plan advance` and
-//! the execute loop (RFC-86 D2 / D7 / D23).
+//! the execute loop.
 //!
-//! Advance claims the next eligible slice and appends
-//! `plan.entry.advanced`. Ladder labels project from the fact union.
+//! Advance claims the next eligible slice and appends `plan.entry.advanced`.
 
 use std::collections::HashMap;
 use std::hash::BuildHasher;

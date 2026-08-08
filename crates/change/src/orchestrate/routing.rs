@@ -1,15 +1,6 @@
 //! Guest workspace-routing classification, shared by the plan-author
-//! and execute orchestrations.
-//!
-//! Project-scoped work in a workspace needs a slot sync plus a chdir
-//! into `workspace/<project>/`; the guest orchestrations have no
-//! counterpart, so they refuse rather than write to the wrong tree
-//! (workspace plans run hand-driven: `emery plan advance`, then the
-//! per-slice breakouts). Classification is centralized here — before any
-//! adapter lookup — while each operation maps the refusal to its own
-//! error code so operators see the verb they actually ran. The
-//! read-only `plan status` projection stays slot-aware instead
-//! (`status::project::resolve_work_root`) and never refuses.
+//! and execute orchestrations: classify before any adapter lookup, and
+//! let each operation map the refusal to its own error code.
 
 use error::Error;
 use project::config::{Layout, ProjectConfig};
@@ -48,6 +39,9 @@ impl Routing {
 /// the `workspace: true` discriminator can apply). A project-scoped
 /// entry classifies ahead of the workspace flag so the refusal names
 /// the concrete entry.
+///
+/// The read-only `plan status` projection never routes here — it stays
+/// slot-aware and never refuses.
 ///
 /// # Errors
 ///

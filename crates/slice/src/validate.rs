@@ -1,10 +1,7 @@
 //! Slice-validation kernel shared by `emery slice validate` and the
 //! guest refine orchestrator.
 //!
-//! [`run`] collects the ordered pre-adapter gates, then folds adapter
-//! findings with non-blocking synopsis and pin-drift advisories.
-//! Rendering, journaling, and error envelopes remain at the caller
-//! boundaries.
+//! Rendering, journaling, and error envelopes stay at caller boundaries.
 
 use std::path::{Path, PathBuf};
 
@@ -56,13 +53,11 @@ pub enum Validation {
 /// Run the full validation sweep for slice `name`: the pre-adapter
 /// gates, then the adapter rules with the advisory fold.
 ///
-/// First-use typed validation of per-source `Evidence` files runs first
-/// (per workflow §Source adapter contract); a structural Evidence problem
-/// short-circuits with [`error::Error`] before any gate so the operator sees it
-/// before downstream artefact noise. Then the provenance scan and the
-/// pre-adapter gates fire in order, each able to return
-/// [`Validation::Gate`]. When all gates pass, the adapter rules run and
-/// the sweep returns [`Validation::Adapter`].
+/// Typed Evidence validation runs first and short-circuits with
+/// [`error::Error`] before any gate, so a structural Evidence problem
+/// surfaces before downstream artefact noise. The provenance scan and
+/// pre-adapter gates then fire in order, each able to return
+/// [`Validation::Gate`] before the adapter rules run.
 ///
 /// # Errors
 ///
@@ -91,10 +86,9 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
         });
     }
 
-    // Adapter validation findings — `validate_slice` returns one
-    // `violation` diagnostic per structural Fail. Non-blocking review
-    // advisories (thin discovery synopses; pin drift) ride this surface
-    // too; only a blocking diagnostic gates the caller's exit.
+    // Non-blocking review advisories (thin discovery synopses; pin
+    // drift) ride the adapter-findings surface too; only a blocking
+    // diagnostic gates the caller's exit.
     let mut findings = artifacts::validate::validate_slice(&slice_dir)?;
     findings.append(&mut pre_adapter::synopsis_thin(layout)?);
     findings.append(&mut pin_drift::findings(layout, &slice_dir, name)?);

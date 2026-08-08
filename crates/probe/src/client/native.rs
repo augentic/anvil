@@ -1,15 +1,7 @@
-//! Native guest-side [`Model`] over a host-side [`WasiModelCtx`]
-//! backend — the lab runtime's stand-in for the deployment
-//! boundary.
+//! Native guest-side [`Model`] over a host-side [`WasiModelCtx`] backend.
 //!
-//! [`Native`] performs off-`wasm32` what the guest default body and
-//! the host boundary perform together in a deployment: map the guest
-//! [`Request`] onto the `omnia:model/completion` wire shape, run the
-//! host request gate, hand the backend a [`ToolHost`] whose
-//! `local_path` is the project root when the guest asked for the
-//! workspace lend, and project the validated answer back to the guest
-//! [`Reply`]. The mapping mirrors the `wasm32` default body in
-//! `omnia-guest`; when that changes upstream, update this module.
+//! The mapping mirrors the `wasm32` default body in `omnia-guest`;
+//! when that changes upstream, update this module.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -71,9 +63,8 @@ impl<B: WasiModelCtx> Model for Native<B> {
 }
 
 // Guest request -> the `omnia:model/completion` wire request, the same
-// mapping the `wasm32` default body performs at the WIT boundary. The
-// lent workspace never crosses as a wire grant (`grants.workspace` is
-// host plumbing); the backend resolves the tree through the tool host.
+// mapping the `wasm32` default body performs at the WIT boundary. The lent
+// workspace never crosses as a wire grant; it resolves via the tool host.
 fn wire_request(request: Request) -> omnia_wasi_model::Request {
     omnia_wasi_model::Request {
         model: request.model,

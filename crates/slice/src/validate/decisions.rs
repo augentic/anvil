@@ -13,21 +13,14 @@ use project::decisions::{is_dec_ref, list_md_files, read_baseline};
 
 use super::path_hint;
 
-/// Validate `<slice>/decisions/*.md`, raising the per-file findings
-/// owned by the `artifacts` parser — `decision-record-schema`,
-/// `decision-record-section-missing`, `decision-slug-grammar` (the same
-/// parser-drives-findings posture as the `spec.md` provenance parser, so
-/// no JSON schema runs here) — plus the two cross-file checks the parser
-/// cannot make alone:
+/// Validate `<slice>/decisions/*.md`.
 ///
-/// - `decision-slug-collision` — two records in the slice share a `slug`.
-/// - `decision-supersede-orphan` — a `supersedes:` target resolves to
-///   neither the live baseline catalogue nor a sibling slice record.
-///   Re-checked against the live baseline at merge (the baseline may move
-///   between refine and merge).
-///
-/// Absent `decisions/` skips the gate silently — Decision Records are
-/// opt-in.
+/// Parser-owned per-file findings plus two cross-file checks:
+/// `decision-slug-collision` (two records share a `slug`) and
+/// `decision-supersede-orphan` (a `supersedes:` target resolves to
+/// neither the live baseline nor a sibling slice record). The orphan
+/// check re-runs at merge — the baseline may move between refine and
+/// merge. Absent `decisions/` skips the gate silently (opt-in).
 pub(super) fn decision_gates(layout: Layout<'_>, slice_dir: &Path) -> Result<Vec<Diagnostic>> {
     let decisions_dir = slice_dir.join("decisions");
     if !decisions_dir.is_dir() {

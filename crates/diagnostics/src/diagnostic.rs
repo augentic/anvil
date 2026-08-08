@@ -1,12 +1,7 @@
 //! The neutral [`Diagnostic`] currency and its closed attribute enums.
 //!
-//! One structured finding shape shared by the advisory review surface
-//! and the workflow-gating `validate` surface — they differ in gate
-//! policy, not in currency. Two orthogonal axes classify a diagnostic:
-//! [`DiagnosticSource`] (*who produced it*) and [`DiagnosticKind`]
-//! (*what it asks of the reader*); only `violation` diagnostics are
-//! default-blocking (see [`is_blocking`]). Field names are kebab-case
-//! at every nesting level.
+//! [`DiagnosticSource`] (*who produced it*) and [`DiagnosticKind`] (*what it
+//! asks*) are orthogonal; only `violation` diagnostics are default-blocking.
 
 use serde::{Deserialize, Serialize};
 
@@ -251,13 +246,11 @@ impl Diagnostic {
     /// Build a workflow/validate finding with a computed fingerprint.
     ///
     /// `rule_id` is the dot- or kebab-namespaced invariant id (e.g.
-    /// `spec.requirement-id-missing`, `slice-model-source-orphan`); the
-    /// finding schema's `ruleId` pattern accepts this namespace
-    /// alongside the codex `UNI-`/`CORE-` family. `detail` becomes both
-    /// the snippet evidence payload and the operator-facing `impact`;
-    /// `title` doubles as the `remediation` (it states the invariant the
-    /// producer expects to hold). The `id` is a placeholder until
-    /// [`renumber`] assigns sequential ids at report-assembly time.
+    /// `spec.requirement-id-missing`). `detail` becomes both the snippet
+    /// evidence payload and the operator-facing `impact`; `title` doubles
+    /// as the `remediation` (it states the invariant the producer expects
+    /// to hold). The `id` is a placeholder until [`renumber`] assigns
+    /// sequential ids at report-assembly time.
     #[expect(
         clippy::too_many_arguments,
         reason = "eight independent finding facets with no natural grouping; \

@@ -1,7 +1,8 @@
 # The Emery-owned Omnia host capability backing the engine guest's
-# `emery:adapter/workspaces` import (RFC-87). The lib name is fixed by
-# `omnia::runtime!`'s hosts codegen, which derives the crate path
-# `omnia_wasi_workspaces` from the `WasiWorkspaces` host type.
+# `emery:workspaces` import (RFC-87). Owns the package WIT under
+# `wit/`. The lib name is fixed by `omnia::runtime!`'s hosts codegen,
+# which derives the crate path `omnia_wasi_workspaces` from the
+# `WasiWorkspaces` host type.
 [package]
 name = "emery-wasi-workspaces"
 description = "Emery-owned Omnia host capability: private workspaces over the snapshot store"

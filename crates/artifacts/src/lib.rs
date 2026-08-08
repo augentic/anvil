@@ -1,10 +1,7 @@
-//! Artifacts — artifact types and parsers (`spec`, `task`,
-//! `evidence`, `discovery`) plus the shared atomic writer and the
-//! artifact validation rule registry ([`validate`]). A lifecycle-free
-//! leaf beneath `workflow`: nothing here can transition a slice
-//! or stamp a plan, so a validation rule physically cannot reach a
-//! lifecycle write. See `docs/standards/architecture.md` for the
-//! rationale.
+//! Artifact types and parsers, the shared atomic writer, and the
+//! validation rule registry ([`validate`]).
+//!
+//! A lifecycle-free leaf: a rule cannot transition a slice or stamp a plan.
 
 pub mod atomic;
 pub mod decision;

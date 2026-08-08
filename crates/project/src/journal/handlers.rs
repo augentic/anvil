@@ -1,10 +1,7 @@
-//! `emery journal show` — the read-only projection over the closed
-//! workflow §Observability event taxonomy.
+//! `emery journal show` — read-only filter/limit projection over the
+//! per-writer union under `.emery/events/`.
 //!
-//! Writes route through the internal appenders only: CLI verbs append
-//! their own events as a side effect of the operation (there is no
-//! operator-facing emit verb). `show` is a filter/limit projection
-//! over the per-writer union under `.emery/events/` that emits nothing.
+//! There is no operator-facing emit verb; writes are operation side effects.
 
 use std::io::Write;
 

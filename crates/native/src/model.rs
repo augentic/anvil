@@ -1,15 +1,6 @@
 //! [`DynModel`] — the native host's erased model backend.
-//!
-//! `omnia_guest::Model` is not object-safe (`create` returns `impl
-//! Future`), so the composition root erases its backend exactly once
-//! behind one private object-safe trait returning a boxed future. The
-//! cost is one vtable hop per model completion; catalogs and providers
-//! carry no model type parameter, and model middleware composes before
-//! erasure (`DynModel::new(Telemetry::new(backend))`).
-//!
-//! Backends with post-run state (recording doubles, telemetry) expose
-//! it through caller-held clones taken before erasure — the provider
-//! exposes no model accessor.
+//! `omnia_guest::Model` is not object-safe, so the composition root
+//! erases it once; middleware composes before erasure.
 
 use std::fmt;
 use std::future::Future;
@@ -40,6 +31,10 @@ pub struct DynModel {
 
 impl DynModel {
     /// Erase `model` once at the composition root.
+    ///
+    /// Backends with post-run state (recording doubles, telemetry)
+    /// expose it through caller-held clones taken before erasure —
+    /// the provider exposes no model accessor.
     #[must_use]
     pub fn new(model: impl Model + 'static) -> Self {
         Self {

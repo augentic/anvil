@@ -1,18 +1,7 @@
 //! [`AdapterSelector`] — the typed, kind-preserving adapter reference.
 //!
-//! One grammar serves the `emery init <adapter>` argument, recorded
-//! `project.yaml.adapter` values, slice `metadata.yaml` targets, and
-//! the debug resolve verbs: package references
-//! (`emery:<name>@<semver>`), first-party shorthand (`omnia`,
-//! `omnia@1.0.0`), and local component paths (`./adapter.wasm`,
-//! `file://…/adapter.wasm`). GitHub URLs are refused.
-//!
-//! Parsing is purely syntactic: local-file existence,
-//! canonicalization, and component validation are ensure concerns
-//! (`crate::adapter::Resolver::ensure_source` / `ensure_target`), so a
-//! persisted local selector still parses — and can still resolve
-//! through its project cache — after the operator's original input
-//! file is removed.
+//! Parsing is purely syntactic — existence, canonicalization, and
+//! component validation are ensure concerns; GitHub URLs are refused.
 
 use std::path::{Path, PathBuf};
 
@@ -20,15 +9,11 @@ use error::Error;
 
 /// The operator-supplied adapter reference, preserving its input kind.
 ///
-/// - [`Self::Bare`] — unpinned shorthand; resolution defers to the
-///   deployment (the seeded project component cache for components,
-///   catalog match for a native host).
-/// - [`Self::Package`] — an immutable registry locator with a
-///   mandatory exact-SemVer pin. `namespace` is parse/display
-///   provenance, not a second engine identity axis.
-/// - [`Self::Component`] — a local `.wasm` component file. The kind is
-///   retained so a native host can refuse it instead of silently
-///   narrowing to a same-named compiled adapter.
+/// [`Self::Bare`] defers resolution to the deployment;
+/// [`Self::Package`] is an immutable registry locator with a mandatory
+/// exact-SemVer pin; [`Self::Component`] retains its kind so a native
+/// host can refuse it instead of silently narrowing to a same-named
+/// compiled adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AdapterSelector {
     /// Bare unpinned shorthand (`omnia`).

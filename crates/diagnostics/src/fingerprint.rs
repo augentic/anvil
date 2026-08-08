@@ -1,8 +1,7 @@
 //! Diagnostic fingerprint and canonical JSON helpers.
 //!
-//! The algorithm is the normative `v1` wire format — any drift in
-//! canonicalization breaks dedup across CI history; touch it only with
-//! a deliberate `v2` bump:
+//! The algorithm is the normative `v1` wire format — drift breaks dedup
+//! across CI history; touch it only with a deliberate `v2` bump:
 //!
 //! ```text
 //! fingerprint = "sha256:" + hex(sha256(
@@ -12,10 +11,6 @@
 //!   + hex(sha256(evidence-payload))
 //! ))
 //! ```
-//!
-//! Producer-side fields (severity, kind, title, slice/change context,
-//! …) are excluded so regrading or rephrasing cannot duplicate
-//! diagnostics for the same underlying issue.
 
 use serde_json::Value;
 

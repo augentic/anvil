@@ -1,11 +1,7 @@
-//! Emery project foundation — the deployment-neutral layer under the
-//! slice and change loops: init, adapter resolution, config, journal,
-//! registry, the plan and slice-metadata data models, the seam
-//! capability traits, the judgment kernel, and the shared handler
-//! plumbing. The artifact model (spec, task, evidence, discovery) and
-//! the artifact validation rule registry both live in `artifacts`
-//! (`artifacts::validate`). See `docs/standards/architecture.md` for
-//! the rationale.
+//! Emery project foundation.
+//!
+//! The deployment-neutral layer under the slice and change loops; the
+//! artifact model and validation rule registry live in `artifacts`.
 
 pub mod adapter;
 pub(crate) mod agents;

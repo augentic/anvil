@@ -1,8 +1,6 @@
-//! Shared JSON envelope shape and text rendering for `plan add` /
-//! `plan amend` / `plan remove`. The verbs report the resulting
-//! [`Entry`] alongside a stable `action` discriminator so skill bodies
-//! and tests can branch on which verb produced the body without
-//! re-reading `plan.yaml`.
+//! Shared JSON envelope and text rendering for `plan add` / `plan
+//! amend` / `plan remove`: the resulting [`Entry`] plus a stable
+//! `action` discriminator naming which verb produced the body.
 
 use std::io::Write;
 

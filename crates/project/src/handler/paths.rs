@@ -1,11 +1,6 @@
 //! [`ExecutionPaths`] — the provider-carried project root plus
-//! artifact [`Locations`].
-//!
-//! Layout is deployment configuration, not process state: a
-//! composition root constructs the paths value once — capturing any
-//! `EMERY_HOME` relocation at that single point — and the provider
-//! carries it. Kernels, resolvers, and handlers read the carried value
-//! and never consult the environment themselves.
+//! artifact [`Locations`]. A composition root constructs the value
+//! once; kernels read it and never consult the environment themselves.
 
 use std::path::{Path, PathBuf};
 

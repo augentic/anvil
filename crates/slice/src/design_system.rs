@@ -1,14 +1,7 @@
-//! Agent-inferred, operator-reviewable component catalog (component
-//! catalog contract).
+//! Operator-reviewable component catalog at
+//! `.emery/design-system/components.yaml`.
 //!
-//! The catalog lives at `.emery/design-system/components.yaml` and
-//! declares shared UI components that the Vectis target factors into
-//! shared code at build time. The catalog is **written by the guest
-//! build orchestration's bind bookkeeping** (driven by the
-//! `${SLICE_DIR}/build/component-bindings.yaml` artifact the target
-//! build emits) and **reviewed by the operator**, who may reject or
-//! rename entries. An absent catalog still means "no factoring", so
-//! projects without one work exactly as before.
+//! Written by build bind bookkeeping; absent catalog means no factoring.
 
 use std::collections::BTreeMap;
 use std::path::Path;

@@ -1,15 +1,7 @@
 //! The `emery adapter` and axis-resolve operations.
 //!
-//! `adapter add` seeds the project component cache, `adapter upgrade`
-//! refreshes a bare name (or, with `--all`, every bare project
-//! binding) to the newest published version, and `source resolve` /
-//! `target resolve` resolve adapter components by identity.
-//!
-//! Project-context-light: every verb takes the project directory from
-//! the input (defaulting to the provider anchor) and none loads
-//! `crate::handler::Ctx`. Only `adapter upgrade --all` requires
-//! `.emery/project.yaml` (it enumerates the recorded bindings);
-//! `adapter add` still runs before `init`.
+//! Project-context-light: no verb loads `crate::handler::Ctx`; only
+//! `adapter upgrade --all` reads `project.yaml`, and `adapter add` runs pre-init.
 
 use std::io::Write;
 use std::path::PathBuf;

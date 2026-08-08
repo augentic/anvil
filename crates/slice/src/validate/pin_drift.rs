@@ -1,11 +1,6 @@
-//! Pin-drift review signals (RFC-86 D4 / D25).
+//! Pin-drift review signals over recorded `base.yaml` pins.
 //!
-//! When `base.yaml` exists, compare recorded pins against live inputs:
-//! - `slice-base-drifted` — `baseline-spec` no longer matches `.emery/specs/`
-//! - `slice-evidence-stale` — a bound source pin no longer matches the
-//!   live path/value tree cid
-//!
-//! Both are non-blocking [`DiagnosticKind::Review`] findings — validate
+//! Both findings are non-blocking [`DiagnosticKind::Review`] — validate
 //! still PASSes, but the operator sees the staleness before build.
 
 use std::path::Path;

@@ -73,28 +73,20 @@ impl Registry {
             validate_greenfield_seed(project, idx)?;
         }
 
-        // The registry does not author a project's adapter or
-        // description for plan-time topology. Those facets live in each
-        // project's `project.yaml` and are checked against
-        // `.emery/topology.lock` by `emery plan validate`
-        // (`topology-cache-stale`).
+        // The registry does not author a project's adapter or description
+        // for plan-time topology — those live in each project's
+        // `project.yaml`, checked against `.emery/topology.lock` elsewhere.
 
         Ok(())
     }
 
     /// Workspace-only shape check.
     ///
-    /// Runs the base [`Registry::validate_shape`] first, then layers on
-    /// the additional invariant that a **registry-only workspace**
-    /// must never list itself as a project: any entry with `url: .` is
-    /// rejected with a `workspace-cannot-be-project` diagnostic. The
-    /// workspace holds platform-level state (registry, change brief,
-    /// plan, workspace slots) but is never a code project.
-    ///
-    /// Callers opt in by checking `project.yaml:workspace: true` and
-    /// invoking this method in addition to (or instead of) the base
-    /// [`Registry::validate_shape`]. Non-workspace callers continue to use
-    /// the base method unchanged — this is a strictly additive API.
+    /// Runs the base [`Registry::validate_shape`] first, then enforces
+    /// that a registry-only workspace never lists itself as a project:
+    /// any entry with `url: .` is rejected
+    /// (`workspace-cannot-be-project`). Callers opt in on
+    /// `project.yaml:workspace: true`.
     ///
     /// # Errors
     ///

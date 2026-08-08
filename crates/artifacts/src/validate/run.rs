@@ -1,13 +1,7 @@
-//! `validate_slice` — the top-level runner that walks the canonical
-//! refine-time artifact set, locates each artifact, invokes the
-//! registered rules, and collects a `Vec<Diagnostic>`.
+//! `validate_slice` — the top-level runner.
 //!
-//! workflow §"Refinement" pins the canonical artifact set to
-//! `proposal.md`, `spec.md`, `design.md`, `tasks.md`, plus the
-//! `contracts/` overlay. Rules are registered in
-//! [`crate::validate::registry::rules_for`] under per-brief namespaces
-//! (`proposal`, `specs`, `design`, `tasks`, `contracts`); the runner
-//! feeds artifacts into that registry directly.
+//! Walks the canonical refine-time artifact set, invoking the rules
+//! registered per brief namespace in [`crate::validate::registry::rules_for`].
 
 use std::path::{Path, PathBuf};
 
@@ -57,16 +51,13 @@ fn rel_location(slice_dir: &Path, artifact_path: &Path) -> Option<FindingLocatio
 
 /// Run all deterministic validations for a slice directory.
 ///
-/// Iterates the canonical refine-time artifact set
-/// (`CANONICAL_ARTIFACTS`). Plain entries are stat-checked once;
-/// glob entries are expanded via the `glob` crate and only existing
-/// matches are walked. Empty glob results are silently skipped — an
-/// absent `specs/login/spec.md` is not, by itself, a failure.
+/// Plain entries in `CANONICAL_ARTIFACTS` are stat-checked once; glob
+/// entries expand via the `glob` crate and only existing matches are
+/// walked — an empty glob result is not, by itself, a failure.
 ///
-/// Returns the [`Diagnostic`] findings only — structural `Fail`
-/// outcomes as deterministic `violation`s. Passing rules emit nothing,
-/// so an empty vector means a clean slice. The caller assembles these
-/// into a `DiagnosticReport`, renders it, and decides the exit policy.
+/// Returns [`Diagnostic`] findings only, so an empty vector means a
+/// clean slice. The caller assembles the `DiagnosticReport` and
+/// decides the exit policy.
 ///
 /// # Errors
 ///
@@ -80,11 +71,9 @@ pub fn validate_slice(slice_dir: &Path) -> Result<Vec<Diagnostic>, Error> {
         let artifacts = expand_artifact(slice_dir, artifact)?;
 
         if artifacts.is_empty() {
-            // Glob matched nothing. If the configured path is literal,
-            // treat that as "artifact missing" so the skill sees the
-            // failure. Globs that legitimately match nothing are
-            // skipped silently — Emery slices don't have to populate
-            // every overlay (e.g. `contracts/`).
+            // A literal path matching nothing is "artifact missing";
+            // globs that match nothing are skipped silently — slices
+            // need not populate every overlay (e.g. `contracts/`).
             if !artifact.contains('*') {
                 let missing_path = slice_dir.join(artifact);
                 diagnostics.push(artifact_missing(brief_id, &missing_path, slice_dir));

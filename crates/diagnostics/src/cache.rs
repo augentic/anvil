@@ -1,16 +1,7 @@
-//! Pure path and digest helpers for the out-of-tree artifact
-//! locations.
+//! Pure path and digest helpers for the out-of-tree artifact locations.
 //!
-//! The adapter store and per-project component cache *roots* are
-//! deployment configuration, resolved once at each composition root
-//! and carried as a value (`project::handler::Locations`). This module
-//! keeps only the root-parameterized math every deployment agrees on:
-//! the stable per-project identifier, file content digesting, and the
-//! verify-on-read digest sidecar shape. Nothing here reads the
+//! Only root-parameterized math lives here — nothing reads the
 //! environment or branches on the compilation target.
-//!
-//! Lives on the `diagnostics` leaf so every consumer resolves the same
-//! shapes without a cross-layer dependency.
 
 use std::path::Path;
 

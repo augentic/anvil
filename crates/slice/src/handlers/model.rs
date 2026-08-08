@@ -1,10 +1,7 @@
-//! `slice model show` — read-only viewer over a slice's single
-//! `model.yaml`.
+//! `slice model show` — read-only viewer over a slice's `model.yaml`.
 //!
 //! JSON serialises the persisted [`SliceModel`] verbatim; text renders
-//! a concise header + requirement + task summary. The verb never
-//! writes — it mirrors `slice provenance`'s load + render shape,
-//! including the `slice-model-missing` error for an absent model.
+//! a concise summary. The verb never writes.
 
 use std::io::Write;
 

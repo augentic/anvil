@@ -1,10 +1,7 @@
 //! Canonical operations-trait implementors over the behaviour core.
 //!
-//! Each unit type binds one catalog identity onto the shared
-//! [`crate::behaviour`] core: behaviour still keys off the routed
-//! `ctx.adapter_id`, so one core serves every mock name and every
-//! failure profile fails through the trait surface (no provider
-//! hooks). The impls stay on the SDK seam DTOs end to end.
+//! Each unit type binds one catalog identity onto [`crate::behaviour`];
+//! behaviour keys off the routed `ctx.adapter_id`, so one core serves all.
 
 use adapter::registry::Doc;
 use adapter::seam::{
@@ -85,10 +82,9 @@ macro_rules! mock_target {
                 _model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input],
                 _context: &BuildContext, workspace: &Workspace,
             ) -> Result<Report, Error> {
-                // Artifact writes land in the private workspace; fail-
-                // build markers are control-plane on the project tree
-                // (RFC-86 D27: build prepares from a recorded pin, so
-                // ambient markers must not require re-freeze).
+                // Artifact writes land in the private workspace; fail-build
+                // markers are control-plane on the project tree — ambient
+                // markers must not require re-freezing the recorded pin.
                 behaviour::build(
                     workspace.root_path(),
                     ctx.project_root,
@@ -102,10 +98,9 @@ macro_rules! mock_target {
                 _model: &P, ctx: &Context<'_>, slice: &str, phase: MergePhase,
                 _workspace: &Workspace,
             ) -> Result<Report, Error> {
-                // Gate markers are test control-plane written into the
-                // project tree after the build, so they are read through
-                // the `"."` preopen — the read-only result view carries
-                // only what the build captured.
+                // Gate markers are written into the project tree after the
+                // build, so they are read through the `"."` preopen — the
+                // read-only result view carries only what the build captured.
                 behaviour::merge(ctx.project_root, ctx.adapter_id, slice, phase)
             }
         }

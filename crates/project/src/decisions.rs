@@ -1,19 +1,7 @@
 //! Decision Record catalogue.
 //!
-//! The append-only baseline catalogue at `.emery/decisions/` is the
-//! durable home for design *decisions* — the immutable "why" plus the
-//! rejected alternatives. `emery slice merge` promotes each
-//! slice-authored record under `.emery/slices/<slice>/decisions/` into
-//! `.emery/decisions/DEC-NNNN-<slug>.md` by whole-file add (the same
-//! opaque-add strategy contracts use), assigning the durable
-//! project-global `DEC-NNNN` id; the only permitted mutation to an
-//! existing record is flipping its `status` to `superseded` when a newer
-//! record names it under `supersedes:`.
-//!
-//! This module owns the shared baseline reader ([`read_baseline`]) — used
-//! by the merge promotion kernel ([`promote`]), the refine-gate
-//! supersede-orphan check, and the identity projection — plus the
-//! pure id-assignment / supersede-flip kernel that `merge` drives.
+//! Append-only baseline at `.emery/decisions/`; the only permitted
+//! mutation to an existing record is the `superseded` status flip.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

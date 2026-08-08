@@ -37,27 +37,12 @@ pub struct BuildOutcome {
 
 /// Build one slice through the seam and run the finalize tail.
 ///
-/// Assembles and persists `build/request.yaml`,
-/// journals `target.execution.agent`, then brackets the dispatch +
-/// finalize tail with `slice.build.started` / `slice.build.succeeded`
-/// / `slice.build.failed`. The tail is the
-/// slice-name match, [`crate::BuildReport::enforce_no_blocking`],
-/// [`crate::BuildReport::enforce_outputs_exist`], failure-status rejection, and the
-/// `Refined → Built` transition. The UI-surface coherence judgement
-/// lives in the target adapter's own guest.
-///
-/// `adapter` is the caller-resolved bound target adapter — its
-/// declared `inputs[]` assemble the request, and its name must match
-/// the slice's recorded `metadata.yaml` target so the declared inputs
-/// and the seam dispatch can never resolve from different adapters.
-///
-/// The build runs inside a disposable private workspace (RFC-87 /
-/// RFC-86 D27): the orchestration reads the refine-time target-base
-/// pin from `base.yaml`, opens a one-member target wave, prepares a
-/// writable workspace from that recorded pin (never ambient
-/// `freeze`), dispatches the build there, captures the result into a
-/// content-addressed `builds/<digest>.yaml` record, and discards the
-/// workspace. Durable code state is only the snapshots.
+/// The build runs inside a disposable private workspace prepared from
+/// the refine-time target-base pin in `base.yaml` — never an ambient
+/// freeze; durable code state is only the captured snapshots.
+/// `adapter` is the caller-resolved bound target, and its name must
+/// match the slice's recorded `metadata.yaml` target so the declared
+/// inputs and the seam dispatch can never resolve differently.
 ///
 /// # Errors
 ///

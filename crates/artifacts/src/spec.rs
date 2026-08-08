@@ -91,8 +91,6 @@ pub struct Rename {
 
 // ---------------------------------------------------------------------------
 // ID grammar — the single authority for the closed `REQ` / `TASK` ID shapes.
-// The validate and engine layers call these predicates rather than
-// re-encoding the pattern, so the grammar lives in exactly one place.
 // ---------------------------------------------------------------------------
 
 fn req_id_re() -> &'static Regex {
@@ -173,10 +171,9 @@ pub fn parse_baseline(text: &str) -> ParsedSpec {
         }
 
         if in_preamble {
-            // A bare `## ` heading (not `### Requirement:`) inside the
-            // preamble ends the preamble and begins a pseudo-block with
-            // `current_name = None`, which flush_block later discards —
-            // the stray header and its trailing lines are dropped.
+            // A bare `## ` heading ends the preamble and begins a
+            // pseudo-block with `current_name = None`; flush_block later
+            // discards it, dropping the stray header and its trailing lines.
             if stripped.starts_with("## ") && !stripped.starts_with(heading_prefix) {
                 in_preamble = false;
                 flush_block(&mut blocks, &mut current_lines, &mut current_name, &mut current_id);
@@ -247,10 +244,9 @@ pub fn parse_delta(text: &str) -> DeltaSpec {
         }
     }
 
-    // Walk the RENAMED section line-by-line, tracking the last seen
-    // `ID:` line and emitting an entry the first time a following `TO:`
-    // line shows up. The ID is cleared after a successful emission (so
-    // paired lines consume each other); empty-string IDs never emit.
+    // Track the last seen `ID:` line and emit on the first following
+    // `TO:` line. A successful emission clears the ID (paired lines
+    // consume each other); empty-string IDs never emit.
     let mut renamed: Vec<Rename> = Vec::new();
     let id_prefix = REQ_ID_PREFIX;
     let mut current_id: Option<String> = None;

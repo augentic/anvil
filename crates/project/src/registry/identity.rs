@@ -1,12 +1,7 @@
 //! Deterministic baseline identity projection.
 //!
-//! Projects a materialised project/slot directory into the
-//! `surface[]` / `recent[]` pair carried by `.emery/topology.lock`
-//! and the reconciliation envelope. The projection is purely
-//! structural — domain slugs, requirement-block headings, and the
-//! journal's `slice.archive.created` outcome summaries — never an LLM
-//! summary, so the committed lock is verifiable by
-//! regenerate-and-compare.
+//! Purely structural — never an LLM summary — so the committed
+//! `.emery/topology.lock` is verifiable by regenerate-and-compare.
 
 use std::path::Path;
 
@@ -50,14 +45,10 @@ pub struct Projection {
 
 /// Project `project_dir`'s baseline into the `(surface, recent)` pair.
 ///
-/// `surface` enumerates every `.emery/specs/<domain>/spec.md`, sorted
-/// by slug, each carrying up to [`SURFACE_TITLE_CAP`] requirement
-/// titles in `REQ-NNN` id order plus a `more` count when capped.
-/// `recent` is the last [`RECENT_TAIL`] `slice.archive.created`
-/// outcome summaries from the per-writer event-log union, in union
-/// order.
-/// A project with no baseline yields two empty vectors — greenfield
-/// reconciliation degrades cleanly to `description` only.
+/// `surface` enumerates every `.emery/specs/<domain>/spec.md` sorted
+/// by slug; `recent` is the last [`RECENT_TAIL`] `slice.archive.created`
+/// outcome summaries in union order. A project with no baseline yields
+/// two empty vectors — greenfield reconciliation degrades cleanly.
 ///
 /// # Errors
 ///

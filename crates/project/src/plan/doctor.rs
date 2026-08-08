@@ -60,21 +60,11 @@ pub struct CloneSignature {
 /// Run every `Plan::validate` check, then layer doctor-only
 /// diagnostics on top.
 ///
-/// `slices_dir` and `registry` are forwarded to `Plan::validate` so
-/// the validate-level findings are bit-identical to those emitted by
-/// `emery plan validate`. `project_dir` is consulted by the
-/// stale-workspace-clone check; pass `None` to skip it.
-///
-/// Every check already emits the neutral [`Diagnostic`] currency, so
-/// the validate-level findings pass through unchanged and the health
-/// checks append their structured-evidence findings after them.
-///
-/// The order in the returned vector is stable:
-///
-///   1. Every `Plan::validate` finding, in the existing order.
-///   2. Cycle diagnostics (one per cycle, deduplicated by node-set).
-///   3. Orphan source diagnostics (sorted by key).
-///   4. Stale workspace clone diagnostics (sorted by project name).
+/// `slices_dir` and `registry` forward to `Plan::validate` so those
+/// findings stay bit-identical to `emery plan validate`; `project_dir`
+/// feeds the stale-workspace-clone check (`None` skips it). Order is
+/// stable: validate findings, then cycles, orphan sources, and stale
+/// workspace clones.
 #[must_use]
 pub fn doctor(
     plan: &Plan, slices_dir: Option<&Path>, registry: Option<&Registry>, project_dir: Option<&Path>,

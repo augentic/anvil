@@ -1,10 +1,7 @@
 //! Shared guest support for Emery adapter components.
 //!
 //! Per-adapter crates implement [`Source`] or [`Target`] on a unit type;
-//! the wasm export macros and the native host consume that trait. The
-//! rest of this crate is the vocabulary and helpers those implementors
-//! share: seam DTOs, judgment/`repaired` calls, embedded prose registry,
-//! and the MCP references server.
+//! the wasm export macros and the native host consume that trait.
 
 pub mod answers;
 mod call;

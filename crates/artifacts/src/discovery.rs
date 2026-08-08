@@ -1,13 +1,7 @@
 //! Discovery surface — the `## Lead inventory` blocks in `discovery.md`.
 //!
-//! Each block is a raw, unmerged per-source lead a source adapter emits
-//! at `survey` time, identified by its `(source, lead)` pair and
-//! re-checked deterministically by [`lead::validate_leads`] before the
-//! merge into `discovery.md`.
-//!
-//! The whole-document model lives in [`document`]; it parses
-//! `discovery.md` and exposes [`Discovery::resolve_lead`] for the
-//! `--sources <key>=<lead>` rewrite path.
+//! [`lead::validate_leads`] re-checks blocks before the merge into
+//! `discovery.md`; the whole-document model lives in [`document`].
 
 pub mod document;
 pub mod lead;

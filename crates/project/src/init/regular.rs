@@ -31,11 +31,8 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
 
     let mut directories_created: Vec<PathBuf> = Vec::new();
     // Repo-root artefacts (`registry.yaml`, `change.md`, `plan.yaml`)
-    // are not pre-touched — their owning verbs mint them on demand.
-    // `.emery/specs/` is retained as a per-project convention used
-    // by the bundled `omnia` adapter.
-    // The memoization cache is out-of-tree (OS cache, created on demand
-    // by the provider's ensure), so it is not scaffolded here.
+    // and the out-of-tree memoization cache are minted on demand by
+    // their owners; `.emery/specs/` is a convention the omnia adapter uses.
     for dir in [
         layout.emery_dir(),
         layout.slices_dir(),

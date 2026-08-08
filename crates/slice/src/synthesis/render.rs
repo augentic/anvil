@@ -1,8 +1,7 @@
 //! Renders projected slice models as domain `spec.md` files.
 //!
-//! Output deliberately matches
-//! [`artifacts::spec::provenance::parse_spec_md`]: requirement headings,
-//! inline status tags, and provenance lines round-trip through validation.
+//! Output deliberately round-trips through
+//! [`artifacts::spec::provenance::parse_spec_md`] validation.
 
 use std::collections::HashMap;
 use std::fmt::Write as _;

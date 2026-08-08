@@ -1,11 +1,6 @@
-//! Deployment backend for the workspaces host capability (RFC-87).
-//!
-//! The engine guest drives `freeze` / `prepare` / `capture` /
-//! `discard` (plus the interim `apply`) through host-implemented WIT
-//! imports; this backend binds them to the `project::workspace`
-//! kernel over the invocation's captured layout — the same snapshot
-//! store and workspaces root the deployment mounts. Every leg is
-//! filesystem-heavy, so each runs on the blocking pool.
+//! Deployment backend for the workspaces host capability: the WIT
+//! imports bound to the `project::workspace` kernel over the captured
+//! layout. Every leg is filesystem-heavy, so each runs blocking.
 
 use omnia::Backend;
 use omnia_wasi_workspaces::{CodePatch, FutureResult, Prepared, WasiWorkspacesCtx, blocking};
@@ -45,10 +40,9 @@ impl WasiWorkspacesCtx for Workspaces {
             let base = SnapshotId::parse(&base)?;
             let root = paths.locations().workspaces_root().to_path_buf();
             let prepared = workspace::prepare(&store(&paths), &root, &base, Access { writable })?;
-            // The agent-visible artifact root: the project tree as a
-            // host-absolute path, so a spawned agent whose working
-            // directory is the lent workspace can still read
-            // change-tree artifacts.
+            // The artifact root is host-absolute so a spawned agent
+            // whose working directory is the lent workspace can still
+            // read change-tree artifacts.
             let artifacts = std::path::absolute(paths.project_root())
                 .unwrap_or_else(|_io| paths.project_root().to_path_buf())
                 .display()

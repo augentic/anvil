@@ -1,11 +1,7 @@
 //! Closed journal event taxonomy and wire DTOs.
 //!
-//! Wire format is locked: event ids are dotted kebab-case
-//! (`plan.entry.advanced`), payload field names are kebab-case
-//! (`plan-name`, `slice-name`, …), and the closed `from` / `to`
-//! enum is `none | likely | accepted | rejected`. Rust variant
-//! names stay `snake_case` and reach the wire through
-//! `#[serde(rename = "…")]`.
+//! Wire format is locked: dotted kebab-case event ids, kebab-case
+//! payload fields; Rust variants reach the wire via `#[serde(rename)]`.
 
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};

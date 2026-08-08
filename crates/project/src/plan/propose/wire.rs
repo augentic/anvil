@@ -1,12 +1,7 @@
 //! Lead-reconciliation envelope DTOs.
 //!
-//! The wire contract is a single envelope discriminated by a closed
-//! `kind: request | response`. These serde DTOs are the source of
-//! truth: the judgment-answer schema the model host gates against is
-//! generated from [`ProposalResponse`] by [`crate::answers::proposal`],
-//! and the deterministic tail re-parses the raw answer through the same
-//! type. The assembly that fills the request lives in
-//! [`super::catalog`] and [`super::topology`].
+//! These serde DTOs are the source of truth: the judgment-answer schema
+//! is generated from them, and the deterministic tail re-parses through them.
 
 use serde::{Deserialize, Serialize};
 

@@ -76,15 +76,10 @@ pub struct Entry {
     /// Stable identifier (kebab-case) unique within the plan.
     pub name: SliceName,
     /// Target registry project. Optional on disk: an omitted value
-    /// resolves to the sole project in the topology (a single regular
-    /// project synthesised from `project.yaml`), so single-project
-    /// plans need not repeat the project name; multi-project workspace
-    /// registries require an explicit value.
-    ///
-    /// The target adapter (`name[@vN]`) is **not** stored on the slice —
-    /// it is resolved on demand from this project via the topology
-    /// (the committed `.emery/topology.lock` for a workspace, `project.yaml.adapter` for a single
-    /// regular project) by the internal target-resolution kernel.
+    /// resolves to the sole topology project; multi-project workspace
+    /// registries require an explicit value. The target adapter is
+    /// **not** stored on the slice — it is resolved on demand from
+    /// this project via the topology.
     #[serde(default)]
     pub project: Option<String>,
     /// Names of other plan entries that must reach projected `done`

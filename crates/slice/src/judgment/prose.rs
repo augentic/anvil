@@ -1,11 +1,7 @@
 //! The slice guest's embedded prompt corpus.
 //!
-//! Markdown stays the authoring source of truth: everything under this
-//! crate's `prompts/` tree is link-checked and embedded at build time
-//! into the generated [`DOCS`] table (see the `prose` build crate) —
-//! a dangling relative reference fails the build. The corpus is small
-//! (about 50 kilobytes), so it is pasted into the system prompt rather
-//! than shelved behind an MCP route.
+//! The `prompts/` tree is link-checked and embedded at build time into
+//! the generated [`DOCS`] table; a dangling relative link fails the build.
 
 /// One embedded prompt document.
 #[derive(Debug, Clone, Copy)]
@@ -59,13 +55,8 @@ fn section(label: &str, body: &str) -> String {
 }
 
 // Keep (private embed-table kernel): the corpus contract is private to
-// this crate (the module is `pub(crate)`), so `DOCS` /
-// `SYNTHESIS_SECTIONS` have no public projection — "assembles nowhere"
-// and citation order are unobservable at any CLI or crate boundary.
-// Checked here against the private kernel rather than widened for an
-// integration suite. Link resolution is enforced twice elsewhere: at
-// embed time by the `prose` build crate and by the embed-time link
-// check in `crates/prose`.
+// this crate, so `DOCS` / `SYNTHESIS_SECTIONS` have no public
+// projection to test at any CLI or crate boundary.
 #[cfg(test)]
 mod tests {
     use super::*;

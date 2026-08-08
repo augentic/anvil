@@ -1,10 +1,6 @@
 //! The plan-authoring orchestrator behind `/emery:plan`: scaffold →
-//! survey fan-out → source `cid` pin close → reconciliation judgment →
-//! persist → review prose → `plan validate` doctor sweep.
-//!
-//! The run exits with the plan authored and the outcome carrying the
-//! literal execute hint — the orchestrator never runs the plan
-//! (execution stays operator-only).
+//! survey fan-out → pin close → reconcile → persist → validate. The
+//! run never executes the plan — execution stays operator-only.
 
 use std::collections::BTreeMap;
 
@@ -82,12 +78,9 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let layout = Layout::new(paths.project_root());
     refuse_workspace(layout)?;
     tracing::info!("plan authoring started");
-    // Ensure every binding up front — before the scaffold write and
-    // the survey fan-out — so an unresolvable adapter (missing pin,
-    // `emery_floor`) fails fast with nothing on disk. Bindings
-    // persist as typed: a bare name stays bare in `plan.yaml` (the
-    // deployment resolves it local-first on every dispatch); only an
-    // explicit package pin stamps a `version`.
+    // Ensure every binding before the scaffold write and survey fan-out
+    // so an unresolvable adapter fails fast with nothing on disk; a bare
+    // name persists bare — only an explicit package pin stamps `version`.
     for binding in bindings.values() {
         resolver.ensure_source(&binding.selector(), paths).await?;
     }
@@ -95,8 +88,8 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let surveyed = super::survey_all(sources, resolver, paths, now).await?;
 
     // Source set is closed: record per-source tree `cid` pins before
-    // reconciliation (RFC-86 D4 / D25). Refine later copies these into
-    // `base.yaml`; exact store population is not this step's job.
+    // reconciliation. Refine later copies these into `base.yaml`;
+    // exact store population is not this step's job.
     with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
         project::plan::close_source_pins(plan, paths.project_root()).map(Mutation::changed)
     })?;
@@ -112,10 +105,9 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
         plan: plan.name.as_str(),
         sources: &plan.sources,
     };
-    // The check is the kernel-projection dry run against a throwaway
-    // clone plus the gate-prose round-trip, so a grouping the kernel
-    // would reject — or prose that would corrupt discovery.md — is
-    // repaired in-loop rather than surfacing after the call.
+    // The check is the kernel-projection dry run plus the gate-prose
+    // round-trip, so a rejectable grouping — or prose that would corrupt
+    // discovery.md — is repaired in-loop rather than after the call.
     let mut response = propose::reconcile(model, &request, Some(context), |candidate| {
         let mut throwaway = plan.clone();
         throwaway.propose_from(candidate.clone(), &discovery, &topology, &ladders)?;

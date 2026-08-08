@@ -1,21 +1,7 @@
 //! Generated judgment answer schemas.
 //!
-//! Every adapter judgment operation issues `omnia:model/completion.create`
-//! with `format: schema(...)` so the host gate validates the answer before
-//! the guest sees it. The documents here are never hand-written: each is
-//! generated (via `schemars`) from the Rust wire type that deserialises
-//! the answer, so the types stay the single source of truth. Safely
-//! expressible semantic constraints (the kebab id grammars, the
-//! per-kind claim id requirement) are patched onto the generated shape
-//! so the host gate rejects them early; deterministic tails remain the
-//! authority and additionally cover what a schema cannot express
-//! (trim-aware synopsis checks, cross-field domain checks).
-//!
-//! The committed copies under `crates/project/answers/` (and
-//! `crates/slice/answers/` for the synthesis leg) are parity-gated
-//! against this generation by `crates/project/tests/answers.rs` and
-//! `crates/slice/tests/answers.rs`; adapters in `augentic/emery-adapters`
-//! vendor the `leads` / `evidence` / `report` documents.
+//! Generated via `schemars` from the wire types that parse each answer;
+//! deterministic tails stay authoritative for what schemas cannot express.
 
 use schemars::JsonSchema;
 use serde_json::{Value, json};

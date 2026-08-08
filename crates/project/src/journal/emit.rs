@@ -8,22 +8,12 @@ use crate::config::Layout;
 
 /// Best-effort append of a single lifecycle [`Event`] carrying `kind`.
 ///
-/// Stamped with the dispatcher-injected `now`
-/// (`docs/standards/architecture.md` §"Time injection"); library code
-/// never reads the clock. The journal is
-/// observability, not the
-/// source of truth, so a failed append is **intentionally swallowed** —
-/// it can never change the calling verb's exit code (a journaling I/O
-/// hiccup must not fail an otherwise-successful slice merge / build). The
-/// lifecycle brackets in `slice merge` / `slice build` emit through this.
-///
-/// The swallow is intentional but **not silent**: `record_dropped`
-/// routes a structured `warning:` line to stderr (naming `scope`, the
-/// journal path, and the I/O error) through the same operator-warning
-/// surface other best-effort failures use, and appends the dropped event
-/// to the `<project_dir>/.emery/journal.dropped` sidecar as a
-/// recoverable audit trail. The mitigation is itself best-effort and
-/// never panics.
+/// Stamped with the dispatcher-injected `now`; library code never
+/// reads the clock. The journal is observability, not the source of
+/// truth, so a failed append is intentionally swallowed — it can never
+/// change the calling verb's exit code. The swallow is not silent:
+/// `record_dropped` warns on stderr and appends the dropped event to
+/// the `.emery/journal.dropped` sidecar.
 pub fn emit_best_effort(layout: Layout<'_>, now: Timestamp, kind: EventKind, scope: &str) {
     let event = Event::new(now, kind);
     if let Err(err) = append_one(layout, &event) {
@@ -35,13 +25,9 @@ pub fn emit_best_effort(layout: Layout<'_>, now: Timestamp, kind: EventKind, sco
 /// emit `started`, await `body`, then emit `on_success(&ok)` or
 /// `on_failure(&err)` and pass the result through unchanged.
 ///
-/// Every emit goes through [`emit_best_effort`] — the journal is
-/// observability, not the source of truth, so a journal hiccup never
-/// changes the phase outcome. This helper codifies only the
-/// *best-effort* bracket policy; strict journal writes (the claim
-/// event, synthesis tags) stay `append_one` / `append_batch` at their
-/// call sites, and the event order is exactly the caller-supplied
-/// started → body → terminal cadence.
+/// Every emit goes through [`emit_best_effort`]; strict journal writes
+/// (the claim event, synthesis tags) stay `append_one` / `append_batch`
+/// at their call sites.
 ///
 /// # Errors
 ///

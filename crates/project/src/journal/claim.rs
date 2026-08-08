@@ -1,9 +1,7 @@
-//! Exclusive per-slice claim projection (RFC-86 D7 / D23).
+//! Exclusive per-slice claim projection.
 //!
-//! A slice has at most one live owner at a time. Different slices may
-//! be claimed concurrently by different journal writers. Same-slice overlap
-//! fails closed as `slice-claim-conflict`. Claims never create
-//! build/merge authorization.
+//! A slice has at most one live owner; same-slice overlap fails closed
+//! as `slice-claim-conflict`. Claims never create build/merge authorization.
 
 use std::collections::{BTreeMap, BTreeSet};
 

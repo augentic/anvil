@@ -1,10 +1,6 @@
 //! The emery guest: the deployment's only `wasi:cli/run` exporter.
-//!
-//! Everything — the `workflow`-world WIT bindings, the seam provider,
-//! and the transport wiring — lives in the `guest` crate; this cdylib
-//! is one macro invocation over it and is embedded into the shipped
-//! binary by `build.rs` (`$OUT_DIR/emery.bin`; ahead-of-time compiled
-//! in release builds, raw wasm in debug).
+//! One macro invocation over the `guest` crate; `build.rs` embeds the
+//! built component into the shipped binary as `$OUT_DIR/emery.bin`.
 #![cfg(target_arch = "wasm32")]
 
 guest::export!();

@@ -1,9 +1,6 @@
 //! Output format, the single [`emit`] entry point, and the exit-code
-//! contract shared by the native `emery` binary and the workflow
-//! guest.
-//!
-//! `Exit::from(&Error)` is the single source of truth for the failure
-//! mapping.
+//! contract shared by the native binary and the workflow guest.
+//! `Exit::from(&Error)` is the single source of truth for failures.
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -105,17 +102,11 @@ impl From<&Error> for Exit {
 /// Failure envelope used by the transport projectors for every error
 /// variant.
 ///
-/// The shape is payload-free: `error` carries the variant
-/// discriminant (the `code` for `Error::Validation`), `message` the
-/// rendered detail, `exit-code` the numeric exit, and `hint` the
-/// optional recovery guidance (present in text and JSON alike — agent
-/// consumers need the recovery route as much as humans do). The error
-/// body carries no per-finding rows — handlers render
-/// `diagnostics::DiagnosticReport` on stdout before
-/// returning the payload-free error.
-///
-/// Construct via `ErrorBody::from(&err)` — the variant is the only
-/// shape on the wire.
+/// Payload-free: `error` carries the variant discriminant, `message`
+/// the rendered detail, `exit-code` the numeric exit, and `hint` the
+/// optional recovery guidance (present in text and JSON alike). No
+/// per-finding rows — handlers render `diagnostics::DiagnosticReport`
+/// on stdout before returning this. Construct via `ErrorBody::from`.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ErrorBody {
@@ -176,17 +167,9 @@ pub fn write_error_text(w: &mut dyn Write, body: &ErrorBody) -> std::io::Result<
     Ok(())
 }
 
-/// ANSI red for the `error:` line, so failures stand out from the
-/// surrounding host tracing. Text mode is the human surface (skills
-/// consume `--format json`, which never routes here), and `NO_COLOR`
-/// (any non-empty value), a missing `TERM`, and `TERM=dumb` all opt
-/// out.
-///
-/// Detection differs by deployment: natively the process stderr is
-/// probed directly, while the engine guest's WASI host wires stderr
-/// to a plain stream with no terminal probe (`is_terminal` is always
-/// false in-guest), so under wasm32 the terminal check is skipped and
-/// the env guards alone decide.
+/// ANSI red for the `error:` line. `NO_COLOR` (any non-empty value),
+/// a missing `TERM`, and `TERM=dumb` opt out; under wasm32 there is no
+/// terminal probe, so the env guards alone decide.
 fn error_style() -> (&'static str, &'static str) {
     let opted_out = std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
         || !std::env::var_os("TERM").is_some_and(|term| !term.is_empty() && term != "dumb");

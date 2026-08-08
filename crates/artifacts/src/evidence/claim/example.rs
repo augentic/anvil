@@ -1,12 +1,7 @@
-//! runtime capture claim — `kind: example` claim shape (`captures` adapter).
+//! Runtime capture claim — the `kind: example` shape (`captures` adapter).
 //!
-//! Runtime captures join the closed `claimKind` enum as
-//! `example`. The body carries `id`, optional `path`, a
-//! required `replay-digest: sha256:<hex>`, and the open `input` /
-//! `output` JSON-shaped blocks the adapter records from the
-//! captured request/response. Bodies larger than 64 `KiB` are stored
-//! at `path` with only the digest inline — the cap lives in the
-//! adapter brief, not the schema.
+//! Bodies larger than 64 `KiB` are stored at `path` with only the digest
+//! inline — the cap lives in the adapter brief, not the schema.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;

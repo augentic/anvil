@@ -1,11 +1,7 @@
 //! Narrow filesystem helpers with consistently mapped errors.
 //!
-//! Every plain "read this file" / "list this directory" site in the
-//! engine crate maps I/O failures onto [`Error::Filesystem`] with the
-//! same `op` discriminants (`read` / `readdir`); these helpers own that
-//! mapping so call sites stay one line. Sites with richer semantics
-//! (missing-file fallbacks, symlink policy, drift detection) keep their
-//! own handling.
+//! Plain read/list sites map I/O failures onto [`Error::Filesystem`]
+//! with shared `op` discriminants so call sites stay one line.
 
 use std::fs::DirEntry;
 use std::io;

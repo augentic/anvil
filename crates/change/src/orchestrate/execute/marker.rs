@@ -1,4 +1,4 @@
-//! The D1 create-exclusive guest-run marker
+//! The create-exclusive guest-run marker
 //! (`<plan-root>/.emery/guest.lock`): atomic acquisition, holder
 //! diagnostics, and drop-time release.
 
@@ -9,24 +9,14 @@ use error::Error;
 use jiff::Timestamp;
 use project::config::Layout;
 
-/// The D1 create-exclusive advisory marker at
-/// `<plan-root>/.emery/guest.lock`, held for one guest execute run.
+/// Create-exclusive advisory marker at `<plan-root>/.emery/guest.lock`,
+/// held for one guest execute run — the only execute-run interlock.
 ///
-/// `OpenOptions::create_new` makes acquisition atomic — exactly one
-/// guest execute loop can hold the marker per plan root, so a second
-/// in-guest `plan execute` is refused (`guest-marker-held`, exit 2)
-/// while a run is live. The file body carries pid / hostname /
-/// acquired-at as diagnostics only; existence is the lock.
-///
-/// **Staleness posture**: the marker is removed when the guard drops
-/// (clean exit *and* phase-stop returns *and* error unwinds — any exit
-/// that runs destructors). A crash that skips destructors leaves the
-/// marker behind, and the next acquire refuses with a detail telling
-/// the operator to delete the file after confirming no run is live.
-/// No pid-liveness probe: WASI gives the guest no process table to
-/// check a recorded pid against, so self-healing would be a guess.
-///
-/// This marker is the only execute-run interlock.
+/// `OpenOptions::create_new` makes acquisition atomic; existence is the
+/// lock (the body is diagnostics only). The guard's drop removes the
+/// marker; a crash that skips destructors leaves it behind, and the
+/// next acquire refuses with a delete-the-file detail. No pid-liveness
+/// probe: WASI has no process table, so self-healing would be a guess.
 #[derive(Debug)]
 pub struct GuestMarker {
     path: PathBuf,

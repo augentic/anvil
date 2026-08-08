@@ -1,34 +1,26 @@
-//! Host side of the `emery:adapter/workspaces` capability (RFC-87).
+//! Host side of the `emery:workspaces` capability.
 //!
-//! The engine guest's `workflow` world imports `workspaces` — freeze /
-//! prepare / capture / discard plus the interim apply — and this crate
-//! links a host implementation of that interface into the shipped
-//! deployment, following the shared `omnia` host-crate shape
-//! (`wasi-otel`, `wasi-model`). The capability is host-owned because
-//! WASI exposes no unix mode bits: an in-guest capture would silently
-//! lose the executable bit. The actual snapshot and materialization
-//! kernel lives in `emery-project`'s `workspace` module; the
-//! deployment backend (the launcher's `Workspaces`) binds it to the
-//! invocation's captured layout through [`WasiWorkspacesCtx`].
+//! Host-owned because WASI exposes no unix mode bits: an in-guest
+//! capture would silently lose the executable bit.
 
 mod generated {
     #![allow(
         missing_docs,
         clippy::pedantic,
         clippy::nursery,
-        reason = "wasmtime bindgen generated bindings are not hand-maintained; the generated code cannot carry this workspace's lint posture"
+        reason = "wasmtime bindgen generated bindings are not hand-maintained"
     )]
 
-    pub use self::emery::adapter::types::Error;
+    pub use self::emery::workspaces::types::Error;
 
     wasmtime::component::bindgen!({
         world: "workspace-host",
-        path: "../../wit",
+        path: "wit",
         imports: {
             default: store | tracing | trappable,
         },
         trappable_error_type: {
-            "emery:adapter/types.error" => Error,
+            "emery:workspaces/types.error" => Error,
         },
     });
 }
@@ -40,8 +32,8 @@ use omnia::{Host, Server};
 use wasmtime::component::{Accessor, HasData, Linker};
 
 pub use self::generated::Error;
-use self::generated::emery::adapter::workspaces;
-pub use self::generated::emery::adapter::workspaces::{CodePatch, Prepared};
+use self::generated::emery::workspaces::workspaces;
+pub use self::generated::emery::workspaces::workspaces::{CodePatch, Prepared};
 
 /// Host-side service for the workspaces capability (a linked-only
 /// effect host).
@@ -126,7 +118,7 @@ where
 
 impl workspaces::Host for WasiWorkspacesCtxView<'_> {}
 
-impl generated::emery::adapter::types::Host for WasiWorkspacesCtxView<'_> {
+impl generated::emery::workspaces::types::Host for WasiWorkspacesCtxView<'_> {
     fn convert_error(&mut self, err: Error) -> wasmtime::Result<Error> {
         Ok(err)
     }

@@ -1,8 +1,7 @@
 //! `Error` enum and saphyr-error conversions.
 //!
 //! The `YamlDe` / `YamlSer` variants flatten `serde_saphyr`'s two error
-//! types directly into the crate's error surface; callers that don't
-//! care which API tripped can continue to `?`-propagate.
+//! types directly into the crate's error surface.
 
 use std::borrow::Cow;
 

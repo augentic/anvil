@@ -1,10 +1,6 @@
-//! The Emery change loop: plan-driven multi-slice changes — the
-//! author orchestration (survey fan-out, reconciliation judgment,
-//! plan-review prose), the drained execute loop, and the `emery plan *`
-//! operations. The `plan.yaml` state machine lives in
-//! [`project::plan`]; the per-slice refine / build / merge loop this
-//! crate drives lives in `slice`. See
-//! `docs/standards/architecture.md` for the rationale.
+//! The Emery change loop: the plan author orchestration, the drained
+//! execute loop, and the `emery plan *` operations. The `plan.yaml`
+//! state machine lives in [`project::plan`].
 
 pub(crate) mod judgment;
 pub mod orchestrate;

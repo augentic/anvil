@@ -1,9 +1,7 @@
 //! Init-time `AGENTS.md` scaffold.
 //!
 //! Writes a short fenced context document plus a minimal
-//! `.emery/context.lock` when `AGENTS.md` is absent. No root-marker
-//! detection or multi-input fingerprinting — the fence and adapter
-//! line are the durable contract.
+//! `.emery/context.lock` when `AGENTS.md` is absent.
 
 use std::io::ErrorKind;
 

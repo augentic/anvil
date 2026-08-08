@@ -1,10 +1,7 @@
-//! Content-addressed per-slice build records (RFC-86 D27).
+//! Content-addressed per-slice build records.
 //!
-//! Build outcomes live at `.emery/slices/<slice>/builds/<digest>.yaml`
-//! — base/result/`touched` plus the typed report and the wave digest
-//! that authorized the build. Replaces `build/patch.yaml` as build-
-//! outcome authority. “Built” projects from these records (and wave
-//! / build success facts), never from a leftover path check.
+//! Build outcomes live at `.emery/slices/<slice>/builds/<digest>.yaml`;
+//! "built" projects from these records and facts, never from a path check.
 
 use std::path::{Path, PathBuf};
 

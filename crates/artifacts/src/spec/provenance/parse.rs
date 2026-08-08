@@ -1,5 +1,5 @@
-//! The `spec.md` requirement-block parser: heading detection, the
-//! `ID:` / `Sources:` / `Status:` metadata scan, and body assembly.
+//! The `spec.md` requirement-block parser.
+//!
 //! Structural findings accumulate; validation layers on top in
 //! [`super::validate`].
 

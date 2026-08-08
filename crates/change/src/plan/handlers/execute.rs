@@ -1,7 +1,6 @@
-//! `plan execute` — the drained refine → build → merge loop over the
-//! plan. At start appends `plan.execute.started` with typed
-//! `closed-plan` coverage (RFC-86 D6); optional `--waive` / `--reason`
-//! nest unknown-waivers on that payload (D17).
+//! `plan execute` — the drained refine → build → merge loop. At start
+//! appends `plan.execute.started` with typed `closed-plan` coverage;
+//! optional `--waive` / `--reason` nest unknown-waivers on that payload.
 
 use std::io::Write;
 
@@ -21,7 +20,7 @@ use crate::orchestrate::{self, ExecuteOutcome, WaiveSelector};
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ExecuteInput {
-    /// Repeatable `--waive <slice>/<req>` selectors (D17).
+    /// Repeatable `--waive <slice>/<req>` selectors.
     #[serde(default)]
     pub waive: Vec<WaiveSelector>,
     /// Required when `waive` is non-empty; applied to every selector.
@@ -59,12 +58,9 @@ impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> f
                     })
                     .collect(),
             }),
-            // A stop is the loop's typed halt — the canonical plan
-            // status card (`stop:` / `hint:` / `resume:`) rides the
-            // stdout channel while the payload-free
-            // `plan-execute-stopped` envelope keeps stderr (exit 2 /
-            // 422), so a driver gets the structured next action
-            // without a follow-up `emery plan status` call.
+            // Typed halt: the plan status card rides stdout while the
+            // payload-free `plan-execute-stopped` envelope keeps stderr
+            // (exit 2 / 422), so drivers get the next action inline.
             ExecuteOutcome::Stopped {
                 reason,
                 detail,

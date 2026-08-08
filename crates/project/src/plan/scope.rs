@@ -1,9 +1,7 @@
-//! Shared plan membership predicate (RFC-86 D24).
+//! Shared plan membership predicate.
 //!
-//! **In-scope** means the entry is currently on the plan and its slice
-//! is not dropped. Gaps projection, Ready, the execute gap gate, and
-//! status's unrefined next-actions must share this filter — they must
-//! not invent divergent membership rules.
+//! **In-scope** means the entry is on the plan and its slice is not
+//! dropped; gaps, Ready, the execute gate, and status must share this filter.
 
 use super::model::{Entry, Plan};
 use crate::slice::SliceMetadata;

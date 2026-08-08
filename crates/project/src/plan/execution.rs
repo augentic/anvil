@@ -1,29 +1,6 @@
-//! The in-memory execution-state projection: one candidate plan
-//! entry, its work-root slice tree, and the folded active-window
-//! journal facts become the next-step decision (refine / build /
-//! merge / stop).
-//!
-//! Shared by the read-only `plan status` projection and (through it)
-//! the guest execute loop, so the two surfaces cannot drift. Nothing
-//! here is persisted — the projection folds durable state (the plan
-//! topology, slice artifacts, journal events) on every call.
-//!
-//! **Authority (RFC-86 D2):** progress is computed from artifacts and
-//! the fact union. No stored entry or slice status fields are read
-//! are not read. Ladder labels (`pending` / `in-progress` / `done`)
-//! project from claim / advance / undo / archive facts; the awaited
-//! phase projects from slice artifacts plus refine/build success
-//! facts.
-//!
-//! Journal failure / durable-merge overlays fold over the entry's
-//! **active window**: events newer than the entry's most recent
-//! `plan.entry.advanced` / `plan.transition.undone`. Within the
-//! window, durable merge evidence (`slice.merge.succeeded` /
-//! `slice.archive.created`) dominates any later failure marker — a
-//! failed retry after a landed merge is noise, and the torn state
-//! projects the `merge-incomplete` stop. Otherwise the newest phase
-//! terminal decides: a success means "dispatch on phase artifacts",
-//! a failure of the awaited phase parks the matching stop.
+//! In-memory execution-state projection: plan entry + slice tree +
+//! folded journal facts become the next step (refine/build/merge/stop).
+//! Shared by `plan status` and the execute loop; nothing is persisted.
 
 use std::collections::{BTreeSet, HashMap};
 use std::hash::BuildHasher;
@@ -227,9 +204,8 @@ pub(super) fn resolve_entry(
     };
 
     // A merge that completed without the entry's `done` stamp is a torn
-    // state whatever the slice tree looks like (the directory is
-    // archived on merge). Durable merge evidence dominates any later
-    // failure marker in the window.
+    // state (the slice directory is archived on merge); durable merge
+    // evidence dominates any later failure marker in the window.
     if facts.merged {
         return Ok(Resolution::stop_for(
             StopReason::MergeIncomplete,
@@ -354,7 +330,8 @@ struct WindowFacts {
 }
 
 /// Backward-fold `events` (newest-first walk over a chronologically
-/// ordered union) over this entry's active window.
+/// ordered union) over this entry's active window: events newer than the
+/// entry's most recent `plan.entry.advanced` / `plan.transition.undone`.
 fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName) -> WindowFacts {
     let retracted = claim::retracted_targets(events);
     let mut facts = WindowFacts::default();

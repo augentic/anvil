@@ -1,16 +1,7 @@
 //! Read-only `emery plan status` projection.
 //!
-//! [`plan_status_body`] projects plan topology, slice artifacts, and
-//! the fact union into a deterministic `next-action` —
-//! `refine|build|merge <slice>`, `review-gaps`, `stop <reason>`, or
-//! `drained` — so the execute loop renders the dispatch instead of
-//! deriving it (RFC-86 D2 / D11). Also projects Ready (clean-gap) and
-//! Authorized (covering `plan.execute.started`) milestones — never
-//! an `approved` rung (D22 / D26). Writes nothing.
-//!
-//! This module owns the wire types; the per-entry decision kernel
-//! lives in the shared `execution` projection and the body assembly
-//! in `project`.
+//! [`plan_status_body`] projects topology, slice artifacts, and the fact
+//! union into a deterministic `next-action`; writes nothing.
 
 use serde::Serialize;
 

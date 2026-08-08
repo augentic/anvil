@@ -1,7 +1,6 @@
 //! The declarative platforms capability from a target's metadata
-//! answer and its validation gate: [`PlatformsCapability::check`],
-//! the typed [`PlatformsViolation`] outcomes, and the per-surface
-//! [`PlatformsViolation::into_error`] diagnostic mapping.
+//! answer and its validation gate: [`PlatformsCapability::check`] and
+//! the typed [`PlatformsViolation`] outcomes.
 
 use error::Error;
 use serde::{Deserialize, Serialize};
@@ -10,15 +9,10 @@ use crate::Platform;
 
 /// Declarative platforms capability from a target's metadata answer.
 ///
-/// When a target declares `platforms`, the CLI uses this to enforce
-/// platform requirements at `emery init` time and to scaffold
-/// defaults for greenfield workspace members.
-///
-/// - `required` — if true, `emery init` demands `--platforms`.
-/// - `allowed` — the closed set of [`Platform`] tokens the target
-///   accepts; any project token outside the set is rejected.
-/// - `default` — the platform set scaffolded when the operator does
-///   not emery (used by greenfield workspace sync).
+/// When a target declares `platforms`, the CLI enforces platform
+/// requirements at `emery init` time and scaffolds defaults for
+/// greenfield workspace members: `required` demands `--platforms`,
+/// `allowed` is the closed accepted set, `default` seeds greenfield sync.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PlatformsCapability {
     /// Whether projects using this target must declare platforms.

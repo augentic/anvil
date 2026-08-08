@@ -24,12 +24,6 @@ use crate::registry::Registry;
 ///     └── project.yaml  # { name: …, workspace: true }
 /// ```
 ///
-/// `registry.yaml` is the one platform-component artefact init
-/// scaffolds — bootstrapping a workspace *is* bootstrapping its
-/// registry. `change.md` and `plan.yaml` stay operator-managed even on
-/// a workspace; the operator runs `/emery:plan <name>`
-/// (which scaffolds both files atomically) when the work itself begins.
-///
 /// Adapter resolution is intentionally skipped — a workspace binds no
 /// adapter of its own; member projects declare theirs.
 ///

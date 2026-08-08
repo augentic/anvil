@@ -1,20 +1,7 @@
 //! [`DevModel`] — the case runner's live [`Model`] backend.
 //!
-//! A lazily connected cursor backend (`omnia_cursor::Client`, the
-//! host-side `WasiModelCtx` backend) behind the shared [`Native`]
-//! bridge, which performs the guest-request mapping, the host request
-//! gate, the workspace-lend → tool-host path resolution, and the answer
-//! projection. The connection happens on first use so deterministic
-//! commands never require cursor-agent on `PATH`; clones share the
-//! connection cell, so each constructed backend connects cursor-agent
-//! at most once (the case runner constructs one per run).
-//!
-//! Cursor `ConnectOptions::from_env` (via `Client::connect`) reads:
-//! - `CURSOR_MODEL=<model-id>` — default when a request leaves `model`
-//!   unset; blank/unset lets `cursor-agent` choose. A guest-supplied id
-//!   always wins.
-//! - `CURSOR_TIMEOUT_SECS=<u64>` — per-spawn wall-clock bound (backend
-//!   default 600s); the `cargo make eval` tasks raise it for live cases.
+//! The connection happens on first use, so deterministic commands never
+//! require cursor-agent on `PATH`; clones share the connection cell.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -51,6 +38,9 @@ impl DevModel {
         let native = self
             .cell
             .get_or_try_init(|| async {
+                // `connect` reads `CURSOR_MODEL` (used when a request leaves
+                // `model` unset) and `CURSOR_TIMEOUT_SECS` (per-spawn bound,
+                // default 600s; the `cargo make eval` tasks raise it).
                 let client = omnia_cursor::Client::connect().await?;
                 Ok::<_, anyhow::Error>(Native::new(client, self.root.clone()))
             })

@@ -1,10 +1,7 @@
 //! `slice provenance` — project the audit-only provenance view from a
 //! slice's single `model.yaml`.
 //!
-//! Provenance is carried inline in `model.yaml`; this verb reshapes it
-//! into the per-requirement audit shape on demand. There is no
-//! persisted `provenance.yaml`, so the projection cannot drift from the
-//! model.
+//! No persisted `provenance.yaml`: the projection cannot drift.
 
 use std::collections::BTreeMap;
 use std::io::Write;

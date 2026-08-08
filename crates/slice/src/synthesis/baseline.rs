@@ -1,12 +1,7 @@
 //! Baseline index for synthesis ID assignment and delta rendering.
 //!
-//! Built from the bound project's `.emery/specs/` tree at synthesize
-//! time. Each domain with an on-disk `spec.md` is [`DomainKind::Modified`];
-//! domains absent from the baseline are [`DomainKind::New`].
-//!
-//! Requirement ids minted at synthesize are slice-local (RFC-86 D5);
-//! this index supplies baseline `REQ` identity and body digests for
-//! `MODIFIED` rows — wave commit assigns final baseline numbers later.
+//! Ids minted at synthesize are slice-local; the index supplies the
+//! baseline `REQ` identity and digests wave commit finalizes later.
 
 use std::collections::BTreeMap;
 use std::path::Path;

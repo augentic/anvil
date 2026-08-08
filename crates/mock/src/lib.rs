@@ -1,33 +1,7 @@
 //! Emery's canonical mock adapter crate.
 //!
-//! One SDK-native mock kernel serving every workflow suite and the
-//! examples guest:
-//!
-//! - [`behaviour`] — the deterministic, model-free behaviour core over
-//!   the SDK seam DTOs ([`adapter::seam`]), keyed off the routed
-//!   adapter id.
-//! - [`ops`] — one compile-checked unit type per catalog identity
-//!   (success profiles and typed failure profiles alike), implementing
-//!   the per-axis operations traits (`adapter::Source` /
-//!   `adapter::Target`) over the core.
-//! - [`registry`] (host) — the exhaustive native catalog the workflow
-//!   suites and the Emery lab bind into the native host.
-//! - [`session`] (host) — throw-away project trees over an offline
-//!   [`native::Provider`], plus the RAII current-directory guard.
-//! - [`invoke`] (host) — typed operation invocation for suites that
-//!   inspect an operation's typed output.
-//! - [`answers`] (host) — the scripted judgment-answer corpus behind
-//!   `omnia-testkit`'s FIFO `Scripted` model double.
-//!
-//! Suites that need request recording import
-//! `omnia_testkit::model::Harness` directly; [`session`] binds that
-//! harness behind the offline native provider.
-//!
-//! The crate speaks the SDK seam DTOs end to end: only the workflow
-//! providers (the native host's conversion layer) widen values onto
-//! engine DTOs. The example components in `examples/wasm/` wire
-//! [`ops::Adapter`] straight into the SDK's `source!` / `target!`
-//! export macros — no crate-local WIT bindings.
+//! One SDK-native mock kernel serving every workflow suite and the examples
+//! guest; the crate speaks the SDK seam DTOs end to end.
 
 pub mod behaviour;
 pub mod ops;

@@ -1,11 +1,7 @@
 //! Provenance projection.
 //!
-//! The provenance view is **not** a persisted file. It is projected on
-//! demand from a slice's single `model.yaml` (which carries provenance
-//! inline) by `emery slice provenance`. Because the model and its
-//! provenance share one source of truth, the two can never drift and
-//! no drift gate is needed. These typed DTOs own the audit shape. See
-//! [`crate::model::SliceModel::to_provenance_index`].
+//! Not a persisted file: projected on demand from `model.yaml` (which
+//! carries provenance inline), so model and provenance cannot drift.
 
 use artifacts::spec::provenance::RequirementStatus;
 use jiff::Timestamp;

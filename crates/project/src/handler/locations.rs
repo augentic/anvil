@@ -1,15 +1,6 @@
-//! [`Locations`] — well-known on-disk locations for resolvable
-//! artifacts (the global adapter store and the per-project component
-//! cache).
-//!
-//! A plain value: construction is the only place layout policy lives.
-//! [`Locations::from_env`] is the shipped production layout — defaults
-//! in code, `EMERY_HOME` the only override, captured once at each
-//! composition root. [`Locations::explicit`] is the injection point
-//! for sandboxes, tests, and the engine guest's preopens. There is no
-//! trait and no alternate implementation; kernels and handlers receive
-//! the value through [`super::ExecutionPaths`] and never read
-//! `std::env` themselves.
+//! [`Locations`] — well-known on-disk roots (adapter store, component
+//! cache, snapshots, workspaces). Kernels and handlers receive the value
+//! through [`super::ExecutionPaths`] and never read `std::env` themselves.
 
 use std::path::{Path, PathBuf};
 
@@ -82,15 +73,11 @@ pub struct Locations {
 
 impl Locations {
     /// Production layout: capture `EMERY_HOME` once. A non-empty
-    /// absolute override wins; otherwise the effective home is
-    /// `$HOME/.emery`, then `<temp>/emery` when `$HOME` is
-    /// unavailable. Store, cache, snapshots, and workspaces derive
-    /// together as `<home>/store`, `<home>/cache`, `<home>/snapshots`,
-    /// and `<home>/workspaces`.
+    /// absolute override wins; otherwise `$HOME/.emery`, then
+    /// `<temp>/emery`. All four roots derive together as
+    /// `<home>/{store,cache,snapshots,workspaces}`.
     ///
-    /// Composition-root only — never called from kernels or handlers;
-    /// the wasm32 engine guest constructs [`Self::explicit`] over its
-    /// preopens instead.
+    /// Composition-root only — never called from kernels or handlers.
     #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
     pub fn from_env() -> Self {

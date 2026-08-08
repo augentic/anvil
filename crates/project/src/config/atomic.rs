@@ -71,19 +71,10 @@ impl<B> Mutation<B> {
 
 /// Load → mutate → atomic-write loop.
 ///
-/// Loads `S` from disk, returning [`Error::ArtifactNotFound`] with
-/// `missing_kind` when the file is absent. Runs `f` against the
-/// in-memory state; when the returned [`Mutation`] says the state
-/// changed, atomically writes the mutated value back. Returns the body
-/// the closure produced.
-///
-/// `with_state` does **not** itself emit; the caller writes
-/// `ctx.write(&body, write_text)?;`. This keeps response shaping local
-/// to each handler and the helper focused on the IO loop.
-///
-/// Handlers whose contract is "create or update" (e.g. `registry add`)
-/// inline their own load-or-default + [`yaml_write`] instead of
-/// reaching for this helper.
+/// Loads `S` from disk, runs `f` against the in-memory state, and
+/// atomically writes back only when the returned [`Mutation`] says the
+/// state changed. Returns the body the closure produced; the caller
+/// emits it — `with_state` does not itself write output.
 ///
 /// # Errors
 ///
