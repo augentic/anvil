@@ -22,7 +22,7 @@
 >
 > Extends RFC-88 D8. Target decomposition becomes another author of inert amendment proposals alongside ownership recovery and refinement boundary escalation.
 >
-> [RFC-92](rfc-92-node-sync.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
+> [RFC-92](rfc-92-distributed-execution.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
 
 ## Intent
 

@@ -4,7 +4,7 @@
 >
 > Owns: the engine-owned build phase machine, separate `target.build` / `target.repair` / `target.verify` / `target.review` WIT operations, bounded verification and repair rounds, typed intermediate reports, and removal of repair-loop control from adapter prose.
 >
-> Builds on completed [RFC-86](rfc-86-change-facts.md) (recorded `base.yaml` pins, one-member waves, content-addressed `BuildRecord` at `builds/<digest>.yaml`) and completed [RFC-87](rfc-87-working-trees.md). The observable sequential gate becomes [RFC-91](rfc-91-concurrent-execution.md)'s worker and conflict-domain convergence loop; [RFC-92](rfc-92-node-sync.md) transports its phase records without redefining it. [RFC-93](future/rfc-93-host-verification.md) owns the deferred deterministic native-tool follow-on; the supporting empirical input is [rfc-90-finitive-evidence.md](rfc-90-finitive-evidence.md).
+> Builds on completed [RFC-86](rfc-86-change-facts.md) (recorded `base.yaml` pins, one-member waves, content-addressed `BuildRecord` at `builds/<digest>.yaml`) and completed [RFC-87](rfc-87-working-trees.md). The observable sequential gate becomes [RFC-91](rfc-91-concurrent-execution.md)'s worker and conflict-domain convergence loop; [RFC-92](rfc-92-distributed-execution.md) transports its phase records without redefining it. [RFC-93](future/rfc-93-host-verification.md) owns the deferred deterministic native-tool follow-on; the supporting empirical input is [rfc-90-finitive-evidence.md](rfc-90-finitive-evidence.md).
 
 
 

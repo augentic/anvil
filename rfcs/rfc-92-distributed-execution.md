@@ -1,4 +1,4 @@
-# RFC-92: Node Sync
+# RFC-92: Distributed Execution
 
 > Status: Draft — step 7 of the platform-migration series, scale track ([platform.md](platform.md))
 >
@@ -12,17 +12,15 @@
 >
 > Runtime dependency: Omnia bindings for `wasi:documentstore`, native `wasi:keyvalue` atomics, `wasi:blobstore`, `wasi:messaging` wake-up announcements, and durable asynchronous trigger supervision. Where an interface or backend lacks a required guarantee, this RFC requires improving the general Omnia capability rather than adding an Emery-specific transport API.
 
-
-
 ## Intent
 
-*Let one change run across peer nodes, a hosted fleet, or both **without sharing a filesystem**.*
+*Let one change run across peer nodes **without sharing a filesystem**.*
 
 Emery can already run a change on a single machine. Each slice is given to a worker along with a private workspace. Progress events are logged, slice results combined, and commited as a group.
 
-This RFC adds the transport and safeguards needed to preserve that behavior **across nodes**.
+This RFC adds the transport and safeguards needed to preserve that same behavior **across nodes**.
 
-Nodes continuously share progress and ownership updates. They exchange code only as immutable, verified snapshots after an operation completes. Emery will not synchronize keystrokes, editor buffers, or live directories.
+Each node continuously shares progress and ownership updates. They exchange code only as immutable, verified snapshots after an operation completes. Emery will not synchronize keystrokes, editor buffers, or live directories.
 
 No component selects a node for an operation. Work reaches a node because that node claimed it: the slice owner publishes a durable operation offer, eligible nodes race to claim it, and the winner executes entirely locally. There is no node registry, capability inventory, or placement scheduler anywhere in the system.
 
@@ -58,7 +56,7 @@ Source and target adapters import no coordination capabilities and can acquire n
 
 Operator ingress is separate from inter-node execution. The engine exposes the same typed workflow operations through CLI and HTTP. An interactive deployment may invoke `emery plan execute --distributed` and remain attached to the process. A hosted deployment submits the execute operation through `POST /plan/execute`; the native host authenticates the request, allocates or selects its managed change home, and supervises the engine invocation after returning `202 Accepted` with an opaque attachment ID. Request disconnection does not stop the attachment. Status, event follow, and graceful detach address that attachment through general Omnia invocation-control surfaces rather than a second Emery workflow.
 
-The HTTP trigger does not carry offers, claims, writer logs, slice-ownership records, or snapshot values. Once the execute operation starts, those flows use the capabilities above. HTTP is an operator control surface, not the node-sync protocol.
+The HTTP trigger does not carry offers, claims, writer logs, slice-ownership records, or snapshot values. Once the execute operation starts, those flows use the capabilities above. HTTP is an operator control surface, not the distributed-execution protocol.
 
 ## Distributed execution
 
@@ -69,8 +67,6 @@ The HTTP trigger does not carry offers, claims, writer logs, slice-ownership rec
 5. The claiming node fetches the input closure through the value plane, verifies it, prepares a fresh private workspace through its local workspace capability, and invokes its locally resolved adapter guest. When a writing operation finishes, capture freezes the resulting repository tree into an immutable snapshot and verifies every object needed to reconstruct it before the node publishes the result record under the offer's identity.
 6. Other nodes follow the writer logs and fetch referenced records or snapshot values as needed. A node may use a result only after every dependency is present and digest-verified.
 7. Any attached engine runtime with the required inputs may continue the existing bottom-up convergence. A target-wave commit remains the only operation that advances a target repository's accepted state.
-
-
 
 ### Transport boundaries
 
@@ -96,8 +92,6 @@ The two planes have opposite trust and liveness profiles, and backend selection 
 - A **claim** is the lease-bound record, acquired by linearizable compare-exchange, that binds one node to one offer for the lease's duration. Workspace placement is the emergent result of claiming, not a scheduling decision.
 - A **code patch** is the relation `{ base snapshot, result snapshot, touched paths }`; it is not a separate patch blob.
 - A **domain result** records either one composed CID for a single-target domain or an ordered target-to-CID/report set for a multi-target domain.
-
-
 
 ## Example: attach, resume, and recover
 
@@ -134,8 +128,6 @@ Suppose node B disappears while owning `mobile-shell` at generation 18. An expir
 A graceful stop first brings the local change home current and then detaches from the distributed session. Reattaching reconstructs the same projected state. `plan archive` closes the attachment before performing its ordinary archive or delete behavior.
 
 ## Decisions
-
-
 
 ### D1 — Omnia capabilities preserve the transport boundaries
 
@@ -267,19 +259,15 @@ Throughput alone is not success. Evaluation compares the accepted result and bli
 
 ## Implementation requirements
 
-
-
 ### Omnia capabilities
 
 - Use `wasi:documentstore` for workflow events. Store one immutable document per `(writer, sequence)` using create-only insertion. On an existing ID, accept byte-identical content idempotently and reject different content. Query one writer at a time after its last received sequence in ascending sequence order. Production backends must retain acknowledged inserts and preserve stable ordered queries across reconnects; local test backends must expose the same contract. Cassandra may be a candidate backend for this.
 - Use native `wasi:keyvalue` atomics for linearizable compare-exchange and conditional update. A read followed by an unconditional write does not qualify. Ownership and claim liveness may use native expiry or heartbeat values plus observation, but expiry reports only suspected loss and never transfers ownership. Backend conformance tests must race slice-ownership acquisition, recovery, release, first-result publication, claim acquisition, claim-lease lapse against late result publication, and heartbeat lapse against recovery confirmation.
 - Use `wasi:blobstore` for immutable coordination records — including operation offers — and snapshot values under separate logical namespaces. Emery names immutable objects by digest, verifies existing and fetched bytes, and never relies on backend overwrite behavior for authority. The value namespace admits peer-to-peer backends — verified-streaming transfer between nodes (for example, iroh-blobs' BLAKE3 verified streaming) suits large snapshot closures — provided the backend's native addressing stays behind the capability: Emery verifies fetched bytes against its own recorded digests regardless of what the transfer layer verified, so a backend whose transfer hash differs from Emery's digest maps between them internally.
 - Use `wasi:messaging` only to announce offers on capability-scoped topics. The contract is deliberately weak: at-most-once delivery, duplicate delivery, and reordering are all acceptable. No claim, result, event, or recovery decision may depend on an announcement arriving; a worker that misses an announcement must be able to find the same offer by scanning the coordination plane. Backends need prove nothing beyond topic-scoped delivery when connected.
-- Add general durable HTTP-trigger supervision for long-running guest operations. Submission authenticates at the native host, returns `202 Accepted` with an opaque invocation ID, and lets the invocation continue after client disconnect. Status, event follow, graceful cancellation, and result retrieval use that ID. Emery maps the invocation to an attachment but adds no second execution lifecycle or HTTP-based node-sync protocol.
+- Add general durable HTTP-trigger supervision for long-running guest operations. Submission authenticates at the native host, returns `202 Accepted` with an opaque invocation ID, and lets the invocation continue after client disconnect. Status, event follow, graceful cancellation, and result retrieval use that ID. Emery maps the invocation to an attachment but adds no second execution lifecycle or HTTP-based distributed-execution protocol.
 - Keep backend service discovery, endpoints, credentials, resource names, transfer encoding, and chunking in the native Omnia backend. Define no Emery user directory or authentication service.
 - Refuse a distributed session when its bound `wasi:documentstore`, `wasi:keyvalue`, or `wasi:blobstore` backend cannot prove the required contract. Development defaults that are lossy, racy, or process-local do not qualify for those three; `wasi:messaging` is exempt because it is wake-up-only. As of this draft, no shipped backend combination qualifies: document-store backends have not proved durable ordered replay, the default and NATS key-value compare-exchange paths are read-then-write, and blob-store writes are unconditional replacement. These are backend and conformance gaps, not reasons to add another storage interface.
-
-
 
 ### Attach, resume, and detach
 
@@ -291,8 +279,6 @@ Throughput alone is not success. Evaluation compares the accepted result and bli
 - On resume, require an empty destination, verify per-writer sequences and artifact digests, reconstruct the change tree, register a distinct writer ID, and continue through slice ownership.
 - Synchronize before a graceful detach. Pause distributed work while detached. Close the attachment before `plan archive` applies its ordinary archive or delete behavior.
 
-
-
 ### Offers, claims, and recovery
 
 - Treat ownership expiry only as suspected loss. Keep recovery inside `plan execute`: require explicit confirmation, verify that the slice's immutable base or most recently published result can be fully reconstructed and passes digest verification, atomically increment the ownership generation, fail conditional operations carrying the old generation, and keep stale facts invisible.
@@ -303,8 +289,6 @@ Throughput alone is not success. Evaluation compares the accepted result and bli
 - Require the authorization epoch, ownership generation, claim identity, and complete input identity on every result produced under slice ownership.
 - Require the validated-input and accepted-frontier digest as the operation key. Domain publication requires no slice owner and atomically accepts the first byte-valid record matching that key.
 - Publish planning revisions, embedded model-capability profiles, amendment proposals, and domain-round records before exposing their referencing events. Make every reachable CID available through the value plane.
-
-
 
 ## Acceptance criteria
 
@@ -325,16 +309,12 @@ Throughput alone is not success. Evaluation compares the accepted result and bli
 15. `cargo make ci` is green in every touched repository. Two-node Emery integration tests cover CLI/HTTP ingress equivalence, asynchronous attachment control, attach, resume, event replication, stale-work rejection, value integrity, remote materialization, claim contention, lease expiry and re-offer, concurrent slices, and cross-target convergence.
 16. Local and two-node live fixtures with the same source and input set, model configuration, time budget, and blind acceptance set report judgment, slice-ownership-wait, offer-to-claim, object-transfer, and result-publication latency separately. Blind grading and runtime metrics remain outside workflow authority.
 
-
-
 ## Prior art
 
 - **[Bazel Remote Execution API](https://github.com/bazelbuild/remote-apis)** — the same coordination/value split proven at datacenter scale: a content-addressable store for values and an action cache keyed by the digest of a fully specified action. D4's domain publication without slice ownership — the operation key as the digest of validated inputs and accepted frontier, first byte-valid record wins, idempotent duplicates — is that pattern.
 - **Pull-based CI runners (GitHub Actions, Buildkite agents)** — fleets of self-registered workers poll a queue and self-select by capability labels; the coordinator keeps no node inventory and makes no placement decision. D7's capability-scoped offers and first-claim-wins are that shape with linearizable claim arbitration and content-addressed inputs added.
 - **[wasmCloud](https://wasmcloud.com/blog/wasmcloud-v2-is-here/) v1 → v2** — v1 routed every component import implicitly over a wRPC/NATS lattice; v2 reversed to in-process by default with explicit, deliberate distribution, because implicit distribution tied invocation semantics to transport failure modes. This RFC goes one further: no guest invocation crosses nodes at all — work moves to the guest, not the call to the work.
 - **[iroh](https://www.iroh.computer/)** — dial-by-key peer-to-peer QUIC with content-addressed, BLAKE3-verified blob streaming. Relevant strictly on the value plane per the transport-boundary asymmetry; it offers no linearizable primitive, so it is not a coordination candidate.
-
-
 
 ## Rejected alternatives
 
@@ -343,7 +323,7 @@ Throughput alone is not success. Evaluation compares the accepted result and bli
 - **An Emery-specific synchronization host** — would duplicate document storage, key-value atomics, blob storage, and messaging that improve the general Omnia runtime. Emery contributes semantic requirements and uses the general capabilities.
 - **Messaging as claim or delivery authority** — claims, results, and recovery decisions that depend on broker delivery inherit its loss, duplication, and ordering semantics. Announcements stay wake-ups; durable offers plus compare-exchange claims carry the authority.
 - **Keep one HTTP request open for the attachment lifetime** — multi-day execution cannot depend on one client connection or intermediary timeout. The native host supervises a durable invocation and gives control back through its opaque attachment ID.
-- **Use HTTP as the node-sync transport** — conflates operator ingress with document-backed writer events, offers, claims, and value transfer. HTTP starts and controls an attachment; Omnia capabilities carry distributed execution.
+- **Use HTTP as the distributed-execution transport** — conflates operator ingress with document-backed writer events, offers, claims, and value transfer. HTTP starts and controls an attachment; Omnia capabilities carry distributed execution.
 - **Compose lossy publish and read-then-write state** — cannot provide cursor replay, linearizable ownership or claim acquisition, recovery that rejects stale writes, or first-writer-wins domain publication.
 - **Guest-to-guest peer synchronization** — would move cursor negotiation, anti-entropy, and reconnection state into the engine guest, duplicate the document store's guarantees, and make resume depend on the originating node being online. Events flow only through `wasi:documentstore`.
 - **Peer-to-peer coordination state** — the host-backend version of the same temptation: gossip, CRDT replicas, or peer pubsub as the backend for slice-ownership records, claims, and writer logs cannot provide linearizable compare-exchange or first-writer-wins publication without a consensus layer, and state held only on participating peers breaks D5's durability contract. Peer transfer stays available on the value plane, where digest verification makes the path irrelevant.

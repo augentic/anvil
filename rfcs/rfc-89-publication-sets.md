@@ -4,7 +4,7 @@
 >
 > Owns: one local project seal per publication member; the branch, pull-request marker, and landing-order conventions that bind those members into one change; archive-time verification; and the shared machine-readable publication projection.
 >
-> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-92](rfc-92-node-sync.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
+> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-92](rfc-92-distributed-execution.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
 >
 > Defers: pushing branches, opening or merging pull requests, atomic cross-repository submission, automated rollback, cross-checkout CI, and parallel member preparation.
 

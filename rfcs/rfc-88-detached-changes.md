@@ -4,7 +4,7 @@
 >
 > Owns: the detached change home; discovery and immutable pinning of targets, sources, and adapters; capability-profile-bound conflict-domain decomposition; refinement feedback into focused child leads; the deterministic buildable-leaf projection into `plan.yaml`; and per-target execution over accepted CIDs.
 >
-> Builds on [RFC-86](rfc-86-change-facts.md)'s facts, explicit execution-authorization epoch, and per-leaf input fences and [RFC-87](rfc-87-working-trees.md)'s content-addressed trees and private workspaces. [RFC-89](rfc-89-publication-sets.md) publishes the results; [RFC-92](rfc-92-node-sync.md) transports them between nodes.
+> Builds on [RFC-86](rfc-86-change-facts.md)'s facts, explicit execution-authorization epoch, and per-leaf input fences and [RFC-87](rfc-87-working-trees.md)'s content-addressed trees and private workspaces. [RFC-89](rfc-89-publication-sets.md) publishes the results; [RFC-92](rfc-92-distributed-execution.md) transports them between nodes.
 >
 > Amends RFC-86 D1 (the in-place change home is `.emery/change/`, not all of `.emery/`) and D6 (closed-plan coverage transitively binds model-capability profiles). Amends RFC-87: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 include the target repository's durable state in its tree, the tree identity is named a **CID** in plan and discovery artifacts (RFC-87's `SnapshotId` is that CID), and the interim `apply` is deleted.
 
