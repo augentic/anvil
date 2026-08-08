@@ -181,11 +181,11 @@ fn open_wave(
 }
 
 /// Newest `plan.execute.started` in the fact union, else an unbound
-/// `{ actor, sequence: 0 }` ref for breakout builds without an epoch.
+/// `{ writer, sequence: 0 }` ref for breakout builds without an epoch.
 fn covering_epoch(layout: Layout<'_>) -> EpochRef {
     let Ok(events) = journal::read_union(layout) else {
         return EpochRef {
-            actor: journal::actor_id(),
+            writer: journal::writer_id(),
             sequence: 0,
         };
     };
@@ -194,13 +194,13 @@ fn covering_epoch(layout: Layout<'_>) -> EpochRef {
         .rev()
         .find_map(|event| match event.kind {
             EventKind::PlanExecuteStarted { .. } => Some(EpochRef {
-                actor: event.actor.clone(),
+                writer: event.writer.clone(),
                 sequence: event.sequence,
             }),
             _ => None,
         })
         .unwrap_or_else(|| EpochRef {
-            actor: journal::actor_id(),
+            writer: journal::writer_id(),
             sequence: 0,
         })
 }

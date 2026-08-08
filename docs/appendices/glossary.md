@@ -122,7 +122,10 @@ The operator-supplied free-form description that backs single-slice, intent-only
 ## J
 
 **Journal**
-Per-actor append-only fact logs at `.emery/events/<actor>.jsonl` (union via `emery journal show`). Carries authorization (`plan.execute.started`), claims, phase events, waves, and the outcome ledger (`slice.archive.created`, …).
+Per-writer append-only fact logs at `.emery/events/<writer>.jsonl` (union via `emery journal show`). Carries authorization (`plan.execute.started`), claims, phase events, waves, and the outcome ledger (`slice.archive.created`, …).
+
+**Journal writer**
+A stable identity with exclusive append authority over one `.emery/events/<writer>.jsonl` log and its sequence namespace. Claims use that writer ID to identify the current slice owner.
 
 ## L
 

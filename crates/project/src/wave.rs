@@ -23,7 +23,7 @@ use crate::name::SliceName;
 use crate::snapshot::SnapshotId;
 
 /// Fact-log identity of a `plan.execute.started` authorization epoch
-/// (`actor` + 1-based `sequence` of that line in the union).
+/// (`writer` + 1-based `sequence` of that line in the union).
 pub type EpochRef = FactEpochRef;
 
 /// Exact inputs one wave member consumed when the wave opened.

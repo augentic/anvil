@@ -1,6 +1,6 @@
-//! Per-actor event log I/O (RFC-86 D3): append stamps actor/sequence,
-//! each actor writes only their file, and readers union by
-//! `(timestamp, actor, sequence)`. `journal show` merges that union.
+//! Per-writer event log I/O (RFC-86 D3): append stamps writer/sequence,
+//! each writer writes only its file, and readers union by
+//! `(timestamp, writer, sequence)`. `journal show` merges that union.
 //! Exclusive per-slice claims (RFC-86 D7 / D23) project from the union.
 
 use jiff::Timestamp;
@@ -8,7 +8,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    DEFAULT_ACTOR, Event, EventKind, append_for, append_one, claim, emit_best_effort, handlers,
+    DEFAULT_WRITER, Event, EventKind, append_for, append_one, claim, emit_best_effort, handlers,
     read_union,
 };
 
@@ -30,7 +30,7 @@ fn build_started(second: i64, slice: &str) -> Event {
 }
 
 #[test]
-fn append_stamps_actor_and_monotonic_sequence() {
+fn append_stamps_writer_and_monotonic_sequence() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
@@ -40,11 +40,11 @@ fn append_stamps_actor_and_monotonic_sequence() {
     append_for(layout, "operator-a", &[build_started(2, "gamma")]).expect("append one more");
 
     let path = root.join(".emery/events/operator-a.jsonl");
-    assert!(path.is_file(), "actor file created");
+    assert!(path.is_file(), "writer file created");
     assert!(!root.join(".emery/journal.jsonl").exists(), "single-file journal is not written");
     let events = read_union(layout).expect("union");
     assert_eq!(events.len(), 3);
-    assert!(events.iter().all(|event| event.actor == "operator-a"));
+    assert!(events.iter().all(|event| event.writer == "operator-a"));
     assert_eq!(
         events.iter().map(|event| event.sequence).collect::<Vec<_>>(),
         vec![1, 2, 3],
@@ -53,12 +53,12 @@ fn append_stamps_actor_and_monotonic_sequence() {
 }
 
 #[test]
-fn union_orders_by_timestamp_actor_sequence() {
+fn union_orders_by_timestamp_writer_sequence() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
 
-    // Same timestamp, different actors — actor name breaks ties.
+    // Same timestamp, different writers — writer name breaks ties.
     append_for(layout, "bravo", &[build_started(5, "b1")]).expect("bravo");
     append_for(layout, "alpha", &[build_started(5, "a1"), build_started(5, "a2")]).expect("alpha");
     // Earlier timestamp sorts first regardless of append order.
@@ -72,7 +72,7 @@ fn union_orders_by_timestamp_actor_sequence() {
                 EventKind::SliceBuildStarted { slice_name } => slice_name.as_str(),
                 other => panic!("unexpected kind: {other:?}"),
             };
-            (event.actor.as_str(), event.sequence, slice)
+            (event.writer.as_str(), event.sequence, slice)
         })
         .collect();
     assert_eq!(
@@ -82,25 +82,25 @@ fn union_orders_by_timestamp_actor_sequence() {
 }
 
 #[test]
-fn append_one_uses_default_actor_only() {
+fn append_one_uses_default_writer_only() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
 
     append_one(layout, &build_started(0, "solo")).expect("append");
 
-    let actor_path = root.join(".emery/events").join(format!("{DEFAULT_ACTOR}.jsonl"));
-    assert!(actor_path.is_file(), "default actor file");
+    let writer_path = root.join(".emery/events").join(format!("{DEFAULT_WRITER}.jsonl"));
+    assert!(writer_path.is_file(), "default writer file");
     assert!(!root.join(".emery/journal.jsonl").exists(), "legacy journal.jsonl is not written");
 
     let events = read_union(layout).expect("union");
     assert_eq!(events.len(), 1);
-    assert_eq!(events[0].actor, DEFAULT_ACTOR);
+    assert_eq!(events[0].writer, DEFAULT_WRITER);
     assert_eq!(events[0].sequence, 1);
 }
 
 #[test]
-fn emit_best_effort_writes_per_actor_log() {
+fn emit_best_effort_writes_per_writer_log() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
@@ -116,7 +116,7 @@ fn emit_best_effort_writes_per_actor_log() {
 
     let events = read_union(layout).expect("union");
     assert_eq!(events.len(), 1);
-    assert_eq!(events[0].actor, DEFAULT_ACTOR);
+    assert_eq!(events[0].writer, DEFAULT_WRITER);
     assert!(
         !root.join(".emery/journal.jsonl").exists(),
         "emit must not dual-write the legacy file"
@@ -124,12 +124,12 @@ fn emit_best_effort_writes_per_actor_log() {
 }
 
 #[test]
-fn append_for_rejects_path_separator_actor() {
+fn append_for_rejects_path_separator_writer() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let err = append_for(layout(tmp.path()), "evil/name", &[build_started(0, "x")])
         .expect_err("path separator refused");
     match err {
-        error::Error::Diag { code, .. } => assert_eq!(code, "journal-actor-invalid"),
+        error::Error::Diag { code, .. } => assert_eq!(code, "journal-writer-invalid"),
         other => panic!("expected Diag, got {other:?}"),
     }
 }
@@ -142,7 +142,7 @@ fn missing_events_dir_unions_empty() {
 }
 
 #[tokio::test]
-async fn show_merges_per_actor_union() {
+async fn show_merges_per_writer_union() {
     let project = Session::scripted("demo", Vec::new());
     let root = project.root();
     let layout = layout(root);
@@ -160,8 +160,8 @@ async fn show_merges_per_actor_union() {
     .await
     .expect("show");
     assert_eq!(body.count, 2);
-    assert_eq!(body.events[0].actor, "alpha");
-    assert_eq!(body.events[1].actor, "bravo");
+    assert_eq!(body.events[0].writer, "alpha");
+    assert_eq!(body.events[1].writer, "bravo");
 
     let limited = run::<handlers::Show, _, _>(
         project.provider(),
@@ -173,7 +173,7 @@ async fn show_merges_per_actor_union() {
     .await
     .expect("show limit");
     assert_eq!(limited.count, 1);
-    assert_eq!(limited.events[0].actor, "bravo", "limit keeps the newest match");
+    assert_eq!(limited.events[0].writer, "bravo", "limit keeps the newest match");
 }
 
 fn claimed(second: i64, slice: &str) -> Event {
@@ -194,11 +194,11 @@ fn released(second: i64, slice: &str) -> Event {
     )
 }
 
-fn retracted(second: i64, actor: &str, sequence: u64) -> Event {
+fn retracted(second: i64, writer: &str, sequence: u64) -> Event {
     Event::new(
         ts(second),
         EventKind::FactRetracted {
-            actor: actor.into(),
+            writer: writer.into(),
             sequence,
         },
     )
@@ -223,7 +223,7 @@ fn concurrent_claims_on_different_slices() {
 }
 
 #[test]
-fn same_slice_second_actor_conflicts() {
+fn same_slice_second_writer_conflicts() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
 
@@ -276,7 +276,7 @@ fn retract_of_retract_restores_claim() {
     let events = vec![
         Event {
             timestamp: ts(1),
-            actor: "alice".into(),
+            writer: "alice".into(),
             sequence: 1,
             kind: EventKind::SliceClaimed {
                 slice_name: "orders-api".into(),
@@ -284,19 +284,19 @@ fn retract_of_retract_restores_claim() {
         },
         Event {
             timestamp: ts(2),
-            actor: "alice".into(),
+            writer: "alice".into(),
             sequence: 2,
             kind: EventKind::FactRetracted {
-                actor: "alice".into(),
+                writer: "alice".into(),
                 sequence: 1,
             },
         },
         Event {
             timestamp: ts(3),
-            actor: "alice".into(),
+            writer: "alice".into(),
             sequence: 3,
             kind: EventKind::FactRetracted {
-                actor: "alice".into(),
+                writer: "alice".into(),
                 sequence: 2,
             },
         },

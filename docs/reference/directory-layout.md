@@ -59,8 +59,8 @@ workspace/                                  # Workspace slots (workspace mode on
 ├── specs/                                  # Merged baseline specs (committable; system of record)
 │   └── <domain>/spec.md                    # Accumulated behavioral requirements
 │
-├── events/                                 # Per-actor append-only fact logs (union via `emery journal show`)
-│   └── <actor>.jsonl                       #   (slice.archive.created, plan.execute.started, claims, waves, …)
+├── events/                                 # Per-writer append-only fact logs (union via `emery journal show`)
+│   └── <writer>.jsonl                      #   (slice.archive.created, plan.execute.started, claims, waves, …)
 │
 └── archive/                                # Prunable cache of merged/dropped slices + finalized plans
     ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `emery archive prune`)
@@ -122,7 +122,7 @@ Slots are read-only during planning and writable during execution. Branch creati
 
 ### `archive/`
 
-A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.emery/specs/` baseline plus the append-only **outcome ledger** in `.emery/events/<actor>.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `emery archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound.
+A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.emery/specs/` baseline plus the append-only **outcome ledger** in `.emery/events/<writer>.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `emery archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound.
 
 ## Files that do not live under `.emery/`
 

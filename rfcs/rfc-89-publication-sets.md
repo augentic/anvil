@@ -4,7 +4,7 @@
 >
 > Owns: one local project seal per publication member; the branch, pull-request marker, and landing-order conventions that bind those members into one change; archive-time verification; and the shared machine-readable publication projection.
 >
-> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-92](rfc-92-node-sync.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
+> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-92](rfc-92-distributed-execution.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
 >
 > Defers: pushing branches, opening or merging pull requests, atomic cross-repository submission, automated rollback, cross-checkout CI, and parallel member preparation.
 
@@ -194,9 +194,9 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 - Implement one typed projector over terminal plan bindings, seal facts, and forge state. Derive its partial order only from projected leaf `depends-on`; do not create a second decomposition reader in publication.
 - Share one target-contraction and cycle-validation kernel between RFC-88 plan validation and archive. Reject `publication-target-cycle` before sealing or forge reads.
 - Render the projection before archive mutation and gate unverified publication with `publication-unverified`; journal the `--unverified` bypass.
-- Append `plan.publication.projected` and `plan.publication.member-landed` through the existing per-actor fact logs.
+- Append `plan.publication.projected` and `plan.publication.member-landed` through the existing per-writer fact logs.
 - Publish and validate the shared record schema for external producers.
-- Exercise the WIT-breaking release order from [RFC-77](rfc-77-release-process.md) across `augentic/emery` and `augentic/emery-adapters` as the in-house fixture. The first real release dogfoods the settled path but does not gate RFC completion.
+- Exercise the WIT-breaking release order from [docs/release.md](../docs/release.md#three-release-shapes) across `augentic/emery` and `augentic/emery-adapters` as the in-house fixture. The first real release dogfoods the settled path but does not gate RFC completion.
 
 ## Acceptance criteria
 

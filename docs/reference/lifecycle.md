@@ -13,14 +13,14 @@ Emery's layered design is explained in [The Layered Stack](../explanation/layere
 
 ## Plan review and authorization
 
-The plan itself carries no stored lifecycle and no projected `approved` rung. The pause between `/emery:plan` and `emery plan execute` is the human topology-review seam. Starting execute opens the `plan.execute.started` authorization epoch (typed `closed-plan` coverage) and drives privileged work under gap gates — there is no separate `plan approve` verb. "Currently executing", Ready / Authorized, and "drained" are computed from artifacts and the per-actor fact union.
+The plan itself carries no stored lifecycle and no projected `approved` rung. The pause between `/emery:plan` and `emery plan execute` is the human topology-review seam. Starting execute opens the `plan.execute.started` authorization epoch (typed `closed-plan` coverage) and drives privileged work under gap gates — there is no separate `plan approve` verb. "Currently executing", Ready / Authorized, and "drained" are computed from artifacts and the per-writer fact union.
 
 ## Per-entry ladder
 
 Each row under `plan.yaml.slices[]` projects a ladder label:
 
 - `pending` — default before claim / advance facts.
-- `in-progress` — projected from `plan.entry.advanced` / a live `slice.claimed` (written by `emery plan advance`). Different slices may be in flight at once; a second actor claiming the same slice fails with `slice-claim-conflict`.
+- `in-progress` — projected from `plan.entry.advanced` / a live `slice.claimed` (written by `emery plan advance`). Different slices may be in flight at once; a second journal writer claiming the same slice fails with `slice-claim-conflict`.
 - `done` — projected from `slice.archive.created` / wave-commit facts (written by `emery slice merge`).
 - Build failures and merge conflicts leave the active entry projecting `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.
 
@@ -70,6 +70,6 @@ Both terminal slice states (`merged` and `dropped`) result in the slice director
 .emery/archive/YYYY-MM-DD-<slice-name>/
 ```
 
-The full slice directory is preserved, including all artifacts and `metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the per-actor **outcome ledger** (`.emery/events/<actor>.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.emery/specs/` baseline plus that ledger, so archived folders can be reclaimed with `emery archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
+The full slice directory is preserved, including all artifacts and `metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the per-writer **outcome ledger** (`.emery/events/<writer>.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.emery/specs/` baseline plus that ledger, so archived folders can be reclaimed with `emery archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
 
 For plans, `emery plan archive` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.emery/archive/plans/<YYYYMMDD>-<name>/`.

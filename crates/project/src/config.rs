@@ -207,8 +207,8 @@ impl<'a> Layout<'a> {
         self.emery_dir().join("archive")
     }
 
-    /// Absolute path to `<project_dir>/.emery/events/` — per-actor
-    /// append-only fact logs (`<actor>.jsonl`). Pre-RFC-88 stand-in
+    /// Absolute path to `<project_dir>/.emery/events/` — per-writer
+    /// append-only fact logs (`<writer>.jsonl`). Pre-RFC-88 stand-in
     /// home (flat `.emery/`); the two-root cut moves these under the
     /// change tree.
     #[must_use]
@@ -216,11 +216,11 @@ impl<'a> Layout<'a> {
         self.emery_dir().join("events")
     }
 
-    /// Absolute path to one actor's event log,
-    /// `<project_dir>/.emery/events/<actor>.jsonl`.
+    /// Absolute path to one writer's event log,
+    /// `<project_dir>/.emery/events/<writer>.jsonl`.
     #[must_use]
-    pub fn actor_events_path(&self, actor: &str) -> PathBuf {
-        self.events_dir().join(format!("{actor}.jsonl"))
+    pub fn writer_events_path(&self, writer: &str) -> PathBuf {
+        self.events_dir().join(format!("{writer}.jsonl"))
     }
 
     /// Absolute path to `<project_dir>/.emery/targets/` — per-target

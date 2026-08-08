@@ -23,7 +23,7 @@ fn suite_answers() -> Vec<String> {
     vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
 }
 
-/// Concatenate the per-actor union as JSONL text for substring asserts.
+/// Concatenate the per-writer union as JSONL text for substring asserts.
 fn journal_text(root: &std::path::Path) -> String {
     let events =
         project::journal::read_union(project::config::Layout::new(root)).expect("journal union");

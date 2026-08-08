@@ -138,7 +138,7 @@ fn structural_errors() -> Error {
 ///
 /// - [`Error::ArtifactNotFound`] when `plan.yaml` is absent.
 /// - `plan-structural-errors` from structural validate.
-/// - `slice-claim-conflict` when another actor owns the eligible slice.
+/// - `slice-claim-conflict` when another writer owns the eligible slice.
 /// - journal append failures for the claim / advance facts.
 pub fn advance_next(
     resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp, config: &ProjectConfig,
@@ -150,9 +150,9 @@ pub fn advance_next(
     let body = plan_advance_body(resolver, &plan, &layout.slices_dir(), config, paths, &ladders)?;
     if let Some(advanced) = &body.advanced {
         let slice: SliceName = advanced.clone().into();
-        let actor = journal::actor_id();
+        let writer = journal::writer_id();
         let ownership = claim::project(&events);
-        let claimed = claim::claim(&ownership, slice.clone(), &actor)?;
+        let claimed = claim::claim(&ownership, slice.clone(), &writer)?;
         journal::append_one(layout, &Event::new(now, claimed))?;
         journal::append_one(
             layout,

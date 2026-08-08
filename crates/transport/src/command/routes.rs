@@ -80,7 +80,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     NamespaceHelp::new(&["plan"], "Executable plan operations — `plan.yaml` lifecycle"),
     NamespaceHelp::new(
         &["journal"],
-        "Workflow journal at `.emery/events/<actor>.jsonl`. Read-only: `show` merges the per-actor union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
+        "Workflow journal at `.emery/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
     NamespaceHelp::new(&["registry"], "Platform registry at `registry.yaml` (repo root)"),
 ];
@@ -241,14 +241,14 @@ where
         ["plan", "advance"],
         plan::AdvanceArgs,
         ::change::plan::handlers::Advance,
-        "Claim the next eligible slice (`slice.claimed` + `plan.entry.advanced`) so it projects `in-progress`, or return an already-active entry. Progress is projected from facts — use `plan status` for the read-only view. Different slices may be claimed concurrently; same-slice second actor → `slice-claim-conflict`"
+        "Claim the next eligible slice (`slice.claimed` + `plan.entry.advanced`) so it projects `in-progress`, or return an already-active entry. Progress is projected from facts — use `plan status` for the read-only view. Different slices may be claimed concurrently; same-slice second writer → `slice-claim-conflict`"
     );
     route!(
         ["plan", "status"],
         plan::StatusArgs,
         ::change::plan::handlers::Status,
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `review-gaps`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-actor fact union (slot-aware in workspace mode). Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from phase / wave journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
+        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `review-gaps`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-writer fact union (slot-aware in workspace mode). Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from phase / wave journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
     );
     route!(
         ["plan", "gaps"],
@@ -302,8 +302,8 @@ where
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
-        "Read events from `.emery/events/<actor>.jsonl` (union order)",
-        "Read events from `.emery/events/<actor>.jsonl`, merging every actor file in `(timestamp, actor, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, actor, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
+        "Read events from `.emery/events/<writer>.jsonl` (union order)",
+        "Read events from `.emery/events/<writer>.jsonl`, merging every writer file in `(timestamp, writer, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, writer, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
     );
     route!(
         ["registry", "validate"],

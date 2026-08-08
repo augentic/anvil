@@ -27,7 +27,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_ACTOR, Event as JournalEvent, EventKind, LeafSpecCoverage,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event as JournalEvent, EventKind, LeafSpecCoverage,
     append_for,
 };
 use support::{change, change_with_deps, plan_with_changes};
@@ -104,7 +104,7 @@ fn ts(seconds: i64) -> Timestamp {
 }
 
 fn append(root: &std::path::Path, events: &[JournalEvent]) {
-    append_for(Layout::new(root), DEFAULT_ACTOR, events).expect("write journal events");
+    append_for(Layout::new(root), DEFAULT_WRITER, events).expect("write journal events");
 }
 
 fn advanced(seconds: i64, plan: &str, slice: &str) -> JournalEvent {

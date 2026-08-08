@@ -1,6 +1,6 @@
 # RFC-87: Private Workspaces
 
-> Status: Implemented — landed with interim RFC-86 stand-ins (build-time base self-pinning, slice-local `build/patch.yaml`, merge-time apply); step 2 of the platform-migration series ([platform.md](platform.md)). [RFC-88](rfc-88-detached-changes.md) proposes amendments: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 admit the project repository's durable state into the tree, plan/discovery artifacts name the tree identity a **CID** (`SnapshotId` is that value), and the interim `apply` is deleted.
+> Status: Implemented — step 2 of the platform-migration series ([platform.md](platform.md)). [RFC-86](rfc-86-change-facts.md) Phase B retired the interim build-time ambient freeze and slice-local `build/patch.yaml`; recorded `base.yaml` pins and content-addressed `builds/<digest>.yaml` records are the authority. The remaining interim is merge-time `apply` (deleted by [RFC-88](rfc-88-detached-changes.md)). RFC-88 also proposes amendments: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 admit the project repository's durable state into the tree, and plan/discovery artifacts name the tree identity a **CID** (`SnapshotId` is that value).
 >
 > Owns: materializing an immutable code snapshot into a private workspace, granting separate read-only artifact access, capturing the resulting code snapshot and touched paths, and discarding the workspace.
 >
@@ -10,7 +10,7 @@
 
 A work directory is disposable execution machinery, never workflow state. Durable code state consists only of immutable snapshots.
 
-Today build and merge run in the operator's checkout. That ambient mutable directory cannot safely support concurrent workers or remote nodes. RFC-87 replaces it with one location-neutral contract:
+Before this RFC, build and merge wrote the operator's checkout. That ambient mutable directory cannot safely support concurrent workers or remote nodes. RFC-87 replaces it with one location-neutral contract:
 
 ```text
 prepare(repository, base snapshot, access manifest) → private workspace
@@ -73,7 +73,7 @@ For Git repositories, the local provider may use Git's object database and workt
 
 The code patch contains the base snapshot id, result snapshot id, and derived touched paths. Binary files, deletes, modes, and symlinks are properties of the two trees; RFC-87 defines no binary-patch serialization.
 
-[RFC-91](rfc-91-concurrent-execution.md) owns deterministic composition of same-base results. [RFC-92](rfc-92-node-sync.md) owns transport of the referenced snapshot objects.
+[RFC-91](rfc-91-concurrent-execution.md) owns deterministic composition of same-base results. [RFC-92](rfc-92-distributed-execution.md) owns transport of the referenced snapshot objects.
 
 ### D4 — Code and change artifacts stay separate
 
@@ -97,7 +97,7 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-92](rfc-92-node-sync.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-91](rfc-91-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-92](rfc-92-distributed-execution.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 

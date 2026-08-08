@@ -104,14 +104,14 @@ fn retract_rung(
         Status::Done => events
             .iter()
             .rev()
-            .filter(|event| !retracted.contains(&(event.actor.as_str(), event.sequence)))
+            .filter(|event| !retracted.contains(&(event.writer.as_str(), event.sequence)))
             .filter_map(|event| match &event.kind {
                 EventKind::SliceArchiveCreated { slice_name, .. }
                 | EventKind::TargetMergeWaveCommitted { slice_name, .. }
                 | EventKind::TargetMergeWavePostflightFailed { slice_name, .. }
                     if slice_name == slice =>
                 {
-                    Some((event.actor.clone(), event.sequence))
+                    Some((event.writer.clone(), event.sequence))
                 }
                 _ => None,
             })
@@ -120,18 +120,18 @@ fn retract_rung(
         Status::InProgress => {
             let mut targets = Vec::new();
             for event in events.iter().rev() {
-                if retracted.contains(&(event.actor.as_str(), event.sequence)) {
+                if retracted.contains(&(event.writer.as_str(), event.sequence)) {
                     continue;
                 }
                 match &event.kind {
                     EventKind::SliceClaimed { slice_name } if slice_name == slice => {
-                        targets.push((event.actor.clone(), event.sequence));
+                        targets.push((event.writer.clone(), event.sequence));
                     }
                     EventKind::PlanEntryAdvanced {
                         plan_name,
                         slice_name,
                     } if plan_name == &plan.name && slice_name == slice => {
-                        targets.push((event.actor.clone(), event.sequence));
+                        targets.push((event.writer.clone(), event.sequence));
                     }
                     _ => {}
                 }
@@ -140,15 +140,15 @@ fn retract_rung(
             let mut seen = std::collections::BTreeSet::new();
             targets
                 .into_iter()
-                .filter(|(actor, sequence)| seen.insert((actor.clone(), *sequence)))
+                .filter(|(writer, sequence)| seen.insert((writer.clone(), *sequence)))
                 .collect()
         }
         Status::Pending => Vec::new(),
     };
-    for (actor, sequence) in targets {
+    for (writer, sequence) in targets {
         journal::append_one(
             layout,
-            &Event::new(now, EventKind::FactRetracted { actor, sequence }),
+            &Event::new(now, EventKind::FactRetracted { writer, sequence }),
         )?;
     }
     Ok(())

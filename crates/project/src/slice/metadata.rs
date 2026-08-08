@@ -68,7 +68,7 @@ pub struct SliceMetadata {
     pub touched_specs: Vec<TouchedSpec>,
     /// Latest phase outcome. Written atomically by
     /// the merge commit tail (stamps `Success` before the archive move).
-    /// History lives in `.emery/events/<actor>.jsonl` (workflow §Observability).
+    /// History lives in `.emery/events/<writer>.jsonl` (workflow §Observability).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<Outcome>,
 }

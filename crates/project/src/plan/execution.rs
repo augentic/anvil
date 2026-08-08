@@ -114,7 +114,7 @@ impl Resolution {
 }
 
 /// Load the fact union for status projection: the plan root's
-/// per-actor logs plus each distinct materialised workspace-slot
+/// per-writer logs plus each distinct materialised workspace-slot
 /// journal (phase work for a project-bound entry writes there).
 ///
 /// # Errors
@@ -131,9 +131,9 @@ pub fn collect_events(plan: &Plan, layout: Layout<'_>) -> Result<Vec<Event>, Err
         events.extend(journal::read_union(Layout::new(root))?);
     }
     events.sort_by(|left, right| {
-        (left.timestamp, left.actor.as_str(), left.sequence).cmp(&(
+        (left.timestamp, left.writer.as_str(), left.sequence).cmp(&(
             right.timestamp,
-            right.actor.as_str(),
+            right.writer.as_str(),
             right.sequence,
         ))
     });
@@ -153,7 +153,7 @@ pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Stat
     let mut ladders: HashMap<SliceName, Status> =
         plan.entries.iter().map(|e| (e.name.clone(), Status::Pending)).collect();
     for event in events {
-        if retracted.contains(&(event.actor.as_str(), event.sequence)) {
+        if retracted.contains(&(event.writer.as_str(), event.sequence)) {
             continue;
         }
         match &event.kind {
@@ -360,7 +360,7 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
     let mut facts = WindowFacts::default();
     let mut terminal_seen = false;
     for event in events.iter().rev() {
-        if retracted.contains(&(event.actor.as_str(), event.sequence)) {
+        if retracted.contains(&(event.writer.as_str(), event.sequence)) {
             continue;
         }
         match &event.kind {

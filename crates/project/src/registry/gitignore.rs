@@ -15,7 +15,7 @@ use error::Error;
 /// durable system of record) and `.emery/archive/` (the prunable
 /// outcome cache). Both stay committable so git history of the baseline
 /// — together with the `slice.archive.created` outcome ledger in
-/// `.emery/events/<actor>.jsonl` — is the record of merged work. The adapter cache
+/// `.emery/events/<writer>.jsonl` — is the record of merged work. The adapter cache
 /// lives in the out-of-tree OS cache, so it needs no entry here.
 const EMERY_GITIGNORE_ENTRIES: &[&str] = &[".emery/scratch/", "workspace/"];
 
