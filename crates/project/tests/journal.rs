@@ -8,8 +8,8 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    DEFAULT_WRITER, Event, EventKind, append_for, append_one, claim, emit_best_effort, handlers,
-    read_union,
+    DEFAULT_WRITER, Event, EventKind, FactEpochRef, append_for, append_one, claim,
+    emit_best_effort, handlers, read_union,
 };
 
 const fn layout(root: &std::path::Path) -> Layout<'_> {
@@ -27,6 +27,62 @@ fn build_started(second: i64, slice: &str) -> Event {
             slice_name: slice.into(),
         },
     )
+}
+
+#[test]
+fn reads_prior_actor_wire_fields() {
+    // Pre-rename journals and epoch refs used `actor`; read_union skips
+    // unparseable lines, so missing aliases would silently drop history.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let events_dir = root.join(".emery/events");
+    std::fs::create_dir_all(&events_dir).expect("mkdir");
+    let claimed = concat!(
+        r#"{"timestamp":"2023-11-14T22:13:20Z","actor":"alice","sequence":1,"#,
+        r#""event":"slice.claimed","payload":{"slice-name":"orders-api"}}"#,
+        "\n",
+    );
+    let retracted = concat!(
+        r#"{"timestamp":"2023-11-14T22:13:21Z","actor":"alice","sequence":2,"#,
+        r#""event":"fact.retracted","payload":{"actor":"alice","sequence":1}}"#,
+        "\n",
+    );
+    std::fs::write(events_dir.join("alice.jsonl"), format!("{claimed}{retracted}"))
+        .expect("write prior journal");
+
+    let events = read_union(layout(root)).expect("union");
+    assert_eq!(events.len(), 2, "prior actor envelopes must stay in the union");
+    assert_eq!(events[0].writer, "alice");
+    assert_eq!(events[0].sequence, 1);
+    assert!(matches!(
+        &events[0].kind,
+        EventKind::SliceClaimed { slice_name } if slice_name.as_str() == "orders-api"
+    ));
+    assert!(matches!(
+        &events[1].kind,
+        EventKind::FactRetracted { writer, sequence: 1 } if writer == "alice"
+    ));
+    assert!(
+        claim::project(&events).is_empty(),
+        "retracted claim via prior actor payload stays retracted"
+    );
+
+    let epoch: FactEpochRef =
+        serde_json::from_str(r#"{"actor":"local","sequence":7}"#).expect("prior epoch ref");
+    assert_eq!(epoch.writer, "local");
+    assert_eq!(epoch.sequence, 7);
+
+    let stamped = Event {
+        timestamp: ts(0),
+        writer: "bob".into(),
+        sequence: 1,
+        kind: EventKind::SliceClaimed {
+            slice_name: "orders-ui".into(),
+        },
+    };
+    let wire = serde_json::to_string(&stamped).expect("serialize");
+    assert!(wire.contains(r#""writer":"bob""#), "{wire}");
+    assert!(!wire.contains(r#""actor""#), "new writes emit writer only: {wire}");
 }
 
 #[test]

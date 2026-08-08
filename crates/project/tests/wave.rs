@@ -34,6 +34,29 @@ fn sample(target: &str, slice: &str) -> Wave {
 }
 
 #[test]
+fn loads_prior_actor_build_authorization() {
+    let yaml = "\
+target: demo
+base: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+members:
+- slice: login-flow
+  inputs:
+    spec: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+build-authorization:
+  actor: local
+  sequence: 7
+";
+    let wave: Wave = serde_saphyr::from_str(yaml).expect("prior actor epoch ref");
+    assert_eq!(
+        wave.build_authorization,
+        EpochRef {
+            writer: "local".into(),
+            sequence: 7,
+        }
+    );
+}
+
+#[test]
 fn write_and_load_round_trip() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());

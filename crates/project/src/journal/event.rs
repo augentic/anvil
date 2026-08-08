@@ -28,6 +28,10 @@ pub struct Event {
     /// Journal writer that appended this line (`EMERY_WRITER` or the stable
     /// local default). Empty only on in-memory values before
     /// [`super::append_for`] stamps the wire fields.
+    ///
+    /// Deserialise accepts the prior `actor` wire key so existing
+    /// `.emery/events/*.jsonl` lines remain in the union after the rename.
+    #[serde(alias = "actor")]
     pub writer: String,
     /// Monotonic per-writer sequence (1-based) inside that writer's
     /// `.jsonl` file. Zero only on in-memory values before append
@@ -467,6 +471,9 @@ pub enum EventKind {
     #[serde(rename = "fact.retracted", rename_all = "kebab-case")]
     FactRetracted {
         /// Writer file that holds the retracted line.
+        ///
+        /// Deserialise accepts the prior `actor` wire key.
+        #[serde(alias = "actor")]
         writer: String,
         /// 1-based sequence of the retracted line in that writer's file.
         sequence: u64,
@@ -562,6 +569,10 @@ pub struct IdentityMap {
 #[serde(rename_all = "kebab-case")]
 pub struct FactEpochRef {
     /// Writer file that holds the epoch fact.
+    ///
+    /// Deserialise accepts the prior `actor` wire key (wave
+    /// `build-authorization` / commit-authorization refs).
+    #[serde(alias = "actor")]
     pub writer: String,
     /// 1-based sequence of the epoch fact in that writer's file.
     pub sequence: u64,
