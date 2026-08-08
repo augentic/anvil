@@ -2,66 +2,210 @@
 
 > Status: Draft — step 7 of the platform-migration series, scale track ([platform.md](platform.md))
 >
-> Owns: multi-node placement of the completed local execution model: fact, planning-artifact, domain-round, and snapshot transport; fenced claims; remote private workspaces and worker pools; attach, resume, and detach. It adds no scheduler, convergence, merge, authority, or lifecycle semantics.
+> Owns: running one change across multiple nodes without changing its execution semantics. Adds distribution for facts, planning artifacts, domain rounds, and snapshots; fenced claims; multi-node private workspaces and worker pools; and attach, resume, and detach.
 >
-> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-88](rfc-88-detached-changes.md), [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-concurrent-execution.md).
+> Does not own: scheduling policy, result convergence, merge semantics, workflow authority, or lifecycle.
+>
+> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-concurrent-execution.md).
 >
 > Related: [RFC-89](rfc-89-publication-sets.md) binds publication across repositories after this RFC's distributed execution.
+>
+> Runtime dependency: general Omnia capabilities for durable cursor-based logs, linearizable atomic state, backend-neutral blob storage, remote guest dispatch, multi-node private workspaces, and durable asynchronous trigger supervision. Where Omnia lacks one of these general primitives, this RFC requires improving Omnia rather than adding an Emery-specific transport API.
 
 ## Intent
 
-Let one change execute across peer nodes, a hosted fleet, or both without sharing a filesystem.
+*Let one change run across peer nodes, a hosted fleet, or both **without sharing a filesystem**.*
 
-The local execution model already makes change state safe to exchange: each actor owns an append-only log, logs form a deterministic union, status is projected, and claims assign work. It also defines atomic target-wave commit, concurrent leaf eligibility, multi-member waves, and durable bottom-up domain convergence. This RFC adds transport, placement, and fencing around that model. It does not move authority, add a second lifecycle, or change how facts are interpreted.
+Emery can already run a change on a single machine. Each slice is given to a worker along with a private workspace. Progress events are logged, slice results combined, and commited as a group.
 
-Coordination is near realtime; code convergence is deliberately coarser. A dependent observes a producer's result when a judgment leg ends and its immutable snapshot has been captured and verified. Emery does not synchronize keystrokes or live directories.
+This RFC adds the transport and safeguards needed to preserve that behavior **across nodes**.
 
-The single-node desktop remains the degenerate deployment with these transports absent.
+Nodes continuously share progress and ownership updates. They exchange code only as immutable, verified snapshots after an operation completes. Emery will not synchronize keystrokes, editor buffers, or live directories.
 
-## Flow and terms
+A single desktop — the degenerate case — uses the same execution model through local Omnia capability implementations and requires no distributed-runtime configuration.
 
-1. An operator starts `emery plan execute --hosted` from an authored change home.
-2. Emery records the privileged start, attaches the change to its coordination and value transports, and registers the node's actor identity.
-3. The local scheduler identifies eligible leaf entries; nodes acquire their fenced claims. Each worker resolves immutable inputs into a fresh private workspace.
-4. At a round boundary, the worker captures its result and verifies the stored snapshot objects before publishing the result fact.
-5. Completed leaf and domain results replicate by digest. Any node with the required facts and values may continue the unchanged bottom-up fold.
-6. Atomic target-wave commit remains the only accepted-CID writer and projects every member leaf `done`.
+## Existing execution contract
 
-The three **sync planes** are:
+This RFC distributes the existing contract:
 
-- **coordination** — claims, `plan.execute.started`, per-actor event logs, and deterministic projections over their union;
-- **convergence** — immutable project, source, and result snapshot objects exchanged between private workspaces;
-- **publication** — branches and pull requests on the forge, unchanged and operator-owned.
+- Each actor writes only its own append-only event log. Emery combines these logs to calculate status.
+- A fenced claim records which actor owns a slice and which generation of that ownership is current.
+- Every code-writing worker starts with immutable inputs in a fresh private workspace and returns an immutable result. Verification and review receive fresh materializations of the current candidate. Their incidental writes are recorded for inspection and discarded; they do not become part of the accepted result.
+- Slices may run concurrently, with results combining upward from slice leaves through the recorded domain hierarchy.
+- Emery groups slices for the same target repository into a **target wave** and commits all their results together. If any result cannot be accepted, none are committed.
+- Recovery proposals never amend a plan automatically. Only operator-invoked amendments change plan authority.
 
-A **round boundary** is the point after a judgment leg completes and `capture` records its result. A **fencing generation** is the monotonically increasing token attached to a claim and every write made under that claim. A **code patch** is the `{ base snapshot, result snapshot, touched paths }` relation. A **domain result** is an immutable record: either one composed candidate CID for a single-target domain or an ordered target→CID/report set for a multi-target coordination domain. It is not a patch blob, and publication sets never enter the value plane.
+## Omnia runtime model
 
-## Worked example: attach and resume on two nodes
+Each participating node runs the native `emery` executable as an Omnia host runtime. The runtime embeds the engine guest, binds host capabilities before the guest starts, and resolves source and target adapter guests locally or remotely. Backend endpoints and credentials remain in the native host; guests receive only typed WIT capabilities.
 
-Suppose node A holds the authored `checkout-v2` change home. It starts hosted execution:
+This RFC composes general Omnia capabilities:
+
+- a **durable log** appends and follows actor events from independent per-actor sequence cursors;
+- **atomic state** provides linearizable compare-exchange, conditional update, and expiry notification for claims and first-writer-wins publication;
+- **blob storage** carries immutable coordination records and snapshot values under separate logical namespaces;
+- **multi-node workspaces** freeze, prepare, capture, compose, and discard private workspaces on the node selected for an operation;
+- **remote guest dispatch** routes an adapter invocation to the node holding its workspace.
+
+These are runtime primitives, not workflow policy. Emery still decides eligibility, authorization, fencing, dependency visibility, convergence, and acceptance. If an existing Omnia interface is lossy, racy, or local-only, its general contract and backends must be strengthened before Emery relies on it.
+
+Source and target adapters import no coordination or claim capability. They continue to receive one operation request and one private workspace. An attached engine runtime is a workflow actor; a remote worker invocation is subordinate to the actor that holds the slice claim and does not author a second workflow log.
+
+Operator ingress is separate from inter-node execution. The engine exposes the same typed workflow operations through CLI and HTTP. An interactive deployment may invoke `emery plan execute --distributed` and remain attached to the process. A hosted deployment submits the execute operation through `POST /plan/execute`; the native host authenticates the request, allocates or selects its managed change home, and supervises the engine invocation after returning `202 Accepted` with an opaque attachment ID. Request disconnection does not stop the attachment. Status, event follow, and graceful detach address that attachment through general Omnia invocation-control surfaces rather than a second Emery workflow.
+
+The HTTP trigger does not carry worker calls, actor logs, claims, or snapshot values. Once the execute operation starts, those flows still use the capabilities below and remote adapter calls still use wRPC. HTTP is an operator control surface, not the node-sync protocol.
+
+## Distributed execution
+
+1. The operator invokes the distributed execute operation against an authored change home, either through the attached CLI or authenticated HTTP control surface.
+2. Emery records `plan.execute.started`, opens the change's distributed session through the configured Omnia capabilities, and registers the local engine runtime as an actor.
+3. The existing scheduler identifies eligible slices. Before preparing a private workspace for a slice, an attached Emery runtime must atomically acquire its fenced claim.
+4. The Emery runtime that claimed the slice dispatches each ready operation through Omnia. The host places a fresh private workspace on a capable node and routes the adapter invocation to that node. Every subordinate worker result carries the claiming runtime's actor identity, fencing generation, and complete input fence.
+5. When a writing operation finishes, the workspace capability captures and verifies its immutable result before the claiming runtime publishes the result record.
+6. Other nodes follow the actor logs and fetch referenced records or snapshot values as needed. A node may use a result only after every dependency is present and digest-verified.
+7. Any attached engine runtime with the required inputs may continue the existing bottom-up convergence. A target-wave commit remains the only operation that advances a target repository's accepted state.
+
+### Transport boundaries
+
+This RFC keeps three concerns separate even when one backend implements more than one capability:
+
+- **Coordination** carries fenced claims and durable actor events, plus the immutable planning and domain records those events reference. It uses the Omnia durable-log, atomic-state, and blob-storage capabilities.
+- **Values** are immutable project, source, and result snapshots. The multi-node workspace capability moves their content-addressed object closure through a logically separate blob-storage namespace.
+- **Publication** remains on the forge through branches and pull requests. It is unaffected and operator-owned.
+
+Coordination may report that work exists before its larger snapshot values become locally available, but Emery does not expose a result to projection until its complete dependency set is present and verified. Logical separation does not require separate infrastructure: one host backend may satisfy several capabilities without making its resource names part of the guest contract.
+
+The two planes have opposite trust and liveness profiles, and backend selection must respect the asymmetry. Values are self-certifying: a CID names its own bytes, so a snapshot object may arrive from a hosted store, a relay, or a nearby peer without weakening correctness — verification happens on read either way. Coordination is authority-bearing: fenced claims and per-writer cursors require a linearizable, always-on point of serialization, and the durability contract in D5 — resume requires no other node online — cannot be met by state that lives only on participating peers. Peer-to-peer transfer is therefore a legitimate value-plane backend option and never a coordination-plane substitute.
+
+### Key terms
+
+- An **actor** is the identity that exclusively authors one event log. In distributed execution, an attached Emery runtime claims a slice under its actor identity; subordinate remote workers are not actors.
+- A **CID** is the content digest of an immutable snapshot.
+- A **round boundary** occurs when a code-producing judgment leg finishes and `capture` records its verified result. A domain gate instead finishes by writing its immutable domain-round record.
+- A **fencing generation** is a monotonically increasing number attached to a claim and every write made under it. Once recovery advances the generation, writes from an older worker are stale.
+- A **workspace placement** is an Omnia runtime decision that collocates a private workspace and the guest invocation using it. It does not change Emery's scheduler or ownership.
+- A **code patch** is the relation `{ base snapshot, result snapshot, touched paths }`; it is not a separate patch blob.
+- A **domain result** records either one composed CID for a single-target domain or an ordered target-to-CID/report set for a multi-target domain.
+
+## Example: attach, resume, and recover
+
+Suppose node A's runtime is rooted at the authored `checkout-v2` change home. An interactive operator can attach through the CLI:
 
 ```bash
-emery plan execute --hosted
+emery plan execute --distributed
 ```
 
-The deployment supplies `NATS_URL` and `NATS_CREDS`, where `NATS_CREDS` names a credentials file. Emery appends `plan.execute.started`, generates and prints a UUIDv7 change id such as `0198a40f-…`, attaches the change, and stores only the endpoint, change id, and last observed per-actor sequences in `.emery/hosted.yaml`. Credentials never enter the change home or fact logs.
+The equivalent hosted ingress is asynchronous:
 
-Node B can resume the same change into an empty directory:
+```http
+POST /plan/execute HTTP/1.1
+Content-Type: application/json
 
-```bash
-emery plan execute --hosted \
-  --change-id 0198a40f-… \
-  --project-dir /tmp/checkout-v2
+{"distributed":true}
 ```
 
-Node B verifies the received per-actor sequences and artifact digests, reconstructs the change tree, registers a distinct actor identity, and claims eligible entries with fresh fencing tokens. Each node continues to append only its own authoritative facts; replicated remote events are stored under their original authors' logs.
+The host returns `202 Accepted` with an opaque attachment ID. The Omnia host runtime connects its configured capabilities before the engine guest starts. Emery records the privileged start, generates and returns a UUIDv7 change ID such as `0198a40f-…`, publishes the change state and referenced values, and begins following actor events. The local attachment sidecar at `.emery/distributed.yaml` stores only the change ID and last observed sequence for each actor. It is not part of the detached fact tree or product configuration. Backend configuration, ingress credentials, and managed host paths never enter the guest, change home, or event logs.
 
-If node B disappears while holding `mobile-shell` at generation 18, expiry reports suspected loss but does not transfer the claim. On re-entry, `plan execute` can explicitly confirm recovery, validate the last fact round, and compare-and-set the generation to 19. Any later event, result, or release from the stale generation-18 worker is rejected.
+Node B can resume the same change through its hosted control surface:
 
-Detach first brings the local change home current and then stops streaming. The local fact union remains readable through the ordinary projection. Reattachment observes the same state; there is no authority cutover or one-way door.
+```http
+POST /plan/execute HTTP/1.1
+Content-Type: application/json
 
-## Worked example: trial integration across targets
+{"distributed":true,"change-id":"0198a40f-…"}
+```
 
-Consider three entries:
+Node B's host allocates an empty managed change home; an HTTP caller never supplies a path meaningful only on the caller's filesystem. The equivalent interactive CLI remains `emery plan execute --distributed --change-id 0198a40f-… --project-dir ./checkout-v2`. Node B verifies the received sequences and artifact digests, reconstructs the change tree, registers its own actor identity, and claims any eligible unowned slices with fresh fencing generations. Each node continues to write only its own event log. Replicated events remain attributed to their original actors.
+
+Suppose node B disappears while holding `mobile-shell` at generation 18. Claim expiry reports suspected loss but does not transfer ownership. During a later `plan execute`, the operator may explicitly confirm recovery after Emery validates the last completed round. Emery then atomically advances the claim to generation 19. Any event, result, or release carrying generation 18 is rejected before it can affect projection.
+
+A graceful stop first brings the local change home current and then detaches from the distributed session. Reattaching reconstructs the same projected state. `plan archive` closes the attachment before performing its ordinary archive or delete behavior.
+
+## Decisions
+
+### D1 — Omnia capabilities preserve the transport boundaries
+
+Events use the durable-log capability. Claims and first-writer-wins records use linearizable atomic state. Immutable planning records use a coordination blob namespace. Product and source snapshots use the multi-node workspace value path over a separate blob namespace. Publication remains on the forge.
+
+This lets each concern use the consistency model it needs and prevents large code objects from blocking coordination updates.
+
+The engine guest imports capability contracts, never backend identities, endpoints, subjects, bucket names, or credentials. Source and target adapter worlds import none of the distribution capabilities. A deployment profile may bind several contracts to one service, but that mapping remains native host policy. A future blob backend may fetch snapshot values peer-to-peer without changing the contract: verify-on-read makes the transfer path irrelevant to correctness. Per the transport-boundary asymmetry above, that peer-to-peer option exists only on the value plane; the coordination capabilities always bind to a linearizable, durably hosted backend.
+
+### D2 — Remote code results cross only at verified round boundaries
+
+No shared volume, network filesystem, patch blob, persistent source copy, or live directory handle crosses the wire. A writing worker records its result only after `capture` has stored and verified every referenced snapshot object. Domain gates publish immutable domain-round records instead of code snapshots.
+
+Dependants prepare from that immutable result. There is no synchronization within an operation, so result-availability latency is the operation's runtime plus capture and transfer latency.
+
+### D3 — Distributed claims are fenced
+
+An attached Emery runtime requests a private workspace only after acquiring the slice's claim through a linearizable compare-exchange. The claim records that runtime's actor identity, and its fencing generation accompanies every event, result, and release produced under that ownership.
+
+Expiry reports suspected loss; it does not transfer ownership. Recovery requires explicit operator confirmation, validation of the last completed round, and an atomic generation increment. Conditional updates carrying an older generation fail, and stale facts remain invisible to projection.
+
+Fresh private workspaces need no second lock. Within a worker pool, task grants continue to partition path ownership.
+
+### D4 — Placement cannot change execution semantics
+
+The existing scheduler remains the only definition of slice eligibility, domain readiness, composition, verification, and target-wave membership. Omnia may place eligible work on any capable node, but placement cannot infer a different hierarchy or acceptance policy.
+
+The Emery runtime that claimed a slice owns its remote task calls. A worker receives only the validated operation, task grant, immutable inputs, and workspace placement. Every claimed result carries its authorization epoch, actor identity, fencing generation, and complete input fence. Emery rejects a result if its slice identity or its lead-catalog, decomposition, model-capability-profile, wave, dependency-frontier, spec, or base digest does not match the current operation.
+
+Domain operations remain claimless and content-addressed. Their operation key is the digest of the validated inputs and accepted frontier. Linearizable create-if-absent publication accepts the first byte-valid record that matches that key; an identical duplicate succeeds idempotently, while a different later record cannot replace the winner. Blob replacement alone cannot implement this rule. The atomic-state capability publishes the winning record digest without pretending that a model-assisted result is deterministic.
+
+### D5 — Transport carries facts; it does not become their authority
+
+Each actor remains the only author of its event log. The durable-log capability carries those same events, not a second event model or lifecycle authority.
+
+Per-actor sequence numbers make delivery idempotent and let each follower resume independently. A node stores received events under their original actors and runs the existing projection over the combined logs. Delivery may be at least once; gaps remain pending until missing sequences arrive. No authority cutover, dual-write protocol, or separate reconciliation model is introduced.
+
+An attached change's coordination state is durable independently of every participating node; resume requires no other node online. A disconnected node retains its last received state and pauses distributed work until its capabilities reconnect.
+
+### D6 — Referenced records and values arrive before their facts become visible
+
+Planning revisions with their embedded model-capability profiles, amendment proposals, and domain-round records travel through the coordination blob namespace. Snapshot objects reachable from build and domain records travel through the multi-node workspace value path.
+
+An event that references one of those objects remains invisible to projection until the complete dependency set is present and digest-verified. This ordering lets another node resume a completed domain round without recomputing it. Garbage collection treats replicated live records as roots.
+
+### D7 — Omnia multi-node workspaces preserve local behavior
+
+The general Omnia workspace capability freezes trees into immutable snapshots and accepts a snapshot identity, access manifest, and placement requirements for preparation. It creates a fresh disk-backed workspace on the selected node, returns an opaque handle to the caller, routes the guest invocation to that placement, and supplies the worker-local `local-path` only on that node. Capture, composition, and discard execute where the workspace lives; remote paths never enter Emery artifacts.
+
+Worker pools use the same ownership, composition, verification, and reporting sequence whether their workers run locally or remotely. Workers never share a writable tree, live handle, MCP state, or prompt state. Byte-identical snapshots round-trip between placements.
+
+Emery provides no CRDT trees, synchronized editor buffers, or simultaneous multi-writer access to one path.
+
+### D8 — Distribution cannot amend the plan
+
+Runtime overlap, refinement-boundary escalation, and target decomposition may produce validated amendment proposals. RFC-92 replicates those proposals but never applies them.
+
+Only the operator-invoked compare-and-set amendment surface may revise lead, decomposition, or plan authority. Distribution adds no hidden recovery or amendment writer.
+
+### D9 — The execute operation attaches and resumes through CLI or HTTP
+
+The execute operation is transport-neutral. In an authored change directory, `emery plan execute --distributed` invokes it directly and remains attached. In a hosted deployment, authenticated `POST /plan/execute` invokes the same operation against a host-managed change home and returns `202 Accepted` with opaque change and attachment identities.
+
+Supplying a change ID reconstructs the change tree, registers a fresh actor, acquires fenced claims, and resumes the ordinary execution loop. The CLI names an empty host-local `--project-dir`; HTTP deployments allocate that directory and never interpret a client-local path. Resume is deterministic reconstruction, not a second recovery protocol.
+
+The CLI process lifetime may remain the attachment lifetime for an interactive deployment. A hosted attachment is a durable host-supervised invocation: it survives request disconnection and is addressed by its attachment ID for status, event follow, and graceful detach. A graceful stop synchronizes before detaching. The retained change home remains readable through the ordinary operations, and a later invocation may reattach it.
+
+### D10 — Missing primitives improve Omnia generally
+
+RFC-92 does not assemble safety-critical behavior from interfaces that lack the required guarantees. A lossy publish API is not a durable log, read-then-write state is not compare-exchange, blob replacement is not create-if-absent, and in-process guest routing is not remote placement.
+
+The required improvements land as general Omnia capabilities and backend conformance:
+
+- durable append and cursor-based follow with per-writer ordering;
+- native linearizable compare-exchange, conditional update, and expiry notification;
+- remote guest resolution and invocation;
+- multi-node private workspaces with opaque handles, placement-local paths, freeze, capture, composition, discard, and cancellation.
+- durable asynchronous trigger supervision with authenticated submit, opaque invocation identity, status, event follow, cancellation, and disconnect-independent execution.
+
+Emery supplies the workflow semantics layered over those primitives. Omnia supplies reusable capability contracts, local test implementations, and production backends. Exact backend configuration remains deployment documentation rather than part of this RFC.
+
+## Example: concurrent work across targets
+
+Consider three slices:
 
 ```yaml
 slices:
@@ -74,139 +218,88 @@ slices:
     depends-on: [add-refund-endpoint]
 ```
 
-The recorded decomposition places the first two entries under one `payment-behaviour` domain inside the `payments-api` target domain. They share the recorded base and have disjoint write manifests, so they may run concurrently whether both workers are local or one is remote. At the round boundary, the same local convergence kernel composes their patches, writes the domain-round record, dispatches model-assisted `verify`, and folds the result upward.
+The recorded decomposition places the two `payments-api` slices under one `payment-behaviour` domain. They share a recorded base but own disjoint paths, so they may run concurrently on the same node or different nodes. Their results combine at their nearest recorded frontier domain and pass the same verification gate as a desktop-only run.
 
-The `mobile` dependency controls scheduling only. Once `add-refund-endpoint` has produced the required result, `adopt-refund-ui` may run against the `mobile` base. Emery never applies the payments patch to the mobile repository. Trial integration creates a separate `mobile` candidate and dispatches the mobile target's verification phase.
+The `mobile` dependency affects scheduling only. Once the required `add-refund-endpoint` result is accepted, `adopt-refund-ui` runs against the recorded `mobile` base. Emery never applies the payments patch to the mobile repository; each target produces and verifies its own candidate.
 
-The root coordination domain receives the same aggregated advisory report as a desktop-only run. Every finding names its target, nearest domain, and owning entry. Cross-repository CI is outside this gate, and target-wave commit retains accepted-CID authority.
+If both payments results unexpectedly touch `src/errors.rs`, their nearest shared domain stops before composition. Emery replicates the immutable results and an inert amendment proposal. Unaffected domains may continue, but only the operator may apply the proposal and start a new closed-plan execution epoch.
 
-If the two payments results unexpectedly both touch `src/errors.rs`, the convergence kernel stops their nearest common domain before either result is composed and writes the same inert recovery proposal it would locally. The immutable results and proposal replicate; the mobile or any domain outside that branch may continue.
+## Evaluation
 
-The operator applies that proposal through `plan amend --proposal` and starts a new closed-plan execution epoch. Transport does not gain an amendment writer or hidden recovery path.
+Distributed evaluation must separate judgment time, claim wait, workspace placement, object transfer, and round-publication latency. Local and remote runs use the same source and input set, model configuration, time budget, and blind acceptance set.
 
-## Decisions
+The completion workload is an Omnia/Rust multi-project change using the engine-owned `build` / `repair` / `verify` / `review` loop and remote worker pools. Every remote verification and repair dispatch records the same typed phase report as its local equivalent. Distribution never upgrades model-assisted evidence into a deterministic claim.
 
-### D1 — The three planes stay separate
-
-Coordination state never rides the value plane, code never rides the event stream, and publication stays forge-side.
-
-Each plane therefore uses the consistency model it needs. A dashboard needs only coordination facts. A worker needs the facts relevant to its execution request plus immutable objects from the value plane.
-
-### D2 — Every remote input and result crosses as a snapshot
-
-The value plane transports project bases and results, source inputs, and the objects they reference. No shared volume, network filesystem, patch blob, persistent source copy, or live directory handle crosses the wire.
-
-Every node prepares its own disk-backed writable or read-only private workspace and gives the agent a real `local-path`.
-
-### D3 — Claims gain fencing tokens
-
-A claim transported through the coordination plane carries a fencing generation. A node prepares a private workspace only for a claimed slice.
-
-A timeout can report suspected loss, but it never transfers ownership. A claim is stolen only when `plan execute` reconciles an explicitly confirmed recovery, validates the last fact round, and atomically increments the generation. Every event, result, and release carries the token; writes from an older generation fail closed.
-
-Private workspaces need no second lock because every execution receives a fresh directory. Write manifests partition writes within worker pools.
-
-### D4 — Convergence happens at round boundaries
-
-A worker records its result only after `capture` has stored and verified the snapshot objects. Dependents prepare from that new immutable result. There is no sub-round synchronization.
-
-Coordination latency is therefore the round length plus transport latency. This matches the existing cold-spawn-per-leg agent backend and leaves publication reserved for the forge boundary.
-
-Hosted evaluation separates judgment time, claim wait, object transfer, and round-publication latency. It compares local and remote placement with the same model configuration and blind acceptance set; worker or commit throughput alone is not a success measure. These observations guide backend and placement tuning without changing readiness, fencing, or acceptance.
-
-### D5 — The value plane is transport-neutral with one shipped binding
-
-Nothing in `emery:adapter` or the engine guest names a transport. This RFC ships NATS JetStream Object Store as the first complete value backend.
-
-One deployable path is sufficient for completion. Iroh, S3, or another object backend may implement the settled capability later; no second backend is part of RFC-92.
-
-### D6 — The coordination plane transports facts but never becomes their authority
-
-One per-change JetStream stream carries the same events stored in each node's ordinary change home. It is a low-latency durable carrier, not a second event model.
-
-Each actor remains the only author of its log. A local change home stores that actor's facts and the union received from other actors, and every dashboard, status view, and waiting worker runs the ordinary deterministic projection over that union. Per-actor sequences make replication idempotent; no global order is required.
-
-There is no authority cutover, dual-write protocol, or reconciliation protocol. A disconnected node retains its last received projection and pauses distributed work until transport reconnects.
-
-### D7 — Live multi-writer file synchronization is out of contract
-
-Emery does not provide CRDT trees, synchronized editor buffers, or two agents writing the same path concurrently across nodes.
-
-Concurrent work happens in private workspaces with partitioned ownership. The deterministic convergence kernel composes the results.
-
-### D8 — Remote placement preserves the local recursive scheduler
-
-The local execution contract remains the sole definition of concurrent leaf eligibility, domain readiness, composition, verification, and multi-member wave selection; the merge contract remains the definition of target-wave commit. RFC-92 may place any claimed leaf, target-build worker, or ready domain operation on a capable node. Placement uses the digest-matched decomposition revision and never infers a replacement hierarchy from plan order.
-
-Every remote claimed result carries its authorization epoch, fencing generation, and input fence. The receiving node rejects stale generations or mismatched lead, decomposition, model-capability-profile, wave, leaf, dependency-frontier, spec, or base digests before recording or folding it.
-
-Domain convergence itself remains claimless and content-addressed. A remote domain operation carries the existing operation key over its complete inputs and accepted frontier; compare-and-set publication accepts the first byte-valid record for that key and treats an identical duplicate as success. A different byte-valid result loses the compare-and-set and is not authoritative—the model-assisted gate is not falsely treated as deterministic. No synthetic domain claim or lifecycle state is introduced.
-
-### D9 — Domain records, facts, and values travel together
-
-The coordination-artifact plane transports retained lead and decomposition revisions, including their embedded model-capability profiles. It also transports amendment proposals and domain-round records. The coordination stream transports the facts that reference them. The value plane transports every CID reachable from build and domain records. A referenced fact becomes visible to projection only after its artifact and value dependencies are present and digest-verified.
-
-This ordering makes a completed domain gate resumable on any node without recomputation. Detach first synchronizes the same closure; garbage collection treats replicated live records as roots.
-
-### D10 — Recovery proposals do not acquire authority in transport
-
-Validated amendment proposals may follow runtime overlap, refinement boundary escalation, or target-decomposition escalation. RFC-92 replicates them as immutable coordination artifacts but never applies them. Only the operator-invoked compare-and-set amendment surface may revise lead, decomposition, and plan authority.
-
-### D11 — Remote workspaces preserve private-workspace semantics
-
-A remote worker resolves the requested snapshot objects, prepares a private disk-backed workspace with `local-path`, runs under a fenced claim, captures its result at the round boundary, and discards the workspace.
-
-Remote worker pools use the same sequence for each worker. Hosted execution is a backend binding over the completed local model, not a second workspace model. Byte-identical snapshots round-trip locally and remotely.
-
-### D12 — Attach configures transport; authority never moves
-
-Attaching a change uploads the change home's facts, artifacts, and referenced values, then streams each actor's later events as they are appended locally. Incoming events are replicated into their authors' log files in the local change home.
-
-Per-actor sequences make replication idempotent, and projection needs no global order. Detach is symmetric: bring the local union current, stop streaming, and retain the complete ordinary change home.
-
-There is no cutover event, read-only demotion of local files, or one-way door. Desktop-only and attached operation read the same facts through the same projection.
-
-### D13 — `plan execute --hosted` is the attach and resume surface
-
-In an authored change directory, `emery plan execute --hosted` configures the transports, registers the node's actor identity, and executes.
-
-With `--change-id` and an empty `--project-dir`, the same command reconstructs the change tree from the stream, registers a fresh actor, acquires fenced claims for the entries it takes, and resumes the drained loop. Resume is deterministic reconstruction, not a separate recovery protocol.
-
-This makes RFC-92 directly operable without waiting for a hosted deployment's background-submit surface or adding a second lifecycle command family.
+Throughput alone is not success. Evaluation compares the accepted result and blind grade while reporting placement costs separately.
 
 ## Implementation requirements
 
-- Implement the first hosted binding with NATS JetStream: one stream per change carrying every actor's events, idempotently replicated by actor and per-actor sequence; one KV bucket holding compare-and-set claim records and fencing generations; one coordination-artifact Object Store bucket holding change-home artifacts; and a separate value Object Store bucket holding snapshot objects.
-- Keep coordination and value capabilities transport-neutral. No second backend is required for completion, and no transport name enters `emery:adapter` or the engine guest.
-- Accept `NATS_URL` and the `NATS_CREDS` credentials-file path from the deployment. Define no Emery user directory or authentication service. Expose fact follow as an authenticated ordered event stream resumed by per-actor sequence.
-- On first attach, refuse an unauthored plan; append `plan.execute.started` for the current plan and artifacts; append local `plan.hosted.attach-started` with a generated UUIDv7 id; create JetStream namespaces idempotently; upload change artifacts, fact logs, and referenced values; append `plan.hosted.attached`; begin bidirectional fact streaming; and atomically write `.emery/hosted.yaml`.
-- Store only the endpoint, change id, and last observed per-actor sequences in `.emery/hosted.yaml`. Never store credentials in the change home or fact logs. Retry with the locally journaled id so failure before or after namespace creation cannot duplicate a hosted change.
-- On resume, require an empty destination, verify per-actor sequences and artifact digests, reconstruct the change tree, register a distinct actor identity, and continue through fenced claims. Detach only after synchronization; further distributed work waits for reattachment. `plan archive` closes the stream before applying its ordinary archive or delete posture.
-- Treat claim expiry only as suspected loss. Recovery stays inside `plan execute`: explicitly confirm it, validate the last fact round, atomically increment the fencing generation, and reject every event, result, or release carrying the old token. Add no recovery subcommand.
-- Chunk snapshot objects in the JetStream backend, address them by content, and verify them after download before materialization. Transport project bases and results and source inputs through this path. Define no separate patch payload.
-- Place completed worker pools on remote nodes without changing their ownership or composition contracts. Every worker receives a private workspace and returns a result snapshot through the value plane.
-- Place eligible leaves, workers, and domain operations remotely without changing readiness or composition. Require authorization epoch, fencing generation, and complete input fences on claimed results; require the operation key and claimless first-valid compare-and-set publication on domain results.
-- Replicate retained lead/decomposition revisions with embedded model-capability profiles, amendment proposals, and domain-round records through the coordination-artifact store before exposing their referencing facts; replicate every reachable CID through the value plane.
-- Use an Omnia/Rust multi-project change with the `build` / `repair` / `verify` / `review` loop and remote pools as the completion workload. Every remote verification and repair dispatch records the same typed phase report as its local equivalent; distribution never upgrades model-assisted evidence into a deterministic claim.
+### Omnia capabilities
+
+- Add or strengthen a general durable-log capability with idempotent append by `(writer, sequence)` and follow from independent per-writer cursors. Production backends must preserve per-writer order across reconnects; local test backends must expose the same contract.
+- Add native linearizable compare-exchange and conditional update to Omnia atomic state. Expiry reports loss of liveness but grants no ownership. Expiry is lease-shaped: a backend without a native per-key lease implements it as heartbeat records plus watch. Backend conformance tests must race claim acquisition, recovery, release, create-if-absent publication, and heartbeat lapse against recovery confirmation.
+- Use Omnia blob storage for immutable coordination records and snapshot values under separate logical namespaces. Emery names immutable objects by digest, verifies existing and fetched bytes, and never relies on backend overwrite behavior for authority. The value namespace admits peer-to-peer backends — verified-streaming transfer between nodes (for example, iroh-blobs' BLAKE3 verified streaming) suits large snapshot closures — provided the backend's native addressing stays behind the capability: Emery verifies fetched bytes against its own recorded digests regardless of what the transfer layer verified, so a backend whose transfer hash differs from Emery's digest maps between them internally.
+- Add general multi-node workspace placement and remote guest dispatch. `freeze`, `prepare`, `capture`, `compose`, `discard`, and cancellation execute on the workspace node; the invoked guest receives a placement-local path while the caller retains only an opaque handle. The dispatch carrier is owned by the Omnia cluster-transport plan (`[rfcs/wrpc-cluster.md](https://github.com/augentic/omnia/blob/main/rfcs/wrpc-cluster.md)` in `augentic/omnia`): wRPC on every leg behind the existing `LinkTransport` seam, with `Target::Remote` resolution making a guest's location a configuration decision. Workspace placement collocates with that dispatch rather than adding a second routing mechanism.
+- Add general durable HTTP-trigger supervision for long-running guest operations. Submission authenticates at the native host, returns `202 Accepted` with an opaque invocation ID, and lets the invocation continue after client disconnect. Status, event follow, graceful cancellation, and result retrieval use that ID. Emery maps the invocation to an attachment but adds no second execution lifecycle or HTTP-based node-sync protocol.
+- Keep backend service discovery, endpoints, credentials, resource names, transfer encoding, and chunking in the native Omnia backend. Define no Emery user directory or authentication service.
+- Refuse a distributed session when a bound backend cannot prove the durable-log, atomic-state, durable-blob, remote-dispatch, or workspace contract. Development defaults that are lossy, racy, or process-local do not qualify. As of this draft, no shipped backend qualifies: the default and NATS keyvalue CAS paths are read-compare-set, the messaging backends are at-most-once pub/sub, and blobstore writes are unconditional replace — the durable-log and atomic-state requirements are new capability work, not configuration.
+
+### Attach, resume, and detach
+
+- On first attach, refuse an unauthored plan and append `plan.execute.started` for the current plan and artifacts.
+- Accept first attach and resume through the same typed execute input over CLI or HTTP. For HTTP, allocate the change home server-side, return `202 Accepted` with change and attachment IDs, and keep execution independent of the request connection.
+- Append local `plan.distributed.attach-started` with a generated UUIDv7 change ID, provision the distributed change idempotently through the capabilities, publish change records and referenced values, append `plan.distributed.attached`, begin following actor events, and atomically write `.emery/distributed.yaml`.
+- Store only the change ID and last observed per-actor sequences in `.emery/distributed.yaml`. Do not treat it as part of the detached fact tree or product configuration. Never store backend endpoints or credentials in the change home or event logs.
+- Retry first attach with the locally journaled ID so failure before or after capability provisioning cannot create a duplicate distributed change.
+- On resume, require an empty destination, verify per-actor sequences and artifact digests, reconstruct the change tree, register a distinct actor, and continue through fenced claims.
+- Synchronize before a graceful detach. Pause distributed work while detached. Close the attachment before `plan archive` applies its ordinary archive or delete behavior.
+
+### Remote execution and recovery
+
+- Treat claim expiry only as suspected loss. Keep recovery inside `plan execute`: require explicit confirmation, validate the last completed round, atomically increment the fencing generation, fail conditional operations carrying the old generation, and keep stale facts invisible.
+- Keep slice ownership with the attached engine actor. Remote extract, build, repair, verify, review, and domain calls are subordinate Omnia dispatches under that actor's claim rather than independent workflow actors.
+- Give every remote writing worker a placement-local private workspace and require it to return a verified code patch and typed report through the multi-node workspace capability.
+- Place eligible slices, source extraction, build or repair workers, verification and review workers, and ready domain operations remotely without changing readiness, ownership, composition, verification, or reporting.
+- Require authorization epoch, fencing generation, and complete input fences on claimed results.
+- Require the validated-input and accepted-frontier digest as the operation key. Claimless domain publication atomically accepts the first byte-valid record matching that key.
+- Publish planning revisions, embedded model-capability profiles, amendment proposals, and domain-round records before exposing their referencing events. Make every reachable CID available through the multi-node workspace value path.
 
 ## Acceptance criteria
 
-1. `emery plan execute --hosted` appends `plan.execute.started` and attaches an authored change idempotently, prints and stores its id without credentials, and resumes with `--change-id` on a second node to a byte-identical projection. Both nodes keep appending their own authoritative fact logs, and stopping the stream brings each ordinary change home current without requiring Git metadata.
-2. Two nodes cannot own one slice claim. Explicit recovery increments the fencing generation, and stale workers cannot append events, record results, or release the recovered claim.
-3. Project snapshots captured locally and source snapshots ingested locally materialize remotely to the same tree digests. Downloaded objects fail closed on digest mismatch.
-4. An Omnia worker pool runs remotely with private trees. Given the same recorded worker patches, local and remote composition return the same candidate; remote verification retains the same typed report and model-assisted assurance contract without promising byte-identical findings from a fresh model call.
-5. One desktop-only and one two-node projection over the same accepted facts, planning revisions, model-capability-profile digests, domain records, and values produces the same target-wave CID and leaf statuses. Duplicate remote publication of one operation key is idempotent; when independently evaluated results differ, the first byte-valid compare-and-set winner remains authoritative and the loser cannot alter projection. No RFC-92 code path defines alternative readiness, convergence, or acceptance policy.
-6. A domain-round fact arriving before its record or referenced CIDs remains invisible; once all dependencies verify, resume reuses the completed round without rerunning composition or verification. Detach retains the same resumable closure locally.
-7. Process loss at every phase boundary resumes from per-actor fact sequences, the claim generation, and content-addressed values without shared filesystem state.
-8. Failure injection before namespace creation, after artifact upload, and mid-stream resumes idempotently without duplicate change ids, duplicated facts, or forge or tree mutations. A node that streams, detaches after synchronization, and reattaches observes the same projection at each step.
-9. `cargo make ci` is green in touched repositories. Two-node integration tests cover attach and resume, fact replication, fencing, value integrity, remote materialization, worker placement, concurrent entries, and trial integration.
-10. Local and two-node live fixtures with the same source set, model configuration, time budget, and blind acceptance set report judgment, claim-wait, object-transfer, and round-publication latency separately. The blind grade and transport metrics remain outside workflow authority and placement does not upgrade model-assisted assurance.
+1. CLI and authenticated HTTP ingress invoke the same typed distributed execute operation and record the same `plan.execute.started` authorization. HTTP returns `202 Accepted` with change and attachment IDs and continues after client disconnect.
+2. First attach creates one distributed change idempotently and stores its ID without backend endpoints, ingress credentials, or managed host paths.
+3. A second node resumes that change into a server-allocated empty directory and reconstructs a byte-identical projection. An HTTP caller supplies no client-local project path.
+4. Both nodes continue to author only their own logs. Graceful detach by CLI stop or attachment control leaves an ordinary, current change home that requires no Git metadata to read.
+5. Two nodes cannot own the same slice claim. Confirmed recovery advances its generation; stale conditional writes fail, and stale events or results cannot affect projection or release the recovered claim.
+6. Project and source snapshots materialize remotely to the same tree digests. Digest mismatches fail closed.
+7. A remote worker pool uses Omnia multi-node private workspaces and the same ownership and composition rules as a local pool. Given the same recorded patches, both placements produce the same composed candidate.
+8. Remote verification retains the same typed, model-assisted report contract as local verification without promising byte-identical findings from a fresh model call.
+9. Given the same accepted facts, planning revisions, model-capability profiles, domain records, and values, desktop-only and two-node execution produce the same target-wave CID and slice statuses.
+10. Publishing the same domain-operation result twice is idempotent. If independently evaluated results differ, the first byte-valid record matching the validated-input and accepted-frontier digest remains authoritative and the loser cannot alter projection.
+11. An event arriving before its referenced records or CIDs remains invisible. Once its dependencies verify, resume reuses the completed round without recomposition or reverification.
+12. Process loss at every phase boundary resumes from per-actor sequences, the claim generation, and content-addressed values without shared filesystem state.
+13. Failure before capability provisioning, after value publication, or while following events resumes without duplicate change IDs, duplicated facts, or forge or product-tree mutations.
+14. General Omnia conformance tests prove durable cursor replay, native compare-exchange under races, expiry without ownership transfer, remote guest routing, placement-local workspace access, cancellation, byte-identical snapshot round trips, and disconnect-independent HTTP invocation control.
+15. `cargo make ci` is green in every touched repository. Two-node Emery integration tests cover CLI/HTTP ingress equivalence, asynchronous attachment control, attach, resume, event replication, fencing, value integrity, remote materialization, worker placement, concurrent slices, and cross-target convergence.
+16. Local and two-node live fixtures with the same source and input set, model configuration, time budget, and blind acceptance set report judgment, claim-wait, workspace-placement, object-transfer, and round-publication latency separately. Blind grading and runtime metrics remain outside workflow authority.
+
+## Prior art
+
+- **[Bazel Remote Execution API](https://github.com/bazelbuild/remote-apis)** — the same coordination/value split proven at datacenter scale: a content-addressable store for values and an action cache keyed by the digest of a fully specified action. D4's claimless domain publication — the operation key as the digest of validated inputs and accepted frontier, first byte-valid record wins, idempotent duplicates — is that pattern.
+- **[wasmCloud](https://wasmcloud.com/blog/wasmcloud-v2-is-here/) v1 → v2** — v1 routed every component import implicitly over a wRPC/NATS lattice; v2 reversed to in-process by default with explicit, deliberate distribution, because implicit distribution tied invocation semantics to transport failure modes. This RFC's explicit capability seams, adapter worlds importing no distribution capability, and the desktop degenerate case are the posture wasmCloud arrived at after operating the transparent mesh.
+- **[iroh](https://www.iroh.computer/)** — dial-by-key peer-to-peer QUIC with content-addressed, BLAKE3-verified blob streaming. Relevant strictly on the value plane per the transport-boundary asymmetry; it offers no linearizable primitive, so it is not a coordination candidate.
 
 ## Rejected alternatives
 
-- **Shared volumes or network filesystems** — couple failure domains, introduce distributed locking semantics, depend on location, and break the `local-path` lending model.
-- **CRDT-synchronized live trees** — solve a problem the round-boundary rhythm does not have while making intermediate states difficult to verify.
-- **A hosted-only scheduler or convergence policy** — creates different desktop and fleet workflow semantics. This RFC distributes the completed local model and owns placement only.
-- **Coordination records in the value plane** — collapse D1. Coordination needs liveness and per-actor ordering, not content addressing.
-- **A second event store beside the fact logs** — creates dual-write drift. One authoritative set of per-actor logs with a streaming carrier is sufficient.
-- **Hosted journal authority cutover** — making the stream the sole durable event authority and demoting local files to projections creates two lifecycle models, a one-way boundary, and a hosted dependency for reading a local change. Per-actor logs remove the need.
+- **An Emery-specific synchronization host** — would duplicate durable logs, atomic state, blob storage, remote dispatch, and multi-node workspaces that improve the general Omnia runtime. Emery contributes semantic requirements and uses the general capabilities.
+- **Keep one HTTP request open for the attachment lifetime** — multi-day execution cannot depend on one client connection or intermediary timeout. The native host supervises a durable invocation and gives control back through its opaque attachment ID.
+- **Use HTTP as the node-sync transport** — conflates operator ingress with typed guest dispatch, durable logs, claims, and value transfer. HTTP starts and controls an attachment; Omnia capabilities and wRPC carry distributed execution.
+- **Compose lossy publish and read-then-write state** — cannot provide cursor replay, linearizable claim acquisition, fenced recovery, or first-writer-wins domain publication.
+- **Guest-to-guest peer synchronization** — would move cursor negotiation, anti-entropy, and reconnection state into the engine guest, duplicate the durable log's guarantees, and make resume depend on the originating node being online. Events flow only through the durable-log capability.
+- **Peer-to-peer coordination state** — the host-backend version of the same temptation: gossip, CRDT replicas, or peer pubsub as the backend for claims and actor logs cannot provide linearizable compare-exchange or first-writer-wins publication without a consensus layer, and state held only on participating peers breaks D5's durability contract. Peer transfer stays available on the value plane, where digest verification makes the path irrelevant.
+- **Shared volumes or network filesystems** — couple failure domains, require distributed locking, depend on location, and break the `local-path` lending model.
+- **CRDT-synchronized live trees** — solve a problem the round-boundary execution model does not have while making intermediate states difficult to verify.
+- **A hosted-only scheduler or convergence policy** — would give desktop and fleet execution different semantics.
+- **Planning or event records in the snapshot value namespace** — would mix coordination, which needs liveness and per-actor sequencing, with content-addressed product data.
+- **A second event model beside the actor logs** — would create dual-write drift. The durable-log capability carries the authoritative actor events instead.
+- **Distributed authority cutover** — would make external infrastructure necessary to interpret a local change and create a one-way lifecycle boundary.
