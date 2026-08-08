@@ -284,7 +284,7 @@ fn emit_wave_committed(
                 digest: commit.digest.clone(),
                 slice_name: slice.into(),
                 commit_authorization: FactEpochRef {
-                    actor: auth.actor.clone(),
+                    writer: auth.writer.clone(),
                     sequence: auth.sequence,
                 },
                 identity_maps: maps.to_vec(),

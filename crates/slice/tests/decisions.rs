@@ -79,7 +79,7 @@ async fn merge_promotes_and_supersedes() {
         project::snapshot::SnapshotId::from_digest(&"b".repeat(64)),
         vec![],
         project::wave::EpochRef {
-            actor: "local".into(),
+            writer: "local".into(),
             sequence: 0,
         },
     );

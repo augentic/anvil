@@ -50,7 +50,7 @@ The CLI surface the skills depend on, grouped by resource:
 
 ### Journal
 
-- `emery journal show` — the observability surface over `.emery/events/<actor>.jsonl`: the read-only union projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events).
+- `emery journal show` — the observability surface over `.emery/events/<writer>.jsonl`: the read-only union projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events).
 
 Today the per-slice verbs live under `emery slice *` and the umbrella verbs live under `emery plan *`.
 
@@ -93,10 +93,10 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 ## Journal events
 
-Durable run telemetry is the newline-delimited JSON per-actor event log at `.emery/events/<actor>.jsonl`. Each line serialises `timestamp` first, then `actor` and `sequence`, then `event`, then the kebab-case `payload`:
+Durable run telemetry is the newline-delimited JSON per-writer event log at `.emery/events/<writer>.jsonl`. Each line serialises `timestamp` first, then `writer` and `sequence`, then `event`, then the kebab-case `payload`:
 
 ```json
-{"timestamp": "2026-06-11T00:00:00Z", "event": "slice.build.started", "payload": {"slice": "user-auth"}}
+{"timestamp": "2026-06-11T00:00:00Z", "writer": "local", "sequence": 1, "event": "slice.build.started", "payload": {"slice": "user-auth"}}
 ```
 
 The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `crates/project/src/journal/event.rs` is the single source of truth; every append routes through the internal typed APIs, so an id outside the enum cannot reach the file. Keep the ids below aligned with that enum when the taxonomy changes:
@@ -104,7 +104,7 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Family | Event ids | Emitted by |
 |---|---|---|
 | Plan | `plan.transition.undone`, `plan.entry.advanced`, `plan.reconcile.completed`, `plan.amend.authority-override`, `plan.amend.divergence`, `plan.execute.started`, `plan.merge-postflight.acknowledged` | `emery plan undo`, `emery plan advance`, the `plan author` reconcile kernel, `emery plan amend`, `emery plan execute` (authorization epoch at start — RFC-86 D6; optional `--waive` / `--reason` for unknown-waivers — D17) |
-| Claim | `slice.claimed`, `slice.released`, `fact.retracted` | exclusive per-slice claim / release / retract facts (RFC-86 D7 / D23); `plan advance` / `undo` (and refine under `EMERY_ACTOR`) |
+| Claim | `slice.claimed`, `slice.released`, `fact.retracted` | exclusive per-slice claim / release / retract facts (RFC-86 D7 / D23); `plan advance` / `undo` (and refine under `EMERY_WRITER`) |
 | Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `slice refine` synthesis leg and its `refined` transition, `emery source extract` |
 | Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed` | the guest-routed `emery slice build` orchestration |
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created`, `target.merge.wave-committed`, `target.merge.wave-succeeded`, `target.merge.wave-postflight-failed` | `emery slice merge` (wave commit + postflight; RFC-86 D9) |

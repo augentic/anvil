@@ -1,4 +1,4 @@
-//! RFC-86 Acceptance #2 / D23 — multi-slice, multi-actor fixtures.
+//! RFC-86 Acceptance #2 / D23 — multi-slice, multi-writer fixtures.
 //!
 //! Two directory copies of one change claim and refine *different*
 //! slices, then combine via lossless fact-tree union. Same-slice
@@ -21,35 +21,35 @@ use project::plan::{Status, advance_next, project_ladders};
 use project::slice::{LifecycleStatus, SliceMetadata};
 use serde_json::json;
 
-/// RAII `EMERY_ACTOR` guard — restores the prior value on drop.
-struct ActorEnv {
+/// RAII `EMERY_WRITER` guard — restores the prior value on drop.
+struct WriterEnv {
     prev: Option<std::ffi::OsString>,
 }
 
-impl ActorEnv {
+impl WriterEnv {
     #[expect(
         unsafe_code,
-        reason = "EMERY_ACTOR is the journal actor seam; nextest isolates the process"
+        reason = "EMERY_WRITER is the journal writer seam; nextest isolates the process"
     )]
     fn set(id: &str) -> Self {
-        let prev = std::env::var_os("EMERY_ACTOR");
+        let prev = std::env::var_os("EMERY_WRITER");
         // SAFETY: nextest isolates processes; Drop restores the prior value.
-        unsafe { std::env::set_var("EMERY_ACTOR", id) };
+        unsafe { std::env::set_var("EMERY_WRITER", id) };
         Self { prev }
     }
 }
 
-impl Drop for ActorEnv {
-    #[expect(unsafe_code, reason = "restore EMERY_ACTOR after the fixture's actor window")]
+impl Drop for WriterEnv {
+    #[expect(unsafe_code, reason = "restore EMERY_WRITER after the fixture's writer window")]
     fn drop(&mut self) {
         match &self.prev {
             Some(value) => {
-                // SAFETY: pair with `ActorEnv::set`; single-threaded test body.
-                unsafe { std::env::set_var("EMERY_ACTOR", value) };
+                // SAFETY: pair with `WriterEnv::set`; single-threaded test body.
+                unsafe { std::env::set_var("EMERY_WRITER", value) };
             }
             None => {
-                // SAFETY: pair with `ActorEnv::set`; single-threaded test body.
-                unsafe { std::env::remove_var("EMERY_ACTOR") };
+                // SAFETY: pair with `WriterEnv::set`; single-threaded test body.
+                unsafe { std::env::remove_var("EMERY_WRITER") };
             }
         }
     }
@@ -72,10 +72,10 @@ fn ts(second: i64) -> Timestamp {
     Timestamp::from_second(1_700_000_000 + second).expect("valid timestamp")
 }
 
-fn claim_slice(root: &Path, actor: &str, plan_name: &str, slice: &str, second: i64) {
+fn claim_slice(root: &Path, writer: &str, plan_name: &str, slice: &str, second: i64) {
     append_for(
         Layout::new(root),
-        actor,
+        writer,
         &[
             Event::new(
                 ts(second),
@@ -161,10 +161,10 @@ async fn disjoint_refine_after_fact_union() {
     assert_no_git(bob.root());
 
     // Concurrent work on different slices — claim via append_for (the
-    // multi-actor fixture surface), then refine under each actor id.
+    // multi-writer fixture surface), then refine under each writer id.
     claim_slice(alice.root(), "alice", "auth", "login-flow", 1);
     {
-        let _actor = ActorEnv::set("alice");
+        let _writer = WriterEnv::set("alice");
         run::<slice::handlers::Refine, _, _>(
             alice.provider(),
             slice::handlers::RefineInput {
@@ -177,7 +177,7 @@ async fn disjoint_refine_after_fact_union() {
 
     claim_slice(bob.root(), "bob", "auth", "password-reset", 1);
     {
-        let _actor = ActorEnv::set("bob");
+        let _writer = WriterEnv::set("bob");
         run::<slice::handlers::Refine, _, _>(
             bob.provider(),
             slice::handlers::RefineInput {
@@ -188,11 +188,11 @@ async fn disjoint_refine_after_fact_union() {
         .expect("bob refines password-reset")
     };
 
-    // Lossless fact-tree union: fold bob's actor log + refined slice
+    // Lossless fact-tree union: fold bob's writer log + refined slice
     // into alice's change tree.
     let union_root = alice.root();
     let bob_events = bob.root().join(".emery/events/bob.jsonl");
-    assert!(bob_events.is_file(), "bob wrote a per-actor log");
+    assert!(bob_events.is_file(), "bob wrote a per-writer log");
     fs::create_dir_all(union_root.join(".emery/events")).expect("events dir");
     fs::copy(&bob_events, union_root.join(".emery/events/bob.jsonl")).expect("union bob events");
     mirror_tree(
@@ -224,7 +224,7 @@ async fn disjoint_refine_after_fact_union() {
     bob.model().assert_exhausted();
 }
 
-/// Same slice, two actors → `slice-claim-conflict` (Acceptance #2).
+/// Same slice, two writers → `slice-claim-conflict` (Acceptance #2).
 #[tokio::test]
 async fn same_slice_claim_conflict() {
     let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
@@ -255,7 +255,7 @@ async fn sibling_advance_while_peer_claimed() {
 
     let config = ProjectConfig::load(session.root()).expect("project.yaml");
     let now = ts(2);
-    let _actor = ActorEnv::set("bob");
+    let _writer = WriterEnv::set("bob");
     let body = advance_next(session.provider(), session.provider().paths(), now, &config)
         .expect("bob advances a different slice");
     assert_eq!(

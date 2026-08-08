@@ -295,7 +295,7 @@ mod journal {
     use super::*;
 
     /// Stage one taxonomy event through the real appender so the
-    /// fixture matches production per-actor wiring.
+    /// fixture matches production per-writer wiring.
     fn stage_event(root: &Path) {
         let event = project::journal::Event::new(
             jiff::Timestamp::from_second(1_700_000_000).expect("valid timestamp"),
@@ -335,9 +335,9 @@ mod journal {
             project
                 .root()
                 .join(".emery/events")
-                .join(format!("{}.jsonl", project::journal::DEFAULT_ACTOR))
+                .join(format!("{}.jsonl", project::journal::DEFAULT_WRITER))
                 .is_file(),
-            "the per-actor journal persists"
+            "the per-writer journal persists"
         );
         assert!(
             !project.root().join(".emery/journal.jsonl").exists(),

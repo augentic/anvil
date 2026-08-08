@@ -194,7 +194,7 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 - Implement one typed projector over terminal plan bindings, seal facts, and forge state. Derive its partial order only from projected leaf `depends-on`; do not create a second decomposition reader in publication.
 - Share one target-contraction and cycle-validation kernel between RFC-88 plan validation and archive. Reject `publication-target-cycle` before sealing or forge reads.
 - Render the projection before archive mutation and gate unverified publication with `publication-unverified`; journal the `--unverified` bypass.
-- Append `plan.publication.projected` and `plan.publication.member-landed` through the existing per-actor fact logs.
+- Append `plan.publication.projected` and `plan.publication.member-landed` through the existing per-writer fact logs.
 - Publish and validate the shared record schema for external producers.
 - Exercise the WIT-breaking release order from [docs/release.md](../docs/release.md#three-release-shapes) across `augentic/emery` and `augentic/emery-adapters` as the in-house fixture. The first real release dogfoods the settled path but does not gate RFC completion.
 

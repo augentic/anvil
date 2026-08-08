@@ -27,7 +27,7 @@ fn sample(target: &str, slice: &str) -> Wave {
         cid('b'),
         vec![SliceName::from("upstream")],
         EpochRef {
-            actor: "local".into(),
+            writer: "local".into(),
             sequence: 7,
         },
     )

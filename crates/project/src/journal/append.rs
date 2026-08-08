@@ -1,31 +1,31 @@
-//! Per-actor journal append plus the dropped-event sidecar recovery trail.
+//! Per-writer journal append plus the dropped-event sidecar recovery trail.
 
 use std::io::{ErrorKind, Write};
 use std::path::Path;
 
 use error::Error;
 
-use super::{Event, actor_log_path, validate_actor};
+use super::{Event, validate_writer, writer_log_path};
 use crate::config::Layout;
 
 /// Project-relative path of the dropped-event recovery sidecar.
 pub(super) const DROPPED_FILE_NAME: &str = "journal.dropped";
 
-/// Append a sequence of [`Event`]s to the calling actor's per-actor log.
+/// Append a sequence of [`Event`]s to the calling writer's log.
 ///
-/// Resolves the actor via [`super::actor_id`], stamps monotonic
-/// `actor` / `sequence` on each line, and writes only that actor's
-/// `.emery/events/<actor>.jsonl` file.
+/// Resolves the writer via [`super::writer_id`], stamps monotonic
+/// `writer` / `sequence` on each line, and writes only that writer's
+/// `.emery/events/<writer>.jsonl` file.
 ///
 /// Empty batches do not create the file.
 ///
 /// # Errors
 ///
 /// Propagates I/O and JSON serialization failures, and
-/// `journal-actor-invalid` when the resolved actor id is not a safe
+/// `journal-writer-invalid` when the resolved writer id is not a safe
 /// single path segment.
 pub fn append_batch(layout: Layout<'_>, events: &[Event]) -> Result<(), Error> {
-    append_for(layout, &super::actor_id(), events)
+    append_for(layout, &super::writer_id(), events)
 }
 
 /// Append exactly one [`Event`], propagating failures.
@@ -34,35 +34,35 @@ pub fn append_batch(layout: Layout<'_>, events: &[Event]) -> Result<(), Error> {
 ///
 /// Same failure surface as [`append_batch`].
 pub fn append_one(layout: Layout<'_>, event: &Event) -> Result<(), Error> {
-    append_for(layout, &super::actor_id(), std::slice::from_ref(event))
+    append_for(layout, &super::writer_id(), std::slice::from_ref(event))
 }
 
-/// Append `events` to one explicit actor's log.
+/// Append `events` to one explicit writer's log.
 ///
-/// Primary write surface for multi-actor fixtures and any caller that
-/// already knows the actor id. Stamps monotonic `sequence` values
-/// (1-based) continuing from the last line in that actor's file.
+/// Primary write surface for multi-writer fixtures and any caller that
+/// already knows the writer id. Stamps monotonic `sequence` values
+/// (1-based) continuing from the last line in that writer's file.
 ///
 /// # Errors
 ///
 /// Propagates I/O and JSON serialization failures, and
-/// `journal-actor-invalid` when `actor` is empty or contains a path
+/// `journal-writer-invalid` when `writer` is empty or contains a path
 /// separator.
-pub fn append_for(layout: Layout<'_>, actor: &str, events: &[Event]) -> Result<(), Error> {
-    validate_actor(actor)?;
+pub fn append_for(layout: Layout<'_>, writer: &str, events: &[Event]) -> Result<(), Error> {
+    validate_writer(writer)?;
     if events.is_empty() {
         return Ok(());
     }
-    let actor_path = actor_log_path(layout, actor);
-    if let Some(parent) = actor_path.parent() {
+    let writer_path = writer_log_path(layout, writer);
+    if let Some(parent) = writer_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let mut next = next_sequence(&actor_path)?;
+    let mut next = next_sequence(&writer_path)?;
     let mut payload = String::new();
     for event in events {
         let stamped = Event {
             timestamp: event.timestamp,
-            actor: actor.to_string(),
+            writer: writer.to_string(),
             sequence: next,
             kind: event.kind.clone(),
         };
@@ -71,7 +71,7 @@ pub fn append_for(layout: Layout<'_>, actor: &str, events: &[Event]) -> Result<(
         payload.push_str(&line);
         payload.push('\n');
     }
-    append_bytes(&actor_path, payload.as_bytes())?;
+    append_bytes(&writer_path, payload.as_bytes())?;
     Ok(())
 }
 
@@ -108,8 +108,8 @@ fn append_bytes(path: &Path, bytes: &[u8]) -> Result<(), Error> {
 /// The sidecar is also best-effort; stderr still reports its failure
 /// without changing the calling verb's exit code.
 pub(super) fn record_dropped(layout: Layout<'_>, scope: &str, event: &Event, err: &Error) {
-    let actor = if event.actor.is_empty() { super::actor_id() } else { event.actor.clone() };
-    let journal = actor_log_path(layout, &actor);
+    let writer = if event.writer.is_empty() { super::writer_id() } else { event.writer.clone() };
+    let journal = writer_log_path(layout, &writer);
     let sidecar = layout.emery_dir().join(DROPPED_FILE_NAME);
     if append_dropped(layout, event).is_ok() {
         eprintln!(

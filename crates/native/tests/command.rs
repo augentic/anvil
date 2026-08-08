@@ -47,7 +47,7 @@ async fn executes_a_verb() {
     fs::create_dir_all(root.join(".emery/events")).expect("events dir");
     fs::write(
         root.join(".emery/events/local.jsonl"),
-        "{\"timestamp\":\"2026-01-01T00:00:00Z\",\"actor\":\"local\",\"sequence\":1,\
+        "{\"timestamp\":\"2026-01-01T00:00:00Z\",\"writer\":\"local\",\"sequence\":1,\
          \"event\":\"slice.build.started\",\"payload\":{\"slice-name\":\"demo\"}}\n",
     )
     .expect("stage journal");

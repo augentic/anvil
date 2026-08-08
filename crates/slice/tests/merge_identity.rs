@@ -68,7 +68,7 @@ fn stage_wave_and_record(session: &Session, slice: &str, base: SnapshotId) -> Sn
         SnapshotId::from_digest(&"b".repeat(64)),
         vec![],
         EpochRef {
-            actor: "local".into(),
+            writer: "local".into(),
             sequence: 0,
         },
     );

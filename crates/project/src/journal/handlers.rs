@@ -4,7 +4,7 @@
 //! Writes route through the internal appenders only: CLI verbs append
 //! their own events as a side effect of the operation (there is no
 //! operator-facing emit verb). `show` is a filter/limit projection
-//! over the per-actor union under `.emery/events/` that emits nothing.
+//! over the per-writer union under `.emery/events/` that emits nothing.
 
 use std::io::Write;
 
@@ -30,9 +30,9 @@ pub struct ShowInput {
 /// `emery journal show [--filter <event-id-prefix>] [--limit N]`.
 ///
 /// Read-only projection: emits no journal event and writes nothing.
-/// Merges every `.emery/events/<actor>.jsonl` file in
-/// `(timestamp, actor, sequence)` order. Text mode prints the
-/// canonical JSONL lines (one `{ timestamp, actor, sequence, event,
+/// Merges every `.emery/events/<writer>.jsonl` file in
+/// `(timestamp, writer, sequence)` order. Text mode prints the
+/// canonical JSONL lines (one `{ timestamp, writer, sequence, event,
 /// payload }` object per event — pipeable); JSON wraps the same
 /// events in the standard envelope as `{ count, events }`.
 #[derive(Clone, Copy, Debug)]
@@ -61,7 +61,7 @@ impl<P: Anchor> Operation<P> for Show {
 pub struct ShowBody {
     /// Number of matching events.
     pub count: usize,
-    /// Matches in union order (`timestamp`, `actor`, `sequence`).
+    /// Matches in union order (`timestamp`, `writer`, `sequence`).
     pub events: Vec<Event>,
 }
 

@@ -1,12 +1,12 @@
 //! Workflow journal events.
 //!
-//! Append-only newline-delimited JSON at `.emery/events/<actor>.jsonl`
-//! (RFC-86 D3). Each actor appends only their own file; readers union
-//! every actor file ordered by `(timestamp, actor, sequence)`.
+//! Append-only newline-delimited JSON at `.emery/events/<writer>.jsonl`
+//! (RFC-86 D3). Each journal writer appends only its own file; readers
+//! union every writer file ordered by `(timestamp, writer, sequence)`.
 //!
-//! **Actor id.** The calling actor is `EMERY_ACTOR` when that
+//! **Writer id.** The calling writer is `EMERY_WRITER` when that
 //! environment variable is set to a non-empty value; otherwise the
-//! stable local default [`DEFAULT_ACTOR`] (`"local"`). Multi-actor
+//! stable local default [`DEFAULT_WRITER`] (`"local"`). Multi-writer
 //! fixtures pass an explicit id to [`append_for`] instead of reading
 //! the environment. Until the RFC-88 two-root cut, these logs live
 //! under the flat `.emery/events/` stand-in (not `.emery/change/events/`).
@@ -17,7 +17,7 @@
 //! D23); the best-effort emit helpers in `emit`; the `emery journal
 //! show` operation in [`handlers`]. Writes route through the internal
 //! appenders only — CLI verbs append their own events as a side
-//! effect of the operation. This root owns the read side (per-actor
+//! effect of the operation. This root owns the read side (per-writer
 //! union, recent-tail projection, and the private filtered `show`
 //! projection behind `emery journal show`) and re-exports the public
 //! surface so callers keep importing `crate::journal::*`.
@@ -44,50 +44,50 @@ pub use self::event::{
 };
 use crate::config::Layout;
 
-/// Stable local default when `EMERY_ACTOR` is unset or empty.
-pub const DEFAULT_ACTOR: &str = "local";
+/// Stable local default when `EMERY_WRITER` is unset or empty.
+pub const DEFAULT_WRITER: &str = "local";
 
-/// Resolve the calling actor id at the journal-append boundary.
+/// Resolve the calling writer id at the journal-append boundary.
 ///
-/// A non-empty `EMERY_ACTOR` wins; otherwise [`DEFAULT_ACTOR`]. The
+/// A non-empty `EMERY_WRITER` wins; otherwise [`DEFAULT_WRITER`]. The
 /// wasm32 guest has no process environment for this variable and
-/// always uses the default — pass an explicit actor to [`append_for`]
+/// always uses the default — pass an explicit writer to [`append_for`]
 /// when a guest-side identity is required.
 #[must_use]
-pub fn actor_id() -> String {
+pub fn writer_id() -> String {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        if let Ok(value) = std::env::var("EMERY_ACTOR") {
+        if let Ok(value) = std::env::var("EMERY_WRITER") {
             let trimmed = value.trim();
             if !trimmed.is_empty() {
                 return trimmed.to_string();
             }
         }
     }
-    DEFAULT_ACTOR.to_string()
+    DEFAULT_WRITER.to_string()
 }
 
-/// Absolute path to one actor's log at
-/// `<project_dir>/.emery/events/<actor>.jsonl`.
+/// Absolute path to one writer's log at
+/// `<project_dir>/.emery/events/<writer>.jsonl`.
 #[must_use]
-pub(crate) fn actor_log_path(layout: Layout<'_>, actor: &str) -> PathBuf {
-    layout.actor_events_path(actor)
+pub(crate) fn writer_log_path(layout: Layout<'_>, writer: &str) -> PathBuf {
+    layout.writer_events_path(writer)
 }
 
-/// Refuse actor ids that cannot be a single path segment under
+/// Refuse writer ids that cannot be a single path segment under
 /// `.emery/events/`.
-pub(crate) fn validate_actor(actor: &str) -> Result<(), Error> {
-    if actor.is_empty()
-        || actor == "."
-        || actor == ".."
-        || actor.contains('/')
-        || actor.contains('\\')
-        || actor.contains('\0')
+pub(crate) fn validate_writer(writer: &str) -> Result<(), Error> {
+    if writer.is_empty()
+        || writer == "."
+        || writer == ".."
+        || writer.contains('/')
+        || writer.contains('\\')
+        || writer.contains('\0')
     {
         return Err(Error::Diag {
-            code: "journal-actor-invalid",
+            code: "journal-writer-invalid",
             detail: format!(
-                "actor id {actor:?} must be a non-empty single path segment \
+                "writer id {writer:?} must be a non-empty single path segment \
                  (no `/`, `\\`, or NUL)"
             ),
         });
@@ -95,8 +95,8 @@ pub(crate) fn validate_actor(actor: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// Read every parseable [`Event`] from every per-actor log under
-/// `.emery/events/`, ordered by `(timestamp, actor, sequence)`.
+/// Read every parseable [`Event`] from every per-writer log under
+/// `.emery/events/`, ordered by `(timestamp, writer, sequence)`.
 ///
 /// A missing events directory yields an empty vector. Blank lines and
 /// lines that fail to parse as an [`Event`] are skipped rather than
@@ -126,9 +126,9 @@ pub fn read_union(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
         events.extend(read_file(&path)?);
     }
     events.sort_by(|left, right| {
-        (left.timestamp, left.actor.as_str(), left.sequence).cmp(&(
+        (left.timestamp, left.writer.as_str(), left.sequence).cmp(&(
             right.timestamp,
-            right.actor.as_str(),
+            right.writer.as_str(),
             right.sequence,
         ))
     });
@@ -151,7 +151,7 @@ fn read_file(path: &Path) -> Result<Vec<Event>, Error> {
 /// Read the most recent journal [`Event`]s that `select` maps to a value,
 /// returning at most `limit` of them in union order.
 ///
-/// Loads the per-actor union ([`read_union`]) and keeps the newest
+/// Loads the per-writer union ([`read_union`]) and keeps the newest
 /// matching events. Cost tracks total event count; the union is the
 /// authority, so a single-file reverse-tail is not a substitute.
 ///
@@ -178,7 +178,7 @@ pub(crate) fn read_recent<T>(
 }
 
 /// Read events for `emery journal show`, in union order
-/// (`timestamp`, `actor`, `sequence`).
+/// (`timestamp`, `writer`, `sequence`).
 ///
 /// `filter` keeps events whose dotted-kebab wire id starts with the
 /// given prefix (e.g. `slice.build` or `plan.entry.advanced`); `limit`

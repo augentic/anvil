@@ -122,7 +122,7 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/ + base.yaml + builds/)
     ├── targets/          # one-member wave manifests
     ├── specs/            # merged baseline
-    ├── events/           # per-actor fact logs (<actor>.jsonl)
+    ├── events/           # per-writer fact logs (<writer>.jsonl)
     └── archive/          # finalized plans and merged or dropped slices
 ```
 

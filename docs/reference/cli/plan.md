@@ -121,7 +121,7 @@ Project the plan's execution state into a deterministic `next-action`. Read-only
 emery plan status [--format json]
 ```
 
-The projection reads plan topology, slice artifacts / phase timestamps (resolved into the materialised workspace slot when the entry is project-bound), and the per-actor fact union. The `next-action` field resolves to one of:
+The projection reads plan topology, slice artifacts / phase timestamps (resolved into the materialised workspace slot when the entry is project-bound), and the per-writer fact union. The `next-action` field resolves to one of:
 
 | `next-action` | Meaning |
 |---------------|---------|

@@ -80,7 +80,7 @@ Detached artifacts live at the change root, with no synthetic project configurat
   planning/proposals/<digest>.yaml # validated but unapplied amendments
   domains/<domain>/rounds/<digest>.yaml # RFC-91 convergence records
   targets/<target>/waves/<digest>.yaml # immutable closed wave membership
-  events/<actor>.jsonl        # facts, including plan.execute.started
+  events/<writer>.jsonl       # facts, including plan.execute.started
   slices/<slice>/...
 ```
 

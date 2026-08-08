@@ -41,7 +41,7 @@ description: |
 | `workspace`       | No                     | Absent or `false` for a regular project; `true` for a workspace. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
 
-A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored. In workspace mode, the committed `.emery/topology.lock` projects it deterministically from each project's baseline (`.emery/specs/` requirement titles + the `.emery/events/<actor>.jsonl` outcome ledger). Slot materialization and topology-lock regeneration are operator-owned setup outside Emery. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
+A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored. In workspace mode, the committed `.emery/topology.lock` projects it deterministically from each project's baseline (`.emery/specs/` requirement titles + the `.emery/events/<writer>.jsonl` outcome ledger). Slot materialization and topology-lock regeneration are operator-owned setup outside Emery. The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
 ### Workspace shape
 

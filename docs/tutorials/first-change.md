@@ -143,7 +143,7 @@ This pause is the operator review step. When the plan looks right, start privile
 emery plan execute
 ```
 
-Execute opens the authorization epoch, then drives each slice through refine → build → merge in plan order (a single execute process walks entries one-by-one; other actors may still claim different slices). Each slice gets its own directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
+Execute opens the authorization epoch, then drives each slice through refine → build → merge in plan order (a single execute process walks entries one-by-one; other journal writers may still claim different slices). Each slice gets its own directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
 
 Check progress at any time from a second terminal:
 

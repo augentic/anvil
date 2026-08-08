@@ -14,22 +14,22 @@ use crate::adapter::operation::SourceOperation;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
 
-/// One row of a per-actor event log.
+/// One row of a per-writer event log.
 ///
-/// Serialises as `{ timestamp, actor, sequence, event, payload }` —
+/// Serialises as `{ timestamp, writer, sequence, event, payload }` —
 /// RFC-86 pins `timestamp` first so a `head -1` on the file is enough
-/// to confirm the run window; `actor` + `sequence` identify the line
-/// inside that actor's append-only file.
+/// to confirm the run window; `writer` + `sequence` identify the line
+/// inside that writer's append-only file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Event {
     /// Second-precision UTC timestamp (`%Y-%m-%dT%H:%M:%SZ`).
     #[serde(with = "crate::serde_time::rfc3339")]
     pub timestamp: Timestamp,
-    /// Actor that appended this line (`EMERY_ACTOR` or the stable
+    /// Journal writer that appended this line (`EMERY_WRITER` or the stable
     /// local default). Empty only on in-memory values before
     /// [`super::append_for`] stamps the wire fields.
-    pub actor: String,
-    /// Monotonic per-actor sequence (1-based) inside that actor's
+    pub writer: String,
+    /// Monotonic per-writer sequence (1-based) inside that writer's
     /// `.jsonl` file. Zero only on in-memory values before append
     /// stamps the wire fields.
     pub sequence: u64,
@@ -42,15 +42,15 @@ pub struct Event {
 impl Event {
     /// Build an [`Event`] at `timestamp` carrying `kind`.
     ///
-    /// `actor` and `sequence` stay unset (`""` / `0`) until
+    /// `writer` and `sequence` stay unset (`""` / `0`) until
     /// [`super::append_for`] (or [`super::append_one`]) stamps them
-    /// for the calling actor's file. Tests pin the timestamp;
+    /// for the calling writer's file. Tests pin the timestamp;
     /// production callers pass an injected `now`.
     #[must_use]
     pub const fn new(timestamp: Timestamp, kind: EventKind) -> Self {
         Self {
             timestamp,
-            actor: String::new(),
+            writer: String::new(),
             sequence: 0,
             kind,
         }
@@ -445,16 +445,16 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         decisions: Vec<String>,
     },
-    /// An actor claimed exclusive ownership of one slice (RFC-86 D7 /
-    /// D23). The claiming actor is the event's envelope `actor`, not a
-    /// payload field. Claims never create build/merge authorization.
+    /// A journal writer claimed exclusive ownership of one slice
+    /// (RFC-86 D7 / D23). The claimant is the event's envelope
+    /// `writer`, not a payload field. Claims never create authorization.
     #[serde(rename = "slice.claimed", rename_all = "kebab-case")]
     SliceClaimed {
         /// Claimed slice.
         slice_name: SliceName,
     },
-    /// The claiming actor released its exclusive ownership of one
-    /// slice. Only a live claim by the releasing envelope `actor`
+    /// The claiming writer released its exclusive ownership of one
+    /// slice. Only a live claim by the releasing envelope `writer`
     /// clears ownership under the claim kernel.
     #[serde(rename = "slice.released", rename_all = "kebab-case")]
     SliceReleased {
@@ -462,13 +462,13 @@ pub enum EventKind {
         slice_name: SliceName,
     },
     /// A previously appended fact is treated as absent for projection.
-    /// Identifies the retracted line by its per-actor `(actor,
+    /// Identifies the retracted line by its per-writer `(writer,
     /// sequence)` identity inside the fact union.
     #[serde(rename = "fact.retracted", rename_all = "kebab-case")]
     FactRetracted {
-        /// Actor file that holds the retracted line.
-        actor: String,
-        /// 1-based sequence of the retracted line in that actor's file.
+        /// Writer file that holds the retracted line.
+        writer: String,
+        /// 1-based sequence of the retracted line in that writer's file.
         sequence: u64,
     },
     /// An immutable one-member target wave was written before build
@@ -555,15 +555,15 @@ pub struct IdentityMap {
     pub baseline: String,
 }
 
-/// Fact-log identity of an authorization epoch (`actor` + 1-based
+/// Fact-log identity of an authorization epoch (`writer` + 1-based
 /// `sequence`), carried on wave commit facts. Same shape as the wave
 /// manifest's `build-authorization` / commit-authorization refs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct FactEpochRef {
-    /// Actor file that holds the epoch fact.
-    pub actor: String,
-    /// 1-based sequence of the epoch fact in that actor's file.
+    /// Writer file that holds the epoch fact.
+    pub writer: String,
+    /// 1-based sequence of the epoch fact in that writer's file.
     pub sequence: u64,
 }
 

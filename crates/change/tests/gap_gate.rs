@@ -14,7 +14,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_ACTOR, Event, EventKind, LeafSpecCoverage, append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, append_for, read_union,
 };
 use project::plan::{Plan, dir_cid};
 use support::plan_with_changes;
@@ -75,7 +75,7 @@ fn stamp_epoch(
             discovery_digest: None,
         },
     );
-    append_for(Layout::new(root), DEFAULT_ACTOR, &[event]).expect("stamp epoch");
+    append_for(Layout::new(root), DEFAULT_WRITER, &[event]).expect("stamp epoch");
 }
 
 fn live_plan_digest(root: &std::path::Path) -> String {
