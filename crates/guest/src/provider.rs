@@ -3,6 +3,7 @@
 //! are widened with caller-owned envelope fields before validation.
 
 use std::future::Future;
+use std::path::Path;
 use std::sync::LazyLock;
 
 use artifacts::evidence::AuthorityClass;
@@ -13,7 +14,7 @@ use project::adapter::{
     AdapterSelector, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource,
     ResolvedTarget, Resolver,
 };
-use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT};
+use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT, PROJECT_ROOT_ENV};
 use project::seam::wire::build_finding;
 use project::seam::{
     self, BuildContext, Evidence, Input, Lead, MergePhase, Source, Target, Workspace,
@@ -22,7 +23,6 @@ use project::snapshot::{CodePatch, SnapshotId};
 use slice::{BuildOutput, BuildReport, BuildStatus, UiSurface};
 
 use crate::bindings::emery::adapter::{source, target, types};
-use crate::bindings::emery::workspaces::{types as workspaces_types, workspaces};
 
 /// Workflow capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -134,60 +134,73 @@ impl Target for Provider {
     }
 }
 
+/// The in-guest workspace kernel: tree I/O over the `.` and
+/// workspaces preopens, objects through `wasi:blobstore`, exec bits
+/// through `emery:exec-bits`. Each leg is synchronous local work, so
+/// the futures complete without awaiting.
 impl seam::Workspaces for Provider {
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
-        async move { parse_revision(workspaces::freeze().await.map_err(map_workspaces_error)?) }
+        async move {
+            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
+            store.snapshot(PATHS.project_root()).map_err(|err| workspace_failure(&err))
+        }
     }
 
     fn prepare(
         &self, base: SnapshotId, writable: bool,
     ) -> impl Future<Output = Result<Workspace, seam::Error>> + Send {
         async move {
-            let prepared = workspaces::prepare(base.as_str().to_string(), writable)
-                .await
-                .map_err(map_workspaces_error)?;
-            // The record carries only what the host alone knows; the
-            // deployment-local root derives from the workspaces mount.
-            let root = format!("{GUEST_WORKSPACES_MOUNT}/{}", prepared.id);
+            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
+            let prepared = project::workspace::prepare(
+                &store,
+                Path::new(GUEST_WORKSPACES_MOUNT),
+                &base,
+                project::workspace::Access { writable },
+            )
+            .map_err(|err| workspace_failure(&err))?;
             Ok(Workspace {
                 id: prepared.id,
-                root,
-                artifacts: prepared.artifacts,
+                root: prepared.root.display().to_string(),
+                artifacts: artifacts_root(),
             })
         }
     }
 
     fn capture(&self, id: String) -> impl Future<Output = Result<CodePatch, seam::Error>> + Send {
         async move {
-            let patch = workspaces::capture(id).await.map_err(map_workspaces_error)?;
-            Ok(CodePatch {
-                base: parse_revision(patch.base)?,
-                result: parse_revision(patch.result)?,
-                touched: patch.touched,
-            })
+            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
+            project::workspace::capture(&store, Path::new(GUEST_WORKSPACES_MOUNT), &id)
+                .map_err(|err| workspace_failure(&err))
         }
     }
 
     fn discard(&self, id: String) -> impl Future<Output = Result<(), seam::Error>> + Send {
-        async move { workspaces::discard(id).await.map_err(map_workspaces_error) }
+        async move {
+            project::workspace::discard(Path::new(GUEST_WORKSPACES_MOUNT), &id)
+                .map_err(|err| workspace_failure(&err))
+        }
     }
 
     fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), seam::Error>> + Send {
         async move {
-            let wire = workspaces::CodePatch {
-                base: patch.base.into(),
-                result: patch.result.into(),
-                touched: patch.touched,
-            };
-            workspaces::apply(wire).await.map_err(map_workspaces_error)
+            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
+            store.apply(&patch, PATHS.project_root()).map_err(|err| workspace_failure(&err))
         }
     }
 }
 
-/// Parse a wire `revision` into the typed snapshot identity; the host
-/// mints these, so a malformed value is an internal seam failure.
-fn parse_revision(revision: String) -> Result<SnapshotId, seam::Error> {
-    SnapshotId::parse(&revision).map_err(|err| seam::Error::Internal(err.to_string()))
+/// Map a workspace-kernel failure onto the seam error contract.
+fn workspace_failure(err: &Error) -> seam::Error {
+    seam::Error::Internal(err.to_string())
+}
+
+/// The agent-visible artifact root: the host-absolute project root
+/// the launcher exports as [`PROJECT_ROOT_ENV`] (guests inherit the
+/// host environment), so a spawned agent working inside a lent
+/// workspace can still read change-tree artifacts. The deployment
+/// always sets it; the `.` fallback keeps ad-hoc harnesses running.
+fn artifacts_root() -> String {
+    std::env::var(PROJECT_ROOT_ENV).unwrap_or_else(|_absent| ".".to_string())
 }
 
 fn map_workspace(workspace: Workspace) -> target::Workspace {
@@ -244,14 +257,6 @@ fn map_error(error: types::Error) -> seam::Error {
         types::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
         types::Error::Io(detail) => seam::Error::Io(detail),
         types::Error::Internal(detail) => seam::Error::Internal(detail),
-    }
-}
-
-fn map_workspaces_error(error: workspaces_types::Error) -> seam::Error {
-    match error {
-        workspaces_types::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
-        workspaces_types::Error::Io(detail) => seam::Error::Io(detail),
-        workspaces_types::Error::Internal(detail) => seam::Error::Internal(detail),
     }
 }
 

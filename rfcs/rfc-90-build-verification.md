@@ -20,7 +20,7 @@ What this RFC changes is the **adapter call shape**, not that substrate. Inside 
 
 That shape hides the most important control loop from lifecycle policy and makes RFC-91 concurrency unsafe: splitting writers before replacing the loop would remove the only mechanism that currently returns failed checks to the code writer.
 
-The engine guest also cannot execute the target project's native toolchain. Its `workflow` world imports `source`, `target`, and `workspaces`; neither Emery nor Omnia currently supplies native process execution. The `wasi-model` `verify` grant authorizes model tooling but is not an execution capability.
+The engine guest also cannot execute the target project's native toolchain. Its `workflow` world imports `source`, `target`, and `emery:exec-bits` (plus the standard `wasi:blobstore` for snapshot objects — the workspace kernel itself runs in-guest); neither Emery nor Omnia currently supplies native process execution. The `wasi-model` `verify` grant authorizes model tooling but is not an execution capability.
 
 ### Goal
 

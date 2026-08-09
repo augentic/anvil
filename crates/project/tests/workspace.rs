@@ -142,6 +142,19 @@ mod round_trip {
         assert!(!lab.source.join("src/lib.rs").exists(), "touched deletions apply");
     }
 
+    /// Snapshots carry relative links only: an absolute target cannot
+    /// be re-created inside a sandboxed guest, so refusal is typed and
+    /// symmetric at snapshot time.
+    #[cfg(unix)]
+    #[test]
+    fn absolute_symlink_target_refused() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a");
+        std::os::unix::fs::symlink("/etc/hosts", lab.source.join("abs")).expect("symlink");
+        let err = lab.store.snapshot(&lab.source).expect_err("must refuse an absolute target");
+        assert!(err.to_string().contains("absolute target"), "unexpected error: {err}");
+    }
+
     #[test]
     fn unchanged_tree_is_empty_patch() {
         let lab = lab();
@@ -152,6 +165,56 @@ mod round_trip {
         let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).expect("capture");
         assert_eq!(patch.base, patch.result);
         assert!(patch.touched.is_empty());
+    }
+}
+
+/// The migration oracle: the manifest encoding is canonical, so this
+/// exact tree must always hash to this exact snapshot id — across the
+/// native kernel, the in-guest kernel, and any object backend. Exec
+/// bits and symlink targets participate in the digest, so any mode or
+/// link infidelity fails here first.
+#[cfg(unix)]
+mod golden {
+    use super::*;
+
+    const BASE: &str = "sha256:601f78baead19ad4ed7c1cdf9bae8581ea83582d406cccc03ee9ee50ee4579f1";
+    const FLIPPED: &str = "sha256:e1237523c4dfe1e9f84c93b13132e3bfa09a69de215fcf125319b431316888c5";
+
+    fn fixture(lab: &Lab) {
+        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
+        write(&lab.source, "run.sh", b"#!/bin/sh\necho hi\n");
+        chmod_exec(&lab.source.join("run.sh"));
+        std::os::unix::fs::symlink("src/lib.rs", lab.source.join("link.rs")).expect("symlink");
+    }
+
+    #[test]
+    fn pinned_snapshot_id() {
+        let lab = lab();
+        fixture(&lab);
+        let base = lab.store.snapshot(&lab.source).expect("snapshot");
+        assert_eq!(base.as_str(), BASE, "canonical tree digest drifted");
+    }
+
+    /// An exec → plain flip changes the digest and survives `apply`
+    /// onto a live tree.
+    #[test]
+    fn exec_flip_round_trip() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let lab = lab();
+        fixture(&lab);
+        let base = lab.store.snapshot(&lab.source).expect("snapshot");
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
+            .expect("prepare");
+        std::fs::set_permissions(ws.root.join("run.sh"), std::fs::Permissions::from_mode(0o644))
+            .expect("chmod plain");
+        let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).expect("capture");
+        assert_eq!(patch.result.as_str(), FLIPPED, "flipped tree digest drifted");
+        assert_eq!(patch.touched, vec!["run.sh"]);
+
+        lab.store.apply(&patch, &lab.source).expect("apply");
+        let mode = std::fs::metadata(lab.source.join("run.sh")).expect("meta").permissions().mode();
+        assert_eq!(mode & 0o111, 0, "apply must clear the executable bit");
     }
 }
 

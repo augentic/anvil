@@ -8,17 +8,21 @@ use std::sync::OnceLock;
 
 use project::adapter::{AdapterSelector, RoutedId};
 use project::config::ProjectConfig;
-use project::handler::{ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT, Locations};
+use project::handler::{
+    ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT, Locations, PROJECT_ROOT_ENV,
+};
 use transport::command::selectors::{SeedRequest, refresh_request, seed_request};
 
 mod anchor;
+mod blobstore;
+mod exec_bits;
 mod install;
 mod resolver;
-mod workspaces;
 
+pub use blobstore::Blobstore;
+pub use exec_bits::ExecBits;
 pub use install::Registry;
 pub use resolver::Resolver;
-pub use workspaces::Workspaces;
 
 /// Guest-visible preopen name of the per-project derived cache.
 pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
@@ -182,7 +186,10 @@ fn seed_dir(request: &SeedRequest, project_root: &Path) -> Option<PathBuf> {
 }
 
 /// The process-wide policy, evaluated once across the macro's mount
-/// and resolver expressions.
+/// and resolver expressions. The first evaluation also exports the
+/// host-absolute project root as [`PROJECT_ROOT_ENV`]: guests inherit
+/// the host environment, and the in-guest kernel derives the
+/// agent-visible artifact root from it.
 fn current() -> &'static Policy {
     static POLICY: OnceLock<Policy> = OnceLock::new();
     POLICY.get_or_init(|| {
@@ -191,8 +198,21 @@ fn current() -> &'static Policy {
         // seed) and the runtime itself refuses it with a typed error.
         let argv: Vec<String> =
             std::env::args_os().skip(1).map(|arg| arg.to_string_lossy().into_owned()).collect();
-        Policy::new(&invoked_dir, &argv, Locations::from_env())
+        let policy = Policy::new(&invoked_dir, &argv, Locations::from_env());
+        export_project_root(policy.project_root());
+        policy
     })
+}
+
+/// Export the host-absolute project root as [`PROJECT_ROOT_ENV`] so
+/// guests inherit it.
+fn export_project_root(root: &Path) {
+    let root = std::path::absolute(root).unwrap_or_else(|_io| root.to_path_buf());
+    // SAFETY: one write during runtime assembly, before guest stores
+    // snapshot the environment and before this process spawns any
+    // concurrent environment reader.
+    #[expect(unsafe_code, reason = "the guest inherits the project root through the env")]
+    let () = unsafe { std::env::set_var(PROJECT_ROOT_ENV, root.as_os_str()) };
 }
 
 /// Macro expression: this invocation's pre-bound HTTP trigger

@@ -18,9 +18,10 @@ crate-type = ["cdylib"]
 anyhow.workspace = true
 cfg-if.workspace = true
 emery-launcher.workspace = true
-emery-wasi-workspaces.workspace = true
+emery-wasi-exec-bits.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
+omnia-wasi-blobstore.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
@@ -190,6 +191,7 @@ toml = "1.1.4"
 tower = "0.5.3"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+wasip2 = "1.0.4"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
 # Pinned to omnia's wasmtime line — the host-capability crate's generated
 # bindings must share the runtime's wasmtime types.
@@ -213,25 +215,31 @@ emery-project = { path = "crates/project" }
 emery-prose = { path = "crates/prose" }
 emery-slice = { path = "crates/slice" }
 emery-transport = { path = "crates/transport" }
-emery-wasi-workspaces = { path = "crates/wasi-workspaces" }
+emery-wasi-exec-bits = { path = "crates/wasi-exec-bits" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }
 omnia-cursor = "0.29.0"
+omnia-filesystem = "0.29.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
 omnia-testkit = "0.35.0"
+omnia-wasi-blobstore = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
 omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
+# Path-patched during co-development (the crate is not yet published or
+# pushed); moves to the omnia-backends git patch on its first release.
+omnia-filesystem = { path = "../omnia-backends/crates/filesystem" }
 omnia = { git = "https://github.com/augentic/omnia" }
 omnia-guest = { git = "https://github.com/augentic/omnia" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia" }
 omnia-testkit = { git = "https://github.com/augentic/omnia" }
+omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }

@@ -25,7 +25,6 @@ pub mod slice;
 pub mod snapshot;
 pub mod target_policy;
 pub mod wave;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod workspace;
 
 pub use platform::Platform;

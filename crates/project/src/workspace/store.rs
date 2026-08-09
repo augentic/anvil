@@ -1,18 +1,21 @@
-//! The local content-addressed snapshot store.
-//!
-//! Writes are atomic and write-once (an existing object is never
-//! rewritten); reads verify the digest, so corruption fails typed.
+//! The content-addressed snapshot store over the [`Objects`] and
+//! [`ExecBits`] seams. The kernel owns hashing: objects are named by
+//! the SHA-256 it computed and reads verify the digest.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use error::Error;
 
+use super::exec::{ExecBits, FsExecBits};
 use super::manifest::{Entry, Manifest};
+use super::objects::{FsObjects, Objects};
 use crate::snapshot::{CodePatch, SnapshotId};
 
 /// Path components excluded from every snapshot walk: version-control
 /// state and the Emery change tree are never product code (RFC-87 D4).
-const IGNORED: [&str; 2] = [".git", ".emery"];
+pub(super) const IGNORED: [&str; 2] = [".git", ".emery"];
 
 /// Root-level names excluded from every snapshot walk: the plan
 /// artifacts living at the repo root (`change.md` + `plan.yaml`, the
@@ -21,19 +24,42 @@ const IGNORED: [&str; 2] = [".git", ".emery"];
 /// the interim apply rewind live plan state.
 const IGNORED_ROOT: [&str; 4] = ["change.md", "discovery.md", "plan.yaml", "registry.yaml"];
 
-/// The local snapshot store rooted at
-/// [`Locations::snapshots_root`](crate::handler::Locations::snapshots_root).
+/// The snapshot store: tree walks and manifests in the kernel, object
+/// bytes behind [`Objects`], exec bits behind [`ExecBits`].
 #[derive(Clone, Debug)]
 pub struct Store {
-    root: PathBuf,
+    objects: Arc<dyn Objects>,
+    exec: Arc<dyn ExecBits>,
+    /// Self-exclusion root for nested filesystem stores (test and lab
+    /// layouts): the walk must never snapshot its own objects.
+    exclude: Option<PathBuf>,
 }
 
 impl Store {
-    /// Open the store at `root`; directories are created lazily on
-    /// first write.
+    /// Open a filesystem-backed store at `root` (native deployments);
+    /// directories are created lazily on first write.
     #[must_use]
     pub fn new(root: impl Into<PathBuf>) -> Self {
-        Self { root: root.into() }
+        let objects = FsObjects::new(root);
+        let exclude = Some(objects.root().to_path_buf());
+        Self {
+            objects: Arc::new(objects),
+            exec: Arc::new(FsExecBits),
+            exclude,
+        }
+    }
+
+    /// Compose a store over explicit seams (the in-guest deployment:
+    /// blobstore-backed objects, capability-backed exec bits). No
+    /// self-exclusion — the object store is not beneath any walked
+    /// tree.
+    #[must_use]
+    pub fn over(objects: impl Objects + 'static, exec: impl ExecBits + 'static) -> Self {
+        Self {
+            objects: Arc::new(objects),
+            exec: Arc::new(exec),
+            exclude: None,
+        }
     }
 
     /// Snapshot the complete tree at `dir` into the store and return
@@ -46,11 +72,9 @@ impl Store {
     /// or newline-bearing names.
     pub fn snapshot(&self, dir: &Path) -> Result<SnapshotId, Error> {
         let mut manifest = Manifest::default();
-        // Self-exclusion: a store nested beneath the walked tree (test
-        // and lab layouts) must never snapshot its own objects — the
-        // walk itself writes them.
-        let own_root = std::path::absolute(&self.root).ok();
-        self.walk(dir, "", own_root.as_deref(), &mut manifest)?;
+        let exec = self.exec.read(dir)?;
+        let own_root = self.exclude.as_deref().and_then(|root| std::path::absolute(root).ok());
+        self.walk(dir, "", own_root.as_deref(), &exec, &mut manifest)?;
         let digest = self.put(manifest.encode().as_bytes())?;
         Ok(SnapshotId::from_digest(&digest))
     }
@@ -66,10 +90,12 @@ impl Store {
     pub fn materialize(&self, id: &SnapshotId, dest: &Path) -> Result<(), Error> {
         let manifest = self.manifest(id)?;
         std::fs::create_dir_all(dest)?;
+        let mut modes = ModeSets::default();
         for (path, entry) in &manifest.entries {
             self.write_entry(dest, path, entry)?;
+            modes.record(path, entry);
         }
-        Ok(())
+        self.exec.apply(dest, &modes.exec, &modes.plain)
     }
 
     /// Apply `patch` to the tree at `dir`: rewrite each touched path
@@ -86,19 +112,22 @@ impl Store {
     /// failures.
     pub fn apply(&self, patch: &CodePatch, dir: &Path) -> Result<(), Error> {
         let target = self.manifest(&patch.result)?;
+        let mut modes = ModeSets::default();
         for path in &patch.touched {
             if let Some(entry) = target.entries.get(path) {
                 self.write_entry(dir, path, entry)?;
+                modes.record(path, entry);
             } else {
                 remove_entry(&dir.join(path))?;
                 prune_empty_parents(dir, path);
             }
         }
-        Ok(())
+        self.exec.apply(dir, &modes.exec, &modes.plain)
     }
 
     /// Write one manifest entry beneath `root`, replacing whatever is
-    /// there (a stale file, symlink, or directory).
+    /// there (a stale file, symlink, or directory). Exec bits are
+    /// applied in bulk by the caller.
     fn write_entry(&self, root: &Path, path: &str, entry: &Entry) -> Result<(), Error> {
         let target = root.join(path);
         if let Some(parent) = target.parent() {
@@ -106,9 +135,8 @@ impl Store {
         }
         remove_entry(&target)?;
         match entry {
-            Entry::File { exec, blob } => {
+            Entry::File { blob, .. } => {
                 std::fs::write(&target, self.get(blob)?)?;
-                set_exec(&target, *exec)?;
             }
             Entry::Link { blob } => {
                 let link_target =
@@ -125,7 +153,7 @@ impl Store {
     /// Whether snapshot `id`'s manifest object is present.
     #[must_use]
     pub fn contains(&self, id: &SnapshotId) -> bool {
-        self.object_path(id.digest()).is_file()
+        self.objects.has(id.digest())
     }
 
     /// Read and parse snapshot `id`'s manifest.
@@ -153,22 +181,14 @@ impl Store {
     /// content).
     fn put(&self, bytes: &[u8]) -> Result<String, Error> {
         let digest = diagnostics::digest::sha256_hex(bytes);
-        let path = self.object_path(&digest);
-        if !path.is_file() {
-            artifacts::atomic::bytes_write(&path, bytes)?;
-        }
+        self.objects.put(&digest, bytes)?;
         Ok(digest)
     }
 
     /// Read the object named `digest`, verifying its content hashes
     /// back to the name.
     fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
-        let path = self.object_path(digest);
-        let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
-            op: "read",
-            path,
-            source,
-        })?;
+        let bytes = self.objects.get(digest)?;
         if diagnostics::digest::sha256_hex(&bytes) != digest {
             return Err(Error::Diag {
                 code: "snapshot-object-corrupt",
@@ -178,15 +198,13 @@ impl Store {
         Ok(bytes)
     }
 
-    fn object_path(&self, digest: &str) -> PathBuf {
-        self.root.join("objects").join(&digest[..2]).join(&digest[2..])
-    }
-
     /// Depth-first walk folding `dir` into `manifest`. `prefix` is the
     /// `/`-separated relative path of `dir` (empty at the root);
-    /// `own_root` is the store's absolute root, skipped when nested.
+    /// `own_root` is a nested filesystem store's absolute root, skipped
+    /// when present; `exec` is the tree's bulk-read exec set.
     fn walk(
-        &self, dir: &Path, prefix: &str, own_root: Option<&Path>, manifest: &mut Manifest,
+        &self, dir: &Path, prefix: &str, own_root: Option<&Path>, exec: &BTreeSet<String>,
+        manifest: &mut Manifest,
     ) -> Result<(), Error> {
         for entry in crate::fs::dir_entries(dir)? {
             let name = entry.file_name();
@@ -212,10 +230,22 @@ impl Store {
                 let Some(target) = target.to_str() else {
                     return Err(unsupported(prefix, name));
                 };
+                // Snapshots carry relative links only: an absolute
+                // target cannot be re-created inside a sandboxed
+                // guest, so the refusal is symmetric and early.
+                if Path::new(target).is_absolute() {
+                    return Err(Error::Diag {
+                        code: "workspace-path-unsupported",
+                        detail: format!(
+                            "symlink `{rel}` has an absolute target; snapshots carry relative \
+                             links only"
+                        ),
+                    });
+                }
                 let blob = self.put(target.as_bytes())?;
                 manifest.entries.insert(rel, Entry::Link { blob });
             } else if meta.is_dir() {
-                self.walk(&path, &rel, own_root, manifest)?;
+                self.walk(&path, &rel, own_root, exec, manifest)?;
             } else {
                 let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
                     op: "read",
@@ -223,16 +253,31 @@ impl Store {
                     source,
                 })?;
                 let blob = self.put(&bytes)?;
-                manifest.entries.insert(
-                    rel,
-                    Entry::File {
-                        exec: is_exec(&meta),
-                        blob,
-                    },
-                );
+                let exec = exec.contains(&rel);
+                manifest.entries.insert(rel, Entry::File { exec, blob });
             }
         }
         Ok(())
+    }
+}
+
+/// The exec/plain path sets one materialization accumulates for the
+/// single bulk [`ExecBits::apply`] call.
+#[derive(Default)]
+struct ModeSets {
+    exec: Vec<String>,
+    plain: Vec<String>,
+}
+
+impl ModeSets {
+    fn record(&mut self, path: &str, entry: &Entry) {
+        if let Entry::File { exec, .. } = entry {
+            if *exec {
+                self.exec.push(path.to_string());
+            } else {
+                self.plain.push(path.to_string());
+            }
+        }
     }
 }
 
@@ -268,30 +313,6 @@ fn unsupported(prefix: &str, name: &str) -> Error {
 }
 
 #[cfg(unix)]
-fn is_exec(meta: &std::fs::Metadata) -> bool {
-    use std::os::unix::fs::PermissionsExt as _;
-    meta.permissions().mode() & 0o100 != 0
-}
-
-#[cfg(not(unix))]
-fn is_exec(_meta: &std::fs::Metadata) -> bool {
-    false
-}
-
-#[cfg(unix)]
-fn set_exec(path: &Path, exec: bool) -> Result<(), Error> {
-    use std::os::unix::fs::PermissionsExt as _;
-    let mode = if exec { 0o755 } else { 0o644 };
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))?;
-    Ok(())
-}
-
-#[cfg(not(unix))]
-fn set_exec(_path: &Path, _exec: bool) -> Result<(), Error> {
-    Ok(())
-}
-
-#[cfg(unix)]
 fn symlink(original: &Path, link: &Path) -> Result<(), Error> {
     std::os::unix::fs::symlink(original, link)?;
     Ok(())
@@ -303,7 +324,43 @@ fn symlink(original: &Path, link: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-#[cfg(not(any(unix, windows)))]
+/// `std::os::wasi::fs::symlink_path` is unstable, so symlink creation
+/// resolves the longest-prefix preopen (`.`, the workspaces mount, …)
+/// and calls `symlink-at` on its descriptor.
+#[cfg(target_os = "wasi")]
+fn symlink(original: &Path, link: &Path) -> Result<(), Error> {
+    let (original, link) = match (original.to_str(), link.to_str()) {
+        (Some(original), Some(link)) => (original, link),
+        _ => return Err(unsupported("", &link.to_string_lossy())),
+    };
+    let mut best: Option<(wasip2::filesystem::types::Descriptor, String)> = None;
+    let mut best_len = 0;
+    for (descriptor, name) in wasip2::filesystem::preopens::get_directories() {
+        let rest = if name == "." {
+            (!link.starts_with('/'))
+                .then(|| link.strip_prefix("./").unwrap_or(link))
+                .map(str::to_string)
+        } else {
+            link.strip_prefix(&name).and_then(|rest| rest.strip_prefix('/')).map(str::to_string)
+        };
+        if let Some(rest) = rest
+            && name.len() >= best_len
+        {
+            best_len = name.len();
+            best = Some((descriptor, rest));
+        }
+    }
+    let Some((descriptor, rest)) = best else {
+        return Err(Error::Io(std::io::Error::other(format!(
+            "no preopen reaches `{link}` for symlink creation"
+        ))));
+    };
+    descriptor.symlink_at(original, &rest).map_err(|code| {
+        Error::Io(std::io::Error::other(format!("symlink `{link}` -> `{original}`: {code}")))
+    })
+}
+
+#[cfg(not(any(unix, windows, target_os = "wasi")))]
 fn symlink(_original: &Path, _link: &Path) -> Result<(), Error> {
     Err(Error::Diag {
         code: "workspace-path-unsupported",

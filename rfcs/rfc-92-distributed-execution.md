@@ -11,6 +11,8 @@
 > Related: [RFC-89](rfc-89-publication-sets.md) binds publication across repositories after this RFC's distributed execution.
 >
 > Runtime dependency: Omnia bindings for `wasi:documentstore`, native `wasi:keyvalue` atomics, `wasi:blobstore`, `wasi:messaging` wake-up announcements, and durable asynchronous trigger supervision. Where an interface or backend lacks a required guarantee, this RFC requires improving the general Omnia capability rather than adding an Emery-specific transport API.
+>
+> Foundation already laid: the snapshot values plane speaks `wasi:blobstore` locally today — the engine guest's workspace kernel stores every snapshot object through that import (the omnia-backends filesystem backend under one desktop deployment). Worker placement is therefore a backend/container-namespace swap behind the same import — one line in the host, guests untouched — and object-closure movement can reuse the kernel's `Objects` seam.
 
 ## Intent
 

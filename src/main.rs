@@ -7,8 +7,9 @@ cfg_if::cfg_if! {
         use omnia_cursor::Client as Cursor;
         use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_model::WasiModel;
+        use omnia_wasi_blobstore::WasiBlobstore;
+        use omnia_wasi_execbits::WasiExecBits;
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
-        use omnia_wasi_workspaces::WasiWorkspaces;
 
         omnia::runtime!({
             mode: command,
@@ -41,9 +42,12 @@ cfg_if::cfg_if! {
                 WasiHttp: HttpDefault,
                 WasiOtel: OtelDefault,
                 WasiModel: Cursor,
-                // The engine guest's `workspaces` import over the
-                // launcher's snapshot-store kernel.
-                WasiWorkspaces: launcher::Workspaces,
+                // Exec-bit round-tripping for the in-guest workspace
+                // kernel — `wasi:filesystem` carries no mode bits.
+                WasiExecBits: launcher::ExecBits,
+                // The snapshot object store: the filesystem blobstore
+                // anchored at the launcher's snapshots root.
+                WasiBlobstore: launcher::Blobstore,
             }
         });
     } else {

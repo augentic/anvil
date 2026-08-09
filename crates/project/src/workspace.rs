@@ -1,9 +1,10 @@
 //! The private-workspace kernel: `prepare` / `capture` / `discard`
-//! over the content-addressed snapshot [`Store`]. Host-side only.
-//!
-//! No workspace path is ever persisted as workflow state.
+//! over the content-addressed snapshot [`Store`]. Wasm-clean — it
+//! runs in the engine guest and in native deployments alike.
 
+mod exec;
 mod manifest;
+mod objects;
 mod store;
 
 use std::path::{Path, PathBuf};
@@ -11,6 +12,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
 use error::Error;
+pub use exec::{ExecBits, FsExecBits};
+pub use objects::{FsObjects, Objects};
 use serde::{Deserialize, Serialize};
 pub use store::Store;
 
@@ -216,7 +219,7 @@ fn fresh_dir(workspaces: &Path) -> Result<(String, PathBuf), Error> {
         let seed = format!(
             "{:?}:{}:{}",
             SystemTime::now(),
-            std::process::id(),
+            process_entropy(),
             COUNTER.fetch_add(1, Ordering::Relaxed)
         );
         let id = format!("ws-{}", &diagnostics::digest::sha256_hex(seed.as_bytes())[..12]);
@@ -227,6 +230,16 @@ fn fresh_dir(workspaces: &Path) -> Result<(String, PathBuf), Error> {
             Err(err) => return Err(Error::Io(err)),
         }
     }
+}
+
+/// A per-process random value distinguishing concurrent processes in
+/// the workspace-id seed. `RandomState` draws real entropy on every
+/// platform, including wasm32 — `std::process::id` does not exist
+/// there.
+fn process_entropy() -> u64 {
+    use std::hash::{BuildHasher as _, RandomState};
+    static ENTROPY: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    *ENTROPY.get_or_init(|| RandomState::new().hash_one(0_u64))
 }
 
 fn remove_existing_dir(path: &Path) -> Result<(), Error> {

@@ -43,6 +43,15 @@ pub const GUEST_SNAPSHOTS_MOUNT: &str = "/emery-snapshots";
 /// deployment-local path.
 pub const GUEST_WORKSPACES_MOUNT: &str = "/emery-workspaces";
 
+/// Environment key carrying the host-absolute project root into the
+/// engine guest.
+///
+/// Guests inherit the host environment; the in-guest kernel derives
+/// the agent-visible artifact root from this key, so a spawned agent
+/// whose working directory is a lent workspace can still read
+/// change-tree artifacts.
+pub const PROJECT_ROOT_ENV: &str = "EMERY_PROJECT_ROOT";
+
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CachePlacement {

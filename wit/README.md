@@ -2,7 +2,7 @@
 
 This directory owns [`emery.wit`](emery.wit) and publishes it as the wasm-pkg package `emery:adapter`. [augentic/emery-adapters](https://github.com/augentic/emery-adapters) consumes it as a vendored copy.
 
-Host-only capabilities live in their capability crates. `emery:workspaces` is owned by [`crates/wasi-workspaces/wit/`](../crates/wasi-workspaces/wit/) and resolved here through the `deps/workspaces` symlink so the `workflow` world can import it; adapters never see that package.
+Host-only capabilities live in their capability crates. `emery:exec-bits` is owned by [`crates/wasi-exec-bits/wit/`](../crates/wasi-exec-bits/wit/) and resolved here through the `deps/exec-bits` symlink so the `workflow` world can import it; adapters never see that package.
 
 ## Publishing
 
