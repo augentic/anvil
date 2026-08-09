@@ -313,6 +313,77 @@ tasks:
     assert_eq!(baselines.len(), 2, "no shared baseline id: {baselines:?}");
 }
 
+/// A domain-omitted `MODIFIED` row resolves the shared default domain at
+/// wave commit — the same domain synthesis digested it under.
+#[tokio::test]
+async fn domain_omitted_modified_merges_under_default_domain() {
+    let session = Session::scripted("mock", Vec::new());
+    let root = session.root();
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    stage_wave_and_record(&session, "login-flow", snapshot);
+
+    let slice_dir = root.join(".emery/slices/login-flow");
+    let specs = slice_dir.join("specs/default");
+    fs::create_dir_all(&specs).expect("slice specs");
+    fs::create_dir_all(root.join(".emery/specs/default")).expect("baseline specs");
+    fs::write(root.join(".emery/specs/default/spec.md"), baseline_body()).expect("baseline");
+    let delta = "# Auth slice\n\n\
+         ## MODIFIED Requirements\n\n\
+         ### Requirement: User can log in\n\n\
+         ID: REQ-001\n\n\
+         Authentication via email/password *or* passkey.\n\n\
+         #### Scenario: Passkey login\n\n\
+         - GIVEN a registered user with a passkey\n\
+         - WHEN they authenticate via passkey\n\
+         - THEN they receive a session token\n";
+    fs::write(specs.join("spec.md"), delta).expect("delta");
+    fs::write(
+        slice_dir.join("metadata.yaml"),
+        "target: mock\ntouched-specs:\n  - name: default\n    type: modified\n",
+    )
+    .expect("metadata");
+
+    let index = BaselineIndex::build(&root.join(".emery/specs")).expect("baseline index");
+    let body = index.body("default", "REQ-007").expect("baseline body");
+    let baseline_digest = format!("sha256:{}", sha256_hex(body.as_bytes()));
+
+    // No `domain:` on the requirement — merge must fall back to the same
+    // default domain synthesis used when recording the digest.
+    let model = format!(
+        r"version: 1
+slice: login-flow
+requirements:
+  - id: REQ-001
+    title: User can log in
+    status: agreed
+    baseline-id: REQ-007
+    baseline-digest: {baseline_digest}
+    sources: [docs]
+    claims:
+      - source: docs
+        id: login.flow
+        kind: requirement
+    statement: Authentication via email/password or passkey.
+    scenarios:
+      - Passkey login
+tasks:
+  - id: TASK-001
+    text: Wire passkey login.
+    satisfies: [REQ-001]
+"
+    );
+    fs::write(slice_dir.join("model.yaml"), model).expect("model");
+    fs::write(slice_dir.join("tasks.md"), "# Tasks\n\n- TASK-001 satisfies REQ-001\n")
+        .expect("tasks");
+
+    merge(&session, "login-flow").await.expect("domain-omitted MODIFIED merges");
+
+    let merged =
+        fs::read_to_string(root.join(".emery/specs/default/spec.md")).expect("merged baseline");
+    assert!(merged.contains("ID: REQ-007"), "{merged}");
+    assert!(merged.contains("passkey"), "{merged}");
+}
+
 #[tokio::test]
 async fn drifted_modified_rejects_before_wave_committed() {
     let session = Session::scripted("mock", Vec::new());

@@ -96,7 +96,7 @@ fn assign_maps(model: &SliceModel, baseline: &BaselineIndex) -> Result<Vec<Ident
 fn reject_drifted(
     req: &crate::model::ModelRequirement, baseline_id: &str, baseline: &BaselineIndex,
 ) -> Result<(), Error> {
-    let domain = req.domain.as_deref().unwrap_or("core");
+    let domain = req.domain_or_default();
     let Some(expected) = req.baseline_digest.as_deref() else {
         return Err(Error::validation_failed(
             "merge-base-drifted",

@@ -20,6 +20,11 @@ use crate::provenance::{
 use crate::synthesis::authority::{Agreement, ClaimRef, resolve};
 use crate::synthesis::evidence::evidence_yaml_paths;
 
+/// Domain used when a requirement has no explicit owner. Shared by
+/// projection, spec rendering, and wave-commit identity so a
+/// domain-omitted requirement resolves the same baseline everywhere.
+pub const DEFAULT_DOMAIN: &str = "default";
+
 /// In-memory view of `model.yaml`, holding the header, the requirement
 /// set with inline provenance, and the task list.
 ///
@@ -104,6 +109,14 @@ pub struct ModelRequirement {
     /// Agent-authored free-form notes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
+}
+
+impl ModelRequirement {
+    /// Owning domain, falling back to [`DEFAULT_DOMAIN`] when omitted.
+    #[must_use]
+    pub fn domain_or_default(&self) -> &str {
+        self.domain.as_deref().unwrap_or(DEFAULT_DOMAIN)
+    }
 }
 
 /// One inline claim under [`ModelRequirement::claims`].

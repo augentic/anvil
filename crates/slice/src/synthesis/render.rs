@@ -12,9 +12,6 @@ use artifacts::spec::provenance::RequirementStatus;
 use crate::model::{ModelRequirement, SliceModel};
 use crate::synthesis::baseline::{BaselineIndex, DomainKind};
 
-/// Domain used when a requirement has no explicit owner.
-const DEFAULT_DOMAIN: &str = "default";
-
 const HEADING_PREFIX: &str = "### Requirement:";
 const ADDED_SECTION: &str = "## ADDED Requirements";
 const MODIFIED_SECTION: &str = "## MODIFIED Requirements";
@@ -123,7 +120,7 @@ pub fn provenance_lines(model: &SliceModel) -> Vec<ExpectedRequirement> {
 }
 
 fn domain_of(req: &ModelRequirement) -> String {
-    req.domain.clone().unwrap_or_else(|| DEFAULT_DOMAIN.to_string())
+    req.domain_or_default().to_string()
 }
 
 fn render_block(req: &ModelRequirement) -> String {
