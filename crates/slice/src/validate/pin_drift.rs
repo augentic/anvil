@@ -64,9 +64,7 @@ fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>
     for binding in &entry.sources {
         let key = binding.source();
         let Some(pinned) = base.sources.get(key) else {
-            out.push(Drift::SourceMissing {
-                key: key.to_string(),
-            });
+            out.push(Drift::SourceMissing { key: key.to_string() });
             continue;
         };
         let Some(plan_binding) = plan.sources.get(key) else {
