@@ -2,7 +2,11 @@
 //!
 //! One digest walk feeds validate's non-blocking review findings and
 //! the execute loop's [`pins_drifted`] re-refine staleness probe.
+//! Binding-set mismatches (a plan source added or removed after
+//! refine) count as drift so execute re-refines instead of building
+//! on Evidence that never saw the current source set.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
@@ -12,12 +16,16 @@ use project::plan::{Plan, dir_cid, source_cid};
 
 use crate::Base;
 
-/// One recorded pin that no longer matches the live tree.
+/// One recorded pin that no longer matches the live tree or binding set.
 enum Drift {
     /// `base.yaml.baseline_spec` vs the live `.emery/specs/` digest.
     Baseline { pinned: String, live: String },
     /// A `base.yaml.sources` pin vs the live bound source tree.
     Source { key: String, pinned: String, live: String },
+    /// Plan entry binds a source with no `base.yaml` pin (added after refine).
+    SourceMissing { key: String },
+    /// `base.yaml` pins a source the entry no longer binds (removed after refine).
+    SourceOrphan { key: String },
 }
 
 /// Walk every recorded pin and collect the drifted ones. Empty when
@@ -46,9 +54,19 @@ fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>
         return Ok(out);
     };
 
+    let bound: BTreeSet<&str> = entry.sources.iter().map(|b| b.source()).collect();
+    for key in base.sources.keys() {
+        if !bound.contains(key.as_str()) {
+            out.push(Drift::SourceOrphan { key: key.clone() });
+        }
+    }
+
     for binding in &entry.sources {
         let key = binding.source();
         let Some(pinned) = base.sources.get(key) else {
+            out.push(Drift::SourceMissing {
+                key: key.to_string(),
+            });
             continue;
         };
         let Some(plan_binding) = plan.sources.get(key) else {
@@ -68,7 +86,8 @@ fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>
 }
 
 /// True when any recorded `base.yaml` pin no longer matches the live
-/// baseline / source trees — the execute loop's staleness probe.
+/// baseline / source trees, or the entry's source set no longer matches
+/// the pinned keys — the execute loop's staleness probe.
 ///
 /// # Errors
 ///
@@ -107,6 +126,26 @@ pub(super) fn findings(
                     "slice `{name}` source `{key}` pin `{pinned}` drifted; live digest is \
                      `{live}` — re-running `emery plan execute` re-refines this slice so \
                      Evidence tracks the current source"
+                ),
+            ),
+            Drift::SourceMissing { key } => review(
+                "slice-evidence-stale",
+                "bound source pins in base.yaml match the live source trees Evidence was \
+                 extracted from",
+                format!(
+                    "slice `{name}` binds source `{key}` with no base.yaml pin — re-running \
+                     `emery plan execute` re-refines this slice so Evidence covers the \
+                     current source set"
+                ),
+            ),
+            Drift::SourceOrphan { key } => review(
+                "slice-evidence-stale",
+                "bound source pins in base.yaml match the live source trees Evidence was \
+                 extracted from",
+                format!(
+                    "slice `{name}` base.yaml pins source `{key}` which the entry no longer \
+                     binds — re-running `emery plan execute` re-refines this slice so \
+                     Evidence matches the current source set"
                 ),
             ),
         })
