@@ -69,7 +69,7 @@ Exit code: `0` when no blocking finding fires (suggestions are non-fatal); `2` w
 
 ### emery plan execute
 
-Drive the plan through refine → build → merge per entry under the guest lock. At start appends `plan.execute.started` with typed `closed-plan` coverage — there is no separate `plan approve` / `plan refine` verb and no projected `approved` rung.
+Drive the plan through refine → build → merge per entry under the guest lock. At start appends `plan.execute.started` with typed `closed-plan` coverage — there is no separate `plan approve` / `plan refine` verb and no projected `approved` rung. Re-entry on an already-drained plan is a read-only no-op (no new epoch); on any other resume the fresh epoch replaces the previous one, so unknown-waivers must be re-supplied with `--waive` on every run.
 
 ```bash
 emery plan execute [--waive <slice>/<req>]... [--reason <text>]

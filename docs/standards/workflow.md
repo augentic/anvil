@@ -167,7 +167,7 @@ The CLI is the single writer of every `Divergence` variant, all through `emery p
 
 ## D7 — Execute opens the authorization epoch (no `approve` verb)
 
-Invoking `emery plan execute` is the sole privileged-start gesture: at start it appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6). There is no `plan approve` / `plan refine` verb, no `approvals/` tree, no stored plan lifecycle, no projected `approved` rung, and no silent auto-waive of gaps (`--waive <slice>/<req> --reason …` for `[unknown]` only — D17). `/emery:plan` never runs execute; the pause between authoring and the operator's execute invocation is the human topology-review seam (D21 / D26).
+Invoking `emery plan execute` is the sole privileged-start gesture: at start it appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6); re-entry on an already-drained plan is a read-only no-op that opens no new epoch. Waivers ride the epoch they were supplied on — a resume must re-supply `--waive`. There is no `plan approve` / `plan refine` verb, no `approvals/` tree, no stored plan lifecycle, no projected `approved` rung, and no silent auto-waive of gaps (`--waive <slice>/<req> --reason …` for `[unknown]` only — D17). `/emery:plan` never runs execute; the pause between authoring and the operator's execute invocation is the human topology-review seam (D21 / D26).
 
 ## Provenance projection
 

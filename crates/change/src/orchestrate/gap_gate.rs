@@ -8,7 +8,7 @@ use artifacts::spec::provenance::RequirementStatus;
 use error::Error;
 use project::config::Layout;
 use project::handler::Render;
-use project::journal::ClosedPlanCoverage;
+use project::journal::{ClosedPlanCoverage, Event, EventKind};
 use project::plan::epoch::EpochFreshness;
 use project::plan::{GapsBody, Plan, collect_events, plan_gaps_body};
 
@@ -38,11 +38,11 @@ pub fn enforce_before_build(layout: Layout<'_>, plan: &Plan, slice: &str) -> Res
         EpochFreshness::Stale { detail } => return Err(epoch_stale(detail)),
         EpochFreshness::Fresh { coverage } => coverage,
     };
-    check_gap_policy(layout, plan, slice, coverage)
+    check_gap_policy(layout, plan, slice, coverage, &events)
 }
 
 fn check_gap_policy(
-    layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
+    layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage, events: &[Event],
 ) -> Result<(), Error> {
     let ClosedPlanCoverage::ClosedPlan { unknown_waivers, .. } = coverage;
     let gaps = plan_gaps_body(plan, layout)?;
@@ -62,11 +62,23 @@ fn check_gap_policy(
                 let waived =
                     unknown_waivers.iter().any(|w| w.slice == row.slice && w.req == row.req);
                 if !waived {
-                    blockers.push(format!(
-                        "{}/{} [unknown] {} — close the gap or `emery plan execute --waive {}/{} \
-                         --reason …`",
-                        row.slice, row.req, row.summary, row.slice, row.req
-                    ));
+                    // Waivers ride each `plan.execute.started`; a resume
+                    // without `--waive` drops them, so name that gesture
+                    // rather than implying the gap was never waived.
+                    if waived_on_earlier_epoch(events, &row.slice, &row.req) {
+                        blockers.push(format!(
+                            "{}/{} [unknown] {} — waived on an earlier epoch only; waivers must \
+                             be re-supplied on every run: `emery plan execute --waive {}/{} \
+                             --reason …`",
+                            row.slice, row.req, row.summary, row.slice, row.req
+                        ));
+                    } else {
+                        blockers.push(format!(
+                            "{}/{} [unknown] {} — close the gap or `emery plan execute --waive \
+                             {}/{} --reason …`",
+                            row.slice, row.req, row.summary, row.slice, row.req
+                        ));
+                    }
                 }
             }
             RequirementStatus::Divergence => {
@@ -98,6 +110,24 @@ fn check_gap_policy(
     detail.push('\n');
     detail.push_str(&render_inventory(&gaps));
     Err(gaps_unresolved(detail))
+}
+
+/// True when any epoch **before** the newest carried a waiver for this
+/// requirement — the resume-without-`--waive` footgun (the covering
+/// epoch's waivers were already checked by the caller).
+fn waived_on_earlier_epoch(events: &[Event], slice: &str, req: &str) -> bool {
+    let mut coverages: Vec<&ClosedPlanCoverage> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            EventKind::PlanExecuteStarted { coverage, .. } => Some(coverage),
+            _ => None,
+        })
+        .collect();
+    coverages.pop();
+    coverages.into_iter().any(|coverage| {
+        let ClosedPlanCoverage::ClosedPlan { unknown_waivers, .. } = coverage;
+        unknown_waivers.iter().any(|w| w.slice == slice && w.req == req)
+    })
 }
 
 fn render_inventory(gaps: &GapsBody) -> String {

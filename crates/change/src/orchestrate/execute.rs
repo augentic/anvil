@@ -90,8 +90,18 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     let plan = Plan::load(&layout.plan_path())?;
     let unknown_waivers = super::epoch::validate_waivers(layout, &plan, waive, reason)?;
     let _marker = GuestMarker::acquire(layout, now)?;
-    // Every execute path appends `plan.execute.started` at start
-    // with typed `closed-plan` coverage (optional unknown-waivers).
+    // A drained plan is a read-only no-op: opening a fresh
+    // authorization epoch would journal coverage nothing runs under.
+    let status = plan_status_body(&plan, layout)?;
+    if status.action == NextActionKind::Drained {
+        return Ok(ExecuteOutcome::Drained {
+            plan: status.plan,
+            phases: Vec::new(),
+        });
+    }
+    // Every non-drained execute path (including resume) appends
+    // `plan.execute.started` at start with typed `closed-plan`
+    // coverage (optional unknown-waivers).
     super::epoch::append_started(layout, &plan, now, unknown_waivers)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 

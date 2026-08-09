@@ -175,6 +175,49 @@ async fn waive_allows_gap_gate() {
 }
 
 #[tokio::test]
+async fn resume_without_waive_fails_closed() {
+    let session = Session::bare(Vec::new());
+    init_mock(&session).await;
+    write_refined(
+        session.root(),
+        "a",
+        r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+    );
+    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+
+    // First run waives the unknown on its epoch; the loop fails later
+    // (no base pins), which is not the behavior under test.
+    drop(
+        run::<Execute, _, _>(
+            session.provider(),
+            ExecuteInput {
+                waive: vec![WaiveSelector {
+                    slice: "a".into(),
+                    req: "REQ-003".into(),
+                }],
+                reason: Some("reset path deferred".into()),
+            },
+        )
+        .await,
+    );
+
+    // Resume without flags opens a fresh epoch with no waivers: the
+    // gap gate fails closed and names the re-supply gesture.
+    let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
+        .await
+        .expect_err("resume without --waive must fail closed");
+    assert_eq!(err_code(&err), "plan-gaps-unresolved");
+    let detail = err.core().to_string();
+    assert!(detail.contains("waived on an earlier epoch"), "{detail}");
+    assert!(detail.contains("--waive a/REQ-003"), "{detail}");
+}
+
+#[tokio::test]
 async fn divergence_alone_does_not_block() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
