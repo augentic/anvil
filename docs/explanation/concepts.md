@@ -100,7 +100,7 @@ A one-slice change uses the same steps as a twelve-slice change: `intent.survey`
 
 ## The per-slice loop
 
-Each slice runs through three phases inside `emery plan execute`. `/emery:refine` extracts evidence per bound source and synthesizes the artifacts. `/emery:build` works through the task list and writes code. `/emery:merge` folds the slice's specs into the baseline.
+Each slice runs through three phases inside `emery plan execute`. The refine phase extracts evidence per bound source and synthesizes the artifacts. The build phase works through the task list and writes code. The merge phase folds the slice's specs into the baseline.
 
 <div class="pipeline">
 
@@ -111,7 +111,7 @@ Each slice runs through three phases inside `emery plan execute`. `/emery:refine
 </div>
 
 
-The same skills are available as breakouts — run one phase by hand — when execute parks on a failure or when you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
+If execute parks on a failure, fix the input the stop card points at and re-run `emery plan execute` — the loop resumes at the parked phase. There are no per-phase operator verbs.
 
 ## The four slice artifacts
 
@@ -128,7 +128,7 @@ Synthesis is owned by **core**, not by adapters. Source adapters supply `Evidenc
 
 ## The baseline
 
-The **baseline** is the accumulated set of merged specs at `.emery/specs/`. It represents the current known behaviour of your system. Every time you run `/emery:merge`, the slice's spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline files. The slice itself is then archived for audit.
+The **baseline** is the accumulated set of merged specs at `.emery/specs/`. It represents the current known behaviour of your system. Every time a slice merges, its spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline files. The slice itself is then archived for audit.
 
 Future slices read from the baseline. When you describe a new piece of work, refine consults the baseline to keep new specs consistent with what already exists. Specs are version-controlled alongside your code, so the baseline is reviewable, diffable, and revertable like any other source file.
 
@@ -173,7 +173,7 @@ The default rhythm:
 > [!NOTE]
 > **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan execute` (approval + loop) → `/emery:finalize <name>`
 
-Breakouts (`/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`) run one phase by hand when execute parks or you want manual control.
+`/emery:status` projects the next action at any point; `emery plan drop <entry>` abandons a slice without merging.
 
 <div class="see-also">
 <strong>See also</strong>

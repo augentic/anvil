@@ -18,11 +18,11 @@ use crate::snapshot::{CodePatch, SnapshotId};
 pub(super) const IGNORED: [&str; 2] = [".git", ".emery"];
 
 /// Root-level names excluded from every snapshot walk: the plan
-/// artifacts living at the repo root (`change.md` + `plan.yaml`, the
-/// authored `discovery.md`, and a workspace repo's `registry.yaml`)
-/// are change-tree state, not product code — capturing them would let
-/// the interim apply rewind live plan state.
-const IGNORED_ROOT: [&str; 4] = ["change.md", "discovery.md", "plan.yaml", "registry.yaml"];
+/// artifacts living at the repo root (`change.md` + `plan.yaml` and
+/// the authored `discovery.md`) are change-tree state, not product
+/// code — capturing them would let the interim apply rewind live plan
+/// state.
+const IGNORED_ROOT: [&str; 3] = ["change.md", "discovery.md", "plan.yaml"];
 
 /// The snapshot store: tree walks and manifests in the kernel, object
 /// bytes behind [`Objects`], exec bits behind [`ExecBits`].
@@ -155,6 +155,51 @@ impl<O: Objects> Store<O> {
     /// Whether snapshot `id`'s manifest object is present.
     pub async fn contains(&self, id: &SnapshotId) -> bool {
         self.objects.has(id.digest()).await
+    }
+
+    /// Sweep the objects reachable from `dead` roots but not from
+    /// `live` roots — the change-scoped collection `plan archive`
+    /// runs once a plan's pins stop being GC roots (RFC-88 D2).
+    ///
+    /// Roots absent from the store are skipped (already collected).
+    /// Returns the number of objects deleted.
+    ///
+    /// # Errors
+    ///
+    /// Manifest read/parse failures on present roots; deletion
+    /// failures other than absence.
+    pub async fn sweep(&self, dead: &[SnapshotId], live: &[SnapshotId]) -> Result<usize, Error> {
+        let keep = self.reachable(live).await?;
+        let mut removed = 0;
+        for digest in self.reachable(dead).await? {
+            if keep.contains(&digest) {
+                continue;
+            }
+            self.objects.delete(&digest).await?;
+            removed += 1;
+        }
+        Ok(removed)
+    }
+
+    /// Every object digest reachable from `roots`: each present root's
+    /// manifest object plus all blobs its entries name. Absent roots
+    /// contribute nothing.
+    async fn reachable(&self, roots: &[SnapshotId]) -> Result<BTreeSet<String>, Error> {
+        let mut reached = BTreeSet::new();
+        for root in roots {
+            if !self.contains(root).await {
+                continue;
+            }
+            if !reached.insert(root.digest().to_string()) {
+                continue;
+            }
+            let manifest = self.manifest(root).await?;
+            for entry in manifest.entries.values() {
+                let (Entry::File { blob, .. } | Entry::Link { blob }) = entry;
+                reached.insert(blob.clone());
+            }
+        }
+        Ok(reached)
     }
 
     /// Read and parse snapshot `id`'s manifest.

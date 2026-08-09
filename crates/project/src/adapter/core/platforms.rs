@@ -10,9 +10,9 @@ use crate::Platform;
 /// Declarative platforms capability from a target's metadata answer.
 ///
 /// When a target declares `platforms`, the CLI enforces platform
-/// requirements at `emery init` time and scaffolds defaults for
-/// greenfield workspace members: `required` demands `--platforms`,
-/// `allowed` is the closed accepted set, `default` seeds greenfield sync.
+/// requirements at `emery init` time: `required` demands
+/// `--platforms`, `allowed` is the closed accepted set, `default`
+/// names the suggested greenfield set.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PlatformsCapability {
     /// Whether projects using this target must declare platforms.
@@ -26,9 +26,9 @@ pub struct PlatformsCapability {
 /// Typed outcome of [`PlatformsCapability::check`].
 ///
 /// Each caller surface owns a diagnostic-code family
-/// (`project-platforms-*` at init, `topology-cache-project-platforms-*`
-/// at topology resolution); the shared `PlatformsViolation::into_error`
-/// converter keeps both mappings — and the rules — in one place.
+/// (`project-platforms-*` at init); the shared
+/// `PlatformsViolation::into_error` converter keeps the mapping — and
+/// the rules — in one place.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlatformsViolation {
     /// The capability demands a platform set but none was declared.
@@ -60,14 +60,6 @@ pub enum PlatformsSurface<'a> {
         /// Target adapter name for the message text.
         target: &'a str,
     },
-    /// Workspace topology backstop validation — the
-    /// `topology-cache-project-platforms-*` family.
-    TopologySlot {
-        /// Workspace slot (registry) name for the message text.
-        registry: &'a str,
-        /// Target adapter name for the message text.
-        target: &'a str,
-    },
 }
 
 impl PlatformsViolation {
@@ -86,34 +78,12 @@ impl PlatformsViolation {
                     ),
                 )
             }
-            (
-                Self::RequiredButMissing { defaults },
-                PlatformsSurface::TopologySlot { registry, target },
-            ) => Error::validation_failed(
-                "topology-cache-project-platforms-missing",
-                format!("workspace slot `{registry}` declares platforms"),
-                format!(
-                    "workspace slot `{registry}` target '{target}' requires platforms but \
-                     project.yaml declares none; default set is [{}]",
-                    defaults.join(", "),
-                ),
-            ),
             (Self::MissingCore, PlatformsSurface::Init { .. }) => Error::validation_failed(
                 "project-platforms-must-include-core",
                 "platform set must include `core`",
                 "the --platforms set must include `core`; every project that declares platforms \
                  requires the shared Rust core crate",
             ),
-            (Self::MissingCore, PlatformsSurface::TopologySlot { registry, .. }) => {
-                Error::validation_failed(
-                    "topology-cache-project-platforms-must-include-core",
-                    format!("workspace slot `{registry}` platform set includes `core`"),
-                    format!(
-                        "workspace slot `{registry}` platform set must include `core`; every \
-                         project that declares platforms requires the shared Rust core crate",
-                    ),
-                )
-            }
             (Self::NotAllowed { platform, allowed }, PlatformsSurface::Init { target }) => {
                 Error::validation_failed(
                     "project-platforms-not-allowed",
@@ -124,18 +94,6 @@ impl PlatformsViolation {
                     ),
                 )
             }
-            (
-                Self::NotAllowed { platform, allowed },
-                PlatformsSurface::TopologySlot { registry, target },
-            ) => Error::validation_failed(
-                "topology-cache-project-platforms-not-allowed",
-                format!("workspace slot `{registry}` platform `{platform}` is allowed"),
-                format!(
-                    "workspace slot `{registry}` platform `{platform}` is not allowed by target \
-                     '{target}'; allowed: [{}]",
-                    allowed.join(", "),
-                ),
-            ),
         }
     }
 }

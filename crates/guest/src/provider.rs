@@ -188,6 +188,15 @@ impl seam::Workspaces for Provider {
             store.apply(&patch, PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
         }
     }
+
+    fn sweep(
+        &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
+    ) -> impl Future<Output = Result<usize, seam::Error>> + Send {
+        async move {
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
+            store.sweep(&dead, &live).await.map_err(|err| workspace_failure(&err))
+        }
+    }
 }
 
 /// Map a workspace-kernel failure onto the seam error contract.

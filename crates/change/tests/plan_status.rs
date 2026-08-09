@@ -513,7 +513,7 @@ mod re_entry {
         let body = status(&project, &plan).await;
         assert_eq!(body.current_step, Some(LoopStep::Merge));
         assert_eq!(body.last_completed, Some(LoopStep::Merge));
-        assert_eq!(body.resume.as_deref(), Some("/emery:merge a"));
+        assert_eq!(body.resume.as_deref(), Some("emery plan execute"));
     }
 
     #[tokio::test]
@@ -651,7 +651,7 @@ mod milestones {
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert_eq!(body.next_action, "review-gaps");
-        assert_eq!(body.resume.as_deref(), Some("emery slice refine a"));
+        assert_eq!(body.resume.as_deref(), Some("emery plan execute"));
     }
 
     #[tokio::test]
@@ -737,46 +737,12 @@ mod milestones {
     #[tokio::test]
     async fn fresh_unrefined_resume_execute() {
         // D26: post-author resume stays /emery:execute; next-action
-        // may still name slice refine.
+        // may still name the refine phase.
         let project = Session::scripted("demo", Vec::new());
         let body = status(&project, &plan_with_changes(vec![change("a")])).await;
         assert!(!body.ready);
         assert!(!body.authorized);
         assert_eq!(body.next_action, "refine a");
         assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
-    }
-}
-
-mod workspace_routing {
-    use super::*;
-
-    #[tokio::test]
-    async fn entry_uses_slot_state() {
-        let project = Session::scripted("demo", Vec::new());
-        let slot = project.root().join("workspace").join("storefront");
-        std::fs::create_dir_all(&slot).expect("create slot");
-        write_slice(&slot, "a", SliceArt::Refined);
-        append(&slot, &[advanced(0, "test", "a"), build_failed(10, "a", "slot failure")]);
-
-        let mut entry = change("a");
-        entry.project = Some("storefront".to_string());
-        let plan = plan_with_changes(vec![entry]);
-        let body = status(&project, &plan).await;
-        assert_eq!(body.next_action, "stop build-failed");
-        assert_eq!(body.project.as_deref(), Some("storefront"));
-    }
-
-    // A bound slot that is not materialised falls back to the
-    // project root's state.
-    #[tokio::test]
-    async fn missing_slot_falls_back() {
-        let project = Session::scripted("demo", Vec::new());
-        write_slice(project.root(), "a", SliceArt::Built);
-        append(project.root(), &[advanced(0, "test", "a")]);
-        let mut entry = change("a");
-        entry.project = Some("storefront".to_string());
-        let plan = plan_with_changes(vec![entry]);
-        let body = status(&project, &plan).await;
-        assert_eq!(body.next_action, "merge a");
     }
 }

@@ -58,8 +58,6 @@ pub struct EntryPatch {
     pub depends_on: Option<Vec<SliceName>>,
     /// Replace `sources` wholesale when `Some`.
     pub sources: Option<Vec<SliceSourceBinding>>,
-    /// Three-way patch over `project`.
-    pub project: Patch<String>,
     /// Three-way patch over `description`.
     pub description: Patch<String>,
     /// Replace `context` wholesale when `Some`.
@@ -72,4 +70,7 @@ pub struct EntryPatch {
     /// is still rejected at the flag-parser level (omit
     /// `--divergence` to leave the field alone).
     pub divergence: Option<Divergence>,
+    /// Set `allow_composition_replace` when `Some`; `None` leaves the
+    /// field untouched (`emery plan amend --allow-composition-replace`).
+    pub allow_composition_replace: Option<bool>,
 }

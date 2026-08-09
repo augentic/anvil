@@ -208,6 +208,15 @@ pub trait Workspaces: Send + Sync {
     /// everything else untouched. Deleted when publication sets own
     /// the final seal.
     fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), Error>> + Send;
+
+    /// Change-scoped snapshot collection (RFC-88 D2): delete the
+    /// store objects reachable from `dead` roots but not from `live`
+    /// roots. `plan archive` is the collection point — the archived
+    /// plan's pins stop being GC roots. Returns the number of objects
+    /// deleted.
+    fn sweep(
+        &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
+    ) -> impl Future<Output = Result<usize, Error>> + Send;
 }
 
 /// The borrowed capability bundle one orchestration run dispatches

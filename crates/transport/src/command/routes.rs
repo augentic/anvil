@@ -10,9 +10,7 @@ use project::adapter::Resolver;
 use project::handler::Anchor;
 use project::seam::{Source, Target, Workspaces};
 
-use super::{
-    EmeryProjector, Globals, adapter, archive, journal, plan, registry, slice, source, target,
-};
+use super::{EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, target};
 
 /// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
@@ -21,7 +19,6 @@ const ABOUT: &str = "Deterministic primitives for spec-driven development";
 #[derive(Debug, Args)]
 pub(super) struct InitArgs {
     /// Adapter identifier or local component path.
-    #[arg(conflicts_with = "workspace")]
     pub(super) adapter: Option<String>,
     /// Project name.
     #[arg(long)]
@@ -29,14 +26,11 @@ pub(super) struct InitArgs {
     /// Project description.
     #[arg(long)]
     description: Option<String>,
-    /// Scaffold a registry-only workspace.
-    #[arg(long)]
-    workspace: bool,
     /// Comma-separated target platforms.
-    #[arg(long, conflicts_with = "workspace")]
+    #[arg(long)]
     platforms: Option<String>,
     /// Re-enter initialization to bump the Emery version pin.
-    #[arg(long, conflicts_with_all = ["adapter", "workspace", "name", "description"])]
+    #[arg(long, conflicts_with_all = ["adapter", "name", "description"])]
     pub(super) upgrade: bool,
 }
 
@@ -62,15 +56,15 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     ),
     NamespaceHelp::new(
         &["source"],
-        "Source adapter operations (workflow contract) — debug/breakout surface; `plan author` and `slice refine` run these steps themselves. Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
+        "Source adapter operations (workflow contract) — debug/breakout surface; `plan author` and `plan execute` run these steps themselves. Source adapters provide `extract` + `survey` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
     ),
     NamespaceHelp::new(
         &["target"],
-        "Target adapter operations (workflow contract) — debug/breakout surface; the build and merge orchestrations resolve targets themselves. Target adapters provide `guidance` + `build` + `merge` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
+        "Target adapter operations (workflow contract) — debug/breakout surface; the execute loop's build and merge phases resolve targets themselves. Target adapters provide `guidance` + `build` + `merge` capabilities and resolve to a single `.wasm` component: the global store entry for pinned identities, the seeded project component cache for bare names",
     ),
     NamespaceHelp::new(
         &["slice"],
-        "Slice lifecycle operations — one `refine → build → merge` loop",
+        "Read-only slice projections over `.emery/slices/` — the execute loop owns the refine → build → merge phases",
     ),
     NamespaceHelp::new(&["slice", "model"], "Read-only viewer over a slice's `model.yaml`"),
     NamespaceHelp::new(
@@ -82,7 +76,6 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
         &["journal"],
         "Workflow journal at `.emery/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
-    NamespaceHelp::new(&["registry"], "Platform registry at `registry.yaml` (repo root)"),
 ];
 
 /// Assemble the complete Emery command router.
@@ -129,7 +122,7 @@ where
         InitArgs,
         project::init::handlers::Init,
         "Initialize .emery/ in a project",
-        "Initialize .emery/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path) for a regular project, or `--workspace` for a registry-only workspace. The two are mutually exclusive — clap enforces the conflict and exits `2` with its standard parse-error diagnostic. A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
+        "Initialize .emery/ in a project.\n\nPass `<adapter>` (first-party shorthand, package reference, or local component path). A missing `<adapter>` fails typed with `init-adapter-required` (exit 2). Re-running `init` in an already-initialized project changes nothing and exits 0 routing to `emery init --upgrade`."
     );
     route!(
         ["adapter", "add"],
@@ -163,8 +156,8 @@ where
         ["source", "extract"],
         source::ExtractArgs,
         ::slice::source::Extract,
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — `slice refine` runs this step itself",
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — `slice refine` runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the execute loop's refine phase runs this step itself",
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the execute loop's refine phase runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
     );
     route!(
         ["target", "resolve"],
@@ -182,7 +175,8 @@ where
         ["slice", "validate"],
         slice::ValidateArgs,
         ::slice::handlers::Validate,
-        "Validate a slice's artifacts against adapter validation rules"
+        "Validate a slice's artifacts against adapter validation rules",
+        "Validate a slice's artifacts against adapter validation rules.\n\nBlocking findings gate the execute loop; non-blocking review advisories include baseline-drift signals — `type: modified` baselines modified after this slice's `defined_at` (the retired `slice merge --conflict-check` probe)."
     );
     route!(
         ["slice", "provenance"],
@@ -197,33 +191,6 @@ where
         "Render the persisted `model.yaml` — concise text view, or the model serialised verbatim under `--format json`"
     );
     route!(
-        ["slice", "refine"],
-        slice::RefineArgs,
-        ::slice::handlers::Refine,
-        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/emery:refine` breakout outside the execute loop",
-        "Refine one named plan entry's slice to `refined` in the engine guest: slice create (re-entry safe), per-binding extract fan-out, the synthesis judgment leg, the persist tail, validate, and the `refined` transition — the `/emery:refine` breakout outside the execute loop.\n\nActs on the named slice directly against a `pending` or `in-progress` plan entry (the standalone `slice build <name>` posture); never advances per-entry status, and refuses a `done` entry.\n\nGuest-only. The native binary refuses this verb — natively the phase is driven by the `/emery:refine` skill."
-    );
-    route!(
-        ["slice", "build"],
-        slice::BuildArgs,
-        ::slice::handlers::Build,
-        "Build a slice through its bound target adapter's `build` operation and gate the `built` transition",
-        "Build a slice through its bound target adapter's `build` operation and gate the `built` transition.\n\nResolves the target from the slice's `metadata.yaml`, then drives the collapsed build orchestration in the engine guest: request assembly and schema gate, the target-seam dispatch, the report gates (`target-build-*` aborts), the `slice.build.*` events, and the `Refined → Built` transition. The target guest owns only code generation."
-    );
-    route!(
-        ["slice", "merge"],
-        slice::MergeArgs,
-        ::slice::handlers::MergeRun,
-        "Merge all delta specs for the slice into baseline and archive the slice",
-        "Merge all delta specs for the slice into baseline and archive the slice.\n\n`--preview` shows the merge operations that would be applied and `--conflict-check` reports `type: modified` baselines modified after this slice's `defined_at` — both are read-only dry-run modes that write nothing. Revalidates the one-member wave, finalizes requirement identity maps on `target.merge.wave-committed`, then postflight (`target.merge.wave-succeeded` / `target.merge.wave-postflight-failed`). Re-entry is safe when archive / wave-commit facts already project `done`."
-    );
-    route!(
-        ["slice", "drop"],
-        slice::DropArgs,
-        ::slice::handlers::Drop,
-        "Transition a slice to `dropped` and archive it"
-    );
-    route!(
         ["archive", "prune"],
         archive::PruneArgs,
         ::slice::handlers::Prune,
@@ -235,20 +202,14 @@ where
         plan::ValidateArgs,
         ::change::plan::handlers::Validate,
         "Validate plan.yaml (structure + plan/change consistency)",
-        "Validate plan.yaml (structure + plan/change consistency).\n\nIncludes the three health diagnostics — `cycle-in-depends-on`, `orphan-source`, and `stale-workspace-clone` — alongside the base shape rules."
-    );
-    route!(
-        ["plan", "advance"],
-        plan::AdvanceArgs,
-        ::change::plan::handlers::Advance,
-        "Claim the next eligible slice (`slice.claimed` + `plan.entry.advanced`) so it projects `in-progress`, or return an already-active entry. Progress is projected from facts — use `plan status` for the read-only view. Different slices may be claimed concurrently; same-slice second writer → `slice-claim-conflict`"
+        "Validate plan.yaml (structure + plan/change consistency).\n\nIncludes the health diagnostics — `cycle-in-depends-on` and `orphan-source` — alongside the base shape rules."
     );
     route!(
         ["plan", "status"],
         plan::StatusArgs,
         ::change::plan::handlers::Status,
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `review-gaps`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-writer fact union (slot-aware in workspace mode). Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from phase / wave journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
+        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `review-gaps`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-writer fact union. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from phase / wave journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
     );
     route!(
         ["plan", "gaps"],
@@ -272,11 +233,11 @@ where
         "Remove a plan entry while the plan is still replaceable (every entry still projects `pending`). Plan-review curation only — defers a lead without re-surveying `discovery.md`"
     );
     route!(
-        ["plan", "undo"],
-        plan::UndoArgs,
-        ::change::plan::handlers::Undo,
-        "Walk one plan entry backwards on per-entry status (one rung, or `--to <status>`)",
-        "Walk one plan entry backwards on the projected ladder via `fact.retracted`.\n\n`<name>` is a plan-entry name. Legal rungs: `done → in-progress`, `in-progress → pending`. Default is one rung; `--to <pending|in-progress>` walks rung by rung until the projected label reaches the target. One `plan.transition.undone` label fires per rung.\n\nLadders project from claims / phase / merge facts — never stored status fields. v1 has no per-entry `blocked`, `failed`, or `skipped` state — build failures and merge conflicts leave the active entry projecting `in-progress`."
+        ["plan", "drop"],
+        plan::DropArgs,
+        ::change::plan::handlers::Drop,
+        "Abandon one plan entry's slice without merging: stamp it `dropped` and archive the slice tree",
+        "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
     );
     route!(
         ["plan", "author"],
@@ -296,7 +257,7 @@ where
         ["plan", "archive"],
         plan::ArchiveArgs,
         ::change::plan::handlers::Archive,
-        "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml`"
+        "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
     );
     route!(
         ["journal", "show"],
@@ -305,25 +266,6 @@ where
         "Read events from `.emery/events/<writer>.jsonl` (union order)",
         "Read events from `.emery/events/<writer>.jsonl`, merging every writer file in `(timestamp, writer, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, writer, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
     );
-    route!(
-        ["registry", "validate"],
-        registry::ValidateArgs,
-        project::registry::handlers::Validate,
-        "Validate `registry.yaml` shape. Absent file exits 0"
-    );
-    route!(
-        ["registry", "add"],
-        registry::AddArgs,
-        project::registry::handlers::Add,
-        "Append a new project entry to `registry.yaml`. Creates the file when absent"
-    );
-    route!(
-        ["registry", "remove"],
-        registry::RemoveArgs,
-        project::registry::handlers::Remove,
-        "Remove an existing project entry. Warns when `plan.yaml` references it"
-    );
-
     for help in NAMESPACE_HELP {
         router = router.namespace(help.path.iter().copied(), help.metadata);
     }
@@ -366,25 +308,17 @@ convert!(slice::ListArgs => ::slice::handlers::ListInput {});
 convert!(slice::ValidateArgs => ::slice::handlers::ValidateInput { name });
 convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name });
 convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name });
-convert!(slice::RefineArgs => ::slice::handlers::RefineInput { name });
-convert!(slice::BuildArgs => ::slice::handlers::BuildInput { name });
-convert!(slice::MergeArgs => ::slice::handlers::MergeRunInput { name, allow_composition_replace, preview, conflict_check });
-convert!(slice::DropArgs => ::slice::handlers::DropInput { name, reason });
 convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run });
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
-convert!(plan::AdvanceArgs => ::change::plan::handlers::AdvanceInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
 convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
 convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { waive, reason });
-convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, project, context, authority_override });
-convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, project, context, authority_override, clear_authority_override, clear_authority_overrides });
+convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override });
+convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
-convert!(plan::UndoArgs => ::change::plan::handlers::UndoInput { name, to });
+convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason });
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
-convert!(registry::ValidateArgs => project::registry::handlers::ValidateInput {});
-convert!(registry::AddArgs => project::registry::handlers::AddInput { name, url, adapter, description });
-convert!(registry::RemoveArgs => project::registry::handlers::RemoveInput { name });
 
-convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, workspace, platforms, upgrade });
+convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });

@@ -9,7 +9,7 @@ use error::Error;
 
 use super::super::execution::{
     JournalOverlay, Resolution, collect_events, next_eligible, project_ladders, resolve_entry,
-    resolve_work_root, scan_union,
+    scan_union,
 };
 use super::super::gaps::plan_gaps_body;
 use super::super::in_scope;
@@ -26,8 +26,7 @@ use crate::slice::SliceMetadata;
 /// unacked `merge-postflight-failed`, else the next eligible `pending`
 /// entry, else `drained` / `stop stuck`. Not-yet-advanced candidates
 /// skip the journal overlay — stale same-name events from earlier
-/// plans must not classify. An entry bound to a materialised workspace
-/// slot reads that slot's slice artifacts and journal.
+/// plans must not classify.
 ///
 /// # Errors
 ///
@@ -35,7 +34,7 @@ use crate::slice::SliceMetadata;
 /// ([`Error::YamlDe`]); a missing slice directory is the fresh-slice
 /// signal, not an error.
 pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, Error> {
-    let events = collect_events(plan, layout)?;
+    let events = collect_events(layout)?;
     let ladders = project_ladders(plan, &events);
     let counts = StatusCounts {
         pending: count(&ladders, Status::Pending),
@@ -131,9 +130,7 @@ fn clean_gaps(gaps: &super::super::gaps::GapsBody) -> bool {
 /// Empty in-scope set is vacuously refined.
 fn all_in_scope_refined(plan: &Plan, layout: Layout<'_>) -> Result<bool, Error> {
     for entry in &plan.entries {
-        let work_root = resolve_work_root(layout, entry);
-        let work_layout = Layout::new(&work_root);
-        let slice_dir = work_layout.slice_dir(entry.name.as_str());
+        let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = load_meta(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
@@ -243,7 +240,6 @@ fn resume_point(
     plan: &Plan, ladders: &std::collections::HashMap<SliceName, Status>, resolution: &Resolution,
     gaps: &super::super::gaps::GapsBody, ready: bool,
 ) -> Option<String> {
-    let slice = resolution.slice.as_deref();
     // A fresh plan (no entry has left projected `pending`) resumes
     // through the execute loop, not a phase breakout. When refined but
     // not Ready, point at waive / gap closure instead.
@@ -259,17 +255,19 @@ fn resume_point(
         return Some(fresh_plan_resume(gaps, ready, resolution.action));
     }
     match resolution.action {
-        NextActionKind::Refine => slice.map(|s| format!("/emery:refine {s}")),
-        NextActionKind::Build => slice.map(|s| format!("/emery:build {s}")),
-        NextActionKind::Merge => slice.map(|s| format!("/emery:merge {s}")),
+        // Every phase resumes through the execute loop — there are no
+        // phase-breakout verbs (RFC-86 three-verb surface).
+        NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge => {
+            Some("emery plan execute".to_string())
+        }
         NextActionKind::ReviewGaps => Some(gap_resume(gaps)),
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed => slice.map(|s| format!("/emery:refine {s}")),
-            StopReason::BuildFailed => slice.map(|s| format!("/emery:build {s}")),
-            StopReason::MergeConflict => slice.map(|s| format!("/emery:merge {s}")),
-            StopReason::MergePostflightFailed => Some("emery plan execute".to_string()),
-            StopReason::MergeIncomplete => slice.map(|s| format!("/emery:merge {s}")),
+            StopReason::RefineFailed
+            | StopReason::BuildFailed
+            | StopReason::MergeConflict
+            | StopReason::MergePostflightFailed
+            | StopReason::MergeIncomplete => Some("emery plan execute".to_string()),
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
     }
@@ -282,21 +280,16 @@ fn fresh_plan_resume(
     if action == NextActionKind::ReviewGaps || (!ready && action == NextActionKind::Build) {
         return gap_resume(gaps);
     }
-    // Unrefined or Ready: resume at execute (D26). Next-action may
-    // still name `slice refine <slice>` while unrefined.
+    // Unrefined or Ready: resume at execute (D26).
     "/emery:execute".to_string()
 }
 
-/// Resume when the change is not Ready: conflicts → re-refine
-/// selectors; unknowns-only → execute with per-req `--waive`.
+/// Resume when the change is not Ready: conflicts → fix inputs and
+/// re-execute (drifted pins re-refine under the epoch); unknowns-only
+/// → execute with per-req `--waive`.
 fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
-    let conflicts: Vec<_> =
-        gaps.rows.iter().filter(|r| r.status == RequirementStatus::Conflict).collect();
-    if !conflicts.is_empty() {
-        let mut slices: Vec<&str> = conflicts.iter().map(|r| r.slice.as_str()).collect();
-        slices.sort_unstable();
-        slices.dedup();
-        return format!("emery slice refine {}", slices.join(" "));
+    if gaps.rows.iter().any(|r| r.status == RequirementStatus::Conflict) {
+        return "emery plan execute".to_string();
     }
     let unknowns: Vec<_> =
         gaps.rows.iter().filter(|r| r.status == RequirementStatus::Unknown).collect();

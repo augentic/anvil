@@ -329,6 +329,12 @@ impl seam::Workspaces for Provider {
             .await
             .map_err(|err| workspace_failure(&err))
     }
+
+    async fn sweep(
+        &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
+    ) -> Result<usize, seam::Error> {
+        self.store().sweep(&dead, &live).await.map_err(|err| workspace_failure(&err))
+    }
 }
 
 /// Map a workspace-kernel failure onto the seam error contract.

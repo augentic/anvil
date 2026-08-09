@@ -37,17 +37,17 @@ A source adapter participates twice: `survey` at plan time (one [lead](../append
 
 ```text
 /emery:plan    →  source.survey     (leads into discovery.md)
-/emery:refine  →  source.extract    (evidence/<source>.yaml)
+refine phase   →  source.extract    (evidence/<source>.yaml)
                →  target.guidance   (idiom guidance for synthesis)
-/emery:build   →  target.build      (code generation)
-/emery:merge   →  target.merge      (preflight/postflight landing gates)
+build phase    →  target.build      (code generation)
+merge phase    →  target.merge      (preflight/postflight landing gates)
 ```
 
 For the exact operation signatures, the lead and claim grammars, the sandbox posture, and the resolver mechanics, see the [Adapter contract](../reference/adapter-contract.md).
 
 ## Authority resolution
 
-Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class their evidence carries (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice during plan review via `emery plan amend <entry> --authority-override <claim-kind>=<source>` and then re-run `/emery:refine`; the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md); the operator-facing walk-through is in [From sources to slices](reconciliation.md).
+Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class their evidence carries (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice during plan review via `emery plan amend <entry> --authority-override <claim-kind>=<source>` and then re-run `emery plan execute` (the drifted slice re-refines); the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md); the operator-facing walk-through is in [From sources to slices](reconciliation.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>

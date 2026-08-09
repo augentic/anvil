@@ -1,6 +1,6 @@
 //! Transactional multi-class merge + archive (`commit`), plus the
-//! no-write `preview` variant and the `conflict_check` baseline drift
-//! detector. The filesystem is only touched after every delta validates.
+//! `conflict_check` baseline drift detector. The filesystem is only
+//! touched after every delta validates.
 
 use std::path::{Path, PathBuf};
 
@@ -13,19 +13,18 @@ use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::MergeResult;
 use crate::{Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
 
+#[cfg(test)]
+mod goldens;
 mod parse;
 mod read;
 mod write;
 
 use parse::system_time_to_utc;
-use read::{
-    COMPOSITION_FILENAME, check_opaque_drift, first_three_way, overwrite_gate, preview_opaque,
-    three_way,
-};
+use read::{COMPOSITION_FILENAME, check_opaque_drift, first_three_way, overwrite_gate, three_way};
 use write::{commit_opaque, summary, write_baselines};
 
-/// One 3-way merged spec entry kept in memory by both
-/// [`preview`] and [`commit`].
+/// One 3-way merged spec entry kept in memory by the merge plan and
+/// [`commit`].
 ///
 /// `class_name` is a routing tag for the CLI's grouping step (skipped
 /// on the wire); `result` is flattened so the envelope exposes only
@@ -77,10 +76,9 @@ impl std::ops::Deref for MergeCommit {
 /// One-line human summary of a merged entry's operations, e.g.
 /// `2 added, 1 modified` or `created baseline with 4 requirement(s)`.
 ///
-/// Shared by the `slice merge` output and the
-/// `slice.archive.created` outcome-ledger summary (both the native
-/// verb and the guest merge orchestrator), so the ledger text never
-/// drifts between the two paths.
+/// Shared by the merge phase's output and the
+/// `slice.archive.created` outcome-ledger summary, so the ledger text
+/// never drifts between paths.
 #[must_use]
 pub fn summarise_operations(ops: &[crate::merge::MergeOperation]) -> String {
     use crate::merge::MergeOperation;
@@ -106,43 +104,6 @@ pub fn summarise_operations(ops: &[crate::merge::MergeOperation]) -> String {
     if parts.is_empty() { "no-op".to_string() } else { parts.join(", ") }
 }
 
-/// One opaque-replace file pre-image discovered under a
-/// [`MergeStrategy::OpaqueReplace`] class's `staged_dir`.
-#[derive(Debug, Clone)]
-pub struct OpaqueEntry {
-    /// Originating artefact class name (e.g. `"contracts"`).
-    pub class_name: String,
-    /// Path relative to the class's `staged_dir`
-    /// (e.g. `schemas/user.yaml`).
-    pub relative_path: String,
-    /// Whether this file already exists in the baseline.
-    pub action: OpaqueAction,
-}
-
-/// Whether an opaque-replace file is new or replaces an existing
-/// baseline file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum OpaqueAction {
-    /// New file — no corresponding baseline file exists.
-    Added,
-    /// Replacement — a baseline file at the same path will be overwritten.
-    Replaced,
-}
-
-/// Complete preview of a slice merge: 3-way merge entries grouped by
-/// class plus opaque-replace pre-images grouped by class.
-#[derive(Debug, Clone)]
-#[must_use]
-pub struct PreviewResult {
-    /// 3-way merge entries (one per spec/composition per
-    /// `ThreeWayMerge` class). Sorted by `(class_name, name)`.
-    pub three_way: Vec<PreviewEntry>,
-    /// Opaque-replace pre-images (one per file per `OpaqueReplace`
-    /// class). Sorted by `(class_name, relative_path)`.
-    pub opaque: Vec<OpaqueEntry>,
-}
-
 /// One `type: modified` `touched_spec` whose baseline has been modified
 /// after the slice's `defined_at` timestamp. The plan skill surfaces
 /// this list to the human so they can confirm or abort the merge.
@@ -156,25 +117,6 @@ pub struct BaselineConflict {
     /// Baseline file modification time.
     #[serde(with = "project::serde_time::rfc3339")]
     pub baseline_modified_at: Timestamp,
-}
-
-/// Dry-run of the multi-class merge.
-///
-/// Computes every in-memory [`PreviewEntry`], runs the baseline
-/// coherence validator, and reports opaque-replace promotions without
-/// writing baselines, transitioning status, or archiving. Unlike
-/// [`commit`] it does not gate on a build record, so a mid-phase
-/// slice can be previewed before the merge commits.
-///
-/// # Errors
-///
-/// Aggregates per-spec conflicts and post-merge validation failures under
-/// `merge-spec-conflicts`; filesystem and inner merge failures retain
-/// their original taxonomy.
-pub fn preview(slice_dir: &Path, classes: &[ArtifactClass]) -> Result<PreviewResult, Error> {
-    let three_way = three_way(slice_dir, classes)?;
-    let opaque = preview_opaque(classes)?;
-    Ok(PreviewResult { three_way, opaque })
 }
 
 /// Atomic multi-class merge plus archive.

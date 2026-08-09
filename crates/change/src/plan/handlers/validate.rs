@@ -22,7 +22,7 @@ pub struct ValidateInput {}
 
 /// `emery plan validate` — structure + plan/change consistency,
 /// including the health diagnostics (`cycle-in-depends-on`,
-/// `orphan-source`, `stale-workspace-clone`).
+/// `orphan-source`).
 #[derive(Clone, Copy, Debug)]
 pub struct Validate;
 
@@ -37,7 +37,7 @@ impl<P: Anchor + Resolver> Operation<P> for Validate {
         let cx = Ctx::load(context.provider)?;
         let plan_path = require_file(&cx)?;
         let plan = Plan::load(&plan_path)?;
-        let results = plan_full_report(context.provider, &plan, &cx.paths);
+        let results = plan_full_report(&plan, &cx.layout().slices_dir());
 
         let has_errors = has_blocking(&results);
         let body = ReportBody::new(results, write_row);

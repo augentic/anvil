@@ -248,4 +248,10 @@ impl seam::Workspaces for Grammar {
     async fn apply(&self, _patch: project::snapshot::CodePatch) -> Result<(), seam::Error> {
         never_dispatched!()
     }
+
+    async fn sweep(
+        &self, _dead: Vec<project::snapshot::SnapshotId>, _live: Vec<project::snapshot::SnapshotId>,
+    ) -> Result<usize, seam::Error> {
+        never_dispatched!()
+    }
 }

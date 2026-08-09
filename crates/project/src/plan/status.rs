@@ -16,11 +16,11 @@ pub use project::plan_status_body;
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum NextActionKind {
-    /// Run `/emery:refine` for [`StatusBody::slice`].
+    /// The execute loop's refine phase awaits [`StatusBody::slice`].
     Refine,
-    /// Run `/emery:build` for [`StatusBody::slice`].
+    /// The execute loop's build phase awaits [`StatusBody::slice`].
     Build,
-    /// Run `/emery:merge` for [`StatusBody::slice`].
+    /// The execute loop's merge phase awaits [`StatusBody::slice`].
     Merge,
     /// In-scope slices are refined but the clean gap policy fails —
     /// close conflicts / unknowns, or start execute with per-req
@@ -40,11 +40,11 @@ pub enum NextActionKind {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum LoopStep {
-    /// The refine phase (`/emery:refine`).
+    /// The refine phase.
     Refine,
-    /// The build phase (`/emery:build`).
+    /// The build phase.
     Build,
-    /// The merge phase (`/emery:merge`, including the per-entry `done` stamp).
+    /// The merge phase, including the per-entry `done` stamp.
     Merge,
 }
 
@@ -84,16 +84,17 @@ impl StopReason {
     pub const fn hint(self) -> &'static str {
         match self {
             Self::RefineFailed => {
-                "Fix the failure, then retry /emery:refine for the slice. The plan entry stays \
-                 in-progress."
+                "Fix the failure, then re-run emery plan execute — the loop resumes at the \
+                 refine phase. The plan entry stays in-progress."
             }
             Self::BuildFailed => {
-                "Fix the failure, then retry /emery:build for the slice. The plan entry stays \
-                 in-progress."
+                "Fix the failure, then re-run emery plan execute — the loop resumes at the \
+                 build phase. The plan entry stays in-progress."
             }
             Self::MergeConflict => {
-                "Resolve the baseline conflict (or drop the slice), then retry /emery:merge. The \
-                 plan entry stays in-progress until the merge lands."
+                "Resolve the baseline conflict (or drop the slice with emery plan drop), then \
+                 re-run emery plan execute. The plan entry stays in-progress until the merge \
+                 lands."
             }
             Self::MergePostflightFailed => {
                 "The merge already committed and archived; the plan entry is done. Inspect the \
@@ -105,9 +106,8 @@ impl StopReason {
                 "The slice was dropped; amend or remove the plan entry to unblock the queue."
             }
             Self::MergeIncomplete => {
-                "The slice is merged but the entry is still in-progress; re-run /emery:merge \
-                 (or emery plan execute) for the slice — the merge re-entry stamps the missing \
-                 done."
+                "The slice is merged but the entry is still in-progress; re-run emery plan \
+                 execute — the merge re-entry stamps the missing done."
             }
             Self::Stuck => {
                 "Remaining entries wait on unmet dependencies; complete or amend the blocking \
@@ -173,12 +173,12 @@ pub struct StatusBody {
     /// landed merge → `merge`). `None` before the first phase
     /// completes or when no slice is targeted.
     pub last_completed: Option<LoopStep>,
-    /// Next valid resume point as a literal command — the phase
-    /// skill for dispatches and retryable stops, `emery plan execute`
-    /// / `/emery:execute` after author or when Ready (D26),
-    /// `emery plan execute --waive…` when skipping Ready with open
-    /// unknowns, `/emery:finalize` on drained. `None` when no single
-    /// command makes progress (`stuck`, `slice-dropped`).
+    /// Next valid resume point as a literal command — `emery plan
+    /// execute` for dispatches and retryable stops (the loop owns
+    /// every phase), `/emery:execute` after author or when Ready
+    /// (D26), `emery plan execute --waive…` when skipping Ready with
+    /// open unknowns, `/emery:finalize` on drained. `None` when no
+    /// single command makes progress (`stuck`, `slice-dropped`).
     pub resume: Option<String>,
     /// Ready milestone (RFC-86 D22): every in-scope slice is refined
     /// and the clean gap policy passes (no conflicts; zero open

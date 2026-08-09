@@ -1,7 +1,7 @@
 //! `Plan::validate` and the per-check helpers it composes.
 //!
 //! Findings accumulate (no check short-circuits another): structural
-//! checks first, then consistency checks against the registry.
+//! checks first, then consistency checks.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
@@ -13,7 +13,6 @@ use error::{Error, Result};
 use petgraph::graph::DiGraph;
 
 use super::model::{Divergence, Entry, Plan};
-use crate::registry::Registry;
 
 /// Build a plan-domain diagnostic on the neutral currency.
 ///
@@ -69,14 +68,11 @@ impl Plan {
     /// Run all structural and semantic checks over the plan.
     ///
     /// `slices_dir` (when `Some`) enables the cross-reference checks
-    /// against on-disk slice metadata; `registry` (when `Some`) enables
-    /// the cross-registry checks. Findings accumulate — no check
+    /// against on-disk slice metadata. Findings accumulate — no check
     /// short-circuits another; structural checks run first. Exclusivity
     /// is per-slice claim only (no plan-wide in-progress cap).
     #[must_use]
-    pub(crate) fn validate(
-        &self, slices_dir: Option<&Path>, registry: Option<&Registry>,
-    ) -> Vec<Diagnostic> {
+    pub(crate) fn validate(&self, slices_dir: Option<&Path>) -> Vec<Diagnostic> {
         let mut results = Vec::new();
         results.extend(duplicate_names(&self.entries));
         results.extend(unknown_depends_on(&self.entries));
@@ -85,10 +81,6 @@ impl Plan {
         results.extend(context_paths(&self.entries));
         results.extend(orphan_authority_override_keys(&self.entries));
         results.extend(divergence_consistency(&self.entries));
-        if let Some(reg) = registry {
-            results.extend(project_in_registry(&self.entries, reg));
-            results.extend(project_binding_required(&self.entries, reg));
-        }
         if let Some(dir) = slices_dir.filter(|d| d.is_dir()) {
             results.extend(slices_dir_consistency(self, dir));
         }
@@ -222,59 +214,6 @@ pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
         code: first.rule_id.clone().unwrap_or_default().into(),
         detail,
     })
-}
-
-fn project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
-    let project_names: HashSet<&str> = registry.projects.iter().map(|p| p.name.as_str()).collect();
-    let mut out = Vec::new();
-    for entry in changes {
-        if let Some(project) = &entry.project
-            && !project_names.contains(project.as_str())
-        {
-            out.push(finding(
-                "project-not-in-registry",
-                Severity::Important,
-                format!(
-                    "project '{}' on slice '{}' does not match any project in registry.yaml",
-                    project, entry.name
-                ),
-                Some(entry.name.to_string()),
-            ));
-        }
-    }
-    out
-}
-
-/// A slice may omit `project` only when the topology offers exactly one
-/// project (the kernel and [`super::resolve_target`] auto-bind it). When
-/// the registry declares more than one project an omitted `project` is
-/// ambiguous, so flag it early rather than waiting for `plan advance` to
-/// fail with `plan-reconcile-project-binding-required`.
-///
-/// The single-regular-project case (no registry) is not reached here —
-/// an omitted `project` there always resolves to the sole synthesised
-/// project.
-fn project_binding_required(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
-    if registry.projects.len() <= 1 {
-        return Vec::new();
-    }
-    let mut out = Vec::new();
-    for entry in changes {
-        if entry.project.is_none() {
-            out.push(finding(
-                "plan-reconcile-project-binding-required",
-                Severity::Important,
-                format!(
-                    "entry '{}' omits 'project' but the registry declares {} projects; \
-                     bind one explicitly",
-                    entry.name,
-                    registry.projects.len()
-                ),
-                Some(entry.name.to_string()),
-            ));
-        }
-    }
-    out
 }
 
 /// Refuse orphan per-slice `authority-override` values.

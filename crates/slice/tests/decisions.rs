@@ -105,22 +105,17 @@ async fn merge_promotes_and_supersedes() {
     );
     record.write(&slice).expect("stage build record");
 
-    let body = run::<slice::handlers::MergeRun, _, _>(
+    let outcome = slice::orchestrate::merge(
         project.provider(),
-        slice::handlers::MergeRunInput {
-            name: "demo".to_string(),
-            allow_composition_replace: false,
-            preview: false,
-            conflict_check: false,
-        },
+        layout,
+        jiff::Timestamp::from_second(1_700_000_001).expect("ts"),
+        "demo",
+        false,
     )
     .await
     .expect("standalone merge succeeds");
-    let slice::handlers::MergeRunBody::Merged(body) = body else {
-        panic!("default merge mode commits: {body:?}");
-    };
 
-    assert_eq!(body.decisions, ["DEC-0002"]);
+    assert_eq!(outcome.decisions, ["DEC-0002"]);
     assert!(baseline.join("DEC-0002-new-choice.md").is_file());
     let old =
         fs::read_to_string(baseline.join("DEC-0001-old-choice.md")).expect("superseded baseline");

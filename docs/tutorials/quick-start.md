@@ -206,7 +206,7 @@ plan: fix-typo
 entries: 0 done / 1 in-progress / 0 pending
 ready: false  authorized: true
 next-action: build fix-typo
-resume: /emery:build fix-typo
+resume: emery plan execute
 ```
 
 When the slice has merged, status projects the literal drained line:
@@ -218,7 +218,7 @@ ready: true  authorized: true
 drained — run /emery:finalize fix-typo
 ```
 
-If execute stops instead — say the build fails — the stop message names the reason and the resume command (`next-action: stop build-failed`, `resume: /emery:build fix-typo`). Fix the cause, then run the resume command; see [Drive a slice manually](../how-to/drive-slice-manually.md).
+If execute stops instead — say the build fails — the stop message names the reason and the resume command (`next-action: stop build-failed`, `resume: emery plan execute`). Fix the cause, then re-run execute; the loop resumes at the parked phase. See [Drop down a layer](../how-to/drop-down-a-layer.md).
 </div>
 
 
@@ -248,6 +248,6 @@ Before finalizing, publish the completed repository changes through your normal 
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
 - [Your first multi-slice change](first-change.md) — three slices from documentation
 - [Quick reference card](../reference/quick-reference.md) — command cheat sheet
-- [Change skills](../reference/change-skills/index.md) — `/emery:plan`, `/emery:execute`, `/emery:finalize` reference
+- [Skills](../reference/skills/index.md) — `/emery:plan`, `/emery:execute`, `/emery:finalize` reference
 </div>
 

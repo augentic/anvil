@@ -102,13 +102,13 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
       <p>See how Emery, source adapters, target adapters, and downstream builds fit together.</p>
     </div>
   </a>
-  <a class="card" href="how-to/drive-slice-manually.md">
+  <a class="card" href="how-to/resolve-spec-conflicts.md">
     <div class="card-head">
       <h3 class="card-title">Recover when execute stops</h3>
       <span class="card-time">How-to</span>
     </div>
     <div class="card-body">
-      <p>Resume the slice loop by hand when a plan parks on refine, build, or merge.</p>
+      <p>Resolve conflicts and re-run execute when a plan parks on refine, build, or merge.</p>
     </div>
   </a>
 </div>
@@ -123,7 +123,7 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
 
 emery plan execute
   --> opens plan.execute.started, then
-      /emery:refine + /emery:build + /emery:merge per slice until drained
+      refine + build + merge per slice until drained
 
 /emery:finalize fix-typo
   --> publish outside Emery, archive plan

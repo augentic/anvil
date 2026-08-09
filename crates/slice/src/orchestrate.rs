@@ -12,7 +12,7 @@ pub use project::seam::Capabilities;
 pub(crate) use project::seam::{seam_failure, target_id};
 
 pub use self::extract::{ExtractOutcome, extract};
-pub use self::merge::merge;
-pub use self::refine::{RefineOutcome, refine, refine_breakout};
+pub use self::merge::{MergeOutcome, merge};
+pub use self::refine::{RefineOutcome, refine};
 pub use self::synthesize::synthesize;
 pub use self::target::{BuildOutcome, build};

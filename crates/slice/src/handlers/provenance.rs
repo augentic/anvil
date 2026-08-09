@@ -76,7 +76,7 @@ impl<P: Anchor> Operation<P> for Provenance {
                 "slice-model-missing",
                 "a synthesized slice carries model.yaml",
                 format!(
-                    "slice `{name}` has no model.yaml at {}; run `emery slice refine {name}` \
+                    "slice `{name}` has no model.yaml at {}; run `emery plan execute` \
                      first",
                     model_path.display()
                 ),

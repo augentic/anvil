@@ -411,3 +411,55 @@ mod gc {
         file.set_modified(to).expect("set mtime");
     }
 }
+
+mod sweep {
+    use super::*;
+
+    /// The change-scoped collection: dead roots' objects go, objects
+    /// shared with a live root stay, and the live snapshot still
+    /// materializes afterwards.
+    #[tokio::test]
+    async fn shared_objects_survive() {
+        let lab = lab();
+        write(&lab.source, "shared.txt", b"kept by both");
+        write(&lab.source, "dead-only.txt", b"only the archived change");
+        let dead = lab.store.snapshot(&lab.source).await.expect("snapshot dead");
+
+        std::fs::remove_file(lab.source.join("dead-only.txt")).expect("rm");
+        write(&lab.source, "live-only.txt", b"still live");
+        let live = lab.store.snapshot(&lab.source).await.expect("snapshot live");
+
+        let removed = lab
+            .store
+            .sweep(std::slice::from_ref(&dead), std::slice::from_ref(&live))
+            .await
+            .expect("sweep");
+        // The dead manifest and its unique blob go; the shared blob stays.
+        assert_eq!(removed, 2);
+        assert!(!lab.store.contains(&dead).await, "dead root collected");
+        assert!(lab.store.contains(&live).await, "live root survives");
+
+        let out = lab.workspaces.join("post-sweep");
+        lab.store.materialize(&live, &out).await.expect("live snapshot intact");
+        assert_eq!(std::fs::read_to_string(out.join("shared.txt")).expect("read"), "kept by both");
+    }
+
+    /// Absent roots (never frozen, or already collected) are skipped;
+    /// sweeping twice deletes nothing new.
+    #[tokio::test]
+    async fn absent_roots_skipped_and_idempotent() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a");
+        let dead = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        let never_frozen = SnapshotId::from_digest(&"0".repeat(64));
+
+        let removed =
+            lab.store.sweep(&[dead.clone(), never_frozen.clone()], &[]).await.expect("sweep");
+        assert_eq!(removed, 2, "manifest plus one blob");
+        assert_eq!(
+            lab.store.sweep(&[dead, never_frozen], &[]).await.expect("re-sweep"),
+            0,
+            "a second sweep finds nothing"
+        );
+    }
+}

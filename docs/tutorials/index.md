@@ -56,30 +56,6 @@ Plan and execute three dependent slices from documentation.
 </a>
 
 
-<a class="card" href="drive-a-slice-by-hand.md">
-<div class="card-head">
-<h3 class="card-title">Drive a slice by hand</h3>
-<span class="card-time">~30 min</span>
-</div>
-<div class="card-body">
-
-Run refine, build, and merge one phase at a time without the execute loop.
-</div>
-</a>
-
-
-<a class="card" href="cross-repo-change.md">
-<div class="card-head">
-<h3 class="card-title">Cross-repo changes</h3>
-<span class="card-time">~60 min</span>
-</div>
-<div class="card-body">
-
-Coordinate a change across workspace project slots.
-</div>
-</a>
-
-
 </div>
 
 

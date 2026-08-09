@@ -6,7 +6,6 @@ mod author;
 mod epoch;
 mod execute;
 mod gap_gate;
-mod routing;
 mod survey;
 
 pub use project::seam::Capabilities;

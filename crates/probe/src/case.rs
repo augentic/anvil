@@ -131,7 +131,7 @@ async fn run_workflow(
 
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
-    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let events = project::plan::collect_events(Layout::new(root))?;
     let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
         ladders.values().all(|status| *status == Status::Pending),
@@ -155,7 +155,7 @@ async fn run_workflow(
     invoke(root, model, catalog, &["plan", "execute"]).await?;
 
     let plan = sandbox::read_plan(root)?;
-    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let events = project::plan::collect_events(Layout::new(root))?;
     let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
         ladders.values().all(|status| *status == Status::Done),
@@ -175,7 +175,7 @@ async fn run_build(
     id: &str, case: &Build, root: &Path, model: &DynModel, catalog: &Catalog,
     telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
-    invoke(root, model, catalog, &["slice", "build", &case.slice]).await?;
+    build_phase(root, model, catalog, &case.slice).await?;
 
     let slice_dir = Layout::new(root).slice_dir(&case.slice);
     let metadata =
@@ -203,6 +203,37 @@ async fn run_build(
     telemetry::report(&telemetry.counts(), 1);
     println!("eval case {id}: pass (sandbox {}, report {})", root.display(), report.display());
     Ok(())
+}
+
+// One build phase over the case's refined fixture, driven straight
+// through the shared build orchestration (the execute loop owns the
+// phase in production) — one phase, for fast prompt iteration.
+async fn build_phase(root: &Path, model: &DynModel, catalog: &Catalog, slice: &str) -> Result<()> {
+    tracing::info!("build phase for slice `{slice}`");
+    let paths = paths(root);
+    let layout = Layout::new(root);
+    let provider = native::Provider::new(
+        paths.clone(),
+        model.clone(),
+        catalog.clone(),
+        native::ReferenceMode::Online,
+    );
+    let config = project::config::ProjectConfig::load(layout.project_dir())?;
+    let outcome = match project::target_policy::project_adapter(&provider, &config, &paths) {
+        Ok(adapter) => slice::orchestrate::build(
+            &provider,
+            layout,
+            jiff::Timestamp::now(),
+            slice,
+            &adapter.manifest,
+        )
+        .await
+        .map(drop)
+        .map_err(anyhow::Error::from),
+        Err(err) => Err(err.into()),
+    };
+    provider.shutdown().await;
+    outcome.with_context(|| format!("build phase for slice `{slice}`"))
 }
 
 // The sandbox-relative execution layout every case verb runs under:

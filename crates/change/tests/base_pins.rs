@@ -33,14 +33,7 @@ async fn refine_writes_base_yaml() {
     );
     author(&session).await;
 
-    run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "login-flow".to_string(),
-        },
-    )
-    .await
-    .expect("refine synthesises login-flow");
+    support::refine(&session, "login-flow").await.expect("refine synthesises login-flow");
 
     let root = session.root();
     let layout = Layout::new(root);

@@ -35,7 +35,6 @@ impl Plan {
             if let Some(v) = patch.sources {
                 entry.sources = v;
             }
-            patch.project.apply(&mut entry.project);
             patch.description.apply(&mut entry.description);
             if let Some(v) = patch.context {
                 entry.context = v;
@@ -43,9 +42,12 @@ impl Plan {
             if let Some(d) = patch.divergence {
                 entry.divergence = Some(d);
             }
+            if let Some(v) = patch.allow_composition_replace {
+                entry.allow_composition_replace = v;
+            }
         }
 
-        let errors: Vec<_> = self.validate(None, None).into_iter().filter(is_blocking).collect();
+        let errors: Vec<_> = self.validate(None).into_iter().filter(is_blocking).collect();
         let failure_msg = errors
             .first()
             .map(|r| r.impact.clone())

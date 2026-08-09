@@ -39,12 +39,10 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
-| [emery slice](slice.md) | Per-slice CRUD, synthesis, build, validation, merge, task tracking, and touched-spec tracking | Single-slice operations |
-| [emery plan](plan.md) | Scaffold, populate, validate, transition, and finalize change plans | Multi-slice operations and cross-repo closure |
-| [emery registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
+| [emery plan](plan.md) | Author, execute, curate, and archive change plans (the refine → build → merge loop runs inside `plan execute`) | The workflow spine |
+| [emery slice](slice.md) | Read-only per-slice projections: list, validate, provenance, model show | Slice inspection |
 | [emery adapter / source / target resolve](adapter.md) | Seed the project component cache and resolve adapters by axis | Adapter infrastructure |
-| [emery workspace](workspace.md) | Materialise, prepare, and push workspace peer clones | Multi-repo operations |
 | [emery init](init.md) | Project scaffold | One-time setup |
 | [Vectis in-guest tools](vectis.md) | In-guest `vectis` behaviours (`validate`, `scaffold`, `sync`) inside the adapter guest | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |
 
-Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`emery slice`](slice.md).
+Per-slice validation (including staleness advisories) lives under [`emery slice`](slice.md); everything that writes plan or slice state lives under [`emery plan`](plan.md).

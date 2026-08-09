@@ -8,13 +8,13 @@
 
 ## Operations
 
-Closed WIT target contract: `guidance`, `build`, `merge`. Core `/emery:refine` synthesises canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
+Closed WIT target contract: `guidance`, `build`, `merge`. Core synthesis (the refine phase) writes the canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
 
 | Operation | Owns |
 | --------- | ---- |
 | `guidance` | Idiom guidance for synthesis — [`prose/prompts/guidance.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/guidance.md) |
 | `build` | Composition regeneration, core/shell writers, verify-repair — [`prose/prompts/build.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/build.md) |
-| `merge` | Adoption gates after `emery slice merge` — [`prose/prompts/merge.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/merge.md) |
+| `merge` | Adoption gates around the merge phase — [`prose/prompts/merge.md`](https://github.com/augentic/emery-adapters/blob/main/targets/vectis/prose/prompts/merge.md) |
 
 In-guest helpers: [Vectis in-guest tools](../cli/vectis.md). Component catalog: [Component factoring](../../explanation/components.md).
 

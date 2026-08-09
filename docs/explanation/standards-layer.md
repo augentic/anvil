@@ -34,7 +34,7 @@ Enforcement splits by audience, not by rule id:
 | ------------------- | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
 | Repo checks         | `cargo make links`                  | `augentic/emery` contributors      | Developer Guide link integrity (`mdbook build docs`) |
 | Rule shape          | The adapters repo's `rule_shape` cargo test | `augentic/emery-adapters` contributors | Frontmatter fields, `## Rule` heading, id uniqueness, namespace ownership |
-| Build-time judgment | Target `build/review.md` briefs | Active slice during `/emery:build`    | Model-assisted application of codex policy → human `REVIEW.md`     |
+| Build-time judgment | Target `build/review.md` briefs | Active slice during the build phase   | Model-assisted application of codex policy → human `REVIEW.md`     |
 
 There is no lint verb on the CLI: repo consistency here is the mdBook links gate, and there is no deterministic consumer-project scanner — if one earns its way in, it lands as developer tooling. The rules themselves reach consumer projects inside the target adapter components: each target embeds the universal pack plus its own overlays and its build review prompts apply them. Standards enforcement is **not** a workflow phase either way: findings may block a pipeline but never transition a slice or write lifecycle fields. Phase skills already use deterministic CLI gates where lifecycle depends on them (`emery slice validate` during refine; verify-repair during build).
 

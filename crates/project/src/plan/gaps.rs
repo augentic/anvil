@@ -10,7 +10,6 @@ use artifacts::spec::provenance::{RequirementStatus, parse_spec_md};
 use error::Error;
 use serde::{Deserialize, Serialize};
 
-use super::execution::resolve_work_root;
 use super::in_scope;
 use super::model::{Entry, Plan};
 use crate::config::Layout;
@@ -44,8 +43,8 @@ pub struct SharedLeadRollup {
     pub source: String,
     /// Discovery lead id.
     pub lead: String,
-    /// In-scope slice selectors suggested for a follow-up
-    /// `slice refine` after the shared input is fixed.
+    /// In-scope slice selectors suggested for a follow-up re-refine
+    /// (via `emery plan execute`) after the shared input is fixed.
     pub selectors: Vec<String>,
 }
 
@@ -116,9 +115,7 @@ impl Render for GapsBody {
 pub fn plan_gaps_body(plan: &Plan, layout: Layout<'_>) -> Result<GapsBody, Error> {
     let mut raw: Vec<RawFinding> = Vec::new();
     for entry in &plan.entries {
-        let work_root = resolve_work_root(layout, entry);
-        let work_layout = Layout::new(&work_root);
-        let slice_dir = work_layout.slice_dir(entry.name.as_str());
+        let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = match SliceMetadata::load(&slice_dir) {
             Ok(m) => Some(m),
             Err(

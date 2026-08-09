@@ -94,14 +94,6 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
 )]
 pub struct ValidateArgs {}
 
-/// Arguments for `plan advance`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct AdvanceArgs {}
-
 /// Arguments for `plan status`.
 #[derive(Clone, Copy, Debug, Args)]
 #[expect(
@@ -157,27 +149,15 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
-/// Parse the `--to` undo target: only the two reverse-reachable
-/// statuses are legal (`done` is forward-only, written by `slice
-/// merge`).
-fn undo_to(raw: &str) -> Result<project::plan::Status, String> {
-    match raw {
-        "pending" => Ok(project::plan::Status::Pending),
-        "in-progress" => Ok(project::plan::Status::InProgress),
-        other => Err(format!("unknown undo target `{other}`; expected `pending` or `in-progress`")),
-    }
-}
-
-/// Arguments for `plan undo`.
+/// Arguments for `plan drop`.
 #[derive(Debug, Args)]
-pub struct UndoArgs {
-    /// Kebab-case plan-entry name.
+pub struct DropArgs {
+    /// Kebab-case plan entry (slice) name to drop.
     pub name: String,
-    /// Walk rung by rung until the entry reaches this status
-    /// (`pending` or `in-progress`); one `plan.transition.undone`
-    /// journal event fires per rung. Omitted means one rung.
-    #[arg(long = "to", value_name = "STATUS", value_parser = undo_to)]
-    pub to: Option<project::plan::Status>,
+    /// Free-text reason; surfaced in `metadata.yaml.drop_reason` and
+    /// the archive path.
+    #[arg(long)]
+    pub reason: Option<String>,
 }
 
 /// Arguments for `plan author`.
@@ -235,9 +215,6 @@ pub struct AddArgs {
     /// Free-text scoping hint for the define step
     #[arg(long)]
     pub description: Option<String>,
-    /// Target registry project name
-    #[arg(long)]
-    pub project: Option<String>,
     /// Baseline paths relevant to this change, relative to `.emery/` (repeatable)
     #[arg(long)]
     pub context: Vec<String>,
@@ -293,9 +270,6 @@ pub struct AmendArgs {
     /// to leave it unchanged.
     #[arg(long)]
     pub description: Option<String>,
-    /// Replace project. Pass `--project ""` to clear; omit the flag to leave it unchanged.
-    #[arg(long)]
-    pub project: Option<String>,
     /// Replace context paths. Pass `--context` (with no value) to clear; omit the
     /// flag to leave it unchanged.
     #[arg(long, num_args = 0.., value_delimiter = ',')]
@@ -325,4 +299,12 @@ pub struct AmendArgs {
     /// wipe (no events when the map was already empty).
     #[arg(long = "clear-authority-overrides", action = ArgAction::SetTrue)]
     pub clear_authority_overrides: bool,
+    /// Set the entry's `allow-composition-replace` field: authorise a
+    /// whole-document (`screens:`) slice composition to overwrite a
+    /// non-empty baseline when the execute loop merges this slice.
+    /// Reserved for intentional full-baseline rewrites; routine
+    /// per-screen edits flow through `delta:` and never need it. Pass
+    /// `true` or `false`; omit the flag to leave it unchanged.
+    #[arg(long = "allow-composition-replace", value_name = "BOOL")]
+    pub allow_composition_replace: Option<bool>,
 }

@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use error::Result;
-use project::registry::topology::{Decision, Surface};
+use project::identity::{Decision, Surface};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 

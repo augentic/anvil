@@ -250,7 +250,33 @@ async fn invoke(root: &Path, model: &DynModel, argv: &[&str]) {
     );
 }
 
-// Drive the real verbs to a refined `greeting` slice at `root` — the
+// Drive the refine phase over the same provider composition the case
+// runner uses — no standalone verb; the execute loop owns the phase.
+async fn refine_phase(root: &Path, model: &DynModel, slice_name: &str) {
+    let locations = Locations::explicit(
+        root.join("adapter-store"),
+        CachePlacement::Parent(root.join("project-cache")),
+    );
+    let paths = ExecutionPaths::new(root, locations);
+    let provider = native::Provider::new(
+        paths.clone(),
+        model.clone(),
+        catalog(),
+        native::ReferenceMode::Online,
+    );
+    let layout = project::config::Layout::new(root);
+    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan loads");
+    let entry = plan.entries.iter().find(|entry| entry.name == slice_name).expect("plan entry");
+    let target = project::target_policy::fresh(&provider, &paths, entry, slice_name, "refining")
+        .expect("target resolves");
+    let caps = slice::orchestrate::Capabilities::provider(&provider);
+    slice::orchestrate::refine(caps, &paths, jiff::Timestamp::now(), slice_name, &target)
+        .await
+        .expect("refine phase");
+    provider.shutdown().await;
+}
+
+// Drive the real surface to a refined `greeting` slice at `root` — the
 // exact state a committed Build fixture carries.
 async fn stage_refined_fixture(root: &Path) {
     fs::create_dir_all(root).expect("mkdir fixture");
@@ -265,7 +291,7 @@ async fn stage_refined_fixture(root: &Path) {
         &["plan", "author", "demo", "--source", "main=mock:value:The greeting service."],
     )
     .await;
-    invoke(root, &model, &["slice", "refine", "greeting"]).await;
+    refine_phase(root, &model, "greeting").await;
 }
 
 fn git(dir: &Path, args: &[&str]) {
@@ -404,7 +430,7 @@ async fn until_plan_leaves_entries_pending() {
     let layout = project::config::Layout::new(&root);
     let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
     assert!(!plan.entries.is_empty(), "the authored plan carries entries");
-    let events = project::plan::collect_events(&plan, layout).expect("events");
+    let events = project::plan::collect_events(layout).expect("events");
     let ladders = project::plan::project_ladders(&plan, &events);
     assert!(
         ladders.values().all(|status| *status == Status::Pending),

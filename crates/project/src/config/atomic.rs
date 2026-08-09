@@ -10,7 +10,6 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::config::{Layout, ProjectConfig};
-use crate::registry::Registry;
 
 /// A piece of `.emery/`-anchored YAML state.
 ///
@@ -26,9 +25,7 @@ pub trait AtomicYaml: Sized + Serialize + DeserializeOwned {
 
     /// Load from disk. Default implementation reads [`Self::layout_path`],
     /// deserialises, and returns `Ok(None)` when the file is absent.
-    /// Override when the state needs validation at load time
-    /// (the existing `Registry::load` runs `validate_shape` before
-    /// returning).
+    /// Override when the state needs validation at load time.
     ///
     /// # Errors
     ///
@@ -96,18 +93,6 @@ where
         yaml_write(&path, &state)?;
     }
     Ok(body)
-}
-
-impl AtomicYaml for Registry {
-    fn layout_path(layout: Layout<'_>) -> PathBuf {
-        layout.registry_path()
-    }
-
-    /// Delegate to the inherent loader so `validate_shape` runs at
-    /// load time — the trait's default impl would skip that.
-    fn load_state(layout: Layout<'_>) -> Result<Option<Self>, Error> {
-        Self::load(layout.project_dir())
-    }
 }
 
 impl AtomicYaml for ProjectConfig {

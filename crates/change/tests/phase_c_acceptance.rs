@@ -292,14 +292,7 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
     .expect("author");
 
     // Prefer shift-left: refine first so coverage stamps `existing`.
-    run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "greeting".to_string(),
-        },
-    )
-    .await
-    .expect("refine");
+    support::refine(&session, "greeting").await.expect("refine");
 
     let specs_before =
         dir_cid(&root.join(".emery/slices/greeting/specs")).expect("specs").to_string();

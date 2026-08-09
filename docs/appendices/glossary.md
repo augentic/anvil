@@ -8,10 +8,10 @@ Canonical definitions for terms used throughout Emery.
 A versioned Emery extension. Emery splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Action**
-A grammar leaf in the `emery` CLI — the executable command path (`slice build`, `journal show`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
+A grammar leaf in the `emery` CLI — the executable command path (`plan execute`, `journal show`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
 
 **Active slice**
-A plan entry that currently projects `in-progress` from claim / advance facts. `emery plan advance` claims the slice; `/emery:refine` and the breakouts resolve an active slice before doing per-slice work.
+A plan entry that currently projects `in-progress` from claim facts. The execute loop claims the slice before doing per-slice work; a stopped run resumes at the same active entry.
 
 **API contract**
 A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the contracts adapter's in-guest validator.
@@ -33,19 +33,13 @@ The accumulated set of merged specs at `.emery/specs/` and merged contracts at `
 **Brief**
 A markdown prompt file shipped by a source or target adapter that drives one operation, compiled into the adapter guest. Prompts live under `sources/<name>/prose/prompts/{survey,extract}.md` or `targets/<name>/prose/prompts/{guidance,build,merge}.md` in the adapters repo.
 
-**Breakout**
-Running one slice phase by hand: `/emery:refine`, `/emery:build`, `/emery:merge`, or `/emery:drop` invoked outside the `emery plan execute` loop — typically after execute parks or when an operator wants to drive one slice directly. A breakout invokes the same guest orchestration as the in-loop call.
-
 ## C
 
 **Change**
 The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/emery:plan`, `emery plan execute`, `/emery:finalize`.
 
-**Change branch**
-The Git branch an operator may use to publish a multi-repo change from a workspace slot. Branch preparation and publication are repository operations outside Emery.
-
 **Command**
-One operator-facing `emery` invocation (`emery slice build my-slice`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation shape](../standards/handler-shape.md).
+One operator-facing `emery` invocation (`emery plan status`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation shape](../standards/handler-shape.md).
 
 **Command group**
 The resource prefix that namespaces CLI actions (`slice`, `plan`, `journal`). `emery slice *` is the slice command group.
@@ -54,7 +48,7 @@ The resource prefix that namespaces CLI actions (`slice`, `plan`, `journal`). `e
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
 
 **Conflict**
-Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by recording a per-slice authority override (`emery plan amend --authority-override`) or amending sources, then re-running `/emery:refine` — never by hand-editing the kernel-rendered `Status:` / `Sources:` lines. Tags never park the slice.
+Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by recording a per-slice authority override (`emery plan amend --authority-override`) or amending sources, then re-running `emery plan execute` (the loop re-refines the affected slice under the new epoch) — never by hand-editing the kernel-rendered `Status:` / `Sources:` lines. Tags never park the slice.
 
 **Contract id**
 The optional `info.x-emery-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract. Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. Rename-stable hint that survives file moves and `info.version` bumps.
@@ -71,7 +65,7 @@ A marketplace package under `plugins/<name>/` that registers slash-command skill
 The neutral finding currency every check surface emits (`emery slice validate`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
 
 **Discovery**
-The plan-time discovery artifact at `discovery.md` in the project root (workspace mode: at the workspace root). Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/emery:plan` through CLI helpers.
+The plan-time discovery artifact at `discovery.md` in the project root. Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/emery:plan` through CLI helpers.
 
 **Divergence**
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's plan-review acknowledgement; the field is advisory in v1.
@@ -80,7 +74,7 @@ Authority-resolved disagreement between two `Evidence` rows. The higher-authorit
 The state of a plan in which no entry is `pending` or `in-progress` — every entry is `done`. Not a stored field: `emery plan status` computes it from per-entry status and projects `drained`. `/emery:finalize` becomes legal at that point.
 
 **Drop**
-The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `emery slice drop <name> --reason "..."`.
+The lifecycle target that abandons a slice without merging its specs into the baseline. Stamped via `emery plan drop <name> --reason "..."`; the entry stays on the plan and projects the `slice-dropped` stop.
 
 ## E
 
@@ -107,7 +101,7 @@ The closure skill (`/emery:finalize`) that verifies the plan is drained, confirm
 One of the two engine test rungs and its cadence: repository correctness (`cargo make ci`, every push) or prompt evaluation (`cargo make eval`, operator-invoked). The WASM seam has no automated gate — it is exercised by the operator-run wasm example (`cargo make wasm-run`). See [Quality gates](../contributing/quality-gates.md).
 
 **Guest**
-The **engine guest** is the WebAssembly component embedded in the `emery` binary that owns the orchestrations behind "guest-routed" verbs (`plan author`, `plan execute`, `slice refine`, `slice build`, `slice merge`). An **adapter guest** is a source or target adapter's own component, dispatched by the engine. A running driver orchestration holds the create-exclusive `.emery/guest.lock` marker; a second driver session exits with `guest-marker-held`.
+The **engine guest** is the WebAssembly component embedded in the `emery` binary that owns the orchestrations behind "guest-routed" verbs (`plan author`, `plan execute`) and the refine / build / merge phases they run. An **adapter guest** is a source or target adapter's own component, dispatched by the engine. A running driver orchestration holds the create-exclusive `.emery/guest.lock` marker; a second driver session exits with `guest-marker-held`.
 
 ## H
 
@@ -133,7 +127,7 @@ A stable identity with exclusive append authority over one `.emery/events/<write
 A slice-sized unit of work emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `discovery.md`, identified by its `(source, lead)` pair. Re-surveying the same source replaces that source's blocks. Cross-source lead matching happens later, in `propose`. See [From sources to slices](../explanation/reconciliation.md).
 
 **Lifecycle**
-Two stacked projected ladders: per-entry (`pending → in-progress → done` — no per-entry `dropped`) from claims / merge-archive facts, and per-slice (`refining → refined → built → merged`, or terminal `dropped` via `emery slice drop`) from phase timestamps and artifacts. Neither is a stored status field. Starting `emery plan execute` opens the authorization epoch — there is no projected `approved` rung. See [Lifecycle](../reference/lifecycle.md).
+Two stacked projected ladders: per-entry (`pending → in-progress → done` — no per-entry `dropped`) from claims / merge-archive facts, and per-slice (`refining → refined → built → merged`, or terminal `dropped` via `emery plan drop`) from phase timestamps and artifacts. Neither is a stored status field. Starting `emery plan execute` opens the authorization epoch — there is no projected `approved` rung. See [Lifecycle](../reference/lifecycle.md).
 
 ## M
 
@@ -155,7 +149,7 @@ The single structured artifact per refined slice, at `.emery/slices/<slice>/mode
 An Augentic product: a runtime for sandboxed Rust WebAssembly (WASM) services. The [`omnia`](../reference/targets/omnia.md) target adapter generates Omnia service crates. Not part of the core Emery contract.
 
 **Operator**
-The human driving Emery: binds sources, reviews the plan before execute, resolves conflicts through overrides, and owns everything Emery deliberately leaves outside its scope — Git commits, publication, and workspace slot materialisation.
+The human driving Emery: binds sources, reviews the plan before execute, resolves conflicts through overrides, and owns everything Emery deliberately leaves outside its scope — Git commits and publication.
 
 **Operation**
 The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation for one **command**: a flat `Input` DTO, typed `Output`, operation-layer `Error`, and `call(input, context)`. Operations live in `<crate>::<domain>::handlers` submodules (in the `project`, `slice`, and `change` crates) beside their kernels and are invoked through `Invoker<P>` by the explicit typed command and HTTP routers. See [Operation shape](../standards/handler-shape.md).
@@ -163,16 +157,16 @@ The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation
 ## P
 
 **Parked**
-Informal term for `emery plan execute` having stopped mid-loop on a stop condition (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`). The plan keeps its on-disk state; `emery plan status` names the stop reason and the literal resume command. See [Drive a slice manually](../how-to/drive-slice-manually.md).
+Informal term for `emery plan execute` having stopped mid-loop on a stop condition (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`). The plan keeps its on-disk state; `emery plan status` names the stop reason and the literal resume command — usually re-running `emery plan execute` after fixing the reported problem.
 
 **Plan**
-The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings) and `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored). Written through `emery plan {author, add, amend, undo, advance, archive}` and the merge stamp only.
+The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings) and `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored). Written through `emery plan {author, add, amend, remove, drop, archive}` and the merge stamp only.
 
 **Plugin** (adapter vocabulary)
 The shared shape for either adapter role. Loader `crates/project/src/adapter/`; metadata comes from the component's `metadata` export (no adapter manifest file). Source and target adapters share the same resolver; the axis decides which WIT operations the component exports. The vocabulary noun "plugin" survives where source + target authors share an audience tag. Distinct from [Cursor plugins](#c) under `plugins/` (the IDE distribution surface for `/emery:*` skill wrappers).
 
 **Project (plan routing)**
-The `project` field on a slice entry that names the workspace project a slice targets. Required when `registry.yaml` declares multiple projects; absent for single-repo plans.
+The `project` field on a slice entry that names the project a slice targets. The reconcile leg auto-binds the sole project; the field exists so a slice's `target` adapter can be derived from its bound project.
 
 **Propose**
 The `/emery:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via the reconcile leg inside `emery plan author`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override during plan review. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `emery plan amend`.
@@ -183,10 +177,7 @@ The `Sources:` list on a requirement block — one or more source keys, highest 
 ## R
 
 **Refine**
-The breakout skill (`/emery:refine`) that runs per slice: slice create (re-entry safe, inside the orchestration), serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
-
-**Registry**
-`registry.yaml` — a workspace catalogue declaring the repos in a multi-repo system. Each entry carries a `name` and `url` (plus optional contract wiring and a greenfield adapter seed); a project's description, capabilities, and target live in its own `project.yaml` and are projected into `topology.lock`.
+The first phase the execute loop runs per slice: slice create (re-entry safe, inside the orchestration), serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
 
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
@@ -197,7 +188,7 @@ A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requ
 The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as context; not executed. Empty `guidance` is valid.
 
 **Skill**
-A thin Cursor slash-command wrapper (e.g. `/emery:plan`, `/emery:build`) that elicits arguments, invokes one `emery` verb, and relays its output. Skills do not own orchestration, synthesis, or code generation — those live in the engine guest and target-adapter prompts.
+A thin Cursor slash-command wrapper (e.g. `/emery:plan`, `/emery:execute`) that elicits arguments, invokes one `emery` verb, and relays its output. Skills do not own orchestration, synthesis, or code generation — those live in the engine guest and target-adapter prompts.
 
 **Slice**
 The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.emery/slices/<name>/`.
@@ -222,9 +213,6 @@ Output adapter role. Operations: `guidance` + `build` + `merge`. First-party def
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-emery-id` when present).
 
-**topology.lock**
-A committed file at `.emery/topology.lock` (workspace mode only). A machine-written projection of each member project's `project.yaml` topology facets and baseline routing identity. Plan-time reconciliation reads it so the agent can route slices to the right project; regeneration is operator-owned.
-
 ## V
 
 **Vectis**
@@ -234,12 +222,3 @@ An Augentic product: a target that applies spec-first generation to cross-platfo
 
 **WASI**
 The [WebAssembly System Interface](https://wasi.dev/) — the sandbox model Emery runs adapter operations under. A WASI component gets explicit, narrow filesystem preopens, no inherited host environment, and no network access, which is how source adapters read a source tree without reaching the rest of the machine.
-
-**Workspace**
-The top-level `workspace/` directory holding per-project slots in a multi-repo change. Each child is a workspace slot — typically a Git checkout/worktree for a remote registry URL or a symlink for a local target. Materialization and publication are operator-owned outside Emery.
-
-**Workspace slot**
-One materialised peer project at top-level `workspace/<project>/` — typically a Git checkout/worktree for a remote `registry.yaml` entry or a symlink for a local one. Slice phase work for a `project`-bound plan entry runs inside the matching slot. Materialisation and publication are operator-owned outside Emery.
-
-**Workspace mode**
-The project topology declared by `project.yaml: workspace: true`. The repository holds `registry.yaml`, plan artifacts at the repository root, and project slots under top-level `workspace/<project>/`. Contrast with single-repo mode (`workspace: false`).

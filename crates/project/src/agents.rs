@@ -10,7 +10,7 @@ use error::Error;
 use serde::Serialize;
 
 use crate::adapter::{AdapterSelector, Resolver};
-use crate::config::{Layout, ProjectConfig, is_slot};
+use crate::config::{Layout, ProjectConfig};
 use crate::handler::ExecutionPaths;
 
 /// Skip reason when init-time context generation did not run.
@@ -20,18 +20,14 @@ use crate::handler::ExecutionPaths;
 pub enum Skip {
     /// Root `AGENTS.md` already exists; init preserves it byte-for-byte.
     ExistingAgentsMd,
-    /// The project is a materialised `workspace/<peer>/` slot; slots
-    /// inherit context from their owning project.
-    WorkspaceClone,
 }
 
 impl Skip {
-    /// The kebab-case wire token (`existing-agents-md` / `workspace-clone`).
+    /// The kebab-case wire token (`existing-agents-md`).
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::ExistingAgentsMd => "existing-agents-md",
-            Self::WorkspaceClone => "workspace-clone",
         }
     }
 }
@@ -48,9 +44,6 @@ impl Skip {
 /// Bubbles up filesystem, config-load, and adapter-resolution errors.
 pub fn generate(resolver: &impl Resolver, paths: &ExecutionPaths) -> Result<Option<Skip>, Error> {
     let project_dir = paths.project_root();
-    if is_slot(project_dir) {
-        return Ok(Some(Skip::WorkspaceClone));
-    }
     match project_dir.join("AGENTS.md").try_exists() {
         Ok(true) => return Ok(Some(Skip::ExistingAgentsMd)),
         Ok(false) => {}
@@ -98,7 +91,7 @@ struct ContextLock {
 fn resolve_adapter_name(
     resolver: &impl Resolver, paths: &ExecutionPaths, config: &ProjectConfig,
 ) -> Result<Option<String>, Error> {
-    let Some(value) = config.adapter.as_deref().filter(|_| !config.workspace) else {
+    let Some(value) = config.adapter.as_deref() else {
         return Ok(None);
     };
     let selector = AdapterSelector::parse(value)?;

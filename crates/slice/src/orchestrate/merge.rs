@@ -40,7 +40,7 @@ struct WaveCommit {
     patch: CodePatch,
 }
 
-/// Merge one built slice (`emery slice merge`).
+/// Merge one built slice (the execute loop's merge phase).
 ///
 /// Runs preflight gate → identity finalization → deterministic commit
 /// → wave-committed fact → postflight gate. A preflight failure
@@ -383,7 +383,7 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     let Some(entry) = plan.entries.iter().find(|e| e.name == slice) else {
         return Err(plan.entry_not_found(slice));
     };
-    let events = collect_events(&plan, layout)?;
+    let events = collect_events(layout)?;
     let ladders = project_ladders(&plan, &events);
     let status = ladders.get(&entry.name).copied().unwrap_or(Status::Pending);
     if status != Status::InProgress {
@@ -391,8 +391,8 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
             "slice-merge-entry-not-in-progress",
             "a plan-owned merge requires a projected `in-progress` entry",
             format!(
-                "plan entry `{slice}` projects `{status}`; advance it with `emery plan advance` \
-                 before merging"
+                "plan entry `{slice}` projects `{status}`; re-run `emery plan execute` — the \
+                 loop claims the entry before merging"
             ),
         ));
     }

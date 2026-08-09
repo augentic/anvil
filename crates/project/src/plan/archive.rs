@@ -34,7 +34,7 @@ impl Plan {
 
         if !force {
             let project_root = path.parent().unwrap_or(path);
-            let events = collect_events(&plan, Layout::new(project_root))?;
+            let events = collect_events(Layout::new(project_root))?;
             let ladders = project_ladders(&plan, &events);
             let entries: Vec<String> = plan
                 .entries

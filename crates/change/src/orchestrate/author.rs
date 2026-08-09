@@ -16,10 +16,9 @@ use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::name::SliceName;
 use project::plan::{
-    GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
-    author_gate, build_request, collect_events, project_ladders, resolve_topology,
+    GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, author_gate, build_request,
+    collect_events, project_ladders, resolve_topology,
 };
-use project::registry::Registry;
 use project::seam::Source;
 
 use super::SurveyedSource;
@@ -51,9 +50,6 @@ pub struct AuthorOutcome {
 ///
 /// # Errors
 ///
-/// - `plan-author-workspace-unsupported` (exit 2) when the plan root is
-///   a workspace — the skill's workspace routing has no in-guest
-///   counterpart, mirroring the execute loop's refusal.
 /// - `change-name-not-kebab` / `plan-already-exists` from the scaffold
 ///   kernel's gates.
 /// - survey fan-out failures from [`super::survey_all`] (earlier
@@ -76,7 +72,6 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
         ..
     } = caps;
     let layout = Layout::new(paths.project_root());
-    refuse_workspace(layout)?;
     tracing::info!("plan authoring started");
     // Ensure every binding before the scaffold write and survey fan-out
     // so an unresolvable adapter fails fast with nothing on disk; a bare
@@ -99,7 +94,7 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let request = build_request(&discovery, &topology)?;
 
     let plan = Plan::load(&layout.plan_path())?;
-    let events = collect_events(&plan, layout)?;
+    let events = collect_events(layout)?;
     let ladders = project_ladders(&plan, &events);
     let context = GateContext {
         plan: plan.name.as_str(),
@@ -158,24 +153,6 @@ fn gate_hint(name: &str) -> String {
     )
 }
 
-/// Refuse workspace-routed plan authoring: the `/emery:plan` skill
-/// syncs workspace slots before surveying, and the guest collapse has
-/// no counterpart yet — the shared [`super::routing`] classification
-/// with this operation's own refusal code.
-fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
-    let Some(subject) = super::routing::classify(layout, None)?.refusal_subject() else {
-        return Ok(());
-    };
-    Err(Error::validation_failed(
-        "plan-author-workspace-unsupported",
-        "the guest plan-authoring collapse runs single-project plans only",
-        format!(
-            "{subject}; workspace routing (slot sync) has no in-guest counterpart — author \
-             workspace plans through the native /emery:plan skill"
-        ),
-    ))
-}
-
 /// The plan scaffold via the shared [`project::plan::scaffold`]
 /// kernel, plus the immediate atomic save. `force` opts into
 /// recreating any existing plan. No `--authority-override` surface —
@@ -187,20 +164,13 @@ fn scaffold(
     project::plan::scaffold(&plan_path, name, bindings, force)?.save(&plan_path)
 }
 
-/// Resolve the project topology the request embeds, minus the
-/// operator-facing `greenfield-seed-shadowed` advisories (the seed
-/// projection itself still applies).
+/// Resolve the project topology the request embeds.
 fn load_topology(
     resolver: &impl Resolver, paths: &ExecutionPaths,
 ) -> Result<Vec<ProjectRef>, Error> {
     let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
-    let mut topology = resolve_topology(resolver, &config, paths)?;
-    if let Some(registry) = Registry::load(layout.project_dir())? {
-        let _shadowed =
-            apply_greenfield_seed(&mut topology, &registry, layout.project_dir(), config.workspace);
-    }
-    Ok(topology)
+    resolve_topology(resolver, &config, paths)
 }
 
 /// The gate-prose leg of the repair-loop check: the answer must carry
@@ -254,7 +224,7 @@ fn discovery_preamble(name: &str, gate: &GateProse) -> String {
 /// native verb).
 fn validate(layout: Layout<'_>) -> Result<(), Error> {
     let plan = Plan::load(&layout.plan_path())?;
-    let findings = author_gate(&plan, &layout.slices_dir(), layout.project_dir())?;
+    let findings = author_gate(&plan, &layout.slices_dir());
     if has_blocking(&findings) {
         return Err(Error::validation_failed(
             "plan-structural-errors",

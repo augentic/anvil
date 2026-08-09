@@ -65,29 +65,13 @@ impl Event {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "event", content = "payload")]
 pub enum EventKind {
-    /// Operator walked one rung backwards on per-entry status via
-    /// `emery plan undo <entry>`. One event per rung
-    /// (`done → in-progress` and `in-progress → pending` each fire
-    /// individually) so the journal records every step the operator
-    /// took and replay traces line up with the forward-direction
-    /// `slice.transition.*` cadence.
-    #[serde(rename = "plan.transition.undone", rename_all = "kebab-case")]
-    PlanTransitionUndone {
-        /// Governing plan.
-        plan_name: PlanName,
-        /// Affected entry.
-        slice_name: SliceName,
-        /// Status the entry held before the undo.
-        from: crate::plan::Status,
-        /// Status the entry holds after the undo.
-        to: crate::plan::Status,
-    },
-    /// `emery plan advance` advanced one entry `pending → in-progress`
-    /// (the sole writer of per-entry `in-progress`). Fires only when
-    /// an entry actually advanced — returning the already-active entry
-    /// or reporting drained/stuck emits nothing, so the *absence* of
-    /// this event over a window is probeable evidence that the execute
-    /// loop parked rather than advancing.
+    /// The execute loop's advance step moved one entry
+    /// `pending → in-progress` (the sole writer of per-entry
+    /// `in-progress`). Fires only when an entry actually advanced —
+    /// returning the already-active entry or reporting drained/stuck
+    /// emits nothing, so the *absence* of this event over a window is
+    /// probeable evidence that the execute loop parked rather than
+    /// advancing.
     #[serde(rename = "plan.entry.advanced", rename_all = "kebab-case")]
     PlanEntryAdvanced {
         /// Governing plan.
@@ -118,7 +102,7 @@ pub enum EventKind {
         to: Divergence,
     },
     /// Slice transitioned to `refined` — synthesis finished and the
-    /// slice is ready for `/emery:build`.
+    /// slice is ready for the build phase.
     #[serde(rename = "slice.transition.refined", rename_all = "kebab-case")]
     SliceTransitionRefined {
         /// Affected slice.
@@ -165,7 +149,7 @@ pub enum EventKind {
         /// `ID:` value on the tagged requirement block.
         requirement_id: String,
     },
-    /// Slice synthesis began — `/emery:refine` started folding the
+    /// Slice synthesis began — the refine phase started folding the
     /// extracted evidence into `proposal.md` / `spec.md` / `design.md`
     /// / `tasks.md` / `model.yaml`. One event per slice. Distinct from the per-requirement
     /// `slice.synthesis.*` tag events above — `synthesize` is the
@@ -206,7 +190,7 @@ pub enum EventKind {
         /// Short human reason / finding code for the failure.
         reason: String,
     },
-    /// `/emery:build` started implementing the slice — the target
+    /// The build phase started implementing the slice — the target
     /// adapter's `build` brief began running against the refined
     /// artifacts. One event per slice.
     #[serde(rename = "slice.build.started", rename_all = "kebab-case")]
@@ -214,15 +198,15 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `/emery:build` finished implementing the slice — the target
+    /// The build phase finished implementing the slice — the target
     /// adapter's `build` brief completed and the slice is ready for
-    /// `/emery:merge`. One event per slice.
+    /// the merge phase. One event per slice.
     #[serde(rename = "slice.build.succeeded", rename_all = "kebab-case")]
     SliceBuildSucceeded {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `/emery:build` stopped before the slice was implemented.
+    /// The build phase stopped before the slice was implemented.
     /// `reason` carries a short human
     /// reason or finding code so the journal records why the build
     /// stalled.
@@ -233,16 +217,16 @@ pub enum EventKind {
         /// Short human reason / finding code for the failure.
         reason: String,
     },
-    /// `emery slice merge` began folding the slice's deltas into the
+    /// The merge phase began folding the slice's deltas into the
     /// baseline. The `slice.merge.*` pair
-    /// fires on the `emery slice merge` validator outcome, not on a
+    /// fires on the merge validator outcome, not on a
     /// merge report. One event per slice.
     #[serde(rename = "slice.merge.started", rename_all = "kebab-case")]
     SliceMergeStarted {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `emery slice merge` validated and applied the slice's deltas
+    /// The merge phase validated and applied the slice's deltas
     /// to the baseline. Fires on the
     /// validator outcome, not on a merge report. One event per slice.
     #[serde(rename = "slice.merge.succeeded", rename_all = "kebab-case")]
@@ -250,7 +234,7 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// `emery slice merge` refused to fold the slice into the
+    /// The merge phase refused to fold the slice into the
     /// baseline. Fires on the validator
     /// outcome, not on a merge report. `reason` carries a short human
     /// reason or finding code so the journal records why the merge
@@ -267,7 +251,7 @@ pub enum EventKind {
     /// merge lands on `.emery/` state only. Explicit
     /// so a journal reader can tell a guest merge (no `merge-sha` on
     /// its `slice.archive.created`) from a native merge that simply ran
-    /// outside a clone. Native `emery slice merge` never emits this.
+    /// outside a clone. A native merge phase never emits this.
     #[serde(rename = "slice.merge.commit-skipped", rename_all = "kebab-case")]
     SliceMergeCommitSkipped {
         /// Affected slice.
@@ -460,19 +444,6 @@ pub enum EventKind {
     SliceReleased {
         /// Released slice.
         slice_name: SliceName,
-    },
-    /// A previously appended fact is treated as absent for projection.
-    /// Identifies the retracted line by its per-writer `(writer,
-    /// sequence)` identity inside the fact union.
-    #[serde(rename = "fact.retracted", rename_all = "kebab-case")]
-    FactRetracted {
-        /// Writer file that holds the retracted line.
-        ///
-        /// Deserialise accepts the prior `actor` wire key.
-        #[serde(alias = "actor")]
-        writer: String,
-        /// 1-based sequence of the retracted line in that writer's file.
-        sequence: u64,
     },
     /// An immutable one-member target wave was written before build
     /// (RFC-86 D9). The manifest lives at

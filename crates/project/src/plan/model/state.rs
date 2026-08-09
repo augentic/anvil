@@ -128,6 +128,15 @@ pub struct Entry {
     /// missing field are equivalent.
     #[serde(default, skip_serializing_if = "AuthorityOverride::is_empty")]
     pub authority_override: AuthorityOverride,
+    /// Authorise a whole-document (`screens:`) slice composition to
+    /// overwrite a non-empty baseline when this entry's merge phase
+    /// commits. Reserved for intentional full-baseline rewrites (e.g. a
+    /// dedicated refactoring slice); routine per-screen edits flow
+    /// through `delta:` and never need it. Set via `emery plan amend
+    /// <entry> --allow-composition-replace`; read by the execute
+    /// loop's merge step. `false` (the default) stays off disk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub allow_composition_replace: bool,
 }
 
 impl Plan {

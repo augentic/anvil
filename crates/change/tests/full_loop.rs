@@ -98,7 +98,7 @@ async fn author_approve_execute_drains() {
     assert!(!plan_yaml.contains("status:"), "plan.yaml has no stored status: {plan_yaml}");
     let plan: change::Plan = serde_saphyr::from_str(&plan_yaml).expect("parse plan.yaml");
     let events =
-        project::plan::collect_events(&plan, project::config::Layout::new(&root)).expect("events");
+        project::plan::collect_events(project::config::Layout::new(&root)).expect("events");
     let ladders = project::plan::project_ladders(&plan, &events);
     assert!(
         ladders.values().all(|status| *status == Status::Done),
@@ -185,6 +185,70 @@ async fn author_approve_execute_drains() {
     session.model().assert_exhausted();
 }
 
+// `plan archive` closes the change: the plan moves into the archive
+// and the change-scoped sweep collects every snapshot object whose GC
+// roots (the archived slice's `base.yaml` pin and build records)
+// belonged to the archived plan (RFC-88 D2).
+#[tokio::test]
+async fn archive_sweeps_change_snapshots() {
+    let session = Session::bare(suite_answers());
+    let root = session.root().to_path_buf();
+
+    scaffold_author(&session).await;
+    let executed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("execute drains the plan");
+    assert_eq!(executed.status, "drained");
+
+    // The drained change left snapshot objects behind (target-base
+    // freeze + captured build result).
+    let objects = root.parent().expect("session home").join("snapshots/objects");
+    assert!(count_files(&objects) > 0, "the loop stored snapshot objects");
+
+    let archived = run::<plan::handlers::Archive, _, _>(
+        session.provider(),
+        plan::handlers::ArchiveInput::default(),
+    )
+    .await
+    .expect("archive moves the plan and sweeps");
+    assert_eq!(archived.plan.name, "demo");
+    assert!(archived.swept_objects > 0, "the sweep collected the change's objects");
+    assert_eq!(
+        count_files(&objects),
+        0,
+        "no snapshot objects survive once the change's pins stop being GC roots"
+    );
+
+    // The archived pins themselves stay on disk for audit — only the
+    // store objects they anchored are collected.
+    let slice_archive = fs::read_dir(root.join(".emery/archive"))
+        .expect("archive dir")
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .find(|path| {
+            path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.ends_with("-greeting"))
+        })
+        .expect("archived greeting slice");
+    assert!(slice_archive.join("base.yaml").is_file());
+}
+
+/// Count regular files anywhere beneath `dir` (absent dir is zero).
+fn count_files(dir: &std::path::Path) -> usize {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return 0;
+    };
+    entries
+        .filter_map(Result::ok)
+        .map(|entry| {
+            let path = entry.path();
+            if path.is_dir() { count_files(&path) } else { usize::from(path.is_file()) }
+        })
+        .sum()
+}
+
 // Execute opens plan.execute.started (never projects `approved` /
 // plan.transition.approved); re-entrant execute on drained is a no-op.
 #[tokio::test]
@@ -266,31 +330,20 @@ async fn preflight_parks_built() {
     );
     assert!(!root.join(".emery/specs/greeting/spec.md").exists());
 
-    // Clear the gate and resume through the breakout merge, then the
-    // loop confirms drained.
+    // Clear the gate and re-run execute: the loop resumes at the merge
+    // phase and drains.
     fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
-    let merged = run::<slice::handlers::MergeRun, _, _>(
-        session.provider(),
-        slice::handlers::MergeRunInput {
-            name: "greeting".to_string(),
-            allow_composition_replace: false,
-            preview: false,
-            conflict_check: false,
-        },
-    )
-    .await
-    .expect("breakout merge resumes");
-    let slice::handlers::MergeRunBody::Merged(merged) = merged else {
-        panic!("default merge mode commits: {merged:?}");
-    };
-    assert_eq!(merged.slice, "greeting");
     let resumed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
     )
     .await
-    .expect("second execute drains");
+    .expect("second execute resumes at merge and drains");
     assert_eq!(resumed.status, "drained");
+    assert_eq!(
+        resumed.phases.iter().map(|phase| phase.step).collect::<Vec<_>>(),
+        [LoopStep::Merge]
+    );
 }
 
 // A failed merge postflight gate is terminal but non-rollback: the
@@ -329,7 +382,7 @@ async fn postflight_terminal() {
     )
     .expect("parse plan.yaml");
     let events =
-        project::plan::collect_events(&plan, project::config::Layout::new(&root)).expect("events");
+        project::plan::collect_events(project::config::Layout::new(&root)).expect("events");
     let ladders = project::plan::project_ladders(&plan, &events);
     assert!(
         ladders.values().all(|status| *status == Status::Done),
@@ -400,18 +453,9 @@ async fn build_parks_then_resumes() {
     .expect_err("first execute parks on the failed build");
     assert!(stopped.to_string().contains("build-failed"), "{stopped}");
 
-    // Clear the failure and resume through the breakout build.
+    // Clear the failure and re-run execute: the loop resumes at the
+    // build phase and drains.
     fs::remove_file(root.join(behaviour::FAIL_BUILD_MARKER)).expect("remove fail marker");
-    let rebuilt = run::<slice::handlers::Build, _, _>(
-        session.provider(),
-        slice::handlers::BuildInput {
-            name: "greeting".to_string(),
-        },
-    )
-    .await
-    .expect("breakout build resumes");
-    assert_eq!(rebuilt.slice, "greeting");
-
     let resumed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
@@ -421,6 +465,6 @@ async fn build_parks_then_resumes() {
     assert_eq!(resumed.status, "drained");
     assert_eq!(
         resumed.phases.iter().map(|phase| phase.step).collect::<Vec<_>>(),
-        [LoopStep::Merge]
+        [LoopStep::Build, LoopStep::Merge]
     );
 }

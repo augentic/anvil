@@ -50,13 +50,13 @@ Without Emery, reasoning lives in the chat and is lost when the session ends. Em
 
 ## Emery and git
 
-Artifacts are regular files — you commit and review them like source code. `/emery:merge` applies spec deltas on disk but does not create git commits. You control when to commit.
+Artifacts are regular files — you commit and review them like source code. The merge phase inside `emery plan execute` applies spec deltas on disk but does not create git commits. You control when to commit.
 
 ## What you interact with
 
-**`/emery:*` skills** — slash-commands in Cursor (`/emery:init`, `/emery:plan`, `/emery:finalize`, and the per-slice breakouts). Each skill elicits arguments, invokes one `emery` verb, and relays its output. The full list lives in the [Quick reference card](../reference/quick-reference.md).
+**`/emery:*` skills** — slash-commands in Cursor (`/emery:init`, `/emery:plan`, `/emery:execute`, `/emery:status`, `/emery:finalize`). Each skill elicits arguments, invokes one `emery` verb, and relays its output. The full list lives in the [Quick reference card](../reference/quick-reference.md).
 
-You can also run one phase by hand (a **breakout**) — `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop` — when execute parks or you want manual control. See [Drive a slice manually](../how-to/drive-slice-manually.md).
+If execute stops, the stop card names the reason and the resume command — fix the input it points at, then re-run `emery plan execute`; the loop resumes at the parked phase.
 
 Behind the skills, the `emery` CLI owns lifecycle, validation, synthesis, and target build. Target adapters own domain-specific generation.
 

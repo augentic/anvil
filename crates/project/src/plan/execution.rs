@@ -2,10 +2,10 @@
 //! folded journal facts become the next step (refine/build/merge/stop).
 //! Shared by `plan status` and the execute loop; nothing is persisted.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::hash::BuildHasher;
 use std::ops::ControlFlow;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use error::Error;
 
@@ -91,22 +91,13 @@ impl Resolution {
 }
 
 /// Load the fact union for status projection: the plan root's
-/// per-writer logs plus each distinct materialised workspace-slot
-/// journal (phase work for a project-bound entry writes there).
+/// per-writer logs.
 ///
 /// # Errors
 ///
-/// Propagates journal I/O failures from any root.
-pub fn collect_events(plan: &Plan, layout: Layout<'_>) -> Result<Vec<Event>, Error> {
-    let mut roots = BTreeSet::new();
-    roots.insert(layout.project_dir().to_path_buf());
-    for entry in &plan.entries {
-        roots.insert(resolve_work_root(layout, entry));
-    }
-    let mut events = Vec::new();
-    for root in &roots {
-        events.extend(journal::read_union(Layout::new(root))?);
-    }
+/// Propagates journal I/O failures.
+pub fn collect_events(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
+    let mut events = journal::read_union(layout)?;
     events.sort_by(|left, right| {
         (left.timestamp, left.writer.as_str(), left.sequence).cmp(&(
             right.timestamp,
@@ -119,20 +110,15 @@ pub fn collect_events(plan: &Plan, layout: Layout<'_>) -> Result<Vec<Event>, Err
 
 /// Project per-entry ladder labels from the fact union (RFC-86 D2).
 ///
-/// `done` comes from archive /
-/// postflight-failed facts (and undo walks them back by retracting);
+/// `done` comes from archive / postflight-failed facts;
 /// `in-progress` comes from advance / a live claim; everything else is
-/// `pending`. Retracted facts (`fact.retracted`) are omitted.
+/// `pending`.
 #[must_use]
 pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Status> {
     let ownership = claim::project(events);
-    let retracted = claim::retracted_targets(events);
     let mut ladders: HashMap<SliceName, Status> =
         plan.entries.iter().map(|e| (e.name.clone(), Status::Pending)).collect();
     for event in events {
-        if retracted.contains(&(event.writer.as_str(), event.sequence)) {
-            continue;
-        }
         match &event.kind {
             EventKind::PlanEntryAdvanced {
                 plan_name,
@@ -140,16 +126,6 @@ pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Stat
             } if plan_name == &plan.name => {
                 if ladders.contains_key(slice_name) {
                     ladders.insert(slice_name.clone(), Status::InProgress);
-                }
-            }
-            EventKind::PlanTransitionUndone {
-                plan_name,
-                slice_name,
-                to,
-                ..
-            } if plan_name == &plan.name => {
-                if ladders.contains_key(slice_name) {
-                    ladders.insert(slice_name.clone(), *to);
                 }
             }
             EventKind::SliceArchiveCreated { slice_name, .. }
@@ -190,9 +166,7 @@ pub fn next_eligible<'a, S: BuildHasher>(
 pub(super) fn resolve_entry(
     plan: &Plan, entry: &Entry, layout: Layout<'_>, overlay: JournalOverlay, events: &[Event],
 ) -> Result<Resolution, Error> {
-    let work_root = resolve_work_root(layout, entry);
-    let work_layout = Layout::new(&work_root);
-    let slice_dir = work_layout.slice_dir(entry.name.as_str());
+    let slice_dir = layout.slice_dir(entry.name.as_str());
 
     if is_dropped(&slice_dir)? {
         return Ok(Resolution::stop_for(StopReason::SliceDropped, None, entry, None));
@@ -242,21 +216,6 @@ pub(super) fn resolve_entry(
     }
 
     Ok(Resolution::phase(awaited, entry, last_completed))
-}
-
-/// Work root for an entry: the materialised workspace slot
-/// (`<plan-root>/workspace/<project>/`) when the entry is
-/// project-bound and the slot exists, else the project root. Mirrors
-/// the workspace routing under which phase work wrote the slice tree
-/// and journal.
-pub fn resolve_work_root(layout: Layout<'_>, entry: &Entry) -> PathBuf {
-    if let Some(project) = &entry.project {
-        let slot = layout.project_dir().join("workspace").join(project);
-        if slot.is_dir() {
-            return slot;
-        }
-    }
-    layout.project_dir().to_path_buf()
 }
 
 /// Highest completed phase projected from slice artifacts (and, when
@@ -330,25 +289,16 @@ struct WindowFacts {
 }
 
 /// Backward-fold `events` (newest-first walk over a chronologically
-/// ordered union) over this entry's active window: events newer than the
-/// entry's most recent `plan.entry.advanced` / `plan.transition.undone`.
+/// ordered union) over this entry's active window: events newer than
+/// the entry's most recent `plan.entry.advanced`.
 fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName) -> WindowFacts {
-    let retracted = claim::retracted_targets(events);
     let mut facts = WindowFacts::default();
     let mut terminal_seen = false;
     for event in events.iter().rev() {
-        if retracted.contains(&(event.writer.as_str(), event.sequence)) {
-            continue;
-        }
         match &event.kind {
             EventKind::PlanEntryAdvanced {
                 plan_name: p,
                 slice_name: s,
-            }
-            | EventKind::PlanTransitionUndone {
-                plan_name: p,
-                slice_name: s,
-                ..
             } if p == plan_name && s == slice => break,
             EventKind::SliceClaimed { slice_name: s } if s == slice => break,
             EventKind::SliceMergeSucceeded { slice_name: s } if s == slice => {

@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::super::model::{Disagreement, Divergence};
-use crate::registry::topology::{Decision, Surface};
+use crate::identity::{Decision, Surface};
 
 /// Reconciliation envelope kind.
 ///
@@ -56,7 +56,7 @@ pub struct ProjectRef {
     /// `plan.yaml.slices[].project`.
     pub name: String,
     /// The project's target adapter ref in the
-    /// `registry::topology::target_ref` grammar: `name@vN` for a
+    /// `identity::target_ref` grammar: `name@vN` for a
     /// pinned identity (e.g. `omnia@1.0.0`), bare `name` for an
     /// unpinned cache resolve. Resolved on demand by
     /// [`super::resolve_target`] for a slice bound to this project; it

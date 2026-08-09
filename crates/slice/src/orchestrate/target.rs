@@ -122,7 +122,7 @@ async fn in_workspace(
         code: "slice-base-missing",
         detail: format!(
             "slice `{slice}` has no readable base.yaml target-base pin; re-run \
-             `emery slice refine {slice}` before building ({err})"
+             `emery plan execute` so the refine phase records it before building ({err})"
         ),
     })?;
     let base = pins.target_base;

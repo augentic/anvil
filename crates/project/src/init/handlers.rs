@@ -29,9 +29,6 @@ pub struct InitInput {
     /// Project description.
     #[serde(default)]
     pub description: Option<String>,
-    /// Scaffold a registry-only workspace.
-    #[serde(default)]
-    pub workspace: bool,
     /// Raw `--platforms` CSV.
     #[serde(default)]
     pub platforms: Option<String>,
@@ -57,7 +54,6 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
             adapter,
             name,
             description,
-            workspace,
             platforms,
             upgrade,
         } = input;
@@ -70,19 +66,12 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
             return Ok(InitBody::reentry(project_dir, paths)?);
         }
 
-        if !upgrade && workspace && adapter.is_some() {
-            return Err(Error::Diag {
-                code: "init-requires-adapter-or-workspace",
-                detail: "pass <adapter> or --workspace".to_string(),
-            }
-            .into());
-        }
-        if adapter.is_none() && !workspace && !upgrade {
+        if adapter.is_none() && !upgrade {
             return Err(Error::validation_failed(
                 "init-adapter-required",
                 "emery init requires an adapter",
                 "pass `<adapter>` (first-party shorthand, package reference, or local component \
-                 path), or `--workspace` for a registry-only workspace",
+                 path)",
             )
             .into());
         }
@@ -111,7 +100,6 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
             adapter: ensured.as_ref(),
             name: name.as_deref(),
             description: description.as_deref(),
-            workspace,
             platforms: parsed_platforms.as_deref(),
             upgrade,
         };
@@ -166,11 +154,11 @@ pub struct InitBody {
     pub mode: InitMode,
     /// Canonical path of the written `project.yaml`.
     pub config_path: PathBuf,
-    /// Resolved adapter name (or `"workspace"` for workspace init).
+    /// Resolved adapter name.
     pub adapter_name: String,
     /// The binding value recorded on `project.yaml.adapter` — the
-    /// selector as typed (a bare name stays bare). Absent for
-    /// workspace init and the no-op re-entry.
+    /// selector as typed (a bare name stays bare). Absent for the
+    /// no-op re-entry.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub adapter_binding: Option<String>,
     /// Whether the project component cache tenant already existed.
@@ -186,8 +174,8 @@ pub struct InitBody {
     pub context_generated: bool,
     /// `true` when context generation was skipped.
     pub context_skipped: bool,
-    /// Why context generation was skipped (`existing-agents-md` /
-    /// `workspace-clone`); absent when it ran.
+    /// Why context generation was skipped (`existing-agents-md`);
+    /// absent when it ran.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_skip_reason: Option<&'static str>,
 }
@@ -212,15 +200,11 @@ impl InitBody {
     /// The no-op re-entry body, read from the existing `project.yaml`.
     fn reentry(project_dir: &Path, paths: &ExecutionPaths) -> Result<Self, Error> {
         let cfg = ProjectConfig::load(project_dir)?;
-        let adapter_name = if cfg.workspace {
-            "workspace".to_string()
-        } else {
-            cfg.adapter.as_deref().map_or_else(String::new, recorded_name)
-        };
+        let adapter_name = cfg.adapter.as_deref().map_or_else(String::new, recorded_name);
         Ok(Self {
             mode: InitMode::AlreadyInitialized,
             config_path: canonical(&Layout::new(project_dir).config_path()),
-            cache_present: !cfg.workspace && ComponentMeta::path(paths, &adapter_name).exists(),
+            cache_present: ComponentMeta::path(paths, &adapter_name).exists(),
             adapter_name,
             adapter_binding: None,
             directories_created: Vec::new(),
@@ -247,9 +231,6 @@ impl Render for InitBody {
             }
             InitMode::Upgraded => {
                 writeln!(w, "Upgraded .emery/")?;
-            }
-            InitMode::Scaffolded if self.adapter_name == "workspace" => {
-                writeln!(w, "Scaffolded .emery/ as a registry-only workspace")?;
             }
             InitMode::Scaffolded => {
                 writeln!(w, "Scaffolded .emery/")?;

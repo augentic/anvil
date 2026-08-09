@@ -1,7 +1,7 @@
 //! RFC-86 Acceptance #5–6 / D12 / D14 — shift-left preferred path and
 //! `refine-under-epoch` execute path.
 //!
-//! Preferred: author (topology only) → `slice refine` → gaps → execute
+//! Preferred: author (topology only) → refine phase → gaps → execute
 //! (build/merge only, coverage `existing`). Under-epoch: execute opens
 //! with `refine-under-epoch`, refines, gap-gates, then builds.
 
@@ -65,8 +65,9 @@ async fn author(session: &Session) -> plan::handlers::AuthorBody {
     .expect("author")
 }
 
-/// Acceptance #5 preferred path: author does not refine; specs via
-/// `slice refine`; execute with existing digests runs build/merge only.
+/// Acceptance #5 preferred path: author does not refine; specs via a
+/// prior refine phase; execute with existing digests runs build/merge
+/// only.
 #[tokio::test]
 async fn shift_left_refine_then_execute_build_merge() {
     let session = Session::bare(suite_answers());
@@ -95,16 +96,9 @@ async fn shift_left_refine_then_execute_build_merge() {
         "author must not refine: {journal}"
     );
 
-    run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "greeting".to_string(),
-        },
-    )
-    .await
-    .expect("slice refine mints specs");
+    support::refine(&session, "greeting").await.expect("refine phase mints specs");
 
-    assert!(slice_dir.join("model.yaml").is_file(), "specs via slice refine");
+    assert!(slice_dir.join("model.yaml").is_file(), "specs via the refine phase");
     assert!(slice_dir.join("base.yaml").is_file(), "pins at refine");
 
     let gaps = run::<plan::handlers::Gaps, _, _>(session.provider(), plan::handlers::GapsInput {})

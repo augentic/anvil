@@ -23,6 +23,7 @@ fn entry(name: &str, sources: Vec<SliceSourceBinding>) -> Entry {
         divergence: None,
         disagreements: Vec::new(),
         authority_override: project::plan::AuthorityOverride::default(),
+        allow_composition_replace: false,
     }
 }
 

@@ -60,14 +60,14 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 31);
+    assert_eq!(http_types.len(), 23);
 }
 
 #[tokio::test]
 async fn globals_and_completions() {
     let router = command_router(".");
 
-    let help = router.execute(["emery", "slice", "merge", "--help"]).await;
+    let help = router.execute(["emery", "plan", "amend", "--help"]).await;
     assert_eq!(help.exit, 0);
     assert!(String::from_utf8_lossy(&help.stdout).contains("--allow-composition-replace"));
 
@@ -79,7 +79,7 @@ async fn globals_and_completions() {
     assert!(completion_help.contains("Pipe into your shell's completion directory"));
     assert!(completion_help.contains("output tracks the live clap surface"));
 
-    let invalid = router.execute(["emery", "--format", "json", "plan", "undo"]).await;
+    let invalid = router.execute(["emery", "--format", "json", "plan", "drop"]).await;
     assert_eq!(invalid.exit, 2);
 }
 
@@ -114,9 +114,22 @@ async fn detailed_help() {
         &["emery", "workspace", "prepare"][..],
         &["emery", "workspace", "push"][..],
         &["emery", "workspace", "sync"][..],
-        // RFC-86 D14 / D6 — never shipped; shift-left uses `slice refine`.
+        // RFC-88 D4 — the registry/workspace topology feature is removed.
+        &["emery", "registry", "add"][..],
+        &["emery", "registry", "validate"][..],
+        &["emery", "registry", "remove"][..],
+        &["emery", "init", "--workspace"][..],
+        // RFC-86 D14 / D6 — never shipped.
         &["emery", "plan", "approve"][..],
         &["emery", "plan", "refine"][..],
+        // Plan-centric surface cut — the slice-loop breakout verbs and
+        // plan advance/undo are gone; `plan execute` owns the phases.
+        &["emery", "slice", "refine"][..],
+        &["emery", "slice", "build"][..],
+        &["emery", "slice", "merge"][..],
+        &["emery", "slice", "drop"][..],
+        &["emery", "plan", "advance"][..],
+        &["emery", "plan", "undo"][..],
     ] {
         assert_eq!(router.execute(removed.iter().copied()).await.exit, 2, "{removed:?}");
     }
@@ -125,13 +138,15 @@ async fn detailed_help() {
     assert_eq!(plan_help.exit, 0);
     let plan_help = String::from_utf8_lossy(&plan_help.stdout);
     assert!(!plan_help.contains("approve"), "no plan approve subcommand: {plan_help}");
-    // `refine` must not appear as a plan subcommand (slice refine is fine elsewhere).
     assert!(
         !plan_help.lines().any(|line| {
             let trimmed = line.trim_start();
-            trimmed.starts_with("approve") || trimmed.starts_with("refine")
+            trimmed.starts_with("approve")
+                || trimmed.starts_with("refine")
+                || trimmed.starts_with("advance")
+                || trimmed.starts_with("undo")
         }),
-        "plan help must not list approve/refine: {plan_help}"
+        "plan help must not list approve/refine/advance/undo: {plan_help}"
     );
 }
 
@@ -150,14 +165,14 @@ async fn version_is_the_host_semver() {
 #[tokio::test]
 async fn argv_zero_replaced() {
     let router = command_router(".");
-    let expected = router.execute(["emery", "plan", "undo"]).await;
-    let forwarded = router.execute(["emery:engine@0.1.0", "plan", "undo"]).await;
+    let expected = router.execute(["emery", "plan", "drop"]).await;
+    let forwarded = router.execute(["emery:engine@0.1.0", "plan", "drop"]).await;
 
     assert_eq!(expected.exit, 2);
     assert_eq!(forwarded.exit, expected.exit);
     assert_eq!(forwarded.stderr, expected.stderr);
     let stderr = String::from_utf8_lossy(&forwarded.stderr);
-    assert!(stderr.contains("Usage: emery plan undo"));
+    assert!(stderr.contains("Usage: emery plan drop"));
     assert!(!stderr.contains("emery:engine@0.1.0"));
 }
 
@@ -209,19 +224,19 @@ const fn cases() -> [Case; 9] {
         },
         Case {
             name: "text",
-            argv: &["emery", "registry", "validate"],
+            argv: &["emery", "journal", "show"],
             fixture: Fixture::Project,
             exit: 0,
-            stdout: "no registry declared at registry.yaml",
+            stdout: "no events",
             stderr: "",
             json_channels: false,
         },
         Case {
             name: "json",
-            argv: &["emery", "--format", "json", "registry", "validate"],
+            argv: &["emery", "--format", "json", "journal", "show"],
             fixture: Fixture::Project,
             exit: 0,
-            stdout: "\"registry\": null",
+            stdout: "\"count\": 0",
             stderr: "",
             json_channels: true,
         },
@@ -236,11 +251,11 @@ const fn cases() -> [Case; 9] {
         },
         Case {
             name: "usage",
-            argv: &["emery", "plan", "undo"],
+            argv: &["emery", "plan", "drop"],
             fixture: Fixture::Project,
             exit: 2,
             stdout: "",
-            stderr: "Usage: emery plan undo",
+            stderr: "Usage: emery plan drop",
             json_channels: false,
         },
         Case {
@@ -254,7 +269,7 @@ const fn cases() -> [Case; 9] {
         },
         Case {
             name: "version floor",
-            argv: &["emery", "--format", "json", "registry", "validate"],
+            argv: &["emery", "--format", "json", "journal", "show"],
             fixture: Fixture::TooNew,
             exit: 3,
             stdout: "",

@@ -6,9 +6,9 @@
 
 For what a target adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [Anatomy of an adapter](../../explanation/adapter-anatomy.md). The contract facts — three operations:
 
-- `guidance` — idiom guidance consumed by core synthesis. Read into context when `/emery:refine` writes `spec.md` / `design.md`. Empty `guidance` is valid.
-- `build` — implementation drive: consume **only** the build request's `inputs` manifest (rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. Driven by `emery slice build` — see [`emery slice build`](../cli/slice.md#emery-slice-build).
-- `merge` — landing gate: requires lifecycle `built`, re-runs the target's validators, surfaces conflicts, and drives verification commands. v1 adds **no** merge report — `emery slice merge` is the writer and `slice.merge.*` events fire on its validator outcome.
+- `guidance` — idiom guidance consumed by core synthesis. Read into context when the refine phase writes `spec.md` / `design.md`. Empty `guidance` is valid.
+- `build` — implementation drive: consume **only** the build request's `inputs` manifest (rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. Driven by the build phase of `emery plan execute` — see [`emery plan execute`](../cli/plan.md#emery-plan-execute).
+- `merge` — landing gate: requires lifecycle `built`, re-runs the target's validators, surfaces conflicts, and drives verification commands. v1 adds **no** merge report — the merge phase is the writer and `slice.merge.*` events fire on its validator outcome.
 
 Target adapters do not own `spec.md` or `design.md` synthesis — that is **core**'s responsibility. The plan-level `Slice.target` field selects the target; v1 supports one target per project.
 
@@ -19,7 +19,7 @@ There is no manifest file. Identity is the guest crate's `(name, version)` — t
 | Field           | Required | Meaning |
 | --------------- | -------- | ------- |
 | `emery-floor` | no       | Exact-semver minimum host-CLI version; resolve aborts with `adapter-cli-too-old` (exit 3) when the running binary is older. |
-| `inputs`        | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts `emery slice build` with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
+| `inputs`        | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts the build phase with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
 | `platforms`     | no       | `{ required, allowed, default }` platforms capability; see the [Adapter contract](../adapter-contract.md#identity-and-metadata). |
 
 Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration or host-dispatched helper.
@@ -27,9 +27,9 @@ Deterministic helper behaviour is in-guest library code compiled into the adapte
 ## How a target adapter participates in the loop
 
 ```text
-/emery:refine  →  reads target.guidance   (idiom guidance for synthesis)
-/emery:build   →  drives target.build     (code generation)
-/emery:merge   →  drives target.merge     (validates and lands the slice)
+refine phase   →  reads target.guidance   (idiom guidance for synthesis)
+build phase    →  drives target.build     (code generation)
+merge phase    →  drives target.merge     (validates and lands the slice)
 ```
 
 Core synthesis writes the canonical artifacts (`proposal.md` / `spec.md` / `design.md` / `tasks.md`) in a fixed substep order regardless of target. The `guidance` prompt is read into context as idiom guidance but never replaces synthesis output. The operation set is not declared anywhere on the wire — it derives from the closed WIT contract (`wit/emery.wit`).
@@ -64,5 +64,4 @@ The metadata shape is the WIT `metadata` record on the `target` interface (`wit/
 ## See also
 
 - [Adapter contract](../adapter-contract.md) — full source/target contract.
-- [Registry](../registry.md) — workspace topology that routes slices to target projects.
 - Per-target reference: [Omnia](omnia.md), [Vectis](vectis.md), [Contracts](contracts.md).

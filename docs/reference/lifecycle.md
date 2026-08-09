@@ -19,9 +19,9 @@ The plan itself carries no stored lifecycle and no projected `approved` rung. Th
 
 Each row under `plan.yaml.slices[]` projects a ladder label:
 
-- `pending` — default before claim / advance facts.
-- `in-progress` — projected from `plan.entry.advanced` / a live `slice.claimed` (written by `emery plan advance`). Different slices may be in flight at once; a second journal writer claiming the same slice fails with `slice-claim-conflict`.
-- `done` — projected from `slice.archive.created` / wave-commit facts (written by `emery slice merge`).
+- `pending` — default before claim facts.
+- `in-progress` — projected from `plan.entry.advanced` / a live `slice.claimed` (written by the execute loop's claim step). Different slices may be in flight at once; a second journal writer claiming the same slice fails with `slice-claim-conflict`.
+- `done` — projected from `slice.archive.created` / wave-commit facts (written by the execute loop's merge phase).
 - Build failures and merge conflicts leave the active entry projecting `in-progress` — there is no per-entry `failed`, `blocked`, or `skipped` state in v1.
 
 A plan is **drained** when no in-scope entry projects `pending` or `in-progress`; `/emery:finalize` becomes legal at that point.
@@ -32,24 +32,26 @@ Each slice's phase timestamps and artifacts project an independent lifecycle:
 
 | State      | Meaning                                                                 | Next states                  |
 | ---------- | ----------------------------------------------------------------------- | ---------------------------- |
-| `refining` | Slice directory created; `/emery:refine` in-flight (extract + synthesize) | `refined`, `dropped`         |
+| `refining` | Slice directory created; the refine phase in-flight (extract + synthesize) | `refined`, `dropped`         |
 | `refined`  | Canonical artifacts present and validated; `base.yaml` pins recorded    | `built`, `dropped`           |
 | `built`    | Fact-substrate build record + wave facts; ready for merge               | `merged`, `dropped`          |
 | `merged`   | Wave committed; specs applied to baseline; slice archived               | (terminal)                   |
 | `dropped`  | Slice discarded; archived without merging                               | (terminal)                   |
 
-`refining` is the transient state used while `/emery:refine` runs. If extract fails for any bound source, the slice stays projecting `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still projects `refined`. Open gaps block **build** under execute (or require an explicit `--waive` for `[unknown]`).
+`refining` is the transient state used while the refine phase runs. If extract fails for any bound source, the slice stays projecting `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding, then re-runs `emery plan execute`. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still projects `refined`. Open gaps block **build** under execute (or require an explicit `--waive` for `[unknown]`).
 
 ## Transitions
 
+Every transition happens inside `emery plan execute` except the drop:
+
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
-| `emery plan advance` claims next eligible row     | per-entry: `pending → in-progress` | `emery plan advance` (claim facts)               |
-| `/emery:refine` creates slice                      | slice: (none) → `refining`         | the `emery slice refine` orchestration          |
-| `/emery:refine` completes synthesis                | slice: `refining → refined`        | the `emery slice refine` orchestration          |
-| `/emery:build` completes                           | slice: `refined → built`           | the `emery slice build` orchestration           |
-| `/emery:merge` succeeds                            | slice: `built → merged`; per-entry: `in-progress → done` | `emery slice merge` (wave-commit + archive facts) |
-| `/emery:drop` invoked                              | slice: `* → dropped`               | `emery slice drop <name> --reason "..."`       |
+| The execute loop claims the next eligible row     | per-entry: `pending → in-progress` | the loop's claim step (claim facts)              |
+| The refine phase creates the slice                 | slice: (none) → `refining`         | the refine orchestration                         |
+| The refine phase completes synthesis               | slice: `refining → refined`        | the refine orchestration                         |
+| The build phase completes                          | slice: `refined → built`           | the build orchestration                          |
+| The merge phase succeeds                           | slice: `built → merged`; per-entry: `in-progress → done` | the merge orchestration (wave-commit + archive facts) |
+| `emery plan drop` invoked                          | slice: `* → dropped`               | `emery plan drop <name> --reason "..."`        |
 
 ## `metadata.yaml`
 

@@ -19,7 +19,6 @@ pub mod remove;
 pub mod scaffold;
 pub mod scope;
 pub mod status;
-pub mod undo;
 pub mod validate;
 
 pub use advance::{AdvanceBody, AdvanceReason, advance_next};
@@ -33,8 +32,8 @@ pub use model::{
 };
 pub use pins::{close as close_source_pins, dir_cid, empty_cid, file_cid, source_cid, value_cid};
 pub use propose::{
-    GateProse, ProjectRef, ProposalRequest, ProposalResponse, apply_greenfield_seed, build_request,
-    resolve_target, resolve_topology,
+    GateProse, ProjectRef, ProposalRequest, ProposalResponse, build_request, resolve_target,
+    resolve_topology,
 };
 pub use scaffold::scaffold;
 pub use scope::in_scope;
@@ -42,5 +41,4 @@ pub use status::{
     LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,
     plan_status_body,
 };
-pub use undo::{UndoStep, undo_entry};
 pub use validate::{finding, orphan_authority_override_keys, reject_duplicate_source_keys};

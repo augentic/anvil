@@ -131,5 +131,5 @@ Binaries not listed here assert structurally and carry no regenerable goldens.
 
 ## Test-side gotchas
 
-- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration verbs (`emery slice refine` / `build` / `merge` / `drop`) or `emery plan undo` when a test needs a stamped phase outcome.
+- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration phases (`slice::orchestrate::{refine, build, merge}` or the execute loop) when a test needs a stamped phase outcome.
 - The live test retains its temporary project tree on failure and prints the path at start — inspect it rather than re-running blind.

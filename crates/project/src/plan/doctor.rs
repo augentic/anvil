@@ -1,18 +1,15 @@
 //! Health diagnostics layered on top of `Plan::validate`:
-//! `cycle-in-depends-on`, `orphan-source`, and
-//! `stale-workspace-clone`. Surfaced through `emery plan validate`.
+//! `cycle-in-depends-on` and `orphan-source`. Surfaced through
+//! `emery plan validate`.
 
 use std::path::Path;
 
 use diagnostics::Diagnostic;
-use serde::{Deserialize, Serialize};
 
 use super::Plan;
-use crate::registry::Registry;
 
 mod cycle;
 mod orphan_source;
-mod stale_clone;
 
 pub use cycle::detect;
 
@@ -21,61 +18,19 @@ pub const CYCLE: &str = "cycle-in-depends-on";
 /// Stable code for the orphan-source diagnostic — top-level
 /// `sources:` key declared but unreferenced by any entry.
 pub const ORPHAN_SOURCE: &str = "orphan-source";
-/// Stable code for the stale-workspace-clone diagnostic. See
-/// [`StaleReason`] for the two ways a clone is classified stale.
-pub const STALE_CLONE: &str = "stale-workspace-clone";
-
-/// Why a workspace clone is classified stale by [`STALE_CLONE`].
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, strum::Display,
-)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum StaleReason {
-    /// A remote-backed clone's `origin` differs from the registry URL.
-    SignatureChanged,
-    /// Slot materialisation does not match the registry URL class or target.
-    SlotMismatch,
-}
-
-/// Snapshot of the registry or slot signature for staleness comparison.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct CloneSignature {
-    /// Materialisation kind (`git-clone`, `symlink`, or `other`).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub slot_kind: Option<String>,
-    /// Repo URL — registry's `url` for the expected signature; git
-    /// `origin` for observed remote-backed slots.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
-    /// Adapter identifier from the registry's `adapter` field.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub adapter: Option<String>,
-    /// Canonical filesystem target for symlink-backed slots.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub target: Option<String>,
-}
 
 /// Run every `Plan::validate` check, then layer doctor-only
 /// diagnostics on top.
 ///
-/// `slices_dir` and `registry` forward to `Plan::validate` so those
-/// findings stay bit-identical to `emery plan validate`; `project_dir`
-/// feeds the stale-workspace-clone check (`None` skips it). Order is
-/// stable: validate findings, then cycles, orphan sources, and stale
-/// workspace clones.
+/// `slices_dir` forwards to `Plan::validate` so those findings stay
+/// bit-identical to `emery plan validate`. Order is stable: validate
+/// findings, then cycles and orphan sources.
 #[must_use]
-pub fn doctor(
-    plan: &Plan, slices_dir: Option<&Path>, registry: Option<&Registry>, project_dir: Option<&Path>,
-) -> Vec<Diagnostic> {
-    let mut out: Vec<Diagnostic> = plan.validate(slices_dir, registry);
+pub fn doctor(plan: &Plan, slices_dir: Option<&Path>) -> Vec<Diagnostic> {
+    let mut out: Vec<Diagnostic> = plan.validate(slices_dir);
 
     out.extend(detect(&plan.entries));
     out.extend(orphan_source::detect(plan));
-    if let (Some(reg), Some(dir)) = (registry, project_dir) {
-        out.extend(stale_clone::detect(reg, dir));
-    }
 
     out
 }
@@ -83,14 +38,13 @@ pub fn doctor(
 /// Advance-time gate subset: the structural `Plan::validate` findings
 /// plus dependency cycles.
 ///
-/// This is what `plan advance` (and the execute loop's per-phase
-/// advance) must be clean of before advancing an entry. Deliberately
-/// registry-free: advancing works in registry-less projects and the
-/// gate itself must stay read-only. Cycle findings always block, so
-/// callers gate on `has_blocking` over the returned set.
+/// This is what the execute loop's per-phase advance must be clean of
+/// before advancing an entry. The gate itself stays read-only. Cycle
+/// findings always block, so callers gate on `has_blocking` over the
+/// returned set.
 #[must_use]
 pub fn advance_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
-    let mut out = plan.validate(Some(slices_dir), None);
+    let mut out = plan.validate(Some(slices_dir));
     out.extend(detect(&plan.entries));
     out
 }
@@ -99,54 +53,14 @@ pub fn advance_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
 /// written plan.
 ///
 /// The post-write check the guest `plan author` orchestration runs
-/// before exiting. Identical to the `plan validate`
-/// findings minus the verb-only registry-shape and topology-cache
-/// staleness surfaces (which need the verb's provider).
-///
-/// # Errors
-///
-/// Propagates the [`Registry`] load failure — an unreadable registry
-/// aborts authoring rather than silently skipping the cross-registry
-/// checks.
-pub fn author_gate(
-    plan: &Plan, slices_dir: &Path, project_dir: &Path,
-) -> error::Result<Vec<Diagnostic>> {
-    let registry = Registry::load(project_dir)?;
-    Ok(doctor(plan, Some(slices_dir), registry.as_ref(), Some(project_dir)))
+/// before exiting. Identical to the `plan validate` findings.
+#[must_use]
+pub fn author_gate(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
+    doctor(plan, Some(slices_dir))
 }
 
-/// The complete `plan validate` report: the [`doctor`] sweep plus the
-/// verb-only surfaces.
-///
-/// The verb-only surfaces are the `registry-shape` finding when the
-/// registry fails to load, and the workspace topology-cache staleness
-/// findings when it loads. Finding order is stable: doctor findings
-/// first, then `registry-shape`, then staleness.
-pub fn full_report(
-    resolver: &impl crate::adapter::Resolver, plan: &Plan, paths: &crate::handler::ExecutionPaths,
-) -> Vec<Diagnostic> {
-    use diagnostics::Severity;
-
-    use crate::plan::validate::finding;
-
-    let layout = crate::config::Layout::new(paths.project_root());
-    let project_dir = layout.project_dir();
-    let (registry, registry_err) = match Registry::load(project_dir) {
-        Ok(reg) => (reg, None),
-        Err(err) => (None, Some(err)),
-    };
-    let mut results =
-        doctor(plan, Some(&layout.slices_dir()), registry.as_ref(), Some(project_dir));
-    if let Some(err) = registry_err {
-        results.push(finding("registry-shape", Severity::Important, err.to_string(), None));
-    }
-    if let Some(reg) = &registry {
-        results.extend(crate::registry::cache_staleness(
-            resolver,
-            reg,
-            paths,
-            &layout.topology_lock_path(),
-        ));
-    }
-    results
+/// The complete `plan validate` report — the [`doctor`] sweep.
+#[must_use]
+pub fn full_report(plan: &Plan, slices_dir: &Path) -> Vec<Diagnostic> {
+    doctor(plan, Some(slices_dir))
 }

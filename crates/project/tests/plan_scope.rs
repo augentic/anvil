@@ -23,6 +23,7 @@ fn entry(name: &str) -> Entry {
         divergence: None,
         disagreements: Vec::new(),
         authority_override: project::plan::AuthorityOverride::default(),
+        allow_composition_replace: false,
     }
 }
 
@@ -83,7 +84,7 @@ fn seed_in_progress(root: &std::path::Path, plan_name: &str, slice: &str, second
 #[test]
 fn multiple_in_progress_is_not_a_validate_finding() {
     let plan = plan(vec![entry("a"), entry("b")]);
-    let findings = project::plan::doctor::doctor(&plan, None, None, None);
+    let findings = project::plan::doctor::doctor(&plan, None);
     assert!(
         findings.iter().all(|f| f.rule_id.as_deref() != Some("multiple-in-progress")),
         "plan-wide single-active-entry is retired; got {findings:?}"
@@ -127,8 +128,7 @@ fn advance_starts_second_entry_while_another_is_in_progress() {
     let loaded = Plan::load(&Layout::new(session.root()).plan_path()).expect("reload plan");
     let yaml = std::fs::read_to_string(session.root().join("plan.yaml")).expect("plan.yaml");
     assert!(!yaml.contains("status:"), "plan.yaml must not carry a stored status field: {yaml}");
-    let events =
-        project::plan::collect_events(&loaded, Layout::new(session.root())).expect("events");
+    let events = project::plan::collect_events(Layout::new(session.root())).expect("events");
     let ladders = project_ladders(&loaded, &events);
     let a: project::name::SliceName = "a".into();
     let b: project::name::SliceName = "b".into();

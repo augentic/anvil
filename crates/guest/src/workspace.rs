@@ -65,6 +65,15 @@ impl Objects for BlobObjects {
     async fn has(&self, digest: &str) -> bool {
         BlobStore::has(self, CONTAINER, &object_name(digest)).await.unwrap_or(false)
     }
+
+    async fn delete(&self, digest: &str) -> Result<(), Error> {
+        let name = object_name(digest);
+        // Idempotent: an absent object is already deleted.
+        if !BlobStore::has(self, CONTAINER, &name).await.unwrap_or(false) {
+            return Ok(());
+        }
+        BlobStore::delete(self, CONTAINER, &name).await.map_err(store_error)
+    }
 }
 
 /// [`ExecBits`] over the deployment's `emery:exec-bits` import —

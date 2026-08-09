@@ -17,41 +17,38 @@ Layer 0 is the static project configuration plus the adapter components every hi
 
 The configuration surfaces:
 
-- **`.emery/project.yaml`** — per-project manifest: `target:` (or `workspace: true` for a registry-only workspace), `emery-version`, `sources:` list of available adapters.
+- **`.emery/project.yaml`** — per-project manifest: `target:`, `emery-version`, `sources:` list of available adapters.
 - **Adapter components** — each source / target adapter is a single WebAssembly component whose metadata is its own `metadata` export (no manifest file; operations derive from the WIT contract per axis).
 - **Typed wire shapes** — the authoritative Evidence, lead, proposal, and `plan.yaml` shapes are the Rust serde types compiled into the `emery` binary (`artifacts::evidence`, `artifacts::discovery`, `project::plan`); the judgment-answer schemas the model host consumes are generated from those types by `project::answers` / `slice::answers`.
 - **`AGENTS.md` Emery-owned block** — generated guidance the framework owns inside an otherwise operator-owned file.
 
 The CLI verbs that read or change Layer 0 state:
 
-- **`emery init <target>`** / **`emery init --workspace`** — one-time scaffold of `.emery/`, writes `project.yaml`.
+- **`emery init <target>`** — one-time scaffold of `.emery/`, writes `project.yaml`.
 - **`emery source resolve <name>`** / **`emery target resolve <value>`** — resolve an adapter and validate its metadata (there is no manifest file — metadata comes from the component's `metadata` export). The adapter loader (`crates/project/src/adapter/`) routes by axis.
 
 Layer 0 settles before any change starts. Once `project.yaml` exists and the relevant adapters resolve, Layer 1 and Layer 2 can run.
 
 ## Layer 1: Executing one slice
 
-Layer 1 is the per-slice `refine → build → merge` loop. It operates on **one slice** inside `.emery/slices/<name>/` and is the breakout surface every operator reaches when execute parks or when they want to drive a slice by hand.
+Layer 1 is the per-slice `refine → build → merge` loop. It operates on **one slice** inside `.emery/slices/<name>/` and runs only as phases inside `emery plan execute` — there are no per-phase operator verbs or skills.
 
 <div class="pipeline">
 
 ![Layer 1 slice loop](../assets/diagrams/layered-stack/slice-loop.svg)
 
-<p class="pipeline-caption">Breakouts /emery:refine, /emery:build, /emery:merge invoke the same guest orchestrations as emery plan execute.</p>
+<p class="pipeline-caption">The refine, build, and merge phases run as guest orchestrations inside emery plan execute.</p>
 </div>
 
-Each skill is an ultrathin invoke-and-relay wrapper: it elicits any missing arguments, invokes the matching `emery slice` verb, and relays the output. The guest orchestration underneath owns the sequencing, the judgment legs (extract, synthesis, the target's build prompts), and the validation.
+The guest orchestration owns the sequencing, the judgment legs (extract, synthesis, the target's build prompts), and the validation:
 
-The full set of Layer 1 skills:
+| Phase    | Role                                                                              |
+| -------- | --------------------------------------------------------------------------------- |
+| `refine` | Extract per bound source, synthesis, validation; transitions the slice `refined` |
+| `build`  | The target adapter's build operation and the `built` gate                        |
+| `merge`  | Baseline delta merge, archive; only writer of per-entry `done`                   |
 
-| Skill          | Role                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------ |
-| `/emery:refine` | Wrap `emery slice refine`: extract per bound source, synthesis, validation, `refined`    |
-| `/emery:build`  | Wrap `emery slice build`: the target adapter's build operation and the `built` gate      |
-| `/emery:merge`  | Wrap `emery slice merge`: baseline delta merge, archive; only writer of per-entry `done` |
-| `/emery:drop`   | Wrap `emery slice drop`: discard a slice without merging                                 |
-
-The matching CLI surface is the **`emery slice ...`** family: `slice refine`, `slice build`, `slice merge`, `slice drop`, plus the read-only `slice list` and `slice validate`. The skills are one-to-one wrappers over it.
+The matching CLI surface is read-only inspection: `slice list`, `slice validate` (including pin-drift and baseline-conflict advisories), `slice provenance`, and `slice model show`. Abandoning a slice is a plan act: `emery plan drop <entry>`.
 
 ## Layer 2: Planning and driving a change
 
@@ -67,7 +64,7 @@ The plan is the change's table of contents. `/emery:plan` produces it by invokin
 
 `emery plan execute` advances the next eligible entry, runs the Layer 1 loop, and updates per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
 
-The matching CLI surface is **`emery plan {author, execute, add, amend, remove, undo, advance, status, archive}`**. Multi-repo slots and topology remain plan inputs, while slot materialization and branch publication are operator-owned outside Emery.
+The matching CLI surface is **`emery plan {author, execute, add, amend, remove, drop, validate, status, gaps, archive}`**. Branch publication is operator-owned outside Emery.
 
 ### The operator review seam
 
@@ -75,11 +72,11 @@ The pause between `/emery:plan` and `emery plan execute` is the only review seam
 
 ## The layers compose
 
-A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `emery plan execute` runs the same refine, build, and merge orchestrations the breakout skills invoke one slice at a time. The phase orchestrations themselves do not know whether they are running inside the loop or being driven by a human.
+A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `emery plan execute` drives the refine, build, and merge orchestrations one slice at a time; the phase orchestrations themselves do not know their position in the loop.
 
 This means you can always drop down a layer:
 
 - If `/emery:plan` produces a plan you want to adjust, use **re-propose** or `emery plan add` / `emery plan remove` for grouping and deferral, and `emery plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then run `emery plan execute` when ready.
-- If `emery plan execute` parks on a slice, finish it manually with `/emery:build` and `/emery:merge`, then re-run `emery plan execute` to pick up the next entry.
+- If `emery plan execute` parks on a slice, fix the input the stop card points at, then re-run `emery plan execute` — the loop resumes at the parked phase and continues to the next entry.
 - If publication is incomplete, finish the repository's normal branch and review workflow before running `/emery:finalize`.
 - If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.emery/slices/<name>/metadata.yaml` directly — they are plain YAML files.

@@ -96,6 +96,11 @@ pub(super) fn append_started(
 }
 
 /// Build `closed-plan` coverage over in-scope leaves.
+///
+/// A leaf covers as `existing` only when its specs are present **and**
+/// its recorded `base.yaml` pins still match the live trees; a
+/// pin-drifted refined slice re-enters as `refine-under-epoch`, so the
+/// loop re-refines exactly the affected slices under this epoch.
 fn assemble_coverage(
     layout: Layout<'_>, plan: &Plan, unknown_waivers: Vec<UnknownWaiver>,
 ) -> Result<ClosedPlanCoverage, Error> {
@@ -109,7 +114,9 @@ fn assemble_coverage(
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
-        let leaf = if has_spec_artifacts(&slice_dir) {
+        let leaf = if has_spec_artifacts(&slice_dir)
+            && !slice::pins_drifted(layout, &slice_dir, entry.name.as_str())?
+        {
             LeafSpecCoverage::Existing {
                 digest: dir_cid(&slice_dir.join("specs"))?.to_string(),
             }

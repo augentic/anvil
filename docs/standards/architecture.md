@@ -51,7 +51,7 @@ The two adapter validators — `contract` and `vectis` — are in-guest adapter 
 
 ## Layout boundary
 
-`.emery/` is framework-managed state every CLI verb writes through (configuration under `project.yaml`, `slices/`, `archive/`, `scratch/`, the journal, the `guest.lock` marker). Operator-facing platform artifacts (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root. The boundary is enforced by the `Layout<'a>` newtype in `project` (`crates/project/src/config.rs`): path helpers are inherent methods on `Layout<'a>`, and call sites write `Layout::new(&dir).plan_path()`. Do not hard-code `.emery/registry.yaml` or sibling paths, and do not declare free path-helper functions outside `crates/project/src/config/`; any new `.emery/` path lands on `Layout`.
+`.emery/` is framework-managed state every CLI verb writes through (configuration under `project.yaml`, `slices/`, `archive/`, `scratch/`, the journal, the `guest.lock` marker). Operator-facing platform artifacts (`plan.yaml`, `change.md`, `contracts/`) live at the repo root. The boundary is enforced by the `Layout<'a>` newtype in `project` (`crates/project/src/config.rs`): path helpers are inherent methods on `Layout<'a>`, and call sites write `Layout::new(&dir).plan_path()`. Do not hard-code `.emery/plan.yaml` or sibling paths, and do not declare free path-helper functions outside `crates/project/src/config/`; any new `.emery/` path lands on `Layout`.
 
 ## Time injection
 
@@ -87,7 +87,7 @@ cargo +nightly fmt --all
 
 ## Skill / CLI responsibility split
 
-Every deterministic operation lives in this CLI: kebab-case validation, `metadata.yaml` reads/writes, lifecycle transitions, plugin resolution (`emery source resolve` / `emery target resolve`), artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, plan/registry validation, schema validation of `plan.yaml` and per-source `Evidence`, journal event append. The plugin repo's `/emery:` skills (`/emery:init`, `/emery:plan`, `/emery:execute`, `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`, `/emery:finalize`) shell out for all of those; the execute loop is the CLI verb `emery plan execute`, wrapped by `/emery:execute`.
+Every deterministic operation lives in this CLI: kebab-case validation, `metadata.yaml` reads/writes, lifecycle transitions, plugin resolution (`emery source resolve` / `emery target resolve`), artifact-completion checks, baseline conflict detection, delta merge, coherence validation, archive moves, plan validation, schema validation of `plan.yaml` and per-source `Evidence`, journal event append. The plugin repo's `/emery:` skills (`/emery:init`, `/emery:plan`, `/emery:execute`, `/emery:status`, `/emery:finalize`) shell out for all of those; the execute loop is the CLI verb `emery plan execute`, wrapped by `/emery:execute`.
 
 The corollary: when a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb here and have the skill call it. The wrong fix is to make the skill smarter.
 

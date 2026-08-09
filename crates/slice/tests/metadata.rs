@@ -47,34 +47,31 @@ mod list {
 mod timestamps {
     use super::*;
 
+    fn now() -> jiff::Timestamp {
+        jiff::Timestamp::from_second(1_780_000_000).expect("timestamp")
+    }
+
     /// Timestamps written by earlier phases survive a lifecycle write
-    /// byte-canonically (`slice drop` is the surviving public
-    /// metadata-mutating verb).
-    #[tokio::test]
-    async fn round_trip_rfc3339() {
+    /// byte-canonically (`discard` — the `plan drop` kernel — is the
+    /// surviving public metadata-mutating operation).
+    #[test]
+    fn round_trip_rfc3339() {
         let project = Session::scripted("mock", Vec::new());
-        let slice = project.root().join(".emery/slices/demo");
-        fs::create_dir_all(&slice).expect("create slice");
+        let slice_dir = project.root().join(".emery/slices/demo");
+        fs::create_dir_all(&slice_dir).expect("create slice");
         fs::write(
-            slice.join("metadata.yaml"),
+            slice_dir.join("metadata.yaml"),
             "target: demo\ncreated-at: 2026-06-02T01:02:03+00:00\n\
          touched-specs: []\noutcome:\n  phase: guidance\n  outcome: success\n  \
          at: 2026-06-02T01:02:03+00:00\n  summary: ready\n",
         )
         .expect("stage metadata");
 
-        run::<slice::handlers::Drop, _, _>(
-            project.provider(),
-            slice::handlers::DropInput {
-                name: "demo".to_string(),
-                reason: None,
-            },
-        )
-        .await
-        .expect("metadata parses and the drop saves");
+        let archive = project.root().join(".emery/archive");
+        slice::discard(&slice_dir, &archive, None, now())
+            .expect("metadata parses and the drop saves");
 
-        let archived = project.root().join(".emery/archive");
-        let dir = fs::read_dir(&archived)
+        let dir = fs::read_dir(&archive)
             .expect("archive dir")
             .next()
             .expect("archived slice")
@@ -85,27 +82,21 @@ mod timestamps {
         assert!(yaml.contains("at: 2026-06-02T01:02:03Z"), "{yaml}");
     }
 
-    #[tokio::test]
-    async fn malformed_rejected() {
+    #[test]
+    fn malformed_rejected() {
         let project = Session::scripted("mock", Vec::new());
-        let slice = project.root().join(".emery/slices/demo");
-        fs::create_dir_all(&slice).expect("create slice");
+        let slice_dir = project.root().join(".emery/slices/demo");
+        fs::create_dir_all(&slice_dir).expect("create slice");
         fs::write(
-            slice.join("metadata.yaml"),
+            slice_dir.join("metadata.yaml"),
             "target: demo\ncreated-at: not-a-timestamp\ntouched-specs: []\n",
         )
         .expect("stage metadata");
 
-        let err = run::<slice::handlers::Drop, _, _>(
-            project.provider(),
-            slice::handlers::DropInput {
-                name: "demo".to_string(),
-                reason: None,
-            },
-        )
-        .await
-        .expect_err("malformed timestamp must fail");
+        let archive = project.root().join(".emery/archive");
+        let err = slice::discard(&slice_dir, &archive, None, now())
+            .expect_err("malformed timestamp must fail");
 
-        assert!(matches!(err.core(), error::Error::YamlDe(_)), "{err:?}");
+        assert!(matches!(err, error::Error::YamlDe(_)), "{err:?}");
     }
 }

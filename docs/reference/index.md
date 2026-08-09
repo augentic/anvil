@@ -15,8 +15,7 @@ The reference section is the lookup table for Emery. Use it when you need precis
 
 ### Skills
 
-- [Change Skills](change-skills/index.md) — `/emery:plan`, `emery plan execute`, `/emery:finalize`
-- [Slice Skills](slice-skills/index.md) — `/emery:init`, `/emery:refine`, `/emery:build`, `/emery:merge`, `/emery:drop`
+- [Skills](skills/index.md) — `/emery:init`, `/emery:plan`, `/emery:execute`, `/emery:status`, `/emery:finalize`
 
 ### CLI
 
@@ -35,8 +34,7 @@ The reference section is the lookup table for Emery. Use it when you need precis
 
 ### Configuration
 
-- [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `registry.yaml`, `change.md`, `metadata.yaml`.
-- [Registry](registry.md) — the `registry.yaml` workspace catalogue.
+- [Configuration Files](configuration.md) — `project.yaml`, `plan.yaml`, `change.md`, `metadata.yaml`.
 
 ### Protocols
 
@@ -48,7 +46,7 @@ Engineering standards (the adapter-embedded rules applied to generated code) liv
 
 | I want to...                            | Go to...                                              |
 | --------------------------------------- | ----------------------------------------------------- |
-| Understand how a skill works             | [Change Skills](change-skills/index.md) or [Slice Skills](slice-skills/index.md) |
+| Understand how a skill works             | [Skills](skills/index.md)                            |
 | Look up a CLI command                    | [CLI Reference](cli/index.md)                        |
 | Check artifact format                    | [Artifact Format](artifact-format.md)                |
 | Understand lifecycle states              | [Lifecycle](lifecycle.md)                            |

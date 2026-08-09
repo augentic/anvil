@@ -10,7 +10,7 @@ mod wire;
 
 pub use catalog::build_request;
 pub use kernel::resolve_target;
-pub use topology::{apply_greenfield_seed, resolve_topology};
+pub use topology::resolve_topology;
 pub use wire::{GateProse, ProjectRef, ProposalRequest, ProposalResponse};
 
 /// Wire version stamped on both envelope kinds.

@@ -14,12 +14,15 @@ use project::journal::{Event, EventKind, append_batch};
 
 use crate::synthesis::evidence::read_evidence_dir;
 
+mod baseline_conflict;
 mod catalog;
 mod decisions;
 mod model_drift;
 mod pin_drift;
 mod pre_adapter;
 mod spec_location;
+
+pub use pin_drift::pins_drifted;
 
 /// Outcome of the full validation sweep ([`run`]).
 ///
@@ -86,12 +89,13 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
         });
     }
 
-    // Non-blocking review advisories (thin discovery synopses; pin
-    // drift) ride the adapter-findings surface too; only a blocking
-    // diagnostic gates the caller's exit.
+    // Non-blocking review advisories (thin synopses, pin drift,
+    // baseline drift since `defined_at`) ride the adapter-findings
+    // surface too; only a blocking diagnostic gates the exit.
     let mut findings = artifacts::validate::validate_slice(&slice_dir)?;
     findings.append(&mut pre_adapter::synopsis_thin(layout)?);
     findings.append(&mut pin_drift::findings(layout, &slice_dir, name)?);
+    findings.append(&mut baseline_conflict::findings(layout, &slice_dir)?);
     Ok(Validation::Adapter {
         findings,
         synthesis_tags,

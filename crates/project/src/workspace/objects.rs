@@ -35,6 +35,14 @@ pub trait Objects: Debug + Send + Sync {
 
     /// Whether the object named `digest` exists.
     fn has(&self, digest: &str) -> impl Future<Output = bool> + Send;
+
+    /// Delete the object named `digest`. Idempotent — an absent
+    /// object is already deleted.
+    ///
+    /// # Errors
+    ///
+    /// Storage failures other than absence.
+    fn delete(&self, digest: &str) -> impl Future<Output = Result<(), Error>> + Send;
 }
 
 /// Filesystem objects sharded as `objects/<2 hex>/<62 hex>` beneath a
@@ -86,5 +94,13 @@ impl Objects for FsObjects {
 
     async fn has(&self, digest: &str) -> bool {
         self.object_path(digest).is_file()
+    }
+
+    async fn delete(&self, digest: &str) -> Result<(), Error> {
+        match std::fs::remove_file(self.object_path(digest)) {
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(Error::Io(err)),
+        }
     }
 }

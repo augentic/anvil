@@ -102,14 +102,9 @@ async fn divergence_docs_wins() {
     );
     author(&session).await;
 
-    let refined = run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "session-policy".to_string(),
-        },
-    )
-    .await
-    .expect("refine synthesises the divergent slice");
+    let refined = support::refine(&session, "session-policy")
+        .await
+        .expect("refine synthesises the divergent slice");
     assert_eq!(refined.slice, "session-policy");
 
     // The synthesis prompt is path-first: each source row carries the
@@ -221,14 +216,9 @@ async fn decisions_exact_set() {
 
     author(&session).await;
 
-    run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "session-policy".to_string(),
-        },
-    )
-    .await
-    .expect("refine persists the decision sidecar");
+    support::refine(&session, "session-policy")
+        .await
+        .expect("refine persists the decision sidecar");
 
     // The sidecar carries only slice-authored fields; the engine stamps
     // `id` / `slice` / `date` at merge.
@@ -245,14 +235,7 @@ async fn decisions_exact_set() {
     // replacement clears both the generated record and any stray file.
     let slice_dir = root.join(".emery/slices/session-policy");
     fs::write(slice_dir.join("decisions/stale.md"), "stale").expect("plant stray file");
-    run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "session-policy".to_string(),
-        },
-    )
-    .await
-    .expect("re-refine replaces the decision set");
+    support::refine(&session, "session-policy").await.expect("re-refine replaces the decision set");
 
     let survivors: Vec<String> = fs::read_dir(slice_dir.join("decisions"))
         .expect("decisions dir")
@@ -271,14 +254,7 @@ async fn evidence_gap_projects_unknown() {
     );
     author(&session).await;
 
-    run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "password-reset".to_string(),
-        },
-    )
-    .await
-    .expect("refine synthesises the gapped slice");
+    support::refine(&session, "password-reset").await.expect("refine synthesises the gapped slice");
 
     let model = run::<slice::handlers::ModelShow, _, _>(
         session.provider(),

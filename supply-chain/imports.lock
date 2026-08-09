@@ -79,15 +79,15 @@ user-login = "Darksonn"
 user-name = "Alice Ryhl"
 
 [[publisher.clap]]
-version = "4.6.5"
-when = "2026-07-31"
+version = "4.6.6"
+when = "2026-08-06"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.clap_builder]]
-version = "4.6.5"
-when = "2026-07-31"
+version = "4.6.6"
+when = "2026-08-06"
 user-id = 6743
 user-login = "epage"
 user-name = "Ed Page"
@@ -476,8 +476,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.thiserror]]
-version = "2.0.19"
-when = "2026-07-18"
+version = "2.0.20"
+when = "2026-08-08"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -490,8 +490,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.thiserror-impl]]
-version = "2.0.19"
-when = "2026-07-18"
+version = "2.0.20"
+when = "2026-08-08"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"

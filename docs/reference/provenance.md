@@ -4,7 +4,7 @@ The audit-only view per slice of every `REQ-*` id and the contributing `(source,
 
 ## How it's produced
 
-During the `emery slice refine` synthesis leg the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `emery slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and no journal event records a provenance write.
+During the refine phase's synthesis leg the kernel writes the load-bearing provenance inline on each `model.yaml` requirement: the contributing `claims[]` (`source` / `id` / `kind`), the per-claim `winner` markers, the rendered `sources` list, and `status`. The skill writes no `provenance.yaml` file. To inspect the audit view, run `emery slice provenance <slice> --format json|text`; the CLI reshapes the inline data into the per-requirement shape below, **recomputing** `resolution` (and the optional `resolution-trace`) from the claim count, `winner` markers, and resolved authority, and **reading** each claim's `value` / `path` from `evidence/<source>.yaml` keyed by `(source, id)` — neither is persisted in `model.yaml`. Because the view is a pure projection of `model.yaml` plus on-disk Evidence, it can never drift from the model and no journal event records a provenance write.
 
 ## Block grammar
 
@@ -170,13 +170,13 @@ The closed set matches the resolution-order taxonomy in [`authority.md` §Resolu
 
 ## Audit posture
 
-The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`emery slice provenance <slice>`). It is **not** an authoritative input to any downstream verb — `/emery:build` reads `spec.md` and `design.md`; `/emery:merge` reads `metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
+The projected provenance view is generated on demand when an operator needs to audit source reconciliation (`emery slice provenance <slice>`). It is **not** an authoritative input to any downstream phase — the build phase reads `spec.md` and `design.md`; the merge phase reads `metadata.yaml` and the baseline. The view is audit-only, the same audit-only posture used by plan summary metadata.
 
-The provenance data lives inline in `model.yaml`, which `/emery:refine` regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to change a synthesis decision long-term amend `plan.yaml.slices[].authority-override` via `emery plan amend` (or adjust the source set) and re-run `/emery:refine`; the next refine reads back any prose edits outside the kernel-rendered provenance lines, but those lines themselves are never hand-edited.
+The provenance data lives inline in `model.yaml`, which the refine phase regenerates whole from the current `spec.md` + `evidence/*.yaml`. Operators who want to change a synthesis decision long-term amend `plan.yaml.slices[].authority-override` via `emery plan amend` (or adjust the source set) and re-run `emery plan execute` — the drifted slice re-refines; the next refine reads back any prose edits outside the kernel-rendered provenance lines, but those lines themselves are never hand-edited.
 
 ## No drift surface
 
-Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift. `emery slice validate` checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by re-running `/emery:refine`.
+Because provenance is carried **inline** in the single `model.yaml` artifact and the audit view is a pure on-demand projection of it, the two can never disagree — there is no separate file to drift. `emery slice validate` checks spec-vs-model staleness and rejects orphan contributing claims (`slice-model-source-orphan`), both cleared by a re-refine on the next `emery plan execute`.
 
 ## Worked example
 
@@ -241,7 +241,7 @@ requirements:
     resolution: tied-conflict
 ```
 
-REQ-001 is the agreed cross-source case (one shared statement; no winner / loser). REQ-007 is the per-slice override case — the operator's `criterion: runtime` line promoted the behaviour-class source to the winner, the documentation-class loser survives as the `winner: false` entry, and the trace records exactly which surface broke the tie. REQ-009 is the `tied-conflict` case the operator must reconcile by recording a per-slice authority override (or amending the source set) and re-running `/emery:refine` before `/emery:build`.
+REQ-001 is the agreed cross-source case (one shared statement; no winner / loser). REQ-007 is the per-slice override case — the operator's `criterion: runtime` line promoted the behaviour-class source to the winner, the documentation-class loser survives as the `winner: false` entry, and the trace records exactly which surface broke the tie. REQ-009 is the `tied-conflict` case the operator must reconcile by recording a per-slice authority override (or amending the source set) and re-running `emery plan execute` — the gap gate refuses undealt conflicts before the build phase.
 
 ## References
 

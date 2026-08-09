@@ -42,29 +42,20 @@ fn reads_prior_actor_wire_fields() {
         r#""event":"slice.claimed","payload":{"slice-name":"orders-api"}}"#,
         "\n",
     );
-    let retracted = concat!(
-        r#"{"timestamp":"2023-11-14T22:13:21Z","actor":"alice","sequence":2,"#,
-        r#""event":"fact.retracted","payload":{"actor":"alice","sequence":1}}"#,
-        "\n",
-    );
-    std::fs::write(events_dir.join("alice.jsonl"), format!("{claimed}{retracted}"))
-        .expect("write prior journal");
+    std::fs::write(events_dir.join("alice.jsonl"), claimed).expect("write prior journal");
 
     let events = read_union(layout(root)).expect("union");
-    assert_eq!(events.len(), 2, "prior actor envelopes must stay in the union");
+    assert_eq!(events.len(), 1, "prior actor envelopes must stay in the union");
     assert_eq!(events[0].writer, "alice");
     assert_eq!(events[0].sequence, 1);
     assert!(matches!(
         &events[0].kind,
         EventKind::SliceClaimed { slice_name } if slice_name.as_str() == "orders-api"
     ));
-    assert!(matches!(
-        &events[1].kind,
-        EventKind::FactRetracted { writer, sequence: 1 } if writer == "alice"
-    ));
-    assert!(
-        claim::project(&events).is_empty(),
-        "retracted claim via prior actor payload stays retracted"
+    assert_eq!(
+        claim::project(&events).owner(&"orders-api".into()),
+        Some("alice"),
+        "claim via prior actor payload projects ownership"
     );
 
     let epoch: FactEpochRef =
@@ -250,16 +241,6 @@ fn released(second: i64, slice: &str) -> Event {
     )
 }
 
-fn retracted(second: i64, writer: &str, sequence: u64) -> Event {
-    Event::new(
-        ts(second),
-        EventKind::FactRetracted {
-            writer: writer.into(),
-            sequence,
-        },
-    )
-}
-
 #[test]
 fn concurrent_claims_on_different_slices() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
@@ -305,58 +286,16 @@ fn same_slice_second_writer_conflicts() {
 }
 
 #[test]
-fn release_and_retract_clear_live_claim() {
+fn release_clears_live_claim() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
 
     append_for(layout, "alice", &[claimed(1, "orders-api")]).expect("claim");
     append_for(layout, "alice", &[released(2, "orders-api")]).expect("release");
-    assert!(
-        claim::project(&read_union(layout).expect("union")).is_empty(),
-        "release by owner clears the claim"
-    );
+    let ownership = claim::project(&read_union(layout).expect("union"));
+    assert!(ownership.is_empty(), "release by owner clears the claim");
 
     append_for(layout, "bob", &[claimed(3, "orders-api")]).expect("bob after release");
-    // Retract bob's claim (sequence 1 in bob's file).
-    append_for(layout, "bob", &[retracted(4, "bob", 1)]).expect("retract");
     let ownership = claim::project(&read_union(layout).expect("union"));
-    assert!(ownership.is_empty(), "retracted claim is absent from projection");
-    claim::ensure_claimable(&ownership, &"orders-api".into(), "alice")
-        .expect("slice free after retract");
-}
-
-#[test]
-fn retract_of_retract_restores_claim() {
-    // claim (seq 1) → retract claim (seq 2) → retract the retract (seq 3)
-    // restores the original claim.
-    let events = vec![
-        Event {
-            timestamp: ts(1),
-            writer: "alice".into(),
-            sequence: 1,
-            kind: EventKind::SliceClaimed {
-                slice_name: "orders-api".into(),
-            },
-        },
-        Event {
-            timestamp: ts(2),
-            writer: "alice".into(),
-            sequence: 2,
-            kind: EventKind::FactRetracted {
-                writer: "alice".into(),
-                sequence: 1,
-            },
-        },
-        Event {
-            timestamp: ts(3),
-            writer: "alice".into(),
-            sequence: 3,
-            kind: EventKind::FactRetracted {
-                writer: "alice".into(),
-                sequence: 2,
-            },
-        },
-    ];
-    let ownership = claim::project(&events);
-    assert_eq!(ownership.owner(&"orders-api".into()), Some("alice"));
+    assert_eq!(ownership.owner(&"orders-api".into()), Some("bob"), "slice free after release");
 }

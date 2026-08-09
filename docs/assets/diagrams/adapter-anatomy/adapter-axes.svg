@@ -13,7 +13,7 @@
   <path d="M230 100 L230 120" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="40" y="120" width="380" height="56" rx="8" fill="#ede9d0" stroke="#c9b766"/>
   <text x="52" y="144" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">extract</text>
-  <text x="52" y="162" font-family="ui-monospace, monospace" font-size="11" fill="#555">/emery:refine &#8594; evidence/*.yaml</text>
+  <text x="52" y="162" font-family="ui-monospace, monospace" font-size="11" fill="#555">refine phase &#8594; evidence/*.yaml</text>
   <path d="M420 148 L460 148" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
   <rect x="460" y="100" width="400" height="72" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
   <text x="472" y="124" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">core synthesis</text>

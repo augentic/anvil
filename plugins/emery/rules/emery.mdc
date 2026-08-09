@@ -1,5 +1,5 @@
 ---
-description: Emery plugin context -- Emery workflow orchestration for planning, executing, refining, building, merging, and dropping slices
+description: Emery plugin context -- Emery workflow orchestration for planning, executing, and finalizing changes
 alwaysApply: true
 ---
 
@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Emery workflow skills: initialize a project, plan a change, execute the plan, check where a plan stands, refine slices, build them, merge completed slices, drop discarded slices, and finalize. Each skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output; `/emery:execute` wraps the `emery plan execute` loop (opens `plan.execute.started` and drives refine → build → merge under gap gates), and `/emery:status` is the read-only "where am I / what next" probe over computed progress.
+This plugin provides the core Emery workflow skills: initialize a project, plan a change, execute the plan, check where a plan stands, and finalize. Each skill is an ultrathin wrapper that invokes the matching `emery` CLI verb and relays its output; `/emery:execute` wraps the `emery plan execute` loop (opens `plan.execute.started` and drives refine → build → merge per entry under gap gates), and `/emery:status` is the read-only "where am I / what next" probe over computed progress.
 
-**Purpose**: Drive the `plan -> execute` rhythm (which itself drives `refine -> build -> merge` per slice), with `drop` for cleanup and `finalize` for closing.
+**Purpose**: Drive the `plan → execute → finalize` rhythm. Refine, build, and merge are internal phases of the execute loop, not operator commands.
 
 ## Source / target adapter structure
 
@@ -22,7 +22,7 @@ Each directory contains operation prompts under `prose/prompts/`; adapter identi
 
 ## Slice lifecycle
 
-The fixed loop is `refine -> build -> merge`, with `drop` as the abandon path. Lifecycle labels project from phase timestamps, artifacts, and facts — they are not stored status fields on `metadata.yaml` / `plan.yaml`:
+The execute loop drives each slice through the fixed `refine → build → merge` phases, with `emery plan drop` as the abandon path. Lifecycle labels project from phase timestamps, artifacts, and facts — they are not stored status fields on `metadata.yaml` / `plan.yaml`:
 
 ```text
 refining -> refined -> built -> merged
@@ -30,7 +30,7 @@ refining -> refined -> built -> merged
      `--------> `-------> `-------> dropped
 ```
 
-- **refining**: Slice directory created; `/emery:refine` extract + synthesis in flight
+- **refining**: Slice directory created; the refine phase's extract + synthesis in flight
 - **refined**: Proposal, spec, design, and tasks are validated (`base.yaml` pins recorded)
 - **built**: Build record + wave facts present; ready to merge
 - **merged**: Wave committed, deltas applied, slice archived
@@ -41,7 +41,7 @@ Per-entry `pending` / `in-progress` / `done` are the same kind of projection (cl
 ## Workflow
 
 ```text
-/emery:init <target>               (once per project; for a registry-only workspace, use emery init --workspace)
+/emery:init <target>               (once per project)
 
 /emery:plan <name> source ...      (authors change.md + plan.yaml; exits for operator review)
 
@@ -51,26 +51,26 @@ Per-entry `pending` / `in-progress` / `done` are the same kind of projection (cl
 /emery:finalize <name>             (confirm publication, archive plan)
 ```
 
-At any point, `/emery:status` (read-only, wraps `emery plan status`) reports where the plan stands and the literal next command — use it whenever unsure what to do next, never `emery plan advance` (which writes plan state).
+At any point, `/emery:status` (read-only, wraps `emery plan status`) reports where the plan stands and the literal next command — use it whenever unsure what to do next.
 
-Breakouts invoke the same orchestrations one slice at a time, when the execute loop stops or the operator wants to drive a slice by hand:
+There are no per-slice breakout commands. When the loop stops (`refine-failed`, `build-failed`, `merge-conflict`, …), fix the reported problem and re-run `emery plan execute` — the loop resumes at the parked phase. A refined slice whose recorded pins drifted is re-refined automatically under the new epoch. Other repair surfaces stay on the CLI:
 
-- **/emery:refine**: For one slice — extract per source, synthesize `proposal.md` / `specs/<domain>/spec.md` / `design.md` / `tasks.md`, validate, transition to `refined` (`emery slice refine`).
-- **/emery:build**: Build one slice through its target adapter (`emery slice build`).
-- **/emery:merge**: Fold a slice's deltas into the baseline and archive it (`emery slice merge`).
-- **/emery:drop**: Abandon a slice without merging (`emery slice drop`).
+- `emery plan drop <slice> [--reason "<why>"]` — abandon one entry's slice without merging.
+- `emery plan amend <slice> --allow-composition-replace true` — authorize a whole-document composition overwrite for that entry's merge.
+- `emery plan execute --waive <slice>/<req> --reason "<why>"` — defer a named open unknown through the gap gate.
+- `emery slice list | validate | provenance | model show` — read-only slice projections.
 
 ## Tracing and output
 
 Tracing is selected by the reserved log flags — never set `RUST_LOG` on an `emery` subprocess. The CLI strips `--debug` / `--quiet` anywhere in argv before the verb parses it, so the flags are position-independent and never collide with a verb's own options. Two normal modes, selected by verb:
 
-- **Long-running orchestrations** (`emery plan author`, `emery plan execute`, `emery slice refine`, `emery slice build`, committed `emery slice merge`) run bare — the host default emits live INFO progress on stderr with the noisy OTel targets muted:
+- **Long-running orchestrations** (`emery plan author`, `emery plan execute`) run bare — the host default emits live INFO progress on stderr with the noisy OTel targets muted:
 
 ```text
 emery plan author <name> ...
 ```
 
-- **Probes and short deterministic verbs** (`emery --version`, `emery plan status`, `emery slice list`, `emery slice merge --preview` / `--conflict-check`, `emery slice drop`, `emery plan archive`, `emery init`) pass `--quiet` so the result card is uncluttered:
+- **Probes and short deterministic verbs** (`emery --version`, `emery plan status`, `emery slice list`, `emery slice validate`, `emery plan drop`, `emery plan archive`, `emery init`) pass `--quiet` so the result card is uncluttered:
 
 ```text
 emery plan status --quiet
@@ -94,11 +94,12 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 
 | Error code | What it means | Next action |
 |------------|---------------|-------------|
-| `init-adapter-required` | `emery init` was run without naming a target adapter | `emery init <adapter>`, or `emery init --workspace` for a registry-only workspace |
+| `init-adapter-required` | `emery init` was run without naming a target adapter | `emery init <adapter>` |
 | `emery-version-too-old` | The installed binary is older than the project's floor | Reinstall via the installer script (the hint prints the literal command), then rerun |
-| `adapter-cli-too-old` | An adapter requires a newer binary than the one installed | Reinstall the binary; if the adapter itself is stale, `emery adapter update <name>` |
+| `adapter-cli-too-old` | An adapter requires a newer binary than the one installed | Reinstall the binary; if the adapter itself is stale, `emery adapter upgrade <name>` |
 | `plan-already-exists` | `/emery:plan` on a project that already has a `plan.yaml` | Continue the existing plan (`/emery:status`) or confirm the replace and re-run with `--force` |
-| `target-build-*` | The target adapter aborted the build; the slice stays `refined` | Fix the reported problem, then retry `/emery:build <slice>` |
+| `plan-execute-stopped` | The execute loop halted on a stop condition; the stop card names the reason | Fix the reported problem, then re-run `emery plan execute` — the loop resumes at the parked phase |
+| `plan-gaps-unresolved` | Open unknowns or conflicts block the gap gate before build | Fix inputs and re-run execute, or defer named unknowns with `--waive <slice>/<req> --reason "<why>"` |
 | `merge-postflight-failed` | The merge landed but the post-merge check failed; the entry is already `done` | Repair the baseline, then `/emery:execute` to acknowledge and continue |
 
 ### Project not initialized
@@ -113,8 +114,8 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 
 ### Artifacts incomplete
 
-- Run `emery slice validate <name>` to check artifact status
-- Re-run `/emery:refine <name>` to regenerate artifacts for one slice
+- Run `emery slice validate <name>` to check artifact status (pin drift and baseline drift surface here as review advisories)
+- Re-run `/emery:execute` — the loop re-refines affected slices under the epoch
 - Re-run `/emery:plan <name> ...` to author a fresh change
 
 ## Related Documentation
@@ -124,10 +125,6 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 - [Plan SKILL.md](skills/plan/SKILL.md) — Author `change.md` + `plan.yaml`
 - [Execute SKILL.md](skills/execute/SKILL.md) — Drive the per-slice loop to completion
 - [Status SKILL.md](skills/status/SKILL.md) — Read-only "where am I / what next" probe
-- [Refine SKILL.md](skills/refine/SKILL.md) — Synthesize artifacts for one slice
-- [Build SKILL.md](skills/build/SKILL.md) — Validate artifacts and implement tasks
-- [Merge SKILL.md](skills/merge/SKILL.md) — Finalize completed slices
-- [Drop SKILL.md](skills/drop/SKILL.md) — Discard a slice without merging specs
 - [Finalize SKILL.md](skills/finalize/SKILL.md) — Close out a change
 - [Emery Artifact Guidance Supplement](../../../docs/explanation/augentic-emery-usage.md) — Augentic-specific guidance for proposal / spec / design / tasks
 

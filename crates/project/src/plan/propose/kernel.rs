@@ -15,8 +15,8 @@ use super::super::model::{AuthorityOverride, Entry, Plan, SliceSourceBinding, St
 use super::super::validate::dependency_graph;
 use super::catalog::{LeadCatalog, build_catalog};
 use super::wire::{ProjectRef, ProposalResponse, ResponseMember, ResponseSlice};
+use crate::identity::Decision;
 use crate::name::is_kebab;
-use crate::registry::topology::Decision;
 
 /// Outcome of a successful [`Plan::propose_from`] projection.
 ///
@@ -100,7 +100,7 @@ impl Plan {
         // Bulk replace, run the backstop validate, and roll back on any
         // blocking finding (e.g. unknown depends-on names).
         let previous = std::mem::replace(&mut self.entries, new_entries);
-        if let Some(finding) = self.validate(None, None).into_iter().find(is_blocking) {
+        if let Some(finding) = self.validate(None).into_iter().find(is_blocking) {
             self.entries = previous;
             return Err(Error::validation_failed(
                 finding.rule_id.clone().unwrap_or_default(),
@@ -394,6 +394,7 @@ fn build_entries(
             divergence: slice.divergence,
             disagreements: slice.disagreements,
             authority_override: AuthorityOverride::default(),
+            allow_composition_replace: false,
         })
         .collect()
 }
