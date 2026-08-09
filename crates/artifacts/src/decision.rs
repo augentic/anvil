@@ -73,7 +73,9 @@ pub struct DecisionRecord {
     /// or the slug of a record merged earlier in the same slice.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub supersedes: Vec<String>,
-    /// Optional traceability into this slice's requirements (`REQ-NNN`).
+    /// Optional traceability into requirements (`REQ-NNN`): slice-local
+    /// ids as authored; rewritten to baseline ids at wave commit before
+    /// promotion.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub related: Vec<String>,
     /// Optional kebab-case topic slugs naming the domains this decision

@@ -1,11 +1,13 @@
 //! Wave-commit requirement identity finalization.
 //!
-//! Merge rewrites slice specs, `model.yaml`, and `tasks.md` in place
-//! before the delta fold so the engine sees final baseline `REQ` ids.
+//! Merge rewrites slice specs, `model.yaml`, `tasks.md`, and the
+//! `related:` ids in `decisions/*.md` in place before the delta fold
+//! so the engine sees final baseline `REQ` ids.
 
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use artifacts::decision::{DecisionRecord, split_frontmatter};
 use diagnostics::digest::sha256_hex;
 use error::Error;
 use project::journal::IdentityMap;
@@ -60,6 +62,7 @@ pub fn finalize(specs_dir: &Path, slice_dir: &Path) -> Result<Vec<IdentityMap>, 
 
     rewrite_spec_ids(slice_dir, &by_local)?;
     rewrite_tasks_ids(slice_dir, &by_local)?;
+    rewrite_decision_related(slice_dir, &by_local)?;
     artifacts::atomic::yaml_write(&model_path, &model)?;
 
     Ok(maps)
@@ -180,6 +183,46 @@ fn rewrite_tasks_ids(slice_dir: &Path, by_local: &BTreeMap<&str, &str>) -> Resul
     let rewritten = rewrite_req_tokens(&text, by_local);
     if rewritten != text {
         artifacts::atomic::bytes_write(&path, rewritten.as_bytes())?;
+    }
+    Ok(())
+}
+
+/// Rewrite slice-local `related:` REQ ids in each `decisions/*.md`
+/// front-matter so promotion carries baseline ids; the Markdown body
+/// is preserved verbatim. A record whose front-matter does not parse
+/// is skipped here — the promotion kernel raises its own
+/// `decision-record-malformed` diagnostic.
+fn rewrite_decision_related(
+    slice_dir: &Path, by_local: &BTreeMap<&str, &str>,
+) -> Result<(), Error> {
+    let dir = slice_dir.join("decisions");
+    if !dir.is_dir() {
+        return Ok(());
+    }
+    for path in project::decisions::list_md_files(&dir)? {
+        let text = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
+            op: "read",
+            path: path.clone(),
+            source,
+        })?;
+        let Some((front, body)) = split_frontmatter(&text) else {
+            continue;
+        };
+        let Ok(mut record) = serde_saphyr::from_str::<DecisionRecord>(front) else {
+            continue;
+        };
+        let mut changed = false;
+        for id in &mut record.related {
+            if let Some(baseline_id) = by_local.get(id.as_str()) {
+                *id = (*baseline_id).to_string();
+                changed = true;
+            }
+        }
+        if !changed {
+            continue;
+        }
+        let yaml = artifacts::atomic::serialise_yaml(&record)?;
+        artifacts::atomic::bytes_write(&path, format!("---\n{yaml}---\n{body}").as_bytes())?;
     }
     Ok(())
 }

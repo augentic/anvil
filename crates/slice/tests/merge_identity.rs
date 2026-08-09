@@ -384,6 +384,37 @@ tasks:
     assert!(merged.contains("passkey"), "{merged}");
 }
 
+/// A slice decision's `related:` REQ ids are finalized to baseline
+/// numbers before promotion, mirroring the `tasks.md` rewrite.
+#[tokio::test]
+async fn decision_related_ids_finalized_at_merge() {
+    let session = Session::scripted("mock", Vec::new());
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
+    stage_built_slice(&session, wave_digest.as_str());
+    let decisions = session.root().join(".emery/slices/login-flow/decisions");
+    fs::create_dir_all(&decisions).expect("slice decisions");
+    fs::write(
+        decisions.join("passkey-auth.md"),
+        "---\nslug: passkey-auth\nstatus: accepted\nrelated: [REQ-001, REQ-002]\n---\n\n\
+         # Passkey auth\n\n## Context\n\nContext.\n\n## Decision\n\nDecision.\n\n\
+         ## Consequences\n\nConsequences.\n",
+    )
+    .expect("decision");
+
+    merge(&session, "login-flow").await.expect("merge succeeds");
+
+    let promoted =
+        fs::read_to_string(session.root().join(".emery/decisions/DEC-0001-passkey-auth.md"))
+            .expect("promoted decision");
+    // MODIFIED REQ-001 → baseline REQ-007; ADDED REQ-002 → REQ-009.
+    assert!(promoted.contains("REQ-007"), "{promoted}");
+    assert!(promoted.contains("REQ-009"), "{promoted}");
+    assert!(!promoted.contains("REQ-001"), "{promoted}");
+    assert!(!promoted.contains("REQ-002"), "{promoted}");
+    assert!(promoted.contains("## Context"), "body preserved: {promoted}");
+}
+
 #[tokio::test]
 async fn drifted_modified_rejects_before_wave_committed() {
     let session = Session::scripted("mock", Vec::new());
