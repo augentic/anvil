@@ -9,6 +9,7 @@ pub mod archive;
 pub mod authority_override;
 pub mod create;
 pub mod doctor;
+pub mod epoch;
 mod execution;
 pub mod gaps;
 pub mod io;

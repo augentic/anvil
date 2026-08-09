@@ -22,6 +22,7 @@ mod support;
 
 use change::plan::handlers::{Status as StatusOp, StatusInput};
 use change::{LoopStep, NextActionKind, Plan, StatusBody};
+use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
@@ -44,6 +45,12 @@ impl Event {
 fn write_plan(project: &Session, plan: &Plan) {
     let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
     std::fs::write(project.root().join("plan.yaml"), yaml).expect("write plan.yaml");
+}
+
+/// Digest of the staged `plan.yaml`, as an epoch would stamp it.
+fn live_plan_digest(root: &std::path::Path) -> String {
+    let bytes = std::fs::read(root.join("plan.yaml")).expect("read plan.yaml");
+    format!("sha256:{}", sha256_hex(&bytes))
 }
 
 /// Project the status body for `plan` staged inside `project`.
@@ -695,10 +702,29 @@ mod milestones {
         assert!(body.gaps.rows.is_empty());
     }
 
+    /// Stamp a `plan.execute.started` epoch covering the staged
+    /// `plan.yaml` with the given per-leaf coverage.
+    fn stamp_epoch(root: &std::path::Path, specs: BTreeMap<String, LeafSpecCoverage>) {
+        append(
+            root,
+            &[Event::event(
+                ts(0),
+                EventKind::PlanExecuteStarted {
+                    coverage: ClosedPlanCoverage::ClosedPlan {
+                        plan_digest: live_plan_digest(root),
+                        specs,
+                        unknown_waivers: Vec::new(),
+                    },
+                    discovery_digest: None,
+                },
+            )],
+        );
+    }
+
     #[tokio::test]
     async fn epoch_fact_projects_authorized_without_ready() {
-        // Hand-stamped plan.execute.started → Authorized even while
-        // unknowns keep Ready false (D22). Execute writer is S18.
+        // A covering plan.execute.started → Authorized even while
+        // unknowns keep Ready false (D22).
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -710,6 +736,26 @@ mod milestones {
     sources: [intent]
 ",
         );
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        let mut specs = BTreeMap::new();
+        specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
+        stamp_epoch(project.root(), specs);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready, "waivers/epoch must not backfill Ready");
+        assert!(body.authorized);
+        let json = serde_json::to_string(&body).expect("json");
+        assert!(!json.contains("\"approved\""), "{json}");
+    }
+
+    #[tokio::test]
+    async fn drifted_plan_digest_clears_authorized() {
+        // An epoch whose plan digest no longer matches the live
+        // `plan.yaml` does not authorize — same freshness rule as the
+        // execute gap gate.
+        let project = Session::scripted("demo", Vec::new());
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
         let mut specs = BTreeMap::new();
         specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
         append(
@@ -718,7 +764,9 @@ mod milestones {
                 ts(0),
                 EventKind::PlanExecuteStarted {
                     coverage: ClosedPlanCoverage::ClosedPlan {
-                        plan_digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+                        plan_digest:
+                            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                .into(),
                         specs,
                         unknown_waivers: Vec::new(),
                     },
@@ -726,12 +774,88 @@ mod milestones {
                 },
             )],
         );
-        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
-        assert!(!body.ready, "waivers/epoch must not backfill Ready");
-        assert!(body.authorized);
-        let json = serde_json::to_string(&body).expect("json");
-        assert!(!json.contains("\"approved\""), "{json}");
+        assert!(!body.authorized, "drifted plan digest must not authorize");
+    }
+
+    #[tokio::test]
+    async fn covered_spec_drift_clears_authorized() {
+        // Mutating a covered spec tree after the epoch stamps clears
+        // Authorized while the old epoch remains in the union; build
+        // refuses `plan-epoch-stale` on the same rule.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-001
+    title: login works
+    status: agreed
+    sources: [intent]
+",
+        );
+        let specs_dir = project.root().join(".emery/slices/a/specs");
+        std::fs::create_dir_all(&specs_dir).expect("specs dir");
+        std::fs::write(specs_dir.join("spec.md"), "# a\n").expect("spec.md");
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        let mut specs = BTreeMap::new();
+        specs.insert(
+            "a".into(),
+            LeafSpecCoverage::Existing {
+                digest: project::plan::dir_cid(&specs_dir).expect("specs cid").to_string(),
+            },
+        );
+        stamp_epoch(project.root(), specs);
+
+        let fresh = status(&project, &plan).await;
+        assert!(fresh.authorized, "covering epoch authorizes");
+
+        std::fs::write(specs_dir.join("spec.md"), "# a (drifted)\n").expect("mutate spec.md");
+        let body = status(&project, &plan).await;
+        assert!(!body.authorized, "covered-spec drift clears Authorized");
+
+        let err =
+            change::orchestrate::enforce_before_build(Layout::new(project.root()), &plan, "a")
+                .expect_err("stale epoch refuses build");
+        assert_eq!(err.variant_str(), "plan-epoch-stale");
+    }
+
+    #[tokio::test]
+    async fn merged_leaf_absence_is_not_drift() {
+        // Merge archives the slice tree; a done leaf's absent specs
+        // are completion under the epoch, not drift.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-001
+    title: login works
+    status: agreed
+    sources: [intent]
+",
+        );
+        let slice_dir = project.root().join(".emery/slices/a");
+        let specs_dir = slice_dir.join("specs");
+        std::fs::create_dir_all(&specs_dir).expect("specs dir");
+        std::fs::write(specs_dir.join("spec.md"), "# a\n").expect("spec.md");
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        let mut specs = BTreeMap::new();
+        specs.insert(
+            "a".into(),
+            LeafSpecCoverage::Existing {
+                digest: project::plan::dir_cid(&specs_dir).expect("specs cid").to_string(),
+            },
+        );
+        stamp_epoch(project.root(), specs);
+        append(project.root(), &[archived(10, "a")]);
+        std::fs::remove_dir_all(&slice_dir).expect("archive removes slice tree");
+
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "drained");
+        assert!(body.authorized, "archived covered leaf keeps the epoch fresh");
     }
 
     #[tokio::test]

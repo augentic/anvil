@@ -68,7 +68,7 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
     let milestones = Milestones {
         all_refined,
         ready: all_refined && clean_gaps(&gaps),
-        authorized: project_authorized(&events),
+        authorized: project_authorized(plan, layout, &events)?,
     };
     Ok(assemble(plan, counts, active, &ladders, resolution, gaps, milestones))
 }
@@ -160,10 +160,12 @@ fn is_refined(slice_dir: &Path) -> bool {
     slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file()
 }
 
-/// Authorized when any `plan.execute.started` fact is in the union.
-/// Covering / stale validation lands with the execute writer (S18/S19).
-fn project_authorized(events: &[Event]) -> bool {
-    events.iter().any(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }))
+/// Authorized when the newest `plan.execute.started` epoch still
+/// covers the live plan / spec trees — the same freshness the execute
+/// gap gate enforces before build (RFC-86 D22).
+fn project_authorized(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Result<bool, Error> {
+    let freshness = super::super::epoch::freshness(layout, plan, events)?;
+    Ok(matches!(freshness, super::super::epoch::EpochFreshness::Fresh { .. }))
 }
 
 fn assemble(

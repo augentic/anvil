@@ -3,100 +3,42 @@
 //! epoch; divergence is allowed. Drift vs that epoch is `plan-epoch-stale`.
 
 use std::fmt::Write as _;
-use std::path::Path;
 
 use artifacts::spec::provenance::RequirementStatus;
-use diagnostics::digest::sha256_hex;
 use error::Error;
 use project::config::Layout;
 use project::handler::Render;
-use project::journal::{self, ClosedPlanCoverage, EventKind, LeafSpecCoverage};
-use project::plan::{GapsBody, Plan, dir_cid, in_scope, plan_gaps_body};
-use project::slice::SliceMetadata;
+use project::journal::ClosedPlanCoverage;
+use project::plan::epoch::EpochFreshness;
+use project::plan::{GapsBody, Plan, collect_events, plan_gaps_body};
 
 /// Enforce authorization-epoch freshness and the typed gap policy for
 /// `slice` before build.
 ///
+/// Freshness is the shared [`project::plan::epoch::freshness`]
+/// predicate — the same rule `plan status` projects as Authorized.
+///
 /// # Errors
 ///
 /// - `plan-epoch-stale` — no covering `plan.execute.started`, plan /
-///   covered-spec digest drift, or `slice` absent from coverage.
+///   covered-spec digest drift, or an in-scope leaf absent from
+///   coverage.
 /// - `plan-gaps-unresolved` — in-scope `[conflict]` on `slice`, or
 ///   `[unknown]` without a matching waiver on the covering epoch.
 ///   Detail includes the rendered gap inventory.
 pub fn enforce_before_build(layout: Layout<'_>, plan: &Plan, slice: &str) -> Result<(), Error> {
-    let coverage = newest_coverage(layout)?;
-    check_epoch_fresh(layout, plan, slice, &coverage)?;
-    check_gap_policy(layout, plan, slice, &coverage)
-}
-
-/// Newest `closed-plan` coverage from the fact union.
-fn newest_coverage(layout: Layout<'_>) -> Result<ClosedPlanCoverage, Error> {
-    let events = journal::read_union(layout)?;
-    let Some(event) = events
-        .iter()
-        .rev()
-        .find(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }))
-    else {
-        return Err(epoch_stale(
-            "no covering `plan.execute.started` — run `emery plan execute` to open an \
-             authorization epoch before build",
-        ));
+    let events = collect_events(layout)?;
+    let coverage = match project::plan::epoch::freshness(layout, plan, &events)? {
+        EpochFreshness::Unopened => {
+            return Err(epoch_stale(
+                "no covering `plan.execute.started` — run `emery plan execute` to open an \
+                 authorization epoch before build",
+            ));
+        }
+        EpochFreshness::Stale { detail } => return Err(epoch_stale(detail)),
+        EpochFreshness::Fresh { coverage } => coverage,
     };
-    match &event.kind {
-        EventKind::PlanExecuteStarted { coverage, .. } => Ok(coverage.clone()),
-        _ => unreachable!("filter matched PlanExecuteStarted"),
-    }
-}
-
-fn check_epoch_fresh(
-    layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
-) -> Result<(), Error> {
-    let ClosedPlanCoverage::ClosedPlan {
-        plan_digest, specs, ..
-    } = coverage;
-
-    let live_plan = live_plan_digest(layout)?;
-    if live_plan != *plan_digest {
-        return Err(epoch_stale(format!(
-            "`plan.yaml` digest drifted (epoch {plan_digest}, live {live_plan}) — re-run \
-             `emery plan execute`"
-        )));
-    }
-
-    if !specs.contains_key(slice) {
-        return Err(epoch_stale(format!(
-            "slice `{slice}` is not in the covering epoch's per-leaf coverage — re-run \
-             `emery plan execute`"
-        )));
-    }
-
-    for (name, leaf) in specs {
-        let Some(entry) = plan.entries.iter().find(|e| e.name.as_str() == name) else {
-            continue;
-        };
-        let slice_dir = layout.slice_dir(name.as_str());
-        let meta = load_meta(&slice_dir)?;
-        if !in_scope(plan, entry, meta.as_ref()) {
-            continue;
-        }
-        match leaf {
-            LeafSpecCoverage::Existing { digest } => {
-                let live = dir_cid(&slice_dir.join("specs"))?.to_string();
-                if live != *digest {
-                    return Err(epoch_stale(format!(
-                        "covered spec digest for `{name}` drifted (epoch {digest}, live {live}) — \
-                         re-run `emery plan execute`"
-                    )));
-                }
-            }
-            LeafSpecCoverage::RefineUnderEpoch => {
-                // Epoch authorized refine-before-build; the specs
-                // produced under this epoch are the covered artifact.
-            }
-        }
-    }
-    Ok(())
+    check_gap_policy(layout, plan, slice, coverage)
 }
 
 fn check_gap_policy(
@@ -156,25 +98,6 @@ fn check_gap_policy(
     detail.push('\n');
     detail.push_str(&render_inventory(&gaps));
     Err(gaps_unresolved(detail))
-}
-
-fn live_plan_digest(layout: Layout<'_>) -> Result<String, Error> {
-    let bytes = std::fs::read(layout.plan_path())?;
-    Ok(format!("sha256:{}", sha256_hex(&bytes)))
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(meta) => Ok(Some(meta)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
-    }
 }
 
 fn render_inventory(gaps: &GapsBody) -> String {
