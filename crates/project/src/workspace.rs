@@ -66,12 +66,12 @@ struct Meta {
 ///
 /// `snapshot-missing` when `base` is not in the store; filesystem
 /// failures.
-pub fn prepare(
-    store: &Store, workspaces: &Path, base: &SnapshotId, access: Access,
+pub async fn prepare(
+    store: &Store<impl Objects>, workspaces: &Path, base: &SnapshotId, access: Access,
 ) -> Result<Workspace, Error> {
     std::fs::create_dir_all(workspaces)?;
     let (id, root) = fresh_dir(workspaces)?;
-    store.materialize(base, &root)?;
+    store.materialize(base, &root).await?;
     artifacts::atomic::yaml_write(
         &meta_path(workspaces, &id),
         &Meta {
@@ -123,7 +123,9 @@ pub fn resolve(workspaces: &Path, id: &str) -> Result<Workspace, Error> {
 ///
 /// `workspace-missing` / `workspace-id-malformed` on resolution
 /// failures, `workspace-read-only` for a source view.
-pub fn capture(store: &Store, workspaces: &Path, id: &str) -> Result<CodePatch, Error> {
+pub async fn capture(
+    store: &Store<impl Objects>, workspaces: &Path, id: &str,
+) -> Result<CodePatch, Error> {
     let workspace = resolve(workspaces, id)?;
     if !workspace.writable {
         return Err(Error::Diag {
@@ -131,8 +133,8 @@ pub fn capture(store: &Store, workspaces: &Path, id: &str) -> Result<CodePatch, 
             detail: format!("workspace `{id}` is a read-only view; nothing to capture"),
         });
     }
-    let result = store.snapshot(&workspace.root)?;
-    let touched = store.manifest(&workspace.base)?.diff(&store.manifest(&result)?);
+    let result = store.snapshot(&workspace.root).await?;
+    let touched = store.manifest(&workspace.base).await?.diff(&store.manifest(&result).await?);
     Ok(CodePatch {
         base: workspace.base,
         result,

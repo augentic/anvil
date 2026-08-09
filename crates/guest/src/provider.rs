@@ -135,14 +135,13 @@ impl Target for Provider {
 }
 
 /// The in-guest workspace kernel: tree I/O over the `.` and
-/// workspaces preopens, objects through `wasi:blobstore`, exec bits
-/// through `emery:exec-bits`. Each leg is synchronous local work, so
-/// the futures complete without awaiting.
+/// workspaces preopens, objects through `wasi:blobstore` (Omnia's
+/// `BlobStore` capability), exec bits through `emery:exec-bits`.
 impl seam::Workspaces for Provider {
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
         async move {
-            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
-            store.snapshot(PATHS.project_root()).map_err(|err| workspace_failure(&err))
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
+            store.snapshot(PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
         }
     }
 
@@ -150,13 +149,14 @@ impl seam::Workspaces for Provider {
         &self, base: SnapshotId, writable: bool,
     ) -> impl Future<Output = Result<Workspace, seam::Error>> + Send {
         async move {
-            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
             let prepared = project::workspace::prepare(
                 &store,
                 Path::new(GUEST_WORKSPACES_MOUNT),
                 &base,
                 project::workspace::Access { writable },
             )
+            .await
             .map_err(|err| workspace_failure(&err))?;
             Ok(Workspace {
                 id: prepared.id,
@@ -168,8 +168,9 @@ impl seam::Workspaces for Provider {
 
     fn capture(&self, id: String) -> impl Future<Output = Result<CodePatch, seam::Error>> + Send {
         async move {
-            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
             project::workspace::capture(&store, Path::new(GUEST_WORKSPACES_MOUNT), &id)
+                .await
                 .map_err(|err| workspace_failure(&err))
         }
     }
@@ -183,8 +184,8 @@ impl seam::Workspaces for Provider {
 
     fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), seam::Error>> + Send {
         async move {
-            let store = crate::workspace::store().map_err(|err| workspace_failure(&err))?;
-            store.apply(&patch, PATHS.project_root()).map_err(|err| workspace_failure(&err))
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
+            store.apply(&patch, PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
         }
     }
 }

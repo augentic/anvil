@@ -27,15 +27,15 @@ const IGNORED_ROOT: [&str; 4] = ["change.md", "discovery.md", "plan.yaml", "regi
 /// The snapshot store: tree walks and manifests in the kernel, object
 /// bytes behind [`Objects`], exec bits behind [`ExecBits`].
 #[derive(Clone, Debug)]
-pub struct Store {
-    objects: Arc<dyn Objects>,
+pub struct Store<O: Objects> {
+    objects: O,
     exec: Arc<dyn ExecBits>,
     /// Self-exclusion root for nested filesystem stores (test and lab
     /// layouts): the walk must never snapshot its own objects.
     exclude: Option<PathBuf>,
 }
 
-impl Store {
+impl Store<FsObjects> {
     /// Open a filesystem-backed store at `root` (native deployments);
     /// directories are created lazily on first write.
     #[must_use]
@@ -43,20 +43,22 @@ impl Store {
         let objects = FsObjects::new(root);
         let exclude = Some(objects.root().to_path_buf());
         Self {
-            objects: Arc::new(objects),
+            objects,
             exec: Arc::new(FsExecBits),
             exclude,
         }
     }
+}
 
+impl<O: Objects> Store<O> {
     /// Compose a store over explicit seams (the in-guest deployment:
     /// blobstore-backed objects, capability-backed exec bits). No
     /// self-exclusion — the object store is not beneath any walked
     /// tree.
     #[must_use]
-    pub fn over(objects: impl Objects + 'static, exec: impl ExecBits + 'static) -> Self {
+    pub fn over(objects: O, exec: impl ExecBits + 'static) -> Self {
         Self {
-            objects: Arc::new(objects),
+            objects,
             exec: Arc::new(exec),
             exclude: None,
         }
@@ -70,12 +72,12 @@ impl Store {
     ///
     /// Filesystem failures, `workspace-path-unsupported` for non-UTF-8
     /// or newline-bearing names.
-    pub fn snapshot(&self, dir: &Path) -> Result<SnapshotId, Error> {
+    pub async fn snapshot(&self, dir: &Path) -> Result<SnapshotId, Error> {
         let mut manifest = Manifest::default();
         let exec = self.exec.read(dir)?;
         let own_root = self.exclude.as_deref().and_then(|root| std::path::absolute(root).ok());
-        self.walk(dir, "", own_root.as_deref(), &exec, &mut manifest)?;
-        let digest = self.put(manifest.encode().as_bytes())?;
+        self.walk(dir, own_root.as_deref(), &exec, &mut manifest).await?;
+        let digest = self.put(manifest.encode().as_bytes()).await?;
         Ok(SnapshotId::from_digest(&digest))
     }
 
@@ -87,12 +89,12 @@ impl Store {
     ///
     /// `snapshot-missing` for an unknown identity,
     /// `snapshot-object-corrupt` on digest drift, filesystem failures.
-    pub fn materialize(&self, id: &SnapshotId, dest: &Path) -> Result<(), Error> {
-        let manifest = self.manifest(id)?;
+    pub async fn materialize(&self, id: &SnapshotId, dest: &Path) -> Result<(), Error> {
+        let manifest = self.manifest(id).await?;
         std::fs::create_dir_all(dest)?;
         let mut modes = ModeSets::default();
         for (path, entry) in &manifest.entries {
-            self.write_entry(dest, path, entry)?;
+            self.write_entry(dest, path, entry).await?;
             modes.record(path, entry);
         }
         self.exec.apply(dest, &modes.exec, &modes.plain)
@@ -110,12 +112,12 @@ impl Store {
     ///
     /// `snapshot-missing` for an unknown result identity, filesystem
     /// failures.
-    pub fn apply(&self, patch: &CodePatch, dir: &Path) -> Result<(), Error> {
-        let target = self.manifest(&patch.result)?;
+    pub async fn apply(&self, patch: &CodePatch, dir: &Path) -> Result<(), Error> {
+        let target = self.manifest(&patch.result).await?;
         let mut modes = ModeSets::default();
         for path in &patch.touched {
             if let Some(entry) = target.entries.get(path) {
-                self.write_entry(dir, path, entry)?;
+                self.write_entry(dir, path, entry).await?;
                 modes.record(path, entry);
             } else {
                 remove_entry(&dir.join(path))?;
@@ -128,7 +130,7 @@ impl Store {
     /// Write one manifest entry beneath `root`, replacing whatever is
     /// there (a stale file, symlink, or directory). Exec bits are
     /// applied in bulk by the caller.
-    fn write_entry(&self, root: &Path, path: &str, entry: &Entry) -> Result<(), Error> {
+    async fn write_entry(&self, root: &Path, path: &str, entry: &Entry) -> Result<(), Error> {
         let target = root.join(path);
         if let Some(parent) = target.parent() {
             std::fs::create_dir_all(parent)?;
@@ -136,11 +138,11 @@ impl Store {
         remove_entry(&target)?;
         match entry {
             Entry::File { blob, .. } => {
-                std::fs::write(&target, self.get(blob)?)?;
+                std::fs::write(&target, self.get(blob).await?)?;
             }
             Entry::Link { blob } => {
                 let link_target =
-                    String::from_utf8(self.get(blob)?).map_err(|_utf8| Error::Diag {
+                    String::from_utf8(self.get(blob).await?).map_err(|_utf8| Error::Diag {
                         code: "snapshot-object-corrupt",
                         detail: format!("symlink target for `{path}` is not UTF-8"),
                     })?;
@@ -151,9 +153,8 @@ impl Store {
     }
 
     /// Whether snapshot `id`'s manifest object is present.
-    #[must_use]
-    pub fn contains(&self, id: &SnapshotId) -> bool {
-        self.objects.has(id.digest())
+    pub async fn contains(&self, id: &SnapshotId) -> bool {
+        self.objects.has(id.digest()).await
     }
 
     /// Read and parse snapshot `id`'s manifest.
@@ -161,14 +162,14 @@ impl Store {
     /// # Errors
     ///
     /// `snapshot-missing` when the manifest object is absent.
-    pub(crate) fn manifest(&self, id: &SnapshotId) -> Result<Manifest, Error> {
-        if !self.contains(id) {
+    pub(crate) async fn manifest(&self, id: &SnapshotId) -> Result<Manifest, Error> {
+        if !self.contains(id).await {
             return Err(Error::Diag {
                 code: "snapshot-missing",
                 detail: format!("snapshot `{id}` is not in the store"),
             });
         }
-        let bytes = self.get(id.digest())?;
+        let bytes = self.get(id.digest()).await?;
         let text = String::from_utf8(bytes).map_err(|_utf8| Error::Diag {
             code: "snapshot-object-corrupt",
             detail: format!("manifest for `{id}` is not UTF-8"),
@@ -179,16 +180,16 @@ impl Store {
     /// Store `bytes` as an object, returning its digest. Write-once:
     /// an existing object is left untouched (equal digest means equal
     /// content).
-    fn put(&self, bytes: &[u8]) -> Result<String, Error> {
+    async fn put(&self, bytes: &[u8]) -> Result<String, Error> {
         let digest = diagnostics::digest::sha256_hex(bytes);
-        self.objects.put(&digest, bytes)?;
+        self.objects.put(&digest, bytes).await?;
         Ok(digest)
     }
 
     /// Read the object named `digest`, verifying its content hashes
     /// back to the name.
-    fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
-        let bytes = self.objects.get(digest)?;
+    async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
+        let bytes = self.objects.get(digest).await?;
         if diagnostics::digest::sha256_hex(&bytes) != digest {
             return Err(Error::Diag {
                 code: "snapshot-object-corrupt",
@@ -198,63 +199,69 @@ impl Store {
         Ok(bytes)
     }
 
-    /// Depth-first walk folding `dir` into `manifest`. `prefix` is the
-    /// `/`-separated relative path of `dir` (empty at the root);
-    /// `own_root` is a nested filesystem store's absolute root, skipped
-    /// when present; `exec` is the tree's bulk-read exec set.
-    fn walk(
-        &self, dir: &Path, prefix: &str, own_root: Option<&Path>, exec: &BTreeSet<String>,
+    /// Depth-first walk folding `root` into `manifest`, driven by an
+    /// explicit directory stack (awaiting inside recursion would need
+    /// boxed futures). `own_root` is a nested filesystem store's
+    /// absolute root, skipped when present; `exec` is the tree's
+    /// bulk-read exec set. Manifest entries are keyed by relative
+    /// path, so visit order does not affect snapshot identity.
+    async fn walk(
+        &self, root: &Path, own_root: Option<&Path>, exec: &BTreeSet<String>,
         manifest: &mut Manifest,
     ) -> Result<(), Error> {
-        for entry in crate::fs::dir_entries(dir)? {
-            let name = entry.file_name();
-            let Some(name) = name.to_str() else {
-                return Err(unsupported(prefix, &name.to_string_lossy()));
-            };
-            if name.contains('\n') {
-                return Err(unsupported(prefix, name));
-            }
-            if IGNORED.contains(&name) || (prefix.is_empty() && IGNORED_ROOT.contains(&name)) {
-                continue;
-            }
-            let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
-            let path = entry.path();
-            if own_root.is_some() && std::path::absolute(&path).ok().as_deref() == own_root {
-                continue;
-            }
-            // `symlink_metadata` so a link to a directory records as a
-            // link instead of being followed into a foreign tree.
-            let meta = std::fs::symlink_metadata(&path)?;
-            if meta.file_type().is_symlink() {
-                let target = std::fs::read_link(&path)?;
-                let Some(target) = target.to_str() else {
-                    return Err(unsupported(prefix, name));
+        let mut pending = vec![(root.to_path_buf(), String::new())];
+        while let Some((dir, prefix)) = pending.pop() {
+            for entry in crate::fs::dir_entries(&dir)? {
+                let name = entry.file_name();
+                let Some(name) = name.to_str() else {
+                    return Err(unsupported(&prefix, &name.to_string_lossy()));
                 };
-                // Snapshots carry relative links only: an absolute
-                // target cannot be re-created inside a sandboxed
-                // guest, so the refusal is symmetric and early.
-                if Path::new(target).is_absolute() {
-                    return Err(Error::Diag {
-                        code: "workspace-path-unsupported",
-                        detail: format!(
-                            "symlink `{rel}` has an absolute target; snapshots carry relative \
-                             links only"
-                        ),
-                    });
+                if name.contains('\n') {
+                    return Err(unsupported(&prefix, name));
                 }
-                let blob = self.put(target.as_bytes())?;
-                manifest.entries.insert(rel, Entry::Link { blob });
-            } else if meta.is_dir() {
-                self.walk(&path, &rel, own_root, exec, manifest)?;
-            } else {
-                let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
-                    op: "read",
-                    path: path.clone(),
-                    source,
-                })?;
-                let blob = self.put(&bytes)?;
-                let exec = exec.contains(&rel);
-                manifest.entries.insert(rel, Entry::File { exec, blob });
+                if IGNORED.contains(&name) || (prefix.is_empty() && IGNORED_ROOT.contains(&name)) {
+                    continue;
+                }
+                let rel =
+                    if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
+                let path = entry.path();
+                if own_root.is_some() && std::path::absolute(&path).ok().as_deref() == own_root {
+                    continue;
+                }
+                // `symlink_metadata` so a link to a directory records as a
+                // link instead of being followed into a foreign tree.
+                let meta = std::fs::symlink_metadata(&path)?;
+                if meta.file_type().is_symlink() {
+                    let target = std::fs::read_link(&path)?;
+                    let Some(target) = target.to_str() else {
+                        return Err(unsupported(&prefix, name));
+                    };
+                    // Snapshots carry relative links only: an absolute
+                    // target cannot be re-created inside a sandboxed
+                    // guest, so the refusal is symmetric and early.
+                    if Path::new(target).is_absolute() {
+                        return Err(Error::Diag {
+                            code: "workspace-path-unsupported",
+                            detail: format!(
+                                "symlink `{rel}` has an absolute target; snapshots carry relative \
+                                 links only"
+                            ),
+                        });
+                    }
+                    let blob = self.put(target.as_bytes()).await?;
+                    manifest.entries.insert(rel, Entry::Link { blob });
+                } else if meta.is_dir() {
+                    pending.push((path, rel));
+                } else {
+                    let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
+                        op: "read",
+                        path: path.clone(),
+                        source,
+                    })?;
+                    let blob = self.put(&bytes).await?;
+                    let exec = exec.contains(&rel);
+                    manifest.entries.insert(rel, Entry::File { exec, blob });
+                }
             }
         }
         Ok(())

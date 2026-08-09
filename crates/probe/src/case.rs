@@ -196,6 +196,7 @@ async fn run_build(
     let result_dir = root.join("build-result");
     project::workspace::Store::new(paths(root).locations().snapshots_root())
         .materialize(&record.result, &result_dir)
+        .await
         .context("materializing the captured result snapshot")?;
     enforce_expected(id, &result_dir, &case.expect)?;
 

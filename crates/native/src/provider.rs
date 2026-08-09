@@ -137,7 +137,7 @@ impl Provider {
     }
 
     /// The snapshot store at the carried locations' snapshots root.
-    fn store(&self) -> Store {
+    fn store(&self) -> Store<project::workspace::FsObjects> {
         Store::new(self.paths.locations().snapshots_root())
     }
 
@@ -290,7 +290,10 @@ impl seam::Workspaces for Provider {
     /// Freeze the project root's product tree (the kernel excludes
     /// `.git` and `.emery`) into the local snapshot store.
     async fn freeze(&self) -> Result<SnapshotId, seam::Error> {
-        self.store().snapshot(self.paths.project_root()).map_err(|err| workspace_failure(&err))
+        self.store()
+            .snapshot(self.paths.project_root())
+            .await
+            .map_err(|err| workspace_failure(&err))
     }
 
     async fn prepare(&self, base: SnapshotId, writable: bool) -> Result<Workspace, seam::Error> {
@@ -300,6 +303,7 @@ impl seam::Workspaces for Provider {
             &base,
             Access { writable },
         )
+        .await
         .map_err(|err| workspace_failure(&err))?;
         Ok(Workspace {
             id: prepared.id,
@@ -310,6 +314,7 @@ impl seam::Workspaces for Provider {
 
     async fn capture(&self, id: String) -> Result<CodePatch, seam::Error> {
         workspace_kernel::capture(&self.store(), self.workspaces_root(), &id)
+            .await
             .map_err(|err| workspace_failure(&err))
     }
 
@@ -319,7 +324,10 @@ impl seam::Workspaces for Provider {
     }
 
     async fn apply(&self, patch: CodePatch) -> Result<(), seam::Error> {
-        self.store().apply(&patch, self.paths.project_root()).map_err(|err| workspace_failure(&err))
+        self.store()
+            .apply(&patch, self.paths.project_root())
+            .await
+            .map_err(|err| workspace_failure(&err))
     }
 }
 

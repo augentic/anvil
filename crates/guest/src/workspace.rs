@@ -1,37 +1,18 @@
-//! In-guest workspace-kernel seams: snapshot objects over the
-//! `wasi:blobstore` import, exec bits over `emery:exec-bits`; tree
-//! I/O runs over the `.` and workspaces preopens in the kernel.
-
-/// Bindings over the vendored `wasi:blobstore` package (see
-/// `wit/README.md`). Sync-lowered: the workspace kernel is
-/// synchronous, and every blobstore leg is quick local object I/O.
-mod blob_bindings {
-    #![allow(missing_docs)]
-
-    wit_bindgen::generate!({
-        world: "snapshots",
-        path: "wit",
-        generate_all,
-        async: false,
-    });
-}
+//! In-guest workspace-kernel seams: snapshot objects over Omnia's
+//! `BlobStore` capability (the `wasi:blobstore` import), exec bits
+//! over `emery:exec-bits`; tree I/O runs over the preopens.
 
 use std::collections::BTreeSet;
 use std::path::Path;
 
 use error::Error;
+use omnia_guest::BlobStore;
 use project::workspace::{ExecBits, Objects, Store};
 
-use self::blob_bindings::wasi::blobstore::blobstore as blob;
-use self::blob_bindings::wasi::blobstore::container::Container;
-use self::blob_bindings::wasi::blobstore::types::{IncomingValue, OutgoingValue};
 use crate::bindings::emery::exec_bits::exec_bits;
 
 /// The one container engine snapshots live in.
 const CONTAINER: &str = "snapshots";
-
-/// `blocking-write-and-flush` accepts at most 4096 bytes per call.
-const WRITE_CHUNK: usize = 4096;
 
 /// The in-guest snapshot store: blobstore-backed objects, host
 /// exec bits.
@@ -39,8 +20,11 @@ const WRITE_CHUNK: usize = 4096;
 /// # Errors
 ///
 /// `snapshot-store-io` when the snapshots container cannot be opened.
-pub(crate) fn store() -> Result<Store, Error> {
-    Ok(Store::over(BlobObjects::open()?, WitExecBits))
+pub(crate) async fn store() -> Result<Store<BlobObjects>, Error> {
+    if !BlobObjects.container_exists(CONTAINER).await.map_err(store_error)? {
+        BlobObjects.create_container(CONTAINER).await.map_err(store_error)?;
+    }
+    Ok(Store::over(BlobObjects, WitExecBits))
 }
 
 /// Digest-named objects sharded as `<2 hex>/<62 hex>` — an emery-owned
@@ -50,55 +34,36 @@ fn object_name(digest: &str) -> String {
     format!("{}/{}", &digest[..2], &digest[2..])
 }
 
-/// [`Objects`] over the deployment's `wasi:blobstore` import.
+/// [`Objects`] over Omnia's [`BlobStore`] capability, whose wasm32
+/// default bodies drive the deployment's `wasi:blobstore` import.
 #[derive(Debug)]
-struct BlobObjects {
-    container: Container,
-}
+pub(crate) struct BlobObjects;
 
-impl BlobObjects {
-    fn open() -> Result<Self, Error> {
-        let exists = blob::container_exists(CONTAINER).map_err(store_error)?;
-        let container =
-            if exists { blob::get_container(CONTAINER) } else { blob::create_container(CONTAINER) }
-                .map_err(store_error)?;
-        Ok(Self { container })
-    }
-}
+impl BlobStore for BlobObjects {}
 
 impl Objects for BlobObjects {
-    fn put(&self, digest: &str, bytes: &[u8]) -> Result<(), Error> {
+    async fn put(&self, digest: &str, bytes: &[u8]) -> Result<(), Error> {
         let name = object_name(digest);
-        if self.container.has_object(&name).map_err(store_error)? {
+        // Write-once: equal digest means equal content, so an existing
+        // object is left untouched.
+        if BlobStore::has(self, CONTAINER, &name).await.unwrap_or(false) {
             return Ok(());
         }
-        let value = OutgoingValue::new_outgoing_value();
-        {
-            // The stream is a child resource: it must drop before the
-            // host consumes the buffered value below.
-            let body = value
-                .outgoing_value_write_body()
-                .map_err(|()| store_error("outgoing-value body already taken".to_string()))?;
-            for chunk in bytes.chunks(WRITE_CHUNK) {
-                body.blocking_write_and_flush(chunk)
-                    .map_err(|err| store_error(format!("{err:?}")))?;
-            }
-        }
-        // `write-data` reads the buffered bytes; `finish` marks the
-        // value complete rather than flushing it.
-        self.container.write_data(&name, &value).map_err(store_error)?;
-        OutgoingValue::finish(value).map_err(store_error)?;
-        Ok(())
+        BlobStore::put(self, CONTAINER, &name, bytes).await.map_err(store_error)
     }
 
-    fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
-        let value =
-            self.container.get_data(&object_name(digest), 0, u64::MAX).map_err(store_error)?;
-        IncomingValue::incoming_value_consume_sync(value).map_err(store_error)
+    async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
+        BlobStore::get(self, CONTAINER, &object_name(digest))
+            .await
+            .map_err(store_error)?
+            .ok_or_else(|| Error::Diag {
+                code: "snapshot-store-io",
+                detail: format!("object `{digest}` is not in the store"),
+            })
     }
 
-    fn has(&self, digest: &str) -> bool {
-        self.container.has_object(&object_name(digest)).unwrap_or(false)
+    async fn has(&self, digest: &str) -> bool {
+        BlobStore::has(self, CONTAINER, &object_name(digest)).await.unwrap_or(false)
     }
 }
 
@@ -128,10 +93,10 @@ fn guest_root(root: &Path) -> Result<&str, Error> {
     })
 }
 
-fn store_error(detail: String) -> Error {
+fn store_error(error: omnia_guest::anyhow::Error) -> Error {
     Error::Diag {
         code: "snapshot-store-io",
-        detail,
+        detail: format!("{error:#}"),
     }
 }
 

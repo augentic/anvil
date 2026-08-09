@@ -4,6 +4,7 @@
 //! stores and returns bytes under the digest the kernel computed.
 
 use std::fmt::Debug;
+use std::future::Future;
 use std::path::{Path, PathBuf};
 
 use error::Error;
@@ -12,7 +13,9 @@ use error::Error;
 ///
 /// Implementors never hash: the kernel names every object by the
 /// SHA-256 it computed and verifies content on read, so store
-/// integrity does not depend on the backend.
+/// integrity does not depend on the backend. Operations are async to
+/// match the deployment's `wasi:blobstore` import; each leg remains
+/// quick local object I/O.
 pub trait Objects: Debug + Send + Sync {
     /// Store `bytes` under `digest`. Write-once friendly: equal digest
     /// means equal content, so leaving an existing object untouched is
@@ -21,17 +24,17 @@ pub trait Objects: Debug + Send + Sync {
     /// # Errors
     ///
     /// Storage failures.
-    fn put(&self, digest: &str, bytes: &[u8]) -> Result<(), Error>;
+    fn put(&self, digest: &str, bytes: &[u8]) -> impl Future<Output = Result<(), Error>> + Send;
 
     /// Read the object named `digest`.
     ///
     /// # Errors
     ///
     /// Storage failures, including absence.
-    fn get(&self, digest: &str) -> Result<Vec<u8>, Error>;
+    fn get(&self, digest: &str) -> impl Future<Output = Result<Vec<u8>, Error>> + Send;
 
     /// Whether the object named `digest` exists.
-    fn has(&self, digest: &str) -> bool;
+    fn has(&self, digest: &str) -> impl Future<Output = bool> + Send;
 }
 
 /// Filesystem objects sharded as `objects/<2 hex>/<62 hex>` beneath a
@@ -64,7 +67,7 @@ impl FsObjects {
 }
 
 impl Objects for FsObjects {
-    fn put(&self, digest: &str, bytes: &[u8]) -> Result<(), Error> {
+    async fn put(&self, digest: &str, bytes: &[u8]) -> Result<(), Error> {
         let path = self.object_path(digest);
         if !path.is_file() {
             artifacts::atomic::bytes_write(&path, bytes)?;
@@ -72,7 +75,7 @@ impl Objects for FsObjects {
         Ok(())
     }
 
-    fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
+    async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
         let path = self.object_path(digest);
         std::fs::read(&path).map_err(|source| Error::Filesystem {
             op: "read",
@@ -81,7 +84,7 @@ impl Objects for FsObjects {
         })
     }
 
-    fn has(&self, digest: &str) -> bool {
+    async fn has(&self, digest: &str) -> bool {
         self.object_path(digest).is_file()
     }
 }

@@ -234,23 +234,26 @@ omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
 # Path-patched during co-development (the crate is not yet published or
 # pushed); moves to the omnia-backends git patch on its first release.
 omnia-filesystem = { path = "../omnia-backends/crates/filesystem" }
-omnia = { git = "https://github.com/augentic/omnia" }
-omnia-guest = { git = "https://github.com/augentic/omnia" }
-omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
-omnia-host-macros = { git = "https://github.com/augentic/omnia" }
-omnia-testkit = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
-omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
-# omnia = { path = "../omnia/crates/omnia" }
-# omnia-guest = { path = "../omnia/crates/omnia-guest" }
-# omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
-# omnia-host-macros = { path = "../omnia/crates/host-macros" }
-# omnia-testkit = { path = "../omnia/crates/testkit" }
-# omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
-# omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
-# omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
+# Path-patched during co-development (the `BlobStore::put` chunked-write
+# fix is unpublished); moves back to the omnia git patch on its release.
+# omnia = { git = "https://github.com/augentic/omnia" }
+# omnia-guest = { git = "https://github.com/augentic/omnia" }
+# omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
+# omnia-host-macros = { git = "https://github.com/augentic/omnia" }
+# omnia-testkit = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
+# omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
+omnia = { path = "../omnia/crates/omnia" }
+omnia-guest = { path = "../omnia/crates/omnia-guest" }
+omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
+omnia-host-macros = { path = "../omnia/crates/host-macros" }
+omnia-testkit = { path = "../omnia/crates/testkit" }
+omnia-wasi-blobstore = { path = "../omnia/crates/wasi-blobstore" }
+omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
+omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
+omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }
 
 # `wrpc-wasmtime` 0.1.0 is unpublished on crates.io.
 wrpc-transport = { git = "https://github.com/bytecodealliance/wrpc" }
