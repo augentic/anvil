@@ -1,10 +1,6 @@
 //! Pin-drift signals over recorded `base.yaml` pins.
-//!
-//! One digest walk feeds validate's non-blocking review findings and
-//! the execute loop's [`pins_drifted`] re-refine staleness probe.
-//! Binding-set mismatches (a plan source added or removed after
-//! refine) count as drift so execute re-refines instead of building
-//! on Evidence that never saw the current source set.
+//! One digest walk feeds validate review findings and execute's
+//! [`pins_drifted`] probe; binding-set mismatches count as drift too.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -12,7 +8,7 @@ use std::path::Path;
 use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::Result;
 use project::config::Layout;
-use project::plan::{Plan, dir_cid, source_cid};
+use project::plan::{Plan, SliceSourceBinding, dir_cid, source_cid};
 
 use crate::Base;
 
@@ -54,7 +50,7 @@ fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>
         return Ok(out);
     };
 
-    let bound: BTreeSet<&str> = entry.sources.iter().map(|b| b.source()).collect();
+    let bound: BTreeSet<&str> = entry.sources.iter().map(SliceSourceBinding::source).collect();
     for key in base.sources.keys() {
         if !bound.contains(key.as_str()) {
             out.push(Drift::SourceOrphan { key: key.clone() });
