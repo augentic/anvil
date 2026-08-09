@@ -1,11 +1,7 @@
-//! source-adapter Evidence shapes.
+//! Source-adapter Evidence shapes.
 //!
-//! Per-source `extract` output, persisted at
-//! `.emery/slices/<slice>/evidence/<source>.yaml`. The module owns
-//! the typed [`Document`] and [`Claim`] shapes (the Rust source of
-//! truth for the on-disk file and the extract judgment answer) plus
-//! the closed [`AuthorityClass`] / [`ClaimKind`] enums shared with
-//! `plan.yaml`'s per-slice `authority-override` map.
+//! Per-source `extract` output at `.emery/slices/<slice>/evidence/<source>.yaml`:
+//! typed [`Document`] / [`Claim`] plus the closed [`AuthorityClass`] / [`ClaimKind`] enums.
 
 pub mod authority;
 pub mod claim;

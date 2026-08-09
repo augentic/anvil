@@ -1,17 +1,6 @@
-//! Builds and embeds the wasm32 engine component the shipped binary
-//! boots.
-//!
-//! A child `cargo build --lib --target wasm32-wasip2` into an
-//! isolated target directory under `OUT_DIR` produces the raw engine
-//! component (so plain `cargo install --git … --locked` produces a
-//! bootable binary). Release builds then ahead-of-time serialize it
-//! to a native wasmtime artifact — startup deserializes instead of
-//! JIT-compiling the engine; debug builds skip the AOT pass and embed
-//! the raw component (JIT at startup), keeping the edit loop and CI
-//! fast. Either way the embed lands at `$OUT_DIR/emery.bin` for the
-//! `include_bytes!` in `src/main.rs`. There is no placeholder
-//! fallback: a native binary either embeds a real engine or fails to
-//! build with a direct instruction.
+//! Builds the wasm32 engine component with a child cargo build and
+//! embeds it at `$OUT_DIR/emery.bin` — AOT-serialized in release,
+//! raw wasm (JIT at startup) in debug. No placeholder fallback.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -52,14 +41,10 @@ fn main() {
 /// Ahead-of-time compile the raw engine component into the serialized
 /// wasmtime artifact at `out` that `src/main.rs` embeds.
 ///
-/// The engine configuration mirrors the runtime loader: the same
-/// `RuntimeOptions` env-driven compile-affecting settings (`MAX_FUEL`,
-/// `BRANCH_HINTING`, `MEMORY_RESERVATION`, `MEMORY_GUARD_SIZE`,
-/// `DEBUG_SYMBOLS`, `GENERATE_ADDRESS_MAP`) must match between this
-/// build and the running binary or deserialization rejects the
-/// artifact at startup. Cargo's `TARGET` pins the code to the
-/// binary's triple, so cross-compiled binaries embed a loadable
-/// artifact rather than one for the build host.
+/// The env-driven compile-affecting `RuntimeOptions` must match
+/// between this build and the running binary or deserialization
+/// rejects the artifact at startup; cargo's `TARGET` pins the code to
+/// the binary's triple, so cross-compiles embed a loadable artifact.
 fn precompile(raw: &std::path::Path, out: &std::path::Path) {
     let options = omnia::RuntimeOptions::load_env().expect("runtime options from the build env");
     let mut config = omnia::wasmtime::Config::from(&options);
@@ -91,10 +76,9 @@ fn build_engine() -> PathBuf {
     // The exact Cargo executable driving this build, so the child
     // stays on the same toolchain without consulting rustup.
     let cargo = std::env::var_os("CARGO").expect("cargo env");
-    // An isolated target directory under OUT_DIR avoids the parent
-    // build's target-directory lock. Set explicitly — merely unsetting
-    // CARGO_TARGET_DIR still deadlocks for users with
-    // `build.target-dir` in their Cargo configuration.
+    // An isolated target dir under OUT_DIR avoids the parent build's
+    // target lock; set explicitly — merely unsetting CARGO_TARGET_DIR
+    // still deadlocks under a user-level `build.target-dir`.
     let target_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("cargo env")).join("engine");
     let release = std::env::var("PROFILE").as_deref() == Ok("release");
 

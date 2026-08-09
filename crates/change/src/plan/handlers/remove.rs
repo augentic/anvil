@@ -34,7 +34,7 @@ impl<P: Anchor> Operation<P> for Remove {
         let cx = Ctx::load(context.provider)?;
         let name = input.name;
         let plan_path = require_file(&cx)?;
-        let events = collect_events(&Plan::load(&plan_path)?, cx.layout())?;
+        let events = collect_events(cx.layout())?;
         let body = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
             let removed = plan
                 .entries

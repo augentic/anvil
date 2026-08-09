@@ -12,17 +12,12 @@ use error::Error;
 use super::PreviewEntry;
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 
-/// Write each merged baseline produced by [`super::read::three_way`]
-/// to its target path via [`bytes_write`], which creates parent
-/// directories and persists each file with a temp-file + rename so a
-/// reader never observes a torn baseline. Caller guarantees every entry
-/// has already validated.
+/// Write each merged baseline atomically (temp-file + rename) so a
+/// reader never observes a torn baseline.
 ///
-/// Atomicity is per file, not across the set: a crash mid-loop can leave
-/// some baselines updated and others not. That is safe because the caller
-/// flips the slice to `Merged` only after every write returns, so an
-/// interrupted commit leaves the slice `Built` and a retry re-writes the
-/// full set.
+/// Atomicity is per file, not across the set: a crash mid-loop leaves
+/// the slice `Built` (the caller flips to `Merged` only after every
+/// write returns), so a retry re-writes the full set.
 pub(super) fn write_baselines(merged: &[PreviewEntry]) -> Result<(), Error> {
     for entry in merged {
         bytes_write(&entry.baseline_path, entry.result.output.as_bytes()).map_err(|err| {

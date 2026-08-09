@@ -40,7 +40,7 @@ async fn init(session: &Session) {
 
 fn assert_projected_pending(root: &std::path::Path) {
     let plan = Plan::load(&Layout::new(root).plan_path()).expect("plan");
-    let events = collect_events(&plan, Layout::new(root)).expect("events");
+    let events = collect_events(Layout::new(root)).expect("events");
     let ladders = project_ladders(&plan, &events);
     // Force-author scaffolds an empty plan then re-projects; leftover
     // facts for prior slice names do not attach to the new entry set

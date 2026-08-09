@@ -80,20 +80,14 @@ pub struct DisagreementValue {
     pub value: String,
 }
 
-/// per-slice authority override — per-slice authority override map keyed by claim
-/// kind, valued by source key.
+/// Per-slice authority override map keyed by claim kind, valued by
+/// source key.
 ///
-/// The map is scoped to one [`super::Entry`]; plan-wide and project-wide
-/// overrides are out of scope per authority and reconciliation contract. Keys reuse the closed
-/// [`ClaimKind`] enum; values are bare source strings that MUST
-/// be present in the owning slice's [`super::Entry::sources`] list —
-/// validation refuses orphan keys with
-/// `slice-authority-override-orphan-source`.
-///
-/// `#[serde(transparent)]` over `BTreeMap` so the on-disk shape is
-/// the bare YAML map under `authority-override:`. Empty map and
-/// missing field round-trip identically — both leave the slice's
-/// authority resolution at the workflow default ordering.
+/// Scoped to one [`super::Entry`]; values MUST be present in the
+/// owning slice's [`super::Entry::sources`] list (validation refuses
+/// orphans with `slice-authority-override-orphan-source`).
+/// `#[serde(transparent)]` over `BTreeMap`: empty map and missing
+/// field round-trip identically, leaving the workflow default ordering.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(transparent)]
 pub struct AuthorityOverride {

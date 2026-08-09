@@ -90,8 +90,6 @@ Never put domain logic in `transport` or a shim's route match. Manual `Input { â
 
 `plan amend` extends the canonical `with_state::<Plan, _, _>(...)` operation shape with the three `--sources` flag families: `--sources <binding>...` (wholesale replace), `--add-source <binding>` (repeatable), `--remove-source <key>` (repeatable). The operation applies `--add-source` / `--remove-source` *after* the wholesale `Plan::amend(name, patch)` call so wholesale replacement plus targeted edits compose cleanly in a single invocation. The `--divergence` flag accepts only `likely | accepted | rejected` from the wire and emits a `plan.amend.divergence` journal event when (and only when) the field flips.
 
-`plan undo <entry>` is the reverse walk (one rung per call, several with `--to`), emitting one `plan.transition.undone` journal event per rung. The journal append runs *after* `with_state` returns so the plan write and the journal append cannot interleave on failure.
-
 ## Gotcha â€” `emery init` and the version floor
 
 `emery init` bypasses the `emery` version floor check (the file doesn't exist yet); every other project-aware command inherits it for free via `ProjectConfig::load`. Don't reimplement the floor check at a route or operation site.

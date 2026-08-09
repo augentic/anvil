@@ -1,15 +1,10 @@
-//! The private-workspace kernel (RFC-87): `prepare` / `capture` /
-//! `discard` over the content-addressed snapshot [`Store`].
-//!
-//! A workspace is disposable execution machinery, never workflow
-//! state: `prepare` materializes an exact base snapshot into a fresh
-//! private directory, `capture` records the result tree as a new
-//! snapshot and derives the touched paths, and `discard` removes the
-//! directory. Durable code state is only the snapshots; no workspace
-//! path is ever persisted as workflow state. Host-side only — guests
-//! reach these operations through the seam's workspace capability.
+//! The private-workspace kernel: `prepare` / `capture` / `discard`
+//! over the content-addressed snapshot [`Store`]. Wasm-clean — it
+//! runs in the engine guest and in native deployments alike.
 
+mod exec;
 mod manifest;
+mod objects;
 mod store;
 
 use std::path::{Path, PathBuf};
@@ -17,6 +12,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
 use error::Error;
+pub use exec::{ExecBits, FsExecBits};
+pub use objects::{FsObjects, Objects};
 use serde::{Deserialize, Serialize};
 pub use store::Store;
 
@@ -69,12 +66,12 @@ struct Meta {
 ///
 /// `snapshot-missing` when `base` is not in the store; filesystem
 /// failures.
-pub fn prepare(
-    store: &Store, workspaces: &Path, base: &SnapshotId, access: Access,
+pub async fn prepare(
+    store: &Store<impl Objects>, workspaces: &Path, base: &SnapshotId, access: Access,
 ) -> Result<Workspace, Error> {
     std::fs::create_dir_all(workspaces)?;
     let (id, root) = fresh_dir(workspaces)?;
-    store.materialize(base, &root)?;
+    store.materialize(base, &root).await?;
     artifacts::atomic::yaml_write(
         &meta_path(workspaces, &id),
         &Meta {
@@ -126,7 +123,9 @@ pub fn resolve(workspaces: &Path, id: &str) -> Result<Workspace, Error> {
 ///
 /// `workspace-missing` / `workspace-id-malformed` on resolution
 /// failures, `workspace-read-only` for a source view.
-pub fn capture(store: &Store, workspaces: &Path, id: &str) -> Result<CodePatch, Error> {
+pub async fn capture(
+    store: &Store<impl Objects>, workspaces: &Path, id: &str,
+) -> Result<CodePatch, Error> {
     let workspace = resolve(workspaces, id)?;
     if !workspace.writable {
         return Err(Error::Diag {
@@ -134,8 +133,8 @@ pub fn capture(store: &Store, workspaces: &Path, id: &str) -> Result<CodePatch, 
             detail: format!("workspace `{id}` is a read-only view; nothing to capture"),
         });
     }
-    let result = store.snapshot(&workspace.root)?;
-    let touched = store.manifest(&workspace.base)?.diff(&store.manifest(&result)?);
+    let result = store.snapshot(&workspace.root).await?;
+    let touched = store.manifest(&workspace.base).await?.diff(&store.manifest(&result).await?);
     Ok(CodePatch {
         base: workspace.base,
         result,
@@ -222,7 +221,7 @@ fn fresh_dir(workspaces: &Path) -> Result<(String, PathBuf), Error> {
         let seed = format!(
             "{:?}:{}:{}",
             SystemTime::now(),
-            std::process::id(),
+            process_entropy(),
             COUNTER.fetch_add(1, Ordering::Relaxed)
         );
         let id = format!("ws-{}", &diagnostics::digest::sha256_hex(seed.as_bytes())[..12]);
@@ -233,6 +232,16 @@ fn fresh_dir(workspaces: &Path) -> Result<(String, PathBuf), Error> {
             Err(err) => return Err(Error::Io(err)),
         }
     }
+}
+
+/// A per-process random value distinguishing concurrent processes in
+/// the workspace-id seed. `RandomState` draws real entropy on every
+/// platform, including wasm32 — `std::process::id` does not exist
+/// there.
+fn process_entropy() -> u64 {
+    use std::hash::{BuildHasher as _, RandomState};
+    static ENTROPY: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    *ENTROPY.get_or_init(|| RandomState::new().hash_one(0_u64))
 }
 
 fn remove_existing_dir(path: &Path) -> Result<(), Error> {

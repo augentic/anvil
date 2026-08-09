@@ -1,12 +1,7 @@
-//! Pin-drift review signals (RFC-86 D4 / D25).
+//! Pin-drift signals over recorded `base.yaml` pins.
 //!
-//! When `base.yaml` exists, compare recorded pins against live inputs:
-//! - `slice-base-drifted` — `baseline-spec` no longer matches `.emery/specs/`
-//! - `slice-evidence-stale` — a bound source pin no longer matches the
-//!   live path/value tree cid
-//!
-//! Both are non-blocking [`DiagnosticKind::Review`] findings — validate
-//! still PASSes, but the operator sees the staleness before build.
+//! One digest walk feeds validate's non-blocking review findings and
+//! the execute loop's [`pins_drifted`] re-refine staleness probe.
 
 use std::path::Path;
 
@@ -17,43 +12,38 @@ use project::plan::{Plan, dir_cid, source_cid};
 
 use crate::Base;
 
-/// Emit pin-drift review findings for one slice.
-///
-/// No-ops when `base.yaml` is absent (pre-refine). Recomputes live
-/// digests; does not rewrite plan pins or `base.yaml`.
-///
-/// # Errors
-///
-/// Propagates plan / pin / filesystem failures from digest walks.
-pub(super) fn findings(
-    layout: Layout<'_>, slice_dir: &Path, name: &str,
-) -> Result<Vec<Diagnostic>> {
+/// One recorded pin that no longer matches the live tree.
+enum Drift {
+    /// `base.yaml.baseline_spec` vs the live `.emery/specs/` digest.
+    Baseline { pinned: String, live: String },
+    /// A `base.yaml.sources` pin vs the live bound source tree.
+    Source { key: String, pinned: String, live: String },
+}
+
+/// Walk every recorded pin and collect the drifted ones. Empty when
+/// `base.yaml` is absent (pre-refine).
+fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>> {
     if !Base::path(slice_dir).is_file() {
         return Ok(Vec::new());
     }
     let base = Base::load(slice_dir)?;
-    let mut findings = Vec::new();
+    let mut out = Vec::new();
 
     let live_baseline = dir_cid(&layout.specs_dir())?;
     if live_baseline != base.baseline_spec {
-        findings.push(review(
-            "slice-base-drifted",
-            "baseline-spec pin in base.yaml matches the current .emery/specs/ tree",
-            format!(
-                "slice `{name}` baseline-spec pin `{}` drifted; live digest is `{live_baseline}` — \
-                 re-run `emery slice refine {name}` to refresh pins",
-                base.baseline_spec
-            ),
-        ));
+        out.push(Drift::Baseline {
+            pinned: base.baseline_spec.to_string(),
+            live: live_baseline.to_string(),
+        });
     }
 
     let plan_path = layout.plan_path();
     if !plan_path.is_file() {
-        return Ok(findings);
+        return Ok(out);
     }
     let plan = Plan::load(&plan_path)?;
     let Some(entry) = plan.entries.iter().find(|entry| entry.name == name) else {
-        return Ok(findings);
+        return Ok(out);
     };
 
     for binding in &entry.sources {
@@ -66,19 +56,61 @@ pub(super) fn findings(
         };
         let live = source_cid(key, plan_binding, layout.project_dir())?;
         if live != *pinned {
-            findings.push(review(
+            out.push(Drift::Source {
+                key: key.to_string(),
+                pinned: pinned.to_string(),
+                live: live.to_string(),
+            });
+        }
+    }
+
+    Ok(out)
+}
+
+/// True when any recorded `base.yaml` pin no longer matches the live
+/// baseline / source trees — the execute loop's staleness probe.
+///
+/// # Errors
+///
+/// Propagates plan / pin / filesystem failures from digest walks.
+pub fn pins_drifted(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<bool> {
+    Ok(!drifts(layout, slice_dir, name)?.is_empty())
+}
+
+/// Emit pin-drift review findings for one slice.
+///
+/// No-ops when `base.yaml` is absent (pre-refine). Recomputes live
+/// digests; does not rewrite plan pins or `base.yaml`.
+///
+/// # Errors
+///
+/// Propagates plan / pin / filesystem failures from digest walks.
+pub(super) fn findings(
+    layout: Layout<'_>, slice_dir: &Path, name: &str,
+) -> Result<Vec<Diagnostic>> {
+    Ok(drifts(layout, slice_dir, name)?
+        .into_iter()
+        .map(|drift| match drift {
+            Drift::Baseline { pinned, live } => review(
+                "slice-base-drifted",
+                "baseline-spec pin in base.yaml matches the current .emery/specs/ tree",
+                format!(
+                    "slice `{name}` baseline-spec pin `{pinned}` drifted; live digest is `{live}` \
+                     — re-running `emery plan execute` re-refines this slice under the epoch"
+                ),
+            ),
+            Drift::Source { key, pinned, live } => review(
                 "slice-evidence-stale",
                 "bound source pins in base.yaml match the live source trees Evidence was \
                  extracted from",
                 format!(
-                    "slice `{name}` source `{key}` pin `{pinned}` drifted; live digest is `{live}` \
-                     — re-run `emery slice refine {name}` so Evidence tracks the current source"
+                    "slice `{name}` source `{key}` pin `{pinned}` drifted; live digest is \
+                     `{live}` — re-running `emery plan execute` re-refines this slice so \
+                     Evidence tracks the current source"
                 ),
-            ));
-        }
-    }
-
-    Ok(findings)
+            ),
+        })
+        .collect())
 }
 
 fn review(rule_id: &'static str, title: &str, detail: String) -> Diagnostic {

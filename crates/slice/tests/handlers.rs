@@ -4,8 +4,7 @@
 //! asserts the filesystem effects and the typed failure taxonomy.
 //!
 //! This is the always-on native home of the widened-verb coverage:
-//! `registry {add,validate,remove}`, `archive prune`,
-//! `init`, and `journal show`. The exit-code
+//! `archive prune`, `init`, and `journal show`. The exit-code
 //! projection over these failures lives in `crates/transport`
 //! (`Exit::from(&error::Error)`) and is pinned there.
 
@@ -14,102 +13,6 @@ use std::path::{Path, PathBuf};
 
 use mock::invoke::run;
 use mock::session::Session;
-
-/// Stage a one-project `registry.yaml` at the project root.
-fn stage_registry(root: &Path) {
-    fs::write(
-        root.join("registry.yaml"),
-        "version: 1\nprojects:\n  - name: alpha\n    url: git@example.com:org/alpha.git\n",
-    )
-    .expect("stage registry.yaml");
-}
-
-mod registry {
-    use super::*;
-
-    #[tokio::test]
-    async fn add_mints_file() {
-        let project = Session::scripted("mock", Vec::new());
-        let body = run::<project::registry::handlers::Add, _, _>(
-            project.provider(),
-            project::registry::handlers::AddInput {
-                name: "alpha".into(),
-                url: "git@example.com:org/alpha.git".into(),
-                adapter: None,
-                description: None,
-            },
-        )
-        .await
-        .expect("add succeeds");
-        assert_eq!(body.added.name, "alpha");
-        let registry =
-            fs::read_to_string(project.root().join("registry.yaml")).expect("registry.yaml");
-        assert!(registry.contains("name: alpha"), "the add landed:\n{registry}");
-    }
-
-    #[tokio::test]
-    async fn duplicate_add_errors() {
-        let project = Session::scripted("mock", Vec::new());
-        stage_registry(project.root());
-        let err = run::<project::registry::handlers::Add, _, _>(
-            project.provider(),
-            project::registry::handlers::AddInput {
-                name: "alpha".into(),
-                url: "git@example.com:org/alpha.git".into(),
-                adapter: None,
-                description: None,
-            },
-        )
-        .await
-        .expect_err("duplicate add fails with the typed diagnostic");
-        assert!(
-            matches!(err.core(), error::Error::Diag { .. }),
-            "duplicate add is the typed diagnostic, got {err:?}"
-        );
-    }
-
-    #[tokio::test]
-    async fn staged_catalogue_validates() {
-        let project = Session::scripted("mock", Vec::new());
-        stage_registry(project.root());
-        run::<project::registry::handlers::Validate, _, _>(
-            project.provider(),
-            project::registry::handlers::ValidateInput {},
-        )
-        .await
-        .expect("staged catalogue validates");
-    }
-
-    /// Regression: `registry validate` is documented to run before
-    /// `emery init` — it anchors on the invocation root and must not
-    /// demand `.emery/project.yaml`.
-    #[tokio::test]
-    async fn validate_pre_init() {
-        let project = Session::bare(Vec::new());
-        stage_registry(project.root());
-        run::<project::registry::handlers::Validate, _, _>(
-            project.provider(),
-            project::registry::handlers::ValidateInput {},
-        )
-        .await
-        .expect("pre-init registry validate succeeds");
-    }
-
-    #[tokio::test]
-    async fn remove_drops_entry() {
-        let project = Session::scripted("mock", Vec::new());
-        stage_registry(project.root());
-        run::<project::registry::handlers::Remove, _, _>(
-            project.provider(),
-            project::registry::handlers::RemoveInput { name: "alpha".into() },
-        )
-        .await
-        .expect("remove succeeds");
-        let registry =
-            fs::read_to_string(project.root().join("registry.yaml")).expect("registry.yaml");
-        assert!(!registry.contains("name: alpha"), "the remove landed:\n{registry}");
-    }
-}
 
 mod archive {
     use super::*;
@@ -189,20 +92,20 @@ mod init {
     async fn reentry_and_upgrade() {
         let project = Session::bare(Vec::new());
         let input = || project::init::handlers::InitInput {
-            name: Some("demo-workspace".into()),
-            workspace: true,
+            adapter: Some("mock".into()),
+            name: Some("demo-project".into()),
             ..Default::default()
         };
         run::<project::init::handlers::Init, _, _>(project.provider(), input())
             .await
-            .expect("workspace scaffold succeeds");
+            .expect("scaffold succeeds");
 
         // Plain re-run: a no-op that routes to `--upgrade`.
         let body = run::<project::init::handlers::Init, _, _>(project.provider(), input())
             .await
             .expect("init re-entry exits 0");
         assert_eq!(body.mode, project::init::handlers::InitMode::AlreadyInitialized);
-        assert_eq!(body.adapter_name, "workspace");
+        assert_eq!(body.adapter_name, "mock");
 
         // The documented re-entry command succeeds over the project.
         let body = run::<project::init::handlers::Init, _, _>(
@@ -219,44 +122,6 @@ mod init {
     }
 
     #[tokio::test]
-    async fn workspace_mode() {
-        let project = Session::bare(Vec::new());
-        let body = run::<project::init::handlers::Init, _, _>(
-            project.provider(),
-            project::init::handlers::InitInput {
-                adapter: None,
-                name: Some("demo-workspace".into()),
-                description: None,
-                workspace: true,
-                platforms: None,
-                upgrade: false,
-            },
-        )
-        .await
-        .expect("workspace scaffold succeeds");
-        assert_eq!(body.adapter_name, "workspace");
-        let config =
-            fs::read_to_string(project.root().join(".emery/project.yaml")).expect("project.yaml");
-        assert!(config.contains("workspace: true"), "workspace mode is recorded:\n{config}");
-        assert!(config.contains("name: demo-workspace"), "the name override lands:\n{config}");
-        assert!(
-            project.root().join("registry.yaml").is_file(),
-            "workspace init mints registry.yaml"
-        );
-
-        assert!(body.context_generated, "workspace init generates AGENTS.md context");
-        let agents = fs::read_to_string(project.root().join("AGENTS.md")).expect("AGENTS.md");
-        assert!(
-            !agents.contains("## Runtime"),
-            "workspace context omits the per-language sections:\n{agents}"
-        );
-        assert!(
-            project.root().join(".emery/context.lock").is_file(),
-            "the fingerprint sidecar lands beside the generated context"
-        );
-    }
-
-    #[tokio::test]
     async fn existing_agents_md_preserved() {
         let project = Session::bare(Vec::new());
         let agents_path = project.root().join("AGENTS.md");
@@ -265,10 +130,9 @@ mod init {
         let body = run::<project::init::handlers::Init, _, _>(
             project.provider(),
             project::init::handlers::InitInput {
-                adapter: None,
-                name: Some("demo-workspace".into()),
+                adapter: Some("mock".into()),
+                name: Some("demo-project".into()),
                 description: None,
-                workspace: true,
                 platforms: None,
                 upgrade: false,
             },

@@ -1,12 +1,7 @@
-//! `Plan::validate` and the per-check helpers it composes. Findings
-//! accumulate (no check short-circuits another); order is structural
-//! checks first, then consistency checks against the registry.
+//! `Plan::validate` and the per-check helpers it composes.
 //!
-//! Every check emits a neutral [`diagnostics::Diagnostic`] via
-//! [`finding`]: the stable check code becomes the `rule_id`, the
-//! offending plan entry (when present) populates `slice`, an `error`
-//! maps to a blocking `important` violation, and a `warning` maps to a
-//! non-blocking `suggestion`.
+//! Findings accumulate (no check short-circuits another): structural
+//! checks first, then consistency checks.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
@@ -18,7 +13,6 @@ use error::{Error, Result};
 use petgraph::graph::DiGraph;
 
 use super::model::{Divergence, Entry, Plan};
-use crate::registry::Registry;
 
 /// Build a plan-domain diagnostic on the neutral currency.
 ///
@@ -73,21 +67,12 @@ pub fn structured_finding(
 impl Plan {
     /// Run all structural and semantic checks over the plan.
     ///
-    /// `slices_dir` (when `Some`) points at `.emery/slices/` and
-    /// enables the cross-reference checks against on-disk slice
-    /// metadata. `registry` (when `Some`) enables the cross-registry
-    /// checks (`project-not-in-registry`).
-    ///
-    /// Findings are accumulated — no check short-circuits another. Order
-    /// is structural checks first (duplicate names, unknown
-    /// depends-on / sources, duplicate source keys) followed by
-    /// consistency checks against `slices_dir` when provided. Plan-wide
-    /// “at most one `in-progress` entry” is retired (RFC-86 D23) —
-    /// exclusivity is per-slice claim only.
+    /// `slices_dir` (when `Some`) enables the cross-reference checks
+    /// against on-disk slice metadata. Findings accumulate — no check
+    /// short-circuits another; structural checks run first. Exclusivity
+    /// is per-slice claim only (no plan-wide in-progress cap).
     #[must_use]
-    pub(crate) fn validate(
-        &self, slices_dir: Option<&Path>, registry: Option<&Registry>,
-    ) -> Vec<Diagnostic> {
+    pub(crate) fn validate(&self, slices_dir: Option<&Path>) -> Vec<Diagnostic> {
         let mut results = Vec::new();
         results.extend(duplicate_names(&self.entries));
         results.extend(unknown_depends_on(&self.entries));
@@ -96,10 +81,6 @@ impl Plan {
         results.extend(context_paths(&self.entries));
         results.extend(orphan_authority_override_keys(&self.entries));
         results.extend(divergence_consistency(&self.entries));
-        if let Some(reg) = registry {
-            results.extend(project_in_registry(&self.entries, reg));
-            results.extend(project_binding_required(&self.entries, reg));
-        }
         if let Some(dir) = slices_dir.filter(|d| d.is_dir()) {
             results.extend(slices_dir_consistency(self, dir));
         }
@@ -235,71 +216,13 @@ pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
     })
 }
 
-fn project_in_registry(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
-    let project_names: HashSet<&str> = registry.projects.iter().map(|p| p.name.as_str()).collect();
-    let mut out = Vec::new();
-    for entry in changes {
-        if let Some(project) = &entry.project
-            && !project_names.contains(project.as_str())
-        {
-            out.push(finding(
-                "project-not-in-registry",
-                Severity::Important,
-                format!(
-                    "project '{}' on slice '{}' does not match any project in registry.yaml",
-                    project, entry.name
-                ),
-                Some(entry.name.to_string()),
-            ));
-        }
-    }
-    out
-}
-
-/// A slice may omit `project` only when the topology offers exactly one
-/// project (the kernel and [`super::resolve_target`] auto-bind it). When
-/// the registry declares more than one project an omitted `project` is
-/// ambiguous, so flag it early rather than waiting for `plan advance` to
-/// fail with `plan-reconcile-project-binding-required`.
+/// Refuse orphan per-slice `authority-override` values.
 ///
-/// The single-regular-project case (no registry) is not reached here —
-/// an omitted `project` there always resolves to the sole synthesised
-/// project.
-fn project_binding_required(changes: &[Entry], registry: &Registry) -> Vec<Diagnostic> {
-    if registry.projects.len() <= 1 {
-        return Vec::new();
-    }
-    let mut out = Vec::new();
-    for entry in changes {
-        if entry.project.is_none() {
-            out.push(finding(
-                "plan-reconcile-project-binding-required",
-                Severity::Important,
-                format!(
-                    "entry '{}' omits 'project' but the registry declares {} projects; \
-                     bind one explicitly",
-                    entry.name,
-                    registry.projects.len()
-                ),
-                Some(entry.name.to_string()),
-            ));
-        }
-    }
-    out
-}
-
-/// per-slice authority override — refuse orphan per-slice `authority-override` values.
-///
-/// For every slice's override map, every value MUST appear in that
-/// slice's `sources[].source` list; otherwise the operator has named a
-/// source key that does not exist on the slice, and synthesis would
-/// silently fall through to the default authority. Findings sort
-/// deterministically by slice name (declaration order) then by
-/// claim kind (the `BTreeMap` iteration order on
-/// [`super::model::AuthorityOverride::by_kind`]).
-///
-/// Public for the per-slice helper at `emery slice validate` to
-/// surface only the findings relevant to one slice.
+/// Every override value MUST appear in that slice's `sources[].source`
+/// list; otherwise synthesis would silently fall through to the
+/// default authority. Findings sort by slice declaration order, then
+/// claim kind. Public so `emery slice validate` can surface one
+/// slice's findings.
 #[must_use]
 pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
     let mut out = Vec::new();
@@ -327,24 +250,14 @@ pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
     out
 }
 
-/// Structural divergence consistency. The agent owns the
-/// *materiality* judgment; the CLI only checks that the flag and the
-/// recorded values agree:
+/// Structural divergence consistency: the flag and the recorded values
+/// must agree (the agent owns the *materiality* judgment).
 ///
-/// - a slice that flags a live divergence (`likely` / `accepted`) but
-///   records no adequate `disagreements[]` (non-empty, ≥2 distinct
-///   source values per field) is incomplete
-///   (`slice-divergence-unrecorded`);
-/// - a slice that records `disagreements[]` without a divergence flag is
-///   an orphan record (`slice-divergence-orphan-values`).
-///
-/// Both are advisory (`Suggestion`): `divergence` is operator-settable
-/// standalone via `emery plan amend --divergence` (a contract-locked,
-/// advisory-metadata-in-v1 surface), so neither finding may block that
-/// write. They surface the inconsistency at `plan validate` / plan
-/// review.
-/// `rejected` carries no obligation (the plan is to be re-proposed), so
-/// it triggers neither check.
+/// A live divergence without adequate `disagreements[]` is
+/// `slice-divergence-unrecorded`; values without a flag are
+/// `slice-divergence-orphan-values`. Both stay advisory (`Suggestion`)
+/// because `--divergence` is operator-settable standalone and neither
+/// finding may block that write; `rejected` triggers neither check.
 fn divergence_consistency(changes: &[Entry]) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for entry in changes {

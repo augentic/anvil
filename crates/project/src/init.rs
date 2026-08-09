@@ -1,12 +1,12 @@
 //! Orchestration for `emery init`. Scaffolds `.emery/`, resolves
 //! the requested adapter, writes `project.yaml`, and upserts
-//! `.gitignore` lines. Workspace mode additionally mints `registry.yaml`.
+//! `.gitignore` lines.
 
 mod context;
+mod gitignore;
 pub mod handlers;
 mod regular;
 mod upgrade;
-mod workspace;
 
 use std::path::{Path, PathBuf};
 
@@ -41,33 +41,21 @@ pub(crate) struct InitOptions<'a> {
     /// The provider's execution paths (cache placement) for the
     /// component-mirror tenant probes.
     pub paths: &'a ExecutionPaths,
-    /// The ensured adapter binding. Required for regular init; must
-    /// be `None` when [`InitOptions::workspace`] is `true` (workspace
-    /// roots do not resolve an adapter at init time).
+    /// The ensured adapter binding. Required for a fresh init.
     pub adapter: Option<&'a EnsuredAdapter>,
     pub name: Option<&'a str>,
     pub description: Option<&'a str>,
-    /// When `true`, scaffold a registry-only **workspace** instead
-    /// of a regular project: writes `registry.yaml` at the repo root
-    /// and `project.yaml { workspace: true }` (with `adapter:` omitted)
-    /// under `.emery/`. Workspace init refuses to run when `.emery/`
-    /// already exists so it never clobbers a regular single-repo project.
-    pub workspace: bool,
     /// Target platforms to declare in `project.yaml`. Parsed from the
     /// `--platforms` CLI flag (comma-separated). `None` means the
     /// operator did not pass `--platforms`. When the resolved target
     /// adapter declares `platforms.required`, this must be `Some`.
     pub platforms: Option<&'a [Platform]>,
     /// When `true`, run the re-entry **upgrade** path instead of a
-    /// fresh scaffold: bump `project.yaml.emery` to the
-    /// running binary's version over an already-populated `.emery/`,
-    /// preserving every other field (including `adapter:` / `workspace:`)
-    /// and every operator artifact (`slices/`, `specs/`, `archive/`,
-    /// `registry.yaml`, `.emery/design-system/*`, the adapter cache).
-    /// `AGENTS.md` is regenerated only when absent (handled at the
-    /// command layer). Mutually exclusive with the `<adapter>`
-    /// positional, `--workspace`, `--name`, and `--description` at the
-    /// clap surface. `--platforms` is legal alongside `--upgrade`.
+    /// fresh scaffold: bump `project.yaml.emery` to the running
+    /// binary's version over an already-populated `.emery/`, preserving
+    /// every other field and every operator artifact. Mutually
+    /// exclusive with the `<adapter>` positional, `--name`, and
+    /// `--description`; `--platforms` stays legal.
     pub upgrade: bool,
 }
 
@@ -76,13 +64,10 @@ pub(crate) struct InitOptions<'a> {
 #[derive(Debug, Clone)]
 pub(crate) struct InitResult {
     pub config_path: PathBuf,
-    /// Resolved adapter name from the adapter root. For workspace init
-    /// this is the literal `"workspace"` so the JSON envelope stays stable
-    /// for downstream consumers.
+    /// Resolved adapter name from the adapter root.
     pub adapter_name: String,
     /// The binding value recorded on `project.yaml.adapter` — the
-    /// selector as typed (a bare name stays bare). `None` for
-    /// workspace init (no adapter binding).
+    /// selector as typed (a bare name stays bare).
     pub adapter_binding: Option<String>,
     pub cache_present: bool,
     pub directories_created: Vec<PathBuf>,
@@ -97,52 +82,32 @@ pub(crate) struct InitResult {
 ///
 /// Idempotent: a second call with identical options succeeds, creates no
 /// new directories, doesn't duplicate the `.gitignore` entry, and writes
-/// byte-identical `project.yaml` contents.
-///
-/// When [`InitOptions::upgrade`] is `true`, dispatches to the private
-/// upgrade runner (the re-entry version bump) ahead of the workspace /
-/// regular branch — one runner serves both regular and workspace
-/// projects because the preservation logic is identical (preserve every
-/// field, touch only `emery`).
-///
-/// When [`InitOptions::workspace`] is `true`, dispatches to the private
-/// workspace runner for the workspace on-disk shape.
+/// byte-identical `project.yaml` contents. [`InitOptions::upgrade`]
+/// dispatches to its private runner ahead of the fresh scaffold.
 ///
 /// # Errors
 ///
-/// Pre-condition: regular (non-workspace) init requires
-/// [`InitOptions::adapter`] to be set; the operation layer enforces
-/// this ahead of the call (the typed `init-adapter-required`), and
-/// `init` re-validates as a defence in depth
-/// (`init-requires-adapter-or-workspace`). Bubbles up
-/// filesystem, adapter resolution, and serialisation errors from
-/// the underlying calls.
+/// A fresh init requires [`InitOptions::adapter`]
+/// (`init-adapter-required`). Bubbles up filesystem, adapter
+/// resolution, and serialisation errors.
 pub(crate) fn init(
     resolver: &impl crate::adapter::Resolver, opts: InitOptions<'_>,
 ) -> Result<InitResult, Error> {
-    let mut result = if opts.upgrade {
-        upgrade::run(opts)?
-    } else if opts.workspace {
-        workspace::run(opts)?
-    } else {
-        regular::run(opts)?
-    };
+    let mut result = if opts.upgrade { upgrade::run(opts)? } else { regular::run(opts)? };
     // Every branch shares one context-generation pass over the freshly
-    // written project: the skip logic (existing `AGENTS.md`, workspace
-    // slot) gives `--upgrade` its regenerate-only-when-absent behavior.
+    // written project: the skip logic (existing `AGENTS.md`) gives
+    // `--upgrade` its regenerate-only-when-absent behavior.
     result.context_skip_reason = context::generate(resolver, opts.paths)?;
     Ok(result)
 }
 
 /// The value init records on `project.yaml.adapter` for one ensured
-/// binding: the selector as typed (a bare name stays bare — the
-/// deployment resolves it local-first at every use). A component path
-/// is recorded as its canonical
-/// `file://` form so the value outlives the CWD — read from the cache
-/// mirror's provenance sidecar when present, because the engine guest
-/// cannot canonicalize a host path that lives outside its mounts (the
-/// launcher mirrored and stamped it host-side before the runtime
-/// started); canonicalized directly otherwise.
+/// binding: the selector as typed (a bare name stays bare).
+///
+/// A component path is recorded as its canonical `file://` form so the
+/// value outlives the CWD — read from the cache mirror's provenance
+/// sidecar when present (the guest cannot canonicalize a host path
+/// outside its mounts); canonicalized directly otherwise.
 pub(crate) fn binding_value(
     ensured: &EnsuredAdapter, paths: &ExecutionPaths, project_dir: &Path,
 ) -> Result<String, Error> {
@@ -170,7 +135,7 @@ pub(crate) fn resolve_version() -> String {
 }
 
 pub(crate) fn upsert_gitignore(project_dir: &Path) -> Result<(), Error> {
-    crate::registry::ensure_gitignore(project_dir)
+    gitignore::ensure_gitignore(project_dir)
 }
 
 /// Validate the operator's `--platforms` set against the target's

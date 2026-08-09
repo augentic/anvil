@@ -12,7 +12,6 @@ fn input(adapter: &str) -> project::init::handlers::InitInput {
         adapter: Some(adapter.to_string()),
         name: Some("demo-project".to_string()),
         description: None,
-        workspace: false,
         platforms: None,
         upgrade: false,
     }

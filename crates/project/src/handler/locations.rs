@@ -1,15 +1,6 @@
-//! [`Locations`] — well-known on-disk locations for resolvable
-//! artifacts (the global adapter store and the per-project component
-//! cache).
-//!
-//! A plain value: construction is the only place layout policy lives.
-//! [`Locations::from_env`] is the shipped production layout — defaults
-//! in code, `EMERY_HOME` the only override, captured once at each
-//! composition root. [`Locations::explicit`] is the injection point
-//! for sandboxes, tests, and the engine guest's preopens. There is no
-//! trait and no alternate implementation; kernels and handlers receive
-//! the value through [`super::ExecutionPaths`] and never read
-//! `std::env` themselves.
+//! [`Locations`] — well-known on-disk roots (adapter store, component
+//! cache, snapshots, workspaces). Kernels and handlers receive the value
+//! through [`super::ExecutionPaths`] and never read `std::env` themselves.
 
 use std::path::{Path, PathBuf};
 
@@ -52,6 +43,15 @@ pub const GUEST_SNAPSHOTS_MOUNT: &str = "/emery-snapshots";
 /// deployment-local path.
 pub const GUEST_WORKSPACES_MOUNT: &str = "/emery-workspaces";
 
+/// Environment key carrying the host-absolute project root into the
+/// engine guest.
+///
+/// Guests inherit the host environment; the in-guest kernel derives
+/// the agent-visible artifact root from this key, so a spawned agent
+/// whose working directory is a lent workspace can still read
+/// change-tree artifacts.
+pub const PROJECT_ROOT_ENV: &str = "EMERY_PROJECT_ROOT";
+
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CachePlacement {
@@ -82,15 +82,11 @@ pub struct Locations {
 
 impl Locations {
     /// Production layout: capture `EMERY_HOME` once. A non-empty
-    /// absolute override wins; otherwise the effective home is
-    /// `$HOME/.emery`, then `<temp>/emery` when `$HOME` is
-    /// unavailable. Store, cache, snapshots, and workspaces derive
-    /// together as `<home>/store`, `<home>/cache`, `<home>/snapshots`,
-    /// and `<home>/workspaces`.
+    /// absolute override wins; otherwise `$HOME/.emery`, then
+    /// `<temp>/emery`. All four roots derive together as
+    /// `<home>/{store,cache,snapshots,workspaces}`.
     ///
-    /// Composition-root only — never called from kernels or handlers;
-    /// the wasm32 engine guest constructs [`Self::explicit`] over its
-    /// preopens instead.
+    /// Composition-root only — never called from kernels or handlers.
     #[cfg(not(target_arch = "wasm32"))]
     #[must_use]
     pub fn from_env() -> Self {

@@ -76,15 +76,10 @@ pub struct Entry {
     /// Stable identifier (kebab-case) unique within the plan.
     pub name: SliceName,
     /// Target registry project. Optional on disk: an omitted value
-    /// resolves to the sole project in the topology (a single regular
-    /// project synthesised from `project.yaml`), so single-project
-    /// plans need not repeat the project name; multi-project workspace
-    /// registries require an explicit value.
-    ///
-    /// The target adapter (`name[@vN]`) is **not** stored on the slice —
-    /// it is resolved on demand from this project via the topology
-    /// (the committed `.emery/topology.lock` for a workspace, `project.yaml.adapter` for a single
-    /// regular project) by the internal target-resolution kernel.
+    /// resolves to the sole topology project; multi-project workspace
+    /// registries require an explicit value. The target adapter is
+    /// **not** stored on the slice — it is resolved on demand from
+    /// this project via the topology.
     #[serde(default)]
     pub project: Option<String>,
     /// Names of other plan entries that must reach projected `done`
@@ -133,6 +128,15 @@ pub struct Entry {
     /// missing field are equivalent.
     #[serde(default, skip_serializing_if = "AuthorityOverride::is_empty")]
     pub authority_override: AuthorityOverride,
+    /// Authorise a whole-document (`screens:`) slice composition to
+    /// overwrite a non-empty baseline when this entry's merge phase
+    /// commits. Reserved for intentional full-baseline rewrites (e.g. a
+    /// dedicated refactoring slice); routine per-screen edits flow
+    /// through `delta:` and never need it. Set via `emery plan amend
+    /// <entry> --allow-composition-replace`; read by the execute
+    /// loop's merge step. `false` (the default) stays off disk.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub allow_composition_replace: bool,
 }
 
 impl Plan {

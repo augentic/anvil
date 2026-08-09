@@ -1,8 +1,7 @@
-//! Fact-based [`advance_next`] kernel behind `emery plan advance` and
-//! the execute loop (RFC-86 D2 / D7 / D23).
+//! Fact-based [`advance_next`] kernel behind the execute loop's
+//! advance step.
 //!
-//! Advance claims the next eligible slice and appends
-//! `plan.entry.advanced`. Ladder labels project from the fact union.
+//! Advance claims the next eligible slice and appends `plan.entry.advanced`.
 
 use std::collections::HashMap;
 use std::hash::BuildHasher;
@@ -22,7 +21,7 @@ use crate::journal::{self, Event, EventKind, claim};
 use crate::name::SliceName;
 use crate::plan::advance_gate;
 
-/// Why `emery plan advance` returned no freshly advanced entry.
+/// Why [`advance_next`] returned no freshly advanced entry.
 ///
 /// Also signals when the active in-progress entry was returned instead.
 /// The kebab-case wire values (`drained` / `stuck` / `in-progress`) are
@@ -38,7 +37,7 @@ pub enum AdvanceReason {
     InProgress,
 }
 
-/// Wire body for `emery plan advance` (text + JSON). At most one of
+/// Advance outcome for the execute loop. At most one of
 /// `advanced` / `active` populates per call; `reason` carries the
 /// selection outcome.
 #[derive(Debug, Serialize, Default)]
@@ -126,8 +125,8 @@ fn structural_errors() -> Error {
     )
 }
 
-/// Advance the plan one entry: the shared kernel behind both `emery
-/// plan advance` and the execute loop's per-phase advance.
+/// Advance the plan one entry: the kernel behind the execute loop's
+/// per-phase advance.
 ///
 /// Claims the next eligible slice (`slice.claimed`) and appends
 /// `plan.entry.advanced`. Does **not** rewrite `plan.yaml` entry
@@ -145,7 +144,7 @@ pub fn advance_next(
 ) -> Result<AdvanceBody, Error> {
     let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
-    let events = collect_events(&plan, layout)?;
+    let events = collect_events(layout)?;
     let ladders = project_ladders(&plan, &events);
     let body = plan_advance_body(resolver, &plan, &layout.slices_dir(), config, paths, &ladders)?;
     if let Some(advanced) = &body.advanced {
@@ -168,9 +167,9 @@ pub fn advance_next(
     Ok(body)
 }
 
-/// Text rendering for `plan advance`: the active or freshly advanced
-/// entry (labelled, with its project/target context), or the drained /
-/// blocked explanation.
+/// Text rendering for the advance outcome: the active or freshly
+/// advanced entry (labelled, with its project/target context), or the
+/// drained / blocked explanation.
 impl crate::handler::Render for AdvanceBody {
     fn render(&self, w: &mut dyn std::io::Write) -> std::io::Result<()> {
         if let Some(active) = &self.active {

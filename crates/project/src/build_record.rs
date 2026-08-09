@@ -1,10 +1,7 @@
-//! Content-addressed per-slice build records (RFC-86 D27).
+//! Content-addressed per-slice build records.
 //!
-//! Build outcomes live at `.emery/slices/<slice>/builds/<digest>.yaml`
-//! — base/result/`touched` plus the typed report and the wave digest
-//! that authorized the build. Replaces `build/patch.yaml` as build-
-//! outcome authority. “Built” projects from these records (and wave
-//! / build success facts), never from a leftover path check.
+//! Build outcomes live at `.emery/slices/<slice>/builds/<digest>.yaml`;
+//! "built" projects from these records and facts, never from a path check.
 
 use std::path::{Path, PathBuf};
 
@@ -174,6 +171,37 @@ impl BuildRecord {
         load_path(&path)
     }
 
+    /// Load every build record under `slice_dir/builds/` (any order).
+    /// An absent directory is empty, not an error.
+    ///
+    /// # Errors
+    ///
+    /// Parse / IO failures on present records.
+    pub fn load_all(slice_dir: &Path) -> Result<Vec<Self>, Error> {
+        let dir = builds_dir(slice_dir);
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(Vec::new());
+            }
+            Err(source) => {
+                return Err(Error::Filesystem {
+                    op: "read_dir",
+                    path: dir,
+                    source,
+                });
+            }
+        };
+        let mut records = Vec::new();
+        for entry in entries.filter_map(Result::ok) {
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) == Some("yaml") && path.is_file() {
+                records.push(load_path(&path)?);
+            }
+        }
+        Ok(records)
+    }
+
     /// Persist via [`Layout`] helpers (same bytes as [`Self::write`]).
     ///
     /// # Errors
@@ -207,8 +235,8 @@ fn missing(slice_dir: &Path) -> Error {
         "slice-build-record-missing",
         "a built slice carries a fact-substrate build record",
         format!(
-            "slice `{name}` has no `builds/<digest>.yaml`; re-run `emery slice build {name}` \
-             before merging"
+            "slice `{name}` has no `builds/<digest>.yaml`; re-run `emery plan execute` so the \
+             build phase records it before merging"
         ),
     )
 }

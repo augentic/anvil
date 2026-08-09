@@ -1,13 +1,6 @@
-//! The drained execute loop behind `emery plan execute`: advance to
-//! the next entry, dispatch its phase (refine / build / merge), repeat
-//! until the plan projects `drained` or a stop. Every stop returns as
-//! a typed [`ExecuteOutcome::Stopped`] with a [`StopReason`] and hint.
-//!
-//! Dual-driving is refused by the create-exclusive [`GuestMarker`]
-//! (`<plan-root>/.emery/guest.lock`) held for the run. The loop
-//! composes the per-phase cadence and, on re-entry after a sticky
-//! postflight stop, appends one control-plane
-//! `plan.merge-postflight.acknowledged` event before continuing.
+//! The drained execute loop behind `emery plan execute`: advance,
+//! dispatch the entry's phase (refine / build / merge), repeat until
+//! the plan projects `drained` or a typed [`ExecuteOutcome::Stopped`].
 
 use std::ops::ControlFlow;
 
@@ -71,31 +64,17 @@ pub enum ExecuteOutcome {
 /// Run the drained execute loop: advance → refine → build → merge
 /// per entry until `plan status` projects `drained` or a stop.
 ///
-/// Re-entry is safe — a refine / build / preflight-merge failure
-/// leaves the entry `in-progress` and the journal terminal event in
-/// place, so the next run's status projection resumes (or re-reports
-/// the stop) from the same point. A postflight failure stamps the
-/// entry `done` (non-rollback) and projects a sticky
-/// `merge-postflight-failed` stop; re-running execute emits
-/// `plan.merge-postflight.acknowledged` and continues.
-///
-/// The bound target adapter resolves once, inside the loop's own
-/// setup (after the workspace refusal, before the marker) — its
-/// declared inputs and its name feed every [`slice::orchestrate::build`] dispatch,
-/// so the declared inputs and the seam routing come from one identity.
-/// Each build and merge phase manages its own private workspace
-/// through the target seam's `Workspaces` capability (RFC-87).
+/// Re-entry is safe: a refine / build / preflight-merge failure leaves
+/// the entry `in-progress`, so the next run resumes (or re-reports the
+/// stop); a postflight failure stamps `done` (non-rollback) and
+/// projects a sticky stop the next execute acknowledges. The bound
+/// target adapter resolves once in loop setup (before the marker),
+/// giving every dispatch one identity.
 ///
 /// # Errors
 ///
-/// Refuses with `plan-execute-workspace-unsupported` (exit 2) when the plan root
-///   is a workspace or any entry is `project`-scoped — the skill's
-///   workspace routing (slot sync + chdir) has no in-guest counterpart
-///   yet, so the loop refuses rather than writing to the wrong tree.
-///   Classified **before** the adapter lookup, so a workspace root
-///   surfaces this refusal rather than `workspace-no-adapter`.
 /// Refuses with `guest-marker-held` (exit 2) when another guest execute run holds
-///   the D1 marker — or a stale marker survived a crash; the detail
+///   the marker — or a stale marker survived a crash; the detail
 ///   says which file to delete.
 /// Phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
@@ -104,7 +83,6 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     waive: &[super::WaiveSelector], reason: Option<&str>,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
-    refuse_workspace_routing(layout)?;
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
     // Validate waivers before taking the marker so a bad `--waive`
@@ -112,7 +90,7 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     let plan = Plan::load(&layout.plan_path())?;
     let unknown_waivers = super::epoch::validate_waivers(layout, &plan, waive, reason)?;
     let _marker = GuestMarker::acquire(layout, now)?;
-    // D6: every execute path appends `plan.execute.started` at start
+    // Every execute path appends `plan.execute.started` at start
     // with typed `closed-plan` coverage (optional unknown-waivers).
     super::epoch::append_started(layout, &plan, now, unknown_waivers)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
@@ -125,11 +103,9 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         let counts = status.counts;
         let total = counts.pending + counts.in_progress + counts.done;
         let entry = (counts.done + 1).min(total.max(1));
-        // A single execute process still walks entries one-by-one
-        // (RFC-86 D23). When status already names an in-progress entry,
-        // resume it — do not call advance, which would start a different
-        // eligible pending sibling now that plan-wide single-active is
-        // retired.
+        // A single execute process walks entries one-by-one. When status
+        // already names an in-progress entry, resume it — advance would
+        // start a different eligible pending sibling instead.
         let resume = status.active.clone();
         let step = match dispatch_status(layout, now, status, &phases) {
             ControlFlow::Break(outcome) => return Ok(outcome),
@@ -157,39 +133,28 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         };
         let slice = advanced.slice.clone();
 
-        tracing::info!("{step} {slice} [entry {entry}/{total}] …");
-        let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
-        let result: Result<(), Error> = match step {
-            LoopStep::Refine => {
-                let target = advanced.target.clone().ok_or_else(|| Error::Diag {
-                    code: "slice-create-target-missing",
-                    detail: format!(
-                        "no target resolved for slice `{slice}`; declare the project adapter \
-                         (or fix the bound project's topology) before executing"
-                    ),
-                })?;
-                slice::orchestrate::refine(caps, paths, now, &slice, &target)
-                    .instrument(span)
-                    .await
-                    .map(drop)
-            }
-            LoopStep::Build => {
-                // D13 / D15–D17: gap policy + epoch freshness refuse
-                // build before the target orchestration runs. Hard
-                // validation (not a typed stop) so drivers see
-                // `plan-gaps-unresolved` / `plan-epoch-stale`.
-                let plan = Plan::load(&layout.plan_path())?;
-                super::enforce_before_build(layout, &plan, &slice)?;
-                slice::orchestrate::build(caps.targets, layout, now, &slice, &adapter.manifest)
-                    .instrument(span)
-                    .await
-                    .map(drop)
-            }
-            LoopStep::Merge => slice::orchestrate::merge(caps.targets, layout, now, &slice, false)
-                .instrument(span)
-                .await
-                .map(drop),
+        // Refine staleness (RFC-86 coverage): drifted `base.yaml` pins
+        // force a re-refine before build; refine re-freezes the pins,
+        // so the probe settles false on the next pass.
+        let step = if step == LoopStep::Build
+            && slice::pins_drifted(layout, &layout.slice_dir(&slice), &slice)?
+        {
+            tracing::info!("base.yaml pins drifted for {slice} — re-refining under this epoch");
+            LoopStep::Refine
+        } else {
+            step
         };
+
+        tracing::info!("{step} {slice} [entry {entry}/{total}] …");
+        // Gap policy + epoch freshness refuse build before the target
+        // orchestration runs — hard validation (not a typed stop):
+        // `plan-gaps-unresolved` / `plan-epoch-stale`.
+        if step == LoopStep::Build {
+            let plan = Plan::load(&layout.plan_path())?;
+            super::enforce_before_build(layout, &plan, &slice)?;
+        }
+        let result =
+            run_phase(caps, paths, now, &adapter, step, &slice, advanced.target.as_deref()).await;
 
         match result {
             Ok(()) => {
@@ -197,11 +162,9 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                 phases.push(PhaseRun { slice, step });
             }
             Err(err) => {
-                // The phase already journalled its failure terminal, so
-                // a re-entrant run's status projection reports the same
-                // stop this return carries. Refine / build / preflight
-                // leave the entry `in-progress`; postflight already
-                // stamped `done` (non-rollback) before failing.
+                // The phase already journalled its failure terminal, so a
+                // re-entrant run reports this same stop. Refine / build /
+                // preflight leave `in-progress`; postflight stamped `done`.
                 let reason = phase_stop_reason(step, &err);
                 tracing::info!("{step} {slice} [entry {entry}/{total}] — stopped: {reason}");
                 return Ok(ExecuteOutcome::Stopped {
@@ -212,6 +175,52 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                     phases,
                 });
             }
+        }
+    }
+}
+
+/// Dispatch one loop phase for `slice` under the entry's tracing span.
+async fn run_phase<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
+    caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
+    adapter: &project::adapter::ResolvedTarget, step: LoopStep, slice: &str,
+    advanced_target: Option<&str>,
+) -> Result<(), Error> {
+    let layout = Layout::new(paths.project_root());
+    let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
+    match step {
+        LoopStep::Refine => {
+            let target = advanced_target.ok_or_else(|| Error::Diag {
+                code: "slice-create-target-missing",
+                detail: format!(
+                    "no target resolved for slice `{slice}`; declare the project adapter (or fix \
+                     the bound project's topology) before executing"
+                ),
+            })?;
+            slice::orchestrate::refine(caps, paths, now, slice, target)
+                .instrument(span)
+                .await
+                .map(drop)
+        }
+        LoopStep::Build => {
+            slice::orchestrate::build(caps.targets, layout, now, slice, &adapter.manifest)
+                .instrument(span)
+                .await
+                .map(drop)
+        }
+        LoopStep::Merge => {
+            // The composition-replace override lives on the plan
+            // entry (`emery plan amend --allow-composition-replace`),
+            // read fresh so a mid-run amend takes effect.
+            let plan = Plan::load(&layout.plan_path())?;
+            let allow_replace = plan
+                .entries
+                .iter()
+                .find(|entry| entry.name == slice)
+                .is_some_and(|entry| entry.allow_composition_replace);
+            slice::orchestrate::merge(caps.targets, layout, now, slice, allow_replace)
+                .instrument(span)
+                .await
+                .map(drop)
         }
     }
 }
@@ -227,20 +236,29 @@ fn dispatch_status(
             phases: phases.to_vec(),
         }),
         NextActionKind::Stop => {
-            // Sticky postflight debt: the first failure already stopped
-            // via the phase Err arm. Re-running execute acknowledges
-            // and continues — no new CLI verb. The ack is control-plane
-            // (clears the sticky stop), so it must not be best-effort:
-            // a swallowed append would leave status projecting the same
-            // stop and spin while holding `guest.lock`.
+            // Sticky postflight debt: re-running execute acknowledges and
+            // continues. The ack must not be best-effort — a swallowed
+            // append would re-project the stop and spin under `guest.lock`.
             if status.stop.as_ref().map(|s| s.reason) == Some(StopReason::MergePostflightFailed) {
                 return acknowledge_postflight(layout, now, status, phases);
             }
-            // Torn merge (commit landed, `done` stamp missing): the
-            // merge phase's re-entry heals it by stamping the entry,
-            // so dispatch merge instead of parking the loop.
-            if status.stop.as_ref().map(|s| s.reason) == Some(StopReason::MergeIncomplete) {
-                return ControlFlow::Continue(Some(LoopStep::Merge));
+            // Journalled phase failures are retryable — re-running
+            // execute is the resume path, so re-dispatch the parked
+            // phase (a failure in *this* run exits via the `Err` arm).
+            match status.stop.as_ref().map(|s| s.reason) {
+                Some(StopReason::RefineFailed) => {
+                    return ControlFlow::Continue(Some(LoopStep::Refine));
+                }
+                Some(StopReason::BuildFailed) => {
+                    return ControlFlow::Continue(Some(LoopStep::Build));
+                }
+                // Torn merge (commit landed, `done` stamp missing) heals
+                // on merge re-entry; a preflight conflict retries after
+                // the operator fixed inputs.
+                Some(StopReason::MergeConflict | StopReason::MergeIncomplete) => {
+                    return ControlFlow::Continue(Some(LoopStep::Merge));
+                }
+                _ => {}
             }
             // A stop projection always carries a stop body; a missing
             // one (unreachable by construction) degrades to the
@@ -256,7 +274,7 @@ fn dispatch_status(
             })
         }
         NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
-        // ReviewGaps is status when refined but not Ready (D22). The
+        // ReviewGaps is status when refined but not Ready. The
         // loop still attempts build; `enforce_before_build` applies
         // waivers on the covering epoch and refuses unresolved gaps.
         NextActionKind::Build | NextActionKind::ReviewGaps => {
@@ -316,30 +334,6 @@ fn phase_stop_reason(step: LoopStep, err: &Error) -> StopReason {
     }
 }
 
-/// Refuse workspace-routed plans: a `project`-scoped entry needs a
-/// slot sync plus a chdir into `workspace/<project>/`, and the guest
-/// loop has no counterpart yet — running anyway would create slices
-/// under the workspace root's own `.emery/` tree. Workspace plans
-/// run hand-driven instead: `emery plan advance`, then the
-/// `/emery:refine` → `/emery:build` → `/emery:merge` breakouts. Uses the
-/// shared [`super::routing`] classification with this operation's own
-/// refusal code; single-project plans are unaffected.
-fn refuse_workspace_routing(layout: Layout<'_>) -> Result<(), Error> {
-    let plan = Plan::load(&layout.plan_path())?;
-    let Some(subject) = super::routing::classify(layout, Some(&plan))?.refusal_subject() else {
-        return Ok(());
-    };
-    Err(Error::validation_failed(
-        "plan-execute-workspace-unsupported",
-        "the guest execute loop runs single-project plans only",
-        format!(
-            "{subject}; workspace routing (slot sync + chdir) has no in-guest counterpart — \
-             drive workspace plans hand-driven (`emery plan advance`, then the \
-             /emery:refine → /emery:build → /emery:merge breakouts)"
-        ),
-    ))
-}
-
 /// One advanced entry: the slice to run and its best-effort resolved
 /// target (`name[@vN]`).
 struct Advanced {
@@ -359,10 +353,8 @@ fn advance(
     let config = ProjectConfig::load(layout.project_dir())?;
     let body = project::plan::advance_next(resolver, paths, now, &config)?;
     // A fresh advance carries the resolved target; the active-entry
-    // return does not, so re-resolve lazily from the slice's own
-    // metadata at the phase (refine reads it from the advance, and
-    // only refine needs it — build/merge read `metadata.yaml`
-    // themselves).
+    // return does not, so re-resolve from the slice's own metadata
+    // (only refine needs it — build/merge read `metadata.yaml`).
     Ok(match (body.advanced, body.active) {
         (Some(slice), _) => Some(Advanced {
             slice,

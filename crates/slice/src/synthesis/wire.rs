@@ -1,19 +1,12 @@
 //! Synthesis response wire DTO + input-envelope assembly.
 //!
-//! The single schema-gated wire is the **response**:
-//! [`SynthesisResponse`] is the source of truth — the judgment-answer
-//! schema the model host gates against is generated from it
-//! ([`crate::answers::synthesis`]) and the deterministic tail re-parses
-//! the raw answer through it. The inputs [`inputs`] assembles into
-//! [`SynthesisInputs`] have no closed request shape. Authority is not included — the kernel
-//! resolves it from the on-disk Evidence after the response returns.
-//! Assembly is pure over already-read inputs;
-//! [`SourceInput::from_file`] is the only filesystem hook.
+//! [`SynthesisResponse`] is the single schema-gated wire shape; the
+//! inputs envelope has no closed request shape and assembly is pure.
 
 use std::path::Path;
 
 use error::Result;
-use project::registry::topology::{Decision, Surface};
+use project::identity::{Decision, Surface};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -270,13 +263,9 @@ impl SourceInput {
 /// Assemble the agent synthesis step's input envelope from
 /// already-read inputs.
 ///
-/// `sources` is one [`SourceInput`] per bound source — the
-/// caller builds the vec by reading each `evidence/<source>.yaml`
-/// (e.g. via [`SourceInput::from_file`]).
-/// `guidance_brief` is the bound target's resolved guidance body,
-/// provided by the refine orchestration (which resolves the
-/// [`project::adapter::TargetAdapter`] and reads the brief) so this
-/// function stays pure and adapter-free.
+/// `sources` is one [`SourceInput`] per bound source;
+/// `guidance_brief` is the bound target's resolved guidance body, read
+/// by the refine orchestration so this function stays adapter-free.
 #[must_use]
 pub fn inputs(
     slice: &str, sources: &[SourceInput], guidance_brief: &str, baseline: &[Surface],

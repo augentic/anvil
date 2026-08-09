@@ -1,8 +1,7 @@
 //! On-disk `<slice_dir>/metadata.yaml` representation.
 //!
-//! [`SliceMetadata`] is the document, [`Outcome`] is the latest phase
-//! return surface read by the `emery plan execute` loop, and
-//! [`TouchedSpec`] lists the specs the slice mutates.
+//! [`SliceMetadata`] is the document; [`Outcome`] is the latest phase
+//! return surface; [`TouchedSpec`] lists the specs the slice mutates.
 
 use std::path::{Path, PathBuf};
 

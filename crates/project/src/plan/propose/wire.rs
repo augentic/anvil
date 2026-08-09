@@ -1,17 +1,12 @@
 //! Lead-reconciliation envelope DTOs.
 //!
-//! The wire contract is a single envelope discriminated by a closed
-//! `kind: request | response`. These serde DTOs are the source of
-//! truth: the judgment-answer schema the model host gates against is
-//! generated from [`ProposalResponse`] by [`crate::answers::proposal`],
-//! and the deterministic tail re-parses the raw answer through the same
-//! type. The assembly that fills the request lives in
-//! [`super::catalog`] and [`super::topology`].
+//! These serde DTOs are the source of truth: the judgment-answer schema
+//! is generated from them, and the deterministic tail re-parses through them.
 
 use serde::{Deserialize, Serialize};
 
 use super::super::model::{Disagreement, Divergence};
-use crate::registry::topology::{Decision, Surface};
+use crate::identity::{Decision, Surface};
 
 /// Reconciliation envelope kind.
 ///
@@ -61,7 +56,7 @@ pub struct ProjectRef {
     /// `plan.yaml.slices[].project`.
     pub name: String,
     /// The project's target adapter ref in the
-    /// `registry::topology::target_ref` grammar: `name@vN` for a
+    /// `identity::target_ref` grammar: `name@vN` for a
     /// pinned identity (e.g. `omnia@1.0.0`), bare `name` for an
     /// unpinned cache resolve. Resolved on demand by
     /// [`super::resolve_target`] for a slice bound to this project; it

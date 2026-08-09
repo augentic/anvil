@@ -1,7 +1,6 @@
-//! `emery plan amend` — routes wholesale edits through
-//! [`Plan::amend`], additive `add-source` / `remove-source` edits
-//! through direct entry mutation, and authority-override assignments
-//! through the shared domain engine.
+//! `emery plan amend` — wholesale edits via [`Plan::amend`], additive
+//! `add-source` / `remove-source` edits via direct entry mutation, and
+//! authority-override assignments via the shared domain engine.
 
 use artifacts::evidence::ClaimKind;
 use error::Error;
@@ -17,7 +16,7 @@ use project::plan::{
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
-use super::{check_project, plan_ref};
+use super::plan_ref;
 use crate::plan::wire::{
     BindingArg, KindAssign, bindings_from_args, load_discovery, parse_divergence,
 };
@@ -51,10 +50,6 @@ pub struct AmendInput {
     /// unchanged.
     #[serde(default)]
     pub description: Option<String>,
-    /// Replace project (`Some("")` clears); `None` leaves it
-    /// unchanged.
-    #[serde(default)]
-    pub project: Option<String>,
     /// Replace context paths; `None` leaves them unchanged.
     #[serde(default)]
     pub context: Option<Vec<String>>,
@@ -67,6 +62,11 @@ pub struct AmendInput {
     /// Wipe the amended entry's whole authority-override map.
     #[serde(default)]
     pub clear_authority_overrides: bool,
+    /// Set the entry's `allow-composition-replace` field — the merge
+    /// step's whole-document composition-overwrite authorization;
+    /// `None` leaves it unchanged.
+    #[serde(default)]
+    pub allow_composition_replace: Option<bool>,
 }
 
 /// `emery plan amend <name> [flags]` — edit non-status fields on an
@@ -91,18 +91,12 @@ impl<P: Anchor> Operation<P> for Amend {
             remove_source,
             divergence,
             description,
-            project,
             context,
             authority_override,
             clear_authority_override,
             clear_authority_overrides,
+            allow_composition_replace,
         } = input;
-
-        if let Some(proj) = &project
-            && !proj.is_empty()
-        {
-            check_project(&cx.project_dir, proj)?;
-        }
 
         let divergence = divergence.as_deref().map(parse_divergence).transpose()?;
         // Overrides are scoped to the entry being amended — the shared
@@ -131,18 +125,17 @@ impl<P: Anchor> Operation<P> for Amend {
                 let patch = EntryPatch {
                     depends_on: depends_on.clone().map(|v| v.into_iter().map(Into::into).collect()),
                     sources: sources_replace,
-                    project: Patch::from_string_option(project.clone()),
                     description: Patch::from_string_option(description.clone()),
                     context: context.clone(),
                     divergence,
+                    allow_composition_replace,
                 };
                 plan.amend(&name, patch)?;
 
                 apply_source_edits(plan, &plan_name, &name, add_bindings, &remove_source)?;
-                // `--add-source` mutates after `Plan::amend`'s own
-                // validate-and-rollback gate, so re-gate duplicate source
-                // keys here (a duplicate would silently overwrite
-                // `evidence/<source>.yaml` at refine time).
+                // `--add-source` mutates after `Plan::amend`'s validate-and-
+                // rollback gate, so re-gate duplicate keys here (a duplicate
+                // would silently overwrite `evidence/<source>.yaml` at refine).
                 reject_duplicate_source_keys(plan)?;
 
                 let override_journal = authority_override::mutate(

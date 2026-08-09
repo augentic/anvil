@@ -46,8 +46,8 @@ fn value_binding_pins_one_file_tree() {
     assert_eq!(cid.as_str().len(), "sha256:".len() + 64);
 }
 
-#[test]
-fn path_dir_matches_store_snapshot() {
+#[tokio::test]
+async fn path_dir_matches_store_snapshot() {
     let root = tempfile::tempdir().expect("tempdir");
     let docs = root.path().join("docs");
     std::fs::create_dir_all(&docs).expect("mkdir");
@@ -60,7 +60,7 @@ fn path_dir_matches_store_snapshot() {
     let cid = plan.sources["docs"].cid.clone().expect("cid");
 
     let store = Store::new(root.path().join("snapshots"));
-    let stored = store.snapshot(&docs).expect("store snapshot");
+    let stored = store.snapshot(&docs).await.expect("store snapshot");
     assert_eq!(cid, stored);
 }
 
@@ -97,8 +97,8 @@ fn missing_dir_shares_empty_tree_cid() {
     assert_eq!(dir_cid(&missing).expect("cid"), empty_cid());
 }
 
-#[test]
-fn dir_cid_matches_store_snapshot() {
+#[tokio::test]
+async fn dir_cid_matches_store_snapshot() {
     let root = tempfile::tempdir().expect("tempdir");
     let specs = root.path().join("specs");
     let domain = specs.join("a");
@@ -106,5 +106,8 @@ fn dir_cid_matches_store_snapshot() {
     std::fs::write(domain.join("spec.md"), b"body").expect("write");
 
     let store = Store::new(root.path().join("snapshots"));
-    assert_eq!(dir_cid(&specs).expect("dir cid"), store.snapshot(&specs).expect("store snapshot"));
+    assert_eq!(
+        dir_cid(&specs).expect("dir cid"),
+        store.snapshot(&specs).await.expect("store snapshot")
+    );
 }

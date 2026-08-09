@@ -1,10 +1,6 @@
 //! The Emery slice loop: refine / build / merge orchestration,
 //! synthesis, validation, provenance, the delta-merge engine, and the
-//! `emery slice *` operations. The slice data model (`metadata.yaml`,
-//! lifecycle, outcome) and the deployment-neutral foundation live in
-//! `project`; the change loop that drives this crate per plan entry
-//! lives in `change`. See `docs/standards/architecture.md` for the
-//! rationale.
+//! `emery slice *` operations.
 
 pub(crate) mod actions;
 pub mod answers;
@@ -22,6 +18,7 @@ pub(crate) mod synthesis;
 pub(crate) mod validate;
 
 pub(crate) use actions::CreateIfExists;
+pub use actions::discard;
 pub use base::Base;
 pub(crate) use build::assemble::build_request;
 pub use model::SliceModel;
@@ -41,3 +38,4 @@ pub(crate) use synthesis::render::provenance_lines;
 pub(crate) use synthesis::wire::{
     DomainDetail, SourceInput, SynthesisInputs, SynthesisResponse, inputs,
 };
+pub use validate::pins_drifted;

@@ -1,26 +1,6 @@
 //! The Emery [`omnia::GuestResolver`]: fail-closed, adapters-only
 //! guest resolution over the invocation's one captured
-//! [`ExecutionPaths`].
-//!
-//! The engine guest is embedded in the binary and registered
-//! statically at boot, so no engine identity ever reaches this
-//! resolver. An unpinned routed id (`<axis>:<name>`) resolves
-//! local-first: the anchored project's seeded component cache (the
-//! co-dev seed always wins), else the newest version already in the
-//! global store, else — only when nothing local exists — the
-//! pull-latest provisioning leg (list the registry's exact-SemVer
-//! tags, install the maximum). An explicit upgrade (`emery adapter
-//! upgrade`, `emery init`) puts the name in the invocation's refresh
-//! set, which forces the registry check ahead of the store probe. A
-//! pinned routed id (`<axis>:<name>@<version>`) maps to the immutable
-//! global store entry; a store miss triggers the host-owned
-//! pull-on-miss install from the first-party OCI registry
-//! ([`crate::install`]), then resolves the freshly installed entry
-//! through the same verify-on-read gate. An entry that fails that
-//! gate (a torn install, drifted bytes) is unlinked and reinstalled
-//! once before failing closed. Malformed identities fail
-//! deterministically. Every settled identity is logged to stderr with
-//! the host version — the run's version audit trail.
+//! [`ExecutionPaths`]. Every settled identity is logged to stderr.
 
 use std::collections::BTreeSet;
 

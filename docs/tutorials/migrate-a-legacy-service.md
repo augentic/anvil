@@ -132,7 +132,7 @@ Running execute is your approval; it drives each slice through **refine → buil
 
 During refine, the adapter's `extract` operation produces evidence YAML from the legacy code; that evidence carries `authority: behaviour`, the lowest class, so your intent wins any disagreement — see [Legacy migration at scale](../explanation/legacy-migration.md).
 
-If execute stops, the stop card prints a `hint:` and a `resume:` command — run the resume command. To drive one slice at a time instead, use the breakout skills `/emery:refine`, `/emery:build`, `/emery:merge` (or `emery slice refine|build|merge`); abandon a slice with `emery slice drop`. Both `emery plan status` and `emery slice list` are read-only checks between steps.
+If execute stops, the stop card prints a `hint:` and a `resume:` command — fix the input it points at and re-run `emery plan execute`; the loop resumes at the parked phase. Abandon a slice with `emery plan drop <entry>`. Both `emery plan status` and `emery slice list` are read-only checks between steps.
 </div>
 
 
@@ -183,6 +183,6 @@ Every CLI failure prints a kebab-case error code and usually a `hint:` line nami
 
 - [Legacy migration at scale](../explanation/legacy-migration.md) — why authority matters when code and docs disagree
 - [Bind multiple sources](../how-to/bind-multiple-sources.md) — combine legacy code with design notes at plan time
-- [Drive a slice manually](../how-to/drive-slice-manually.md) — when execute parks on a failure
+- [Drop down a layer](../how-to/drop-down-a-layer.md) — when execute parks on a failure
 - [Quick reference card](../reference/quick-reference.md) — source binding grammar and command cheat sheet
 </div>

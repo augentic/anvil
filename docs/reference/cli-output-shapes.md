@@ -74,23 +74,6 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 }
 ```
 
-### `emery plan advance`
-
-Advances the next eligible entry to `in-progress` (or returns the already-active entry), or a `reason` describing why nothing is eligible. Success carries `advanced: "<entry>"`; drained / blocked / in-progress states carry `advanced: null` and a populated `reason` (`drained`, `in-progress`, etc.).
-
-```json
-{
-  "active": null,
-  "advanced": "b",
-  "description": null,
-  "plan": "demo",
-  "project": "default",
-  "reason": null,
-  "sources": [],
-  "target": null
-}
-```
-
 ### `emery plan author`
 
 The guest-routed authoring orchestration: survey per bound source, reconcile leads into `slices[]`, persist the review prose, validate, exit for operator review. `hint` is the literal closing line the `/emery:plan` skill relays.
@@ -155,29 +138,21 @@ Success summary after the reconcile kernel projects the agent **response** onto 
 }
 ```
 
-### `emery plan undo`
+### `emery plan drop`
 
-The reverse walk. The `previous` / `current` pair pins the walk's endpoints, and `undo: [{ from, to }, …]` lists every rung as typed discriminants — one element for the default single rung, several when `--to` walks further.
+Abandons one entry's slice without merging. The body carries the archive destination and the persisted reason.
 
 ```json
 {
-  "current": "pending",
   "name": "identity-service",
-  "plan": {
-    "name": "demo",
-    "path": "<TEMPDIR>/plan.yaml"
-  },
-  "previous": "done",
-  "undo": [
-    { "from": "done", "to": "in-progress" },
-    { "from": "in-progress", "to": "pending" }
-  ]
+  "archive-path": "<TEMPDIR>/.emery/archive/2026-07-31-identity-service",
+  "drop-reason": "superseded by identity-contracts"
 }
 ```
 
 ### `emery plan status`
 
-Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). On a fresh plan (nothing done, nothing in progress) the dispatch projections keep their `next-action` but `resume` names `/emery:execute` — the operator path starts with execute, not a phase breakout. The verb never writes: `plan advance` stays the only `in-progress` writer.
+Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). On a fresh plan (nothing done, nothing in progress) the dispatch projections keep their `next-action` but `resume` names `/emery:execute` — the operator path starts with execute. The verb never writes: the execute loop's claim step stays the only `in-progress` writer.
 
 ```json
 {
@@ -193,7 +168,7 @@ Read-only projection of the plan's execution state. `next-action` is the dispatc
   "next-action": "refine a",
   "plan": "demo",
   "project": "default",
-  "resume": "/emery:refine a",
+  "resume": "emery plan execute",
   "slice": "a"
 }
 ```
@@ -214,11 +189,11 @@ A stopped plan carries the classification block:
   "next-action": "stop build-failed",
   "plan": "demo",
   "project": "default",
-  "resume": "/emery:build a",
+  "resume": "emery plan execute",
   "slice": "a",
   "stop": {
     "detail": "exhausted repair budget",
-    "hint": "Fix the failure, then retry /emery:build for the slice. The plan entry stays in-progress.",
+    "hint": "Fix the failure, then re-run `emery plan execute` — the loop resumes at the parked phase. The plan entry stays in-progress.",
     "reason": "build-failed"
   }
 }
@@ -241,25 +216,26 @@ Runs the plan-shape diagnostics and emits the neutral `DiagnosticReport` envelop
 }
 ```
 
-A failed run carries one object per finding in `findings`, each with `rule-id` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. Health diagnostics (`cycle-in-depends-on`, `orphan-source`, `stale-workspace-clone`) attach their structured payload to `evidence` as `{ "kind": "structured", "data": … }`.
+A failed run carries one object per finding in `findings`, each with `rule-id` (kebab-case rule id such as `duplicate-name` or `cycle-in-depends-on`), `severity` (`critical` / `important` / `suggestion` / `optional`), `impact` (the human-readable message), optional `slice` (the entry name), and `evidence`. Health diagnostics (`cycle-in-depends-on`, `orphan-source`) attach their structured payload to `evidence` as `{ "kind": "structured", "data": … }`.
 
 ### `emery plan archive`
 
-Sweeps a closed plan into `.emery/archive/plans/`. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept. Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
+Sweeps a closed plan into `.emery/archive/plans/`, then runs the change-scoped snapshot collection. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept; `swept-objects` counts the snapshot-store objects the collection deleted (objects whose GC roots belonged only to the archived change, RFC-88 D2). Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
 
 ```json
 {
   "archived": "<TEMPDIR>/.emery/archive/plans/demo-<YYYYMMDD>.yaml",
   "archived-plans-dir": null,
+  "swept-objects": 7,
   "plan": {
     "name": "demo"
   }
 }
 ```
 
-### `emery slice merge`
+### Merge phase summary {#merge-phase-summary}
 
-Folds the slice's spec deltas into the baseline. The committed-merge body carries the merged baseline spec names, the promoted `DEC-NNNN` Decision Record ids, and the archived slice location; the `--preview` / `--conflict-check` dry-run modes keep their own bodies.
+The merge phase inside `emery plan execute` folds the slice's spec deltas into the baseline. The committed-merge summary carries the merged baseline spec names, the promoted `DEC-NNNN` Decision Record ids, and the archived slice location. (Merge staleness previews live in `emery slice validate` review diagnostics.)
 
 ```json
 {
@@ -272,7 +248,7 @@ Folds the slice's spec deltas into the baseline. The committed-merge body carrie
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the guest-routed `emery slice refine` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree — they are not inlined on the wire), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the refine phase of `emery plan execute` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree — they are not inlined on the wire), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -312,9 +288,9 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 }
 ```
 
-### `emery slice build`
+### Build phase result {#build-phase-result}
 
-One envelope shape inside the guest-routed orchestration: the typed request is assembled, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail gates the typed report, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+One envelope shape inside the build phase of `emery plan execute`: the typed request is assembled, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail gates the typed report, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
 
 ```json
 {

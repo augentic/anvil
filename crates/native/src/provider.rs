@@ -1,13 +1,6 @@
 //! The native seam provider: project anchoring, ensure/resolve over
-//! the compiled catalog, model access, and adapter dispatch.
-//!
-//! Maps adapter seam DTOs onto engine seam DTOs like the wasm guest
-//! shim. Native ensure is a static package match, not a component
-//! store lookup: bare selectors resolve to the catalog entry's actual
-//! version, exact pins succeed only on the exact compiled `(name,
-//! version)` of a published (non-placeholder) identity, and everything
-//! else fails as `adapter-not-linked` before any cache mutation could
-//! occur.
+//! the compiled catalog, model access, and adapter dispatch. Native
+//! ensure is a static package match — misses fail `adapter-not-linked`.
 
 use adapter::seam::{self as aseam, Context};
 use error::Error;
@@ -131,10 +124,9 @@ impl Provider {
         }
     }
 
-    // Assemble the SDK context for one operation through this one place.
-    // The default lend is the project root itself (host path — the
-    // native stand-in for the guest's `"."` preopen); build and merge
-    // re-lend their prepared workspace.
+    // One assembly point for the SDK context. The default lend is the
+    // project root itself (the native stand-in for the guest's `"."`
+    // preopen); build and merge re-lend their prepared workspace.
     fn ctx<'a>(&'a self, id: &'a str, url: Option<String>) -> Context<'a> {
         Context {
             adapter_id: id,
@@ -145,7 +137,7 @@ impl Provider {
     }
 
     /// The snapshot store at the carried locations' snapshots root.
-    fn store(&self) -> Store {
+    fn store(&self) -> Store<project::workspace::FsObjects> {
         Store::new(self.paths.locations().snapshots_root())
     }
 
@@ -298,7 +290,10 @@ impl seam::Workspaces for Provider {
     /// Freeze the project root's product tree (the kernel excludes
     /// `.git` and `.emery`) into the local snapshot store.
     async fn freeze(&self) -> Result<SnapshotId, seam::Error> {
-        self.store().snapshot(self.paths.project_root()).map_err(|err| workspace_failure(&err))
+        self.store()
+            .snapshot(self.paths.project_root())
+            .await
+            .map_err(|err| workspace_failure(&err))
     }
 
     async fn prepare(&self, base: SnapshotId, writable: bool) -> Result<Workspace, seam::Error> {
@@ -308,6 +303,7 @@ impl seam::Workspaces for Provider {
             &base,
             Access { writable },
         )
+        .await
         .map_err(|err| workspace_failure(&err))?;
         Ok(Workspace {
             id: prepared.id,
@@ -318,6 +314,7 @@ impl seam::Workspaces for Provider {
 
     async fn capture(&self, id: String) -> Result<CodePatch, seam::Error> {
         workspace_kernel::capture(&self.store(), self.workspaces_root(), &id)
+            .await
             .map_err(|err| workspace_failure(&err))
     }
 
@@ -327,7 +324,16 @@ impl seam::Workspaces for Provider {
     }
 
     async fn apply(&self, patch: CodePatch) -> Result<(), seam::Error> {
-        self.store().apply(&patch, self.paths.project_root()).map_err(|err| workspace_failure(&err))
+        self.store()
+            .apply(&patch, self.paths.project_root())
+            .await
+            .map_err(|err| workspace_failure(&err))
+    }
+
+    async fn sweep(
+        &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
+    ) -> Result<usize, seam::Error> {
+        self.store().sweep(&dead, &live).await.map_err(|err| workspace_failure(&err))
     }
 }
 

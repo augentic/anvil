@@ -29,7 +29,7 @@
   <rect x="350" y="120" width="70" height="36" rx="8" fill="#e6f2e8" stroke="#2f7d3e"/>
   <text x="358" y="144" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">merged</text>
   <path d="M180 156 L180 196" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#arr)"/>
-  <text x="188" y="180" font-family="ui-monospace, monospace" font-size="9" fill="#888">/emery:drop</text>
+  <text x="188" y="180" font-family="ui-monospace, monospace" font-size="9" fill="#888">emery plan drop</text>
   <rect x="140" y="196" width="80" height="36" rx="8" fill="#fbe6e6" stroke="#b03030"/>
   <text x="158" y="220" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">dropped</text>
   <text x="20" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#888">All transitions enforced by emery CLI &#8212; skills never write state directly.</text>

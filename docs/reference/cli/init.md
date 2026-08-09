@@ -6,18 +6,14 @@ Scaffold the `.emery/` project structure and starter agent context.
 
 ```bash
 emery init <adapter> [--name <project-name>] [--description "<description>"] [--platforms <csv>]
-emery init --workspace [--name <project-name>] [--description "<description>"]
 emery init --upgrade
 ```
 
 ## Description
 
-Two modes, picked by the presence of `--workspace`:
+Scaffolds a single-project setup. Creates `.emery/{slices,specs,archive}/`, resolves the adapter identifier into the out-of-tree per-project cache, writes `.emery/project.yaml` with `adapter:` set and a `rules:` entry per `pipeline.define` brief, records the running binary's version as `emery-version`, and generates root `AGENTS.md` plus `.emery/context.lock` when `AGENTS.md` is absent. `change.md` and `plan.yaml` are operator artifacts minted later by `/emery:plan` (via `emery plan author`, which scaffolds both files together).
 
-- **Regular** (positional `<adapter>`): scaffolds a single-project workspace. Creates `.emery/{slices,specs,archive}/`, resolves the adapter identifier into the out-of-tree per-project cache, writes `.emery/project.yaml` with `adapter:` set and a `rules:` entry per `pipeline.define` brief, records the running binary's version as `emery-version`, and generates root `AGENTS.md` plus `.emery/context.lock` when `AGENTS.md` is absent.
-- **Workspace** (with `--workspace`): scaffolds a registry-only workspace. Creates `.emery/`, writes a sentinel `.emery/project.yaml { workspace: true, … }` (the `adapter:` field is omitted — its absence is what disables adapter resolution), creates an empty `registry.yaml { version: 1, projects: [] }` at the repo root, and generates workspace-shaped root `AGENTS.md` plus `.emery/context.lock` when `AGENTS.md` is absent. No adapter identifier is needed, no cache is needed, and phase-pipeline directories (`slices/`, `specs/`) are NOT scaffolded — the workspace disables those pipelines on itself. Slot materialization is operator-owned. `change.md` and `plan.yaml` are operator artifacts minted later by `/emery:plan` (via `emery plan author`, which scaffolds both files together). Refuses to run when `.emery/` already exists.
-
-The two modes are mutually exclusive: `emery init` with both an adapter positional and `--workspace` exits `2` with clap's standard parse-error diagnostic. With neither, the typed `init-adapter-required` error (exit `2`) names the missing argument — there is no interactive prompt mode; every input arrives as a flag. When the resolved target requires `--platforms` and none was passed, the typed `project-platforms-required` names the flag and the default set.
+`emery init` without an adapter fails typed with `init-adapter-required` (exit `2`) — there is no interactive prompt mode; every input arrives as a flag. When the resolved target requires `--platforms` and none was passed, the typed `project-platforms-required` names the flag and the default set.
 
 Re-running `emery init` in an already-initialized project changes nothing and exits `0` with a message routing to `emery init --upgrade`. `emery init --upgrade` is the re-entry path: it bumps the `project.yaml.emery` pin over an existing project (preserving every operator artifact) and re-resolves the project's declared adapter. The recorded binding is never rewritten: a bare record stays bare and a pinned record keeps its pin. An upgrade over a bare record with no cache seed refreshes the name to the newest published version (installing it into the global store when newer); a bare record with a live cache seed keeps resolving the seed. `--upgrade` never updates the installed `emery` binary itself; when the project's recorded pin is newer than the running binary, commands abort with `emery-version-too-old` (exit `3`) and the error's `hint:` line prints the literal reinstall command — update the binary through its install channel first, then re-run.
 
@@ -27,20 +23,19 @@ A **bare name** (`emery init omnia`) persists bare on `project.yaml.adapter` and
 
 On success init prints a postflight report: what was scaffolded (or upgraded), the resolved adapter, the written config path, and the pinned `emery` version.
 
-In both modes the command upserts `.emery/scratch/` and top-level `workspace/` into the project `.gitignore`.
+The command also upserts `.emery/scratch/` into the project `.gitignore`.
 
-If root `AGENTS.md` already exists, `emery init` preserves it byte-for-byte and skips context generation. Init inside `workspace/<peer>/` also skips nested `AGENTS.md` generation; workspace clones inherit context from their owning project.
+If root `AGENTS.md` already exists, `emery init` preserves it byte-for-byte and skips context generation.
 
-This is the CLI command invoked by [`/emery:init`](../../../plugins/emery/skills/init/SKILL.md). The skill elicits any missing arguments conversationally (including the regular-vs-workspace topology question) and passes them as flags; the CLI itself has no interactive mode.
+This is the CLI command invoked by [`/emery:init`](../../../plugins/emery/skills/init/SKILL.md). The skill elicits any missing arguments conversationally and passes them as flags; the CLI itself has no interactive mode.
 
 ## Options
 
 | Option | Description |
 |--------|-------------|
-| `<adapter>` (positional) | Adapter identifier: a first-party shorthand (bare `omnia` — resolves a seeded cache entry, else the newest published version; `omnia@1.0.0` for a registry pin), a package reference (`emery:omnia@1.0.0`), or a local `.wasm` component path. GitHub URLs are refused (`adapter-github-uri-unsupported`). Required unless `--workspace` or `--upgrade` is set. |
-| `--name` | Project name (defaults to the project directory basename). For workspace mode, must be kebab-case (the CLI bakes it into `change.md`'s frontmatter). |
+| `<adapter>` (positional) | Adapter identifier: a first-party shorthand (bare `omnia` — resolves a seeded cache entry, else the newest published version; `omnia@1.0.0` for a registry pin), a package reference (`emery:omnia@1.0.0`), or a local `.wasm` component path. GitHub URLs are refused (`adapter-github-uri-unsupported`). Required unless `--upgrade` is set. |
+| `--name` | Project name (defaults to the project directory basename). |
 | `--description` | Free-form project description (tech stack, architecture, testing) |
-| `--workspace` | Scaffold a registry-only workspace instead of a regular project. Refuses to run when `.emery/` already exists. Mutually exclusive with the `<adapter>` positional. |
 | `--platforms` | Comma-separated target platform set (e.g. `core,ios,android`). Required when the target adapter declares `platforms.required`; `core` is mandatory in every set. |
 | `--upgrade` | Re-enter an initialized project: bump the `emery` pin, re-scaffold preservation-safe files only, and re-resolve the declared adapter. Mutually exclusive with every other argument. |
 | `--format` | Global output format: `json` for structured automation output |
@@ -51,21 +46,19 @@ When `--format json` is provided, returns:
 
 - `mode` -- what this run did: `scaffolded`, `already-initialized`, or `upgraded`
 - `config-path` -- path to the written `project.yaml`
-- `adapter-name` -- resolved adapter name (or the literal string `workspace` in workspace mode)
-- `adapter-binding` -- the binding value recorded on `project.yaml.adapter` (the selector exactly as supplied, e.g. `omnia` or `emery:omnia@0.7.0`); absent in workspace mode and the no-op re-entry
-- `cache-present` -- whether the resolved adapter's component-cache provenance sidecar (`components/<name>.meta.yaml`) was found (always `false` in workspace mode)
+- `adapter-name` -- resolved adapter name
+- `adapter-binding` -- the binding value recorded on `project.yaml.adapter` (the selector exactly as supplied, e.g. `omnia` or `emery:omnia@0.7.0`); absent in the no-op re-entry
+- `cache-present` -- whether the resolved adapter's component-cache provenance sidecar (`components/<name>.meta.yaml`) was found
 - `directories-created` -- list of directories created
-- `scaffolded-rule-keys` -- per-brief rule keys added to `project.yaml` (always empty in workspace mode)
+- `scaffolded-rule-keys` -- per-brief rule keys added to `project.yaml`
 - `emery-version` -- version recorded in `project.yaml`
 - `context-generated` -- `true` when init generated root `AGENTS.md` and `.emery/context.lock`
 - `context-skipped` -- `true` when context generation was skipped
-- `context-skip-reason` -- present when skipped (`existing-agents-md` or `workspace-clone`)
+- `context-skip-reason` -- present when skipped (`existing-agents-md`)
 
 
 ## See also
 
-- [Configuration files](../../reference/configuration.md#projectyaml) and [Registry](../../reference/registry.md) -- when to choose a workspace vs platform-as-project
 - [Configuration Files](../configuration.md) -- project.yaml and metadata format
 - `AGENTS.md` context is generated during `emery init`; later inspection is direct file review.
 - [Prerequisites](../../orientation/prerequisites.md) -- setup before first init
-- [`emery registry`](registry.md) -- manage the workspace's registry catalogue

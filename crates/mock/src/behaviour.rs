@@ -1,18 +1,7 @@
 //! The mock adapter's deterministic, model-free behaviour core.
 //!
-//! One id-keyed library implementing both `emery:adapter` axes over
-//! the SDK seam DTOs ([`adapter::seam`]) — the canonical internal
-//! representation. The trait implementors in [`crate::ops`] and the
-//! WASM adapter guest both route through it; only the workflow
-//! providers (the native host's conversion layer) widen the values onto engine DTOs.
-//!
-//! Behaviour keys off the routed adapter id: an id containing `docs`
-//! or `code` selects that half of the adversarial pair, anything else
-//! the minimal single-lead `greeting` profile, and `fail-*` substrings
-//! select typed failures. Builds and merge gates also honour the
-//! per-project [`FAIL_BUILD_MARKER`] / [`FAIL_MERGE_PREFLIGHT_MARKER`]
-//! / [`FAIL_MERGE_POSTFLIGHT_MARKER`] files so interruption tests can
-//! park and resume without rebinding.
+//! Behaviour keys off the routed adapter id (`docs` / `code` / `fail-*`
+//! substrings, else `greeting`) and the per-project `FAIL_*` marker files.
 
 pub use source::{extract, survey};
 pub use targets::{
@@ -117,9 +106,8 @@ mod source {
                 )],
             },
             // The authority disagreement: behaviour observes 15 minutes
-            // where documentation states 30 — documentation outranks
-            // behaviour, so resolution is a `[divergence]` with the docs
-            // source winning.
+            // where documentation states 30 — docs outrank behaviour, so
+            // resolution is a `[divergence]` with the docs source winning.
             (Profile::Code, "session-timeout") => Evidence {
                 authority: Authority::Behaviour,
                 claims: vec![requirement(

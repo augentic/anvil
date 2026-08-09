@@ -1,14 +1,7 @@
-//! The typed Evidence claim shared by the seam, the extract persist,
-//! and the judgment answer schema.
+//! The typed Evidence claim shared by the seam and the judgment answer schema.
 //!
-//! [`Claim`] mirrors the WIT `claim` record (`kind` / `id` / `path` /
-//! `synopsis` / `backing`); the backing variant flattens onto the wire
-//! as the `payload` / `backing-path` keys the Evidence document has
-//! always carried. Open per-kind body fields (`statement`,
-//! `criterion`, `replay-digest`, …) survive round-trips through the
-//! flattened [`Claim::extras`] map, so synthesis still reads them
-//! verbatim. Per-kind structured views (e.g. [`ExampleClaim`]) live in
-//! submodules.
+//! [`Claim`] mirrors the WIT `claim` record; open per-kind body fields
+//! survive round-trips through the flattened [`Claim::extras`] map.
 
 pub mod example;
 

@@ -1,12 +1,7 @@
 //! The slice synthesis judgment leg.
 //!
-//! One schema-gated `create` over the synthesis inputs envelope, with a
-//! deterministic tail — typed serde parse and the
-//! projection kernel ([`crate::project`]) — inside the shared
-//! repair loop, so an answer the kernel would reject (unanchored claim,
-//! cross-ref orphan, id-grammar violation) is repaired in-loop. The
-//! caller owns the surrounding IO: reading Evidence, staging and
-//! persisting artifacts, and the journal bracket.
+//! The deterministic tail runs inside the shared repair loop, so an
+//! answer the projection kernel would reject is repaired in-loop.
 
 use std::collections::BTreeMap;
 

@@ -1,12 +1,7 @@
 //! Per-axis operations traits — what an adapter implements.
 //!
-//! Distinct from the engine's workflow capability traits
-//! (`project::seam::Source` / `Target`), which state what the *engine*
-//! calls. Both pairs mirror the same WIT interfaces and disambiguate by
-//! module path.
-//!
-//! Methods are associated functions: one implementation per component,
-//! no instance state, deliberately not object-safe.
+//! Distinct from the engine's `project::seam` capability traits, which
+//! mirror the same WIT interfaces. Deliberately not object-safe.
 
 use std::future::Future;
 

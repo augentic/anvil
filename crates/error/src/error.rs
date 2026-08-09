@@ -1,8 +1,7 @@
 //! `Error` enum and saphyr-error conversions.
 //!
 //! The `YamlDe` / `YamlSer` variants flatten `serde_saphyr`'s two error
-//! types directly into the crate's error surface; callers that don't
-//! care which API tripped can continue to `?`-propagate.
+//! types directly into the crate's error surface.
 
 use std::borrow::Cow;
 
@@ -102,9 +101,7 @@ impl Error {
     #[must_use]
     pub fn hint(&self) -> Option<&'static str> {
         match self {
-            Self::NotInitialized => Some(
-                "run `emery init <adapter>` (or `emery init --workspace` for a registry-only workspace) to scaffold .emery/ first",
-            ),
+            Self::NotInitialized => Some("run `emery init <adapter>` to scaffold .emery/ first"),
             Self::ArtifactNotFound {
                 kind: "plan.yaml", ..
             } => Some(
@@ -130,23 +127,23 @@ impl Error {
                     "bind the source at plan time (`emery plan author --source <key>=<adapter>:<path>`) or pass one of the bound keys",
                 ),
                 "slice-lifecycle" => Some(
-                    "run `emery slice list` for each slice's current status, then drive the missing phase: `emery slice refine|build|merge <slice>`",
+                    "run `emery slice list` for each slice's current status, then re-run `emery plan execute` — the loop drives the missing phase",
                 ),
                 "plan-transition" => Some(
-                    "per-entry status has dedicated writers: `emery plan advance` writes `in-progress`, `emery slice merge` writes `done`, and `emery plan undo <entry>` walks backwards",
+                    "per-entry status is projected from facts written by `emery plan execute` (the advance claim writes `in-progress`, the merge phase writes `done`); there is no direct status writer",
                 ),
                 "plan-already-exists" => Some(
                     "rerun with --force to replace the plan, or continue the existing one (`emery plan status`)",
                 ),
                 "slice-already-exists" => Some(
-                    "continue the existing slice (`emery slice list` shows its status) or abandon it with `emery slice drop <slice>`",
+                    "continue the existing slice (`emery slice list` shows its status) or abandon it with `emery plan drop <slice>`",
                 ),
                 _ => None,
             },
             Self::Validation { code, .. } => match code.as_ref() {
-                "init-adapter-required" => Some(
-                    "`emery init <adapter>` for a regular project, or `emery init --workspace` for a workspace.\nsee: docs/init.md",
-                ),
+                "init-adapter-required" => {
+                    Some("`emery init <adapter>` scaffolds the project.\nsee: docs/init.md")
+                }
                 "slice-claim-conflict" => Some(
                     "claim a different slice, or wait for the current owner to release / retract their claim",
                 ),

@@ -1,16 +1,7 @@
-//! Source `cid` pins (RFC-86 D4 / D25).
+//! Source `cid` pins recorded during `plan author`.
 //!
-//! When the in-place source set closes during `plan author`, each
-//! top-level [`super::SourceBinding`] records the content-addressed
-//! identity of its input tree. Wire documents name that identity
-//! `cid`; the Rust type is [`crate::snapshot::SnapshotId`].
-//!
-//! Path bindings digest the bound filesystem tree (or a one-file tree
-//! when the path names a regular file). Value bindings digest a
-//! one-file tree whose sole entry is `content`. Digests match the
-//! RFC-87 tree-manifest encoding so later prepare / drift checks share
-//! one identity vocabulary. This kernel records the identity only —
-//! it does not populate the snapshot store.
+//! Each [`super::SourceBinding`] records its input tree's identity
+//! (tree-manifest digest encoding); the store is never populated here.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

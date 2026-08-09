@@ -50,8 +50,8 @@ impl Ctx {
     ///
     /// # Errors
     ///
-    /// Returns `workspace-no-adapter` for adapter-less workspace
-    /// projects, and propagates adapter-resolution failures.
+    /// Returns `project-no-adapter` when `project.yaml` omits
+    /// `adapter`, and propagates adapter-resolution failures.
     pub fn resolve_target_adapter(
         &self, resolver: &impl Resolver,
     ) -> Result<ResolvedTarget, Error> {
@@ -60,7 +60,7 @@ impl Ctx {
 
     /// Typed view over `.emery/`-anchored paths. Hand this to
     /// [`crate::config::with_state`] in handlers that mutate
-    /// `plan.yaml` / `registry.yaml`.
+    /// `plan.yaml`.
     #[must_use]
     pub fn layout(&self) -> Layout<'_> {
         Layout::new(&self.project_dir)

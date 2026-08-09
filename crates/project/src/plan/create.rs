@@ -57,7 +57,7 @@ impl Plan {
         }
 
         self.entries.push(change);
-        let errors: Vec<_> = self.validate(None, None).into_iter().filter(is_blocking).collect();
+        let errors: Vec<_> = self.validate(None).into_iter().filter(is_blocking).collect();
         let failure_msg = errors
             .first()
             .map(|r| r.impact.clone())

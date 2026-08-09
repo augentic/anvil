@@ -1,15 +1,7 @@
-//! workflow §Requirement block contract — parser + validator for the
-//! `ID:` / `Sources:` / `Status:` provenance metadata that core
-//! synthesis emits at the top of every requirement in `spec.md`.
+//! Parser + validator for `spec.md` requirement-block provenance metadata.
 //!
-//! The parser is deliberately lenient on whitespace (operators
-//! hand-edit `spec.md` between `/emery:refine` and `/emery:build`) but
-//! strict on the closed [`RequirementStatus`] enum and on the inline
-//! heading [`RequirementTag`] coherence with the `Status:` line.
-//!
-//! Findings aggregate. A malformed `Sources:` line in one block does
-//! not prevent later blocks from being parsed or validated, so the
-//! operator sees every problem in one pass.
+//! Lenient on whitespace (operators hand-edit `spec.md`), strict on the
+//! closed enums and tag coherence; findings aggregate rather than fail fast.
 
 use diagnostics::{Artifact, Diagnostic, FindingLocation};
 use serde::{Deserialize, Serialize};

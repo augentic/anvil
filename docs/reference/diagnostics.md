@@ -14,12 +14,12 @@ Closed set rendered when `emery plan execute` halts (exit 2, `plan-execute-stopp
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `refine-failed` | The active entry's refine phase failed (extract or synthesis); the slice stays `refining`. | Fix the source binding or amend the plan, then re-run execute or [`/emery:refine`](../how-to/drive-slice-manually.md). |
-| `build-failed` | The target's build failed; the slice stays `refined`. | Read `failing-task` and `log-path` from the stop hint, fix, then [`/emery:build`](../how-to/drive-slice-manually.md#build-failure) or re-run execute. |
-| `merge-conflict` | The baseline drifted since the slice was defined; merge preflight refused. | Re-refine against the current baseline or resolve the conflicting paths — see [Drive a slice manually](../how-to/drive-slice-manually.md#merge-conflict). |
-| `merge-postflight-failed` | The target's postflight gate failed **after** the merge committed — the entry is already `done` and archived (non-rollback, sticky). | Inspect `.emery/archive/<date>-<slice>/merge/postflight.yaml`, repair the baseline, re-run execute to acknowledge — see [Drive a slice manually](../how-to/drive-slice-manually.md#merge-postflight-failed). |
-| `merge-incomplete` | The merge landed but the entry's `done` stamp is missing (torn stamp). | Re-run `/emery:merge` or `emery plan execute` — either heals the stamp. |
-| `slice-dropped` | The active entry's slice was dropped mid-plan. | Decide the entry's fate: [undo it](../how-to/undo-a-plan-entry.md) to re-run, or remove it from the plan. |
+| `refine-failed` | The active entry's refine phase failed (extract or synthesis); the slice stays `refining`. | Fix the source binding or amend the plan, then re-run execute. |
+| `build-failed` | The target's build failed; the slice stays `refined`. | Read `failing-task` and `log-path` from the stop hint, fix, then re-run execute. |
+| `merge-conflict` | The baseline drifted since the slice was defined; merge preflight refused. | Fix the conflicting inputs and re-run execute — the loop re-refines the slice against the current baseline — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
+| `merge-postflight-failed` | The target's postflight gate failed **after** the merge committed — the entry is already `done` and archived (non-rollback, sticky). | Inspect `.emery/archive/<date>-<slice>/merge/postflight.yaml`, repair the baseline, re-run execute to acknowledge. |
+| `merge-incomplete` | The merge landed but the entry's `done` stamp is missing (torn stamp). | Re-run `emery plan execute` — it heals the stamp. |
+| `slice-dropped` | The active entry's slice was dropped mid-plan. | Decide the entry's fate: re-plan it (`emery plan author --force` on a replaceable plan) or leave it dropped. |
 | `stuck` | Pending entries remain but every one is blocked on unmet dependencies. | Run `emery plan validate` (first triage step) and fix the dependency structure. |
 
 ## Driver lock
@@ -27,7 +27,6 @@ Closed set rendered when `emery plan execute` halts (exit 2, `plan-execute-stopp
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
 | `guest-marker-held` | A second driver session tried to start while `.emery/guest.lock` is held (exit 2). | Wait for the running session, or if the holder died, [recover from the stale lock](../how-to/recover-from-a-stale-guest-lock.md). |
-| `plan-execute-workspace-unsupported` | The execute loop refuses workspace plans (workspace root or any `project`-scoped entry). | Drive the plan by hand: `emery plan advance`, then the refine/build/merge breakouts — see [Cross-repo changes](../tutorials/cross-repo-change.md). |
 
 ## Plan authoring and amendment
 
@@ -36,7 +35,8 @@ Closed set rendered when `emery plan execute` halts (exit 2, `plan-execute-stopp
 | `plan-already-exists` | `emery plan author` found an existing `plan.yaml`. | Re-run with `--force` to replace a pending plan wholesale (`/emery:plan` confirms first). |
 | `duplicate-source-key` | `--add-source` named a key the entry already binds (a slice binds at most one lead per source). | Re-size instead: `emery plan amend <entry> --sources <key>=<other-lead>`. |
 | `plan-amend-validation-failed` | A wholesale `--sources` replacement introduced an invalid binding set; the amend rolled back. | Fix the binding list (one lead per source key) and retry. |
-| `plan-remove-plan-not-replaceable` | `emery plan remove` requires a fully pending plan (every entry `pending`). | Removal is a pre-execution action only; after execution starts, [undo the entry](../how-to/undo-a-plan-entry.md) or drop its slice. |
+| `plan-remove-plan-not-replaceable` | `emery plan remove` requires a fully pending plan (every entry `pending`). | Removal is a pre-execution action only; after execution starts, drop the entry's slice with `emery plan drop`. |
+| `plan-drop-no-slice` | `emery plan drop` found no slice tree for the entry (never refined). | Curate the entry with `emery plan remove` instead. |
 | `plan-remove-entry-referenced` | Another entry lists the removal target in `depends-on`. | Amend the dependent entry's `--depends-on` first. |
 | `plan-has-outstanding-work` | `emery plan archive` refused: the plan still has non-terminal entries (exit 1). | Drain the plan (merge or drop every entry) before archiving. |
 
@@ -67,10 +67,6 @@ Findings from [`emery plan validate`](cli/plan.md#emery-plan-validate) — the f
 | `duplicate-name` | important | Rename one of the colliding entries. |
 | `cycle-in-depends-on` | important | Break the cycle: `emery plan amend <entry> --depends-on …`. |
 | `orphan-source` | suggestion | A declared source no entry references — bind it or remove the declaration. |
-| `project-not-in-registry` | important | Fix the entry's `project` or add the project to `registry.yaml`. |
-| `project-missing-multi-repo` | important | Multi-project registries require `project` on every entry. |
-| `stale-workspace-clone` | suggestion | Refresh or rematerialise the slot through normal repository tooling. |
-| `topology-cache-stale` | suggestion | Regenerate `.emery/topology.lock` through the repository's topology tooling. |
 
 ## Slice validate findings
 
@@ -78,13 +74,15 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `slice-spec-provenance-stale` | A kernel-rendered `ID:` / `Sources:` / `Status:` line was hand-edited. | Revert the edit; drive resolution through overrides and re-refine — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
-| `slice-model-schema` | `model.yaml` fails its typed schema. | Re-run `/emery:refine`. |
-| `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds. | Re-run `/emery:refine` after the plan amendment. |
-| `slice-model-target-drift` | The model's recorded target diverged from the bound project's. | Re-run `/emery:refine`. |
-| `slice-model-cross-ref-orphan` | A model cross-reference points at a requirement that no longer exists. | Re-run `/emery:refine`. |
-| `slice-model-claim-kind-mismatch` | A contributing claim's kind does not match its Evidence row. | Re-run `/emery:refine`. |
-| `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `/emery:refine`. |
+| `slice-spec-provenance-stale` | A kernel-rendered `ID:` / `Sources:` / `Status:` line was hand-edited. | Revert the edit; drive resolution through overrides and re-run execute — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
+| `slice-model-schema` | `model.yaml` fails its typed schema. | Re-run `emery plan execute` (the loop re-refines the slice). |
+| `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds. | Re-run `emery plan execute` after the plan amendment. |
+| `slice-model-target-drift` | The model's recorded target diverged from the bound project's. | Re-run `emery plan execute`. |
+| `slice-model-cross-ref-orphan` | A model cross-reference points at a requirement that no longer exists. | Re-run `emery plan execute`. |
+| `slice-model-claim-kind-mismatch` | A contributing claim's kind does not match its Evidence row. | Re-run `emery plan execute`. |
+| `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `emery plan execute`. |
+| `slice-base-drifted` / `slice-evidence-stale` | Review advisory: the slice's recorded `base.yaml` pins drifted from the current inputs. | No manual action — the next `emery plan execute` re-refines the slice under a new epoch. |
+| `slice-baseline-conflict` | Review advisory: the baseline drifted under a built slice since it was defined. | Fix inputs and re-run execute, or accept the merge-time conflict handling. |
 | `slice-authority-override-orphan-source` | An authority override names a source key the slice does not bind. | Fix the override: `emery plan amend <entry> --authority-override <kind>=<source>`. |
 | `slice-catalog-drift` | Evidence references a `component:` slug missing from (or rejected in) the Vectis catalog. | Review `.emery/design-system/components.yaml` — see [Component factoring](../explanation/components.md). |
 
@@ -92,11 +90,12 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `target-build-input-missing` | A `required` adapter-declared build input is absent from the slice tree. | Supply the input file (e.g. Vectis `tokens.yaml`) and re-run `/emery:build`. |
-| `target-build-success-with-blocking-finding` | The target reported `status: success` but its report carries a blocking finding; the gate refuses. | Fix the finding the report names, then rebuild. |
+| `target-build-input-missing` | A `required` adapter-declared build input is absent from the slice tree. | Supply the input file (e.g. Vectis `tokens.yaml`) and re-run execute. |
+| `target-build-success-with-blocking-finding` | The target reported `status: success` but its report carries a blocking finding; the gate refuses. | Fix the finding the report names, then re-run execute. |
+| `plan-gaps-unresolved` | Open `[conflict]` / unwaived `[unknown]` requirements block the gap gate before build. | Fix inputs and re-run execute, or defer named unknowns with `--waive <slice>/<req> --reason "<why>"`. |
 | `merge-delta-headers-required` | A hand-authored flat requirement block was submitted against a non-empty baseline. | Use the delta format (`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`) — see [Artifact format](artifact-format.md#delta-spec-format-modified-domain). |
-| `plan-entry-not-found` | `emery slice merge` found no plan entry matching the slice. | Add the entry (`emery plan add`) or check the slice name. |
-| `slice-merge-entry-not-in-progress` | The plan entry exists but is not claimed. | Advance it first: `emery plan advance`. |
+| `plan-entry-not-found` | The merge phase found no plan entry matching the slice. | Add the entry (`emery plan add`) or check the slice name. |
+| `slice-merge-entry-not-in-progress` | The plan entry exists but is not claimed. | Re-run `emery plan execute` — the loop claims entries itself. |
 
 ## Source sandbox
 
@@ -120,10 +119,9 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `init-adapter-required` | `emery init` ran with neither an adapter positional nor `--workspace` (exit 2). | Name the target adapter (`emery init omnia`) or scaffold a workspace (`emery init --workspace`). |
+| `init-adapter-required` | `emery init` ran without an adapter positional (exit 2). | Name the target adapter (`emery init omnia`). |
 | `project-platforms-required` | The resolved target requires `--platforms` and none was passed. | Re-run with the flag, e.g. `--platforms core,ios,android` (`core` is mandatory). |
 | `emery-version-too-old` | The project's `emery-version` pin is newer than the running binary (exit 3). | Update the binary through its install channel; an older pin loads normally. |
-| `workspace-cannot-be-project` | A registry entry points at a workspace repo. | Register code projects only; a workspace holds the registry, it is never a slot. |
 
 ## See also
 

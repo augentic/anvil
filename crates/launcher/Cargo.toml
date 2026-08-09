@@ -20,9 +20,11 @@ emery-error.workspace = true
 oci-client.workspace = true
 oci-wasm.workspace = true
 omnia.workspace = true
+omnia-filesystem.workspace = true
+omnia-wasi-blobstore.workspace = true
 emery-project.workspace = true
 emery-transport.workspace = true
-emery-wasi-workspaces.workspace = true
+emery-wasi-exec-bits.workspace = true
 semver.workspace = true
 
 [dev-dependencies]

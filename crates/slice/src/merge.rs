@@ -11,9 +11,7 @@ mod validate;
 
 pub use artifact_class::{MergeStrategy, artifact_classes};
 pub use engine::MergeOperation;
-pub use slice::{
-    BaselineConflict, MergeCommit, OpaqueAction, PreviewEntry, conflict_check, summarise_operations,
-};
+pub use slice::{MergeCommit, PreviewEntry, conflict_check, summarise_operations};
 
 /// Count `### Requirement:` headings in one spec document — shared by
 /// the empty-baseline create path and the delta-header gate.

@@ -1,11 +1,6 @@
-//! Gap policy + epoch freshness before build (RFC-86 D13 / D15–D17).
-//!
-//! Called by the execute loop immediately before dispatching
-//! [`slice::orchestrate::build`]. Conflicts always block; unknowns
-//! block unless a matching waiver nests on the covering
-//! `plan.execute.started` epoch; divergence is listed (via the
-//! inventory on failure) but allowed. Covered-artifact drift vs that
-//! epoch is `plan-epoch-stale`.
+//! Gap policy + epoch freshness before build: conflicts always block;
+//! unknowns block unless waived on the covering `plan.execute.started`
+//! epoch; divergence is allowed. Drift vs that epoch is `plan-epoch-stale`.
 
 use std::fmt::Write as _;
 use std::path::Path;

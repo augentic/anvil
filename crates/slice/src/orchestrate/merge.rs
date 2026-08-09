@@ -40,27 +40,14 @@ struct WaveCommit {
     patch: CodePatch,
 }
 
-/// Merge one built slice (`emery slice merge`).
+/// Merge one built slice (the execute loop's merge phase).
 ///
-/// Runs target preflight gate → wave revalidation + identity
-/// finalization → deterministic `slice_merge::commit` →
-/// `target.merge.wave-committed` → target postflight gate
-/// (`target.merge.wave-succeeded` / `target.merge.wave-postflight-failed`).
-/// Both gates read the built result through one read-only private-
-/// workspace view; after a successful postflight, interim apply writes
-/// the patch's touched paths onto the product tree (deleted when
-/// RFC-88 owns that cut).
-///
-/// A preflight failure aborts with the slice still built; a
-/// postflight failure (`target-merge-postflight-failed`) is terminal
+/// Runs preflight gate → identity finalization → deterministic commit
+/// → wave-committed fact → postflight gate. A preflight failure
+/// aborts with the slice still built; a postflight failure is terminal
 /// but non-rollback — the merge stands once `target.merge.wave-committed`
-/// has been appended. A parseable postflight report is persisted to
-/// the archive (including `status: failure`) before the terminal error
-/// returns.
-///
-/// Re-entry heals a torn merge: when the deterministic commit already
-/// landed (the slice tree is archived with `merged_at`) the run
-/// returns without a second baseline merge or gate dispatch.
+/// is appended, and a parseable failed report is persisted to the
+/// archive first. Re-entry heals a torn merge without a second commit.
 ///
 /// # Errors
 ///
@@ -184,12 +171,9 @@ async fn gated<T: Target>(
     // append: failures before this fact must not project merged.
     emit_wave_committed(layout, now, slice, commit, &identity_maps)?;
 
-    // Target postflight: the slice is already merged and archived, so a
-    // failure is a terminal diagnostic — never a rollback. Persist any
-    // parseable report (including `status: failure`) before enforcing.
-    // Every post-commit error routes through `postflight_terminal` so
-    // execute classifies sticky `merge-postflight-failed` debt — a bare
-    // `?` on persist would otherwise surface as `merge-conflict`.
+    // The slice is already merged and archived, so postflight failure
+    // is terminal, never a rollback; persist any parseable report first
+    // and route every post-commit error via `postflight_terminal`.
     let archive_merge = outcome.archive_path.join("merge");
     match fetch_gate_report(targets, id, slice, MergePhase::Postflight, view).await {
         Ok(report) => {
@@ -399,7 +383,7 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     let Some(entry) = plan.entries.iter().find(|e| e.name == slice) else {
         return Err(plan.entry_not_found(slice));
     };
-    let events = collect_events(&plan, layout)?;
+    let events = collect_events(layout)?;
     let ladders = project_ladders(&plan, &events);
     let status = ladders.get(&entry.name).copied().unwrap_or(Status::Pending);
     if status != Status::InProgress {
@@ -407,8 +391,8 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
             "slice-merge-entry-not-in-progress",
             "a plan-owned merge requires a projected `in-progress` entry",
             format!(
-                "plan entry `{slice}` projects `{status}`; advance it with `emery plan advance` \
-                 before merging"
+                "plan entry `{slice}` projects `{status}`; re-run `emery plan execute` — the \
+                 loop claims the entry before merging"
             ),
         ));
     }

@@ -22,7 +22,6 @@ async fn vectis_platform_requirements() {
                 adapter: Some("vectis".to_string()),
                 name: Some("demo".to_string()),
                 description: None,
-                workspace: false,
                 platforms: platforms.map(ToString::to_string),
                 upgrade: false,
             },

@@ -1,7 +1,6 @@
 //! `emery plan add` — append one slice entry to an existing
-//! `plan.yaml`. Authority-override seeding is delegated to the shared
-//! domain helper so the journal events match `plan amend`
-//! byte-for-byte.
+//! `plan.yaml`. Authority-override seeding uses the shared domain
+//! helper so journal events match `plan amend` byte-for-byte.
 
 use std::collections::BTreeMap;
 
@@ -14,7 +13,7 @@ use project::plan::{AuthorityOverride, Entry, Plan, authority_override, entry_mu
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
-use super::{check_project, plan_ref};
+use super::plan_ref;
 use crate::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
 
 /// Wire input for `plan add`.
@@ -33,9 +32,6 @@ pub struct AddInput {
     /// Free-text scoping hint for the define step.
     #[serde(default)]
     pub description: Option<String>,
-    /// Target registry project name.
-    #[serde(default)]
-    pub project: Option<String>,
     /// Baseline paths relevant to this change, relative to `.emery/`.
     #[serde(default)]
     pub context: Vec<String>,
@@ -63,15 +59,10 @@ impl<P: Anchor> Operation<P> for Add {
             depends_on,
             sources,
             description,
-            project,
             context,
             authority_override,
         } = input;
         let name = name.as_str();
-
-        if let Some(proj) = &project {
-            check_project(&cx.project_dir, proj)?;
-        }
 
         // When `discovery.md` exists, resolve `--sources <key>=<lead>` to the
         // canonical lead id before persisting. Absence of `discovery.md`
@@ -86,7 +77,7 @@ impl<P: Anchor> Operation<P> for Add {
         };
         let entry = Entry {
             name: name.into(),
-            project,
+            project: None,
             depends_on: depends_on.into_iter().map(Into::into).collect(),
             sources,
             context,
@@ -94,6 +85,7 @@ impl<P: Anchor> Operation<P> for Add {
             divergence: None,
             disagreements: Vec::new(),
             authority_override: authority_override_map,
+            allow_composition_replace: false,
         };
         let plan_path = cx.layout().plan_path();
         let now = cx.now();

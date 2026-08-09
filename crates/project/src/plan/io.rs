@@ -57,16 +57,10 @@ impl Plan {
 
     /// Serialize and write the plan to `path`, overwriting if present.
     ///
-    /// Atomic: a partial file is never observed by readers. Write goes via
-    /// a temp file in the same directory followed by `fs::rename`. Because
-    /// POSIX `rename(2)` (and Windows `MoveFileEx` with `MOVEFILE_REPLACE_EXISTING`)
-    /// are atomic at the filesystem level, any concurrent reader of `path`
-    /// sees either the previous complete contents or the new complete
-    /// contents — never a half-written or empty file.
-    ///
-    /// Always emits a trailing newline so the on-disk form matches the
-    /// convention used elsewhere in the project and so POSIX text-file
-    /// tools (`wc -l`, `sed`, `grep`) behave predictably.
+    /// Atomic: a temp file in the same directory then `rename`, so a
+    /// concurrent reader sees either the old or the new complete
+    /// contents — never a half-written file. Always emits a trailing
+    /// newline.
     ///
     /// # Errors
     ///

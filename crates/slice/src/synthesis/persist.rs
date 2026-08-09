@@ -1,17 +1,7 @@
 //! Post-projection synthesis persistence: the render → stage → persist
-//! tail run by the guest refine orchestrator ([`crate::orchestrate`]).
+//! tail run by the guest refine orchestrator.
 //!
-//! [`persist_synthesized`] takes an already-projected model (the
-//! kernel ran in-guest inside the
-//! judgment repair loop) and owns everything after it: the serialised
-//! model re-validation, the provenance render into each
-//! `specs/<domain>/spec.md`, the Decision Record sidecar render into
-//! `decisions/<slug>.md` (exact-set replacement, so stale generated
-//! records never survive a re-refine), the `metadata.touched_specs`
-//! refresh, and the batch persist. Everything is staged in memory
-//! before the first write, so a failure before the batch leaves prior
-//! artifacts intact; each write in the batch is individually atomic,
-//! and stale decision records are removed only after the batch lands.
+//! Everything is staged in memory before the first write.
 
 use std::path::{Path, PathBuf};
 
@@ -26,15 +16,11 @@ use crate::{SliceMetadata, actions as slice_actions};
 
 /// Render, stage, and atomically persist one synthesized slice.
 ///
-/// Returns the slice-relative paths written (in write order):
-/// `proposal.md`, each `specs/<domain>/spec.md`, `design.md`,
-/// `tasks.md`, each `decisions/<slug>.md`, `model.yaml`,
-/// `metadata.yaml`.
-///
+/// Returns the slice-relative paths written, in write order.
 /// `artifacts` are the agent's prose-only bodies; `projected` is the
-/// kernel-projected model (ids, status, winners, and rendered sources
-/// already derived). The `decisions/` directory is replaced as an
-/// exact set — a re-refine that drops a record also removes its file.
+/// kernel-projected model. The `decisions/` directory is replaced as
+/// an exact set — a re-refine that drops a record also removes its
+/// file.
 ///
 /// # Errors
 ///
@@ -45,10 +31,9 @@ pub fn persist_synthesized(
     slice_dir: &Path, artifacts: SynthesisArtifacts, projected: &SliceModel,
     baseline_index: &BaselineIndex,
 ) -> Result<Vec<String>> {
-    // Round-trip the projected model (the kernel already enforced
-    // orphans/cross-refs/grammar; the broader drift suite is `slice
-    // validate`'s job): `parse_yaml` re-parses the serialised document
-    // so a persist-time shape regression fails here, not on next load.
+    // Round-trip the projected model: `parse_yaml` re-parses the
+    // serialised document so a persist-time shape regression fails
+    // here, not on next load.
     let model_yaml = artifacts::atomic::serialise_yaml(projected)?;
     SliceModel::parse_yaml(&model_yaml)?;
 
@@ -86,11 +71,9 @@ pub fn persist_synthesized(
         written.push(file.rel.clone());
     }
 
-    // Exact-set replacement: the response's `decisions[]` is the
-    // whole set, so any previously generated record not in it is
-    // removed once the batch has landed (an empty response clears the
-    // directory). Removal runs last so a failure earlier in persist
-    // never drops a record without its replacement set on disk.
+    // Exact-set replacement: any generated record not in the
+    // response's `decisions[]` is removed. Removal runs last so an
+    // earlier failure never drops a record without its replacement.
     replace_decisions_dir(slice_dir, &artifacts.decisions)?;
 
     Ok(written)

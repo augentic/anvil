@@ -1,16 +1,7 @@
-//! Component-deployment ensure: the deterministic provisioning kernels
-//! behind the shipped provider's [`super::Resolver::ensure_source`] /
-//! [`super::Resolver::ensure_target`].
+//! Component-deployment kernels behind the provider's ensure legs.
 //!
-//! A local component selector is validated, canonicalized, and
-//! mirrored into the project component cache
-//! (`<project-cache>/components/<name>.wasm`) with provenance stamped
-//! in [`ComponentMeta`]. A bare selector provisions nothing — the
-//! resolver locates the already-seeded cache entry live. A package
-//! selector also provisions nothing here: package installation is
-//! host-owned (the deployment launcher pulls a missing pin from the
-//! first-party OCI registry during metadata dispatch), so the ensure
-//! leg reduces to the dispatch-first resolve.
+//! Only a local component selector provisions here; bare names and
+//! package pins provision nothing in-guest.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -71,15 +62,12 @@ pub fn provision(
 }
 
 /// Mirror an operator-supplied local component into the project
-/// component cache — the project-local leg the bare/component resolver
-/// probes first — stamping provenance in [`ComponentMeta`].
+/// component cache, stamping provenance in [`ComponentMeta`].
 ///
 /// Carries the persisted-mirror fallback: a component selector stays
-/// resolvable after the operator's original file is removed, because
-/// the earlier mirror in the project component cache satisfies
-/// re-ensure. The explicit [`seed`] verb has no such fallback — a
-/// missing path there is an operator mistake to surface, not a
-/// re-ensure to satisfy.
+/// resolvable after the original file is removed because the earlier
+/// mirror satisfies re-ensure. The explicit [`seed`] verb has no such
+/// fallback — a missing path there is an operator mistake to surface.
 fn mirror(path: &Path, paths: &ExecutionPaths, now: jiff::Timestamp) -> Result<(), Error> {
     let absolute =
         if path.is_absolute() { path.to_path_buf() } else { paths.project_root().join(path) };
@@ -107,20 +95,10 @@ pub struct Seeded {
 /// component cache.
 ///
 /// Canonicalizes, derives the kebab name from the filename, copies to
-/// `<project-cache>/components/<name>.wasm`, and stamps per-component
-/// provenance ([`ComponentMeta`]). Re-seeding the same name replaces
-/// the entry and its sidecar — the explicit operator command is the
-/// approval act.
-///
-/// Axis-neutral by design: adapter names are unique across axes, so
-/// the binding that later resolves the bare name supplies the expected
-/// axis; a wrong-world component fails at the dispatch/metadata gate,
-/// not during seeding. Relative `path`s anchor at the carried project
-/// root. The shared mirror kernel behind the component-selector ensure
-/// leg (`mirror`, which adds the persisted-mirror fallback) and
-/// `emery adapter add` (strict: a missing path fails even when the
-/// derived name is already cached — a stale entry must not mask a
-/// typo).
+/// `<project-cache>/components/<name>.wasm`, and stamps provenance.
+/// Re-seeding replaces the entry; a wrong-world component fails at the
+/// dispatch gate, not during seeding. Strict: a missing path fails
+/// even when the derived name is already cached (no typo masking).
 ///
 /// # Errors
 ///

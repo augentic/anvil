@@ -1,13 +1,7 @@
-//! Snapshot identity and code-patch vocabulary (RFC-87).
+//! Snapshot identity and code-patch vocabulary.
 //!
-//! A **snapshot** is the immutable, content-addressed identity of a
-//! complete product-code tree; a **code patch** is the immutable
-//! relation between two snapshots plus the touched paths derived by
-//! comparing them. These are the value-layer nouns shared with the
-//! RFC-86 fact substrate: facts and build records reference snapshot
-//! identities, never workspace paths. The storage and materialization
-//! kernel lives in [`crate::workspace`]; this module is the wasm-safe
-//! wire vocabulary only.
+//! Facts and build records reference snapshot identities, never
+//! workspace paths; this module is the wasm-safe wire vocabulary only.
 
 use std::fmt;
 

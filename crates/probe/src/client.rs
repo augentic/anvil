@@ -1,33 +1,7 @@
 //! The shared live composition client (`feature = "client"`).
 //!
-//! One argv dispatch serving both composition examples — the `eval`
-//! example in this repository over the mock catalog and the one in
-//! `augentic/emery-adapters` over the first-party catalog: native
-//! command passthrough by default, the live case runner under the
-//! `eval` subcommand. The client owns the lazily connected cursor
-//! backend ([`DevModel`]), the process tracing subscriber (console
-//! plus an optional ANSI-free file copy — the lab exports no OTLP
-//! telemetry; the shipped runtime binary owns that), and the
-//! `--project-dir` convenience; the composition root keeps what the
-//! client refuses to own — the Tokio runtime, `std::env::args`
-//! collection, and the catalog, cases, and sandbox declarations.
-//!
-//! Driver-side tracing knobs (mirroring the shipped runtime binary's
-//! host contract):
-//! - `--debug` / `--quiet` — reserved host flags, peeled anywhere in
-//!   argv before the grammar sees them (mutually exclusive; repeats
-//!   are idempotent). `--quiet` turns tracing off; `--debug` selects
-//!   `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins
-//!   over any ambient `RUST_LOG`.
-//! - `RUST_LOG` — the env escape hatch when no flag is passed
-//!   (e.g. `info,omnia_cursor=debug`); flagless with `RUST_LOG` unset
-//!   defaults to `info`. Console tracing goes to stderr — stdout stays
-//!   the semantic command output.
-//! - `EVAL_LOG` — log-file override. When unset, a named eval case
-//!   logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at
-//!   startup) and passthrough commands log to console only. The file
-//!   receives an ANSI-free copy of the console output under the same
-//!   filter; missing parent directories are created
+//! One argv dispatch serving both composition examples: native command
+//! passthrough by default, the live case runner under `eval`.
 
 mod model;
 mod native;

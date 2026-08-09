@@ -1,18 +1,7 @@
 //! `plan.yaml.slices[].authority-override` mutation engine.
 //!
-//! The CLI handlers ([`crate::plan::Plan::amend`] siblings in
-//! the `emery` runtime binary) parse `--authority-override` /
-//! `--clear-authority-override` / `--clear-authority-overrides`
-//! flags into the typed `(slice, kind, source)` tuples this
-//! module consumes, then drive the in-memory plan through
-//! [`mutate`] and the post-mutation orphan gate [`reject_orphans`].
-//!
 //! Set-then-clear on the same `(slice, kind)` resolves to the cleared
-//! state, and the journal records the clear (not the set) to match
-//! the on-disk outcome. The whole-map clear emits one
-//! `Clear` event per kind that was present before the wipe.
-//! Sets sort before clears for the same `(slice, kind)` (see
-//! [`crate::journal::AuthorityOverrideAction`]'s `Ord` invariant).
+//! state, and the journal records the clear to match the on-disk outcome.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -84,20 +73,10 @@ fn emit_override_events(
 /// Apply the full authority-override mutation set on `plan` and
 /// return the matching journal events.
 ///
-/// Workflow `kind: schema` evaluator contract — applies `--authority-override` /
-/// `--clear-authority-override` / `--clear-authority-overrides` in a
-/// deterministic order:
-///
-/// 1. Sets — collapse duplicate `(slice, kind)` pairs to the last
-///    value.
-/// 2. Single-kind clears — remove the entry if present (no-op if
-///    absent).
-/// 3. Whole-map clears — wipe the slice's entire map; emit one
-///    `Clear` event per kind that was present before the wipe.
-///
-/// Set-then-clear on the same `(slice, kind)` resolves to the
-/// cleared state, and the journal records the clear (not the set)
-/// to match the on-disk outcome.
+/// Deterministic order: sets (last duplicate wins), then single-kind
+/// clears, then whole-map clears (one `Clear` event per kind present
+/// before the wipe). Set-then-clear on the same `(slice, kind)`
+/// resolves to the cleared state; the journal records the clear.
 ///
 /// # Errors
 ///
@@ -171,18 +150,11 @@ pub fn emit_seed_events(
 
 /// Post-mutation orphan-source gate.
 ///
-/// Runs [`orphan_authority_override_keys`] on `plan` and
-/// short-circuits the CLI write with a single payload-free
-/// `Error::Validation` (exit 2) when any finding fires. Findings are
-/// joined in the deterministic order the domain helper produces (slice
-/// declaration order, then claim-kind iteration order) into the
-/// envelope's `detail`.
-///
-/// This is the post-mutation gate that catches new orphan
-/// overrides introduced by `--authority-override` on `plan amend`.
-/// The `plan add` path's `Plan::create` already
-/// re-runs `Plan::validate` (which folds in the same check) so it
-/// doesn't need a separate call.
+/// Runs [`orphan_authority_override_keys`] on `plan` and short-circuits
+/// the CLI write with one `Error::Validation` (exit 2) when any finding
+/// fires. Catches new orphan overrides introduced by `plan amend`; the
+/// `plan add` path re-runs `Plan::validate`, which folds in the same
+/// check, so it needs no separate call.
 ///
 /// # Errors
 ///

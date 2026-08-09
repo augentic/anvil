@@ -1,15 +1,6 @@
-//! Re-entry (`emery init --upgrade`) body: bumps `project.yaml.emery`
-//! to the running binary over an existing `.emery/` without re-scaffolding.
-//! Mutates only `project.yaml`; never touches slices, specs, archive, registry,
-//! or the adapter cache.
-//!
-//! One runner serves both regular and workspace projects: the
-//! preservation logic is identical, so the dispatcher routes here ahead
-//! of the workspace / regular branch. The recorded adapter binding was
-//! already re-ensured (and resolved) by the operation layer and is
-//! never rewritten — a bare record stays bare (the deployment resolves
-//! it local-first, refreshing to the newest published version as part
-//! of the upgrade invocation).
+//! Re-entry (`emery init --upgrade`): bumps `project.yaml.emery` over
+//! an existing `.emery/` without re-scaffolding. Mutates only
+//! `project.yaml`; the recorded adapter binding is never rewritten.
 
 use error::Error;
 
@@ -40,10 +31,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let platforms_changed = if let Some(incoming) = opts.platforms {
         let ensured = opts.adapter.ok_or_else(|| Error::Diag {
             code: "upgrade-platforms-no-adapter",
-            detail:
-                "--platforms requires a project with a bound target adapter (workspace projects \
-                     have no adapter)"
-                    .to_string(),
+            detail: "--platforms requires a project with a bound target adapter".to_string(),
         })?;
         let validated = validate_platforms(
             Some(incoming),
@@ -73,17 +61,14 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         artifacts::atomic::yaml_write(&config_path, &cfg)?;
     }
 
-    let adapter_name = if cfg.workspace {
-        "workspace".to_string()
-    } else {
-        opts.adapter.map_or_else(String::new, |ensured| ensured.resolved.manifest.name.clone())
-    };
+    let adapter_name =
+        opts.adapter.map_or_else(String::new, |ensured| ensured.resolved.manifest.name.clone());
 
     Ok(InitResult {
         config_path,
-        cache_present: !cfg.workspace && ComponentMeta::path(opts.paths, &adapter_name).exists(),
+        cache_present: ComponentMeta::path(opts.paths, &adapter_name).exists(),
         adapter_name,
-        adapter_binding: if cfg.workspace { None } else { adapter_binding },
+        adapter_binding,
         directories_created: Vec::new(),
         scaffolded_rule_keys: Vec::new(),
         emery_version: target,

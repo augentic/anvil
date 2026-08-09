@@ -158,10 +158,10 @@ plan: account-revamp
 entries: 1 done / 1 in-progress / 1 pending
 ready: false  authorized: true
 next-action: build password-reset
-resume: /emery:build password-reset
+resume: emery plan execute
 ```
 
-When every entry is `done`, status projects the literal `drained` line. If execute stops instead — a build failure, a merge conflict — the stop message names the reason and the resume command; see [Drive a slice manually](../how-to/drive-slice-manually.md).
+When every entry is `done`, status projects the literal `drained` line. If execute stops instead — a build failure, a merge conflict — the stop message names the reason and the resume command; fix the cause and re-run `emery plan execute`. See [Drop down a layer](../how-to/drop-down-a-layer.md).
 </div>
 
 
@@ -194,8 +194,6 @@ Finalize confirms publication is complete and archives the [drained](../appendic
 <div class="see-also">
 <strong>See also</strong>
 
-- [Drive a slice by hand](drive-a-slice-by-hand.md) — the same loop, one phase at a time
 - [Bind multiple sources](../how-to/bind-multiple-sources.md) — reconcile legacy code and docs at plan time
-- [Cross-repo changes](cross-repo-change.md) — workspace mode
 - [Lifecycle](../reference/lifecycle.md) — per-entry and slice state machines
 </div>

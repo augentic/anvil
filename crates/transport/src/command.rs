@@ -19,7 +19,6 @@ mod archive;
 mod journal;
 mod output;
 mod plan;
-mod registry;
 mod routes;
 pub mod selectors;
 mod slice;
@@ -126,7 +125,7 @@ where
 }
 
 /// The bounded span label: the first two non-flag tokens after the
-/// binary name (`plan author`, `slice build`).
+/// binary name (`plan author`, `slice list`).
 fn label(argv: &[String]) -> String {
     let words: Vec<&str> = argv
         .iter()

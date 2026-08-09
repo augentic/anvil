@@ -1,21 +1,7 @@
 //! Authority / status / winner derivation kernel.
 //!
-//! Given a requirement's contributing claims, the per-source document
-//! authority classes, the per-slice `authority-override` map, and the
-//! agent's `agreement` verdict, [`resolve`] derives the requirement's
-//! [`RequirementStatus`], the per-claim winner markers, and the
-//! [`ProvenanceResolution`] label the provenance projection recomputes
-//! on demand. The function is pure and total: no filesystem, no clock,
-//! no panic.
-//!
-//! Authority is keyed by `(source, kind)`, so one requirement can mix
-//! claim kinds. The resolution order walked per claim is:
-//!
-//! 1. per-slice `authority-override[kind]` → the named source wins
-//!    outright for that kind;
-//! 2. document-level `authority`;
-//! 3. the default class ordering `intent > documentation > behaviour`;
-//! 4. a tie at the strictly-greatest effective class → `conflict`.
+//! [`resolve`] is pure and total — no filesystem, no clock, no panic.
+//! Authority is keyed by `(source, kind)`, so one requirement can mix kinds.
 
 use std::collections::{BTreeMap, BTreeSet};
 

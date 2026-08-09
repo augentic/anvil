@@ -1,20 +1,11 @@
-//! Change-loop guest orchestrators.
-//!
-//! Plan authoring (survey fan-out → reconciliation judgment → persist
-//! → review prose) and the drained execute loop that dispatches the
-//! per-slice refine / build / merge phases through the `slice` crate.
-//! `emery plan author`, `emery plan execute`, and `emery source
-//! survey` route here through the guest.
-//!
-//! Time is injected: every orchestrator takes the caller's `now`
-//! (`docs/standards/architecture.md` §"Time injection"); library code
-//! never reads the clock.
+//! Change-loop guest orchestrators: plan authoring and the drained
+//! execute loop behind `emery plan author` / `emery plan execute` /
+//! `emery source survey`. Time is injected; nothing reads the clock.
 
 mod author;
 mod epoch;
 mod execute;
 mod gap_gate;
-mod routing;
 mod survey;
 
 pub use project::seam::Capabilities;

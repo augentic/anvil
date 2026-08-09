@@ -1,5 +1,5 @@
-//! Regular (non-workspace) init body. Scaffolds the per-project `.emery/`
-//! tree over the ensured adapter binding and writes `project.yaml`.
+//! Fresh init body. Scaffolds the per-project `.emery/` tree over the
+//! ensured adapter binding and writes `project.yaml`.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -23,19 +23,16 @@ const SCAFFOLDED_RULE_KEYS: &[&str] = &["proposal", "specs", "design", "tasks"];
 
 pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let ensured = opts.adapter.ok_or_else(|| Error::Diag {
-        code: "init-requires-adapter-or-workspace",
-        detail: "pass <adapter> or --workspace".to_string(),
+        code: "init-adapter-required",
+        detail: "pass <adapter>".to_string(),
     })?;
     let name = resolved_name(opts.project_dir, opts.name);
     let layout = Layout::new(opts.project_dir);
 
     let mut directories_created: Vec<PathBuf> = Vec::new();
-    // Repo-root artefacts (`registry.yaml`, `change.md`, `plan.yaml`)
-    // are not pre-touched — their owning verbs mint them on demand.
-    // `.emery/specs/` is retained as a per-project convention used
-    // by the bundled `omnia` adapter.
-    // The memoization cache is out-of-tree (OS cache, created on demand
-    // by the provider's ensure), so it is not scaffolded here.
+    // Repo-root artefacts (`change.md`, `plan.yaml`) and the
+    // out-of-tree memoization cache are minted on demand by their
+    // owners; `.emery/specs/` is a convention the omnia adapter uses.
     for dir in [
         layout.emery_dir(),
         layout.slices_dir(),
@@ -74,7 +71,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         emery_version: Some(emery_version.clone()),
         rules,
         platforms: validated_platforms,
-        workspace: false,
     };
 
     let config_path = layout.config_path();

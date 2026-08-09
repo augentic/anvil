@@ -1,8 +1,6 @@
-//! The refine-phase orchestrator behind `/emery:refine`: slice create
-//! (re-entry safe), refine-time `base.yaml` pin assembly, per-binding
-//! extract fan-out, the synthesis judgment leg, the persist tail, the
-//! validate gate sweep, and the `refined` transition. A validate
-//! failure leaves the slice `refining` and fires no
+//! The refine-phase orchestrator, driven by the execute loop.
+//!
+//! A validate failure leaves the slice `refining` and fires no
 //! `slice.synthesize.failed`.
 
 use std::path::{Path, PathBuf};
@@ -15,9 +13,9 @@ use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
+use project::identity::{Decision, Surface};
 use project::journal::{self, EventKind};
-use project::plan::{Entry, Plan, Status, collect_events, project_ladders, resolve_topology};
-use project::registry::topology::{Decision, Surface};
+use project::plan::{Entry, Plan, resolve_topology};
 use project::seam::{Source, Target, Workspaces};
 
 use super::synthesize::SynthesizeRequest;
@@ -73,8 +71,8 @@ impl TagCounts {
 /// Refine one plan entry's slice to `refined`.
 ///
 /// `target_value` is the resolved target the slice's `metadata.yaml`
-/// records (e.g. `omnia@1.0.0`) — caller-resolved, mirroring how the
-/// skill takes it from the `plan advance` response.
+/// records (e.g. `omnia@1.0.0`) — caller-resolved by the execute
+/// loop's advance step.
 ///
 /// # Errors
 ///
@@ -150,11 +148,9 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         baseline_decisions: &baseline_decisions,
     };
 
-    // Synthesis is model-dispatched — record the handoff, then bracket
-    // the judgment-plus-persist leg with the native started /
-    // completed / failed pair. Emits are best-effort: a journal hiccup
-    // never shadows the synthesis outcome (the native handler's
-    // posture).
+    // Synthesis is model-dispatched: record the handoff, then bracket
+    // the judgment-plus-persist leg. Emits are best-effort — a journal
+    // hiccup never shadows the synthesis outcome.
     journal::emit_best_effort(
         layout,
         now,
@@ -200,56 +196,6 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         extracted,
         tags,
     })
-}
-
-/// Refine one named plan entry outside the execute loop — the guest
-/// breakout of `/emery:refine`.
-///
-/// Entry semantics mirror the standalone `slice build <name>` posture:
-/// the verb acts on the named slice directly against a projected
-/// `pending` or `in-progress` plan entry (never claiming — `plan
-/// advance` owns the claim), and refuses a projected `done` entry.
-/// The target is caller-free: it resolves from the slice's own
-/// `metadata.yaml` when the slice already exists (a resumed
-/// `refining` breakout), else from the bound project's topology — the
-/// same resolution `plan advance` hands the execute loop.
-///
-/// # Errors
-///
-/// - `slice-refine-entry-done` when the entry has already merged.
-/// - `slice-create-target-missing` when neither the slice metadata nor
-///   the topology resolves a target.
-/// - everything [`refine`] surfaces.
-pub async fn refine_breakout<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
-    caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
-) -> Result<RefineOutcome, Error> {
-    let layout = Layout::new(paths.project_root());
-    let (plan, entry) = load_entry(layout, slice)?;
-    let events = collect_events(&plan, layout)?;
-    let ladders = project_ladders(&plan, &events);
-    let status = ladders.get(&entry.name).copied().unwrap_or(Status::Pending);
-    if status == Status::Done {
-        return Err(Error::validation_failed(
-            "slice-refine-entry-done",
-            "the plan entry is still open",
-            format!(
-                "plan entry `{slice}` projects `done`; walk it back with `emery plan undo \
-                 {slice}` before re-refining"
-            ),
-        ));
-    }
-    let target = breakout_target(caps.resolver, paths, &entry, slice)?;
-    refine(caps, paths, now, slice, &target).await
-}
-
-/// Resolve the breakout's target value: the slice's recorded
-/// `metadata.yaml` target when the slice directory already exists
-/// (resumed policy), else the bound project's topology (fresh policy).
-fn breakout_target(
-    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry, slice: &str,
-) -> Result<String, Error> {
-    project::target_policy::resumed(Layout::new(paths.project_root()), slice)
-        .or_else(|_| project::target_policy::fresh(resolver, paths, entry, slice, "refining"))
 }
 
 /// The judgment leg plus the native persist tail — one fallible unit

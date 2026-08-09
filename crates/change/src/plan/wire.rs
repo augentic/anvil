@@ -1,12 +1,6 @@
 //! Wire DTOs and payload parsers shared by `plan add`, `plan author`,
-//! and `plan amend` on both transports.
-//!
-//! Each helper turns the wire-shaped payload into the domain type the
-//! handler hands to [`project::plan::Plan`]; the handlers themselves
-//! stay free of parsing chatter. The clap-only argv grammars (the
-//! `--source` / `--sources` string forms) live in the transport crate;
-//! this module owns only the serde shapes and the parsing every
-//! transport shares.
+//! and `plan amend` on both transports. The clap-only argv grammars
+//! (`--source` / `--sources` string forms) live in the transport crate.
 
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -21,16 +15,11 @@ use serde::{Deserialize, Serialize};
 
 /// One top-level plan source binding as it crosses the wire.
 ///
-/// Carries the key from `plan.yaml.sources.<key>` plus the adapter and
-/// its path- or value-binding — the raw `plan author` sources shape
-/// on both transports; the internal source-map converter desugars the list
-/// into the structured `plan.yaml.sources` map at the operation boundary.
-///
-/// Materialises as [`SourceBinding`] under the structured
-/// `{ adapter, path?, value? }` wire form. Every binding carries an
-/// explicit adapter name. The locked `--source <key>=<adapter>:<path>`
-/// / `--source <key>=<adapter>:value:<literal>` argv grammar is
-/// transport-owned (the command grammar parses into this type).
+/// The key from `plan.yaml.sources.<key>` plus the adapter and its
+/// path- or value-binding; the source-map converter desugars the list
+/// into the structured `plan.yaml.sources` map ([`SourceBinding`]) at
+/// the operation boundary. The `--source` argv grammar parsing into
+/// this type is transport-owned.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceAssign {

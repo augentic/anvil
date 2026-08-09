@@ -14,14 +14,10 @@ use crate::merge::count_requirement_headings;
 /// Result of a successful [`merge`] call.
 ///
 /// `output` is the merged baseline text (pinned byte-for-byte by the
-/// merge-engine goldens). `operations` records every change applied, in
-/// the order `RENAMED → REMOVED → MODIFIED → ADDED` — the same order
-/// used when mutating the underlying block list.
-///
-/// The `Serialize` derive omits `output` so the type can be `#[serde(flatten)]`-ed
-/// into wire envelopes (e.g. `PreviewEntry`) that carry only the
-/// operations list — the merged text travels separately to disk via
-/// the commit writer.
+/// merge-engine goldens); `operations` records each change in apply
+/// order (`RENAMED → REMOVED → MODIFIED → ADDED`). `Serialize` omits
+/// `output` so the type can flatten into wire envelopes — the merged
+/// text travels separately to disk via the commit writer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[must_use]
 pub struct MergeResult {
@@ -79,22 +75,12 @@ pub enum MergeOperation {
 
 /// Merge a delta spec into an optional baseline.
 ///
-/// `baseline == None` (or `Some("")`, or `Some(whitespace-only)`) means
-/// "new adapter": the baseline is being created from scratch. In that
-/// case:
-///   * if the delta has **no** delta-section headers (per
-///     [`artifacts::spec::has_delta_headers`]), the delta text is returned
-///     verbatim and `operations` holds a single
-///     [`MergeOperation::CreatedBaseline`] entry whose `requirement_count`
-///     counts the `### Requirement:` blocks found in the delta body;
-///   * otherwise the `## ADDED Requirements` section is flattened into a
-///     fresh baseline.
-///
-/// `baseline = Some(non-empty)` applies `RENAMED → REMOVED → MODIFIED →
-/// ADDED` in that order. Any delta entry whose id cannot be resolved (or,
-/// for ADDED, whose id collides with a surviving baseline id) becomes an
-/// `Err(Error::Diag { code: "merge-spec-conflicts", .. })` with all
-/// failure messages joined by `"\n"`.
+/// An absent or blank baseline means created-from-scratch: a delta
+/// with no delta-section headers is kept verbatim as the new baseline
+/// (one [`MergeOperation::CreatedBaseline`] entry); otherwise the
+/// `## ADDED Requirements` section flattens into a fresh baseline. A
+/// non-empty baseline applies `RENAMED → REMOVED → MODIFIED → ADDED`
+/// in that order.
 ///
 /// # Errors
 ///

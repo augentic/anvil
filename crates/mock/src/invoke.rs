@@ -1,11 +1,7 @@
-//! Provider-neutral typed operation invocation for the workflow
-//! suites.
+//! Provider-neutral typed operation invocation for the workflow suites.
 //!
-//! Typed operation execution alongside the CLI-argv path in
-//! `native::command`, so a suite can inspect an operation's typed
-//! output (e.g. the execute body's phases) without reimplementing
-//! router machinery. Generic over the provider: [`native::Provider`]
-//! and suite-local providers call through the same entry.
+//! Lets a suite inspect an operation's typed output without
+//! reimplementing the router machinery in `native::command`.
 
 use omnia_guest::api::invocation::Invocation;
 use omnia_guest::api::invoke::Invoker;

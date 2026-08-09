@@ -5,10 +5,7 @@ Task-oriented recipes for common Emery operator situations. Each guide assumes y
 | Guide | When to use it |
 | ----- | -------------- |
 | [Drop down a layer](drop-down-a-layer.md) | Automation failed and you need manual CLI control |
-| [Drive a slice manually](drive-slice-manually.md) | `emery plan execute` [parked](../appendices/glossary.md#p) mid-loop |
 | [Amend a plan before executing](amend-a-plan.md) | Inspect or edit the plan before executing it |
-| [Undo a plan entry](undo-a-plan-entry.md) | An entry's status is ahead of reality — walk it back a rung |
-| [Drop a slice](drop-a-slice.md) | A slice should not land — archive it without merging |
 | [Resolve spec conflicts](resolve-spec-conflicts.md) | `[conflict]` or `[divergence]` tags in `spec.md` |
 | [Interpret validate findings](interpret-validate-findings.md) | A validate verb exited 2, or execute reports `stuck` |
 | [Bind multiple sources](bind-multiple-sources.md) | Reconcile legacy code and documentation at plan time |

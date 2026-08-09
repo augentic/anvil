@@ -7,7 +7,7 @@
 
 ![Default workflow poster](../assets/diagrams/quick-reference/workflow-poster.svg)
 
-<p class="pipeline-caption">init → plan → review → execute → finalize; breakouts available when execute parks.</p>
+<p class="pipeline-caption">init → plan → review → execute → finalize; re-run execute when it parks.</p>
 </div>
 
 
@@ -21,20 +21,17 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
-| `/emery:init`             | One-time project setup; run `emery init --workspace` for a registry-only workspace               |
+| `/emery:init`             | One-time project setup                                                                         |
 | `/emery:plan`             | Survey sources, propose `slices[]`, exit for operator review                                 |
 | `/emery:execute`          | Drive the per-slice refine → build → merge loop (`emery plan execute` — opens the authorization epoch) |
+| `/emery:status`           | Report where the plan stands and the literal next command (read-only)                          |
 | `/emery:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
-| `/emery:refine`           | Breakout: extract per source, synthesize artifacts, transition slice to `refined`              |
-| `/emery:build`            | Breakout: validate artifacts, implement tasks                                                  |
-| `/emery:merge`            | Breakout: wave-commit, apply deltas to baseline, archive slice (projects `done`)               |
-| `/emery:drop`             | Discard a slice without merging                                                                |
 
 ## Artifacts
 
 | Artifact            | Question                            | Location                                                          |
 | ------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `change.md`         | Why is the change happening?        | `change.md` (project root; workspace mode: at workspace)          |
+| `change.md`         | Why is the change happening?        | `change.md` (project root)                                        |
 | `plan.yaml`         | Which slices, in what order?        | `plan.yaml` (project root)                                        |
 | `discovery.md`      | What leads did sources surface? | `discovery.md` (project root)                                     |
 | `proposal.md`       | Why does this slice exist?          | `.emery/slices/<name>/proposal.md`                              |
@@ -48,7 +45,7 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 Per-entry ladder (from claims + merge/archive facts — not stored on `plan.yaml`):
 
 ```text
-pending --(plan advance / claim)--> in-progress --(slice merge)--> done
+pending --(execute claims)--> in-progress --(merge phase)--> done
 ```
 
 Slice ladder (from phase timestamps + artifacts/facts — not a `metadata.yaml` status field):
@@ -56,7 +53,7 @@ Slice ladder (from phase timestamps + artifacts/facts — not a `metadata.yaml` 
 ```text
 refining --> refined --> built --> merged
                             \
-                             `--> dropped (via slice drop --reason "...")
+                             `--> dropped (via emery plan drop --reason "...")
 ```
 
 ## Key CLI commands
@@ -64,27 +61,25 @@ refining --> refined --> built --> merged
 ```bash
 # Project setup
 emery init <target>                                    # single-project scaffold (positional target adapter)
-emery init --workspace                                       # registry-only workspace
 emery source resolve <name>                            # resolve a source adapter and report its settled identity
 emery target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
 emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits for review (--force replaces a replaceable plan)
-emery plan add <entry> --sources <key>=<lead> --project <name>
+emery plan add <entry> --sources <key>=<lead>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 emery plan remove <entry>                                  # pre-execution deferral (replaceable plan only)
+emery plan drop <entry> [--reason "..."]               # abandon a refined slice without merging
 emery plan execute [--waive <slice>/<req> --reason …]  # authorization epoch + drained loop
 emery plan status                                      # read-only next-action + Ready/Authorized
 emery plan gaps                                        # typed gap inventory
-emery plan advance                                     # claim next eligible (or return active)
 emery plan archive
 
-# Slice management
-emery slice list                                       # read-only: every slice with status + target
-emery slice refine <name>                              # create + extract + synthesis + refined, in one run
-emery slice validate <name>
-emery slice merge <name>                           # dry-runs: --preview / --conflict-check
-emery slice drop <name> [--reason "..."]
+# Slice projections (read-only)
+emery slice list                                       # every slice with status + target
+emery slice validate <name>                            # artifact validation + staleness advisories
+emery slice provenance <name>                          # on-demand provenance audit view
+emery slice model show <name>                          # render model.yaml
 
 # Maintenance & bootstrap
 emery init --upgrade                                   # bump emery pin + re-scaffold preservation-safe files only
@@ -109,14 +104,12 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
 ```text
 <project-root>/
 ├── AGENTS.md             # generated agent guidance with operator-editable prose outside fences
-├── registry.yaml         # workspace catalogue (workspace mode only)
 ├── change.md             # operator brief (per active change)
 ├── plan.yaml             # change plan
 ├── discovery.md          # plan-time lead inventory
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
-├── workspace/            # workspace slots (workspace mode only; gitignored)
 └── .emery/
-    ├── project.yaml      # project config (target, sources, workspace, emery-version)
+    ├── project.yaml      # project config (target, sources, emery-version)
     ├── guest.lock        # lock held by a running plan execute (a second driver gets guest-marker-held)
     ├── scratch/          # transient per-run working state (gitignored)
     ├── slices/           # active slices (proposal/spec/design/tasks + evidence/ + base.yaml + builds/)

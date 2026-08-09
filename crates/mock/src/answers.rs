@@ -1,11 +1,7 @@
 //! The scripted judgment-answer corpus over the mock data sets.
 //!
-//! Two mock data sets exist: the minimal single-lead `greeting`
-//! profile (full loop, seam failures, repair loop) and the adversarial
-//! `docs` / `code` pair (reconciliation, synthesis). Keeping one copy
-//! of each answer here stops the suites drifting apart on envelope
-//! shape. Source-binding builders live with the `change` suites — the
-//! corpus itself is plain JSON and depends on no engine crate.
+//! One copy of each answer stops the suites drifting apart on envelope
+//! shape; the corpus is plain JSON and depends on no engine crate.
 
 use serde_json::json;
 

@@ -9,7 +9,7 @@ use error::Error;
 
 use super::super::execution::{
     JournalOverlay, Resolution, collect_events, next_eligible, project_ladders, resolve_entry,
-    resolve_work_root, scan_union,
+    scan_union,
 };
 use super::super::gaps::plan_gaps_body;
 use super::super::in_scope;
@@ -22,25 +22,11 @@ use crate::slice::SliceMetadata;
 
 /// Project the read-only `emery plan status` body.
 ///
-/// Selection: the first projected `in-progress` entry, else sticky
-/// `merge-postflight-failed` when the newest plan-scoped postflight
-/// debt event is unacked, else the next eligible projected `pending`
-/// entry (what `plan advance` would advance), else `drained` /
-/// `stop stuck`. The per-entry decision — artifact phase plus (for
-/// an in-progress entry) the folded active-window journal facts — is
-/// the shared `resolve_entry` execution kernel; not-yet-advanced
-/// candidates skip the journal overlay (nothing has run under the
-/// current activation; stale same-name events from earlier plans must
-/// not classify).
-///
-/// Ladder labels and the awaited phase are computed from the fact
-/// union and slice artifacts. Ready / Authorized are plan-wide
-/// milestones (D22): Ready is clean-gap only; Authorized is a
-/// covering `plan.execute.started` — never an `approved` rung.
-///
-/// `layout` resolves the plan root and the work root: an entry bound
-/// to a materialised workspace slot reads that slot's slice artifacts
-/// and journal, mirroring where phase work writes them.
+/// Selection: first projected `in-progress` entry, else sticky
+/// unacked `merge-postflight-failed`, else the next eligible `pending`
+/// entry, else `drained` / `stop stuck`. Not-yet-advanced candidates
+/// skip the journal overlay — stale same-name events from earlier
+/// plans must not classify.
 ///
 /// # Errors
 ///
@@ -48,7 +34,7 @@ use crate::slice::SliceMetadata;
 /// ([`Error::YamlDe`]); a missing slice directory is the fresh-slice
 /// signal, not an error.
 pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, Error> {
-    let events = collect_events(plan, layout)?;
+    let events = collect_events(layout)?;
     let ladders = project_ladders(plan, &events);
     let counts = StatusCounts {
         pending: count(&ladders, Status::Pending),
@@ -144,9 +130,7 @@ fn clean_gaps(gaps: &super::super::gaps::GapsBody) -> bool {
 /// Empty in-scope set is vacuously refined.
 fn all_in_scope_refined(plan: &Plan, layout: Layout<'_>) -> Result<bool, Error> {
     for entry in &plan.entries {
-        let work_root = resolve_work_root(layout, entry);
-        let work_layout = Layout::new(&work_root);
-        let slice_dir = work_layout.slice_dir(entry.name.as_str());
+        let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = load_meta(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
@@ -239,10 +223,9 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
             StopReason::RefineFailed => Some(LoopStep::Refine),
             StopReason::BuildFailed => Some(LoopStep::Build),
-            // `merge-incomplete` parks inside merge: the spec merge
-            // landed but the per-entry `done` stamp — merge's last
-            // sub-step — has not. Postflight failure is past merge
-            // (`done` + archived) — no awaited phase.
+            // `merge-incomplete` parks inside merge: the spec merge landed
+            // but the per-entry `done` stamp has not. Postflight failure is
+            // past merge (`done` + archived) — no awaited phase.
             StopReason::MergeConflict | StopReason::MergeIncomplete => Some(LoopStep::Merge),
             StopReason::MergePostflightFailed | StopReason::SliceDropped | StopReason::Stuck => {
                 None
@@ -257,12 +240,9 @@ fn resume_point(
     plan: &Plan, ladders: &std::collections::HashMap<SliceName, Status>, resolution: &Resolution,
     gaps: &super::super::gaps::GapsBody, ready: bool,
 ) -> Option<String> {
-    let slice = resolution.slice.as_deref();
     // A fresh plan (no entry has left projected `pending`) resumes
-    // through the execute loop, not a phase breakout — the projected
-    // `next-action` still names the phase the loop will run first
-    // (D26). When Ready, keep `/emery:execute`. When refined but not
-    // Ready, point at waive / gap closure instead.
+    // through the execute loop, not a phase breakout. When refined but
+    // not Ready, point at waive / gap closure instead.
     if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,
@@ -275,17 +255,19 @@ fn resume_point(
         return Some(fresh_plan_resume(gaps, ready, resolution.action));
     }
     match resolution.action {
-        NextActionKind::Refine => slice.map(|s| format!("/emery:refine {s}")),
-        NextActionKind::Build => slice.map(|s| format!("/emery:build {s}")),
-        NextActionKind::Merge => slice.map(|s| format!("/emery:merge {s}")),
+        // Every phase resumes through the execute loop — there are no
+        // phase-breakout verbs (RFC-86 three-verb surface).
+        NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge => {
+            Some("emery plan execute".to_string())
+        }
         NextActionKind::ReviewGaps => Some(gap_resume(gaps)),
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed => slice.map(|s| format!("/emery:refine {s}")),
-            StopReason::BuildFailed => slice.map(|s| format!("/emery:build {s}")),
-            StopReason::MergeConflict => slice.map(|s| format!("/emery:merge {s}")),
-            StopReason::MergePostflightFailed => Some("emery plan execute".to_string()),
-            StopReason::MergeIncomplete => slice.map(|s| format!("/emery:merge {s}")),
+            StopReason::RefineFailed
+            | StopReason::BuildFailed
+            | StopReason::MergeConflict
+            | StopReason::MergePostflightFailed
+            | StopReason::MergeIncomplete => Some("emery plan execute".to_string()),
             StopReason::SliceDropped | StopReason::Stuck => None,
         }),
     }
@@ -298,21 +280,16 @@ fn fresh_plan_resume(
     if action == NextActionKind::ReviewGaps || (!ready && action == NextActionKind::Build) {
         return gap_resume(gaps);
     }
-    // Unrefined or Ready: resume at execute (D26). Next-action may
-    // still name `slice refine <slice>` while unrefined.
+    // Unrefined or Ready: resume at execute (D26).
     "/emery:execute".to_string()
 }
 
-/// Resume when the change is not Ready: conflicts → re-refine
-/// selectors; unknowns-only → execute with per-req `--waive`.
+/// Resume when the change is not Ready: conflicts → fix inputs and
+/// re-execute (drifted pins re-refine under the epoch); unknowns-only
+/// → execute with per-req `--waive`.
 fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
-    let conflicts: Vec<_> =
-        gaps.rows.iter().filter(|r| r.status == RequirementStatus::Conflict).collect();
-    if !conflicts.is_empty() {
-        let mut slices: Vec<&str> = conflicts.iter().map(|r| r.slice.as_str()).collect();
-        slices.sort_unstable();
-        slices.dedup();
-        return format!("emery slice refine {}", slices.join(" "));
+    if gaps.rows.iter().any(|r| r.status == RequirementStatus::Conflict) {
+        return "emery plan execute".to_string();
     }
     let unknowns: Vec<_> =
         gaps.rows.iter().filter(|r| r.status == RequirementStatus::Unknown).collect();

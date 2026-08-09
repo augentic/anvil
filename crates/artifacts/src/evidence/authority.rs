@@ -1,12 +1,7 @@
-//! Evidence authority enums — the closed `AuthorityClass` and
-//! `ClaimKind` sets shared by the Evidence document,
-//! `plan.yaml`'s per-slice `authority-override` map, and the slice
-//! model.
+//! Evidence authority enums — the closed `AuthorityClass` / `ClaimKind` sets.
 //!
-//! Authority resolves at document level via the per-Evidence
-//! `authority:` field, with one operator override surface — the
-//! per-slice `authority-override` on `plan.yaml`, keyed by claim kind.
-//! There is no per-Evidence per-kind override map.
+//! Authority resolves at document level; the sole operator override is
+//! `plan.yaml`'s per-slice `authority-override`, keyed by claim kind.
 
 use serde::{Deserialize, Serialize};
 

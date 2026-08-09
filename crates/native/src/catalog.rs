@@ -1,18 +1,6 @@
-//! Linked-adapter catalog: a validated, typed vtable over the per-axis
-//! operations traits.
-//!
-//! Consumers declare their linked adapters once
-//! (`Catalog::builder().source::<A>()…target::<B>().build()?`); each
-//! registration monomorphizes the implementor's operation legs into fn
-//! pointers at [`DynModel`], so dispatch stays compile-checked trait
-//! calls while the catalog itself is plain data the provider routes
-//! ids over. `build()` validates identities, per-axis duplicates, and
-//! reference-shelf coherence; same-name source and target entries
-//! remain legal (dispatch is always axis-qualified).
-//!
-//! Publicly the catalog is construction plus read-only inventory;
-//! operation dispatch is crate-private and reachable only through the
-//! [`crate::Provider`] seam.
+//! Linked-adapter catalog: a validated, typed vtable over the
+//! per-axis operations traits. Same-name source and target entries
+//! are legal — dispatch is always axis-qualified.
 
 use std::fmt;
 use std::future::Future;

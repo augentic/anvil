@@ -278,7 +278,7 @@ Copy the exemplar chapter for each Diátaxis type when authoring or migrating pa
 | Type                | Exemplar                                                              | Key components                                                         |
 | ------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | **Tutorial**        | [`tutorials/quick-start.md`](../tutorials/quick-start.md)             | hero, meta-chip, prereq, tutorial-step, pipeline, `> [!TIP]`, see-also |
-| **How-to**          | [`how-to/drive-slice-manually.md`](../how-to/drive-slice-manually.md) | hero, when, numbered section, `> [!IMPORTANT]`, see-also               |
+| **How-to**          | [`how-to/interpret-validate-findings.md`](../how-to/interpret-validate-findings.md) | hero, when, numbered section, `> [!IMPORTANT]`, see-also               |
 | **Explanation**     | [`explanation/concepts.md`](../explanation/concepts.md)               | hero, audience-grid, rhythm, pipeline, admonition, see-also            |
 | **Reference**       | [`reference/cli/plan.md`](../reference/cli/plan.md)                   | intro, verb cheat-sheet table, synopsis blocks, see-also               |
 | **Section landing** | [`tutorials/index.md`](../tutorials/index.md)                         | hero, card-grid, see-also                                              |

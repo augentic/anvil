@@ -8,7 +8,85 @@
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
 use change::plan::wire::SourceAssign;
+use mock::session::Session;
+use project::handler::Anchor as _;
 use serde_json::json;
+
+/// Drive the refine phase for one plan entry the way the execute
+/// loop's advance step does — the standalone `slice refine` verb is
+/// retired, so suites reach the orchestration directly.
+///
+/// # Errors
+///
+/// Propagates the orchestration's failures.
+///
+/// # Panics
+///
+/// Panics when `plan.yaml` is absent or carries no entry named
+/// `slice`.
+pub async fn refine(
+    session: &Session, slice: &str,
+) -> Result<slice::orchestrate::RefineOutcome, error::Error> {
+    let provider = session.provider();
+    let caps = slice::orchestrate::Capabilities::provider(provider);
+    let paths = provider.paths();
+    let layout = project::config::Layout::new(paths.project_root());
+    let plan = project::plan::Plan::load(&layout.plan_path())?;
+    let entry = plan
+        .entries
+        .iter()
+        .find(|entry| entry.name == slice)
+        .unwrap_or_else(|| panic!("plan entry `{slice}` missing"));
+    let target = project::target_policy::resumed(layout, slice)
+        .or_else(|_| project::target_policy::fresh(provider, paths, entry, slice, "refining"))?;
+    slice::orchestrate::refine(caps, paths, jiff::Timestamp::now(), slice, &target).await
+}
+
+/// Claim the next eligible plan entry — the execute loop's advance
+/// step, reached directly now that the standalone verb is retired.
+///
+/// # Panics
+///
+/// Panics when config load or the advance kernel fails.
+pub fn advance(session: &Session) -> project::plan::AdvanceBody {
+    let provider = session.provider();
+    let paths = provider.paths();
+    let layout = project::config::Layout::new(paths.project_root());
+    let config = project::config::ProjectConfig::load(layout.project_dir()).expect("config loads");
+    project::plan::advance_next(provider, paths, jiff::Timestamp::now(), &config)
+        .expect("advance claims")
+}
+
+/// Drive the build phase for one slice the way the execute loop does.
+///
+/// # Errors
+///
+/// Propagates config-load, adapter-resolution, and build failures.
+pub async fn build(
+    session: &Session, slice: &str,
+) -> Result<slice::orchestrate::BuildOutcome, error::Error> {
+    let provider = session.provider();
+    let paths = provider.paths();
+    let layout = project::config::Layout::new(paths.project_root());
+    let config = project::config::ProjectConfig::load(layout.project_dir())?;
+    let adapter = project::target_policy::project_adapter(provider, &config, paths)?;
+    slice::orchestrate::build(provider, layout, jiff::Timestamp::now(), slice, &adapter.manifest)
+        .await
+}
+
+/// Drive the merge phase for one slice the way the execute loop does
+/// (no composition-replace authorization).
+///
+/// # Errors
+///
+/// Propagates the merge orchestration's failures.
+pub async fn merge(
+    session: &Session, slice: &str,
+) -> Result<slice::orchestrate::MergeOutcome, error::Error> {
+    let provider = session.provider();
+    let layout = project::config::Layout::new(provider.paths().project_root());
+    slice::orchestrate::merge(provider, layout, jiff::Timestamp::now(), slice, false).await
+}
 
 /// The single `main` binding onto the minimal mock source.
 ///
@@ -78,6 +156,7 @@ pub fn change(name: &str) -> project::plan::Entry {
         divergence: None,
         disagreements: Vec::new(),
         authority_override: project::plan::AuthorityOverride::default(),
+        allow_composition_replace: false,
     }
 }
 

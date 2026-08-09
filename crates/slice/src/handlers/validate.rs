@@ -1,14 +1,7 @@
-//! `slice validate` — coherence check against the adapter validation
-//! rules plus first-use schema validation of per-source `Evidence`
-//! files and workflow §Requirement block contract validation of
-//! `spec.md` provenance metadata.
+//! `slice validate` — coherence check over the pre-adapter gates and
+//! the adapter validation rules.
 //!
-//! The pre-adapter gate kernel lives in
-//! [`crate::validate`]; this verb orchestrates it against
-//! the adapter rules (`artifacts::validate::validate_slice`), returns
-//! the report body, and carries the blocking decision on
-//! [`project::handler::Error::Report`] so the transports render findings and the
-//! failure envelope on their own channels.
+//! The blocking decision rides [`project::handler::Error::Report`].
 
 use std::io::Write;
 

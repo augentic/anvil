@@ -1,11 +1,9 @@
-//! Exclusive per-slice claim projection (RFC-86 D7 / D23).
+//! Exclusive per-slice claim projection.
 //!
-//! A slice has at most one live owner at a time. Different slices may
-//! be claimed concurrently by different journal writers. Same-slice overlap
-//! fails closed as `slice-claim-conflict`. Claims never create
-//! build/merge authorization.
+//! A slice has at most one live owner; same-slice overlap fails closed
+//! as `slice-claim-conflict`. Claims never create build/merge authorization.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use error::Error;
 
@@ -49,18 +47,12 @@ impl Ownership {
 /// Project live claims from a fact-union already ordered by
 /// `(timestamp, writer, sequence)`.
 ///
-/// Retracted facts (`fact.retracted`) are omitted as if never written;
-/// a retract that is itself retracted is restored by the fixed-point
-/// over retract targets. A `slice.released` clears ownership only when
-/// the releasing envelope writer holds the live claim.
+/// A `slice.released` clears ownership only when the releasing
+/// envelope writer holds the live claim.
 #[must_use]
 pub fn project(events: &[Event]) -> Ownership {
-    let retracted = retracted_targets(events);
     let mut ownership = Ownership::default();
     for event in events {
-        if retracted.contains(&(event.writer.as_str(), event.sequence)) {
-            continue;
-        }
         match &event.kind {
             EventKind::SliceClaimed { slice_name } => {
                 ownership.by_slice.insert(slice_name.clone(), event.writer.clone());
@@ -110,25 +102,4 @@ pub fn ensure_claimable(
 pub fn claim(ownership: &Ownership, slice: SliceName, writer: &str) -> Result<EventKind, Error> {
     ensure_claimable(ownership, &slice, writer)?;
     Ok(EventKind::SliceClaimed { slice_name: slice })
-}
-
-/// Fixed-point set of `(writer, sequence)` pairs whose lines are
-/// retracted by a live `fact.retracted` fact.
-pub(crate) fn retracted_targets(events: &[Event]) -> BTreeSet<(&str, u64)> {
-    let mut retracted = BTreeSet::new();
-    loop {
-        let mut next = BTreeSet::new();
-        for event in events {
-            if retracted.contains(&(event.writer.as_str(), event.sequence)) {
-                continue;
-            }
-            if let EventKind::FactRetracted { writer, sequence } = &event.kind {
-                next.insert((writer.as_str(), *sequence));
-            }
-        }
-        if next == retracted {
-            return retracted;
-        }
-        retracted = next;
-    }
 }

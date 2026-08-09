@@ -1,8 +1,6 @@
-//! Kernel-level operations on a Emery slice directory, driven by the
-//! refine / build / merge orchestrations and the drop / prune verbs.
-//!
-//! Create, transition, touched-spec classification, archive, and
-//! discard.
+//! Kernel-level operations on an Emery slice directory: create,
+//! transition, touched-spec classification, archive, discard, and
+//! prune.
 
 pub mod archive;
 pub mod create;

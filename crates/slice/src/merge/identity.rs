@@ -1,10 +1,7 @@
-//! Wave-commit requirement identity finalization (RFC-86 D5 / D9).
+//! Wave-commit requirement identity finalization.
 //!
-//! Before the deterministic delta fold, merge assigns final baseline
-//! `REQ-NNN` numbers: `MODIFIED` rows keep their `baseline-id` (after
-//! rejecting drifted baseline bodies), `ADDED` rows take the next free
-//! baseline numbers. Slice specs, `model.yaml`, and `tasks.md` are
-//! rewritten in place so the merge engine sees baseline ids.
+//! Merge rewrites slice specs, `model.yaml`, and `tasks.md` in place
+//! before the delta fold so the engine sees final baseline `REQ` ids.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -76,7 +73,8 @@ fn assign_maps(model: &SliceModel, baseline: &BaselineIndex) -> Result<Vec<Ident
             Error::validation_failed(
                 "merge-identity-missing-id",
                 "every model requirement carries a slice-local id at wave commit",
-                "a requirement is missing id; re-run `emery slice refine` before merging",
+                "a requirement is missing id; re-run the refine phase (`emery plan execute`) \
+                 before merging",
             )
         })?;
         let baseline_id = if let Some(baseline_id) = req.baseline_id.as_deref() {
@@ -105,7 +103,7 @@ fn reject_drifted(
             "MODIFIED requirements record a baseline-body digest at synthesize",
             format!(
                 "requirement `{baseline_id}` has baseline-id but no baseline-digest; \
-                 re-run `emery slice refine` before merging"
+                 re-run the refine phase (`emery plan execute`) before merging"
             ),
         ));
     };

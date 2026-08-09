@@ -10,7 +10,7 @@ use error::Error;
 use jiff::Timestamp;
 
 use super::parse::system_time_to_utc;
-use super::{BaselineConflict, OpaqueAction, OpaqueEntry, PreviewEntry};
+use super::{BaselineConflict, PreviewEntry};
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::count_requirement_headings;
 use crate::merge::engine::merge;
@@ -203,22 +203,14 @@ fn merge_composition_delta(
     }
 }
 
-/// A3 precondition: refuse a whole-document (`screens:`) slice
-/// composition that would silently replace a non-empty baseline.
+/// Refuse a whole-document (`screens:`) slice composition that would
+/// silently replace a non-empty baseline.
 ///
-/// Reads the slice's top-level `composition.yaml` and the baseline at
-/// `class.baseline_dir/composition.yaml`. The gate fires — returning
-/// [`Error::Diag { code: "composition-baseline-overwrite-blocked" }`] —
-/// only when all three hold: the slice composition uses whole-document
-/// replacement format, the baseline is non-empty, and `allow_replace`
-/// is `false`. An absent slice file, an absent/empty baseline, a
-/// `delta:`-format slice composition, or `allow_replace == true` all
-/// pass.
-///
-/// This is a single-responsibility authorisation precondition — it
-/// carries no merge mechanism. The pure shape predicates it composes
-/// live in `crate::merge::composition`; this function adds only the
-/// file reads and the authorisation policy (composition overwrite-gate placement).
+/// The gate fires only when all three hold: the slice composition
+/// uses whole-document replacement format, the baseline is non-empty,
+/// and `allow_replace` is `false`. The pure shape predicates live in
+/// `crate::merge::composition`; this function adds only the file
+/// reads and the authorisation policy.
 ///
 /// # Errors
 ///
@@ -251,70 +243,15 @@ pub(super) fn overwrite_gate(
     Err(Error::Diag {
         code: "composition-baseline-overwrite-blocked",
         detail: "Slice composition uses whole-document replacement format but a non-empty \
-                 baseline exists. Use `delta:` format, or pass `--allow-composition-replace` to \
-                 authorise full replacement."
+                 baseline exists. Use `delta:` format, or authorise full replacement on the plan \
+                 entry with `emery plan amend <slice> --allow-composition-replace` and re-run \
+                 `emery plan execute`."
             .to_string(),
     })
 }
 
 fn read_optional_file(path: &Path) -> Result<Option<String>, Error> {
     if path.is_file() { project::fs::read_text(path).map(Some) } else { Ok(None) }
-}
-
-/// Walk every [`MergeStrategy::OpaqueReplace`] class's `staged_dir`
-/// and report each file that would be promoted, paired with whether
-/// its baseline counterpart already exists ([`OpaqueAction::Replaced`])
-/// or is brand new ([`OpaqueAction::Added`]).
-pub(super) fn preview_opaque(classes: &[ArtifactClass]) -> Result<Vec<OpaqueEntry>, Error> {
-    let mut entries: Vec<OpaqueEntry> = Vec::new();
-    for class in classes.iter().filter(|c| matches!(c.strategy, MergeStrategy::OpaqueReplace)) {
-        if !class.staged_dir.is_dir() {
-            continue;
-        }
-        collect_opaque_entries(
-            &class.staged_dir,
-            &class.staged_dir,
-            &class.baseline_dir,
-            &class.name,
-            &mut entries,
-        )?;
-    }
-    entries.sort_by(|a, b| {
-        (a.class_name.as_str(), a.relative_path.as_str())
-            .cmp(&(b.class_name.as_str(), b.relative_path.as_str()))
-    });
-    Ok(entries)
-}
-
-fn collect_opaque_entries(
-    base: &Path, current: &Path, baseline_dir: &Path, class_name: &str,
-    entries: &mut Vec<OpaqueEntry>,
-) -> Result<(), Error> {
-    for entry in project::fs::dir_entries(current)? {
-        let path = entry.path();
-        if path.is_dir() {
-            collect_opaque_entries(base, &path, baseline_dir, class_name, entries)?;
-        } else {
-            let relative = path.strip_prefix(base).map_err(|_err| Error::Filesystem {
-                op: "path-prefix",
-                path: path.clone(),
-                source: std::io::Error::other(format!(
-                    "path {} is not under base {}",
-                    path.display(),
-                    base.display()
-                )),
-            })?;
-            let baseline_path = baseline_dir.join(relative);
-            let action =
-                if baseline_path.is_file() { OpaqueAction::Replaced } else { OpaqueAction::Added };
-            entries.push(OpaqueEntry {
-                class_name: class_name.to_string(),
-                relative_path: relative.to_string_lossy().to_string(),
-                action,
-            });
-        }
-    }
-    Ok(())
 }
 
 /// Recursively walk `current` (rooted at `base`) and check whether each

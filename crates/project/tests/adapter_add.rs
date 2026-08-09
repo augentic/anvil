@@ -49,7 +49,6 @@ async fn target_seed_then_bare_init() {
             adapter: Some("demo".into()),
             name: Some("demo-project".into()),
             description: None,
-            workspace: false,
             platforms: None,
             upgrade: false,
         },

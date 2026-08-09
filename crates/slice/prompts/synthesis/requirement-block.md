@@ -1,6 +1,6 @@
 # Requirement block
 
-Every requirement in a spec file (`specs/<domain>/spec.md`) is one H3 block with three provenance lines plus a body. **The agent authors only the heading and body prose** (plus the requirement's `(source, id, kind)` claims and `agreement` verdict in the response); the `emery slice refine` synthesis kernel **renders the `ID:` / `Sources:` / `Status:` lines and the headline tag** from `model.yaml`. The provenance parser (consumed by `emery slice validate`) validates the rendered shape exactly — an operator hand-edit that stales a kernel-rendered line fails `slice-spec-provenance-stale`.
+Every requirement in a spec file (`specs/<domain>/spec.md`) is one H3 block with three provenance lines plus a body. **The agent authors only the heading and body prose** (plus the requirement's `(source, id, kind)` claims and `agreement` verdict in the response); the refine phase's synthesis kernel **renders the `ID:` / `Sources:` / `Status:` lines and the headline tag** from `model.yaml`. The provenance parser (consumed by `emery slice validate`) validates the rendered shape exactly — an operator hand-edit that stales a kernel-rendered line fails `slice-spec-provenance-stale`.
 
 ## Canonical template (kernel-rendered)
 
@@ -76,7 +76,7 @@ When the bound project already owns `specs/<domain>/spec.md`, the kernel renders
 - Net-new behaviour → `## ADDED Requirements` with a fresh slice-local id.
 - Refining a baseline requirement → set `baseline-id: REQ-NNN`; kernel mints a slice-local id, records the baseline-body digest, and places the row under `## MODIFIED Requirements`.
 
-Greenfield domains still render flat `### Requirement:` blocks. `emery slice merge` rejects flat deltas against a non-empty baseline (`merge-delta-headers-required`).
+Greenfield domains still render flat `### Requirement:` blocks. The merge phase rejects flat deltas against a non-empty baseline (`merge-delta-headers-required`).
 
 ## Body conventions
 
@@ -87,7 +87,7 @@ Greenfield domains still render flat `### Requirement:` blocks. `emery slice mer
 
 ## Failure modes the parser surfaces
 
-These arise only from a **post-synthesis hand-edit** (`slice-spec-provenance-stale`) — fix by re-running `emery slice refine`:
+These arise only from a **post-synthesis hand-edit** (`slice-spec-provenance-stale`) — fix by re-running the refine phase (`emery plan execute`):
 
 | Symptom | Cause |
 | ------- | ----- |

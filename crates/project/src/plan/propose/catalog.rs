@@ -1,9 +1,7 @@
 //! Lead-catalog assembly: the `(source, lead)` identity oracle and the
 //! pure `kind: request` envelope builder.
 //!
-//! [`build_request`] / [`build_catalog`] are filesystem-free so they
-//! unit-test without a temp project; the project topology they embed is
-//! resolved separately by [`super::topology::resolve_topology`].
+//! [`build_request`] / [`build_catalog`] are filesystem-free.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,19 +13,12 @@ use super::wire::{LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest};
 
 /// Set of `(source, lead)` identities surveyed in `discovery.md`.
 ///
-/// The membership oracle the response-validation kernel
-/// (`Plan::propose_from`) checks every agent-supplied `{ source, lead }`
-/// against to reject orphan bindings and to prove every surveyed lead is
-/// covered by at least one slice. Identities are deduplicated — a
-/// well-formed `discovery.md` carries a unique `(source, lead)` per
-/// lead, so [`LeadCatalog::len`] equals the surveyed lead count.
-///
-/// Keyed `source -> {lead}` (never an empty lead set, since
-/// `build_catalog` only inserts when a lead is present) so a
-/// `(source, lead)` membership probe borrows `&str` through
-/// `String: Borrow<str>` and never allocates an owned key. Iterating
-/// `source` then `lead` yields the same lexicographic `(source, lead)`
-/// order a flat `BTreeSet<(String, String)>` would.
+/// The membership oracle `Plan::propose_from` checks every
+/// agent-supplied `{ source, lead }` against, rejecting orphan bindings
+/// and proving every surveyed lead is covered by at least one slice.
+/// Keyed `source -> {lead}` (never an empty lead set) so a membership
+/// probe borrows `&str` without allocating; iteration order matches a
+/// flat lexicographic `(source, lead)` set.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct LeadCatalog {
     identities: BTreeMap<String, BTreeSet<String>>,

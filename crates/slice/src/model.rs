@@ -1,13 +1,7 @@
-//! Slice model — `model.yaml`.
+//! Slice model — the typed `model.yaml` artifact.
 //!
-//! One structured artifact per slice at
-//! `.emery/slices/<slice>/model.yaml`. The typed [`SliceModel`]
-//! shape covers both the agent's synthesis-response `model` and the
-//! persisted file: kernel-owned and header fields are optional so the
-//! kernel re-derives/stamps them on projection (normalize, never
-//! reject). Provenance is carried inline on each requirement, so the
-//! provenance view is *projected* on demand by `emery slice
-//! provenance` rather than persisted as a second file.
+//! Kernel-owned fields are optional so the kernel re-stamps them on
+//! projection (normalize, never reject); provenance stays inline.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -177,21 +171,12 @@ impl SliceModel {
     /// Project the audit-only provenance view from this model plus the
     /// slice's on-disk Evidence.
     ///
-    /// The persisted model carries the load-bearing provenance inline
-    /// (`status`, claim `winner` markers, rendered `sources`); the two
-    /// derived fields are **recomputed** rather than read from the
-    /// model:
-    ///
-    /// - `resolution` (and `resolution-trace`) is re-derived by re-running
-    ///   the authority kernel over the requirement's `ClaimRef`s, the
-    ///   per-source document `authority` read from `evidence/<source>.yaml`,
-    ///   the per-slice `overrides` map, and the requirement's persisted
-    ///   `agreement` verdict.
-    /// - each contributing claim's `value` (single-line payload) and
-    ///   `path` anchor are read from `evidence/<source>.yaml`, keyed by
-    ///   the `(source, id)` the claim already carries.
-    ///
-    /// `generated_at` and `generator` stamp the projection's header.
+    /// Two derived fields are recomputed rather than read from the
+    /// model: `resolution` (by re-running the authority kernel over
+    /// the claims, per-source `authority`, overrides, and the persisted
+    /// `agreement`) and each claim's `value` / `path` (read from
+    /// `evidence/<source>.yaml`). `generated_at` / `generator` stamp
+    /// the projection header.
     ///
     /// # Errors
     ///

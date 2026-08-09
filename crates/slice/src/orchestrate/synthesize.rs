@@ -3,7 +3,7 @@
 use error::Error;
 use omnia_guest::Model;
 use project::adapter::{Axis, RoutedId};
-use project::registry::topology::{Decision, Surface};
+use project::identity::{Decision, Surface};
 use project::seam::Target;
 
 use super::seam_failure;

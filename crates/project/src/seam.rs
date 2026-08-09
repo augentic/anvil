@@ -1,12 +1,7 @@
 //! Capability traits over the `emery:adapter` guest-to-guest contract.
 //!
-//! [`Source`] and [`Target`] mirror the WIT `source` / `target`
-//! interfaces. Their DTOs omit caller-owned fields, such as the source
-//! attribution added by the orchestrator. Keeping `wit-bindgen` providers
-//! outside this crate leaves engine code wasm-free.
-//!
-//! [`Capabilities`] is the borrowed capability bundle the guest
-//! orchestrations in the slice and change crates dispatch across.
+//! [`Source`] and [`Target`] mirror the WIT interfaces; their DTOs omit
+//! caller-owned fields such as the orchestrator-added source attribution.
 
 pub mod wire;
 
@@ -213,6 +208,15 @@ pub trait Workspaces: Send + Sync {
     /// everything else untouched. Deleted when publication sets own
     /// the final seal.
     fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), Error>> + Send;
+
+    /// Change-scoped snapshot collection (RFC-88 D2): delete the
+    /// store objects reachable from `dead` roots but not from `live`
+    /// roots. `plan archive` is the collection point — the archived
+    /// plan's pins stop being GC roots. Returns the number of objects
+    /// deleted.
+    fn sweep(
+        &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
+    ) -> impl Future<Output = Result<usize, Error>> + Send;
 }
 
 /// The borrowed capability bundle one orchestration run dispatches
@@ -220,11 +224,8 @@ pub trait Workspaces: Send + Sync {
 /// adapter resolver.
 ///
 /// The four capabilities stay independent type parameters so tests
-/// bind independent mocks per seam; the shipped provider satisfies
-/// all four at once, so handlers bundle it with
-/// [`Capabilities::provider`]. Phases that use a subset simply leave
-/// the unused parameter unbounded (plan authoring never dispatches
-/// the target seam).
+/// bind independent mocks per seam; [`Capabilities::provider`] bundles
+/// one provider that satisfies all four.
 #[derive(Debug)]
 pub struct Capabilities<'a, P, S, T, R> {
     /// Judgment-leg model dispatch.

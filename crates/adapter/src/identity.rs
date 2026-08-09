@@ -1,13 +1,7 @@
 //! Compile-time adapter identity for native (statically composed)
 //! deployments.
 //!
-//! The component deployment derives identity from the published
-//! package and its resolved artifact location. A native host has no
-//! component artifact, so each SDK implementor exposes the equivalent
-//! identity as a `const`: the globally unique workflow `(name,
-//! version)` pair. Resolve-time metadata (`emery-floor`, build
-//! inputs, platforms) remains separate — identity never travels in the
-//! WIT `metadata` answer.
+//! Identity never travels in the WIT `metadata` answer.
 
 /// The immutable `(name, version)` identity a catalog entry provides.
 ///

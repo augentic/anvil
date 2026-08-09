@@ -1,15 +1,7 @@
-//! Target-resolution policy: which adapter identity serves a slice at
-//! each point in its life.
+//! Target-resolution policy: which adapter identity serves a slice.
 //!
-//! - [`project_adapter`] — the project's declared target adapter, the
-//!   identity every fresh resolution starts from.
-//! - [`fresh`] — before a slice exists, `$TARGET` resolves from the
-//!   bound project's topology.
-//! - [`resumed`] — after creation, the slice's recorded
-//!   `metadata.yaml` target is authoritative.
-//! - [`best_effort_advance`] — `plan advance`'s advisory `$TARGET`
-//!   projection; `None` when the topology cannot resolve (the build
-//!   phase re-resolves before use).
+//! Fresh resolution starts from the project's declared target; once a
+//! slice exists, its recorded `metadata.yaml` target is authoritative.
 
 use error::Error;
 
@@ -21,24 +13,18 @@ use crate::slice::SliceMetadata;
 
 /// Resolve the project's declared target adapter.
 ///
-/// Workspace projects (`workspace: true`, `adapter:` omitted) do not
-/// declare an adapter, so this returns a `workspace-no-adapter`
-/// diagnostic naming the workspace case rather than a stray
-/// adapter-resolution error lower down the stack.
-///
 /// # Errors
 ///
-/// `workspace-no-adapter` for adapter-less workspace projects;
+/// `project-no-adapter` when `project.yaml` omits `adapter`;
 /// propagates adapter-resolution failures.
 pub fn project_adapter(
     resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths,
 ) -> Result<ResolvedTarget, Error> {
     let Some(adapter_value) = config.adapter.as_deref() else {
         return Err(Error::Diag {
-            code: "workspace-no-adapter",
-            detail: "this project has no adapter declared (workspaces do not run per-target \
-                     operations); only `emery registry` and `emery plan` verbs are supported \
-                     on workspaces"
+            code: "project-no-adapter",
+            detail: "this project has no adapter declared; per-target operations require a \
+                     `project.yaml` adapter binding"
                 .to_string(),
         });
     };
@@ -78,9 +64,9 @@ pub fn resumed(layout: Layout<'_>, slice: &str) -> Result<String, Error> {
     Ok(SliceMetadata::load(&layout.slice_dir(slice))?.target)
 }
 
-/// Best-effort advance policy: `plan advance`'s advisory `$TARGET`
-/// for a freshly advanced entry. `None` when the topology cannot
-/// resolve — the build phase re-resolves the target before use.
+/// Best-effort advance policy: the advisory `$TARGET` for a freshly
+/// advanced entry. `None` when the topology cannot resolve — the
+/// build phase re-resolves the target before use.
 pub fn best_effort_advance(
     resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths, entry: &Entry,
 ) -> Option<String> {

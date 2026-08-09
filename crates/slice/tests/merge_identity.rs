@@ -4,7 +4,6 @@ use std::fs;
 
 use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
-use mock::invoke::run;
 use mock::session::Session;
 use project::journal::{EventKind, read_union};
 use project::name::SliceName;
@@ -12,10 +11,18 @@ use project::seam::Workspaces as _;
 use project::snapshot::SnapshotId;
 use project::wave::{EpochRef, Wave};
 use slice::BaselineIndex;
-use slice::handlers::{MergeRun, MergeRunBody, MergeRunInput};
+use slice::orchestrate::MergeOutcome;
 
 fn ts() -> Timestamp {
     Timestamp::from_second(1_700_000_000).expect("valid timestamp")
+}
+
+/// The merge phase over the session provider — what the execute loop
+/// dispatches per built slice (standalone here: no `plan.yaml`, so the
+/// claim gate self-skips).
+async fn merge(session: &Session, slice: &str) -> Result<MergeOutcome, error::Error> {
+    let layout = project::config::Layout::new(session.root());
+    slice::orchestrate::merge(session.provider(), layout, ts(), slice, false).await
 }
 
 const fn baseline_body() -> &'static str {
@@ -167,20 +174,7 @@ async fn wave_commit_assigns_baseline_ids_and_records_maps() {
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
     stage_built_slice(&session, wave_digest.as_str());
 
-    let body = run::<MergeRun, _, _>(
-        session.provider(),
-        MergeRunInput {
-            name: "login-flow".into(),
-            allow_composition_replace: false,
-            preview: false,
-            conflict_check: false,
-        },
-    )
-    .await
-    .expect("merge succeeds");
-    let MergeRunBody::Merged(_) = body else {
-        panic!("expected committed merge: {body:?}");
-    };
+    merge(&session, "login-flow").await.expect("merge succeeds");
 
     let merged = fs::read_to_string(session.root().join(".emery/specs/auth/spec.md"))
         .expect("merged baseline");
@@ -290,17 +284,7 @@ tasks:
         fs::write(slice_dir.join("tasks.md"), "# Tasks\n\n- TASK-001 satisfies REQ-001\n")
             .expect("tasks");
 
-        run::<MergeRun, _, _>(
-            session.provider(),
-            MergeRunInput {
-                name: slice.into(),
-                allow_composition_replace: false,
-                preview: false,
-                conflict_check: false,
-            },
-        )
-        .await
-        .unwrap_or_else(|err| panic!("merge {slice}: {err}"));
+        merge(&session, slice).await.unwrap_or_else(|err| panic!("merge {slice}: {err}"));
     }
 
     let merged = fs::read_to_string(root.join(".emery/specs/auth/spec.md")).expect("merged");
@@ -356,17 +340,7 @@ async fn drifted_modified_rejects_before_wave_committed() {
     )
     .expect("drift baseline");
 
-    let err = run::<MergeRun, _, _>(
-        session.provider(),
-        MergeRunInput {
-            name: "login-flow".into(),
-            allow_composition_replace: false,
-            preview: false,
-            conflict_check: false,
-        },
-    )
-    .await
-    .expect_err("drifted MODIFIED must fail");
+    let err = merge(&session, "login-flow").await.expect_err("drifted MODIFIED must fail");
     let text = err.to_string();
     assert!(text.contains("merge-base-drifted"), "{text}");
 
@@ -396,17 +370,7 @@ async fn postflight_failure_keeps_wave_committed() {
     fs::write(session.root().join(mock::behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "")
         .expect("postflight marker");
 
-    let err = run::<MergeRun, _, _>(
-        session.provider(),
-        MergeRunInput {
-            name: "login-flow".into(),
-            allow_composition_replace: false,
-            preview: false,
-            conflict_check: false,
-        },
-    )
-    .await
-    .expect_err("postflight fails");
+    let err = merge(&session, "login-flow").await.expect_err("postflight fails");
     assert!(err.to_string().contains("target-merge-postflight-failed"), "{err}");
 
     let layout = project::config::Layout::new(session.root());

@@ -1,16 +1,9 @@
 /// The `emery:adapter` contract. Adapter guests export exactly one axis
-/// interface (`source` xor `target`; the additive `adapter` world serves
-/// both, e.g. the Emery-owned fixture) plus `wasi:http/incoming-handler`,
-/// which serves the adapter's compiled-in references over MCP. Judgment is
-/// an Omnia host effect: each judgment operation issues
-/// `omnia:model/completion.create` with `format: schema(...)` so the host
-/// gate validates the answer. The records below are the contract's source
-/// of truth; the answer schemas the model host consumes are generated from
-/// the matching Rust wire types (`project::answers` in `augentic/emery`)
-/// minus call-scoped envelope fields the caller already knows. No resource
-/// types cross the seam: host-mediated dispatch carries plain values only,
-/// routed by each call's `adapter-id` first argument, and every guest opens
-/// its own `"."` preopen rather than receiving a directory handle.
+/// interface plus `wasi:http/incoming-handler` (compiled-in references
+/// over MCP). No resource types cross the seam: dispatch carries plain
+/// values, routed by each call's `adapter-id` first argument. The answer
+/// schemas the model host consumes generate from the matching Rust wire
+/// types (`project::answers` / `slice::answers`).
 package emery:adapter@0.1.0;
 
 interface types {
@@ -28,72 +21,9 @@ interface types {
   /// first argument; the wire type stays an opaque string.
   type adapter-id = string;
 
-  /// A content-addressed snapshot identity: `sha256:<64 lowercase hex>`,
-  /// the digest of the snapshot's canonical tree manifest in the host's
-  /// content-addressed store. Portable: it names a complete product-code
-  /// tree independently of which node materializes it — the value the
-  /// workspace capability freezes, prepares from, and captures to.
+  /// A content-addressed snapshot identity: `sha256:<64 lowercase hex>`.
+  /// Canonical description in the engine's `project::snapshot` module.
   type revision = string;
-}
-
-/// The host-owned private-workspace capability (RFC-87): immutable
-/// snapshots in a content-addressed store, disposable private workspaces,
-/// and code patches derived by comparing trees. Imported by the workflow
-/// guest only — adapters never prepare or capture; they receive an
-/// already-prepared `workspace` on `build` / `merge`. The host owns the
-/// snapshot store and the workspaces root; no live directory handle
-/// crosses this interface.
-interface workspaces {
-  use types.{ error, revision };
-
-  /// One prepared private workspace. The caller derives the
-  /// deployment-local root from the id (the directory name beneath the
-  /// deployment's workspaces mount); the record carries only what the
-  /// host alone knows.
-  record prepared {
-    /// Opaque workspace identity beneath the workspaces root.
-    id: string,
-    /// Agent-visible read-only artifact root: the host-absolute path of
-    /// the project tree, for prompts that reference change-tree
-    /// artifacts from inside a lent workspace.
-    artifacts: string,
-  }
-
-  /// The immutable relation between a base and result snapshot: the
-  /// durable record of what one execution changed.
-  record code-patch {
-    /// The snapshot the execution started from.
-    base: revision,
-    /// The snapshot captured from the execution's result tree.
-    %result: revision,
-    /// Sorted workspace-relative paths that differ between the trees.
-    touched: list<string>,
-  }
-
-  /// Freeze the product tree (the project root minus VCS and change-tree
-  /// state) as an immutable snapshot. Interim base pinning: once RFC-86
-  /// records base pins, builds freeze from recorded pins instead.
-  freeze: async func() -> result<revision, error>;
-
-  /// Materialize `base` into a fresh private workspace. `writable: false`
-  /// prepares a read-only source view — same preparation, discarded
-  /// without capture.
-  prepare: async func(base: revision, writable: bool) -> result<prepared, error>;
-
-  /// Capture the workspace's result tree: store and verify every object,
-  /// record the result snapshot, and derive the touched paths against
-  /// the recorded base.
-  capture: async func(id: string) -> result<code-patch, error>;
-
-  /// Discard a workspace. Idempotent; captured snapshots survive by
-  /// digest.
-  discard: async func(id: string) -> result<_, error>;
-
-  /// Interim code delivery (pre-RFC-89): write `patch`'s touched paths
-  /// from its result snapshot onto the product tree, leaving everything
-  /// else — including paths the deterministic merge just folded —
-  /// untouched. Deleted when publication sets own the final seal.
-  apply: async func(patch: code-patch) -> result<_, error>;
 }
 
 /// The source adapter contract. Both operations are judgment legs: the guest
@@ -189,28 +119,25 @@ interface source {
     claims: list<claim>,
   }
 
-  /// The adapter's deterministic metadata — the facts
-  /// the host consumes before dispatching an operation. Identity lives
-  /// in the wasm-pkg package reference and axis in the exported world,
-  /// so only the compatibility floor remains on the record.
+  /// The adapter's deterministic metadata: identity lives in the
+  /// wasm-pkg package reference and axis in the exported world, so only
+  /// the compatibility floor remains on the record.
   record adapter-metadata {
-    /// Optional host-CLI compatibility floor: the exact minimum
-    /// `emery` platform version this adapter needs. The host compares
-    /// it against the running binary at resolve time and aborts when
-    /// the binary is older. Absent means no floor.
+    /// Optional host-CLI compatibility floor: the exact minimum `emery`
+    /// version this adapter needs. The host aborts at resolve time when
+    /// the running binary is older. Absent means no floor.
     emery-floor: option<string>,
   }
 
-  /// Deterministic adapter metadata, read by the host at resolve time
-  /// and cached against the artifact digest. Metadata, not judgment:
-  /// effect-free and answerable from compiled-in constants — no model
-  /// call, no filesystem access.
+  /// Read at resolve time and cached against the artifact digest.
+  /// Metadata, not judgment: effect-free and answerable from
+  /// compiled-in constants — no model call, no filesystem access.
   metadata: func(id: adapter-id) -> adapter-metadata;
 
-  /// Lightly survey the source to create a map of its contents (decompose
-  /// into leads). An `async func` like every judgment operation: the guest
-  /// awaits the async `omnia:model/completion.create` import mid-call, and
-  /// a sync-lifted export cannot block on a pending host future.
+  /// Lightly survey the source to create a map of its contents
+  /// (decompose into leads). An `async func` like every judgment
+  /// operation — a sync-lifted export cannot block on the pending
+  /// `completion.create` host future.
   survey: async func(id: adapter-id) -> result<list<lead>, error>;
 
   /// Thoroughly extract evidence from a source for a given lead.
@@ -225,11 +152,10 @@ interface target {
   use types.{ adapter-id, error, revision };
 
   /// One slice-artifact payload. `path` is the project-relative
-  /// location ('/'-separated), resolvable both in the adapter guest's
-  /// `"."` preopen and in a lent agent workspace — never host-absolute.
-  /// `body` is the inlined artifact text for non-lent deployments
-  /// (RFC-55). The cases are exclusive: the engine sends `path` while
-  /// every deployment lends the working tree.
+  /// location ('/'-separated), never host-absolute; `body` is the
+  /// inlined artifact text for non-lent deployments. The cases are
+  /// exclusive: the engine sends `path` while every deployment lends
+  /// the working tree.
   variant payload {
     path(string),
     body(string),
@@ -245,24 +171,19 @@ interface target {
   }
 
   /// Deterministic per-slice facts the engine forwards to a build.
-  /// `sources` carries the kebab-case adapter names of the slice's
-  /// bound sources; the engine populates it at dispatch time from the
-  /// plan entry's `sources[]` resolved through the plan-level bindings
-  /// map, so targets can skip source-conditional legs (e.g. omnia's
-  /// capture replay when no `captures` source is bound) without
-  /// reading `plan.yaml` in-guest. Empty when the slice has no
+  /// `sources` carries the kebab-case names of the slice's bound
+  /// sources, so targets can skip source-conditional legs without
+  /// reading `plan.yaml` in-guest; empty when the slice has no
   /// resolvable plan entry.
   record build-context {
     sources: list<string>,
   }
 
-  /// The private workspace a build or merge operates on (RFC-87). Every
-  /// guest in the deployment shares the same `[[mount]]` preopens, so no
-  /// directory handle crosses this boundary: the adapter resolves `root`
-  /// against its own preopens (the workspaces mount) and lends it to its
-  /// agent by path. Change-tree artifacts stay outside the workspace and
-  /// are read through the `"."` preopen in-guest, or through the
-  /// agent-visible `artifacts` root from a spawned agent.
+  /// The private workspace a build or merge operates on. No directory
+  /// handle crosses this boundary: the adapter resolves `root` against
+  /// its own preopens and lends it to its agent by path; change-tree
+  /// artifacts are read through the `"."` preopen in-guest, or through
+  /// the agent-visible `artifacts` root from a spawned agent.
   record workspace {
     /// Opaque identity of the preparation.
     id: string,
@@ -387,16 +308,12 @@ interface target {
     default: list<platform>,
   }
 
-  /// The adapter's deterministic metadata — the facts
-  /// the host consumes before dispatching an operation. Identity lives
-  /// in the wasm-pkg package reference and axis in the exported world;
-  /// the record carries the compatibility floor plus the target's
-  /// declared build inputs and platform capability.
+  /// The adapter's deterministic metadata: the compatibility floor plus
+  /// the target's declared build inputs and platform capability.
   record adapter-metadata {
-    /// Optional host-CLI compatibility floor: the exact minimum
-    /// `emery` platform version this adapter needs. The host compares
-    /// it against the running binary at resolve time and aborts when
-    /// the binary is older. Absent means no floor.
+    /// Optional host-CLI compatibility floor: the exact minimum `emery`
+    /// version this adapter needs. The host aborts at resolve time when
+    /// the running binary is older. Absent means no floor.
     emery-floor: option<string>,
     /// Adapter-declared build inputs, each a slice-tree-relative path
     /// the `build` operation consumes. Empty when the target declares
@@ -407,48 +324,40 @@ interface target {
     platforms: option<platforms-capability>,
   }
 
-  /// Deterministic adapter metadata, read by the host at resolve time
-  /// and cached against the artifact digest. Metadata, not judgment:
-  /// effect-free and answerable from compiled-in constants — no model
-  /// call, no filesystem access.
+  /// Read at resolve time and cached against the artifact digest.
+  /// Metadata, not judgment: effect-free and answerable from
+  /// compiled-in constants — no model call, no filesystem access.
   metadata: func(id: adapter-id) -> adapter-metadata;
 
-  /// Guidance on the expected build artifacts for this target, read by core
-  /// synthesis while authoring slice artifacts. (Earlier adapter vocabulary
-  /// called this operation `shape`; `guidance` is canonical.) Deterministic
+  /// Guidance on the expected build artifacts for this target, read by
+  /// core synthesis while authoring slice artifacts. Deterministic
   /// today, but an `async func` like the rest of the interface so an
   /// adapter may consult its model without a contract change.
   guidance: async func(id: adapter-id) -> result<string, error>;
 
-  /// Build a slice inside its prepared private workspace. The adapter
-  /// resolves the workspace root against its own preopens, reads and
-  /// writes product code there, and reads slice artifacts through its
-  /// `"."` preopen; the judgment leg runs behind the adapter's own
-  /// `create` call with the workspace lent by path and references served
-  /// from its MCP export. The report carries only judgment — the
-  /// resulting delta lives in the workspace, captured by the engine.
-  build: async func(id: adapter-id, slice: string, inputs: list<input>, 
-    context: build-context, workspace: workspace) -> result<report, error>;
+  /// Build a slice inside its prepared private workspace. The report
+  /// carries only judgment — the resulting delta lives in the
+  /// workspace, captured by the engine.
+  build: async func(id: adapter-id, slice: string, inputs: list<input>,
+  context: build-context, workspace: workspace) -> result<report, error>;
 
-  /// Run one target-specific merge gate around the engine's deterministic
-  /// core merge. Dispatched twice per slice merge: `preflight` before the
-  /// engine folds the slice's deltas into the baseline, `postflight` after
-  /// the commit and archive. The adapter reads the result code through
-  /// the read-only `workspace` view and the built slice plus baseline
-  /// through its `"."` preopen; the report carries only judgment —
-  /// lifecycle transitions, baseline spec merging, and archive moves stay
+  /// Run one target-specific merge gate around the engine's
+  /// deterministic core merge (dispatched twice per slice merge — see
+  /// `merge-phase`). The report carries only judgment: lifecycle
+  /// transitions, baseline spec merging, and archive moves stay
   /// engine-owned.
-  merge: async func(id: adapter-id, slice: string, phase: merge-phase, 
-    workspace: workspace) -> result<report, error>;
+  merge: async func(id: adapter-id, slice: string, phase: merge-phase,
+  workspace: workspace) -> result<report, error>;
 }
 
-/// A source adapter component: one axis interface plus the MCP reference
+
+/// A source adapter component: one axis interface plus the MCP
 /// references served over `wasi:http`.
 world source-adapter {
   export source;
 }
 
-/// A target adapter component: one axis interface plus the MCP reference
+/// A target adapter component: one axis interface plus the MCP
 /// references served over `wasi:http`.
 world target-adapter {
   export target;
@@ -464,20 +373,12 @@ world adapter {
   export target;
 }
 
-/// The workflow guest: the deployment's only `wasi:cli/run` exporter. Its
-/// `source` / `target` imports are satisfied by Omnia's host-mediated
-/// dispatch, routed to the exporting adapter guest by each call's
-/// `adapter-id` first argument; `workspaces` is a host-implemented
-/// capability over the deployment's snapshot store.
+/// The workflow guest: the deployment's only `wasi:cli/run` exporter.
+/// The `source` / `target` imports route to adapter guests by
+/// `adapter-id`; `emery:exec-bits` is host-implemented (the workspace
+/// kernel runs in-guest over `wasi:blobstore` + `wasi:filesystem`).
 world workflow {
   import source;
   import target;
-  import workspaces;
-}
-
-/// Host-side bindgen world for the `workspaces` capability: the shipped
-/// runtime links a host implementation of this interface into the engine
-/// deployment. Never exported by a guest.
-world workspace-host {
-  import workspaces;
+  import emery:exec-bits/exec-bits@0.1.0;
 }

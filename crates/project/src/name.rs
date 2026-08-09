@@ -1,12 +1,7 @@
 //! Identifier newtypes for the journal / plan / slice chains.
 //!
-//! [`SliceName`] and [`PlanName`] wrap the kebab-case identifiers that
-//! flow through `plan.yaml.name`, `plan.yaml.slices[].name`, and every
-//! journal event payload. They exist to stop a plan name being passed
-//! where a slice name is expected (the two sit adjacently in several
-//! journal variants) without changing the wire format: both are
-//! `#[serde(transparent)]`, so a value serialises and deserialises
-//! exactly as the bare string it wraps.
+//! [`SliceName`] and [`PlanName`] stop the two ids being swapped; both
+//! are `#[serde(transparent)]`, so the wire format stays the bare string.
 
 use std::borrow::Borrow;
 use std::fmt;

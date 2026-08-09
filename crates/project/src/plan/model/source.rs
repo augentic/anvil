@@ -9,16 +9,9 @@ use crate::snapshot::SnapshotId;
 /// One top-level [`super::Plan::sources`] binding.
 ///
 /// Carries the kebab-case source adapter name plus exactly one of
-/// `path` (filesystem path or repo location) or `value` (literal
-/// payload supplied directly to the adapter, used by the `intent`
-/// source), and — once plan author closes the source set — the
-/// content-addressed tree identity of that input (`cid`, RFC-86 D4 /
-/// D25; Rust type [`SnapshotId`]).
-///
-/// On the wire (workflow §Source) the binding is always the structured
-/// `{ adapter, path?, value?, cid? }` object form. `path` and `value`
-/// are mutually exclusive; the CLI never writes both and readers treat
-/// a `path` binding as taking precedence.
+/// `path` or `value` (mutually exclusive; readers treat `path` as
+/// taking precedence), and — once plan author closes the source set —
+/// the content-addressed tree identity of that input (`cid`).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SourceBinding {
@@ -69,20 +62,11 @@ impl SourceBinding {
 
 /// One `(source, lead)` binding under [`super::Entry::sources`].
 ///
-/// On the wire (workflow §`Slice.sources`) this is either:
-///
-/// - a bare string `<key>` — shorthand for the structured form
-///   `{ source: <key>, lead: <slice.name> }`; used
-///   predominantly in the degenerate `intent` case
-///   (`sources: [intent]`); or
-/// - a structured `{ source, lead }` object.
-///
-/// Both shapes round-trip byte-identically: the bare shorthand is
-/// normalised at parse time into `lead == None`, and `Serialize`
-/// emits the same shape the operator authored. Use
-/// the internal bare / structured constructors in
-/// tests instead of constructing the struct literal directly so the
-/// shorthand discipline stays consistent.
+/// On the wire this is either a bare string `<key>` (shorthand for
+/// `{ source: <key>, lead: <slice.name> }`) or the structured
+/// `{ source, lead }` object. Both shapes round-trip byte-identically:
+/// the bare shorthand parses to `lead == None` and `Serialize` emits
+/// the shape the operator authored.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SliceSourceBinding {
     /// Source key matching a top-level [`super::Plan::sources`] entry.

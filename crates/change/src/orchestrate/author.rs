@@ -1,10 +1,6 @@
 //! The plan-authoring orchestrator behind `/emery:plan`: scaffold →
-//! survey fan-out → source `cid` pin close → reconciliation judgment →
-//! persist → review prose → `plan validate` doctor sweep.
-//!
-//! The run exits with the plan authored and the outcome carrying the
-//! literal execute hint — the orchestrator never runs the plan
-//! (execution stays operator-only).
+//! survey fan-out → pin close → reconcile → persist → validate. The
+//! run never executes the plan — execution stays operator-only.
 
 use std::collections::BTreeMap;
 
@@ -20,10 +16,9 @@ use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::name::SliceName;
 use project::plan::{
-    GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, apply_greenfield_seed,
-    author_gate, build_request, collect_events, project_ladders, resolve_topology,
+    GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, author_gate, build_request,
+    collect_events, project_ladders, resolve_topology,
 };
-use project::registry::Registry;
 use project::seam::Source;
 
 use super::SurveyedSource;
@@ -55,9 +50,6 @@ pub struct AuthorOutcome {
 ///
 /// # Errors
 ///
-/// - `plan-author-workspace-unsupported` (exit 2) when the plan root is
-///   a workspace — the skill's workspace routing has no in-guest
-///   counterpart, mirroring the execute loop's refusal.
 /// - `change-name-not-kebab` / `plan-already-exists` from the scaffold
 ///   kernel's gates.
 /// - survey fan-out failures from [`super::survey_all`] (earlier
@@ -80,14 +72,10 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
         ..
     } = caps;
     let layout = Layout::new(paths.project_root());
-    refuse_workspace(layout)?;
     tracing::info!("plan authoring started");
-    // Ensure every binding up front — before the scaffold write and
-    // the survey fan-out — so an unresolvable adapter (missing pin,
-    // `emery_floor`) fails fast with nothing on disk. Bindings
-    // persist as typed: a bare name stays bare in `plan.yaml` (the
-    // deployment resolves it local-first on every dispatch); only an
-    // explicit package pin stamps a `version`.
+    // Ensure every binding before the scaffold write and survey fan-out
+    // so an unresolvable adapter fails fast with nothing on disk; a bare
+    // name persists bare — only an explicit package pin stamps `version`.
     for binding in bindings.values() {
         resolver.ensure_source(&binding.selector(), paths).await?;
     }
@@ -95,8 +83,8 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let surveyed = super::survey_all(sources, resolver, paths, now).await?;
 
     // Source set is closed: record per-source tree `cid` pins before
-    // reconciliation (RFC-86 D4 / D25). Refine later copies these into
-    // `base.yaml`; exact store population is not this step's job.
+    // reconciliation. Refine later copies these into `base.yaml`;
+    // exact store population is not this step's job.
     with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
         project::plan::close_source_pins(plan, paths.project_root()).map(Mutation::changed)
     })?;
@@ -106,16 +94,15 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let request = build_request(&discovery, &topology)?;
 
     let plan = Plan::load(&layout.plan_path())?;
-    let events = collect_events(&plan, layout)?;
+    let events = collect_events(layout)?;
     let ladders = project_ladders(&plan, &events);
     let context = GateContext {
         plan: plan.name.as_str(),
         sources: &plan.sources,
     };
-    // The check is the kernel-projection dry run against a throwaway
-    // clone plus the gate-prose round-trip, so a grouping the kernel
-    // would reject — or prose that would corrupt discovery.md — is
-    // repaired in-loop rather than surfacing after the call.
+    // The check is the kernel-projection dry run plus the gate-prose
+    // round-trip, so a rejectable grouping — or prose that would corrupt
+    // discovery.md — is repaired in-loop rather than after the call.
     let mut response = propose::reconcile(model, &request, Some(context), |candidate| {
         let mut throwaway = plan.clone();
         throwaway.propose_from(candidate.clone(), &discovery, &topology, &ladders)?;
@@ -166,24 +153,6 @@ fn gate_hint(name: &str) -> String {
     )
 }
 
-/// Refuse workspace-routed plan authoring: the `/emery:plan` skill
-/// syncs workspace slots before surveying, and the guest collapse has
-/// no counterpart yet — the shared [`super::routing`] classification
-/// with this operation's own refusal code.
-fn refuse_workspace(layout: Layout<'_>) -> Result<(), Error> {
-    let Some(subject) = super::routing::classify(layout, None)?.refusal_subject() else {
-        return Ok(());
-    };
-    Err(Error::validation_failed(
-        "plan-author-workspace-unsupported",
-        "the guest plan-authoring collapse runs single-project plans only",
-        format!(
-            "{subject}; workspace routing (slot sync) has no in-guest counterpart — author \
-             workspace plans through the native /emery:plan skill"
-        ),
-    ))
-}
-
 /// The plan scaffold via the shared [`project::plan::scaffold`]
 /// kernel, plus the immediate atomic save. `force` opts into
 /// recreating any existing plan. No `--authority-override` surface —
@@ -195,20 +164,13 @@ fn scaffold(
     project::plan::scaffold(&plan_path, name, bindings, force)?.save(&plan_path)
 }
 
-/// Resolve the project topology the request embeds, minus the
-/// operator-facing `greenfield-seed-shadowed` advisories (the seed
-/// projection itself still applies).
+/// Resolve the project topology the request embeds.
 fn load_topology(
     resolver: &impl Resolver, paths: &ExecutionPaths,
 ) -> Result<Vec<ProjectRef>, Error> {
     let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
-    let mut topology = resolve_topology(resolver, &config, paths)?;
-    if let Some(registry) = Registry::load(layout.project_dir())? {
-        let _shadowed =
-            apply_greenfield_seed(&mut topology, &registry, layout.project_dir(), config.workspace);
-    }
-    Ok(topology)
+    resolve_topology(resolver, &config, paths)
 }
 
 /// The gate-prose leg of the repair-loop check: the answer must carry
@@ -262,7 +224,7 @@ fn discovery_preamble(name: &str, gate: &GateProse) -> String {
 /// native verb).
 fn validate(layout: Layout<'_>) -> Result<(), Error> {
     let plan = Plan::load(&layout.plan_path())?;
-    let findings = author_gate(&plan, &layout.slices_dir(), layout.project_dir())?;
+    let findings = author_gate(&plan, &layout.slices_dir());
     if has_blocking(&findings) {
         return Err(Error::validation_failed(
             "plan-structural-errors",

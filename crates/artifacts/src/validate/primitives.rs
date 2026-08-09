@@ -1,7 +1,6 @@
-//! Structural primitives — the small, unit-testable checks that named
-//! rules compose. Each helper is `pub` (crate-internal via the private
-//! `primitives` module) and side-effect free
-//! apart from `specs_dir` reads in two helpers.
+//! Structural primitives — the small checks that named rules compose.
+//!
+//! Side-effect free apart from `specs_dir` reads in two helpers.
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -13,10 +12,7 @@ use crate::spec::ParsedSpec;
 use crate::task::Progress;
 
 // ---------------------------------------------------------------------------
-// Compiled regexes (constructed once, on first use). Mirrors the pattern in
-// `crate::task` so the model crate is uniformly OnceLock-backed for literal
-// patterns. The dynamic `ids_match_pattern` accessor stays inline because its
-// pattern is caller-supplied.
+// Compiled regexes (once, on first use); `ids_match_pattern` stays inline.
 // ---------------------------------------------------------------------------
 
 fn checkbox_re() -> &'static Regex {

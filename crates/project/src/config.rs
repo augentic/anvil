@@ -32,8 +32,6 @@ pub struct ProjectConfig {
     pub description: Option<String>,
 
     /// Adapter identifier — either a bare name (`omnia`) or a URL.
-    /// Absent for registry-only workspaces (`workspace: true`); see the
-    /// `workspace` field for the discriminator.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub adapter: Option<String>,
 
@@ -58,17 +56,6 @@ pub struct ProjectConfig {
     /// non-empty and must include `Platform::Core`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub platforms: Vec<Platform>,
-
-    /// `true` when this project is a registry-only **workspace**.
-    /// Workspaces hold platform-level state — `registry.yaml`,
-    /// `change.md`, `plan.yaml`, workspace slots under `workspace/`
-    /// — but never appear in their own `registry.yaml` and have phase
-    /// pipelines disabled. Workspaces **omit** the `adapter:` field
-    /// entirely; the absence of `adapter:` together with `workspace: true`
-    /// is the discriminator. Defaults to `false`; serialised only when
-    /// `true` so regular `project.yaml` files round-trip byte-stable.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub workspace: bool,
 }
 impl ProjectConfig {
     /// Load `.emery/project.yaml` from `project_dir`.
@@ -181,18 +168,9 @@ impl<'a> Layout<'a> {
         self.slices_dir().join(name)
     }
 
-    /// Absolute path to `<project_dir>/.emery/topology.lock` — the
-    /// committed projection of each member project's `project.yaml`
-    /// topology facets projected from the workspace registry.
-    /// Machine-written; never hand-edited.
-    #[must_use]
-    pub fn topology_lock_path(&self) -> PathBuf {
-        self.emery_dir().join("topology.lock")
-    }
-
     /// Absolute path to `<project_dir>/.emery/decisions/` — the
-    /// append-only Decision Record catalogue promoted by
-    /// `emery slice merge`. One flat, project-global tree of
+    /// append-only Decision Record catalogue promoted by the execute
+    /// loop's merge phase. One flat, project-global tree of
     /// `DEC-NNNN-<slug>.md` files. Machine-written by merge; the single
     /// permitted post-write mutation is a supersede status flip.
     #[must_use]
@@ -261,13 +239,6 @@ impl<'a> Layout<'a> {
         self.slice_builds_dir(name).join(format!("{digest}.yaml"))
     }
 
-    /// Absolute path to `<project_dir>/registry.yaml` — the platform
-    /// catalogue. Platform-level artifact, lives at the repo root.
-    #[must_use]
-    pub fn registry_path(&self) -> PathBuf {
-        self.project_dir.join("registry.yaml")
-    }
-
     /// Absolute path to `<project_dir>/plan.yaml` — the change plan.
     /// Platform-level artifact at the repo root.
     #[must_use]
@@ -298,32 +269,6 @@ impl<'a> Layout<'a> {
     pub fn discovery_path(&self) -> PathBuf {
         self.project_dir.join("discovery.md")
     }
-}
-
-/// Detect whether `project_dir` is, or lives below, a materialised
-/// workspace slot at `<platform>/workspace/<peer>/`.
-///
-/// A slot is identified structurally: some ancestor's immediate parent
-/// is a `workspace/` directory whose own parent (the platform root)
-/// carries a `.emery/project.yaml`. The platform-config check
-/// disambiguates a real slot from an ordinary project that merely sits
-/// inside a directory named `workspace`, so this necessarily touches
-/// the filesystem. Context generation uses the shared posture to skip
-/// init-time `AGENTS.md` creation in materialised slots; callers that
-/// need a fully initialized slot can layer plan-file guards on top.
-#[must_use]
-pub fn is_slot(project_dir: &Path) -> bool {
-    project_dir.ancestors().any(|candidate| {
-        let Some(workspace) = candidate.parent() else {
-            return false;
-        };
-        if workspace.file_name() != Some(std::ffi::OsStr::new("workspace")) {
-            return false;
-        }
-        workspace.parent().is_some_and(|platform_root| {
-            platform_root.join(".emery").join("project.yaml").is_file()
-        })
-    })
 }
 
 /// Returns `true` when `current < required` under semver ordering.

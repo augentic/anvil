@@ -1,8 +1,7 @@
-//! Projected slice lifecycle labels (RFC-86 D2 / D11).
+//! Projected slice lifecycle labels.
 //!
-//! Not stored on `metadata.yaml`. CLI surfaces that still name a
-//! lifecycle rung (`slice list`, `slice drop`) project it from
-//! artifacts and phase timestamps.
+//! Never stored on `metadata.yaml` — CLI surfaces project the rung
+//! from artifacts and phase timestamps.
 
 use std::path::Path;
 

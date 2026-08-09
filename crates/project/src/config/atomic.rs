@@ -10,7 +10,6 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::config::{Layout, ProjectConfig};
-use crate::registry::Registry;
 
 /// A piece of `.emery/`-anchored YAML state.
 ///
@@ -26,9 +25,7 @@ pub trait AtomicYaml: Sized + Serialize + DeserializeOwned {
 
     /// Load from disk. Default implementation reads [`Self::layout_path`],
     /// deserialises, and returns `Ok(None)` when the file is absent.
-    /// Override when the state needs validation at load time
-    /// (the existing `Registry::load` runs `validate_shape` before
-    /// returning).
+    /// Override when the state needs validation at load time.
     ///
     /// # Errors
     ///
@@ -71,19 +68,10 @@ impl<B> Mutation<B> {
 
 /// Load → mutate → atomic-write loop.
 ///
-/// Loads `S` from disk, returning [`Error::ArtifactNotFound`] with
-/// `missing_kind` when the file is absent. Runs `f` against the
-/// in-memory state; when the returned [`Mutation`] says the state
-/// changed, atomically writes the mutated value back. Returns the body
-/// the closure produced.
-///
-/// `with_state` does **not** itself emit; the caller writes
-/// `ctx.write(&body, write_text)?;`. This keeps response shaping local
-/// to each handler and the helper focused on the IO loop.
-///
-/// Handlers whose contract is "create or update" (e.g. `registry add`)
-/// inline their own load-or-default + [`yaml_write`] instead of
-/// reaching for this helper.
+/// Loads `S` from disk, runs `f` against the in-memory state, and
+/// atomically writes back only when the returned [`Mutation`] says the
+/// state changed. Returns the body the closure produced; the caller
+/// emits it — `with_state` does not itself write output.
 ///
 /// # Errors
 ///
@@ -105,18 +93,6 @@ where
         yaml_write(&path, &state)?;
     }
     Ok(body)
-}
-
-impl AtomicYaml for Registry {
-    fn layout_path(layout: Layout<'_>) -> PathBuf {
-        layout.registry_path()
-    }
-
-    /// Delegate to the inherent loader so `validate_shape` runs at
-    /// load time — the trait's default impl would skip that.
-    fn load_state(layout: Layout<'_>) -> Result<Option<Self>, Error> {
-        Self::load(layout.project_dir())
-    }
 }
 
 impl AtomicYaml for ProjectConfig {

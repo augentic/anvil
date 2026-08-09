@@ -16,13 +16,10 @@ use crate::handler::ExecutionPaths;
 /// Provider capability for resolving source and target adapters.
 ///
 /// `resolve_*` is read-only re-resolution of an already-provisioned
-/// selector. `ensure_*` owns deployment policy for making a selector
-/// usable — the component deployment's local-component mirror; a
-/// native host's static catalog match — before resolving it. Package
-/// installation is host-owned (the launcher installs a missing pin
-/// during metadata dispatch), so a package pin ensures without
-/// guest-side provisioning. The defaults make `ensure_*` a
-/// side-effect-free resolve for deployments with nothing to provision.
+/// selector; `ensure_*` owns deployment policy for making a selector
+/// usable before resolving it. Package installation is host-owned, so
+/// a package pin ensures without guest-side provisioning. The defaults
+/// make `ensure_*` a side-effect-free resolve.
 pub trait Resolver: Send + Sync {
     /// Resolve one source adapter selector.
     ///
@@ -228,15 +225,9 @@ pub(crate) fn component_cache_entry(paths: &ExecutionPaths, name: &str) -> PathB
 /// dispatching metadata.
 ///
 /// Probes the verified global store entry for a package pin, else the
-/// project component cache for a bare or local-component selector.
-/// Resolution is project-contained: there is no sibling-checkout or
-/// build-tree probe — an adapter built elsewhere reaches the project
-/// through `emery adapter add` (or a local component at init) or a
-/// pinned store install.
-///
-/// The metadata-free half of [`Component`] resolution — the deployment
-/// launcher derives closure component paths through it before the
-/// runtime (and any metadata dispatch) exists.
+/// project component cache. Resolution is project-contained — no
+/// sibling-checkout or build-tree probe. The deployment launcher
+/// derives closure component paths through this before the runtime exists.
 ///
 /// # Errors
 ///
@@ -298,11 +289,9 @@ pub fn locate(
         return Ok(AdapterLocation::Store(entry));
     }
 
-    // Bare shorthand and persisted local-component selectors share
-    // the single project-contained probe: the seeded project
-    // component cache. A component selector resolves through its
-    // cache mirror, so it keeps working after the operator's original
-    // file is removed.
+    // Bare shorthand and persisted local-component selectors share the
+    // seeded project-cache probe; a component selector resolves through
+    // its mirror, so it survives removal of the operator's original file.
     let entry = component_cache_entry(paths, name);
     if entry.is_file() {
         return Ok(AdapterLocation::Cache(entry));

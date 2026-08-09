@@ -130,6 +130,28 @@ fn project_lifecycle(root: &Path, slice: &str) -> LifecycleStatus {
     LifecycleStatus::project(&slice_dir, &metadata)
 }
 
+/// Drive the refine phase for one plan entry the way the execute
+/// loop's advance step does — the standalone `slice refine` verb is
+/// retired, so the fixture reaches the orchestration directly.
+async fn refine(session: &Session, slice: &str) {
+    let provider = session.provider();
+    let caps = slice::orchestrate::Capabilities::provider(provider);
+    let paths = provider.paths();
+    let layout = Layout::new(paths.project_root());
+    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan loads");
+    let entry = plan
+        .entries
+        .iter()
+        .find(|entry| entry.name == slice)
+        .unwrap_or_else(|| panic!("plan entry `{slice}` missing"));
+    let target = project::target_policy::resumed(layout, slice)
+        .or_else(|_| project::target_policy::fresh(provider, paths, entry, slice, "refining"))
+        .expect("target resolves");
+    slice::orchestrate::refine(caps, paths, ts(2), slice, &target)
+        .await
+        .unwrap_or_else(|err| panic!("refine {slice}: {err}"));
+}
+
 async fn author_adversarial(session: &Session) {
     run::<plan::handlers::Author, _, _>(
         session.provider(),
@@ -163,30 +185,14 @@ async fn disjoint_refine_after_fact_union() {
     // Concurrent work on different slices — claim via append_for (the
     // multi-writer fixture surface), then refine under each writer id.
     claim_slice(alice.root(), "alice", "auth", "login-flow", 1);
-    {
-        let _writer = WriterEnv::set("alice");
-        run::<slice::handlers::Refine, _, _>(
-            alice.provider(),
-            slice::handlers::RefineInput {
-                name: "login-flow".to_string(),
-            },
-        )
-        .await
-        .expect("alice refines login-flow")
-    };
+    let writer = WriterEnv::set("alice");
+    refine(&alice, "login-flow").await;
+    drop(writer);
 
     claim_slice(bob.root(), "bob", "auth", "password-reset", 1);
-    {
-        let _writer = WriterEnv::set("bob");
-        run::<slice::handlers::Refine, _, _>(
-            bob.provider(),
-            slice::handlers::RefineInput {
-                name: "password-reset".to_string(),
-            },
-        )
-        .await
-        .expect("bob refines password-reset")
-    };
+    let writer = WriterEnv::set("bob");
+    refine(&bob, "password-reset").await;
+    drop(writer);
 
     // Lossless fact-tree union: fold bob's writer log + refined slice
     // into alice's change tree.

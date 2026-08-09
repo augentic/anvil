@@ -1,11 +1,6 @@
 //! Canonical tree manifest: the content-addressed description of one
-//! complete product-code tree.
-//!
-//! A manifest is a sorted, line-oriented text document — one line per
-//! file or symlink, directories implicit — whose SHA-256 digest is the
-//! tree's [`SnapshotId`](crate::snapshot::SnapshotId). The encoding is
-//! canonical (sorted paths, fixed field order), so equal trees always
-//! hash equal.
+//! complete product-code tree. The encoding is canonical (sorted paths,
+//! fixed field order), so equal trees always hash equal.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;

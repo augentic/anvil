@@ -1,13 +1,7 @@
-//! Typed gap inventory projection (RFC-86 Gaps / D18 / D19 / D24).
+//! Typed gap inventory projection.
 //!
-//! Pure read of in-scope slice artifacts (`model.yaml` or
-//! `specs/<domain>/spec.md`) into `(slice, req, status)` rows for
-//! `unknown` / `conflict` / `divergence` only. Human prose-quality
-//! concerns stay outside the engine (D18). When open findings share a
-//! contributing `(source, lead)`, a presentation rollup annotates those
-//! rows and suggests re-refine selectors — navigation only; gate and
-//! waivers stay per-requirement (D19). Dropped slices are excluded via
-//! the shared [`super::in_scope`] predicate (D24).
+//! Pure read of in-scope slice artifacts into `(slice, req, status)` rows
+//! for `unknown` / `conflict` / `divergence`; dropped slices are excluded.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -16,7 +10,6 @@ use artifacts::spec::provenance::{RequirementStatus, parse_spec_md};
 use error::Error;
 use serde::{Deserialize, Serialize};
 
-use super::execution::resolve_work_root;
 use super::in_scope;
 use super::model::{Entry, Plan};
 use crate::config::Layout;
@@ -50,8 +43,8 @@ pub struct SharedLeadRollup {
     pub source: String,
     /// Discovery lead id.
     pub lead: String,
-    /// In-scope slice selectors suggested for a follow-up
-    /// `slice refine` after the shared input is fixed.
+    /// In-scope slice selectors suggested for a follow-up re-refine
+    /// (via `emery plan execute`) after the shared input is fixed.
     pub selectors: Vec<String>,
 }
 
@@ -122,9 +115,7 @@ impl Render for GapsBody {
 pub fn plan_gaps_body(plan: &Plan, layout: Layout<'_>) -> Result<GapsBody, Error> {
     let mut raw: Vec<RawFinding> = Vec::new();
     for entry in &plan.entries {
-        let work_root = resolve_work_root(layout, entry);
-        let work_layout = Layout::new(&work_root);
-        let slice_dir = work_layout.slice_dir(entry.name.as_str());
+        let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = match SliceMetadata::load(&slice_dir) {
             Ok(m) => Some(m),
             Err(

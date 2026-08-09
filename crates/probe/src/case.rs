@@ -1,21 +1,7 @@
 //! Data-directory eval cases over real `emery` verbs.
 //!
-//! A case is a directory under the composition root's `cases/` tree
-//! holding one `case.toml` (and usually a sibling `fixture/`; a
-//! workflow case may instead `clone` an upstream tree into a
-//! gitignored `fixture/` cache on first run). Two shapes exist: a [`Workflow`] case drives the operator rhythm
-//! (`init` → `plan author` [→ `plan execute` [→ `plan archive`]])
-//! and a [`Build`] case invokes
-//! `slice build <slice>` once against a committed refined fixture.
-//! Every command runs through [`native::command::execute`] — the same
-//! public surface operators use — so request assembly, report
-//! persistence, journal cadence, and lifecycle transitions are the
-//! production paths, never reconstructed here.
-//!
-//! Each case owns one stable retained sandbox at `<sandbox>/<case>/`.
-//! The runner never infers workflow progress from an existing tree:
-//! rerun from fresh state with `--restart`, or continue explicitly
-//! with `cargo make lab -- --project-dir <sandbox> …`.
+//! Every command runs through [`native::command::execute`] — production
+//! paths, never reconstructed here; rerun from fresh state with `--restart`.
 
 use std::collections::HashSet;
 use std::fs;
@@ -145,7 +131,7 @@ async fn run_workflow(
 
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
-    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let events = project::plan::collect_events(Layout::new(root))?;
     let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
         ladders.values().all(|status| *status == Status::Pending),
@@ -169,7 +155,7 @@ async fn run_workflow(
     invoke(root, model, catalog, &["plan", "execute"]).await?;
 
     let plan = sandbox::read_plan(root)?;
-    let events = project::plan::collect_events(&plan, Layout::new(root))?;
+    let events = project::plan::collect_events(Layout::new(root))?;
     let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
         ladders.values().all(|status| *status == Status::Done),
@@ -189,7 +175,7 @@ async fn run_build(
     id: &str, case: &Build, root: &Path, model: &DynModel, catalog: &Catalog,
     telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
-    invoke(root, model, catalog, &["slice", "build", &case.slice]).await?;
+    build_phase(root, model, catalog, &case.slice).await?;
 
     let slice_dir = Layout::new(root).slice_dir(&case.slice);
     let metadata =
@@ -197,10 +183,9 @@ async fn run_build(
     let report = slice_dir.join("build").join("report.yaml");
     ensure!(report.is_file(), "no authoritative build report at {}", report.display());
 
-    // RFC-87 / RFC-86 D27: build writes land in the captured result
-    // snapshot, never the sandbox product tree (code reaches it only
-    // at merge). Materialize the result beside the sandbox for the
-    // artifact gate and operator inspection.
+    // Build writes land in the captured result snapshot, never the
+    // sandbox product tree (code reaches it only at merge); materialize
+    // it beside the sandbox for the artifact gate and inspection.
     ensure!(
         project::build_record::BuildRecord::present(&slice_dir) || metadata.completed_at.is_some(),
         "slice `{}` has no builds/<digest>.yaml (or completed_at) after the build",
@@ -211,6 +196,7 @@ async fn run_build(
     let result_dir = root.join("build-result");
     project::workspace::Store::new(paths(root).locations().snapshots_root())
         .materialize(&record.result, &result_dir)
+        .await
         .context("materializing the captured result snapshot")?;
     enforce_expected(id, &result_dir, &case.expect)?;
 
@@ -219,10 +205,40 @@ async fn run_build(
     Ok(())
 }
 
+// One build phase over the case's refined fixture, driven straight
+// through the shared build orchestration (the execute loop owns the
+// phase in production) — one phase, for fast prompt iteration.
+async fn build_phase(root: &Path, model: &DynModel, catalog: &Catalog, slice: &str) -> Result<()> {
+    tracing::info!("build phase for slice `{slice}`");
+    let paths = paths(root);
+    let layout = Layout::new(root);
+    let provider = native::Provider::new(
+        paths.clone(),
+        model.clone(),
+        catalog.clone(),
+        native::ReferenceMode::Online,
+    );
+    let config = project::config::ProjectConfig::load(layout.project_dir())?;
+    let outcome = match project::target_policy::project_adapter(&provider, &config, &paths) {
+        Ok(adapter) => slice::orchestrate::build(
+            &provider,
+            layout,
+            jiff::Timestamp::now(),
+            slice,
+            &adapter.manifest,
+        )
+        .await
+        .map(drop)
+        .map_err(anyhow::Error::from),
+        Err(err) => Err(err.into()),
+    };
+    provider.shutdown().await;
+    outcome.with_context(|| format!("build phase for slice `{slice}`"))
+}
+
 // The sandbox-relative execution layout every case verb runs under:
-// store and cache (and through them the snapshot store and workspaces
-// roots) live inside the retained sandbox, so a case leaves one
-// self-contained tree behind.
+// store, cache, snapshot, and workspaces roots all live inside the
+// retained sandbox, so a case leaves one self-contained tree behind.
 fn paths(root: &Path) -> ExecutionPaths {
     let locations = Locations::explicit(
         root.join("adapter-store"),
@@ -269,8 +285,7 @@ fn clone_into(cache: &Path, spec: &CloneSpec) -> Result<()> {
 
 // The case's fixture directory: the explicit `fixture` path resolved
 // against the case directory, else the sibling `fixture/` when it
-// exists. An explicit fixture that is absent fails with a focused
-// error (e.g. a shared tree that has moved).
+// exists. An absent explicit fixture fails with a focused error.
 fn fixture_dir(root: &Path, id: &str, case: &Case) -> Result<Option<PathBuf>> {
     let dir = root.join(id);
     let explicit = match case {

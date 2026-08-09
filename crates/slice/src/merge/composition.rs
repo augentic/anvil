@@ -134,12 +134,9 @@ pub fn merge(baseline: Option<&str>, delta_text: &str) -> Result<MergeResult, Er
 /// (`screens:`) replacement format rather than the incremental
 /// (`delta:`) format?
 ///
-/// Returns `true` iff a `screens` key is present and a `delta` key is
-/// absent — mirroring the `has_screens && !has_delta` branch [`merge`]
-/// takes when it treats a delta document as a wholesale baseline
-/// replacement. No I/O and no policy: the authorisation decision (may a
-/// whole-document replacement overwrite a non-empty baseline?) lives in
-/// the merge-side `overwrite_gate` precondition, not here.
+/// True iff `screens` is present and `delta` absent. No policy: the
+/// authorisation decision (may a replacement overwrite a non-empty
+/// baseline?) lives in the merge-side `overwrite_gate`, not here.
 ///
 /// # Errors
 ///

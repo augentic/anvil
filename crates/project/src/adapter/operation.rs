@@ -1,17 +1,7 @@
 //! Closed source- and target-adapter operation enums.
 //!
-//! [`SourceOperation`] (`extract | survey`) and [`TargetOperation`]
-//! (`build | guidance | merge`) are the typed `briefs.keys()` carried by
-//! the axis-specific manifest structs in `core.rs`. Living together in
-//! this module keeps the source/target operation pair symmetric.
-//!
-//! Wire format is kebab-case on both sides (`extract | survey` /
-//! `build | guidance | merge`) — the [`Serialize`] / [`Deserialize`]
-//! derives, the [`strum::Display`] impl, and the [`strum::EnumString`]
-//! impl all share the same `kebab-case` rule, so the YAML manifest
-//! key, the slice outcome `phase` field, and any
-//! `parse::<TargetOperation>()` call all agree on a single wire
-//! spelling.
+//! Serde, `strum::Display`, and `strum::EnumString` share the same
+//! `kebab-case` rule, so every surface agrees on one wire spelling.
 
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
@@ -62,18 +52,10 @@ impl SourceOperation {
 
 /// Closed target-adapter operation set (`build | guidance | merge`).
 ///
-/// Target adapters serve exactly these three operations per
-/// workflow §Target adapter contract — the closed WIT operation set
-/// carried by [`crate::adapter::TargetAdapter`] (derived from the
-/// axis, not declared on disk; adapters have no manifest) and
-/// the discriminant stamped into per-slice outcomes
-/// (`<slice_dir>/metadata.yaml.outcome.phase`).
-///
 /// Refine-time artifacts are synthesised by core, not produced by an
-/// operation, so the set is exactly these three target operations.
-///
-/// Variants declared in kebab-alphabetical order so `BTreeMap`
-/// iteration matches the wire envelope.
+/// operation, so the set is exactly these three. Variants stay in
+/// kebab-alphabetical order so `BTreeMap` iteration matches the wire
+/// envelope.
 #[derive(
     Debug,
     Clone,
@@ -91,10 +73,10 @@ impl SourceOperation {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TargetOperation {
-    /// Build — implementation, driven by `/emery:build`.
+    /// Build — implementation, driven by the execute loop's build phase.
     Build,
-    /// Guidance — synthesis-time guidance read by core during `/emery:refine`.
+    /// Guidance — synthesis-time guidance read by core during refine.
     Guidance,
-    /// Merge — landing gate, driven by `/emery:merge`.
+    /// Merge — landing gate, driven by the execute loop's merge phase.
     Merge,
 }

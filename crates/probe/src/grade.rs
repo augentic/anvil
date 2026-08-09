@@ -1,8 +1,6 @@
 //! Shared deterministic grading helpers for live-model eval cases.
 //!
-//! The case runner's gates walk the baseline specs and run the
-//! provenance gate directly; anything catalog-specific stays out of
-//! this shared library.
+//! Anything catalog-specific stays out of this shared library.
 
 use std::fs;
 use std::path::Path;

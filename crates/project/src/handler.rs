@@ -1,15 +1,7 @@
 //! Shared plumbing for workflow operations.
 //!
-//! Every `emery` command is an
-//! [`omnia_guest::api::operation::Operation`] implementation
-//! co-located with the domain module that owns its kernel. This module
-//! carries the pieces they share: the [`Anchor`] provider capability,
-//! per-invocation `Ctx` (crate-private), [`Render`] output rendering, shared
-//! [`ReportBody`] diagnostic envelope, and operation-layer [`Error`].
-//!
-//! The transports stay out: no clap, no stdout, no exit codes here.
-//! `crates/transport` owns the typed command/HTTP routers, command grammar,
-//! explicit input conversions, and JSON/text projection.
+//! Carries [`Anchor`], `Ctx`, [`Render`], [`ReportBody`], and the
+//! operation-layer [`Error`]. Transports (clap, stdout, exit codes) stay out.
 
 mod anchor;
 mod ctx;
@@ -23,7 +15,7 @@ pub use ctx::Ctx;
 pub use error::{Error, FailureBody};
 pub use locations::{
     CachePlacement, GUEST_CACHE_MOUNT, GUEST_SNAPSHOTS_MOUNT, GUEST_STORE_MOUNT,
-    GUEST_WORKSPACES_MOUNT, Locations,
+    GUEST_WORKSPACES_MOUNT, Locations, PROJECT_ROOT_ENV,
 };
 pub use output::{Render, ReportBody, ReportRow};
 pub use paths::ExecutionPaths;

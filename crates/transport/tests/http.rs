@@ -24,12 +24,13 @@ async fn send(router: Router, request: Request<Body>) -> (StatusCode, serde_json
     (status, value)
 }
 
-fn stage_registry(root: &Path) {
+/// Stage a minimal two-entry `plan.yaml` at the project root.
+fn stage_plan(root: &Path) {
     fs::write(
-        root.join("registry.yaml"),
-        "version: 1\nprojects:\n  - name: alpha\n    url: git@example.com:org/alpha.git\n",
+        root.join("plan.yaml"),
+        "name: demo\nsources: {}\nslices:\n  - name: first\n  - name: second\n",
     )
-    .expect("stage registry.yaml");
+    .expect("stage plan.yaml");
 }
 
 mod routing {
@@ -38,14 +39,14 @@ mod routing {
     #[tokio::test]
     async fn get_json_body() {
         let project = Session::scripted("mock", Vec::new());
-        stage_registry(project.root());
         let request = Request::builder()
             .method(Method::GET)
-            .uri("/registry/validate")
+            .uri("/journal")
             .body(Body::empty())
             .expect("build request");
         let (status, value) = send(router(&project), request).await;
-        assert_eq!(status, StatusCode::OK, "staged catalogue validates: {value}");
+        assert_eq!(status, StatusCode::OK, "journal show serves: {value}");
+        assert_eq!(value["count"], 0, "an empty journal projects zero events: {value}");
     }
 
     #[tokio::test]
@@ -53,31 +54,27 @@ mod routing {
         let project = Session::scripted("mock", Vec::new());
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/registry")
+            .uri("/archive/prune")
             .header(omnia_guest::http::header::CONTENT_TYPE, "application/json")
-            .body(Body::from(r#"{"name":"alpha","url":"git@example.com:org/alpha.git"}"#))
+            .body(Body::from(r#"{"keep":1,"dry_run":true}"#))
             .expect("build request");
         let (status, value) = send(router(&project), request).await;
-        assert_eq!(status, StatusCode::OK, "add lands: {value}");
-        let registry =
-            fs::read_to_string(project.root().join("registry.yaml")).expect("registry.yaml");
-        assert!(registry.contains("name: alpha"), "the add landed:\n{registry}");
+        assert_eq!(status, StatusCode::OK, "prune lands: {value}");
     }
 
     #[tokio::test]
     async fn path_param_reaches_operation() {
         let project = Session::scripted("mock", Vec::new());
-        stage_registry(project.root());
+        stage_plan(project.root());
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/registry/alpha/remove")
+            .uri("/plan/second/remove")
             .body(Body::empty())
             .expect("build request");
         let (status, value) = send(router(&project), request).await;
         assert_eq!(status, StatusCode::OK, "remove lands: {value}");
-        let registry =
-            fs::read_to_string(project.root().join("registry.yaml")).expect("registry.yaml");
-        assert!(!registry.contains("name: alpha"), "the remove landed:\n{registry}");
+        let plan = fs::read_to_string(project.root().join("plan.yaml")).expect("plan.yaml");
+        assert!(!plan.contains("name: second"), "the remove landed:\n{plan}");
     }
 }
 
@@ -101,21 +98,21 @@ mod errors {
         let project = Session::scripted("mock", Vec::new());
         let request = Request::builder()
             .method(Method::POST)
-            .uri("/registry")
-            .body(Body::from(r#"{"name":"alpha"}"#))
+            .uri("/adapter/add")
+            .body(Body::from("{}"))
             .expect("build request");
         let (status, value) = send(router(&project), request).await;
         assert_eq!(
             status,
             StatusCode::UNPROCESSABLE_ENTITY,
-            "a body missing `url` is refused at extraction"
+            "a body missing `component` is refused at extraction"
         );
         assert_eq!(
             value["error"], "invalid-request",
             "decode failures render the Emery envelope: {value}"
         );
         assert!(
-            value["message"].as_str().is_some_and(|message| message.contains("url")),
+            value["message"].as_str().is_some_and(|message| message.contains("component")),
             "the decode message names the missing field: {value}"
         );
     }

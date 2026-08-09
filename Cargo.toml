@@ -18,9 +18,10 @@ crate-type = ["cdylib"]
 anyhow.workspace = true
 cfg-if.workspace = true
 emery-launcher.workspace = true
-emery-wasi-workspaces.workspace = true
+emery-wasi-exec-bits.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
+omnia-wasi-blobstore.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-model.workspace = true
 omnia-wasi-otel.workspace = true
@@ -166,8 +167,8 @@ anyhow = "1.0.104"
 axum = "0.8.9"
 base16ct = { version = "1.0.0", features = ["alloc"] }
 cfg-if = "1.0.4"
-clap = { version = "4.6.5", features = ["derive", "env"] }
-clap_complete = "4.6.8"
+clap = { version = "4.6.6", features = ["derive", "env"] }
+clap_complete = "4.6.9"
 glob = "0.3.4"
 jiff = { version = "0.2.35", default-features = false, features = ["serde", "std"] }
 oci-client = { version = "0.17.0", default-features = false, features = ["rustls-tls"] }
@@ -179,26 +180,23 @@ reqwest = "0.13.4"
 schemars = "1.2.2"
 semver = { version = "1.0.28", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
-serde-saphyr = "1.0.0"
+serde-saphyr = "1.0.1"
 serde_json = "1.0.151"
 sha2 = "0.11"
 strum = { version = "0.28", features = ["derive"] }
 tempfile = "3.27.0"
-thiserror = "2.0.19"
+thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["fs", "io-util", "rt"] }
 toml = "1.1.4"
 tower = "0.5.3"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+wasip2 = "1.0.4"
 wasip3 = { version = "0.7.0", features = ["http-compat"] }
-# Pinned to omnia's wasmtime line — the host-capability crate's generated
-# bindings must share the runtime's wasmtime types.
 wasmtime = { version = "47.0.3", default-features = false, features = ["anyhow", "component-model-bytes"] }
 futures = "0.3.33"
 wit-bindgen = { version = "0.60.0", features = ["async-spawn"] }
 
-# Workspace crates publish under emery-* package names; short `use` paths
-# come from each crate's `[lib] name`.
 emery-adapter = { path = "crates/adapter" }
 emery-artifacts = { path = "crates/artifacts" }
 emery-change = { path = "crates/change" }
@@ -213,25 +211,30 @@ emery-project = { path = "crates/project" }
 emery-prose = { path = "crates/prose" }
 emery-slice = { path = "crates/slice" }
 emery-transport = { path = "crates/transport" }
-emery-wasi-workspaces = { path = "crates/wasi-workspaces" }
+emery-wasi-exec-bits = { path = "crates/wasi-exec-bits" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }
 omnia-cursor = "0.29.0"
+omnia-filesystem = "0.29.0"
 omnia-guest = "0.35.0"
 omnia-guest-macros = "0.35.0"
 omnia-host-macros = "0.35.0"
 omnia-testkit = "0.35.0"
+omnia-wasi-blobstore = "0.35.0"
 omnia-wasi-http = "0.35.0"
 omnia-wasi-model = "0.35.0"
 omnia-wasi-otel = "0.35.0"
 
 [patch.crates-io]
 omnia-cursor = { git = "https://github.com/augentic/omnia-backends" }
+omnia-filesystem = { git = "https://github.com/augentic/omnia-backends"  }
+
 omnia = { git = "https://github.com/augentic/omnia" }
 omnia-guest = { git = "https://github.com/augentic/omnia" }
 omnia-guest-macros = { git = "https://github.com/augentic/omnia" }
 omnia-host-macros = { git = "https://github.com/augentic/omnia" }
 omnia-testkit = { git = "https://github.com/augentic/omnia" }
+omnia-wasi-blobstore = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-http = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-model = { git = "https://github.com/augentic/omnia" }
 omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
@@ -240,6 +243,7 @@ omnia-wasi-otel = { git = "https://github.com/augentic/omnia" }
 # omnia-guest-macros = { path = "../omnia/crates/guest-macros" }
 # omnia-host-macros = { path = "../omnia/crates/host-macros" }
 # omnia-testkit = { path = "../omnia/crates/testkit" }
+# omnia-wasi-blobstore = { path = "../omnia/crates/wasi-blobstore" }
 # omnia-wasi-http = { path = "../omnia/crates/wasi-http" }
 # omnia-wasi-model = { path = "../omnia/crates/wasi-model" }
 # omnia-wasi-otel = { path = "../omnia/crates/wasi-otel" }

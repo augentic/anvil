@@ -4,40 +4,73 @@
 >
 > Owns: closed host verification profiles, native execution and sandbox policy, canonical tool diagnostics, protected-oracle assurance, report comparison primitives, one explicit bounded host-mechanical-repair phase, verification-lineage caches, and per-profile telemetry.
 >
-> Depends on [RFC-87](../rfc-87-working-trees.md), [RFC-90](../rfc-90-build-verification.md), and [RFC-91](../rfc-91-concurrent-execution.md), plus a standardized WASI execution capability that can enforce this RFC's working-directory, environment, stdio, cancellation, resource, and sandbox contract.
+> Depends on [RFC-87](../rfc-87-working-trees.md), [RFC-90](../rfc-90-build-verification.md), and [RFC-91](../rfc-91-concurrent-execution.md). No standardized WASI execution capability is on the dependency path: the verifier executes tools natively below the component boundary, and the only WIT surface is a custom host-verification capability in its own package (e.g. `emery:verification`) — an Emery-owned host crate on the `wasi-exec-bits` shape, which owns `emery:exec-bits` the same way — whose native implementation enforces this RFC's working-directory, environment, stdio, cancellation, resource, and sandbox contract.
 >
 > Evidence: [Finitive local-model harness input](../rfc-90-finitive-evidence.md).
 
 ## Intent
 
-Replace RFC-90's model-assisted command execution with host-attested native verification while preserving its lifecycle, budgets, and model-repair routing. Add one explicit, separately bounded host-mechanical-repair phase rather than hiding tool-authored writes inside `verify`.
+*Have Emery's trusted native runtime run and certify verification without changing its lifecycle, budgets, or model-repair routing.*
 
-RFC-90 makes operation order, repair budgets, persistence, and lifecycle gates observable, but its `verify` agent still chooses commands, invokes them, interprets output, and reports what happened. A green result is useful model-assisted self-consistency evidence, not deterministic proof.
+RFC-90 uses a model to choose commands, run them, interpret their output, and report the result. A passing result is useful evidence, but Emery cannot independently prove what ran against which code.
 
-This RFC closes that trust gap. Target code requests only closed semantic profile names. Deployment policy chooses exact commands and parsers, runs them in a denied-by-default sandbox over an immutable RFC-91 candidate, and returns host-attested normalized findings. The adapter cannot supply argv, silently skip a required profile, relabel model output as tool evidence, or turn unavailability into success.
+With this RFC, target adapters request standard checks such as `build` or `test`. Emery's trusted native runtime chooses the approved tools, runs them in a locked-down environment against an unchanged code snapshot, and records a stable report bound to that exact run.
 
-## Flow and terms
+The adapter only relays an opaque handle to that report. The engine resolves the handle directly, confirms that every required check ran in the expected context, and then applies RFC-90's existing verification and repair policy. A missing or unavailable check fails rather than becoming a false success.
 
-1. Target resolution yields an ordered required profile set for each target/platform pair.
-2. Before the first build model call, the engine asks the host verifier to preflight every required profile, toolchain, sandbox feature, protected input, and cache policy. A domain verification preflights against its own operation key before execution. Any missing capability returns typed `unavailable`.
-3. RFC-91 composes one immutable logical candidate and materializes a fresh verification workspace.
-4. During `target.verify`, deterministic adapter code requests each declared profile by name through the host-verification capability. The host maps the pre-bound `(target identity, platform, profile, policy digest)` to vetted commands and parsers.
-5. The host executes each profile in the sandbox, normalizes its output, canonicalizes findings, persists an immutable attested profile report, and returns an opaque attestation handle plus a read-only report copy.
-6. The adapter returns a `verification-answer` containing the handles and any deterministic in-component findings. The engine resolves every handle directly through the verifier provider, verifies exact profile/context/candidate/policy coverage, and assembles the RFC-90 verification phase report from the host records rather than trusting adapter-projected tool findings.
-7. When a slice-scoped failing profile carries one eligible machine-applicable suggestion group, the engine may run D7's separately recorded host-mechanical-repair phase before spending a model repair.
-8. Remaining blocking findings pass through RFC-90 D4's bounded repair-brief projection. RFC-90 and RFC-91 retain repair routing, budgets, candidate capture, terminal-report assembly, and lifecycle authority.
+Here **host** means the trusted native runtime outside the engine and adapter Wasm guests. In local execution it runs on the operator's node; under RFC-92 it is the verifier provider on the worker that claimed the operation.
 
-A **verification profile** is a closed semantic gate: `fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, or `ci`. A profile name never carries argv, shell text, environment overrides, or parser selection.
+## Verification at a glance
 
-A **profile policy** is deployment-owned data binding a resolved target identity, platform, and profile to exact commands, toolchain identity, parser, environment allowlist, resource limits, network policy, protected-input handling, and cache policy. Its digest enters every result. The policy never chooses the operator-reviewed protected-input identities.
+```mermaid
+sequenceDiagram
+    participant E as Emery engine
+    participant A as Target adapter
+    participant H as Native verifier
+    participant T as Approved tool
 
-A **profile report** is the host-attested normalized result of one profile against one candidate snapshot. A **verification assurance** is `candidate | protected | mixed`: candidate checks may consume model-writable inputs; protected checks consume at least one engine-enforced read-only oracle; mixed reports both without collapsing the distinction.
+    E->>A: target.verify(candidate)
+    A->>H: Request profile by name
+    H->>H: Select pre-bound policy
+    H->>T: Run in sandbox
+    T-->>H: Tool output
+    H->>H: Normalize and store report
+    H-->>A: Opaque attestation handle
+    A-->>E: verification-answer(handles)
+    E->>H: Resolve handles directly
+    H-->>E: Immutable profile reports
+    E->>E: Check coverage and assemble phase report
+```
 
-A **verification context** is `slice-attempt | frontier-domain | complete-domain`. A slice context is identified by `(change, target, slice, attempt)`; a domain context by `(change, target, domain, round-kind, operation-key)`. A **verification lineage** is that globally scoped context's ordered candidate snapshots. Slice attempts may contain repair revisions; a domain context has one candidate unless a later operator-authorized round creates a new operation key.
+The trust boundary has five rules:
 
-A **profile attestation** is an opaque host-issued handle to an immutable normalized report bound to verifier identity, verification context, candidate snapshot, target identity, platform, profile, policy digest, and protected input/oracle digests. Only the verifier provider resolves it. The adapter may relay a handle but cannot mint or rewrite its record.
+- Adapters request profiles by name; they never supply commands, flags, parsers, environment overrides, or protected inputs.
+- Deployment policy maps each target, platform, and profile to approved tools and sandbox rules.
+- The host runs those tools against one immutable candidate and stores the normalized result before returning.
+- Only host records resolved directly by the engine count as tool evidence.
+- Missing tools, policies, reports, or required profiles fail closed.
 
-A **mechanical suggestion group** is one host-attested atomic list of path-bounded edits. Every edit names its exact source preimage digest; stale or partial application fails before verification.
+RFC-90 still owns phase order, model-repair budgets, finding routing, terminal reports, and lifecycle transitions. RFC-91 still owns immutable candidates, private workspaces, task ownership, and composition.
+
+## Flow
+
+1. Target resolution yields the ordered required profiles for each target and platform.
+2. Before model build work begins, the engine preflights every required tool, policy, parser, sandbox feature, protected input, and cache policy. Domain verification repeats preflight for its operation key. Missing capability returns typed `unavailable`.
+3. RFC-91 composes an immutable candidate and materializes a fresh verification workspace.
+4. During `target.verify`, deterministic adapter code requests each profile by name. The host selects the pre-bound policy, executes it in the sandbox, normalizes the output, stores the report, and returns an opaque attestation handle.
+5. The adapter returns the handles and any deterministic in-component findings. The engine resolves the handles through the verifier provider and checks exact profile, context, candidate, and policy coverage before assembling the RFC-90 phase report.
+6. One eligible tool-authored fix may enter D7's explicit host-mechanical-repair phase. Any remaining blocking findings follow RFC-90's bounded model-repair route.
+
+## Terms
+
+- A **verification profile** is a closed semantic check: `fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, or `ci`.
+- A **profile policy** is deployment-owned data mapping a target, platform, and profile to exact commands, toolchain, parser, environment, resource limits, network access, protected-input handling, and cache policy. Its digest enters every result.
+- A **profile report** is the host's normalized result for one profile against one candidate snapshot.
+- **Assurance** is `candidate | protected | mixed`. It distinguishes checks over model-writable inputs from checks that consume at least one engine-enforced read-only oracle.
+- A **verification context** is `slice-attempt | frontier-domain | complete-domain`. It identifies the change and exact slice attempt or domain operation.
+- A **verification lineage** is the ordered candidate history within one context. A slice attempt may have repair revisions; a domain context normally has one candidate.
+- A **profile attestation** is an opaque host-issued handle to an immutable report bound to the verifier, context, candidate, target, platform, profile, policy, and protected inputs. The adapter can relay it but cannot mint or alter it.
+- A **mechanical suggestion group** is one host-attested atomic set of path-bounded edits. Each edit names its source preimage digest, so stale or partial application fails.
 
 ## Decisions
 
@@ -104,14 +137,9 @@ The host, not the model or adapter, derives assurance from the executed profile 
 
 Each profile policy names one deterministic parser. Structured tool output is preferred. Raw output is a bounded fallback represented by a digest plus a short, secret-filtered tail.
 
-Normalization removes volatile data that does not identify a defect, including durations, process ids, thread ids, temporary workspace roots, and nondeterministic test ordering. It converts paths to candidate-relative `/` form, applies profile-defined cascade suppression, computes fingerprints, deduplicates, and sorts by RFC-90's closed finding key.
+Normalization removes volatile data that does not identify a defect, including durations, process ids, thread ids, temporary workspace roots, and nondeterministic test ordering. It converts paths to candidate-relative `/` form, applies profile-defined cascade suppression, computes fingerprints, deduplicates, and sorts by RFC-90's closed finding key. The complete normalized report remains gate authority; RFC-90 D4 independently projects its bounded repair brief.
 
-The complete normalized profile report remains gate authority. RFC-90 D4 independently projects its bounded repair brief.
-
-Two pure host-computable predicates are part of the report contract:
-
-- `unchanged-failure-set(a, b)` — equality of blocking fingerprint sets for consecutive candidate revisions in one lineage
-- `regression(candidate, best)` — lexicographic worsening of `(critical, important, suggestion, optional)` counts after profile-defined normalization
+The report also carries two host-computable comparisons: `unchanged-failure-set(a, b)` tests equality of blocking fingerprint sets between consecutive revisions, while `regression(candidate, best)` tests lexicographic worsening of `(critical, important, suggestion, optional)` counts.
 
 The first cut records these predicates but does not alter RFC-90's repair budgets. A later evidence-backed policy may stop on repeat or restore a high-water candidate without changing the report wire shape.
 
@@ -119,25 +147,27 @@ The first cut records these predicates but does not alter RFC-90's repair budget
 
 Profile normalization may suppress known cascades and assign severities because it understands the tool's structured output. It may not discard an independent blocking root finding to fit a model context.
 
-After normalization, RFC-90 D2 verifies fingerprints and canonicalizes the complete phase report; D4 filters its blocking findings to the 16-finding repair cap. The adapter receives that brief plus the complete report digest. Terminal success still depends on complete subsequent verification, never on the selected subset.
+RFC-90 D2 verifies fingerprints and canonicalizes the complete phase report. D4 selects at most 16 blocking findings for the adapter's repair brief, but terminal success always depends on a later complete verification.
 
 ### D7 — Mechanical repair is atomic, bounded, and verified
 
 Host mechanical repair is an explicit engine-selected phase between one failed slice verification and RFC-90's model repair. It is not a target operation and is never available to RFC-91 frontier or complete domain verification, where no writer is authorized.
 
-One failed slice verification may offer at most one group. Eligible edits must come from one attested profile report, apply atomically against that exact candidate snapshot, remain inside the reviewed slice ownership envelope, intersect no protected input, and resolve to exactly one RFC-91 task owner. A group spanning owners or touching an unowned path is not offered. When several groups are eligible, required-profile order wins, then canonical suggestion-group digest; the engine selects exactly the first.
+```mermaid
+flowchart TD
+    V[Verification fails] --> E{suggestion\ngroup?}
+    E -- No --> M[Model repair]
+    E -- Yes --> A[Apply to candidate]
+    A --> R[Run every\nrequired profile]
+    R --> P{Improvement?}
+    P -- Yes --> K[Keep candidate\nand report]
+    P -- No --> D[Discard candidate]
+    D --> M
+```
 
-The engine then:
+A failed slice verification may offer at most one group. Every edit must come from one attested report, apply against the exact candidate, stay within one reviewed task owner's paths, and touch no protected input. Required-profile order and then suggestion-group digest choose among eligible groups.
 
-1. prepares a fresh workspace from the source candidate;
-2. applies every exact-preimage edit in the group or none;
-3. captures a tentative candidate snapshot before running any profile;
-4. runs the complete required profile set against that snapshot;
-5. accepts the patch only when the originating profile strictly improves and no required profile regresses against the source candidate;
-6. composes the patch under the unique owner's grant and clears that owner's continuation;
-7. resolves the tentative run's attestations and assembles the next ordinal RFC-90 verification phase report.
-
-A stale, partial, unchanged, locally improved but globally regressing, or otherwise failed group discards the tentative snapshot and leaves the source candidate and original failed verification report current; RFC-90 D4 projects the model-repair brief from that original report. On acceptance, the tentative candidate becomes current and its engine-assembled phase report becomes the latest verification: a clean report advances to `review`, while a blocking report supplies D4's next model-repair brief. Mechanical repair consumes no model-repair dispatch. An accepted candidate's complete-profile result cannot offer another group before the next model repair dispatch; this hard bound prevents an implicit second repair loop. The engine persists the replacement verification report plus a `host-mechanical-repair` phase record containing owner, patch, source/tentative snapshot ids, before/after profile-report digests, and decision.
+The engine applies the complete group in a fresh workspace, captures a tentative snapshot, and reruns every required profile. It keeps the patch only when the originating profile strictly improves and no profile regresses; otherwise it discards the tentative snapshot and routes the original findings to model repair. On acceptance, the engine composes the patch under the owner's grant and makes the tentative candidate and its report current. A clean report advances to review; blocking findings route to model repair. The fix consumes no model-repair dispatch and cannot trigger another mechanical repair before the next model repair. The engine records the owner, patch, source and tentative snapshots, before/after report digests, and decision.
 
 ### D8 — Incremental caches are private to one verification lineage
 
@@ -178,9 +208,7 @@ The host-mechanical-repair phase emits its own completed event with source/tenta
 
 ### D10 — Verification reports are reusable, not an RFC-18 reward contract
 
-Canonical reports and telemetry are suitable inputs to evaluation, synthetic filtering, or model-selection experiments. RFC-18 may project its own score from them.
-
-This RFC does not promise that severity-count ordering is a complete code-quality reward. RFC-18 also needs traceability, guardrail, layout, configuration, and migration dimensions outside verification. Training rankability cannot weaken a workflow gate or stabilize a field that verification itself does not need.
+Canonical reports and telemetry may feed evaluation, synthetic filtering, or model-selection experiments, but they are not a complete code-quality score. RFC-18 also needs traceability, guardrail, layout, configuration, and migration dimensions. Training needs cannot weaken a verification gate or stabilize fields verification does not otherwise need.
 
 ### D11 — Slice and domain verification share profiles, not repair authority
 
@@ -194,6 +222,9 @@ RFC-91 D11 derives and persists the domain's canonical protected-input closure b
 
 - Extend target metadata with ordered platform-specific required profile names, change host-backed `target.verify` to return `verification-answer`, and add the host-verification import to the target world. No argv-, policy-, target-, or protected-input-shaped selector enters that import.
 - Add a deployment-neutral verifier capability to the engine/provider seam with pre-bound execution context, immutable attestation storage, opaque handles, and direct engine resolution. Native tests use a scripted verifier with the same typed outcomes.
+- Define the capability in its own WIT package owned by the capability crate (following `emery:exec-bits` / `crates/wasi-exec-bits`), imported by the target and workflow worlds, and linked into the shipped runtime by `omnia::runtime!`. Process execution stays in native deployment code below the component boundary; no exec-shaped interface (`wasi:exec` or otherwise) crosses WIT.
+- Digest parity: attestations bind candidate snapshot ids, so the native verifier must reach the snapshot store through the same omnia-backends filesystem blobstore crate (and the emery `<2 hex>/<62 hex>` sharded-name convention) the engine guest writes through, and must compute ids with the same workspace kernel over its `Objects` seam — a divergent id would unbind every attestation.
+- Real executable bits: verification tools execute natively inside guest-prepared workspaces, so `emery:exec-bits` applying genuine `chmod` during materialization is attestation-critical — a script the guest marked executable must actually be executable when the native verifier runs it.
 - Ship the first-party profile-policy registry, exact command mappings, parsers, and sandbox binding in Emery's deployment-provider layer. Target adapters declare semantic profile names and deterministic in-component checks only; engine crates carry no concrete adapter branch.
 - Preflight all required profiles before the first slice build model call and before each domain operation. Reject missing tools, policies, parsers, sandbox features, reviewed protected inputs, and unsupported tuples as typed `unavailable`.
 - Add host-attested profile reports, assurance, policy/context/candidate binding, canonical normalization, report comparison predicates, and engine assembly from the exact resolved attestation set. Ignore adapter-authored tool findings.
@@ -212,15 +243,3 @@ RFC-91 D11 derives and persists the domain's canonical protected-input closure b
 7. Successive slice repair candidates in one verification lineage reuse a warm private cache. Another context, target identity, platform, toolchain, or policy cannot observe it; domain operations inherit no slice cache; cache contents never affect captured snapshots or provide a cached verdict.
 8. Every slice and domain profile execution emits the closed D9 telemetry event with its verification context. Cap-one/four RFC-91 execution and local/remote RFC-92 placement produce the same normalized reports for the same scripted tool outputs.
 9. Native and Wasm integration suites cover direct attestation resolution, profile-set completeness, command-injection refusal, environment and egress denial, resource limits, process-tree cancellation, protected-input write denial, canonical parsing, raw fallback bounds, unique-owner mechanical rollback, domain no-repair behavior, cold confirmation for every assurance class, cache isolation, and telemetry.
-
-## Rejected alternatives
-
-- **Let the model supply commands or flags** — recreates the trust gap this RFC exists to close.
-- **Store command profiles in project configuration** — lets candidate-controlled state redefine its own judge and makes policy non-portable across deployments.
-- **Call candidate-owned tests an oracle** — conflates self-consistency with independent acceptance evidence.
-- **Key incremental caches only by snapshot id** — forces cold verification after every repair even though all revisions remain inside one disposable attempt.
-- **Share caches across verification contexts or unrelated lineages** — crosses the isolation boundary and lets untrusted build state influence unrelated candidates.
-- **Trust an adapter-assembled tool report** — allows omission, policy substitution, or finding mutation between host execution and the lifecycle gate; the engine assembles only from directly resolved attestations.
-- **Apply machine suggestions individually or keep them without reverification** — measured partial-fix failures can worsen the candidate; atomic apply plus strict improvement is the minimum safe rung.
-- **Make repeat/regression predicates lifecycle authority immediately** — canonical data should land before a stopping policy; RFC-90's fixed budgets remain the conservative first policy.
-- **Treat verification output as the complete SLM reward** — rewards need product-quality dimensions outside native tool verification.

@@ -1,6 +1,6 @@
 # Decision Records
 
-The synthesis response MAY carry optional `decisions[]`. Each entry becomes one slice-authored Decision Record — a durable, append-only statement of a design choice and its rejected alternatives. The persist tail writes `decisions/<slug>.md`; `emery slice merge` promotes accepted records to `.emery/decisions/DEC-NNNN-<slug>.md` and stamps engine-owned fields. Omit the key when the slice sets no durable decision — most slices set none.
+The synthesis response MAY carry optional `decisions[]`. Each entry becomes one slice-authored Decision Record — a durable, append-only statement of a design choice and its rejected alternatives. The persist tail writes `decisions/<slug>.md`; the merge phase promotes accepted records to `.emery/decisions/DEC-NNNN-<slug>.md` and stamps engine-owned fields. Omit the key when the slice sets no durable decision — most slices set none.
 
 ## The bar for a durable record
 

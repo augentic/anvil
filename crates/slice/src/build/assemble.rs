@@ -1,12 +1,7 @@
 //! Pure build-request assembly.
 //!
-//! [`build_request`] is IO-free apart from existence checks against the
-//! slice tree — it never writes a journal, request file, or report. It
-//! resolves the singular rendered artifacts, enumerates the per-domain
-//! `spec.md` files, and resolves the bound target adapter's declared
-//! [`BuildInputDeclaration`]s into [`BuildArtifacts::additional`],
-//! raising `target-build-input-missing` when a `required` declaration
-//! names a path absent from the slice tree.
+//! [`build_request`] is IO-free apart from existence checks against
+//! the slice tree — it never writes a journal, request file, or report.
 
 use std::ffi::OsStr;
 use std::path::Path;
@@ -22,17 +17,11 @@ const TASKS_ARTIFACT: &str = "tasks.md";
 /// Assemble a [`BuildRequest`] for `slice` from already-resolved
 /// inputs.
 ///
-/// `manifest_inputs` is the bound target adapter's declared build-inputs
-/// list (`TargetAdapter::inputs`); `slice_tree` is the slice tree all
-/// artifact paths resolve against (the request's `inputs.root`);
-/// `project_dir` is the working tree the target builds into. The build
-/// orchestration resolves the target and supplies these so this stays
-/// pure.
-///
-/// The singular artifacts are fixed relative names; the `specs[]` are
-/// the per-domain `specs/<domain>/spec.md` files found under the slice
-/// tree (sorted); `additional[]` is the manifest declarations that resolve
-/// against the slice tree, in declaration order.
+/// `manifest_inputs` is the bound target's declared build-inputs list;
+/// `slice_tree` is the tree all artifact paths resolve against;
+/// `project_dir` is the working tree the target builds into. The
+/// `specs[]` are the per-domain `spec.md` files found under the slice
+/// tree (sorted); `additional[]` resolves in declaration order.
 ///
 /// # Errors
 ///

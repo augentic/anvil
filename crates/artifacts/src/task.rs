@@ -52,10 +52,8 @@ pub struct Progress {
 fn task_line_re() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
-        // Groups:
-        //   1 = checkbox contents (" " | "x" | "X")
-        //   2 = dotted task number (e.g. "1.2" or "1.2.3")
-        //   3 = rest of the line
+        // Groups: 1 = checkbox contents (" " | "x" | "X"),
+        // 2 = dotted task number (e.g. "1.2"), 3 = rest of the line.
         Regex::new(r"^\s*-\s+\[( |x|X)\]\s+(\d+(?:\.\d+)*)\s+(.*)$")
             .expect("task line regex is valid")
     })

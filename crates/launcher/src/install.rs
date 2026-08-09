@@ -1,19 +1,6 @@
 //! Host-owned package install: pull-on-miss from the first-party OCI
-//! registry into the immutable global adapter store.
-//!
-//! The only download path in the deployment. A pinned routed id whose
-//! store entry is absent is pulled anonymously as a standard Wasm OCI
-//! artifact (`ghcr.io/augentic/emery-adapters/<name>:<version>`),
-//! validated (single layer, wasm magic, size, manifest layer digest),
-//! and written atomically — the digest sidecar (with its OCI
-//! provenance: repository, manifest digest, layer digest) first, the
-//! component last, so a torn install never leaves an unverifiable
-//! component behind. An
-//! unpinned name with nothing local — or one the operator explicitly
-//! updates — resolves its version first through [`resolve_latest`]
-//! (the repository's newest exact-SemVer tag) and installs through
-//! the same leg. The guest never downloads: package installation is
-//! native-only.
+//! registry into the immutable global adapter store — the only
+//! download path in the deployment.
 
 use error::Error;
 use oci_client::Reference;
@@ -236,10 +223,8 @@ pub async fn install(
         .ok_or_else(|| invalid("no resolved manifest digest returned".to_string()))?;
 
     // Sidecar first, component last: resolution keys "installed" on
-    // the component file, so a tear between the two writes leaves at
-    // most an orphan sidecar the next install overwrites — never an
-    // unverifiable component. The entry's content digest is the layer
-    // digest (the store entry is the layer bytes).
+    // the component file, so a tear leaves at most an orphan sidecar
+    // the next install overwrites — never an unverifiable component.
     let locations = paths.locations();
     std::fs::create_dir_all(locations.store_root())?;
     let entry = locations.store_entry(name, version);
@@ -249,6 +234,8 @@ pub async fn install(
         manifest_digest,
         layer_digest: layer_digest.clone(),
     };
+    // The entry's content digest is the layer digest (the store entry
+    // is the layer bytes).
     diagnostics::cache::write_store_meta(&meta, &layer_digest, Some(&provenance))?;
     artifacts::atomic::bytes_write(&entry, bytes)?;
     diagnostics::cache::verify_store_entry(&entry, &meta).map_err(|failure| Error::Diag {

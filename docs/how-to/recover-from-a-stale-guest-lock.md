@@ -80,7 +80,7 @@ Execute reads on-disk lifecycle state and resumes from the active entry, skippin
 <div class="see-also">
 <strong>See also</strong>
 
-- [Drive a slice manually](drive-slice-manually.md) — recovery when execute parks on a real failure
+- [Drop down a layer](drop-down-a-layer.md) — recovery when execute parks on a real failure
 - [emery plan execute](../reference/cli/plan.md#emery-plan-execute) — the marker's lifetime and stop conditions
 - [Glossary — Guest](../appendices/glossary.md#g) — engine guest vs adapter guest
 </div>

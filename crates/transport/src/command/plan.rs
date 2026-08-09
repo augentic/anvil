@@ -1,26 +1,19 @@
 //! Clap argument types for the `emery plan *` routes, including the
 //! locked argv grammars for `--source` ([`source_assign`]) and
-//! `--sources` / `--add-source` ([`binding_arg`]). The parsed values
-//! land directly in the workflow wire DTOs, with each `*Args` type
-//! mirroring its command's wire input.
+//! `--sources` / `--add-source` ([`binding_arg`]).
 
 use ::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
 use artifacts::evidence::ClaimKind;
 use clap::{ArgAction, Args};
 
 /// Parse the locked `--source` argv grammar into a [`SourceAssign`]:
+/// `<key>=<adapter>:<path>` (path-bound) or
+/// `<key>=<adapter>:value:<literal>` (value-bound).
 ///
-/// - `<key>=<adapter>:<path>` — path-bound binding. The adapter is the
-///   substring up to the first `:` after `=`; the path is everything
-///   after that first `:` (URLs containing `:` such as
-///   `git@github.com:org/foo.git` round-trip cleanly).
-/// - `<key>=<adapter>:value:<literal>` — value-bound binding. The
-///   `value:` sentinel after the adapter switches the parser to
-///   literal mode; the literal payload is everything after the second
-///   `:` and may contain anything (newlines, colons, equals signs).
-///
-/// Returns a `String` error on malformed input so clap surfaces a
-/// standard usage diagnostic (exit code 2).
+/// Only the first `:` after `=` splits adapter from binding, so URLs
+/// like `git@github.com:org/foo.git` round-trip; after the `value:`
+/// sentinel the literal may contain anything. Malformed input returns
+/// a `String` error clap surfaces as a usage diagnostic (exit 2).
 fn source_assign(s: &str) -> Result<SourceAssign, String> {
     let (key, rest) = s.split_once('=').ok_or_else(|| {
         format!(
@@ -63,17 +56,13 @@ fn source_assign(s: &str) -> Result<SourceAssign, String> {
 }
 
 /// Parse the `plan add --source` / `plan amend --sources` /
-/// `--add-source` argv forms (workflow §`Slice.sources`) into a
-/// [`BindingArg`]:
+/// `--add-source` argv forms into a [`BindingArg`]:
+/// `<key>=<lead>` (structured) or bare `<key>` (shorthand for
+/// `{ key: <key>, lead: <slice.name> }`).
 ///
-/// - `<key>=<lead>` — structured binding; both sides are non-empty.
-/// - `<key>` — bare-string shorthand; sugar for
-///   `{ key: <key>, lead: <slice.name> }`.
-///
-/// Malformed inputs (empty key, empty lead, dangling `=`, more than
-/// one `=`) produce a `String` error that clap surfaces as a standard
-/// usage diagnostic (exit code 2). The messages stay flag-neutral —
-/// clap prefixes the offending flag itself.
+/// Malformed inputs produce a `String` error that clap surfaces as a
+/// usage diagnostic (exit 2). The messages stay flag-neutral — clap
+/// prefixes the offending flag itself.
 fn binding_arg(s: &str) -> Result<BindingArg, String> {
     if s.is_empty() {
         return Err("source binding must be non-empty".to_string());
@@ -104,14 +93,6 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
     reason = "clap's `Args` derive requires a braced struct"
 )]
 pub struct ValidateArgs {}
-
-/// Arguments for `plan advance`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct AdvanceArgs {}
 
 /// Arguments for `plan status`.
 #[derive(Clone, Copy, Debug, Args)]
@@ -146,7 +127,7 @@ fn waive_selector(raw: &str) -> Result<::change::orchestrate::WaiveSelector, Str
 #[derive(Clone, Debug, Args)]
 pub struct ExecuteArgs {
     /// Waive one open `[unknown]` requirement (`<slice>/<req>`). Repeatable.
-    /// Requires `--reason`. Conflicts are never waiveable (RFC-86 D17).
+    /// Requires `--reason`. Conflicts are never waiveable.
     #[arg(
         long = "waive",
         action = ArgAction::Append,
@@ -168,27 +149,15 @@ pub struct RemoveArgs {
     pub name: String,
 }
 
-/// Parse the `--to` undo target: only the two reverse-reachable
-/// statuses are legal (`done` is forward-only, written by `slice
-/// merge`).
-fn undo_to(raw: &str) -> Result<project::plan::Status, String> {
-    match raw {
-        "pending" => Ok(project::plan::Status::Pending),
-        "in-progress" => Ok(project::plan::Status::InProgress),
-        other => Err(format!("unknown undo target `{other}`; expected `pending` or `in-progress`")),
-    }
-}
-
-/// Arguments for `plan undo`.
+/// Arguments for `plan drop`.
 #[derive(Debug, Args)]
-pub struct UndoArgs {
-    /// Kebab-case plan-entry name.
+pub struct DropArgs {
+    /// Kebab-case plan entry (slice) name to drop.
     pub name: String,
-    /// Walk rung by rung until the entry reaches this status
-    /// (`pending` or `in-progress`); one `plan.transition.undone`
-    /// journal event fires per rung. Omitted means one rung.
-    #[arg(long = "to", value_name = "STATUS", value_parser = undo_to)]
-    pub to: Option<project::plan::Status>,
+    /// Free-text reason; surfaced in `metadata.yaml.drop_reason` and
+    /// the archive path.
+    #[arg(long)]
+    pub reason: Option<String>,
 }
 
 /// Arguments for `plan author`.
@@ -200,14 +169,11 @@ pub struct AuthorArgs {
     /// `--source <key>=<adapter>:<path>` or
     /// `--source <key>=<adapter>:value:<literal>`.
     ///
-    /// `<key>` is a label you choose (kebab-case): it becomes the slot
-    /// name in `plan.yaml.sources` that plan entries and evidence files
-    /// reference. `<adapter>` is the source adapter name (for example
-    /// `typescript`, `documentation`, `intent`). Only the first `:`
-    /// splits adapter from binding, so URLs like
-    /// `git@github.com:org/repo.git` pass through unchanged.
-    ///
-    /// Example: `--source legacy=typescript:./legacy`
+    /// `<key>` (kebab-case, your label) becomes the slot name in
+    /// `plan.yaml.sources`; `<adapter>` is the source adapter name
+    /// (e.g. `typescript`). Only the first `:` splits adapter from
+    /// binding, so URLs like `git@github.com:org/repo.git` pass
+    /// through unchanged. Example: `--source legacy=typescript:./legacy`
     #[arg(long = "source", value_parser = source_assign)]
     pub sources: Vec<SourceAssign>,
     /// Operator intent as a literal string — pure sugar for
@@ -249,22 +215,16 @@ pub struct AddArgs {
     /// Free-text scoping hint for the define step
     #[arg(long)]
     pub description: Option<String>,
-    /// Target registry project name
-    #[arg(long)]
-    pub project: Option<String>,
     /// Baseline paths relevant to this change, relative to `.emery/` (repeatable)
     #[arg(long)]
     pub context: Vec<String>,
-    /// Set a per-slice `authority-override` entry on the slice
-    /// being added (per-slice authority override). Wire form is
-    /// `<claim-kind>=<source>`; both sides are kebab-case
-    /// and the kind is checked against the closed
-    /// [`ClaimKind`](artifacts::evidence::ClaimKind)
-    /// enum at parse time. Repeatable; later occurrences win on
-    /// the same `(kind)` key. Orphan source keys are caught by
-    /// `emery slice validate`. One
-    /// `plan.amend.authority-override` event fires per resolved
-    /// entry.
+    /// Set a per-slice `authority-override` entry on the slice being
+    /// added. Wire form is `<claim-kind>=<source>` (kebab-case); the
+    /// kind is checked against the closed
+    /// [`ClaimKind`](artifacts::evidence::ClaimKind) enum at parse
+    /// time. Repeatable; later occurrences win on the same kind.
+    /// Orphan source keys are caught by `emery slice validate`; one
+    /// `plan.amend.authority-override` event fires per resolved entry.
     #[arg(long = "authority-override", action = ArgAction::Append)]
     pub authority_override: Vec<KindAssign>,
 }
@@ -310,22 +270,18 @@ pub struct AmendArgs {
     /// to leave it unchanged.
     #[arg(long)]
     pub description: Option<String>,
-    /// Replace project. Pass `--project ""` to clear; omit the flag to leave it unchanged.
-    #[arg(long)]
-    pub project: Option<String>,
     /// Replace context paths. Pass `--context` (with no value) to clear; omit the
     /// flag to leave it unchanged.
     #[arg(long, num_args = 0.., value_delimiter = ',')]
     pub context: Option<Vec<String>>,
     /// Set a per-slice `authority-override` entry on the entry being
-    /// amended. Wire form is `<claim-kind>=<source>` — the same
-    /// single-value grammar as `plan add --authority-override`; both
-    /// sides are kebab-case and the kind is checked against the closed
+    /// amended — the same `<claim-kind>=<source>` grammar as `plan add
+    /// --authority-override`; the kind is checked against the closed
     /// [`ClaimKind`](artifacts::evidence::ClaimKind) enum at parse
     /// time. Repeatable; later occurrences win on the same kind. If
-    /// the same kind also appears in `--clear-authority-override`,
-    /// the clear wins (clears apply after sets). Orphan source keys
-    /// are caught by `emery slice validate`.
+    /// the same kind also appears in `--clear-authority-override`, the
+    /// clear wins (clears apply after sets). Orphan source keys are
+    /// caught by `emery slice validate`.
     #[arg(long = "authority-override", action = ArgAction::Append)]
     pub authority_override: Vec<KindAssign>,
     /// Remove a single claim kind from the amended entry's
@@ -343,4 +299,12 @@ pub struct AmendArgs {
     /// wipe (no events when the map was already empty).
     #[arg(long = "clear-authority-overrides", action = ArgAction::SetTrue)]
     pub clear_authority_overrides: bool,
+    /// Set the entry's `allow-composition-replace` field: authorise a
+    /// whole-document (`screens:`) slice composition to overwrite a
+    /// non-empty baseline when the execute loop merges this slice.
+    /// Reserved for intentional full-baseline rewrites; routine
+    /// per-screen edits flow through `delta:` and never need it. Pass
+    /// `true` or `false`; omit the flag to leave it unchanged.
+    #[arg(long = "allow-composition-replace", value_name = "BOOL")]
+    pub allow_composition_replace: Option<bool>,
 }

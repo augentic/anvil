@@ -79,7 +79,7 @@ What you should see after execute: slice artifacts under `.emery/slices/…`, ge
 
 The pause after planning is the operator review step: nothing privileged runs until you invoke `emery plan execute` — that journals `plan.execute.started` and drives the loop under gap gates. A one-slice change uses the same steps as a twelve-slice migration. Code generation lives in target adapters, not in Cursor skills.
 
-When `plan execute` parks, or you want to drive one slice without the drained loop, you can use the breakout skills: `/emery:refine`, `/emery:build`, `/emery:merge`, and `/emery:drop` (or their CLI equivalents).
+When `plan execute` parks, the stop card names the reason and the resume command — fix the input it points at and re-run `emery plan execute`; the loop resumes at the parked phase. Abandon a slice with `emery plan drop <entry>`.
 
 ## Documentation & Guides
 
@@ -89,7 +89,6 @@ When `plan execute` parks, or you want to drive one slice without the drained lo
 - **Core Concepts:** [What is Emery?](docs/orientation/index.md) · [Core concepts](docs/explanation/concepts.md) · [AGENTS.md § Workflow nouns](AGENTS.md#workflow-nouns)
 - **Installation:** [Prerequisites](docs/orientation/prerequisites.md)
 - **How-tos:**
-  - [Drive a slice manually](docs/how-to/drive-slice-manually.md)
   - [Amend a plan before executing](docs/how-to/amend-a-plan.md)
   - [Drop down a layer](docs/how-to/drop-down-a-layer.md) (when automation fails)
   - [Bind multiple sources](docs/how-to/bind-multiple-sources.md)

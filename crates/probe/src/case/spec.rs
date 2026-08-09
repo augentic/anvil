@@ -14,7 +14,7 @@ use serde::Deserialize;
 pub enum Case {
     /// A source-to-target workflow over the operator verbs.
     Workflow(Workflow),
-    /// One `slice build` against a committed refined fixture.
+    /// One build phase against a committed refined fixture.
     Build(Build),
 }
 
@@ -72,13 +72,13 @@ pub struct CloneSpec {
     pub dest: PathBuf,
 }
 
-/// A build case: the fixture carries the exact refined state
-/// `emery slice build` consumes, including valid project and slice
-/// metadata — the runner never stamps lifecycle state.
+/// A build case: the fixture carries the exact refined state the
+/// build phase consumes, including valid project and slice metadata —
+/// the runner never stamps lifecycle state.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Build {
-    /// The refined slice `slice build` runs for.
+    /// The refined slice the build phase runs for.
     pub slice: String,
     /// Tree copied into the fresh sandbox, relative to `case.toml`;
     /// absent means the sibling `fixture/` directory (when present).

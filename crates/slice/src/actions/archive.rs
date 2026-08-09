@@ -8,9 +8,9 @@ use project::fs::move_atomic;
 
 /// Move `slice_dir` to `<archive_dir>/YYYY-MM-DD-<slice-name>/`.
 ///
-/// This is the sole implementation of the archive move semantics; both
-/// `emery slice archive` and the `emery slice merge` success path
-/// route through it. Does **not** touch `metadata.yaml` — the caller is
+/// This is the sole implementation of the archive move semantics; the
+/// `plan drop` discard and the merge phase's success path both route
+/// through it. Does **not** touch `metadata.yaml` — the caller is
 /// responsible for any status transition before or after.
 ///
 /// # Errors

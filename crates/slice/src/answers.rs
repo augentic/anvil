@@ -1,10 +1,7 @@
 //! The generated synthesis judgment answer schema.
 //!
-//! Generated (via `schemars`) from `SynthesisResponse` — the same type
-//! the deterministic tail parses the raw answer through — so the Rust
-//! wire type stays the single source of truth. The committed copy under
-//! `crates/slice/answers/synthesis.schema.json` is parity-gated by
-//! `crates/slice/tests/answers.rs`.
+//! Generated via `schemars` from `SynthesisResponse`, so the wire type
+//! the deterministic tail parses stays the single source of truth.
 
 use serde_json::Value;
 

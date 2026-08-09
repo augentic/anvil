@@ -1,10 +1,6 @@
 //! SDK-seam to engine-seam DTO conversion — the one native copy of
 //! the mapping the wasm guest shim applies at the WIT boundary.
-//!
-//! [`crate::catalog`] projects adapter metadata through it at
-//! registration; [`crate::provider::Provider`] maps every operation's
-//! values through it at dispatch. Fixture and adapter crates stay on
-//! the SDK DTOs and never repeat this mapping.
+//! Fixture and adapter crates never repeat this mapping.
 
 use adapter::seam as aseam;
 use artifacts::evidence::AuthorityClass;

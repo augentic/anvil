@@ -1,9 +1,6 @@
-//! In-memory model of `<project_dir>/discovery.md` — the
-//! `## Lead inventory` section plus the surrounding operator
-//! prose.
+//! In-memory model of `<project_dir>/discovery.md`.
 //!
-//! Each block is a raw, unmerged lead identified by the `(source, lead)`
-//! pair. The `## Lead inventory` section uses the block grammar
+//! `## Lead inventory` blocks use the grammar
 //!
 //! ```markdown
 //! ### <source>:<lead>
@@ -13,16 +10,7 @@
 //! - synopsis: <reconciliation-grade headline>
 //! ```
 //!
-//! [`Discovery::load`] parses the file faithfully (preserving prose
-//! before, between, and after lead blocks) and exposes the
-//! `## Lead inventory` section as structured [`Lead`]
-//! rows. [`Discovery::write_atomic`] re-renders the file with any
-//! mutations propagated; prose around lead blocks round-trips
-//! unchanged.
-//!
-//! The on-disk format intentionally mirrors what source adapters
-//! write at `survey` time, so the same parser feeds re-survey
-//! and operator edits.
+//! Prose before, between, and after lead blocks round-trips unchanged.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -169,16 +157,12 @@ impl Discovery {
     /// Merge a re-survey of `source` into the inventory and
     /// atomically persist the result at `path`.
     ///
-    /// `leads` is the lead set the source's `survey` produced (already
-    /// checked by the caller via [`super::lead::validate_leads`]).
-    /// The surveying source owns attribution: every incoming
-    /// lead's `source` is force-set to `source`. Each incoming lead
-    /// replaces the prior block sharing its `(source, lead)` pair **in
-    /// place**. Incoming leads with no prior block are appended in survey
-    /// order. Prior blocks from *other* source keys, and prior blocks of
-    /// this source whose `lead` is absent from the incoming set, are left
-    /// untouched — re-survey replaces by `(source, lead)`, it does not
-    /// prune and never collapses across sources.
+    /// Every incoming lead's `source` is force-set to `source`. Each
+    /// incoming lead replaces the prior block sharing its `(source,
+    /// lead)` pair **in place**; leads with no prior block append in
+    /// survey order. Blocks from other sources — and this source's
+    /// blocks absent from the incoming set — are left untouched:
+    /// re-survey never prunes and never collapses across sources.
     ///
     /// # Errors
     ///

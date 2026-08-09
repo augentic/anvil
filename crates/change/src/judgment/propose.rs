@@ -1,11 +1,6 @@
-//! The propose reconciliation judgment leg.
-//!
-//! One schema-gated `create` over the proposal request envelope, with a
-//! deterministic tail (typed serde parse) plus a caller-supplied kernel
-//! check, inside the shared repair loop. The
-//! caller owns the surrounding IO: assembling the request, running
-//! `Plan::propose_from` for real under the atomic write loop, and the
-//! journal bracket.
+//! The propose reconciliation judgment leg: one schema-gated `create`
+//! over the proposal request envelope inside the shared repair loop.
+//! The caller owns the surrounding IO and the journal bracket.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -50,15 +45,11 @@ impl GateContext<'_> {
 
 /// Run the lead-reconciliation judgment leg over an assembled request.
 ///
-/// `check` is the kernel-projection dry run — typically
-/// `Plan::propose_from` against a throwaway clone — so a grouping the
-/// kernel would reject (coverage gap, source collision, unknown
-/// project) is repaired in-loop rather than surfacing after the call.
-///
-/// `gate` is the optional plan-authoring context: when set, a `## Plan
-/// context` section rides the user message so the model can author the
-/// review prose (`gate` on the answer) the collapsed `plan author`
-/// orchestration persists.
+/// `check` is the kernel-projection dry run (typically
+/// `Plan::propose_from` against a throwaway clone), so a grouping the
+/// kernel would reject is repaired in-loop rather than after the call.
+/// `gate`, when set, rides a `## Plan context` section on the user
+/// message so the model can author the persisted review prose.
 ///
 /// # Errors
 ///

@@ -60,7 +60,7 @@ The system SHALL <behavioral description>.
 
 Key rules:
 
-- Each requirement has a stable `ID: REQ-XXX` line. This is the merge key used during `/emery:merge`.
+- Each requirement has a stable `ID: REQ-XXX` line. This is the merge key used during the merge phase.
 - Scenarios use WHEN/THEN format. GIVEN is optional context.
 - Error conditions are listed at the end as a cross-cutting summary.
 - Metrics are only included when they are explicit in the source material.
@@ -242,7 +242,7 @@ Keep proposals concise (one to two pages). Focus on the "why" not the "how" — 
 ## 1. Implementation
 
 - [ ] 1.1 Refine proposal/spec/design artifacts
-- [ ] 1.2 Implement code changes via `/emery:build`
+- [ ] 1.2 Implement code changes in the build phase
 - [ ] 1.3 Verify and review output
 ```
 
@@ -282,7 +282,7 @@ status: accepted
 
 Decision Records store the *why*, never design *state* -- domain models and API shapes stay in `design.md` and the code.
 
-`/emery:merge` promotes each record into the append-only baseline catalogue at `.emery/decisions/DEC-NNNN-<slug>.md` by opaque whole-file add, assigning the durable, project-global `DEC-NNNN` id (the CLI never reuses an id). A newer record's `supersedes:` flips its named targets to `status: superseded`. Records are opt-in -- a slice that takes no notable decision authors none.
+The merge phase promotes each record into the append-only baseline catalogue at `.emery/decisions/DEC-NNNN-<slug>.md` by opaque whole-file add, assigning the durable, project-global `DEC-NNNN` id (the CLI never reuses an id). A newer record's `supersedes:` flips its named targets to `status: superseded`. Records are opt-in -- a slice that takes no notable decision authors none.
 
 ## Composition document (Vectis only)
 
@@ -382,7 +382,7 @@ For the full schema definition and item vocabulary, see the [Vectis composition 
 
 ## Component catalog and parts (Vectis only)
 
-Two sibling design-system files govern shared UI components. `.emery/design-system/components.yaml` is the agent-written **resolved catalog** — the vectis build's in-guest bind step is its only writer; the operator edits it only to reject or rename entries. `.emery/design-system/parts.yaml` is an optional hand-authored **input** that pre-defines known shared parts. Both sit beside `tokens.yaml` and `assets.yaml`; in workspace mode both live at `<coordinator-root>/workspace/<project>/.emery/design-system/`. The motivation and operator workflow are in [Component catalog](../explanation/components.md).
+Two sibling design-system files govern shared UI components. `.emery/design-system/components.yaml` is the agent-written **resolved catalog** — the vectis build's in-guest bind step is its only writer; the operator edits it only to reject or rename entries. `.emery/design-system/parts.yaml` is an optional hand-authored **input** that pre-defines known shared parts. Both sit beside `tokens.yaml` and `assets.yaml`. The motivation and operator workflow are in [Component catalog](../explanation/components.md).
 
 ### Catalog format (`components.yaml`)
 
@@ -514,7 +514,7 @@ Contract deletion is rare and handled as a manual baseline edit. The slice-level
 
 ### Tasks
 
-- `tasks.md` exists when `/emery:build` depends on it
+- `tasks.md` exists when the build phase depends on it
 - Tasks are implementation steps and checkpoints only
 - Every task uses checkbox format (`- [ ]`)
 

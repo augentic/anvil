@@ -29,20 +29,11 @@ async fn author_and_refine(session: &Session) {
     .await
     .expect("author");
 
-    run::<slice::handlers::Refine, _, _>(
-        session.provider(),
-        slice::handlers::RefineInput {
-            name: "login-flow".to_string(),
-        },
-    )
-    .await
-    .expect("refine");
+    support::refine(session, "login-flow").await.expect("refine");
 
     // Merge (and the plan-owned completion preflight) require a
-    // projected in-progress entry — advance claims the slice.
-    run::<plan::handlers::Advance, _, _>(session.provider(), plan::handlers::AdvanceInput {})
-        .await
-        .expect("advance claims login-flow");
+    // projected in-progress entry — the advance step claims the slice.
+    support::advance(session);
 }
 
 fn journal_kinds(root: &std::path::Path) -> Vec<&'static str> {
@@ -88,14 +79,7 @@ async fn pin_build_record_wave_commit_and_apply() {
     );
     assert_eq!(base.sources["docs"], value_cid("The docs source."));
 
-    run::<slice::handlers::Build, _, _>(
-        session.provider(),
-        slice::handlers::BuildInput {
-            name: "login-flow".to_string(),
-        },
-    )
-    .await
-    .expect("build from recorded pin");
+    support::build(&session, "login-flow").await.expect("build from recorded pin");
 
     assert!(
         project::build_record::BuildRecord::present(&slice_dir),
@@ -132,17 +116,7 @@ async fn pin_build_record_wave_commit_and_apply() {
         "no pin drift on clean pins: {clean_reviews:?}"
     );
 
-    run::<slice::handlers::MergeRun, _, _>(
-        session.provider(),
-        slice::handlers::MergeRunInput {
-            name: "login-flow".to_string(),
-            allow_composition_replace: false,
-            preview: false,
-            conflict_check: false,
-        },
-    )
-    .await
-    .expect("merge wave-commits");
+    support::merge(&session, "login-flow").await.expect("merge wave-commits");
 
     let kinds = journal_kinds(&root);
     assert!(kinds.contains(&"target.merge.wave-committed"), "{kinds:?}");

@@ -1,10 +1,7 @@
 //! On-disk Evidence reading and distillation.
 //!
-//! Owns the typed `evidence/*.yaml` readers shared by the validation
-//! sweep and the provenance projection, and distils the per-source
-//! `authority` map, the `(source, id) → kind` claim anchor index, and
-//! the per-source inputs envelope rows for the guest refine
-//! orchestrator.
+//! Typed `evidence/*.yaml` readers shared by the validation sweep, the
+//! provenance projection, and the guest refine orchestrator.
 
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
@@ -64,14 +61,10 @@ pub struct EvidenceDoc {
 /// Read every `*.yaml` file under `<slice_dir>/evidence/` into a typed
 /// [`Document`], running each document's deterministic validation.
 ///
-/// The evidence subdirectory is optional — returning an empty `Vec`
-/// when it is absent matches the workflow §Extraction reliability rule
-/// that an empty `claims: []` (or no Evidence at all before extract
-/// runs) is valid.
-///
-/// All findings are aggregated and returned in a single
-/// [`Error::Validation`] keyed on `evidence-schema` so the caller sees
-/// every malformed file in one pass.
+/// The subdirectory is optional — absent means an empty `Vec`, since
+/// no Evidence before extract runs is valid. All findings aggregate
+/// into a single [`Error::Validation`] keyed on `evidence-schema`, so
+/// the caller sees every malformed file in one pass.
 ///
 /// # Errors
 ///

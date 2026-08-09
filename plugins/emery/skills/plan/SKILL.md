@@ -30,5 +30,4 @@ Authoring is a long-running orchestration — it runs bare (or with `--debug` wh
 
 - Surface the CLI output verbatim, including the closing hint (the literal `emery plan execute` command). This skill never runs execute itself — authoring exits so the operator can review `change.md`, `discovery.md`, and `plan.yaml`, then start execution through `/emery:execute` or by running `emery plan execute` directly.
 - On non-zero exit, surface the structured error verbatim and stop. Never hand-edit `plan.yaml`, `change.md`, or `discovery.md` — the CLI is the single writer for plan state.
-- Headless plan curation stays on the CLI: `emery plan add`, `emery plan amend`, `emery plan remove`.
-- Workspace plans cannot run under `emery plan execute` (`plan-execute-workspace-unsupported`); drive them hand-driven instead — `emery plan advance`, then the `/emery:refine` → `/emery:build` → `/emery:merge` breakouts per slice.
+- Headless plan curation stays on the CLI: `emery plan add`, `emery plan amend`, `emery plan remove`, `emery plan drop`.

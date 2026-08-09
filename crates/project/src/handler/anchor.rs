@@ -7,18 +7,12 @@ use super::ExecutionPaths;
 
 /// Project anchoring carried on the provider value.
 ///
-/// The guest provider answers `"."` (the project-root mount preopen);
-/// a native provider answers its configured root. Verbs never read the
-/// process CWD themselves — the anchor is the single source of the
-/// project location, so the same operation serves the wasm guest,
-/// native providers, and tests against a tempdir. The carried
-/// [`ExecutionPaths`] also fixes cache placement: an isolated value
-/// pins an explicit cache parent instead of mutating process
-/// environment.
-///
-/// [`omnia_guest::api::Provider`] is a supertrait so every
-/// anchor-bearing provider satisfies the `Operation<P: Provider>` bound
-/// without a second annotation.
+/// Verbs never read the process CWD — the anchor is the single source
+/// of the project location, so the same operation serves the wasm
+/// guest, native providers, and tests. The carried [`ExecutionPaths`]
+/// also fixes cache placement without mutating process environment.
+/// [`omnia_guest::api::Provider`] is a supertrait so anchor-bearing
+/// providers satisfy the `Operation<P: Provider>` bound directly.
 pub trait Anchor: omnia_guest::api::Provider {
     /// Project root plus cache placement.
     fn paths(&self) -> &ExecutionPaths;

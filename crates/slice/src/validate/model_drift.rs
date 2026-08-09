@@ -14,27 +14,14 @@ use crate::model::SliceModel;
 use crate::provenance_lines;
 use crate::synthesis::evidence::EvidenceDoc;
 
-/// Emit the drift-validation findings over the slice's
-/// `model.yaml`.
+/// Emit the drift-validation findings over the slice's `model.yaml`.
 ///
-/// Skipped silently when the file is absent — every
-/// synthesized slice carries it, but `slice validate` runs on
-/// pre-synthesis (`refining`) slices too, so absence is not a defect
-/// here (it is enforced at synthesize time and by
-/// `slice provenance` / `slice model show`).
-///
-/// The typed parse is the shape gate: a `model.yaml` that fails to
-/// deserialise into [`SliceModel`] yields one `slice-model-schema`
-/// finding carrying the parse error, and there is nothing typed left
-/// to inspect. The model-derived drift gates run over the parsed view.
-///
-/// `plan_path` resolves the target-drift gate; when it does not exist
-/// that gate no-ops.
-///
-/// `evidence` is the typed Evidence document set [`pre_adapter_gates`](super::pre_adapter_gates)
-/// already read and validated; the source-orphan and
-/// claim-kind-mismatch gates derive their facts from it rather than
-/// re-reading `evidence/*.yaml`.
+/// An absent model is skipped silently — `slice validate` runs on
+/// pre-synthesis slices too, so absence is not a defect here. A model
+/// failing the typed parse yields one `slice-model-schema` finding;
+/// the drift gates run over the parsed view, reading the
+/// already-validated `evidence` set rather than re-reading disk. An
+/// absent `plan_path` no-ops the target-drift gate.
 ///
 /// # Errors
 ///
