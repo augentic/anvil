@@ -1,4 +1,4 @@
-# RFC-93: Host Verification Profiles
+# RFC-93: Native Verification Profiles
 
 > Status: Future draft — deterministic native-verification follow-on, outside the RFC-86…RFC-92 platform-migration series
 >
@@ -7,6 +7,8 @@
 > Depends on [RFC-87](../rfc-87-working-trees.md), [RFC-90](../rfc-90-build-verification.md), and [RFC-91](../rfc-91-concurrent-execution.md). No standardized WASI execution capability is on the dependency path: the verifier executes tools natively below the component boundary, and the only WIT surface is a custom host-verification capability in its own package (e.g. `emery:verification`) — an Emery-owned host crate on the `wasi-exec-bits` shape, which owns `emery:exec-bits` the same way — whose native implementation enforces this RFC's working-directory, environment, stdio, cancellation, resource, and sandbox contract.
 >
 > Evidence: [Finitive local-model harness input](../rfc-90-finitive-evidence.md).
+
+
 
 ## Intent
 
@@ -42,6 +44,8 @@ sequenceDiagram
     E->>E: Check coverage and assemble phase report
 ```
 
+
+
 The trust boundary has five rules:
 
 - Adapters request profiles by name; they never supply commands, flags, parsers, environment overrides, or protected inputs.
@@ -61,6 +65,8 @@ RFC-90 still owns phase order, model-repair budgets, finding routing, terminal r
 5. The adapter returns the handles and any deterministic in-component findings. The engine resolves the handles through the verifier provider and checks exact profile, context, candidate, and policy coverage before assembling the RFC-90 phase report.
 6. One eligible tool-authored fix may enter D7's explicit host-mechanical-repair phase. Any remaining blocking findings follow RFC-90's bounded model-repair route.
 
+
+
 ## Terms
 
 - A **verification profile** is a closed semantic check: `fmt`, `build`, `clippy`, `test`, `doc`, `vet`, `deny`, or `ci`.
@@ -72,7 +78,11 @@ RFC-90 still owns phase order, model-repair budgets, finding routing, terminal r
 - A **profile attestation** is an opaque host-issued handle to an immutable report bound to the verifier, context, candidate, target, platform, profile, policy, and protected inputs. The adapter can relay it but cannot mint or alter it.
 - A **mechanical suggestion group** is one host-attested atomic set of path-bounded edits. Each edit names its source preimage digest, so stale or partial application fails.
 
+
+
 ## Decisions
+
+
 
 ### D1 — Host verification replaces command judgment, not the phase machine
 
@@ -165,6 +175,8 @@ flowchart TD
     D --> M
 ```
 
+
+
 A failed slice verification may offer at most one group. Every edit must come from one attested report, apply against the exact candidate, stay within one reviewed task owner's paths, and touch no protected input. Required-profile order and then suggestion-group digest choose among eligible groups.
 
 The engine applies the complete group in a fresh workspace, captures a tentative snapshot, and reruns every required profile. It keeps the patch only when the originating profile strictly improves and no profile regresses; otherwise it discards the tentative snapshot and routes the original findings to model repair. On acceptance, the engine composes the patch under the owner's grant and makes the tentative candidate and its report current. A clean report advances to review; blocking findings route to model repair. The fix consumes no model-repair dispatch and cannot trigger another mechanical repair before the next model repair. The engine records the owner, patch, source and tentative snapshots, before/after report digests, and decision.
@@ -232,6 +244,8 @@ RFC-91 D11 derives and persists the domain's canonical protected-input closure b
 - Implement D7 as an explicit slice-only host-mechanical-repair phase through RFC-87 prepare/capture/discard and RFC-91 unique-owner composition. Domain verification has no host or model repair writer.
 - Emit D9's context-aware per-profile and mechanical-phase events while keeping timing and cache data outside report fingerprints and lifecycle projection.
 
+
+
 ## Acceptance criteria
 
 1. A host-backed Omnia verification executes the required profile set without any model call or adapter-supplied argv. The engine resolves the opaque handles directly, assembles the phase report, and reports `phase-source: tool`.
@@ -243,3 +257,4 @@ RFC-91 D11 derives and persists the domain's canonical protected-input closure b
 7. Successive slice repair candidates in one verification lineage reuse a warm private cache. Another context, target identity, platform, toolchain, or policy cannot observe it; domain operations inherit no slice cache; cache contents never affect captured snapshots or provide a cached verdict.
 8. Every slice and domain profile execution emits the closed D9 telemetry event with its verification context. Cap-one/four RFC-91 execution and local/remote RFC-92 placement produce the same normalized reports for the same scripted tool outputs.
 9. Native and Wasm integration suites cover direct attestation resolution, profile-set completeness, command-injection refusal, environment and egress denial, resource limits, process-tree cancellation, protected-input write denial, canonical parsing, raw fallback bounds, unique-owner mechanical rollback, domain no-repair behavior, cold confirmation for every assurance class, cache isolation, and telemetry.
+
