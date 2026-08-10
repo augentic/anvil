@@ -1,87 +1,53 @@
 # RFC-91: Staged Refinement
 
-> Status: Draft — corrective workflow substrate for specs-first operation and a prerequisite to [RFC-92](rfc-92-concurrent-execution.md) and [RFC-94](future/rfc-94-streaming-execution.md). It separates the phase scheduler and authority fences that concurrency and streaming extend.
->
-> Owns: the first-class `plan refine` stage; phase-specific leaf readiness; refinement records covering complete build inputs; separation of refinement, build, and commit fences; operation-scoped claims; and the plan scheduler's move from active entries to `(slice, phase)` work items.
->
-> Amends: [RFC-86](rfc-86-change-facts.md) D6, D8, D12, D14, D22, D25, and D26; [RFC-88](rfc-88-detached-changes.md) D7 and D8. It removes `refine-under-epoch`, refine-time target-base capture, and execute's implicit refine-before-build path.
->
-> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md). It can land against today's flat plan and one-member waves while [RFC-88](rfc-88-detached-changes.md) supplies the later detached accepted-CID binding.
->
-> Does not own: recursive discovery and decomposition ([RFC-88](rfc-88-detached-changes.md)); target task decomposition, worker-pool concurrency, domain convergence, or multi-member waves ([RFC-92](rfc-92-concurrent-execution.md)); transport and distributed coordination ([RFC-93](rfc-93-distributed-execution.md)); partial branch publication while survey continues ([RFC-94](future/rfc-94-streaming-execution.md)); or the target build phase machine ([RFC-90](rfc-90-build-verification.md)).
+> Status: Draft. Adds `plan refine`, reviewed refinement manifests, and wave-time target bases. Builds on [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md); [RFC-92](rfc-92-concurrent-execution.md), [RFC-93](rfc-93-distributed-execution.md), and [RFC-94](future/rfc-94-streaming-execution.md) own concurrency, distributed claims, and streaming authority.
 
 ## Intent
 
-Make “generate and review every specification before generating software” an ordinary Emery workflow without turning it into a separate lifecycle or preventing future asynchronous streaming.
-
-The operator workflow becomes:
+*Introduce a workflow step that generates every specification before code generation begins.*
 
 ```text
-plan author → plan refine → review specs and gaps → plan execute → plan archive
+plan author → plan refine → plan execute → plan archive
 ```
 
-The internal workflow is not a plan-wide barrier pipeline. It is a graph of phase work items:
-
-```text
-(slice, refine) → (slice, build) → (slice, merge)
-```
-
-Each phase has its own readiness predicate and input fence. A closed branch may refine while another branch is still being authored under RFC-94; an independently ready refined leaf may build while other leaves refine; no result may commit until a commit-capable closed-plan grant covers the reviewed refinement records.
-
-This RFC makes staged and streaming operation two scheduler policies over one substrate:
-
-- **staged refinement** grants work through `refine`, drains the closed plan's refinement graph, and stops before product-code work;
-- **closed execution** grants work through `commit`, requires existing fresh refinement records, and drains build and merge;
-- **streaming execution** later grants work through `build` over partially published branches and defers commit to a later closed-plan grant.
+`plan refine` drains refinement for a closed plan and stops. `plan execute` accepts only reviewed, fresh refinement manifests; it never synthesizes a replacement and immediately builds it.
 
 ## Problem
 
-### The public surface lost its refinement boundary
+### The public workflow has no specification boundary
 
-RFC-86 preferred shift-left refinement but rejected `plan refine` to preserve a three-verb surface. Its original alternative relied on per-slice refine breakouts. The later plan-centric cut removed those breakouts and made `plan execute` the only driver of `refine → build → merge`.
+The plan-centric cut removed per-slice refine breakouts and made `plan execute` the only driver of `refine → build → merge`. Operators can stop after topology review or after generated software, but not after complete specification generation.
 
-The resulting workflow can stop after topology review or after generated software, but not after complete specification generation. An `execute --until refined` bound appears small, yet it preserves the couplings that prevent refinement from being a real stage.
+An execute stop flag would expose the phase without fixing its inputs or authority. A specs-only run must neither authorize code work nor leave execute free to replace reviewed artifacts.
 
-### Execution dependencies currently block specification generation
+### Execution dependencies block complete refinement
 
-The current scheduler admits a pending entry only when every `depends-on` entry projects `done`. `done` requires merge. A run that never builds or merges can therefore refine only the initial ready frontier; any dependent slice remains unrefined until software is generated upstream.
+The current scheduler admits a pending entry only after every `depends-on` entry projects `done`, which requires merge. A specs-only run can therefore refine only the initial dependency frontier.
 
-This contradicts the requested outcome for ordinary dependency graphs: every in-scope spec should be available for review before generation spend.
+Refinement and build need different dependency predicates:
 
-### Refinement pins a future build base too early
+- dependent refinement waits for predecessor refinement;
+- dependent build waits for predecessor acceptance.
 
-Current refinement freezes the product tree into `base.yaml.target-base`; build later prepares from that snapshot. This couples Evidence extraction and specification synthesis to the code base that a future build will mutate.
+This lets a dependency chain produce all specifications before any software.
 
-For a dependent slice, the correct build base is the accepted result of its dependencies. That value does not exist when the full plan is refined ahead of build. Waiting for dependency merge preserves the pin but defeats specs-first operation; refining early preserves the review seam but makes the code pin stale.
+### Refinement captures the build base too early
 
-Source and planning inputs are knowable at refinement. The target code base is knowable at wave open. They must not share one pin record.
+Refinement currently freezes the product tree into `base.yaml.target-base`; build later prepares from that snapshot. For a dependent slice, the correct build base is the accepted result of its predecessors, which does not exist when the plan is refined.
 
-### Entry status is being used as scheduler authority
+Refinement can close source, planning, guidance, baseline-specification, dependency-refinement, and generated-artifact inputs. The target code base closes only when its wave opens. Those identities must be recorded separately.
 
-The current loop projects a first active `in-progress` entry, resumes it, and advances another entry only when no active entry is selected. A local set of “already refined during this process” can skip a phase, but it cannot make the persistent scheduler understand that one entry is ready for build while another is ready for refine.
+### Execute covers too little reviewed input
 
-The platform contract already permits many slices in flight. Scheduling must select ready phase work, not treat one entry as the cursor for the whole loop.
+`plan.execute.started` currently covers the plan and each leaf's specs tree or `refine-under-epoch`. Target generation also consumes `proposal.md`, `design.md`, `tasks.md`, and adapter-declared additional inputs.
 
-### Authorization covers the wrong boundary
-
-`plan.execute.started` currently mixes three concerns:
-
-- the operator starting execution;
-- coverage for existing specs or unknown future specs through `refine-under-epoch`;
-- authority for build and wave commit.
-
-A specs-only run would stamp code authorization even though no code work was requested. Conversely, RFC-94 needs authority to refine and build without authority to commit. The authority ceiling and the covered inputs must be explicit and independent.
-
-Coverage also names only the specs tree, while target generation consumes the complete refinement output: `proposal.md`, `design.md`, `tasks.md`, per-domain specs, and adapter-declared additional inputs.
+Execute must cover the complete reviewed refinement bundle. `refine-under-epoch` must disappear: unknown future refinement cannot count as reviewed.
 
 ## Terms
 
-- A **phase work item** is `(slice, phase, input-digest)` for one of `refine | build | merge`. The input digest fences a claim against stale work.
-- A **refinement record** is the immutable, content-addressed record of one successful refinement's exact inputs and complete output bundle.
-- A **refinement bundle** is every artifact the target build request may consume for a slice, with path, kind, and content digest.
-- A **phase ceiling** is `refine | build | commit`, the maximum authority granted by one plan-run fact.
-- A **closed-plan grant** binds one reviewed complete plan revision. A **streaming-discovery grant** is RFC-94's partial-publication coverage and may never carry a `commit` ceiling.
-- An **execution dependency** is the existing `depends-on` edge interpreted at each phase: predecessor refinement before dependent refinement, predecessor acceptance before dependent build.
+- A **refinement manifest** is `.emery/slices/<slice>/refinement.yaml`, the canonical record of one successful refinement's exact inputs and complete output bundle.
+- A **refinement bundle** is every slice artifact the assembled target build request may consume, with path, kind, and content digest.
+- A **refinement digest** is the content digest of the canonical manifest.
 - **Accepted** means the predecessor's target wave committed and advanced the target's accepted CID.
 
 ## Operator flow
@@ -90,35 +56,33 @@ Coverage also names only the specs tree, while target generation consumes the co
 
 `emery plan author` continues to survey sources, reconcile or recursively decompose leads, and project terminal leaves into `plan.yaml`. It does not extract Evidence or synthesize slice artifacts.
 
-The operator reviews topology before paying for full extraction and synthesis.
+The operator reviews topology before paying for extraction and synthesis.
 
 ### Refine — complete specifications, no software
 
-`emery plan refine [--slice <slice>...]` opens a closed-plan run with ceiling `refine` and drains eligible refinement work:
+`emery plan refine [--slice <slice>...]` serially drains eligible refinement work:
 
-1. select a leaf whose predecessor refinement records are fresh;
-2. claim its fenced refine work item;
-3. extract every bound source;
-4. synthesize and validate the slice artifacts;
-5. write one immutable refinement record;
-6. release the operation claim;
-7. continue until every selected in-scope leaf has a fresh refinement record or a typed stop occurs.
+1. select an in-scope leaf whose predecessor refinement manifests are fresh;
+2. extract every bound source;
+3. synthesize and validate the slice artifacts;
+4. atomically write its refinement manifest;
+5. continue until every selected leaf is fresh or a typed stop occurs.
 
-Without selectors, the command targets every in-scope leaf. Selectors support focused re-refinement after input correction or a poor synthesis result; dependencies needed to make the selected work coherent are read, not implicitly re-refined unless stale.
+Without selectors, the command targets every in-scope leaf. Selectors include the stale or missing predecessor closure needed to make the selected work coherent.
 
-Successful refinement may contain `[unknown]`, `[conflict]`, or `[divergence]`. As today, these are refinement outputs. The command exits successfully after persisting them and points the operator to `emery plan gaps`.
+Successful refinement may contain `[unknown]`, `[conflict]`, or `[divergence]`. Those are review outputs, not refinement failures. The command persists them and points the operator to `emery plan gaps`.
 
-No target build operation, product workspace preparation, target wave, `BuildRecord`, merge gate, or accepted-CID mutation may occur under a refine ceiling.
+No target build operation, product workspace preparation, target wave, `BuildRecord`, merge gate, or accepted-CID mutation may occur during `plan refine`.
 
 ### Review — human-owned
 
-The operator reviews `proposal.md`, `design.md`, `tasks.md`, per-domain specs, provenance, and `plan gaps`. The engine does not add an approval file, checklist, or projected `approved` state.
+The operator reviews `proposal.md`, `design.md`, `tasks.md`, per-domain specs, provenance, and `plan gaps`. The engine adds no approval file, checklist, or projected `approved` state.
 
-Changing an input or refinement artifact invalidates the corresponding refinement record. The operator re-runs `plan refine`; execute never silently re-refines and then builds an unreviewed replacement.
+Changing a covered input or output makes the manifest stale. The operator re-runs `plan refine`; execute never silently re-refines and then builds an unreviewed replacement.
 
 ### Execute — build and commit reviewed refinements
 
-`emery plan execute` requires a fresh refinement record for every in-scope leaf it may build. At start it opens a closed-plan grant with ceiling `commit`, covering the exact refinement-record digests and any explicit unknown waivers.
+`emery plan execute` requires a fresh refinement manifest for every in-scope leaf it may build. At start it appends `plan.execute.started` covering the exact plan and refinement digests plus any explicit unknown waivers.
 
 It then drains the existing engine-owned build and merge phases:
 
@@ -126,51 +90,13 @@ It then drains the existing engine-owned build and merge phases:
 target build → verify ⇄ repair → review ⇄ repair → target-wave merge
 ```
 
-If any selected refinement is missing or stale, execute fails before opening a wave and points to `emery plan refine`. It does not carry `refine-under-epoch`.
+If a manifest is missing or stale, execute fails before opening a workspace or target wave and points to `emery plan refine`.
 
-`--waive <slice>/<req> --reason <reason>` remains execute-only because a waiver authorizes build across a reviewed unknown; it has no meaning during refinement.
+`--waive <slice>/<req> --reason <reason>` remains execute-only because a waiver authorizes build across a reviewed unknown.
 
 ### Archive — unchanged
 
 After publication, `emery plan archive` verifies its existing completion conditions and archives the change.
-
-## Phase readiness
-
-### Refine readiness
-
-A leaf is ready to refine when:
-
-- it is in scope and not dropped;
-- its plan, discovery, lead-catalog, decomposition, target profile, source bindings, and resolved target-guidance identities are closed and available;
-- every `depends-on` predecessor has a fresh refinement record;
-- no live claim owns the same fenced refine work item.
-
-Predecessor refinement records enter the dependent synthesis input as ordered change-local context. The input names each predecessor slice, refinement-record digest, and readable artifact roots. This permits a dependent spec and design to build on reviewed upstream intent without waiting for software or treating upstream slice artifacts as merged baseline.
-
-Independent leaves refine concurrently. A dependency chain refines in topological waves without generating code.
-
-### Build readiness
-
-A leaf is ready to build when:
-
-- it has a fresh refinement record covered by a grant with ceiling `build` or `commit`;
-- its typed gap policy passes under that grant's explicit waivers;
-- every `depends-on` predecessor is accepted;
-- the target's current accepted CID and dependency frontier are available;
-- no incompatible wave or claim owns the work.
-
-The target wave selects its base from the current accepted CID at wave open. It binds the refinement-record digest, dependency frontier, target identity, and build-authorizing grant.
-
-### Merge readiness
-
-A wave is ready to commit when:
-
-- every member has a successful `BuildRecord` bound to the frozen wave;
-- all slice and domain gates pass;
-- a current closed-plan grant with ceiling `commit` covers every member refinement record and waiver;
-- the accepted base and dependency frontier still match.
-
-A streaming-discovery grant can never satisfy the last condition.
 
 ## Decisions
 
@@ -178,31 +104,31 @@ A streaming-discovery grant can never satisfy the last condition.
 
 The public workflow is `plan author → plan refine → plan execute → plan archive`. `/emery:refine` is an ultrathin invoke-and-relay wrapper over `emery plan refine`.
 
-This supersedes RFC-86 D14 and D26. The earlier rejection preserved a three-verb surface around a per-slice breakout that no longer exists. Reconstructing the same stage as `execute --until refined` would preserve the spelling of that decision while reversing its substance.
-
 `plan author` remains topology-only. Refinement is not folded into author because the topology review seam remains valuable.
 
-### D2 — There is no plan-wide Refined lifecycle state
+This supersedes RFC-86 D14 and D26. The earlier rejection preserved a three-verb surface around per-slice breakouts that no longer exist.
 
-Refinement authority and completion are per leaf. `Ready` remains a read-only projection: every in-scope leaf has a fresh refinement record and the clean gap policy passes.
+### D2 — Refinement adds no plan lifecycle state
 
-The plan keeps no mutable lifecycle field and gains no `approved` rung. A batch `plan refine` success means the requested refinement work set reached its bound; it does not stamp a plan state.
+Completion remains per leaf. `Ready` is a read-only projection: every in-scope leaf has a fresh refinement manifest and the clean gap policy passes.
 
-### D3 — One dependency edge has phase-relative satisfaction
+The plan keeps no mutable lifecycle field and gains no `approved` rung. A successful `plan refine` means its requested work set reached the bound; it does not stamp a global Refined state.
 
-The existing acyclic `depends-on` graph remains the ordering graph:
+### D3 — `depends-on` has phase-relative satisfaction
 
-- dependent refine requires predecessor **refined**;
+The existing acyclic graph remains the ordering graph:
+
+- dependent refinement requires predecessor **refined**;
 - dependent build requires predecessor **accepted**;
 - dependent merge revalidates the accepted dependency frontier.
 
-The scheduler does not require predecessor merge merely to author a dependent spec. It also does not ignore dependencies during refinement: predecessor refinement records become explicit pinned context.
+The predecessor's refinement digest and readable artifact roots enter dependent synthesis as ordered change-local context. This does not make predecessor prose Source Evidence or alter artifact authority.
 
-No second dependency graph is introduced until evidence demonstrates a topology that cannot be represented by the phase-relative interpretation.
+No second dependency graph is introduced until retained plans demonstrate that specification ordering and execution ordering differ in practice.
 
-### D4 — A refinement record covers complete generation intent
+### D4 — One manifest covers complete generation intent
 
-After successful synthesis and validation, the engine writes an immutable content-addressed refinement record. Conceptually:
+After successful synthesis and validation, the engine atomically writes one canonical refinement manifest:
 
 ```yaml
 version: 1
@@ -219,191 +145,124 @@ inputs:
   dependencies:
     - slice: shared-types
       refinement: sha256:…
-outputs:
-  proposal.md: sha256:…
-  design.md: sha256:…
-  tasks.md: sha256:…
-  specs/orders/spec.md: sha256:…
-build-inputs:
+bundle:
   - path: proposal.md
+    kind: proposal
     digest: sha256:…
   - path: design.md
+    kind: design
     digest: sha256:…
   - path: tasks.md
+    kind: tasks
     digest: sha256:…
   - path: specs/orders/spec.md
+    kind: spec
     digest: sha256:…
 ```
 
-The concrete schema is generated from a Rust DTO and rejects unknown fields. `build-inputs` covers the canonical build request, including present adapter-declared additional inputs. A required declared input missing at refinement completion prevents the record from becoming fresh.
+The schema is generated from a Rust DTO and rejects unknown fields. `bundle` is assembled from the same canonical input declaration used by the target build request, including present adapter-declared additional inputs. A missing required input prevents successful refinement.
 
-The current artifact files remain the human-readable working projection. Their digest set must match the record before build.
+The artifact files remain the human-readable working view. Freshness recomputes the manifest inputs and bundle against those files; no duplicate `refinements/<digest>.yaml` history or latest-record projection is introduced in this cut. The execute fact and build attempt retain the digest identities they consumed.
 
-### D5 — Target code base is selected at wave open, not refinement
+`baseline-specs` identifies the immutable baseline read by synthesis. Target-wave commits from the same covered plan advance the accepted target but do not stale unbuilt sibling manifests merely because the live baseline moved. Merge continues to use the recorded three-way baseline. Drift outside the covered plan remains a typed validation failure.
 
-Refinement records source, planning, baseline-spec, guidance, dependency-refinement, and output identities. It does not freeze the product tree and carries no `target-base`.
+### D5 — Execute retains the closed-plan authorization event
 
-The wave owns the exact target base. Closed in-place execution selects the current product snapshot at wave open; RFC-88 detached execution selects the target's current accepted CID. Dependent waves therefore naturally start from accepted predecessor results.
+`plan refine` writes planning artifacts and creates no code-work grant. `plan.execute.started` remains the privileged-start fact.
 
-This supersedes RFC-86 D25's refine-time target-base rule. Build still never uses an unrecorded ambient base: wave open records the selected value before any writable workspace is prepared.
+Its closed-plan coverage changes from per-leaf `existing | refine-under-epoch` spec coverage to exact per-leaf refinement digests. Optional unknown waivers remain nested on that fact.
 
-### D6 — `plan.run.started` grants carry an explicit phase ceiling
+`refine-under-epoch` is removed. Execute cannot authorize a refinement that does not yet exist, because doing so would erase the human review boundary.
 
-The command-shaped `plan.execute.started` fact is replaced by `plan.run.started`, a plan-run grant with:
+Generic `plan.run.started` grants, build-only authority, and deferred commit authorization belong to RFC-94, where a second authority mode requires them.
 
-- coverage kind: `closed-plan | streaming-discovery`;
-- phase ceiling: `refine | build | commit`;
-- exact planning revision coverage;
-- per-leaf refinement coverage when the ceiling permits build;
-- optional unknown waivers only when the ceiling permits build;
-- operator/writer identity and sequence.
+### D6 — The target base is selected at wave open
 
-Command mapping is fixed:
+The refinement manifest carries no `target-base`.
 
-- `plan refine` → `closed-plan`, ceiling `refine`;
-- `plan execute` → `closed-plan`, ceiling `commit`;
-- RFC-94 streaming start → `streaming-discovery`, ceiling `build`.
+Closed in-place execution selects the current product snapshot when the wave opens. RFC-88 detached execution selects the target's current accepted CID. The wave persists that value before any writable workspace is prepared, and `BuildRecord.base` continues to bind it.
 
-A lower ceiling can never be inferred upward from completed work. A build result produced under a streaming grant remains inert until a later commit grant covers and revalidates it.
+Dependent waves therefore start from accepted predecessor results without re-refining reviewed specifications.
 
-`refine-under-epoch` is removed. A build-capable grant covers only existing refinement-record digests; unknown future refinement cannot be treated as reviewed.
+This supersedes RFC-86 D25's refine-time target-base rule and preserves RFC-87's invariant that no build consumes an unrecorded ambient base.
 
-There is one grant vocabulary rather than separate incompatible authorization models. `plan.execute.started` is retired in the pre-1.0 cut; no compatibility alias or dual authority projection survives.
+### D7 — This cut uses a serial refinement drain
 
-### D7 — The scheduler selects fenced phase work items
+`plan refine` has a refinement-specific deterministic selector over the closed plan. It does not call `advance_next`, append `plan.entry.advanced`, or convert refined leaves into the execute loop's active cursor.
 
-Scheduler authority moves from “first in-progress entry” to a deterministic set of ready `(slice, phase, input-digest)` work items.
+The first implementation runs under the existing guest marker and stops on the first failed refinement. Re-entry skips fresh manifests and resumes missing or stale work.
 
-Selection order is canonical by target, topological layer, plan order, slice, and phase where a cap requires truncation. RFC-92 may dispatch a bounded antichain concurrently without changing readiness or identity.
+RFC-92 owns the generic phase-work-item scheduler, concurrent work frontiers, and local operation-scoped claims. RFC-93 adds distributed offers, leases, ownership generations, and stale-claim rejection.
 
-A claim names the phase and input digest. It prevents duplicate execution of the same operation, not all future work on the slice. The owner releases it when the operation completes, fails terminally, or is retracted. A later phase or changed input uses a different claim identity.
+### D8 — Status exposes the review seam
 
-Per-entry `pending | in-progress | done` remains a coarse projection:
+`plan status` remains read-only:
 
-- `pending` — no durable phase output and no live work;
-- `in-progress` — a refinement/build record exists short of accepted completion, or a live claim exists;
-- `done` — the existing absorbing wave/archive facts.
+- missing or stale manifests point to `/emery:refine`;
+- fresh manifests with conflicts point to input correction and re-refinement;
+- fresh manifests with unknowns point to correction or explicit execute waivers;
+- clean refinement points to `/emery:execute`;
+- executed entries retain the existing build, merge, stop, and drained projections.
 
-Multiple entries may project `in-progress`; status never treats the first one as the scheduler cursor.
+`Authorized` continues to project from a fresh covering `plan.execute.started`. Refinement alone never presents code work as authorized.
 
-### D8 — Status projects work frontiers and review seams
+### D9 — This is a hard workflow cut
 
-`plan status` remains read-only. It projects:
+Pre-1.0, staged refinement removes:
 
-- counts and coarse entry status;
-- the number of ready, running, blocked, failed, and complete work items per phase;
-- `Ready` from fresh refinement records plus clean gaps;
-- the next operator action.
-
-`Authorized` projects only from a fresh grant with ceiling `build` or `commit`; a refine-only grant never presents code work as authorized.
-
-After author, resume points to `/emery:refine`. After successful refinement:
-
-- conflicts point to input correction and focused re-refinement;
-- unknowns point to correction or an explicit execute waiver;
-- clean refinement points to `/emery:execute`.
-
-Missing or stale refinement always points back to refine. Execute does not repair the review boundary by silently synthesizing new artifacts.
-
-### D9 — Streaming pipelines the same work items
-
-RFC-94 adds partial publication and the `streaming-discovery` grant; it does not add another scheduler.
-
-Under streaming:
-
-1. a closed discovery/decomposition branch publishes immutable revisions;
-2. ready leaves refine against those revisions while survey continues elsewhere;
-3. independent refined leaves may build under a ceiling-`build` grant;
-4. build results persist as immutable snapshots and records but cannot commit;
-5. later branch changes invalidate exactly the refinement and build records whose input digests reference superseded revisions;
-6. a reviewed closed plan opens a ceiling-`commit` grant and revalidates waiting waves before commit.
-
-Execution dependencies still require accepted predecessors for build. Streaming may therefore build independent ready antichains while dependent build layers wait for closed-plan commit. It does not create a speculative accepted-CID chain.
-
-### D10 — This is a hard workflow cut
-
-Pre-1.0, staged refinement replaces:
-
-- `execute --until refined`;
 - execute-time implicit refinement;
 - `refine-under-epoch`;
 - refine-time `target-base`;
-- spec-only authorization coverage;
-- singular active-entry scheduling;
-- lifecycle-long slice claims.
+- spec-only execute coverage.
 
-No compatibility aliases, dual event projections, or fallback reads of the old pin shape survive. Existing projects re-init or recreate active changes across the cut.
+No compatibility aliases, dual coverage projections, or fallback reads of the old pin shape survive. Existing projects re-init or recreate active changes across the cut.
 
-## Persistence and authority
-
-### Refinement records
-
-Immutable records live at `.emery/slices/<slice>/refinements/<digest>.yaml`. The latest successful body is also projected at `.emery/slices/<slice>/refinement.yaml` for direct inspection. The projection is byte-identical to its immutable record; freshness is always recomputed from the immutable record and live covered artifacts.
-
-An interrupted refinement may leave Evidence or staging files but writes no successful refinement record. Re-entry starts a new operation attempt; it does not infer completion from partial files.
-
-### Build and wave records
-
-Wave member inputs replace the current spec-only digest with the refinement-record digest. The spec digest remains available inside the record for requirement-identity and merge checks.
-
-`BuildRecord` continues to bind base/result snapshots, touched paths, wave digest, and terminal build report. RFC-90 attempt and phase reports remain audit evidence rather than lifecycle authority.
-
-Successful target phases may promote target-owned changes such as task progress after build. They do not rewrite the pre-build refinement record. Freshness against the live refinement bundle gates a leaf awaiting build; once built, merge revalidates the immutable refinement input through the wave and `BuildRecord`.
-
-### Commit authorization
-
-The committed wave fact names the commit-capable grant separately from the wave's build grant. Closed execution may use one grant for both. Streaming necessarily uses different grants.
-
-The current serial implementation's reuse of build authorization as commit authorization is retired.
+This amends RFC-86 D6, D8, D12, D14, D22, D25, and D26, plus RFC-88 D7 and D8. RFC-90's target build phase machine is unchanged.
 
 ## Failure and restart
 
-- Refine dispatch or validation failure parks only that fenced refine work item. Independent ready refinement continues when the scheduler policy permits; the batch command returns the typed stop summary after quiescing its local work.
-- Build and merge failures retain RFC-90/RFC-92 stop and retry semantics.
-- A stale input invalidates a queued or completed work item by digest; it does not mutate or delete historical records.
-- Re-running `plan refine` schedules only missing, stale, failed, or explicitly selected refinement work.
-- Re-running `plan execute` reuses valid successful build and domain records, but refuses missing/stale refinement.
-- Claims from a crashed writer expire or retract under RFC-93's fenced-claim policy; desktop re-entry uses the same semantics through its local provider.
+- An interrupted or failed refinement writes no successful manifest for that attempt.
+- Re-running `plan refine` schedules only missing, stale, or explicitly selected work; fresh siblings are not repeated.
+- Re-running `plan execute` reuses valid build records but refuses missing or stale refinement.
+- A changed predecessor refinement invalidates dependent manifests through the recorded dependency digest.
+- A build or merge failure retains RFC-90's stop and retry behavior.
 
 ## Implementation requirements
 
-- Add `emery plan refine [--slice <slice>...]` and the ultrathin `/emery:refine` wrapper. Remove any planned `execute --until refined` surface.
-- Replace the execute loop's active-entry cursor with reusable phase work-item projection and deterministic selection. Both `plan refine` and `plan execute` use that scheduler with different ceilings.
-- Replace lifecycle-long slice claims with fenced operation claims carrying slice, phase, and input digest.
-- Add the typed content-addressed refinement-record schema, atomic persistence, freshness projection, and complete build-input manifest.
-- Pass ordered predecessor refinement records into dependent synthesis.
-- Remove `target-base` from refine-time pin assembly and remove product-tree `freeze` from refinement. Select and persist the target base when opening a wave.
-- Replace wave `MemberInputs.spec` authority with a refinement-record reference while preserving the nested spec identity needed by merge.
-- Replace `plan.execute.started` with the typed `plan.run.started` grant, explicit phase ceilings, and separate build/commit anchors. Remove `refine-under-epoch`.
+- Add `emery plan refine [--slice <slice>...]` and the ultrathin `/emery:refine` wrapper.
+- Add a serial refinement-drain orchestration with phase-relative dependency selection and selector closure.
+- Add the typed `refinement.yaml` schema, atomic persistence, freshness projection, and canonical complete bundle manifest.
+- Pass ordered predecessor refinement digests and artifact roots into dependent synthesis.
+- Remove `target-base` from refine-time pin assembly and product-tree freeze from refinement.
+- Select and persist the target base when opening a wave.
+- Replace wave `MemberInputs.spec` with the refinement digest while preserving nested spec identity needed by merge.
+- Change `plan.execute.started` coverage to exact refinement digests and remove `refine-under-epoch`.
 - Make execute reject missing or stale refinement before any build workspace or target wave is created.
-- Preserve the RFC-90 `build → verify ⇄ repair → review ⇄ repair` machine unchanged.
-- Update plan status, gaps hints, CLI output shapes, skills, workflow standards, RFC-86/88/92/94 relationships, and platform-series documentation in the same change.
-- Keep the native and Wasm providers on one typed transport contract; do not add a WIT source or target operation.
+- Update plan status, gaps hints, CLI output shapes, skills, workflow standards, and platform-series documentation.
+- Keep native and Wasm providers on one typed transport contract; add no source or target WIT operation.
 
 ## Acceptance criteria
 
-1. A three-leaf dependency chain reaches fresh refinement records for all three through one `plan refine` run, in topological order, with no target build/merge event, target wave, `BuildRecord`, product workspace freeze, or product-code change.
-2. Two independent leaves refine concurrently under the RFC-92 pool and produce the same canonically ordered records and status projection as cap one.
-3. A dependent refinement input binds its predecessor's refinement-record digest. Re-refining the predecessor invalidates the dependent and schedules it again.
-4. A successful refinement record covers every path the assembled target build request consumes. Changing `proposal.md`, `design.md`, `tasks.md`, a spec, or an adapter-declared additional input makes execute refuse before wave open.
-5. A dependent build opens only after predecessor acceptance and records the target's then-current accepted CID as its wave base. No refine-time target-base exists.
-6. A refine-ceiling grant cannot dispatch build or merge. A build-ceiling streaming grant cannot commit. A commit-ceiling closed-plan grant may commit only covered, revalidated refinement and build results.
-7. Execute over an unrefined or stale leaf returns a typed refinement-required result and never auto-refines. Re-running refine repairs the condition; re-running execute resumes normally.
-8. Refinement succeeds with typed gaps. Conflicts remain non-waiveable; unknown waivers remain execute-only and are bound to the covered refinement record.
-9. Multiple entries and phases may be in progress concurrently. Status and scheduling do not depend on a singular active entry, and duplicate claims on the same fenced work item fail.
-10. An interrupted refinement writes no successful record; restart neither treats partial artifacts as fresh nor repeats already valid sibling refinements.
-11. A streaming fixture surveys one branch while another refines and an independent third leaf builds. No wave commits until a later closed-plan commit grant; a superseded branch revision invalidates only its digest-bound descendants.
-12. Existing RFC-90 success, repair, review-remediation, failure, and attempt-abandonment fixtures pass without target WIT changes.
-13. `cargo make ci`, the wasm32 engine compile-check, native integration suites, and the operator-invoked streaming evaluation fixture pass.
+1. A three-leaf dependency chain reaches fresh manifests for all leaves through one serial `plan refine`, in topological order, with no target operation, wave, `BuildRecord`, product workspace freeze, or product-code change.
+2. `plan refine --slice <leaf>` includes only the stale or missing predecessor closure needed by that leaf and skips fresh siblings.
+3. A dependent manifest binds its predecessor's refinement digest; changing the predecessor invalidates the dependent.
+4. Every path consumed by the assembled target build request appears in the refinement bundle. Changing any covered path makes execute refuse before wave open.
+5. Execute over an unrefined or stale leaf returns a typed refinement-required result and never auto-refines.
+6. A dependent build opens only after predecessor acceptance and records the then-current target CID as its wave base.
+7. Refinement succeeds with typed gaps. Conflicts remain non-waiveable; unknown waivers remain execute-only and bind to the covered refinement digest.
+8. An interrupted refinement writes no successful manifest; restart neither treats partial artifacts as fresh nor repeats valid sibling refinements.
+9. Existing RFC-90 success, repair, review-remediation, failure, and attempt-abandonment fixtures pass without target WIT changes.
+10. `cargo make ci`, the wasm32 engine compile-check, and native integration suites pass.
 
 ## Rejected alternatives
 
-- **`plan execute --until refined` over the current loop** — refines only the merge-ready frontier, stamps code authorization for a specs-only request, retains refine-time code pins, and requires process-local skip state around an entry scheduler that does not understand phase work.
-- **Rename execute to build** — target `build` means generation only. The operator stage also owns verification, repair, review, wave merge, and accepted-CID progression; `execute` remains the accurate umbrella.
-- **Fold refinement into author** — removes topology review and pays extraction/synthesis cost before the operator accepts decomposition.
-- **Keep implicit refine inside execute** — allows newly generated or re-generated specs to enter build without the human review seam this RFC exists to create.
-- **Ignore `depends-on` during refinement** — permits dependent intent to be synthesized without pinning the upstream slice it relies on. Phase-relative satisfaction retains one graph and makes the dependency explicit.
-- **Add a second refinement dependency graph immediately** — duplicates topology before evidence shows that execution and specification ordering differ in practice. A later amendment may split the relation if retained plans demonstrate the need.
-- **Keep refine-time target-base and re-refine after dependencies merge** — repeats nondeterministic extraction and synthesis, invalidates reviewed specs as an ordinary path, and serializes refinement behind code generation.
-- **Treat a plan as globally Refined** — creates a mutable barrier lifecycle that conflicts with partial publication, focused re-refinement, and streaming invalidation. Freshness remains per leaf.
-- **Let a streaming build grant commit when its plan later closes** — upgrades authority retroactively. The later closed-plan gesture must mint an explicit commit-capable grant and revalidate the waiting result.
+- `**plan execute --until refined**` — preserves code authorization and implicit-refinement semantics for a specs-only request.
+- **Fold refinement into author** — removes topology review and pays extraction and synthesis cost before the operator accepts decomposition.
+- **Keep implicit refine inside execute** — permits newly generated specifications to enter build without human review.
+- **Keep refine-time target-base** — makes dependent builds consume a pre-predecessor base or forces ordinary re-refinement after code generation.
+- **Compare refinement baselines to every plan-local merge** — would stale reviewed dependent manifests as their predecessors commit.
+- **Persist immutable refinement-record history now** — the canonical manifest plus digest-bound execute and build records provide the closed-plan review fence; RFC-94 may add retained revisions when partial publication requires them.
+- **Replace the scheduler in this RFC** — serial staged refinement needs a bounded refinement selector, not concurrent phase work items or distributed claim semantics.
+- **Replace `plan.execute.started` with a generic grant now** — closed execution has one authority mode; RFC-94 owns the second mode that justifies generalization.
+- **Treat the plan as globally Refined** — creates mutable barrier state instead of projecting freshness from per-leaf manifests.
+

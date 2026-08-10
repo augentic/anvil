@@ -12,7 +12,7 @@
 > - the shared local pool and its fan-outs
 > - the synthesis payload redesign
 >
-> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-staged-refinement.md). RFC-91 owns phase work-item identity, readiness, grants, and operation claims; this RFC widens ready work into concurrent pools, task graphs, and multi-member waves.
+> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-staged-refinement.md). RFC-91 owns serial staged refinement, reviewed refinement manifests, and wave-time target bases; this RFC replaces the serial entry cursor with phase work items, local operation claims, concurrent pools, task graphs, and multi-member waves.
 >
 > Path-first evidence and lent-tree synthesis inputs are already landed ([workflow](../docs/standards/workflow.md); [CLI output shapes](../docs/reference/cli-output-shapes.md)). Request timeout and session-resume semantics live in the Cursor model backend. This RFC absorbs the former swarm-build and synthesis-redesign scope.
 >
@@ -446,7 +446,7 @@ D8 follows D7's live-eval gate. It changes neither synthesis authority nor prove
 
 After RFC-88 pins topology, `plan author` runs independent initial and focused source surveys concurrently.
 
-The `plan refine` scheduler extracts each selected leaf's bound Evidence concurrently.
+The shared scheduler extracts each selected refinement work item's bound Evidence concurrently.
 
 Results merge in canonical order, never completion order. The order is either binding order or `(source, parent lead, child lead)` order.
 
@@ -473,6 +473,20 @@ Each call's operation key covers the relevant model-capability profile digests. 
 Partial publication and model-spawned recursion remain deferred.
 
 ### D11 — The local scheduler folds ready leaves through domain gates
+
+The scheduler projects deterministic **phase work items** keyed by `(slice, phase, input-digest)` for `refine | build | merge`. The input digest fences dispatch against changed planning, refinement, wave, or dependency inputs.
+
+Readiness remains phase-relative:
+
+- refine requires fresh predecessor refinement manifests;
+- build requires a reviewed refinement manifest, a passing gap policy, and accepted predecessors;
+- merge requires a successful build record, passing gates, and a current accepted frontier.
+
+Unlike RFC-91's serial refinement drain and the landed execute cursor, this scheduler may hold multiple entries and phases in progress. Selection is canonical by target, topological layer, plan order, slice, and phase before the pool cap truncates the ready set.
+
+A local operation claim names the parent work-item identity plus the concrete operation, attempt, and task identity where applicable. It prevents duplicate execution of that operation, not sibling operations, later phases, or changed inputs for the slice, and is released on success, terminal failure, cancellation, or retraction. Task workers remain subordinate to one slice-build work item and gain no slice lifecycle or merge authority.
+
+RFC-93 transports the same work-item identity through durable offers, lease-backed claims, ownership generations, and stale-result rejection. It does not redefine local readiness or selection.
 
 ```mermaid
 flowchart LR
@@ -574,7 +588,7 @@ Missing provider usage remains unknown. Raw model calls, worker count, commits, 
 ## Implementation requirements
 
 - **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add profile-scored task complexity, digest-bound graph and phase records, engine-private `compose`, operator-reviewed protected verification inputs and oracle digests, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
-- **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Use the same scheduler path for both. Add initial survey, focused resurvey, extract, affected-domain, review, task, and repair fan-outs. Add canonical bounded-antichain scheduling, domain records, and multi-member target waves (retire `Wave::enforce_one_member` for the concurrent executor only; keep the same manifest and `target.merge.wave-committed` shape). Aggregate each slice attempt into one `BuildRecord`. Cancellation must reap every call.
+- **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Replace the serial entry cursor with deterministic `(slice, phase, input-digest)` work items and operation-scoped local claims; project phase frontiers and release every terminal, cancelled, or retracted claim. Use the same scheduler path for both caps. Add initial survey, focused resurvey, extract, affected-domain, review, task, and repair fan-outs. Add canonical bounded-antichain scheduling, domain records, and multi-member target waves (retire `Wave::enforce_one_member` for the concurrent executor only; keep the same manifest and `target.merge.wave-committed` shape). Aggregate each slice attempt into one `BuildRecord`. Cancellation must reap every call.
 - **Synthesis implements D7–D8.** Land the engine shelf and pass `omnia-r9k`. Then land staged synthesis and pass `orders-contracts`. Neither final grade may regress.
 - Derive closed graph and domain schemas from Rust DTOs. Reject unknown fields.
 - Persist validated-content digests, operation keys, task-scoped phase events, canonical protected-input closures, and domain records as specified above. Add no extension map or second domain-state artifact.
@@ -591,11 +605,12 @@ Missing provider usage remains unknown. Raw model calls, worker count, commits, 
 5. **Private composition.** The engine composes only same-base, disjoint patches. Every target operation receives a fresh private materialization of the candidate. Targets never receive workspace lifecycle operations. Failure exposes no authoritative workspace or staged-artifact change.
 6. **Concurrent target tasks.** With the pool cap set to four, two target tasks run concurrently in isolated workspaces. Cancellation reaps both. Caps of one and four produce the same ordered composition and one slice-wide result.
 7. **Synthesis staging.** Synthesis loads nonessential playbook prose from the engine shelf. Its answer returns no artifact bodies. The engine promotes its staged tree only after validation.
-8. **Concurrent discovery and refinement feedback.** Concurrent survey and extract preserve canonical order. A refinement boundary escalation runs focused surveys and affected-domain decomposition concurrently, then produces one byte-stable inert proposal without promoting slice artifacts. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
+8. **Concurrent discovery and refinement feedback.** Concurrent survey and extract preserve canonical order. Two independent refinement work items may run concurrently and produce the same canonically ordered manifests and status projection as cap one. A refinement boundary escalation runs focused surveys and affected-domain decomposition concurrently, then produces one byte-stable inert proposal without promoting slice artifacts. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
 9. **Domain restart.** Independent leaves pass both same-target domain gates. Each operation key and record bind the canonical protected-input closure. On restart, the engine reuses each digest-bound record and candidate without repeating composition or verification.
 10. **Atomic waves.** Two same-base leaves merge under one wave commit only after both complete. Retry preserves membership. Amendment retracts the uncommitted wave. Replay is idempotent. Dependencies use accepted bases. Complete-round failure blocks drain and RFC-89 sealing without rolling back accepted waves.
 11. **Quality gates.** `cargo make ci` passes in every touched repository. D8 goldens regenerate. The `omnia-r9k` and `orders-contracts` live grades do not regress.
 12. **Harness economics.** Cap-one and cap-four live fixtures use the same source set, model configuration, time budget, and blind acceptance set. The acceptance set is unavailable to every workflow model call and does not affect lifecycle. Results report D13's accepted-outcome, induced-worker-cost, graph-stability, amendment, and contention projections when their raw observations exist; missing provider usage stays unknown.
+13. **Phase scheduling and claims.** Refine, build, and merge work may be in progress on different slices simultaneously. Status and selection do not depend on a singular active entry. Duplicate local claims on one fenced operation fail; a changed parent input creates a distinct work-item identity; every terminal, cancelled, or retracted operation releases its claim.
 
 ## Rejected alternatives
 
