@@ -167,6 +167,7 @@ impl From<crate::seam::Report> for Report {
             findings: report.findings.into_iter().map(Into::into).collect(),
             outputs: report.outputs.into_iter().map(Into::into).collect(),
             ui_surface: report.ui_surface.map(Into::into),
+            covered: report.covered,
         }
     }
 }

@@ -231,6 +231,9 @@ async fn finalize(
     }
 
     report.enforce_no_blocking()?;
+    // A deferred requirement is out of build scope (RFC-86a D4); a
+    // report claiming it is a contract violation.
+    report.enforce_deferred_not_covered(&request.deferred)?;
     // Declared outputs live in the private workspace until capture.
     report.enforce_outputs_exist(Path::new(&workspace.root))?;
     if report.status == BuildStatus::Failure {
@@ -250,7 +253,8 @@ async fn finalize(
         .capture(workspace.id.clone())
         .await
         .map_err(|err| workspace_failure("capture", slice, &err))?;
-    BuildRecord::from_capture(patch, wave, report.clone()).write(slice_dir)?;
+    let consumed = request.deferred.iter().map(|req| req.requirement_digest.clone()).collect();
+    BuildRecord::from_capture(patch, wave, report.clone(), consumed).write(slice_dir)?;
 
     slice_actions::transition(slice_dir, LifecycleStatus::Built, now)?;
 
@@ -270,7 +274,10 @@ fn write_request(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
     manifest_inputs: &[project::adapter::BuildInputDeclaration],
 ) -> Result<BuildRequest, Error> {
-    let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir())?;
+    // The build's exclusion set (RFC-86a D4): every deferred gap row
+    // on the slice, projected from the dispositions at request time.
+    let deferred = crate::build::deferred::live_deferred(layout, slice)?;
+    let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir(), deferred)?;
     let yaml = project::fs::yaml(&request)?;
 
     let build_dir = slice_dir.join("build");

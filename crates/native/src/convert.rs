@@ -156,6 +156,7 @@ pub fn widen_report(id: &str, slice: String, report: aseam::Report) -> BuildRepo
         report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
+        report.covered,
     )
 }
 

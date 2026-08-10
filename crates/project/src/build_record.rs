@@ -27,6 +27,12 @@ pub struct BuildRecord {
     pub wave: SnapshotId,
     /// Typed build report validated by the finalize tail.
     pub report: BuildReport,
+    /// Sorted requirement-body digests of the deferred set this build
+    /// consumed (RFC-86a D4) — the input fence for disposition drift:
+    /// a built slice whose live disposition set no longer matches is
+    /// stale, exactly like pin drift. Empty when nothing was deferred.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub deferred: Vec<String>,
 }
 
 /// Result of persisting a content-addressed build record.
@@ -39,15 +45,20 @@ pub struct Written {
 }
 
 impl BuildRecord {
-    /// Assemble a record from the captured patch, open wave, and report.
+    /// Assemble a record from the captured patch, open wave, report,
+    /// and the consumed deferred digest set (sorted on entry).
     #[must_use]
-    pub fn from_capture(patch: CodePatch, wave: SnapshotId, report: BuildReport) -> Self {
+    pub fn from_capture(
+        patch: CodePatch, wave: SnapshotId, report: BuildReport, mut deferred: Vec<String>,
+    ) -> Self {
+        deferred.sort_unstable();
         Self {
             base: patch.base,
             result: patch.result,
             touched: patch.touched,
             wave,
             report,
+            deferred,
         }
     }
 

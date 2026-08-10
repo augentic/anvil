@@ -95,7 +95,9 @@ fn stage_wave_and_record(session: &Session, slice: &str, base: SnapshotId) -> Sn
             findings: vec![],
             outputs: vec![],
             ui_surface: None,
+            covered: vec![],
         },
+        vec![],
     );
     record.write(&layout.slice_dir(slice)).expect("write build record");
     opened.digest
@@ -257,7 +259,9 @@ async fn stale_record_with_newer_mtime_is_not_merged() {
             findings: vec![],
             outputs: vec![],
             ui_surface: None,
+            covered: vec![],
         },
+        vec![],
     );
     let written = stale_record.write(&layout.slice_dir("login-flow")).expect("write stale record");
     let future = std::time::SystemTime::now() + std::time::Duration::from_hours(1);

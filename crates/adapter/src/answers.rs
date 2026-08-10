@@ -182,6 +182,10 @@ pub struct ReportAnswer {
     /// Optional UI-surface signal.
     #[serde(default)]
     pub ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids the operation claims to have
+    /// implemented; must never name a deferred requirement.
+    #[serde(default)]
+    pub covered: Vec<String>,
 }
 
 impl ReportAnswer {
@@ -200,6 +204,7 @@ impl ReportAnswer {
             findings: self.findings.into_iter().map(Diagnostic::into_finding).collect(),
             outputs: self.outputs,
             ui_surface: self.ui_surface,
+            covered: self.covered,
         }
     }
 }

@@ -38,4 +38,4 @@ pub(crate) use synthesis::render::provenance_lines;
 pub(crate) use synthesis::wire::{
     DomainDetail, SourceInput, SynthesisInputs, SynthesisResponse, inputs,
 };
-pub use validate::pins_drifted;
+pub use validate::{dispositions_drifted, pins_drifted};

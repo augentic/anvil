@@ -357,6 +357,7 @@ fn widen_report(id: &str, slice: String, report: target::Report) -> BuildReport 
         report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
+        report.covered,
     )
 }
 

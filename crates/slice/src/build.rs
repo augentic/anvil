@@ -4,3 +4,4 @@
 //! the closed-shape request/report DTOs live in [`project::seam::wire`].
 
 pub mod assemble;
+pub mod deferred;

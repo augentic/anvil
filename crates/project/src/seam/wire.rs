@@ -31,6 +31,28 @@ pub struct BuildRequest {
     pub project_dir: PathBuf,
     /// Slice tree plus the resolved artifact paths.
     pub inputs: BuildInputs,
+    /// Requirements excluded from this build's obligations (RFC-86a
+    /// D4): one entry per deferred gap row on the slice, assembled
+    /// from the disposition projection at request time. Empty when
+    /// nothing is deferred.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub deferred: Vec<DeferredRequirement>,
+}
+
+/// One requirement excluded from a build's obligations (RFC-86a D4):
+/// the slice-local id and title for the target's prompt rendering,
+/// plus the canonical body digest binding the exclusion to exact
+/// content.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct DeferredRequirement {
+    /// Slice-local requirement id (`REQ-NNN`) — advisory presentation.
+    pub id: String,
+    /// Requirement title.
+    pub title: String,
+    /// Canonical requirement-body digest (`sha256:<hex>`) — the
+    /// deferral match key.
+    pub requirement_digest: String,
 }
 
 /// The slice tree root plus the rendered artifacts the target consumes.
@@ -132,6 +154,12 @@ pub struct BuildReport {
     /// Optional per-slice UI-surface signal.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids (`REQ-NNN`) the adapter claims to
+    /// have implemented; defaults to `[]`. The finalize gate rejects
+    /// any intersection with the request's `deferred[]` exclusion set
+    /// (RFC-86a D4).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub covered: Vec<String>,
 }
 
 impl BuildReport {
@@ -143,7 +171,7 @@ impl BuildReport {
     #[must_use]
     pub fn stamped(
         id: &str, slice: String, status: BuildStatus, findings: Vec<Diagnostic>,
-        outputs: Vec<BuildOutput>, ui_surface: Option<UiSurface>,
+        outputs: Vec<BuildOutput>, ui_surface: Option<UiSurface>, covered: Vec<String>,
     ) -> Self {
         Self {
             version: BUILD_VERSION,
@@ -153,6 +181,7 @@ impl BuildReport {
             findings,
             outputs,
             ui_surface,
+            covered,
         }
     }
 
@@ -177,6 +206,40 @@ impl BuildReport {
             ));
         }
         Ok(())
+    }
+
+    /// Reject a report claiming coverage of a requirement the request
+    /// excluded from build scope (RFC-86a D4).
+    ///
+    /// A deferred requirement is out of the build's obligations — no
+    /// implementation, scaffolding, or placeholders — so a report
+    /// whose `covered[]` intersects the request's `deferred[]` ids is
+    /// a contract violation regardless of status.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Validation`] keyed on
+    /// `target-build-deferred-covered` (exit code 2) naming every
+    /// claimed deferred requirement.
+    pub fn enforce_deferred_not_covered(&self, deferred: &[DeferredRequirement]) -> Result<()> {
+        let claimed: Vec<&str> = deferred
+            .iter()
+            .filter(|req| self.covered.contains(&req.id))
+            .map(|req| req.id.as_str())
+            .collect();
+        if claimed.is_empty() {
+            return Ok(());
+        }
+        Err(Error::validation_failed(
+            "target-build-deferred-covered",
+            "a build report never claims coverage of a deferred requirement",
+            format!(
+                "slice `{}` report claims coverage of deferred requirement(s) {} — deferred \
+                 requirements are excluded from build scope and conserved as debt",
+                self.slice,
+                claimed.join(", ")
+            ),
+        ))
     }
 
     /// Reject a [`BuildStatus::Success`] report whose `outputs[]`

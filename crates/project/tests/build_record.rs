@@ -18,6 +18,7 @@ fn sample_report(slice: &str) -> BuildReport {
         findings: vec![],
         outputs: vec![],
         ui_surface: None,
+        covered: vec![],
     }
 }
 
@@ -36,6 +37,7 @@ fn write_and_load_latest_round_trip() {
         },
         cid('c'),
         sample_report("login-flow"),
+        vec![],
     );
     let written = record.write(&slice_dir).expect("write");
     assert!(written.path.is_file());
@@ -62,6 +64,7 @@ fn load_for_wave_selects_by_wave_not_mtime() {
         },
         cid('c'),
         sample_report("login-flow"),
+        vec![],
     );
     authorized.write(&slice_dir).expect("write authorized");
 
@@ -75,6 +78,7 @@ fn load_for_wave_selects_by_wave_not_mtime() {
         },
         cid('e'),
         sample_report("login-flow"),
+        vec![],
     );
     let written = decoy.write(&slice_dir).expect("write decoy");
     let future = std::time::SystemTime::now() + std::time::Duration::from_hours(1);

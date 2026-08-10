@@ -156,6 +156,20 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             step
         };
 
+        // Build staleness (RFC-86a D4): a built slice whose live
+        // deferred set drifted from its build record re-builds; the
+        // gap gate re-adjudicates any reopened rows first.
+        let step = if step == LoopStep::Merge
+            && slice::dispositions_drifted(layout, &layout.slice_dir(&slice), &slice)?
+        {
+            tracing::info!(
+                "deferred dispositions drifted for {slice} — re-building under this epoch"
+            );
+            LoopStep::Build
+        } else {
+            step
+        };
+
         tracing::info!("{step} {slice} [entry {entry}/{total}] …");
         // Gap policy + epoch freshness gate build before the target
         // orchestration (`plan-gaps-unresolved` / `plan-epoch-stale`);

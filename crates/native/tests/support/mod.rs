@@ -356,6 +356,7 @@ fn echo(path: String) -> Report {
     Report {
         status: Status::Success,
         findings: Vec::new(),
+        covered: Vec::new(),
         outputs: vec![BuildOutput {
             platform: Platform::Core,
             path,

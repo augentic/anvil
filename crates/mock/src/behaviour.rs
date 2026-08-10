@@ -5,8 +5,8 @@
 
 pub use source::{extract, survey};
 pub use targets::{
-    BUILD_DIR, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER, build,
-    build_artifact_path, guidance, merge,
+    BUILD_DIR, CLAIM_COVERED_MARKER, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER,
+    FAIL_MERGE_PREFLIGHT_MARKER, build, build_artifact_path, guidance, merge,
 };
 
 mod source {
@@ -192,6 +192,11 @@ mod targets {
     /// report while it exists.
     pub const FAIL_BUILD_MARKER: &str = "mock-fail-build";
 
+    /// Marker file (project-root-relative) whose whitespace-separated
+    /// requirement ids the build report claims as `covered[]` while it
+    /// exists — for the deferred-coverage report gate.
+    pub const CLAIM_COVERED_MARKER: &str = "mock-claim-covered";
+
     /// Directory (project-root-relative) mock builds write their
     /// observable output into.
     pub const BUILD_DIR: &str = "mock-build";
@@ -247,7 +252,18 @@ mod targets {
         }
         std::fs::write(&path, build_artifact(id, slice, inputs))
             .map_err(|err| Error::Io(err.to_string()))?;
-        Ok(report(Status::Success, vec![core_output(relative)]))
+        let mut success = report(Status::Success, vec![core_output(relative)]);
+        success.covered = claimed_covered(project_root);
+        Ok(success)
+    }
+
+    /// Requirement ids the build claims as `covered[]`: the
+    /// whitespace-separated contents of the [`CLAIM_COVERED_MARKER`]
+    /// control-plane file, empty when absent.
+    fn claimed_covered(project_root: &Path) -> Vec<String> {
+        std::fs::read_to_string(project_root.join(CLAIM_COVERED_MARKER))
+            .map(|text| text.split_whitespace().map(ToString::to_string).collect())
+            .unwrap_or_default()
     }
 
     /// Marker file (project-root-relative) that flips the preflight merge
@@ -285,6 +301,7 @@ mod targets {
             findings: Vec::new(),
             outputs,
             ui_surface: None,
+            covered: Vec::new(),
         }
     }
 

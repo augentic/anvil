@@ -92,7 +92,9 @@ fn stage_wave_and_record(session: &Session, base: SnapshotId) {
             findings: vec![],
             outputs: vec![],
             ui_surface: None,
+            covered: vec![],
         },
+        vec![],
     );
     record.write(&layout.slice_dir(SLICE)).expect("write build record");
 }

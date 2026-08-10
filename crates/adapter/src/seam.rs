@@ -359,6 +359,10 @@ pub struct Report {
     pub outputs: Vec<BuildOutput>,
     /// Optional UI-surface signal.
     pub ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids the operation claims to have
+    /// implemented. Must never name a requirement from the build
+    /// request's `deferred[]` exclusion set (RFC-86a D4).
+    pub covered: Vec<String>,
 }
 
 impl Report {
@@ -371,6 +375,7 @@ impl Report {
             findings: Vec::new(),
             outputs: Vec::new(),
             ui_surface: None,
+            covered: Vec::new(),
         }
     }
 }

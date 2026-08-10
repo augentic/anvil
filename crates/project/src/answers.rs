@@ -51,6 +51,11 @@ struct ReportAnswer {
     /// Optional UI-surface signal.
     #[serde(default)]
     ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids (`REQ-NNN`) the operation claims to
+    /// have implemented; default `[]`. Must never name a requirement
+    /// from the build request's `deferred[]` exclusion set.
+    #[serde(default)]
+    covered: Vec<String>,
 }
 
 /// Generate the root answer schema for `T`, stamping the `$id`,
