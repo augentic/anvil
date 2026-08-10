@@ -303,9 +303,12 @@ impl<S: Target + Workspaces> Machine<'_, S> {
             return match self.commit(&report).await {
                 Ok(patch) => match self.promoted(&report, patch, verification) {
                     Ok(outcome) => Ok(outcome),
-                    // The promotion itself succeeded and is not
-                    // reversible; the orderly fail path still persists
-                    // the failed terminal report and discards the stage.
+                    // Pre-record terminal-tail failures only (attempt
+                    // copy, canonical projection, or `BuildRecord`
+                    // write). Once the record lands, `promoted` never
+                    // returns `Err` — rewriting the success report as
+                    // failure would disagree with the record plan
+                    // progress keys off.
                     Err(error) => {
                         let finding = gate::engine_finding(
                             &error.variant_str(),
@@ -393,8 +396,12 @@ impl<S: Target + Workspaces> Machine<'_, S> {
 
     /// The post-promotion success tail: persist the terminal report
     /// (attempt copy + canonical projection), write the
-    /// `BuildRecord`, discard the stage, and gate the `built`
-    /// transition.
+    /// `BuildRecord`, discard the stage, and stamp `completed_at`.
+    ///
+    /// Once the `BuildRecord` lands, success is committed — stage
+    /// discard and the lifecycle stamp are best-effort so a later
+    /// failure cannot overwrite the canonical success report (plan
+    /// progress and `Built` both project from the record).
     fn promoted(
         &self, report: &BuildReport, patch: CodePatch, verification: Option<PhaseSource>,
     ) -> Result<BuildOutcome, Error> {
@@ -403,7 +410,14 @@ impl<S: Target + Workspaces> Machine<'_, S> {
         BuildRecord::from_capture(patch, self.wave.clone(), report.clone())
             .write(self.slice_dir)?;
         stage::discard(&self.attempt.dir);
-        slice_actions::transition(self.slice_dir, LifecycleStatus::Built, self.now)?;
+        if let Err(err) =
+            slice_actions::transition(self.slice_dir, LifecycleStatus::Built, self.now)
+        {
+            tracing::warn!(
+                "built timestamp stamp failed after BuildRecord write for slice `{}`: {err}",
+                self.slice
+            );
+        }
         Ok(BuildOutcome {
             slice: self.slice.to_string(),
             target: report.target.clone(),

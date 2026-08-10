@@ -652,7 +652,10 @@ pub struct PhaseFinding {
     #[serde(default)]
     pub rule_id: Option<String>,
     /// Additional codex ids that informed the finding.
-    #[serde(default)]
+    ///
+    /// The phase-report answer schema (from [`diagnostics::Diagnostic`])
+    /// admits `null`; treat that the same as omission / `[]`.
+    #[serde(default, deserialize_with = "null_as_default")]
     pub related_rule_ids: Vec<String>,
     /// Short finding title.
     pub title: String,
@@ -688,6 +691,16 @@ impl PhaseFinding {
     pub const fn blocking(&self) -> bool {
         matches!(self.kind, FindingKind::Violation) && self.severity.blocking()
     }
+}
+
+/// Deserialize a field that the answer schema admits as `T | null`
+/// into `T`, treating `null` as [`Default::default`].
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 /// The typed result of exactly one build-phase operation — mirrors

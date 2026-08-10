@@ -2,8 +2,8 @@
 //! the report projection onto the compact seam types.
 
 use adapter::answers::{
-    EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, REPORT_ANSWER_SCHEMA, ReportAnswer,
-    parse_evidence, parse_leads, validate_evidence, validate_leads,
+    EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, PHASE_REPORT_ANSWER_SCHEMA, REPORT_ANSWER_SCHEMA,
+    PhaseReportAnswer, ReportAnswer, parse_evidence, parse_leads, validate_evidence, validate_leads,
 };
 use adapter::seam::{Authority, Backing, ClaimKind, Error, Severity, Status};
 
@@ -13,6 +13,7 @@ fn schema_pins() {
         (LEADS_ANSWER_SCHEMA, "leads.schema.json"),
         (EVIDENCE_ANSWER_SCHEMA, "evidence.schema.json"),
         (REPORT_ANSWER_SCHEMA, "report.schema.json"),
+        (PHASE_REPORT_ANSWER_SCHEMA, "phase-report.schema.json"),
     ] {
         let on_disk = std::fs::read_to_string(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/answers").join(file),
@@ -187,4 +188,30 @@ fn report_projection() {
     assert_eq!(minimal.status, Status::Success);
     assert!(minimal.findings.is_empty() && minimal.outputs.is_empty());
     assert!(minimal.ui_surface.is_none());
+}
+
+/// Schema-gated phase answers may emit `"related-rule-ids": null`
+/// (Diagnostic wire); the answer deserializer must accept that.
+#[test]
+fn phase_report_null_related_rule_ids() {
+    let report = PhaseReportAnswer::parse(
+        r#"{
+            "outcome": "completed",
+            "source": "model-assisted",
+            "findings": [{
+                "title": "Unused import",
+                "severity": "suggestion",
+                "source": "model-assisted",
+                "artifact": "code",
+                "evidence": {"kind": "snippet", "value": "import unused"},
+                "impact": "Noise.",
+                "remediation": "Delete it.",
+                "related-rule-ids": null
+            }]
+        }"#,
+    )
+    .expect("null related-rule-ids deserializes")
+    .into_report();
+
+    assert!(report.findings[0].related_rule_ids.is_empty());
 }
