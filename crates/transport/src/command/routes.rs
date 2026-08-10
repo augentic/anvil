@@ -240,6 +240,13 @@ where
         "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
     );
     route!(
+        ["plan", "defer"],
+        plan::DeferArgs,
+        ::change::plan::handlers::Defer,
+        "Durably defer one or more open gap requirements (`<slice>/<req>` + `--reason`) by appending digest-bound `gap.deferred` facts; `--retract` reopens live deferrals",
+        "Durably defer one or more open gap requirements by appending digest-bound `gap.deferred` journal facts (RFC-86a D3).\n\nThe explicit disposition act one level below `plan drop` (drop : slice :: defer : requirement): the requirement's `(slice, digest)` pair is covered across resumes and fresh epochs with no re-supply. A re-refine that reshapes the requirement body lapses the deferral automatically; restoring the exact body revives it. `--retract` appends `gap.deferral-retracted` and must name a live deferral.\n\nWrites journal facts only — `plan.yaml`, `model.yaml`, and `spec.md` are untouched; `emery plan gaps` projects the resulting dispositions. Refuses unknown selectors, a missing `--reason` on defer, `[divergence]` rows, and retractions of non-live deferrals with `plan-deferral-invalid` (exit 2). CLI-only, like `plan drop` — no skill wrapper."
+    );
+    route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
@@ -317,6 +324,7 @@ convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on,
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
 convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason });
+convert!(plan::DeferArgs => ::change::plan::handlers::DeferInput { selectors, reason, retract });
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });

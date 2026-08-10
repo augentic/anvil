@@ -156,6 +156,9 @@ impl Error {
                 "plan-waiver-invalid" => Some(
                     "pair every `--waive <slice>/<req>` with one `--reason` and waive only open `[unknown]` findings; `emery plan gaps` lists the inventory",
                 ),
+                "plan-deferral-invalid" => Some(
+                    "defer names open `[unknown]` / `[conflict]` rows from `emery plan gaps` as `<slice>/<req>` and requires `--reason`; `--retract` must name a live deferral",
+                ),
                 "guest-marker-held" => Some(
                     "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
                 ),
