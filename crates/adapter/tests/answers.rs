@@ -2,8 +2,9 @@
 //! the report projection onto the compact seam types.
 
 use adapter::answers::{
-    EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, PHASE_REPORT_ANSWER_SCHEMA, REPORT_ANSWER_SCHEMA,
-    PhaseReportAnswer, ReportAnswer, parse_evidence, parse_leads, validate_evidence, validate_leads,
+    EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, PHASE_REPORT_ANSWER_SCHEMA, PhaseReportAnswer,
+    REPORT_ANSWER_SCHEMA, ReportAnswer, parse_evidence, parse_leads, validate_evidence,
+    validate_leads,
 };
 use adapter::seam::{Authority, Backing, ClaimKind, Error, Severity, Status};
 
