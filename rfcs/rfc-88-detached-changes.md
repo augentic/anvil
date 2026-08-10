@@ -8,7 +8,7 @@
 >
 > Amends RFC-86 D1 (the in-place change home is `.emery/change/`, not all of `.emery/`) and D6 (closed-plan coverage transitively binds model-capability profiles). Amends RFC-87: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 include the target repository's durable state in its tree, the tree identity is named a **CID** in plan and discovery artifacts (RFC-87's `SnapshotId` is that CID), and the interim `apply` is deleted.
 >
-> Later amendment: [RFC-91](rfc-91-staged-refinement.md) replaces D8's `refine-under-epoch` coverage with explicit phase ceilings and immutable refinement-record coverage. D7's accepted-CID rule remains: refinement no longer captures a target base, and wave open selects the current accepted CID before build.
+> Later amendment: [RFC-91](rfc-91-staged-refinement.md) replaces D8's `refine-under-epoch` and spec-only coverage with reviewed refinement-manifest digests. D7's accepted-CID rule remains: refinement no longer captures a target base, and wave open selects the current accepted CID before build.
 
 ## Intent
 
@@ -294,9 +294,9 @@ Target-wave merge prepares the verified composed result, runs every member's sli
 
 ### D8 — Closed execution is the commit-capable start surface
 
-`emery plan execute` verifies that the plan matches `discovery.yaml`, binds the retained lead revision, and is the exact leaf projection of `decomposition.yaml`. Under RFC-91 it then opens a closed-plan grant with ceiling `commit`.
+`emery plan execute` verifies that the plan matches `discovery.yaml`, binds the retained lead revision, and is the exact leaf projection of `decomposition.yaml`. Under RFC-91 it then appends `plan.execute.started` over the reviewed closed plan and exact per-leaf refinement-manifest digests.
 
-The grant carries `plan-digest`, required `discovery-digest`, and sorted per-leaf refinement-record coverage. The plan digest transitively binds the plan's lead, decomposition, and model-capability profile digests; each refinement record binds source, baseline, dependency-refinement, target-guidance, and complete build-input digests. Execution validates those fields against the retained revisions but does not duplicate them on the grant.
+The coverage carries `plan-digest`, required `discovery-digest`, and sorted per-leaf refinement digests. The plan digest transitively binds the plan's lead, decomposition, and model-capability profile digests; each manifest binds source, baseline, dependency-refinement, target-guidance, and complete build-input digests. Execution validates those fields against the retained revisions but does not duplicate them on the event.
 
 Only then may Emery build or commit slices. Any covered change requires the operator to refine again when a refinement input changed and then run execute again. Covered changes include the lead catalog, decomposition, plan, discovery, model-capability profile, target guidance, refinement dependency, and any refinement-bundle artifact.
 

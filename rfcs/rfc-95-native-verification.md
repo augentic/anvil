@@ -1,12 +1,12 @@
 # RFC-95: Native Verification Profiles
 
-> Status: Future draft — deterministic native-verification follow-on, outside the RFC-86…RFC-93 platform-migration series
+> Status: Future draft — deterministic native-verification follow-on outside the RFC-86…RFC-94 platform-migration series
 >
 > Owns: closed host verification profiles, native execution and sandbox policy, canonical tool diagnostics, protected-oracle assurance, report comparison primitives, one explicit bounded host-mechanical-repair phase, verification-lineage caches, and per-profile telemetry.
 >
-> Depends on [RFC-87](../rfc-87-working-trees.md), [RFC-90](../rfc-90-build-verification.md), and [RFC-92](../rfc-92-concurrent-execution.md). No standardized WASI execution capability is on the dependency path: the verifier executes tools natively below the component boundary, and the only WIT surface is a custom host-verification capability in its own package (e.g. `emery:verification`) — an Emery-owned host crate on the `wasi-exec-bits` shape, which owns `emery:exec-bits` the same way — whose native implementation enforces this RFC's working-directory, environment, stdio, cancellation, resource, and sandbox contract.
+> Depends on [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-build-verification.md), and [RFC-92](rfc-92-concurrent-execution.md). No standardized WASI execution capability is on the dependency path: the verifier executes tools natively below the component boundary, and the only WIT surface is a custom host-verification capability in its own package (e.g. `emery:verification`) — an Emery-owned host crate on the `wasi-exec-bits` shape, which owns `emery:exec-bits` the same way — whose native implementation enforces this RFC's working-directory, environment, stdio, cancellation, resource, and sandbox contract.
 >
-> Evidence: [Finitive local-model harness input](../rfc-90-finitive-evidence.md).
+> Evidence posture: [platform evaluation](platform.md#evidence-and-iteration-posture).
 
 
 
@@ -132,7 +132,7 @@ Under RFC-93 placement, the worker-side verifier provider publishes that digest-
 
 ### D4 — Candidate checks and protected oracles remain distinguishable
 
-RFC-92's operator-reviewed `protected-verification-inputs[]` is the authority for in-tree baseline tests and fixtures that workers cannot change. Digest-bound external material must appear in `protected-oracles[]` before a profile may mount it read-only outside the candidate tree. Deployment policy controls how an authorized input or oracle is mounted and consumed; it cannot introduce another identity.
+RFC-92's admission-covered `protected-verification-inputs[]` is the authority for in-tree baseline tests and fixtures that workers cannot change. Digest-bound external material must appear in `protected-oracles[]` before a profile may mount it read-only outside the candidate tree. Deployment policy controls how an authorized input or oracle is mounted and consumed; it cannot introduce another identity.
 
 Candidate-authored tests remain useful: they demonstrate that the candidate passes its own checks. They do not become an independent oracle merely because the host ran them. Every profile report records:
 
@@ -177,7 +177,7 @@ flowchart TD
 
 
 
-A failed slice verification may offer at most one group. Every edit must come from one attested report, apply against the exact candidate, stay within one reviewed task owner's paths, and touch no protected input. Required-profile order and then suggestion-group digest choose among eligible groups.
+A failed slice verification may offer at most one group. Every edit must come from one attested report, apply against the exact candidate, stay within one validated task owner's paths, and touch no protected input. Required-profile order and then suggestion-group digest choose among eligible groups.
 
 The engine applies the complete group in a fresh workspace, captures a tentative snapshot, and reruns every required profile. It keeps the patch only when the originating profile strictly improves and no profile regresses; otherwise it discards the tentative snapshot and routes the original findings to model repair. On acceptance, the engine composes the patch under the owner's grant and makes the tentative candidate and its report current. A clean report advances to review; blocking findings route to model repair. The fix consumes no model-repair dispatch and cannot trigger another mechanical repair before the next model repair. The engine records the owner, patch, source and tentative snapshots, before/after report digests, and decision.
 
@@ -228,7 +228,7 @@ RFC-92's slice, frontier-domain, and complete-domain calls use the same target/p
 
 Only a slice attempt has task owners, RFC-90 model-repair budgets, and D7 host-mechanical-repair authority. A blocking frontier report fails the frozen wave; a blocking complete report preserves accepted waves and blocks dependants and drain, exactly as RFC-92 specifies. A domain verifier never synthesizes a writer, reuses a slice continuation, opens a repair budget, or carries cache state from its child slices.
 
-RFC-92 D11 derives and persists the domain's canonical protected-input closure by intersecting every contributing descendant's reviewed sets and subtracting touched paths. Its digest enters the domain operation key, verifier context, and attestation. The host may attest domain-level `protected` or `mixed` only from that closure; a path protected by only one child contributes no domain assurance.
+RFC-92 D11 derives and persists the domain's canonical protected-input closure by intersecting every contributing descendant's admission-covered sets and subtracting touched paths. Its digest enters the domain operation key, verifier context, and attestation. The host may attest domain-level `protected` or `mixed` only from that closure; a path protected by only one child contributes no domain assurance.
 
 ## Implementation requirements
 
@@ -238,7 +238,7 @@ RFC-92 D11 derives and persists the domain's canonical protected-input closure b
 - Digest parity: attestations bind candidate snapshot ids, so the native verifier must reach the snapshot store through the same omnia-backends filesystem blobstore crate (and the emery `<2 hex>/<62 hex>` sharded-name convention) the engine guest writes through, and must compute ids with the same workspace kernel over its `Objects` seam — a divergent id would unbind every attestation.
 - Real executable bits: verification tools execute natively inside guest-prepared workspaces, so `emery:exec-bits` applying genuine `chmod` during materialization is attestation-critical — a script the guest marked executable must actually be executable when the native verifier runs it.
 - Ship the first-party profile-policy registry, exact command mappings, parsers, and sandbox binding in Emery's deployment-provider layer. Target adapters declare semantic profile names and deterministic in-component checks only; engine crates carry no concrete adapter branch.
-- Preflight all required profiles before the first slice build model call and before each domain operation. Reject missing tools, policies, parsers, sandbox features, reviewed protected inputs, and unsupported tuples as typed `unavailable`.
+- Preflight all required profiles before the first slice build model call and before each domain operation. Reject missing tools, policies, parsers, sandbox features, admission-covered protected inputs, and unsupported tuples as typed `unavailable`.
 - Add host-attested profile reports, assurance, policy/context/candidate binding, canonical normalization, report comparison predicates, and engine assembly from the exact resolved attestation set. Ignore adapter-authored tool findings.
 - Extend RFC-92 candidate materialization with read-only protected-input handles and private verification-lineage caches without sharing product workspaces. Cold-confirm every warm passing required profile.
 - Implement D7 as an explicit slice-only host-mechanical-repair phase through RFC-87 prepare/capture/discard and RFC-92 unique-owner composition. Domain verification has no host or model repair writer.
@@ -252,7 +252,7 @@ RFC-92 D11 derives and persists the domain's canonical protected-input closure b
 2. Missing tools, unsupported platforms, sandbox failures, timeouts, cancellation, parser failure, forged/duplicate/tampered/mismatched attestations, and incomplete profile sets fail closed with distinct typed outcomes before false success; slice preflight failures occur before build model spend.
 3. Equivalent structured output with different durations, process/thread ids, temporary roots, or result ordering produces byte-identical normalized reports and fingerprints.
 4. Consecutive candidate reports compute stable unchanged-set and severity-regression predicates without changing RFC-90's repair budget.
-5. Candidate-owned tests report `assurance: candidate`. A host policy that binds an operator-reviewed protected in-tree or external oracle into the executed command reports `protected` or `mixed`; no worker can modify its protected inputs and a declaration alone cannot upgrade assurance. No warm passing required profile, of any assurance, can gate without cold confirmation.
+5. Candidate-owned tests report `assurance: candidate`. A host policy that binds an admission-covered protected in-tree or external oracle into the executed command reports `protected` or `mixed`; no worker can modify its protected inputs and a declaration alone cannot upgrade assurance. No warm passing required profile, of any assurance, can gate without cold confirmation.
 6. One exact-preimage machine-applicable group under one task owner is captured as a tentative snapshot and kept only after strict originating-profile improvement plus no regression across the complete profile set. Partial, cross-owner, protected-path, unowned, unchanged, and globally regressing groups leave the source candidate unchanged and do not consume a model repair. Domain verification never offers the phase.
 7. Successive slice repair candidates in one verification lineage reuse a warm private cache. Another context, target identity, platform, toolchain, or policy cannot observe it; domain operations inherit no slice cache; cache contents never affect captured snapshots or provide a cached verdict.
 8. Every slice and domain profile execution emits the closed D9 telemetry event with its verification context. Cap-one/four RFC-92 execution and local/remote RFC-93 placement produce the same normalized reports for the same scripted tool outputs.
