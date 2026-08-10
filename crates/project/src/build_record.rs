@@ -126,8 +126,40 @@ impl BuildRecord {
         Ok(Written { digest, path })
     }
 
+    /// Load the build record authorized by `wave` under
+    /// `slice_dir/builds/`.
+    ///
+    /// Selection is by the recorded wave digest, never file mtime, so
+    /// a stale record (earlier epoch, restored tree with scrambled
+    /// timestamps) cannot shadow the authorized build.
+    ///
+    /// # Errors
+    ///
+    /// `slice-build-record-missing` when no record names `wave`;
+    /// `slice-build-record-ambiguous` when more than one does; parse /
+    /// IO failures on present records.
+    pub fn load_for_wave(slice_dir: &Path, wave: &SnapshotId) -> Result<Self, Error> {
+        let mut matches: Vec<Self> =
+            Self::load_all(slice_dir)?.into_iter().filter(|record| record.wave == *wave).collect();
+        match matches.len() {
+            1 => Ok(matches.remove(0)),
+            0 => Err(missing_for_wave(slice_dir, wave)),
+            found => Err(Error::Diag {
+                code: "slice-build-record-ambiguous",
+                detail: format!(
+                    "slice `{}` has {found} build records naming wave `{wave}`; remove the \
+                     stale `builds/<digest>.yaml` duplicates before merging",
+                    slice_name(slice_dir)
+                ),
+            }),
+        }
+    }
+
     /// Load the newest build record under `slice_dir/builds/` (by
     /// modification time; ties break on path).
+    ///
+    /// Inspection helper for labs and tests; merge authority resolves
+    /// the record by its wave fact via [`Self::load_for_wave`].
     ///
     /// # Errors
     ///
@@ -229,14 +261,30 @@ fn load_path(path: &Path) -> Result<BuildRecord, Error> {
     Ok(serde_saphyr::from_str(&text)?)
 }
 
+fn slice_name(slice_dir: &Path) -> &str {
+    slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown")
+}
+
 fn missing(slice_dir: &Path) -> Error {
-    let name = slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown");
     Error::validation_failed(
         "slice-build-record-missing",
         "a built slice carries a fact-substrate build record",
         format!(
-            "slice `{name}` has no `builds/<digest>.yaml`; re-run `emery plan execute` so the \
-             build phase records it before merging"
+            "slice `{}` has no `builds/<digest>.yaml`; re-run `emery plan execute` so the \
+             build phase records it before merging",
+            slice_name(slice_dir)
+        ),
+    )
+}
+
+fn missing_for_wave(slice_dir: &Path, wave: &SnapshotId) -> Error {
+    Error::validation_failed(
+        "slice-build-record-missing",
+        "the merge phase loads the build record its authorized wave names",
+        format!(
+            "slice `{}` has no `builds/<digest>.yaml` recording wave `{wave}`; re-run \
+             `emery plan execute` so the build phase records it before merging",
+            slice_name(slice_dir)
         ),
     )
 }

@@ -49,6 +49,50 @@ fn write_and_load_latest_round_trip() {
 }
 
 #[test]
+fn load_for_wave_selects_by_wave_not_mtime() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let slice_dir = Layout::new(tmp.path()).slice_dir("login-flow");
+    std::fs::create_dir_all(&slice_dir).expect("slice dir");
+
+    let authorized = BuildRecord::from_capture(
+        CodePatch {
+            base: cid('a'),
+            result: cid('b'),
+            touched: vec![],
+        },
+        cid('c'),
+        sample_report("login-flow"),
+    );
+    authorized.write(&slice_dir).expect("write authorized");
+
+    // A decoy under a different wave, written last so it carries the
+    // newest mtime.
+    let decoy = BuildRecord::from_capture(
+        CodePatch {
+            base: cid('a'),
+            result: cid('d'),
+            touched: vec![],
+        },
+        cid('e'),
+        sample_report("login-flow"),
+    );
+    let written = decoy.write(&slice_dir).expect("write decoy");
+    let future = std::time::SystemTime::now() + std::time::Duration::from_hours(1);
+    std::fs::File::options()
+        .write(true)
+        .open(&written.path)
+        .expect("open decoy")
+        .set_modified(future)
+        .expect("set decoy mtime");
+
+    let loaded = BuildRecord::load_for_wave(&slice_dir, &cid('c')).expect("load by wave");
+    assert_eq!(loaded, authorized);
+
+    let err = BuildRecord::load_for_wave(&slice_dir, &cid('f')).expect_err("unknown wave");
+    assert!(err.to_string().contains("slice-build-record-missing"), "{err}");
+}
+
+#[test]
 fn missing_record_is_typed() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let slice_dir = Layout::new(tmp.path()).slice_dir("empty");

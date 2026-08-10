@@ -1,8 +1,7 @@
 //! Wave-commit requirement identity finalization.
 //!
-//! Merge rewrites slice specs, `model.yaml`, `tasks.md`, and the
-//! `related:` ids in `decisions/*.md` in place before the delta fold
-//! so the engine sees final baseline `REQ` ids.
+//! Merge rewrites slice specs, `model.yaml`, `tasks.md`, and decision
+//! `related:` ids in place before the delta fold sees baseline `REQ` ids.
 
 use std::collections::BTreeMap;
 use std::path::Path;

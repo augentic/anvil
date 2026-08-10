@@ -214,6 +214,77 @@ async fn wave_commit_assigns_baseline_ids_and_records_maps() {
     );
 }
 
+/// Merge resolves its build record through the newest
+/// `target.wave.opened` fact — a stale record with a newer mtime never
+/// shadows the authorized build.
+#[tokio::test]
+async fn stale_record_with_newer_mtime_is_not_merged() {
+    let session = Session::scripted("mock", Vec::new());
+    let layout = project::config::Layout::new(session.root());
+    let snapshot = session.provider().freeze().await.expect("freeze");
+
+    // A stale wave from an earlier epoch, opened first.
+    let stale_wave = Wave::one_member(
+        "demo",
+        snapshot.clone(),
+        SliceName::from("login-flow"),
+        SnapshotId::from_digest(&"c".repeat(64)),
+        vec![],
+        EpochRef {
+            writer: "local".into(),
+            sequence: 9,
+        },
+    );
+    let stale_opened = stale_wave.open(layout, ts()).expect("open stale wave");
+
+    // The authorized wave + record (the newest `target.wave.opened`).
+    let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot.clone());
+    stage_built_slice(&session, wave_digest.as_str());
+
+    // Write the stale record last so it carries the newest mtime.
+    let stale_record = project::build_record::BuildRecord::from_capture(
+        project::snapshot::CodePatch {
+            base: snapshot.clone(),
+            result: snapshot,
+            touched: vec![],
+        },
+        stale_opened.digest,
+        project::seam::wire::BuildReport {
+            version: 1,
+            slice: "login-flow".into(),
+            target: "mock@0.0.0".into(),
+            status: project::seam::wire::BuildStatus::Success,
+            findings: vec![],
+            outputs: vec![],
+            ui_surface: None,
+        },
+    );
+    let written = stale_record.write(&layout.slice_dir("login-flow")).expect("write stale record");
+    let future = std::time::SystemTime::now() + std::time::Duration::from_hours(1);
+    fs::File::options()
+        .write(true)
+        .open(&written.path)
+        .expect("open stale record")
+        .set_modified(future)
+        .expect("set stale mtime");
+
+    merge(&session, "login-flow").await.expect("merge succeeds");
+
+    let events = read_union(layout).expect("union");
+    let committed = events
+        .iter()
+        .find_map(|event| match &event.kind {
+            EventKind::TargetMergeWaveCommitted { digest, .. } => Some(digest.clone()),
+            _ => None,
+        })
+        .expect("target.merge.wave-committed");
+    assert_eq!(
+        committed,
+        wave_digest.as_str(),
+        "merge committed the authorized wave, not the mtime-newest record"
+    );
+}
+
 /// Acceptance #3 — two slices refined against the same baseline merge
 /// without requirement-id collision (each keeps slice-local `REQ-001`
 /// until wave commit assigns distinct baseline numbers).

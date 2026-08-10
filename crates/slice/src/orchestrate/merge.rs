@@ -10,7 +10,7 @@ use project::config::{Layout, ProjectConfig};
 use project::journal::{self, EventKind, FactEpochRef, IdentityMap};
 use project::plan::{Plan, Status, collect_events, project_ladders};
 use project::seam::{self, MergePhase, Target, Workspaces};
-use project::snapshot::CodePatch;
+use project::snapshot::{CodePatch, SnapshotId};
 use project::wave::Wave;
 
 use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, identity, slice as slice_merge};
@@ -204,12 +204,16 @@ async fn gated<T: Target>(
     Ok(outcome)
 }
 
-/// Load the newest build record, revalidate its one-member wave, and
-/// project the code patch merge still applies.
+/// Resolve the slice's authorized wave from the fact union, load the
+/// build record that wave names, revalidate the manifest, and project
+/// the code patch merge still applies. Record selection is by wave
+/// fact, never file mtime, so a stale record cannot shadow the
+/// authorized build.
 fn load_wave_commit(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
 ) -> Result<WaveCommit, Error> {
-    let record = BuildRecord::load_latest(slice_dir)?;
+    let opened = opened_wave_digest(layout, slice)?;
+    let record = BuildRecord::load_for_wave(slice_dir, &opened)?;
     let config = ProjectConfig::load(layout.project_dir())?;
     let wave = Wave::load_for_merge(layout, &config.name, slice, &record)?;
     let digest = wave.digest()?.as_str().to_string();
@@ -218,6 +222,32 @@ fn load_wave_commit(
         digest,
         patch: record.to_patch(),
     })
+}
+
+/// The newest `target.wave.opened` fact naming `slice` in the ordered
+/// event union — the wave the build phase authorized (RFC-86 D9).
+fn opened_wave_digest(layout: Layout<'_>, slice: &str) -> Result<SnapshotId, Error> {
+    let events = collect_events(layout)?;
+    let digest = events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.kind {
+            EventKind::TargetWaveOpened {
+                digest, slice_name, ..
+            } if slice_name.as_str() == slice => Some(digest.clone()),
+            _ => None,
+        })
+        .ok_or_else(|| {
+            Error::validation_failed(
+                "target-wave-not-opened",
+                "a merge resolves its build record through the slice's `target.wave.opened` fact",
+                format!(
+                    "no `target.wave.opened` fact names slice `{slice}`; re-run \
+                     `emery plan execute` so the build phase opens a wave before merging"
+                ),
+            )
+        })?;
+    SnapshotId::parse(&digest)
 }
 
 /// Prepare the read-only workspace view of the slice's result snapshot.
