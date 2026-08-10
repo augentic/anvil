@@ -1,6 +1,6 @@
 # RFC-96: Platform Readiness
 
-> Status: Draft — planning spine for the hosted / fleet readiness track that follows the RFC-86…RFC-93 platform-migration series ([platform.md](platform.md))
+> Status: Draft — planning spine for the hosted / fleet readiness track that follows the RFC-86…RFC-94 platform-migration series ([platform.md](platform.md))
 >
 > Owns: the gap taxonomy between today's desktop-shaped deployment and a multi-tenant hosted fleet; the four storage/locality classes every host concern must land in; adapter and change-home readiness; worker capability profiles; model, secret, and operator-ingress host policy; multi-tenancy of deployment roots; and the landing sequence that makes RFC-93's distributed contract operable without inventing a second Emery.
 >
@@ -154,7 +154,7 @@ A deployment may open a distributed session only when its bound documentstore, k
 
 ## Sequencing
 
-Product-ownership order after the RFC-86…RFC-93 stem. Steps may staff in parallel where noted; acceptance of a later step must not redefine an earlier contract.
+Product-ownership order after the RFC-86…RFC-94 stem. Steps may staff in parallel where noted; acceptance of a later step must not redefine an earlier contract.
 
 ```text
 RFC-86…RFC-87   (landed stem)
@@ -248,7 +248,7 @@ RFC-96 Phase A ──► Phase B ──► Phase C ──► Phase D ──► P
 
 | Document | Boundary |
 | -------- | -------- |
-| [platform.md](platform.md) / RFC-86…93 | Product and scale semantics; this RFC makes the host/fleet operable |
+| [platform.md](platform.md) / RFC-86…94 | Product and scale semantics; this RFC makes the host/fleet operable |
 | [RFC-93](rfc-93-distributed-execution.md) | Owns claims, fencing, attach/resume, coordination/value split — readiness implements host bindings and conformance gates |
 | [RFC-95](rfc-95-native-verification.md) | Owns profile execution and attestations — readiness places them on capability-scoped workers and attestation value transport |
 | [architecture.md](architecture.md) | Standing Omnia boundary — readiness is how desktop→cloud stays a backend swap |

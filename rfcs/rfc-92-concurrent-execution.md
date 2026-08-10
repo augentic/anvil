@@ -7,12 +7,12 @@
 > - single-node concurrent execution
 > - engine-orchestrated, target-proposed build-task decomposition
 > - private workspaces and code-patch composition
-> - operator-reviewed protected verification inputs
+> - admission-covered protected verification inputs
 > - domain convergence and multi-member target waves
 > - the shared local pool and its fan-outs
 > - the synthesis payload redesign
 >
-> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-staged-refinement.md). RFC-91 owns serial staged refinement, reviewed refinement manifests, and wave-time target bases; this RFC replaces the serial entry cursor with phase work items, local operation claims, concurrent pools, task graphs, and multi-member waves.
+> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-staged-refinement.md). RFC-91 owns serial staged refinement, reviewable refinement manifests, and wave-time target bases; this RFC replaces the serial entry cursor with phase work items, local operation claims, concurrent pools, task graphs, and multi-member waves.
 >
 > Path-first evidence and lent-tree synthesis inputs are already landed ([workflow](../docs/standards/workflow.md); [CLI output shapes](../docs/reference/cli-output-shapes.md)). Request timeout and session-resume semantics live in the Cursor model backend. This RFC absorbs the former swarm-build and synthesis-redesign scope.
 >
@@ -91,7 +91,7 @@ Tasks need not be independently buildable or mergeable. The composed slice candi
 
 A task graph orders tasks into same-base **task layers**. A later **fan-in task** exclusively owns any shared path.
 
-A **protected verification input** is an exact in-tree file or tree in the reviewed leaf envelope that no build or repair worker may change. A **protected oracle** is external read-only material identified by a reviewed logical id and content digest. Either may hold baseline tests or contract fixtures. Candidate-authored tests remain ordinary writable product paths and provide self-consistency evidence instead.
+A **protected verification input** is an exact in-tree file or tree in the admission-covered leaf envelope that no build or repair worker may change. A **protected oracle** is external read-only material identified by a covered logical id and content digest. Either may hold baseline tests, contract fixtures, or behaviour replays. Candidate-authored tests remain ordinary writable product paths and provide self-consistency evidence instead.
 
 A completed writing worker yields an RFC-87 **code patch**:
 
@@ -186,7 +186,7 @@ Each task-scoped `build` or `repair` returns an RFC-90 phase report. The engine 
 
 The report's ordinal also emits RFC-90's `slice.build.phase-completed` event. Tasks have no independent terminal report. The engine aggregates their reports into the attempt's one terminal result.
 
-On terminal success, that aggregated result feeds one RFC-86 `BuildRecord` at `builds/<digest>.yaml` for the slice attempt — base/result/`touched` of the composed candidate, the open wave digest, and the terminal report. Tasks never mint their own `BuildRecord`, wave, or merge fact.
+On terminal success, that aggregated result feeds one RFC-86 `BuildRecord` at `builds/<digest>.yaml` for the slice attempt — base/result/`touched` of the composed candidate, its authorization-anchor digest, and the terminal report. Closed execution uses the open wave anchor; RFC-94 progressive execution later adds the candidate-batch variant. Tasks never mint their own `BuildRecord`, wave, candidate batch, or merge fact.
 
 The validated graph record is independent of any attempt. Its key is the decomposition operation key.
 
@@ -290,9 +290,9 @@ An adapter may also assemble a candidate graph from deterministic target metadat
 
 The engine lowers RFC-88's slice ownership envelope into RFC-90's exact `file | tree` grammar. Task grants contain no globs and must remain within that envelope.
 
-The reviewed leaf may carry `protected-verification-inputs[]` in the same exact `file | tree` grammar and `protected-oracles[] { id, digest }` for external material. Target metadata may nominate target- and platform-specific defaults during plan authoring, but the metadata has no authority by itself: protection becomes effective only through the operator-reviewed RFC-88 decomposition revision covered by `plan.execute.started`. The later `target.decompose` task-graph operation receives those closed sets and cannot add, remove, or widen them. The engine rejects overlap between any build or repair grant and an in-tree protected input. A target cannot freeze a path or introduce an oracle after authorization.
+The leaf may carry `protected-verification-inputs[]` in the same exact `file | tree` grammar and `protected-oracles[] { id, digest }` for external material. Target metadata may nominate target- and platform-specific defaults during plan authoring, but the metadata has no authority by itself: protection becomes effective only through the exact RFC-88 decomposition revision covered by the current build admission. RFC-91 closed execution supplies operator authorization; RFC-94 may supply policy admission for an unattended candidate build. The later `target.decompose` task-graph operation receives those closed sets and cannot add, remove, or widen them. The engine rejects overlap between any build or repair grant and an in-tree protected input. A target cannot freeze a path or introduce an oracle after admission.
 
-Protected inputs are materialized read-only into every task and candidate-wide verification workspace. Captured writes remain authoritative, and any operation that changes a protected path fails the attempt with a typed ownership finding. Digest-verified oracle material is mounted read-only outside the candidate tree under its reviewed logical id.
+Protected inputs are materialized read-only into every task and candidate-wide verification workspace. Captured writes remain authoritative, and any operation that changes a protected path fails the attempt with a typed ownership finding. Digest-verified oracle material is mounted read-only outside the candidate tree under its covered logical id.
 
 Predicted interaction between disjoint grants becomes a dependency.
 
@@ -314,7 +314,7 @@ RFC-90's output-existence gate checks the fully composed candidate. It does not 
 
 Captured touched paths are authoritative. An out-of-grant write or layer overlap fails the attempt before composition. It also invalidates the graph for the next attempt.
 
-A model may propose the task graph, but the reviewed decomposition already fixes protected inputs. Only engine validation authorizes the graph. Textual merge never resolves ownership.
+A model may propose the task graph, but the admission-covered decomposition already fixes protected inputs. Only engine validation authorizes the graph. Textual merge never resolves ownership.
 
 ### D4 — Concurrency changes dispatch, not semantics
 
@@ -479,8 +479,10 @@ The scheduler projects deterministic **phase work items** keyed by `(slice, phas
 Readiness remains phase-relative:
 
 - refine requires fresh predecessor refinement manifests;
-- build requires a reviewed refinement manifest, a passing gap policy, and accepted predecessors;
+- build requires an exact admission-covered refinement manifest, a passing gap policy, and accepted predecessors;
 - merge requires a successful build record, passing gates, and a current accepted frontier.
+
+RFC-94 progressive candidate mode amends only build readiness: a direct predecessor may be an exact successful `BuildRecord` under the same parent run, and the work-item digest then covers that result plus the current target candidate-frontier digest. Merge readiness is unchanged.
 
 Unlike RFC-91's serial refinement drain and the landed execute cursor, this scheduler may hold multiple entries and phases in progress. Selection is canonical by target, topological layer, plan order, slice, and phase before the pool cap truncates the ready set.
 
@@ -516,7 +518,7 @@ Membership stays frozen until atomic commit or operator amendment. An amendment 
 
 After member builds, the engine groups results by their nearest frontier domain.
 
-A single-target domain derives one canonical protected-input closure before verification. In-tree protection starts as the exact `file | tree` intersection of every contributing descendant's reviewed protected set. The engine removes an entire protected entry when any contributing patch touches that file or any descendant of that tree; it never invents an exclusion grammar or expands a tree into ambient filesystem entries. External protection is the intersection of identical `(id, digest)` oracle entries. The engine persists the closed lists, hashes them, and includes that digest in the domain operation key. An empty intersection is valid and carries no protected-oracle assurance.
+A single-target domain derives one canonical protected-input closure before verification. In-tree protection starts as the exact `file | tree` intersection of every contributing descendant's covered protected set. The engine removes an entire protected entry when any contributing patch touches that file or any descendant of that tree; it never invents an exclusion grammar or expands a tree into ambient filesystem entries. External protection is the intersection of identical `(id, digest)` oracle entries. The engine persists the closed lists, hashes them, and includes that digest in the domain operation key. An empty intersection is valid and carries no protected-oracle assurance.
 
 A single-target `frontier` round composes only that domain's same-base child patches. It then dispatches one `target.verify` over the composed candidate.
 
@@ -534,7 +536,7 @@ A multi-target `complete` round only aggregates ordered child verdicts and depen
 
 A frontier failure blocks the current frozen wave.
 
-A complete-round failure preserves accepted waves. It blocks dependants and drain until an operator-reviewed repair or fan-in leaf advances a new epoch.
+A complete-round failure preserves accepted waves. It blocks dependants and drain until an operator-authorized repair or fan-in leaf advances a new epoch. RFC-98 policy-gated autonomy treats a blocking post-acceptance complete round as a hard stop; it cannot apply standing recovery after accepted-state mutation.
 
 ### D12 — Domain rounds are durable and target waves accept atomically
 
@@ -585,9 +587,27 @@ The retained facts, build phases, graphs, domain records, and available model-ba
 
 Missing provider usage remains unknown. Raw model calls, worker count, commits, and generated lines are activity, not success. These projections neither gate lifecycle nor select a model. They establish the evidence needed to tune fixed budgets, activate model routing, add review lenses, or revisit RFC-88's complete-plan publication in later work.
 
+## Delivery slices
+
+This RFC has two independently useful implementation slices over one scheduler contract:
+
+### Phase A — Work-item scheduler and read-heavy pool
+
+Land `(slice, phase, input-digest)` identity, deterministic ready-frontier projection, cancellation, local operation claims, and the bounded cap-one/cap-four pool. Move initial survey, focused survey, extract, refinement, and independent decomposition judgments onto that pool with canonical result ordering.
+
+Phase A keeps complete-plan publication and one-member target waves. It adds no target operation and does not require task graphs, code-patch composition, domain rounds, or multi-member commit.
+
+RFC-94 progressive refinement may depend on this phase rather than completed RFC-92. Its branch publications add ready refinement items to the same pool; they do not create a second scheduler.
+
+### Phase B — Concurrent build and convergence
+
+Add `target.decompose`, task graphs, protected inputs and oracles, isolated writers, code-patch composition, task-scoped repair, domain rounds, and multi-member waves. This phase completes the RFC and unlocks RFC-94 progressive build.
+
+Cap one remains the reference path in both phases. Phase B cannot replace Phase A's identities, selection order, cancellation, or claim semantics.
+
 ## Implementation requirements
 
-- **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add profile-scored task complexity, digest-bound graph and phase records, engine-private `compose`, operator-reviewed protected verification inputs and oracle digests, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
+- **Task execution implements D1–D3 and D5–D6.** Add `target.decompose` and task context to RFC-90 `build` and `repair`. Add profile-scored task complexity, digest-bound graph and phase records, engine-private `compose`, admission-covered protected verification inputs and oracle digests, Omnia's model-assisted graph, and the SDK singleton. Implement typed residual failure, escalation, and graph-attributable re-decomposition. Enforce its two-round budget and candidate-based follow-up graphs.
 - **One pool implements D4 and D9–D12.** Add one isolated host pool that supports both the cap-one reference mode and the default cap of four. Replace the serial entry cursor with deterministic `(slice, phase, input-digest)` work items and operation-scoped local claims; project phase frontiers and release every terminal, cancelled, or retracted claim. Use the same scheduler path for both caps. Add initial survey, focused resurvey, extract, affected-domain, review, task, and repair fan-outs. Add canonical bounded-antichain scheduling, domain records, and multi-member target waves (retire `Wave::enforce_one_member` for the concurrent executor only; keep the same manifest and `target.merge.wave-committed` shape). Aggregate each slice attempt into one `BuildRecord`. Cancellation must reap every call.
 - **Synthesis implements D7–D8.** Land the engine shelf and pass `omnia-r9k`. Then land staged synthesis and pass `orders-contracts`. Neither final grade may regress.
 - Derive closed graph and domain schemas from Rust DTOs. Reject unknown fields.
@@ -600,7 +620,7 @@ Missing provider usage remains unknown. Raw model calls, worker count, commits, 
 
 1. **Omnia decomposition.** A build the size of `at-r9k-position-adapter` produces one complete graph through one model-assisted decomposition operation. Every task fits the pinned profile's task-complexity threshold. Spilled build prompts remain at or below 15 KiB. Exactly one task owns build-level reporting. No task independently passes. RFC-90 retains verification, repair budgets, and observable review specialists.
 2. **Invalid graphs and re-entry.** Invalid graphs produce no writable workspace. Escalation creates only its inert proposal and terminal report. Re-entry always creates a fresh attempt. It reuses the graph unless an out-of-grant write, layer overlap, or unowned finding requires new decomposition. That call receives the prior graph and findings under a new operation key. After a post-composition failure, the follow-up graph builds from the composed candidate without rerunning completed tasks. A third graph-attributable failure parks the slice without another decomposition call.
-3. **Ownership.** Predicted interaction creates dependencies. Shared paths have one fan-in owner. No task grant overlaps an operator-reviewed protected verification input, a write to one fails closed, and external oracle material must match its reviewed digest. Candidate-writable and protected-test results remain distinguishable. Captured overlap rejects the whole layer and attempt, then informs the next graph proposal. No textual merge occurs.
+3. **Ownership.** Predicted interaction creates dependencies. Shared paths have one fan-in owner. No task grant overlaps an admission-covered protected verification input, a write to one fails closed, and external oracle material must match its covered digest. Candidate-writable and protected-test results remain distinguishable. Captured overlap rejects the whole layer and attempt, then informs the next graph proposal. No textual merge occurs.
 4. **Residual findings.** A located blocking finding on an unowned path fails the attempt as a typed residual failure. The next attempt's complete graph proposal receives it as typed input. No task grant or graph mutates in place.
 5. **Private composition.** The engine composes only same-base, disjoint patches. Every target operation receives a fresh private materialization of the candidate. Targets never receive workspace lifecycle operations. Failure exposes no authoritative workspace or staged-artifact change.
 6. **Concurrent target tasks.** With the pool cap set to four, two target tasks run concurrently in isolated workspaces. Cancellation reaps both. Caps of one and four produce the same ordered composition and one slice-wide result.
@@ -611,6 +631,7 @@ Missing provider usage remains unknown. Raw model calls, worker count, commits, 
 11. **Quality gates.** `cargo make ci` passes in every touched repository. D8 goldens regenerate. The `omnia-r9k` and `orders-contracts` live grades do not regress.
 12. **Harness economics.** Cap-one and cap-four live fixtures use the same source set, model configuration, time budget, and blind acceptance set. The acceptance set is unavailable to every workflow model call and does not affect lifecycle. Results report D13's accepted-outcome, induced-worker-cost, graph-stability, amendment, and contention projections when their raw observations exist; missing provider usage stays unknown.
 13. **Phase scheduling and claims.** Refine, build, and merge work may be in progress on different slices simultaneously. Status and selection do not depend on a singular active entry. Duplicate local claims on one fenced operation fail; a changed parent input creates a distinct work-item identity; every terminal, cancelled, or retracted operation releases its claim.
+14. **Phase-A independence.** Concurrent survey, extract, refinement, cancellation, and cap-one/cap-four equivalence pass while target decomposition, composition, domain rounds, and multi-member waves remain disabled. RFC-94 can publish a closed branch into that scheduler without activating build authority.
 
 ## Rejected alternatives
 
