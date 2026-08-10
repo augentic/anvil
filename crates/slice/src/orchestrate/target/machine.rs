@@ -303,12 +303,9 @@ impl<S: Target + Workspaces> Machine<'_, S> {
             return match self.commit(&report).await {
                 Ok(patch) => match self.promoted(&report, patch, verification) {
                     Ok(outcome) => Ok(outcome),
-                    // Pre-record terminal-tail failures only (attempt
-                    // copy, canonical projection, or `BuildRecord`
-                    // write). Once the record lands, `promoted` never
-                    // returns `Err` — rewriting the success report as
-                    // failure would disagree with the record plan
-                    // progress keys off.
+                    // Pre-record terminal-tail failures only. Once the
+                    // record lands, `promoted` never returns `Err` —
+                    // rewriting success as failure disagrees with it.
                     Err(error) => {
                         let finding = gate::engine_finding(
                             &error.variant_str(),

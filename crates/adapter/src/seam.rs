@@ -653,7 +653,7 @@ pub struct PhaseFinding {
     pub rule_id: Option<String>,
     /// Additional codex ids that informed the finding.
     ///
-    /// The phase-report answer schema (from [`diagnostics::Diagnostic`])
+    /// The phase-report answer schema (from `diagnostics::Diagnostic`)
     /// admits `null`; treat that the same as omission / `[]`.
     #[serde(default, deserialize_with = "null_as_default")]
     pub related_rule_ids: Vec<String>,
