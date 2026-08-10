@@ -32,7 +32,6 @@ pub use self::gaps::{Gaps, GapsInput};
 pub use self::remove::{Remove, RemoveInput};
 pub use self::status::{Status, StatusInput};
 pub use self::validate::{Validate, ValidateInput};
-pub use crate::orchestrate::WaiveSelector;
 
 // ---- Shared helpers used across submodules ----
 

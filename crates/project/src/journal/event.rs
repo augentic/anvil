@@ -7,6 +7,7 @@ use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::operation::SourceOperation;
+use crate::gap_policy::GapPolicy;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
 
@@ -461,8 +462,8 @@ pub enum EventKind {
     },
     /// `emery plan execute` opened an authorization epoch at start
     /// (RFC-86 D6 / D22). Presence projects the Authorized milestone.
-    /// Optional `unknown-waivers` nest on the coverage payload (D17).
-    /// Never named `plan.approved`.
+    /// The effective gap policy rides the coverage payload
+    /// (RFC-86a D3). Never named `plan.approved`.
     #[serde(rename = "plan.execute.started", rename_all = "kebab-case")]
     PlanExecuteStarted {
         /// Typed `closed-plan` coverage over the reviewed plan.
@@ -534,9 +535,11 @@ pub enum ClosedPlanCoverage {
         /// Sorted per-leaf coverage: `existing { digest }` or
         /// `refine-under-epoch`.
         specs: std::collections::BTreeMap<String, LeafSpecCoverage>,
-        /// Per-requirement unknown waivers nested on this epoch (D17).
-        #[serde(rename = "unknown-waivers", default, skip_serializing_if = "Vec::is_empty")]
-        unknown_waivers: Vec<UnknownWaiver>,
+        /// The **effective** gap policy this epoch runs under —
+        /// per-epoch `--gap-policy` flag, else the `project.yaml`
+        /// declaration, else `strict` (RFC-86a D3).
+        #[serde(rename = "gap-policy")]
+        gap_policy: GapPolicy,
     },
 }
 
@@ -551,18 +554,6 @@ pub enum LeafSpecCoverage {
     },
     /// Authorize refine-before-build for this leaf under the epoch.
     RefineUnderEpoch,
-}
-
-/// One `[unknown]` waiver recorded on `plan.execute.started` (D17).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct UnknownWaiver {
-    /// Slice that owns the requirement.
-    pub slice: String,
-    /// Requirement id (`REQ-NNN`).
-    pub req: String,
-    /// Operator reason — required on the CLI.
-    pub reason: String,
 }
 
 /// One slice-local → baseline requirement identity mapping on

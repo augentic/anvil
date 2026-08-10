@@ -26,7 +26,7 @@ pub enum EpochFreshness<'a> {
     },
     /// The newest epoch covers the live plan and spec trees.
     Fresh {
-        /// The covering `closed-plan` coverage (leaves + waivers).
+        /// The covering `closed-plan` coverage (leaves + gap policy).
         coverage: &'a ClosedPlanCoverage,
     },
 }

@@ -220,7 +220,7 @@ where
         plan::GapsArgs,
         ::change::plan::handlers::Gaps,
         "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions",
-        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions.\n\nDerived from on-disk `model.yaml` / `specs/<domain>/spec.md` — not a second file to keep in sync. Dropped slices are excluded. Shared-lead rollup is presentation only; waivers and the execute gap gate stay per-requirement."
+        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions.\n\nDerived from on-disk `model.yaml` / `specs/<domain>/spec.md` — not a second file to keep in sync. Dropped slices are excluded. Shared-lead rollup is presentation only; deferral dispositions and the execute gap gate stay per-requirement."
     );
     route!(["plan", "add"], plan::AddArgs, ::change::plan::handlers::Add, "Add a new plan entry");
     route!(
@@ -261,8 +261,8 @@ where
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch), then advance → refine → build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--waive <slice>/<req>` + `--reason` for open `[unknown]`s",
-        "Run the drained execute loop in the engine guest.\n\nAt start appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6) — per-leaf `existing` spec digests or `refine-under-epoch`, plus any `--waive` unknown-waivers (D17). Then advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nRepeatable `--waive <slice>/<req>` with required `--reason` waives open `[unknown]` requirements only (`[conflict]` is never waiveable; `plan-waiver-invalid` on misuse). No `plan approve` / `plan refine` verbs. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) with the effective gap policy, then advance → refine → build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--gap-policy <strict|defer>` one-epoch override",
+        "Run the drained execute loop in the engine guest.\n\nAt start appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6) — per-leaf `existing` spec digests or `refine-under-epoch`, plus the effective gap policy (RFC-86a D3: `--gap-policy` flag, else the `project.yaml` declaration, else `strict`). Then advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows refuse with `plan-gaps-unresolved` under `strict` (defer them with `emery plan defer`). No `plan approve` / `plan refine` verbs. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
@@ -323,7 +323,7 @@ convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than,
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
 convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { waive, reason });
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { gap_policy });
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });

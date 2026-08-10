@@ -26,6 +26,7 @@ use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
+use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, Event as JournalEvent, EventKind, LeafSpecCoverage,
@@ -608,7 +609,8 @@ mod milestones {
     #[tokio::test]
     async fn open_unknowns_not_ready_review_gaps() {
         // Refined + open unknowns → not Ready; next-action is
-        // review-gaps; resume points at per-req --waive (D22).
+        // review-gaps; resume points at per-req plan defer (D22 /
+        // RFC-86a D3).
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -628,10 +630,10 @@ mod milestones {
         assert_eq!(body.next_action, "review-gaps");
         let resume = body.resume.as_deref().expect("resume");
         assert!(
-            resume.contains("emery plan execute")
-                && resume.contains("--waive a/REQ-003")
+            resume.contains("emery plan defer")
+                && resume.contains("a/REQ-003")
                 && resume.contains("--reason"),
-            "resume must suggest waive path, got: {resume}"
+            "resume must suggest the durable defer act, got: {resume}"
         );
         let mut out = Vec::new();
         project::handler::Render::render(&body, &mut out).expect("render");
@@ -642,7 +644,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn conflict_resume_re_refine_not_waive() {
+    async fn conflict_resume_re_refine_not_defer() {
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -713,7 +715,7 @@ mod milestones {
                     coverage: ClosedPlanCoverage::ClosedPlan {
                         plan_digest: live_plan_digest(root),
                         specs,
-                        unknown_waivers: Vec::new(),
+                        gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
                 },
@@ -742,7 +744,7 @@ mod milestones {
         specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
         stamp_epoch(project.root(), specs);
         let body = status(&project, &plan).await;
-        assert!(!body.ready, "waivers/epoch must not backfill Ready");
+        assert!(!body.ready, "an epoch must not backfill Ready");
         assert!(body.authorized);
         let json = serde_json::to_string(&body).expect("json");
         assert!(!json.contains("\"approved\""), "{json}");
@@ -768,7 +770,7 @@ mod milestones {
                             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                                 .into(),
                         specs,
-                        unknown_waivers: Vec::new(),
+                        gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
                 },

@@ -6,7 +6,7 @@
 //!
 //! - in-scope drop (D24 / #13)
 //! - coverage wire shape + stale epoch (#8)
-//! - Ready skipped when waiving; clear → Ready (D22 / #12)
+//! - Ready skipped when deferring; clear → Ready (D22 / #12)
 //! - post-author resume naming (D26 / #14)
 //! - one-member wave opened before build under execute (D9 / #15)
 
@@ -17,7 +17,8 @@ use std::fs;
 
 use change::orchestrate::enforce_before_build;
 use change::plan::handlers::{
-    Author, AuthorInput, Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput, WaiveSelector,
+    Author, AuthorInput, Defer, DeferInput, DeferSelector, Execute, ExecuteInput, Gaps, GapsInput,
+    Status, StatusInput,
 };
 use change::{LoopStep, Plan};
 use diagnostics::digest::sha256_hex;
@@ -25,10 +26,10 @@ use jiff::Timestamp;
 use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
+use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, UnknownWaiver,
-    append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, append_for, read_union,
 };
 use project::plan::dir_cid;
 use support::plan_with_changes;
@@ -109,7 +110,6 @@ fn live_plan_digest(root: &std::path::Path) -> String {
 
 fn stamp_epoch(
     root: &std::path::Path, plan_digest: &str, specs: BTreeMap<String, LeafSpecCoverage>,
-    unknown_waivers: Vec<UnknownWaiver>,
 ) {
     let ts = Timestamp::from_second(1_700_000_000).expect("timestamp");
     let event = Event::new(
@@ -118,7 +118,7 @@ fn stamp_epoch(
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
                 specs,
-                unknown_waivers,
+                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },
@@ -203,16 +203,16 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
                 .to_string(),
         },
     );
-    stamp_epoch(root, &live_plan_digest(root), specs, Vec::new());
+    stamp_epoch(root, &live_plan_digest(root), specs);
     enforce_before_build(Layout::new(root), &plan, "clean")
         .expect("gap gate ignores dropped sibling conflict");
 }
 
-/// Acceptance #12 / D22 — open unknowns keep Ready false; execute with
-/// `--waive` reaches Authorized without Ready; clearing unknowns then
-/// projects Ready (waivers never backfill Ready).
+/// Acceptance #12 / D22 — open unknowns keep Ready false; deferring
+/// then executing reaches Authorized without Ready; clearing unknowns
+/// then projects Ready (deferrals never backfill Ready).
 #[tokio::test]
-async fn waive_skips_ready_clearing_unknowns_reaches_ready() {
+async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     let root = session.root();
@@ -233,27 +233,28 @@ async fn waive_skips_ready_clearing_unknowns_reaches_ready() {
     assert!(!open.ready);
     assert!(!open.authorized);
 
-    // Epoch + waive; build may fail later without pins — ignore the
-    // post-gate outcome and inspect milestones.
-    drop(
-        run::<Execute, _, _>(
-            session.provider(),
-            ExecuteInput {
-                waive: vec![WaiveSelector {
-                    slice: "a".into(),
-                    req: "REQ-003".into(),
-                }],
-                reason: Some("reset path deferred".into()),
-            },
-        )
-        .await,
-    );
+    // Durable deferral, then execute; build may fail later without
+    // pins — ignore the post-gate outcome and inspect milestones.
+    run::<Defer, _, _>(
+        session.provider(),
+        DeferInput {
+            selectors: vec![DeferSelector {
+                slice: "a".into(),
+                req: "REQ-003".into(),
+            }],
+            reason: Some("reset path deferred".into()),
+            retract: false,
+        },
+    )
+    .await
+    .expect("plan defer");
+    drop(run::<Execute, _, _>(session.provider(), ExecuteInput::default()).await);
 
-    let waived = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
-    assert!(waived.authorized, "execute --waive opens Authorized");
-    assert!(!waived.ready, "waivers never contribute to Ready");
+    let deferred = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
+    assert!(deferred.authorized, "execute opens Authorized");
+    assert!(!deferred.ready, "deferrals never contribute to Ready");
     assert!(!root.join(".emery/approvals").exists(), "no approvals/ tree");
-    assert!(!serde_json::to_string(&waived).expect("json").contains("approved"));
+    assert!(!serde_json::to_string(&deferred).expect("json").contains("approved"));
 
     // Clear the unknown on disk — Ready becomes true while the prior
     // epoch may still project Authorized (fresh execute is a separate act).
@@ -312,11 +313,8 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
     );
     assert_eq!(coverage["specs"]["greeting"]["kind"], "existing");
     assert_eq!(coverage["specs"]["greeting"]["digest"], specs_before);
-    assert!(
-        coverage.get("unknown-waivers").is_none()
-            || coverage["unknown-waivers"].as_array().is_some_and(Vec::is_empty),
-        "empty waive list omitted or empty: {coverage}"
-    );
+    assert_eq!(coverage["gap-policy"], "strict", "effective policy on the wire: {coverage}");
+    assert!(coverage.get("unknown-waivers").is_none(), "waiver field deleted: {coverage}");
     assert!(!wire.to_string().contains("approved"));
     assert!(!root.join(".emery/approvals").exists());
 
@@ -345,7 +343,7 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
             digest: digest.clone(),
         },
     );
-    stamp_epoch(session2.root(), &live_plan_digest(session2.root()), specs, Vec::new());
+    stamp_epoch(session2.root(), &live_plan_digest(session2.root()), specs);
     fs::write(session2.root().join(".emery/slices/a/specs/extra.md"), "x\n").expect("drift");
     let err = enforce_before_build(Layout::new(session2.root()), &plan, "a")
         .expect_err("spec change → stale");

@@ -156,7 +156,7 @@ fn assemble(
 ) -> StatusBody {
     // When every in-scope slice is refined but Ready fails, surface
     // review-gaps instead of build (D22). Execute maps ReviewGaps →
-    // build; the gap gate enforces waivers / refuses unresolved gaps.
+    // build; the gap gate joins dispositions / refuses open gaps.
     if milestones.all_refined
         && !milestones.ready
         && matches!(resolution.action, NextActionKind::Build)
@@ -225,7 +225,7 @@ fn resume_point(
 ) -> Option<String> {
     // A fresh plan (no entry has left projected `pending`) resumes
     // through the execute loop, not a phase breakout. When refined but
-    // not Ready, point at waive / gap closure instead.
+    // not Ready, point at deferral / gap closure instead.
     if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,
@@ -269,7 +269,7 @@ fn fresh_plan_resume(
 
 /// Resume when the change is not Ready: conflicts → fix inputs and
 /// re-execute (drifted pins re-refine under the epoch); unknowns-only
-/// → execute with per-req `--waive`.
+/// → defer them durably with `plan defer` (RFC-86a D3).
 fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
     if gaps.rows.iter().any(|r| r.status == RequirementStatus::Conflict) {
         return "emery plan execute".to_string();
@@ -279,9 +279,9 @@ fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
     if unknowns.is_empty() {
         return "emery plan gaps".to_string();
     }
-    let mut parts = vec!["emery plan execute".to_string()];
+    let mut parts = vec!["emery plan defer".to_string()];
     for row in unknowns {
-        parts.push(format!("--waive {}/{}", row.slice, row.req));
+        parts.push(format!("{}/{}", row.slice, row.req));
     }
     parts.push("--reason <reason>".to_string());
     parts.join(" ")

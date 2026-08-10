@@ -148,13 +148,10 @@ impl Error {
                     "claim a different slice, or wait for the current owner to release / retract their claim",
                 ),
                 "plan-epoch-stale" => Some(
-                    "re-run `emery plan execute` — it opens a fresh epoch over the current plan and specs; re-supply any `--waive` flags (waivers ride each epoch)",
+                    "re-run `emery plan execute` — it opens a fresh epoch over the current plan and specs; durable deferrals carry over, nothing needs re-supplying",
                 ),
                 "plan-gaps-unresolved" => Some(
-                    "resolve `[conflict]`s at their source and re-run `emery plan execute`, or defer named `[unknown]`s with `--waive <slice>/<req> --reason \"<why>\"` — `[conflict]` is never waiveable\nsee: docs/reference/diagnostics.md",
-                ),
-                "plan-waiver-invalid" => Some(
-                    "pair every `--waive <slice>/<req>` with one `--reason` and waive only open `[unknown]` findings; `emery plan gaps` lists the inventory",
+                    "resolve open gaps at their source and re-run `emery plan execute`, or defer them durably with `emery plan defer <slice>/<req> --reason \"<why>\"` (or run under `--gap-policy defer`)\nsee: docs/reference/diagnostics.md",
                 ),
                 "plan-deferral-invalid" => Some(
                     "defer names open `[unknown]` / `[conflict]` rows from `emery plan gaps` as `<slice>/<req>` and requires `--reason`; `--retract` must name a live deferral",

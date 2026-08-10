@@ -1,7 +1,8 @@
 //! Wire-contract coverage for the RFC-86 execute validation codes:
 //! argv through the command router → exit 2 with the kebab-case
-//! discriminant on the JSON `error` envelope (`plan-waiver-invalid`,
-//! `plan-gaps-unresolved`, `plan-epoch-stale`).
+//! discriminant on the JSON `error` envelope (`plan-gaps-unresolved`,
+//! `plan-epoch-stale`), plus the RFC-86a waiver hard cut (`--waive`
+//! is unknown argv; `--gap-policy` is the closed override).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -12,6 +13,7 @@ use mock::invoke::run;
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
 use omnia_testkit::model::Harness;
+use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{ClosedPlanCoverage, Event, EventKind, append_for};
 use project::plan::{AuthorityOverride, Entry, Plan};
@@ -99,16 +101,30 @@ const CONFLICT_MODEL: &str = r"requirements:
 ";
 
 #[tokio::test]
-async fn waiver_invalid_on_wire() {
+async fn waive_is_unknown_argv() {
+    // RFC-86a acceptance 9 (hard cut): the per-epoch waiver surface is
+    // deleted — `--waive` fails at the grammar (usage error, exit 2)
+    // before any dispatch.
     let (_project, provider) = fixture(CONFLICT_MODEL).await;
+    let router =
+        transport::command::router(Invoker::new("emery", provider.clone())).expect("router");
+    let response = router
+        .execute(["emery", "plan", "execute", "--waive", "a/REQ-001", "--reason", "why"])
+        .await;
+    assert_eq!(response.exit, 2);
+    let stderr = String::from_utf8_lossy(&response.stderr);
+    assert!(stderr.contains("--waive"), "clap names the unknown flag: {stderr}");
+}
 
-    // `--waive` without `--reason` is refused by clap itself, so the
-    // handler discriminant is reached by waiving a `[conflict]`.
-    let (exit, envelope) =
-        execute_json(&provider, &["--waive", "a/REQ-001", "--reason", "cannot"]).await;
-    assert_eq!(exit, 2);
-    assert_eq!(envelope["error"], "plan-waiver-invalid");
-    assert_eq!(envelope["exit-code"], 2);
+#[tokio::test]
+async fn gap_policy_rejects_values_outside_the_closed_enum() {
+    let (_project, provider) = fixture(CONFLICT_MODEL).await;
+    let router =
+        transport::command::router(Invoker::new("emery", provider.clone())).expect("router");
+    let response = router.execute(["emery", "plan", "execute", "--gap-policy", "sometimes"]).await;
+    assert_eq!(response.exit, 2);
+    let stderr = String::from_utf8_lossy(&response.stderr);
+    assert!(stderr.contains("--gap-policy"), "clap names the offending flag: {stderr}");
 }
 
 #[tokio::test]
@@ -142,7 +158,7 @@ async fn epoch_stale_on_wire() {
                 plan_digest:
                     "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
                 specs: BTreeMap::new(),
-                unknown_waivers: Vec::new(),
+                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },

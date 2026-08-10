@@ -1,6 +1,6 @@
-//! Gap policy + epoch freshness before build: conflicts always block;
-//! unknowns block unless waived on the covering `plan.execute.started`
-//! epoch; divergence is allowed. Drift vs that epoch is `plan-epoch-stale`.
+//! Gap policy + epoch freshness before build (RFC-86a D1): deferred
+//! rows leave build scope; open `[unknown]` / `[conflict]` block;
+//! divergence is allowed. Epoch drift is `plan-epoch-stale`.
 
 use std::fmt::Write as _;
 
@@ -8,9 +8,9 @@ use artifacts::spec::provenance::RequirementStatus;
 use error::Error;
 use project::config::Layout;
 use project::handler::Render;
-use project::journal::{ClosedPlanCoverage, Event, EventKind};
+use project::journal::ClosedPlanCoverage;
 use project::plan::epoch::EpochFreshness;
-use project::plan::{GapsBody, Plan, collect_events, plan_gaps_body};
+use project::plan::{Disposition, GapsBody, Plan, collect_events, plan_gaps_body};
 
 /// Enforce authorization-epoch freshness and the typed gap policy for
 /// `slice` before build.
@@ -23,9 +23,9 @@ use project::plan::{GapsBody, Plan, collect_events, plan_gaps_body};
 /// - `plan-epoch-stale` — no covering `plan.execute.started`, plan /
 ///   covered-spec digest drift, or an in-scope leaf absent from
 ///   coverage.
-/// - `plan-gaps-unresolved` — in-scope `[conflict]` on `slice`, or
-///   `[unknown]` without a matching waiver on the covering epoch.
-///   Detail includes the rendered gap inventory.
+/// - `plan-gaps-unresolved` — an in-scope `[unknown]` / `[conflict]`
+///   on `slice` whose disposition is `open`. Detail includes the
+///   rendered gap inventory.
 pub fn enforce_before_build(layout: Layout<'_>, plan: &Plan, slice: &str) -> Result<(), Error> {
     let events = collect_events(layout)?;
     let coverage = match project::plan::epoch::freshness(layout, plan, &events)? {
@@ -38,48 +38,41 @@ pub fn enforce_before_build(layout: Layout<'_>, plan: &Plan, slice: &str) -> Res
         EpochFreshness::Stale { detail } => return Err(epoch_stale(detail)),
         EpochFreshness::Fresh { coverage } => coverage,
     };
-    check_gap_policy(layout, plan, slice, coverage, &events)
+    let gaps = plan_gaps_body(plan, layout, &events)?;
+    check_gap_policy(slice, coverage, &gaps)
 }
 
 fn check_gap_policy(
-    layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage, events: &[Event],
+    slice: &str, coverage: &ClosedPlanCoverage, gaps: &GapsBody,
 ) -> Result<(), Error> {
-    let ClosedPlanCoverage::ClosedPlan { unknown_waivers, .. } = coverage;
-    let gaps = plan_gaps_body(plan, layout, events)?;
+    let ClosedPlanCoverage::ClosedPlan { gap_policy, .. } = coverage;
     let leaf_rows: Vec<_> = gaps.rows.iter().filter(|row| row.slice == slice).collect();
 
     let mut blockers = Vec::new();
     let mut divergences = Vec::new();
     for row in &leaf_rows {
+        // A live deferral takes the row out of build scope (D1); the
+        // requirement is conserved as debt, never built over.
+        if row.disposition == Some(Disposition::Deferred) {
+            continue;
+        }
         match row.status {
+            // RFC-86a step-6 seam: gate-time `origin: policy` minting
+            // for open rows under an effective `defer` policy lands
+            // here; until then open rows block under both policies.
             RequirementStatus::Conflict => {
                 blockers.push(format!(
-                    "{}/{} [conflict] {} — not waiveable; resolve inputs and re-refine",
-                    row.slice, row.req, row.summary
+                    "{}/{} [conflict] {} — resolve inputs and re-refine, or defer it: `emery \
+                     plan defer {}/{} --reason …`",
+                    row.slice, row.req, row.summary, row.slice, row.req
                 ));
             }
             RequirementStatus::Unknown => {
-                let waived =
-                    unknown_waivers.iter().any(|w| w.slice == row.slice && w.req == row.req);
-                if !waived {
-                    // Waivers ride each `plan.execute.started`; a resume
-                    // without `--waive` drops them, so name that gesture
-                    // rather than implying the gap was never waived.
-                    if waived_on_earlier_epoch(events, &row.slice, &row.req) {
-                        blockers.push(format!(
-                            "{}/{} [unknown] {} — waived on an earlier epoch only; waivers must \
-                             be re-supplied on every run: `emery plan execute --waive {}/{} \
-                             --reason …`",
-                            row.slice, row.req, row.summary, row.slice, row.req
-                        ));
-                    } else {
-                        blockers.push(format!(
-                            "{}/{} [unknown] {} — close the gap or `emery plan execute --waive \
-                             {}/{} --reason …`",
-                            row.slice, row.req, row.summary, row.slice, row.req
-                        ));
-                    }
-                }
+                blockers.push(format!(
+                    "{}/{} [unknown] {} — close the gap or defer it: `emery plan defer {}/{} \
+                     --reason …`",
+                    row.slice, row.req, row.summary, row.slice, row.req
+                ));
             }
             RequirementStatus::Divergence => {
                 divergences.push(format!("{}/{} [divergence] {}", row.slice, row.req, row.summary));
@@ -95,9 +88,7 @@ fn check_gap_policy(
     }
 
     let mut detail = String::new();
-    detail.push_str("gap policy refused build for `");
-    detail.push_str(slice);
-    detail.push_str("`:\n");
+    let _ = writeln!(detail, "gap policy ({gap_policy}) refused build for `{slice}`:");
     for line in &blockers {
         let _ = writeln!(detail, "  - {line}");
     }
@@ -108,26 +99,8 @@ fn check_gap_policy(
         }
     }
     detail.push('\n');
-    detail.push_str(&render_inventory(&gaps));
+    detail.push_str(&render_inventory(gaps));
     Err(gaps_unresolved(detail))
-}
-
-/// True when any epoch **before** the newest carried a waiver for this
-/// requirement — the resume-without-`--waive` footgun (the covering
-/// epoch's waivers were already checked by the caller).
-fn waived_on_earlier_epoch(events: &[Event], slice: &str, req: &str) -> bool {
-    let mut coverages: Vec<&ClosedPlanCoverage> = events
-        .iter()
-        .filter_map(|event| match &event.kind {
-            EventKind::PlanExecuteStarted { coverage, .. } => Some(coverage),
-            _ => None,
-        })
-        .collect();
-    coverages.pop();
-    coverages.into_iter().any(|coverage| {
-        let ClosedPlanCoverage::ClosedPlan { unknown_waivers, .. } = coverage;
-        unknown_waivers.iter().any(|w| w.slice == slice && w.req == req)
-    })
 }
 
 fn render_inventory(gaps: &GapsBody) -> String {
@@ -141,7 +114,7 @@ fn render_inventory(gaps: &GapsBody) -> String {
 fn gaps_unresolved(detail: impl Into<String>) -> Error {
     Error::validation_failed(
         "plan-gaps-unresolved",
-        "resolve or waive typed gaps before build",
+        "resolve or defer typed gaps before build",
         detail,
     )
 }
