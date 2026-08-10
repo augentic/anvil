@@ -208,15 +208,33 @@ pub struct BuildContext {
     pub sources: Vec<String>,
 }
 
+/// The attempt-local writable artifact stage — mirrors the WIT
+/// `target.artifact-stage` record (RFC-90 D5).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArtifactStage {
+    /// Opaque identity of the stage preparation.
+    pub id: String,
+    /// Deployment-local path of the writable stage root.
+    pub root: String,
+}
+
+impl ArtifactStage {
+    /// The stage root as a path, for in-guest filesystem access.
+    #[must_use]
+    pub fn root_path(&self) -> &Path {
+        Path::new(&self.root)
+    }
+}
+
 /// The private workspace an operation works on — mirrors the WIT
 /// `target.workspace` record (RFC-87).
 ///
 /// `root` is the deployment-local path of the writable code tree: the
 /// adapter reads and writes product code there and lends it to its
-/// agent by path. Change-tree artifacts stay outside the workspace —
-/// readable through the `"."` preopen in-guest (project-relative
-/// paths), or through the agent-visible `artifacts` root from a
-/// spawned agent.
+/// agent by path. Change-tree artifacts stay outside the workspace,
+/// readable through the `"."` preopen or the agent-visible
+/// `artifacts` root; target-owned slice-artifact writes go to the
+/// writable `artifact_stage` (present on build-loop operations).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Workspace {
     /// Opaque identity of the preparation.
@@ -225,6 +243,9 @@ pub struct Workspace {
     pub root: String,
     /// Agent-visible read-only artifact root (the project tree).
     pub artifacts: String,
+    /// Writable artifact stage for the active slice; absent on
+    /// `merge`, whose workspace view is read-only.
+    pub artifact_stage: Option<ArtifactStage>,
 }
 
 impl Workspace {
@@ -375,6 +396,355 @@ impl Report {
     }
 }
 
+/// Adapter-selected outcome of one build phase — mirrors the WIT
+/// `target.phase-outcome` enum (RFC-90 D2).
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PhaseOutcome {
+    /// The operation ran and produced its result.
+    Completed,
+    /// No target-specific work for this dispatch. Must carry no
+    /// blocking findings and no writes.
+    NotApplicable,
+}
+
+/// Report-level assurance claim — mirrors the WIT
+/// `target.phase-source` enum. `Tool` is reserved on the wire but
+/// rejected by the RFC-90 engine gate.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PhaseSource {
+    /// No model or external tool contributed.
+    Deterministic,
+    /// Model judgment produced the result, including agent-invoked
+    /// native commands.
+    ModelAssisted,
+    /// More than one assurance source contributed.
+    Hybrid,
+    /// Trusted host-tool output. Reserved; rejected in RFC-90.
+    Tool,
+}
+
+/// Which engine gate supplied a repair's findings — mirrors the WIT
+/// `target.repair-origin` enum.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepairOrigin {
+    /// Findings from the latest verification report.
+    Verification,
+    /// Findings from the latest standards-review report.
+    Review,
+}
+
+impl RepairOrigin {
+    /// Kebab-case wire spelling, for prompt rendering.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Verification => "verification",
+            Self::Review => "review",
+        }
+    }
+}
+
+/// Which writable root a phase write landed under — mirrors the WIT
+/// `target.phase-root` enum.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PhaseRoot {
+    /// The writable product workspace.
+    Workspace,
+    /// The writable artifact stage.
+    Artifacts,
+}
+
+/// One audit-evidence write reported by a phase — mirrors the WIT
+/// `target.phase-write` record.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct PhaseWrite {
+    /// Root the path is relative to.
+    pub root: PhaseRoot,
+    /// Root-relative '/'-separated path.
+    pub path: String,
+}
+
+/// Grant grammar for one writable slice artifact — mirrors the WIT
+/// `target.writable-artifact-kind` enum (RFC-90 D5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WritableArtifactKind {
+    /// Exactly one slice-relative file.
+    File,
+    /// A directory and its descendants.
+    Tree,
+}
+
+/// One target-declared writable slice artifact — mirrors the WIT
+/// `target.writable-artifact` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WritableArtifact {
+    /// Slice-relative path of the granted file or tree root.
+    pub path: String,
+    /// File or tree grant.
+    pub kind: WritableArtifactKind,
+}
+
+impl WritableArtifact {
+    /// A `file` grant for one slice-relative path.
+    #[must_use]
+    pub fn file(path: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            kind: WritableArtifactKind::File,
+        }
+    }
+
+    /// A `tree` grant for a slice-relative directory and its
+    /// descendants.
+    #[must_use]
+    pub fn tree(path: impl Into<String>) -> Self {
+        Self {
+            path: path.into(),
+            kind: WritableArtifactKind::Tree,
+        }
+    }
+}
+
+/// Location anchor for a phase finding — mirrors the WIT
+/// `target.phase-location` record.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct PhaseLocation {
+    /// Project-relative file path.
+    pub path: String,
+    /// Anchor line.
+    #[serde(default)]
+    pub line: Option<u32>,
+    /// Anchor column.
+    #[serde(default)]
+    pub column: Option<u32>,
+    /// Inclusive end line for a range.
+    #[serde(default)]
+    pub end_line: Option<u32>,
+    /// Inclusive end column for a range.
+    #[serde(default)]
+    pub end_column: Option<u32>,
+}
+
+/// Producer attribution of one finding — mirrors the WIT
+/// `target.diagnostic-source` enum (the full `Diagnostic` source axis).
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum DiagnosticSource {
+    /// Output of a deterministic scanner.
+    Deterministic,
+    /// Output of a model scorer.
+    ModelAssisted,
+    /// Mix of deterministic + model-assisted signals.
+    Hybrid,
+    /// Recorded by a human reviewer.
+    Human,
+    /// Emitted by an external tool.
+    Tool,
+}
+
+/// Nature axis of one finding — mirrors the WIT `target.finding-kind`
+/// enum. Only `violation` findings block.
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum FindingKind {
+    /// A defect: something is wrong and should be fixed.
+    #[default]
+    Violation,
+    /// A deterministically raised request for judgment.
+    Review,
+}
+
+/// Artifact category attribution — mirrors the WIT
+/// `target.finding-artifact` enum.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum FindingArtifact {
+    /// Generated or hand-written code.
+    Code,
+    /// Test files.
+    Tests,
+    /// Contract artifacts.
+    Contracts,
+    /// Behavioral specs.
+    Specs,
+    /// Design notes.
+    Design,
+    /// Decision Records.
+    Decisions,
+    /// Task list.
+    Tasks,
+    /// Asset inventory.
+    Assets,
+    /// Design tokens.
+    Tokens,
+    /// Per-shell composition manifest.
+    Composition,
+    /// Plan or workflow artifact.
+    Plan,
+    /// Not classified.
+    Unknown,
+}
+
+/// Producer self-rated confidence — mirrors the WIT
+/// `target.finding-confidence` enum.
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum FindingConfidence {
+    /// High confidence.
+    High,
+    /// Medium confidence.
+    Medium,
+    /// Low confidence; reviewer should triage.
+    Low,
+}
+
+/// The closed evidence union of a phase finding — mirrors the WIT
+/// `target.finding-evidence` variant. Internally tagged on `kind` to
+/// match the `Diagnostic` wire shape.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum FindingEvidence {
+    /// Bounded verbatim excerpt.
+    Snippet {
+        /// Verbatim payload.
+        value: String,
+    },
+    /// Digest reference for evidence too large or sensitive to inline.
+    Digest {
+        /// Hex-encoded SHA-256 of the underlying evidence bytes.
+        sha256: String,
+        /// Short human summary of what was hashed.
+        summary: String,
+        /// Optional contributing locations.
+        #[serde(default)]
+        locations: Option<Vec<PhaseLocation>>,
+    },
+    /// Domain-structured evidence.
+    Structured {
+        /// Short human summary of `data`.
+        summary: String,
+        /// Free-form JSON payload.
+        data: serde_json::Value,
+        /// Optional contributing locations.
+        #[serde(default)]
+        locations: Option<Vec<PhaseLocation>>,
+    },
+}
+
+/// One phase finding — the isomorphic mirror of the shared
+/// `Diagnostic` wire shape (RFC-90 D2).
+///
+/// The engine stamps identity fields, recomputes the fingerprint, and
+/// renumbers report-local ids; adapters never fold title / impact /
+/// remediation prose.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct PhaseFinding {
+    /// Report-local stable id (renumbered by the engine).
+    #[serde(default)]
+    pub id: String,
+    /// Codex rule citation, if any.
+    #[serde(default)]
+    pub rule_id: Option<String>,
+    /// Additional codex ids that informed the finding.
+    #[serde(default)]
+    pub related_rule_ids: Vec<String>,
+    /// Short finding title.
+    pub title: String,
+    /// Review severity.
+    pub severity: Severity,
+    /// Producer attribution.
+    pub source: DiagnosticSource,
+    /// Defect vs request-for-judgment.
+    #[serde(default)]
+    pub kind: FindingKind,
+    /// Artifact category attribution.
+    pub artifact: FindingArtifact,
+    /// Optional anchor location.
+    #[serde(default)]
+    pub location: Option<PhaseLocation>,
+    /// Evidence union.
+    pub evidence: FindingEvidence,
+    /// Operator-facing risk.
+    pub impact: String,
+    /// Concrete action to clear the finding.
+    pub remediation: String,
+    /// Producer self-rated confidence.
+    #[serde(default)]
+    pub confidence: Option<FindingConfidence>,
+    /// Stable `sha256:<64 hex>` hash; recomputed by the engine.
+    #[serde(default)]
+    pub fingerprint: String,
+}
+
+impl PhaseFinding {
+    /// Whether this finding blocks (an important-or-worse violation).
+    #[must_use]
+    pub const fn blocking(&self) -> bool {
+        matches!(self.kind, FindingKind::Violation) && self.severity.blocking()
+    }
+}
+
+/// The typed result of exactly one build-phase operation — mirrors
+/// the WIT `target.phase-report` record (RFC-90 D2). `outputs` and
+/// `ui_surface` are meaningful only on `build` reports.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PhaseReport {
+    /// Adapter-selected outcome.
+    pub outcome: PhaseOutcome,
+    /// Required report-level assurance claim.
+    pub source: PhaseSource,
+    /// Phase findings.
+    pub findings: Vec<PhaseFinding>,
+    /// Candidate per-platform outputs (`build` only).
+    pub outputs: Vec<BuildOutput>,
+    /// Candidate UI-surface signal (`build` only).
+    pub ui_surface: Option<UiSurface>,
+    /// Audit-evidence writes performed by the phase.
+    pub written: Vec<PhaseWrite>,
+    /// Adapter-opaque continuation: `None` preserves, `Some(vec![])`
+    /// clears, non-empty replaces. `verify` cannot mutate it.
+    pub next_continuation: Option<Vec<u8>>,
+}
+
+impl PhaseReport {
+    /// A completed report with the given assurance source and no
+    /// findings, writes, outputs, or continuation change.
+    #[must_use]
+    pub const fn completed(source: PhaseSource) -> Self {
+        Self {
+            outcome: PhaseOutcome::Completed,
+            source,
+            findings: Vec::new(),
+            outputs: Vec::new(),
+            ui_surface: None,
+            written: Vec::new(),
+            next_continuation: None,
+        }
+    }
+
+    /// A typed non-applicable report: deterministic, no findings, no
+    /// writes — the shape an adapter returns when an operation has no
+    /// target-specific work (RFC-90 D7).
+    #[must_use]
+    pub const fn not_applicable() -> Self {
+        Self {
+            outcome: PhaseOutcome::NotApplicable,
+            source: PhaseSource::Deterministic,
+            findings: Vec::new(),
+            outputs: Vec::new(),
+            ui_surface: None,
+            written: Vec::new(),
+            next_continuation: None,
+        }
+    }
+}
+
 /// One adapter-declared build input — mirrors the WIT
 /// `target.build-input` record.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -408,4 +778,7 @@ pub struct TargetMetadata {
     pub inputs: Vec<BuildInput>,
     /// Declarative platforms capability; absent when platform-agnostic.
     pub platforms: Option<PlatformsCapability>,
+    /// Typed writable slice-artifact grants (RFC-90 D5); empty when
+    /// the target writes no slice artifacts.
+    pub writable_artifacts: Vec<WritableArtifact>,
 }

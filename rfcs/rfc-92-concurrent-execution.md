@@ -1,6 +1,6 @@
-# RFC-91: Concurrent Execution
+# RFC-92: Concurrent Execution
 
-> Status: Draft — step 6 of the platform-migration series, on the scale track ([platform.md](platform.md))
+> Status: Draft — step 7 of the platform-migration series, on the scale track ([platform.md](platform.md))
 >
 > Owns:
 >
@@ -12,7 +12,7 @@
 > - the shared local pool and its fan-outs
 > - the synthesis payload redesign
 >
-> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), and [RFC-90](rfc-90-build-verification.md).
+> Builds on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-staged-refinement.md). RFC-91 owns phase work-item identity, readiness, grants, and operation claims; this RFC widens ready work into concurrent pools, task graphs, and multi-member waves.
 >
 > Path-first evidence and lent-tree synthesis inputs are already landed ([workflow](../docs/standards/workflow.md); [CLI output shapes](../docs/reference/cli-output-shapes.md)). Request timeout and session-resume semantics live in the Cursor model backend. This RFC absorbs the former swarm-build and synthesis-redesign scope.
 >
@@ -22,7 +22,7 @@
 >
 > Extends RFC-88 D8. Target decomposition becomes another author of inert amendment proposals alongside ownership recovery and refinement boundary escalation.
 >
-> [RFC-92](rfc-92-distributed-execution.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
+> [RFC-93](rfc-93-distributed-execution.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
 
 ## Intent
 
@@ -326,7 +326,7 @@ The shipped default cap is four. Cap-one/four equivalence is an acceptance gate,
 
 The first implementation uses the project model for every operation. Retained telemetry records the effective route and model identity when the backend exposes them, but the scheduler does not choose a model from price or task labels. The per-task model-selection hook remains inert until comparative evaluation shows a stable benefit; RFC-18 or another follow-on may activate it without changing task, ownership, or lifecycle semantics. Capability profiles continue to size work for a model class and are not overloaded with provider routing policy.
 
-Workers never share a writable tree, live handle, MCP state, or prompt state. RFC-92 owns remote placement.
+Workers never share a writable tree, live handle, MCP state, or prompt state. RFC-93 owns remote placement.
 
 This replaces RFC-90 D5's one physical workspace for the complete loop. A build attempt instead has one logical candidate:
 
@@ -367,7 +367,7 @@ The cap is per source report, not per worker. Findings omitted from the brief re
 
 The engine captures and composes the repair patches. It then verifies the next complete candidate.
 
-A task continuation cannot cross task, attempt, or graph identity. Verification is model-assisted evidence, not deterministic proof or a security boundary. A check over candidate-writable tests is self-consistency evidence. A check over protected inputs is stronger only to the extent that the report identifies those inputs and the engine enforced their write exclusion; RFC-93 defines host-attested profile assurance.
+A task continuation cannot cross task, attempt, or graph identity. Verification is model-assisted evidence, not deterministic proof or a security boundary. A check over candidate-writable tests is self-consistency evidence. A check over protected inputs is stronger only to the extent that the report identifies those inputs and the engine enforced their write exclusion; RFC-95 defines host-attested profile assurance.
 
 Some blocking findings cannot be routed:
 
@@ -446,7 +446,7 @@ D8 follows D7's live-eval gate. It changes neither synthesis authority nor prove
 
 After RFC-88 pins topology, `plan author` runs independent initial and focused source surveys concurrently.
 
-`slice refine` extracts each bound source's Evidence concurrently.
+The `plan refine` scheduler extracts each selected leaf's bound Evidence concurrently.
 
 Results merge in canonical order, never completion order. The order is either binding order or `(source, parent lead, child lead)` order.
 
@@ -608,4 +608,4 @@ Missing provider usage remains unknown. Raw model calls, worker count, commits, 
 - **Add task phase operations, writer commands, or full repair prompts.** RFC-90 already owns verification and repair. Another loop would duplicate vocabulary and payload.
 - **Partition synthesis.** Cross-domain reconciliation is the reason for the model call. D7–D8 reduce payload without changing that call.
 - **Require task graphs from every target.** Only Omnia has evidence for non-singleton decomposition.
-- **Add remote workers now.** RFC-92 owns placement after the single-node contract settles.
+- **Add remote workers now.** RFC-93 owns placement after the single-node contract settles.

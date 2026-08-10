@@ -22,6 +22,7 @@ omnia-wasi-otel.workspace = true
 emery-project.workspace = true
 emery-slice.workspace = true
 emery-transport.workspace = true
+serde_json.workspace = true
 wasip3.workspace = true
 wit-bindgen.workspace = true
 

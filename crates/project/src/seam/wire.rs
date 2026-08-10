@@ -107,6 +107,133 @@ pub struct UiSurface {
     pub screens: u32,
 }
 
+/// Adapter-selected outcome of one build phase (RFC-90 D2), mirroring
+/// the WIT `phase-outcome` enum.
+///
+/// There is no adapter-selected `success | failure`: blocking
+/// findings and dispatch errors determine failure.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, strum::Display,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum PhaseOutcome {
+    /// The operation ran and produced its result.
+    Completed,
+    /// The operation has no target-specific work for this dispatch.
+    /// Must carry no blocking findings and no writes.
+    NotApplicable,
+}
+
+/// Required report-level assurance claim (RFC-90 D2), mirroring the
+/// WIT `phase-source` enum.
+///
+/// `Tool` is reserved on the wire but rejected by the RFC-90 engine
+/// gate until a trusted host-tool execution seam exists (RFC-95).
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, strum::Display,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum PhaseSource {
+    /// No model or external tool contributed to the phase result.
+    Deterministic,
+    /// Model judgment produced the result, including an agent invoking
+    /// and interpreting native commands.
+    ModelAssisted,
+    /// More than one assurance source contributed.
+    Hybrid,
+    /// Trusted host-tool output. Reserved; rejected in RFC-90.
+    Tool,
+}
+
+/// Which engine gate supplied the findings a `repair` dispatch
+/// carries (RFC-90 D2), mirroring the WIT `repair-origin` enum.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, strum::Display,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum RepairOrigin {
+    /// Findings from the latest verification report.
+    Verification,
+    /// Findings from the latest standards-review report.
+    Review,
+}
+
+/// Which writable root a phase write landed under, mirroring the WIT
+/// `phase-root` enum.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, strum::Display,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum PhaseRoot {
+    /// The writable product workspace (`workspace.root`).
+    Workspace,
+    /// The writable artifact stage (`workspace.artifact-stage.root`).
+    Artifacts,
+}
+
+/// One audit-evidence write reported by a phase, mirroring the WIT
+/// `phase-write` record.
+///
+/// Paths are relative to the named root; absolute paths and `..` are
+/// invalid (an engine gate). RFC-87 capture and the staged-artifact
+/// diff remain the authoritative write records.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct PhaseWrite {
+    /// Root the path is relative to.
+    pub root: PhaseRoot,
+    /// Root-relative '/'-separated path.
+    pub path: String,
+}
+
+/// The typed result of exactly one build-phase operation (RFC-90 D2),
+/// mirroring the WIT `phase-report` record.
+///
+/// `findings` elements are the full typed [`Diagnostic`] shape — the
+/// WIT `phase-finding` is its isomorphic projection, so nothing folds
+/// at the seam. `outputs` / `ui_surface` are meaningful only on
+/// `build` reports (an engine gate). The continuation rides the seam
+/// but never the persisted YAML: the engine persists it separately,
+/// scoped to the attempt.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct PhaseReport {
+    /// Adapter-selected outcome.
+    pub outcome: PhaseOutcome,
+    /// Required report-level assurance claim; must cover every
+    /// finding source in the report.
+    pub source: PhaseSource,
+    /// Typed findings; defaults to `[]`.
+    #[serde(default)]
+    pub findings: Vec<Diagnostic>,
+    /// Candidate per-platform outputs (`build` only); defaults to `[]`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outputs: Vec<BuildOutput>,
+    /// Candidate UI-surface signal (`build` only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ui_surface: Option<UiSurface>,
+    /// Audit-evidence writes performed by the phase; defaults to `[]`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub written: Vec<PhaseWrite>,
+    /// Adapter-opaque continuation payload: `None` preserves the
+    /// current value, `Some(vec![])` clears it, non-empty replaces
+    /// it. Seam-only — never serialized with the report.
+    #[serde(skip)]
+    pub next_continuation: Option<Vec<u8>>,
+}
+
+impl PhaseReport {
+    /// Whether any finding blocks per [`is_blocking`].
+    #[must_use]
+    pub fn has_blocking(&self) -> bool {
+        self.findings.iter().any(is_blocking)
+    }
+}
+
 /// The per-slice build report a target adapter returns.
 ///
 /// `findings` elements are typed [`Diagnostic`]s.

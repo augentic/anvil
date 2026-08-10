@@ -91,7 +91,7 @@ The guest-routed authoring orchestration: survey per bound source, reconcile lea
 
 ### `emery plan execute`
 
-The drained loop's success body — a stop surfaces on the error envelope instead (`error: "plan-execute-stopped"`, exit 2), so a driver tells a parked loop from a drained one without parsing prose. `phases[]` lists the phases this run completed, in order. Text mode prints the phase lines and closes with the canonical `drained — run /emery:finalize <plan>` line.
+The drained loop's success body — a stop surfaces on the error envelope instead (`error: "plan-execute-stopped"`, exit 2), so a driver tells a parked loop from a drained one without parsing prose. `phases[]` lists the phases this run completed, in order; a build phase additionally carries `verification` — the terminal verification report's assurance source (see [Build phase result](#build-phase-result)) — named even on a clean pass. Text mode prints the phase lines (the build line appends `(verification: <source>)`) and closes with the canonical `drained — run /emery:finalize <plan>` line.
 
 ```json
 {
@@ -99,7 +99,7 @@ The drained loop's success body — a stop surfaces on the error envelope instea
   "plan": "identity-revamp",
   "phases": [
     { "slice": "identity-contracts", "step": "refine" },
-    { "slice": "identity-contracts", "step": "build" },
+    { "slice": "identity-contracts", "step": "build", "verification": "model-assisted" },
     { "slice": "identity-contracts", "step": "merge" }
   ]
 }
@@ -290,14 +290,15 @@ Success summary after the projection kernel persisted the artifacts. `artifacts[
 
 ### Build phase result {#build-phase-result}
 
-One envelope shape inside the build phase of `emery plan execute`: the typed request is assembled, written to `build/request.yaml` for the adapter guest's `build` prompt to consume, and `target.execution.agent` fires before the judgment leg. The finalize tail gates the typed report, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of report findings.
+One envelope shape inside the build phase of `emery plan execute`: the typed request is assembled, written to `build/request.yaml`, and `target.execution.agent` fires before the engine-owned phase machine dispatches the target's build-loop operations (`build → verify ⇄ repair → review ⇄ repair`, one typed phase report per dispatch, each journaled as `slice.build.phase-completed`). The finalize tail assembles the terminal report deterministically, rejects a `success` report carrying any blocking finding, gates the `built` transition, and emits the **result** envelope (`slice.build.started` then `slice.build.succeeded` / `slice.build.failed`). `findings` is the count of terminal-report findings. `verification` names the terminal verification report's assurance source (`deterministic` / `model-assisted` / `hybrid`) even on a clean pass — verification is model-assisted, so a green result means the candidate passed its own reported checks, not an independent oracle.
 
 ```json
 {
   "slice": "identity-service",
   "target": "omnia@1.0.0",
   "status": "success",
-  "findings": 0
+  "findings": 0,
+  "verification": "model-assisted"
 }
 ```
 

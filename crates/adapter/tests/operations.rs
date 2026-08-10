@@ -3,8 +3,8 @@
 use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, evidence_tail, leads_tail};
 use adapter::registry::Doc;
 use adapter::seam::{
-    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
-    TargetMetadata, Workspace,
+    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
+    PhaseSource, RepairOrigin, Report, SourceMetadata, TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
 use omnia_testkit::model::Harness;
@@ -70,6 +70,7 @@ impl Target for Probe {
             emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
+            writable_artifacts: Vec::new(),
         }
     }
 
@@ -87,8 +88,28 @@ impl Target for Probe {
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
         _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn verify<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn repair<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
+        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn review<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
+        _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
     }
 
     async fn merge<P: Model>(
@@ -132,12 +153,15 @@ async fn target_dispatch() {
         id: "ws-1".to_string(),
         root: "/emery-workspaces/ws-1".to_string(),
         artifacts: "/host/project".to_string(),
+        artifact_stage: None,
     };
 
     let report = Probe::build(&model, &ctx(), "demo", &[], &BuildContext::default(), &workspace)
         .await
         .expect("build succeeds");
-    assert_eq!(report, Report::success());
+    assert_eq!(report, PhaseReport::completed(PhaseSource::Deterministic));
+    let report = Probe::verify(&model, &ctx(), &workspace).await.expect("verify succeeds");
+    assert_eq!(report, PhaseReport::not_applicable());
     let report = Probe::merge(&model, &ctx(), "demo", MergePhase::Preflight, &workspace)
         .await
         .expect("merge succeeds");

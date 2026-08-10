@@ -11,7 +11,7 @@ use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::plan::LoopStep;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{PhaseSource, Source, Target, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome, WaiveSelector};
@@ -55,6 +55,7 @@ impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> f
                     .map(|run| ExecutePhase {
                         slice: run.slice,
                         step: run.step,
+                        verification: run.verification,
                     })
                     .collect(),
             }),
@@ -105,12 +106,21 @@ pub struct ExecutePhase {
     pub slice: String,
     /// Loop step (refine / build / merge).
     pub step: LoopStep,
+    /// The build step's terminal verification source, named even on a
+    /// clean pass (RFC-90 D3); absent for refine / merge.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification: Option<PhaseSource>,
 }
 
 impl Render for ExecuteBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         for phase in &self.phases {
-            writeln!(w, "{} {}", phase.step, phase.slice)?;
+            match phase.verification {
+                Some(source) => {
+                    writeln!(w, "{} {} (verification: {source})", phase.step, phase.slice)?;
+                }
+                None => writeln!(w, "{} {}", phase.step, phase.slice)?,
+            }
         }
         writeln!(w, "{}", project::plan::drained_line(&self.plan))
     }

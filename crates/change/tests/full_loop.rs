@@ -93,6 +93,18 @@ async fn author_approve_execute_drains() {
         ]
     );
 
+    // RFC-90 AC6: the drained JSON body names the terminal
+    // verification source on the build phase even on a clean pass;
+    // refine / merge phases carry no verification key.
+    let body = serde_json::to_value(&executed).expect("execute body serializes");
+    let phases = body["phases"].as_array().expect("phases array");
+    let build = phases.iter().find(|p| p["step"] == "build").expect("build phase");
+    assert_eq!(build["verification"], "deterministic", "{build}");
+    assert!(
+        phases.iter().filter(|p| p["step"] != "build").all(|p| p.get("verification").is_none()),
+        "{phases:?}"
+    );
+
     // Plan progress projects `done` from archive facts (RFC-86 D2 / D11).
     let plan_yaml = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
     assert!(!plan_yaml.contains("status:"), "plan.yaml has no stored status: {plan_yaml}");

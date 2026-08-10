@@ -1,12 +1,14 @@
-//! The mock adapter's deterministic, model-free behaviour core.
-//!
-//! Behaviour keys off the routed adapter id (`docs` / `code` / `fail-*`
-//! substrings, else `greeting`) and the per-project `FAIL_*` marker files.
+//! The mock adapter's deterministic, model-free behaviour core:
+//! behaviour keys off the routed adapter id (`docs` / `code` /
+//! `fail-*` substrings, else `greeting`) and `mock-*` marker files.
 
 pub use source::{extract, survey};
 pub use targets::{
-    BUILD_DIR, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER, build,
-    build_artifact_path, guidance, merge,
+    BUILD_DIR, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER, CONTINUATION_V1, CONTINUATION_V2,
+    FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER,
+    REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED,
+    VERIFY_AFTER_REVIEW_FAIL_MARKER, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build,
+    build_artifact_path, guidance, merge, repair, review, verify,
 };
 
 mod source {
@@ -186,15 +188,74 @@ mod source {
 mod targets {
     use std::path::{Path, PathBuf};
 
-    use adapter::seam::{BuildOutput, Error, Input, MergePhase, Platform, Report, Status};
+    use adapter::seam::{
+        BuildOutput, DiagnosticSource, Error, FindingArtifact, FindingConfidence, FindingEvidence,
+        FindingKind, Input, MergePhase, PhaseFinding, PhaseOutcome, PhaseReport, PhaseRoot,
+        PhaseSource, PhaseWrite, Platform, RepairOrigin, Report, Severity, Status, Workspace,
+    };
 
-    /// Marker file (project-root-relative) that flips builds to a failed
-    /// report while it exists.
+    /// Marker file (project-root-relative) that flips builds to a
+    /// blocking-finding report while it exists.
     pub const FAIL_BUILD_MARKER: &str = "mock-fail-build";
 
     /// Directory (project-root-relative) mock builds write their
     /// observable output into.
     pub const BUILD_DIR: &str = "mock-build";
+
+    /// Marker file: every `verify` returns one blocking finding —
+    /// drives verification-budget exhaustion.
+    pub const VERIFY_BLOCKED_MARKER: &str = "mock-verify-blocked";
+
+    /// Marker file: `verify` blocks until a verification-origin
+    /// `repair` has written [`VERIFICATION_REPAIRED`] — drives one
+    /// verification-repair round.
+    pub const VERIFY_FIXABLE_MARKER: &str = "mock-verify-fixable";
+
+    /// Marker file: every `review` returns one blocking finding —
+    /// drives review-budget exhaustion.
+    pub const REVIEW_BLOCKED_MARKER: &str = "mock-review-blocked";
+
+    /// Marker file: `review` blocks until a review-origin `repair` has
+    /// written [`REVIEW_REPAIRED`].
+    pub const REVIEW_FIXABLE_MARKER: &str = "mock-review-fixable";
+
+    /// Marker file: `verify` blocks once a review-origin repair ran.
+    ///
+    /// After [`REVIEW_REPAIRED`] exists, `verify` returns a blocking
+    /// finding — drives the post-review-repair verification failure
+    /// consuming the shared verification budget. Compose with
+    /// [`REVIEW_FIXABLE_MARKER`].
+    pub const VERIFY_AFTER_REVIEW_FAIL_MARKER: &str = "mock-verify-after-review-fail";
+
+    /// Marker file: `build` returns [`CONTINUATION_V1`]; a `review`
+    /// receiving a non-empty continuation replaces it with
+    /// [`CONTINUATION_V2`]; `repair` preserves (returns `None`).
+    pub const CONTINUATION_MARKER: &str = "mock-continuation";
+
+    /// Marker file: a `review` receiving a non-empty continuation
+    /// clears it (returns `Some([])`) instead of replacing — compose
+    /// with [`CONTINUATION_MARKER`].
+    pub const CONTINUATION_CLEAR_MARKER: &str = "mock-continuation-clear";
+
+    /// Workspace-relative sentinel a verification-origin repair writes.
+    pub const VERIFICATION_REPAIRED: &str = "mock-build/verification-repaired";
+
+    /// Workspace-relative round counter kept under
+    /// [`VERIFY_BLOCKED_MARKER`]: each verify bumps it and tags its
+    /// blocking finding (and each repair its audit finding) with the
+    /// round, so round leaks survive dedupe in terminal-report tests.
+    pub const VERIFY_ROUND_COUNTER: &str = "mock-build/verify-round";
+
+    /// Workspace-relative sentinel a review-origin repair writes.
+    pub const REVIEW_REPAIRED: &str = "mock-build/review-repaired";
+
+    /// The continuation payload `build` returns under
+    /// [`CONTINUATION_MARKER`].
+    pub const CONTINUATION_V1: &[u8] = b"mock-continuation-v1";
+
+    /// The replacement continuation `review` returns when it received
+    /// a non-empty one under [`CONTINUATION_MARKER`].
+    pub const CONTINUATION_V2: &[u8] = b"mock-continuation-v2";
 
     /// The deterministic guidance brief served to synthesis.
     ///
@@ -211,43 +272,197 @@ mod targets {
         ))
     }
 
-    /// Build one slice: write the observable artifact under
-    /// [`BUILD_DIR`] (in the private workspace) and report it as a
-    /// core-platform output.
+    /// Build one slice into the private workspace.
     ///
-    /// Fail-build markers are test control-plane on the project tree
+    /// Writes the observable artifact under [`BUILD_DIR`], reports it
+    /// as a core-platform output, and — for the grant-holding default
+    /// `mock` identity — appends a line to the artifact stage's
+    /// `tasks.md` when a stage was lent.
+    ///
+    /// Control markers are test control-plane on the project tree
     /// (same posture as merge-gate markers) — they are not part of the
     /// recorded target-base pin, so they are read from `project_root`.
     ///
     /// # Errors
     ///
     /// - `Internal` when the id selects the `fail-build` profile.
-    /// - `Io` when the artifact cannot be written.
+    /// - `Io` when an artifact cannot be written.
     pub fn build(
-        workspace: &Path, project_root: &Path, id: &str, slice: &str, inputs: &[Input],
-    ) -> Result<Report, Error> {
+        workspace: &Workspace, project_root: &Path, id: &str, slice: &str, inputs: &[Input],
+    ) -> Result<PhaseReport, Error> {
         if id.contains("fail-build") {
             return Err(Error::Internal(format!("mock build failure for `{id}`")));
         }
         if id.contains("missing-output") {
-            // A dishonest success: the declared output is never written, so
-            // the caller's outputs-exist gate must abort the build.
-            return Ok(report(
-                Status::Success,
-                vec![core_output(format!("{BUILD_DIR}/{slice}-never-written.md"))],
-            ));
+            // A dishonest completion: the declared output is never
+            // written, so the caller's outputs-exist gate must abort
+            // the build.
+            let mut report = PhaseReport::completed(PhaseSource::Deterministic);
+            report.outputs = vec![core_output(format!("{BUILD_DIR}/{slice}-never-written.md"))];
+            return Ok(report);
         }
         if project_root.join(FAIL_BUILD_MARKER).is_file() {
-            return Ok(report(Status::Failure, Vec::new()));
+            return Ok(blocked("the fail-build marker forces a blocking build finding"));
         }
         let relative = format!("{BUILD_DIR}/{slice}.md");
-        let path = workspace.join(&relative);
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|err| Error::Io(err.to_string()))?;
+        write_file(&workspace.root_path().join(&relative), &build_artifact(id, slice, inputs))?;
+        let mut written = vec![workspace_write(&relative)];
+        if let Some(stage) = &workspace.artifact_stage {
+            if id.contains("stage-escape") {
+                // The escape: a staged write outside the declared
+                // `tasks.md` grant.
+                write_file(&stage.root_path().join("undeclared.md"), "escaped the grant\n")?;
+                written.push(stage_write("undeclared.md"));
+            } else if adapter_name(id) == "mock" {
+                // Only the grant-holding default identity writes the
+                // stage; `- [x] X.Y` grammar keeps the promoted
+                // tasks.md valid under the artifact rules.
+                append_line(
+                    &stage.root_path().join("tasks.md"),
+                    &format!("- [x] 99.1 built {slice}"),
+                )?;
+                written.push(stage_write("tasks.md"));
+            }
         }
-        std::fs::write(&path, build_artifact(id, slice, inputs))
-            .map_err(|err| Error::Io(err.to_string()))?;
-        Ok(report(Status::Success, vec![core_output(relative)]))
+        let next_continuation = if id.contains("oversized-continuation") {
+            // One byte over the engine's 1 MiB continuation cap.
+            Some(vec![0_u8; 1024 * 1024 + 1])
+        } else if project_root.join(CONTINUATION_MARKER).is_file() {
+            Some(CONTINUATION_V1.to_vec())
+        } else {
+            None
+        };
+        let mut report = PhaseReport::completed(PhaseSource::Deterministic);
+        report.outputs = vec![core_output(relative)];
+        report.written = written;
+        report.next_continuation = next_continuation;
+        Ok(report)
+    }
+
+    /// One verification pass over the lent workspace: a clean
+    /// deterministic report unless a marker profile (or an
+    /// invalid-report identity) says otherwise.
+    ///
+    /// # Errors
+    ///
+    /// Reserved by the trait surface; the mock's verify never fails.
+    pub fn verify(
+        workspace: &Workspace, project_root: &Path, id: &str,
+    ) -> Result<PhaseReport, Error> {
+        if id.contains("tool-source") {
+            // Gate-invalid: `tool` is reserved on the wire but
+            // rejected by the RFC-90 engine gate.
+            return Ok(PhaseReport::completed(PhaseSource::Tool));
+        }
+        if id.contains("verify-outputs") {
+            // Gate-invalid: only `build` declares outputs.
+            let mut report = PhaseReport::completed(PhaseSource::Deterministic);
+            report.outputs = vec![core_output(format!("{BUILD_DIR}/verify-declared.md"))];
+            return Ok(report);
+        }
+        if id.contains("na-blocking") {
+            // Gate-invalid: a non-applicable report with a blocking
+            // finding.
+            let mut report = blocked("a non-applicable verify carrying a blocking finding");
+            report.outcome = PhaseOutcome::NotApplicable;
+            return Ok(report);
+        }
+        if id.contains("verify-continuation") {
+            // Gate-invalid: verify must not mutate the continuation.
+            let mut report = PhaseReport::completed(PhaseSource::Deterministic);
+            report.next_continuation = Some(b"mock-verify-continuation".to_vec());
+            return Ok(report);
+        }
+        if project_root.join(VERIFY_BLOCKED_MARKER).is_file() {
+            let round = bump_round(workspace)?;
+            return Ok(blocked(&format!(
+                "the verify-blocked marker fails every verification (round {round})"
+            )));
+        }
+        if project_root.join(VERIFY_FIXABLE_MARKER).is_file()
+            && !workspace.root_path().join(VERIFICATION_REPAIRED).is_file()
+        {
+            return Ok(blocked("the verify-fixable marker blocks until a verification repair ran"));
+        }
+        if project_root.join(VERIFY_AFTER_REVIEW_FAIL_MARKER).is_file()
+            && workspace.root_path().join(REVIEW_REPAIRED).is_file()
+        {
+            return Ok(blocked("the review-origin repair regressed verification"));
+        }
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    /// One findings-directed repair pass: write the origin's repaired
+    /// sentinel into the workspace so a fixable verify/review pass
+    /// observes it, preserving the continuation (`None`).
+    ///
+    /// Under the verify-blocked round counter the report carries one
+    /// round-tagged non-blocking audit finding.
+    ///
+    /// # Errors
+    ///
+    /// `Io` when the sentinel cannot be written.
+    pub fn repair(workspace: &Workspace, origin: RepairOrigin) -> Result<PhaseReport, Error> {
+        let relative = match origin {
+            RepairOrigin::Verification => VERIFICATION_REPAIRED,
+            RepairOrigin::Review => REVIEW_REPAIRED,
+        };
+        write_file(&workspace.root_path().join(relative), "repaired\n")?;
+        let mut report = PhaseReport::completed(PhaseSource::Deterministic);
+        report.written = vec![workspace_write(relative)];
+        if let Some(round) = read_round(workspace) {
+            report.findings = vec![repair_finding(&format!("repair pass after round {round}"))];
+        }
+        Ok(report)
+    }
+
+    /// Bump and return the verify-blocked round counter kept in the
+    /// workspace at [`VERIFY_ROUND_COUNTER`].
+    fn bump_round(workspace: &Workspace) -> Result<u32, Error> {
+        let round = read_round(workspace).unwrap_or(0) + 1;
+        write_file(&workspace.root_path().join(VERIFY_ROUND_COUNTER), &round.to_string())?;
+        Ok(round)
+    }
+
+    /// The current verify-blocked round, `None` outside the profile.
+    fn read_round(workspace: &Workspace) -> Option<u32> {
+        std::fs::read_to_string(workspace.root_path().join(VERIFY_ROUND_COUNTER))
+            .ok()
+            .and_then(|body| body.trim().parse().ok())
+    }
+
+    /// One standards-review pass: a clean deterministic report unless
+    /// a marker profile says otherwise.
+    ///
+    /// Under [`CONTINUATION_MARKER`] a non-empty received continuation
+    /// is replaced with [`CONTINUATION_V2`], or cleared under
+    /// [`CONTINUATION_CLEAR_MARKER`].
+    ///
+    /// # Errors
+    ///
+    /// Reserved by the trait surface; the mock's review never fails.
+    pub fn review(
+        workspace: &Workspace, project_root: &Path, continuation: Option<&[u8]>,
+    ) -> Result<PhaseReport, Error> {
+        if project_root.join(REVIEW_BLOCKED_MARKER).is_file() {
+            return Ok(blocked("the review-blocked marker fails every review"));
+        }
+        if project_root.join(REVIEW_FIXABLE_MARKER).is_file()
+            && !workspace.root_path().join(REVIEW_REPAIRED).is_file()
+        {
+            return Ok(blocked("the review-fixable marker blocks until a review repair ran"));
+        }
+        let mut report = PhaseReport::completed(PhaseSource::Deterministic);
+        if project_root.join(CONTINUATION_MARKER).is_file()
+            && continuation.is_some_and(|payload| !payload.is_empty())
+        {
+            report.next_continuation = if project_root.join(CONTINUATION_CLEAR_MARKER).is_file() {
+                Some(Vec::new())
+            } else {
+                Some(CONTINUATION_V2.to_vec())
+            };
+        }
+        Ok(report)
     }
 
     /// Marker file (project-root-relative) that flips the preflight merge
@@ -294,6 +509,90 @@ mod targets {
             platform: Platform::Core,
             path,
         }
+    }
+
+    /// A completed report blocked by one model-assisted violation —
+    /// the mock's one blocking-profile shape (report source covers
+    /// the finding source).
+    fn blocked(detail: &str) -> PhaseReport {
+        let mut report = PhaseReport::completed(PhaseSource::ModelAssisted);
+        report.findings = vec![blocking_finding(detail)];
+        report
+    }
+
+    /// A well-formed blocking phase finding: an `important`
+    /// model-assisted violation on `code` with snippet evidence. The
+    /// engine renumbers ids and recomputes the fingerprint.
+    fn blocking_finding(detail: &str) -> PhaseFinding {
+        PhaseFinding {
+            id: "MOCK-0001".to_string(),
+            rule_id: None,
+            related_rule_ids: Vec::new(),
+            title: detail.to_string(),
+            severity: Severity::Important,
+            source: DiagnosticSource::ModelAssisted,
+            kind: FindingKind::Violation,
+            artifact: FindingArtifact::Code,
+            location: None,
+            evidence: FindingEvidence::Snippet {
+                value: detail.to_string(),
+            },
+            impact: detail.to_string(),
+            remediation: "remove the control marker or run the matching repair".to_string(),
+            confidence: Some(FindingConfidence::Medium),
+            fingerprint: String::new(),
+        }
+    }
+
+    /// A non-blocking deterministic audit finding for repair reports
+    /// (suggestion severity keeps it off every blocking gate).
+    fn repair_finding(detail: &str) -> PhaseFinding {
+        let mut finding = blocking_finding(detail);
+        finding.severity = Severity::Suggestion;
+        finding.source = DiagnosticSource::Deterministic;
+        finding.confidence = None;
+        finding
+    }
+
+    /// The version- and axis-stripped adapter name of a routed id.
+    fn adapter_name(id: &str) -> &str {
+        let name = id.rsplit(':').next().unwrap_or(id);
+        name.split_once('@').map_or(name, |(stem, _)| stem)
+    }
+
+    fn workspace_write(path: &str) -> PhaseWrite {
+        PhaseWrite {
+            root: PhaseRoot::Workspace,
+            path: path.to_string(),
+        }
+    }
+
+    fn stage_write(path: &str) -> PhaseWrite {
+        PhaseWrite {
+            root: PhaseRoot::Artifacts,
+            path: path.to_string(),
+        }
+    }
+
+    fn write_file(path: &Path, body: &str) -> Result<(), Error> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|err| Error::Io(err.to_string()))?;
+        }
+        std::fs::write(path, body).map_err(|err| Error::Io(err.to_string()))
+    }
+
+    /// Append one line to `path`, creating the file when absent.
+    fn append_line(path: &Path, line: &str) -> Result<(), Error> {
+        use std::io::Write as _;
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|err| Error::Io(err.to_string()))?;
+        }
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(|err| Error::Io(err.to_string()))?;
+        writeln!(file, "{line}").map_err(|err| Error::Io(err.to_string()))
     }
 
     /// The written build artifact body: slice identity plus per-variant

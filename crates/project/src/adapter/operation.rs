@@ -50,10 +50,13 @@ impl SourceOperation {
     }
 }
 
-/// Closed target-adapter operation set (`build | guidance | merge`).
+/// Closed target-adapter operation set
+/// (`build | guidance | merge | repair | review | verify`).
 ///
 /// Refine-time artifacts are synthesised by core, not produced by an
-/// operation, so the set is exactly these three. Variants stay in
+/// operation, so the set is exactly these six: `guidance` at refine
+/// time, the four RFC-90 build-loop phases driven by the engine's
+/// phase machine, and `merge` at landing. Variants stay in
 /// kebab-alphabetical order so `BTreeMap` iteration matches the wire
 /// envelope.
 #[derive(
@@ -73,10 +76,16 @@ impl SourceOperation {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TargetOperation {
-    /// Build — implementation, driven by the execute loop's build phase.
+    /// Build — generation only, driven by the execute loop's build phase.
     Build,
     /// Guidance — synthesis-time guidance read by core during refine.
     Guidance,
     /// Merge — landing gate, driven by the execute loop's merge phase.
     Merge,
+    /// Repair — one findings-directed repair pass (RFC-90).
+    Repair,
+    /// Review — one engineering-standards review pass (RFC-90).
+    Review,
+    /// Verify — one check pass over the lent workspace (RFC-90).
+    Verify,
 }

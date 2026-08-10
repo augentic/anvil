@@ -3,6 +3,7 @@
 //! ensure is a static package match — misses fail `adapter-not-linked`.
 
 use adapter::seam::{self as aseam, Context};
+use diagnostics::Diagnostic;
 use error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Reply, Request};
@@ -10,7 +11,7 @@ use project::adapter::{
     AdapterSelector, Axis, FIRST_PARTY_NAMESPACE, Origin, ResolvedSource, ResolvedTarget, Resolver,
 };
 use project::handler::ExecutionPaths;
-use project::seam::wire::BuildReport;
+use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
 use project::seam::{self, Evidence, Input, Lead, Source, Target, Workspace};
 use project::snapshot::{CodePatch, SnapshotId};
 use project::workspace::{self as workspace_kernel, Access, Store};
@@ -258,7 +259,7 @@ impl Target for Provider {
     async fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, context: seam::BuildContext,
         workspace: Workspace,
-    ) -> Result<BuildReport, seam::Error> {
+    ) -> Result<PhaseReport, seam::Error> {
         let ctx = self.ctx(&id, self.mcp_url(&id).await?).lending(workspace.root.clone());
         let inputs: Vec<aseam::Input> = inputs.into_iter().map(convert::narrow_input).collect();
         let context = convert::narrow_context(context);
@@ -268,7 +269,57 @@ impl Target for Provider {
             .build(&self.model, &ctx, &id, &slice, &inputs, &context, &workspace)
             .await
             .map_err(convert::error)?;
-        Ok(convert::widen_report(&id, slice, report))
+        Ok(convert::phase_report(report))
+    }
+
+    async fn verify(&self, id: String, workspace: Workspace) -> Result<PhaseReport, seam::Error> {
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?).lending(workspace.root.clone());
+        let workspace = convert::narrow_workspace(workspace);
+        let report = self
+            .catalog
+            .verify(&self.model, &ctx, &id, &workspace)
+            .await
+            .map_err(convert::error)?;
+        Ok(convert::phase_report(report))
+    }
+
+    async fn repair(
+        &self, id: String, slice: String, origin: RepairOrigin, findings: Vec<Diagnostic>,
+        continuation: Option<Vec<u8>>, workspace: Workspace,
+    ) -> Result<PhaseReport, seam::Error> {
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?).lending(workspace.root.clone());
+        let origin = convert::narrow_origin(origin);
+        let findings: Vec<aseam::PhaseFinding> =
+            findings.into_iter().map(convert::narrow_finding).collect();
+        let workspace = convert::narrow_workspace(workspace);
+        let report = self
+            .catalog
+            .repair(
+                &self.model,
+                &ctx,
+                &id,
+                &slice,
+                origin,
+                &findings,
+                continuation.as_deref(),
+                &workspace,
+            )
+            .await
+            .map_err(convert::error)?;
+        Ok(convert::phase_report(report))
+    }
+
+    async fn review(
+        &self, id: String, slice: String, continuation: Option<Vec<u8>>, workspace: Workspace,
+    ) -> Result<PhaseReport, seam::Error> {
+        let ctx = self.ctx(&id, self.mcp_url(&id).await?).lending(workspace.root.clone());
+        let workspace = convert::narrow_workspace(workspace);
+        let report = self
+            .catalog
+            .review(&self.model, &ctx, &id, &slice, continuation.as_deref(), &workspace)
+            .await
+            .map_err(convert::error)?;
+        Ok(convert::phase_report(report))
     }
 
     async fn merge(
@@ -305,10 +356,13 @@ impl seam::Workspaces for Provider {
         )
         .await
         .map_err(|err| workspace_failure(&err))?;
+        // The build orchestrator attaches the per-attempt artifact
+        // stage; preparation itself lends none.
         Ok(Workspace {
             id: prepared.id,
             root: prepared.root.display().to_string(),
             artifacts: host_absolute(self.paths.project_root()),
+            artifact_stage: None,
         })
     }
 

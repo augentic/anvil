@@ -16,7 +16,7 @@ This plugin provides the core Emery workflow skills: initialize a project, plan 
 Adapters split into two roles:
 
 - **Source adapters** (`adapters/sources/<name>/`) supply input — `survey` (plan time) and `extract` (slice time). Examples: `intent`, `documentation`, `typescript`, `screenshots`.
-- **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `guidance`, `build`, and `merge`. Examples: `omnia`, `vectis`, `contracts`.
+- **Target adapters** (`adapters/targets/<name>/`) consume artifacts — `guidance`, the build-loop operations (`build`, `verify`, `repair`, `review` — dispatched one pass at a time by the engine), and `merge`. Examples: `omnia`, `vectis`, `contracts`.
 
 Each directory contains operation prompts under `prose/prompts/`; adapter identity and metadata come from the compiled component (`describe`), not a manifest file.
 

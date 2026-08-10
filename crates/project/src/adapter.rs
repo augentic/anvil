@@ -16,7 +16,7 @@ pub mod upgrade;
 pub(crate) use core::PlatformsSurface;
 pub use core::{
     Axis, BuildInputDeclaration, Origin, PlatformsCapability, ResolvedSource, ResolvedTarget,
-    SourceAdapter, TargetAdapter,
+    SourceAdapter, TargetAdapter, WritableArtifactDeclaration, WritableArtifactKind,
 };
 
 pub use ensure::ComponentMeta;

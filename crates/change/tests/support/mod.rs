@@ -168,6 +168,96 @@ pub fn change_with_deps(name: &str, deps: &[&str]) -> project::plan::Entry {
     entry
 }
 
+/// Author the single-slice greeting plan and refine it to Refined —
+/// the fixture floor for the RFC-90 build-phase suites.
+///
+/// # Panics
+///
+/// Panics when author or refine fails.
+pub async fn greeting_ready(session: &Session) {
+    mock::invoke::run::<change::plan::handlers::Author, _, _>(
+        session.provider(),
+        change::plan::handlers::AuthorInput {
+            name: "demo".to_string(),
+            sources: greeting_binding(),
+            intent: None,
+            force: false,
+        },
+    )
+    .await
+    .expect("author");
+    refine(session, "greeting").await.expect("refine");
+}
+
+/// Drop one mock control-plane marker file at the project root.
+///
+/// # Panics
+///
+/// Panics when the marker cannot be written.
+pub fn marker(root: &std::path::Path, name: &str) {
+    std::fs::write(root.join(name), "").expect("write marker");
+}
+
+/// The attempt directory
+/// `.emery/slices/<slice>/build/attempts/<NNNN>/`.
+#[must_use]
+pub fn attempt_dir(root: &std::path::Path, slice: &str, attempt: u32) -> std::path::PathBuf {
+    root.join(".emery/slices").join(slice).join("build/attempts").join(format!("{attempt:04}"))
+}
+
+/// Sorted `phases/` file names of one attempt.
+///
+/// # Panics
+///
+/// Panics when the attempt has no readable `phases/` directory.
+#[must_use]
+pub fn phase_files(root: &std::path::Path, slice: &str, attempt: u32) -> Vec<String> {
+    let dir = attempt_dir(root, slice, attempt).join("phases");
+    let mut names: Vec<String> = std::fs::read_dir(&dir)
+        .unwrap_or_else(|err| panic!("phases dir `{}`: {err}", dir.display()))
+        .map(|entry| entry.expect("phase entry").file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+/// `(attempt, ordinal, operation, source)` of every
+/// `slice.build.phase-completed` fact, in journal order.
+///
+/// # Panics
+///
+/// Panics when the journal union cannot be read.
+#[must_use]
+pub fn phase_events(root: &std::path::Path) -> Vec<(u32, u32, String, String)> {
+    project::journal::read_union(project::config::Layout::new(root))
+        .expect("journal union")
+        .into_iter()
+        .filter_map(|event| match event.kind {
+            project::journal::EventKind::SliceBuildPhaseCompleted {
+                attempt,
+                ordinal,
+                operation,
+                source,
+                ..
+            } => Some((attempt, ordinal, operation, source)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The parsed canonical `build/report.yaml` terminal projection.
+///
+/// # Panics
+///
+/// Panics when the canonical report is absent or stops parsing.
+#[must_use]
+pub fn canonical_report(root: &std::path::Path, slice: &str) -> slice::BuildReport {
+    let path = root.join(".emery/slices").join(slice).join("build/report.yaml");
+    let yaml = std::fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("canonical report `{}`: {err}", path.display()));
+    serde_saphyr::from_str(&yaml).expect("canonical report parses")
+}
+
 /// Rule ids carried by a failing validate operation's report.
 ///
 /// # Panics

@@ -1212,6 +1212,7 @@ dependencies = [
  "jiff",
  "omnia-guest",
  "omnia-wasi-otel",
+ "serde_json",
  "wasip3",
  "wit-bindgen 0.60.0",
 ]
@@ -1364,6 +1365,7 @@ dependencies = [
  "clap",
  "emery-artifacts",
  "emery-change",
+ "emery-diagnostics",
  "emery-error",
  "emery-mock",
  "emery-native",
