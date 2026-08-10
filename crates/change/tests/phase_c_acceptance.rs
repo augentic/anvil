@@ -204,8 +204,13 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
         },
     );
     stamp_epoch(root, &live_plan_digest(root), specs);
-    enforce_before_build(Layout::new(root), &plan, "clean")
-        .expect("gap gate ignores dropped sibling conflict");
+    enforce_before_build(
+        Layout::new(root),
+        &plan,
+        "clean",
+        Timestamp::from_second(1_700_000_100).expect("timestamp"),
+    )
+    .expect("gap gate ignores dropped sibling conflict");
 }
 
 /// Acceptance #12 / D22 — open unknowns keep Ready false; deferring
@@ -345,8 +350,13 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
     );
     stamp_epoch(session2.root(), &live_plan_digest(session2.root()), specs);
     fs::write(session2.root().join(".emery/slices/a/specs/extra.md"), "x\n").expect("drift");
-    let err = enforce_before_build(Layout::new(session2.root()), &plan, "a")
-        .expect_err("spec change → stale");
+    let err = enforce_before_build(
+        Layout::new(session2.root()),
+        &plan,
+        "a",
+        Timestamp::from_second(1_700_000_100).expect("timestamp"),
+    )
+    .expect_err("spec change → stale");
     assert_eq!(err.variant_str(), "plan-epoch-stale");
     assert_ne!(
         dir_cid(&session2.root().join(".emery/slices/a/specs")).expect("live").to_string(),

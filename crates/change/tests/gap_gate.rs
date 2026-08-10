@@ -8,7 +8,9 @@ use std::collections::BTreeMap;
 use std::fs;
 
 use change::orchestrate::enforce_before_build;
-use change::plan::handlers::{Defer, DeferInput, DeferSelector, Execute, ExecuteInput};
+use change::plan::handlers::{
+    Defer, DeferInput, DeferSelector, Execute, ExecuteInput, Gaps, GapsInput,
+};
 use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
@@ -16,9 +18,10 @@ use mock::session::Session;
 use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event, EventKind, LeafSpecCoverage,
+    append_for, read_union,
 };
-use project::plan::{Plan, dir_cid};
+use project::plan::{Disposition, Plan, dir_cid};
 use support::plan_with_changes;
 
 /// Single-project plan entry so execute's workspace routing refusal
@@ -49,16 +52,58 @@ fn write_refined(root: &std::path::Path, slice: &str, model: &str) {
 }
 
 async fn init_mock(session: &Session) {
+    init_mock_with_policy(session, None).await;
+}
+
+/// Init the mock project, optionally writing the `project.yaml`
+/// `gap-policy:` declaration (RFC-86a D3).
+async fn init_mock_with_policy(session: &Session, gap_policy: Option<GapPolicy>) {
     run::<project::init::handlers::Init, _, _>(
         session.provider(),
         project::init::handlers::InitInput {
             adapter: Some("mock".to_string()),
             name: Some("demo".to_string()),
+            gap_policy,
             ..Default::default()
         },
     )
     .await
     .expect("init");
+}
+
+/// `(slice, req, reason)` of every `origin: policy` deferral fact in
+/// the journal union.
+fn policy_deferral_facts(root: &std::path::Path) -> Vec<(String, String, String)> {
+    read_union(Layout::new(root))
+        .expect("union")
+        .into_iter()
+        .filter_map(|event| match event.kind {
+            EventKind::GapDeferred {
+                slice,
+                req,
+                reason,
+                origin: DeferralOrigin::Policy,
+                ..
+            } => Some((slice.as_str().to_string(), req, reason)),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Effective gap policy on the newest `plan.execute.started` coverage.
+fn newest_epoch_gap_policy(root: &std::path::Path) -> GapPolicy {
+    read_union(Layout::new(root))
+        .expect("union")
+        .into_iter()
+        .rev()
+        .find_map(|event| match event.kind {
+            EventKind::PlanExecuteStarted {
+                coverage: ClosedPlanCoverage::ClosedPlan { gap_policy, .. },
+                ..
+            } => Some(gap_policy),
+            _ => None,
+        })
+        .expect("plan.execute.started")
 }
 
 /// Defer one `<slice>/<req>` through the operator act.
@@ -331,6 +376,163 @@ async fn digest_lapsed_deferral_blocks_again() {
 }
 
 #[tokio::test]
+async fn defer_flag_mints_policy_fact_for_open_unknown() {
+    // Acceptance 3: under an effective `defer` policy the gate
+    // dispositions open rows itself — one `origin: policy` fact with
+    // the synthesized epoch reason — and build proceeds.
+    let session = Session::bare(Vec::new());
+    init_mock(&session).await;
+    write_refined(
+        session.root(),
+        "a",
+        r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+    );
+    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+
+    let err = run::<Execute, _, _>(
+        session.provider(),
+        ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect_err("build may fail later without pins; gap gate must not");
+    assert_ne!(
+        err_code(&err),
+        "plan-gaps-unresolved",
+        "defer policy must disposition and proceed: {err}"
+    );
+
+    let facts = policy_deferral_facts(session.root());
+    assert_eq!(facts.len(), 1, "one policy fact per open row: {facts:?}");
+    let (slice, req, reason) = &facts[0];
+    assert_eq!(slice, "a");
+    assert_eq!(req, "REQ-003");
+    assert!(
+        reason.starts_with("deferred by gap-policy under epoch "),
+        "synthesized policy reason: {reason}"
+    );
+    assert_eq!(newest_epoch_gap_policy(session.root()), GapPolicy::Defer);
+
+    // The minted disposition is visible in the projected inventory.
+    let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
+    assert_eq!(gaps.rows.len(), 1);
+    assert_eq!(gaps.rows[0].disposition, Some(Disposition::Deferred), "{:?}", gaps.rows);
+}
+
+#[tokio::test]
+async fn defer_flag_mints_policy_fact_for_tied_conflict() {
+    // D6: conflicts defer under the same gate-time policy minting —
+    // build-over stays forbidden, exclusion proceeds.
+    let session = Session::bare(Vec::new());
+    init_mock(&session).await;
+    write_refined(
+        session.root(),
+        "a",
+        r"requirements:
+  - id: REQ-001
+    title: contradiction
+    status: conflict
+    sources: [intent]
+",
+    );
+    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+
+    let err = run::<Execute, _, _>(
+        session.provider(),
+        ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect_err("build may fail later without pins; gap gate must not");
+    assert_ne!(
+        err_code(&err),
+        "plan-gaps-unresolved",
+        "defer policy must disposition conflicts identically: {err}"
+    );
+
+    let facts = policy_deferral_facts(session.root());
+    assert_eq!(facts.len(), 1, "one policy fact for the conflict: {facts:?}");
+    assert_eq!(facts[0].1, "REQ-001");
+
+    let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
+    assert_eq!(gaps.rows[0].disposition, Some(Disposition::Deferred), "{:?}", gaps.rows);
+}
+
+#[tokio::test]
+async fn project_declaration_defers_without_flag() {
+    // Acceptance 4: a `project.yaml` `gap-policy: defer` declaration
+    // alone makes the epoch defer — no flag supplied — and the
+    // effective policy lands on the coverage payload.
+    let session = Session::bare(Vec::new());
+    init_mock_with_policy(&session, Some(GapPolicy::Defer)).await;
+    write_refined(
+        session.root(),
+        "a",
+        r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+    );
+    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+
+    let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
+        .await
+        .expect_err("build may fail later without pins; gap gate must not");
+    assert_ne!(
+        err_code(&err),
+        "plan-gaps-unresolved",
+        "declared defer policy must disposition and proceed: {err}"
+    );
+
+    assert_eq!(newest_epoch_gap_policy(session.root()), GapPolicy::Defer);
+    assert_eq!(policy_deferral_facts(session.root()).len(), 1);
+}
+
+#[tokio::test]
+async fn strict_flag_overrides_defer_declaration() {
+    // Acceptance 4: `--gap-policy strict` overrides the `project.yaml`
+    // declaration for one run — the gate blocks and mints nothing.
+    let session = Session::bare(Vec::new());
+    init_mock_with_policy(&session, Some(GapPolicy::Defer)).await;
+    write_refined(
+        session.root(),
+        "a",
+        r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    status: unknown
+    sources: [intent]
+",
+    );
+    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+
+    let err = run::<Execute, _, _>(
+        session.provider(),
+        ExecuteInput {
+            gap_policy: Some(GapPolicy::Strict),
+        },
+    )
+    .await
+    .expect_err("strict override must refuse build");
+    assert_eq!(err_code(&err), "plan-gaps-unresolved");
+
+    assert_eq!(newest_epoch_gap_policy(session.root()), GapPolicy::Strict);
+    assert!(policy_deferral_facts(session.root()).is_empty(), "strict mints no policy deferrals");
+
+    let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
+    assert_eq!(gaps.rows[0].disposition, Some(Disposition::Open), "{:?}", gaps.rows);
+}
+
+#[tokio::test]
 async fn divergence_alone_does_not_block() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
@@ -431,7 +633,13 @@ async fn stale_existing_digest_refuses_build() {
             != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
     );
 
-    let err = enforce_before_build(layout, &plan, "a").expect_err("stale epoch");
+    let err = enforce_before_build(
+        layout,
+        &plan,
+        "a",
+        Timestamp::from_second(1_700_000_100).expect("timestamp"),
+    )
+    .expect_err("stale epoch");
     assert_eq!(err.variant_str(), "plan-epoch-stale");
     let detail = err.to_string();
     assert!(detail.contains("drifted") || detail.contains("deadbeef"), "{detail}");
@@ -464,7 +672,13 @@ async fn stale_plan_digest_refuses_build() {
         specs,
     );
 
-    let err = enforce_before_build(layout, &plan, "a").expect_err("stale plan digest");
+    let err = enforce_before_build(
+        layout,
+        &plan,
+        "a",
+        Timestamp::from_second(1_700_000_100).expect("timestamp"),
+    )
+    .expect_err("stale plan digest");
     assert_eq!(err.variant_str(), "plan-epoch-stale");
     assert!(err.to_string().contains("plan.yaml"), "{}", err);
 }

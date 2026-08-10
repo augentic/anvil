@@ -817,9 +817,13 @@ mod milestones {
         let body = status(&project, &plan).await;
         assert!(!body.authorized, "covered-spec drift clears Authorized");
 
-        let err =
-            change::orchestrate::enforce_before_build(Layout::new(project.root()), &plan, "a")
-                .expect_err("stale epoch refuses build");
+        let err = change::orchestrate::enforce_before_build(
+            Layout::new(project.root()),
+            &plan,
+            "a",
+            Timestamp::from_second(1_700_000_100).expect("timestamp"),
+        )
+        .expect_err("stale epoch refuses build");
         assert_eq!(err.variant_str(), "plan-epoch-stale");
     }
 
