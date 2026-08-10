@@ -117,6 +117,23 @@ impl ModelRequirement {
     pub fn domain_or_default(&self) -> &str {
         self.domain.as_deref().unwrap_or(DEFAULT_DOMAIN)
     }
+
+    /// Canonical `sha256:<hex>` digest of this requirement's body
+    /// content — the deferral match key (RFC-86a D2). Delegates to
+    /// [`project::slice::RequirementBody`]: only the agent-authored
+    /// body (title, statement, scenarios, notes) participates, so a
+    /// re-refine that renumbers `REQ-NNN` ids keeps the digest while
+    /// any body edit changes it.
+    #[must_use]
+    pub fn body_digest(&self) -> String {
+        project::slice::RequirementBody {
+            title: &self.title,
+            statement: &self.statement,
+            scenarios: &self.scenarios,
+            notes: self.notes.as_deref(),
+        }
+        .digest()
+    }
 }
 
 /// One inline claim under [`ModelRequirement::claims`].
