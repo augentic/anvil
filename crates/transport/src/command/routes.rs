@@ -29,6 +29,10 @@ pub(super) struct InitArgs {
     /// Comma-separated target platforms.
     #[arg(long)]
     platforms: Option<String>,
+    /// Gap policy declaration (`strict` or `defer`) recorded on
+    /// `project.yaml`; absent means `strict`.
+    #[arg(long)]
+    gap_policy: Option<project::GapPolicy>,
     /// Re-enter initialization to bump the Emery version pin.
     #[arg(long, conflicts_with_all = ["adapter", "name", "description"])]
     pub(super) upgrade: bool,
@@ -329,4 +333,4 @@ convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sourc
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
 
-convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });
+convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, gap_policy, upgrade });
