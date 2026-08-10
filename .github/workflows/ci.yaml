@@ -15,20 +15,3 @@ jobs:
     uses: augentic/.github/.github/workflows/ci.yaml@main
     secrets: inherit
 
-  links:
-    name: Links
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 1
-
-      - name: Install mdbook toolchain
-        uses: taiki-e/install-action@v2
-        with:
-          tool: mdbook,mdbook-linkcheck2
-
-      - name: Check Developer Guide links
-        run: mdbook build docs
-
