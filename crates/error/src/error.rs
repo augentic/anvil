@@ -147,6 +147,18 @@ impl Error {
                 "slice-claim-conflict" => Some(
                     "claim a different slice, or wait for the current owner to release / retract their claim",
                 ),
+                "plan-epoch-stale" => Some(
+                    "re-run `emery plan execute` — it opens a fresh epoch over the current plan and specs; re-supply any `--waive` flags (waivers ride each epoch)",
+                ),
+                "plan-gaps-unresolved" => Some(
+                    "resolve `[conflict]`s at their source and re-run `emery plan execute`, or defer named `[unknown]`s with `--waive <slice>/<req> --reason \"<why>\"` — `[conflict]` is never waiveable\nsee: docs/reference/diagnostics.md",
+                ),
+                "plan-waiver-invalid" => Some(
+                    "pair every `--waive <slice>/<req>` with one `--reason` and waive only open `[unknown]` findings; `emery plan gaps` lists the inventory",
+                ),
+                "guest-marker-held" => Some(
+                    "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
+                ),
                 _ => None,
             },
             _ => None,
