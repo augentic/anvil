@@ -13,8 +13,6 @@ use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::MergeResult;
 use crate::{Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
 
-#[cfg(test)]
-mod goldens;
 mod parse;
 mod read;
 mod write;
