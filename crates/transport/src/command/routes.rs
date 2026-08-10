@@ -38,6 +38,14 @@ pub(super) struct InitArgs {
     pub(super) upgrade: bool,
 }
 
+/// Arguments for `debt` — none.
+#[derive(Clone, Copy, Debug, Args)]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "clap's `Args` derive requires a braced struct"
+)]
+pub(super) struct DebtArgs {}
+
 #[derive(Clone, Copy)]
 struct NamespaceHelp {
     path: &'static [&'static str],
@@ -255,7 +263,7 @@ where
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
         "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nWhen the baseline carries deferred debt, `change.md` also renders the carried-debt inventory (the same backlog `emery debt` projects), so a corrective change is scoped with it in view. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "execute"],
@@ -269,6 +277,13 @@ where
         plan::ArchiveArgs,
         ::change::plan::handlers::Archive,
         "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
+    );
+    route!(
+        ["debt"],
+        DebtArgs,
+        ::slice::handlers::Debt,
+        "Read-only baseline debt projection: list every carried `unknown` / `conflict` requirement under `.emery/specs/` with the reason, origin, originating change, and age from its deferral note",
+        "Read-only baseline debt projection (RFC-86a D9) — the backlog looking ahead.\n\nWalks the baseline specs under `.emery/specs/` and lists every requirement whose status is `unknown` or `conflict`, with the reason, origin (`operator | policy`), originating change, and age parsed from the self-describing deferral note the merge fold appended. Conflicts render separately from unknowns. Reads the baseline alone — never archived fact logs — and writes nothing. `plan author` renders the same inventory in the review prose it authors, so a corrective change is scoped with the backlog in view."
     );
     route!(
         ["journal", "show"],
@@ -332,5 +347,6 @@ convert!(plan::DeferArgs => ::change::plan::handlers::DeferInput { selectors, re
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
+convert!(DebtArgs => ::slice::handlers::DebtInput {});
 
 convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, gap_policy, upgrade });

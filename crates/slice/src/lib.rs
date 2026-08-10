@@ -6,6 +6,7 @@ pub(crate) mod actions;
 pub mod answers;
 pub mod base;
 pub(crate) mod build;
+pub mod debt;
 pub(crate) mod design_system;
 pub mod handlers;
 pub(crate) mod judgment;

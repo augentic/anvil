@@ -13,10 +13,7 @@ use project::config::Layout;
 use project::journal::DeferralOrigin;
 use project::plan::{Disposition, Plan, collect_events, plan_gaps_body};
 
-/// Line prefix of the self-describing baseline debt note. The tail is
-/// `origin: <o>; change: <c>; date: <YYYY-MM-DD>; reason: <free text>`
-/// — reason last, so free text never confuses the fixed-key parse.
-pub const NOTE_PREFIX: &str = "Note: deferred — ";
+use crate::debt::NOTE_PREFIX;
 
 /// The slice's carried debt at merge time.
 #[derive(Debug, Clone, Default)]

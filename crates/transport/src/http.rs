@@ -124,4 +124,5 @@ where
         .route("/plan/execute", post!(::change::plan::handlers::Execute))
         .route("/plan/archive", post!(::change::plan::handlers::Archive))
         .route("/journal", get!(project::journal::handlers::Show))
+        .route("/debt", get!(::slice::handlers::Debt))
 }

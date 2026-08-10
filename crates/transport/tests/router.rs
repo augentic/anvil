@@ -60,7 +60,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 24);
+    assert_eq!(http_types.len(), 25);
 }
 
 #[tokio::test]
@@ -215,8 +215,17 @@ struct Case {
     json_channels: bool,
 }
 
-const fn cases() -> [Case; 9] {
+const fn cases() -> [Case; 10] {
     [
+        Case {
+            name: "debt empty baseline",
+            argv: &["emery", "debt"],
+            fixture: Fixture::Project,
+            exit: 0,
+            stdout: "baseline debt: none",
+            stderr: "",
+            json_channels: false,
+        },
         Case {
             name: "help",
             argv: &["emery", "--help"],

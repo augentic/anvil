@@ -183,6 +183,71 @@ async fn operator_deferral_note_carries_reason_and_origin() {
     assert_eq!(deferred.len(), 1, "{deferred:?}");
 }
 
+/// Acceptance 7 (RFC-86a D9): after a debt-carrying merge, `emery
+/// debt` reads the baseline alone and lists the carried row with every
+/// note field — reason, origin, originating change, and age — and the
+/// next `plan author` renders the same inventory into the `change.md`
+/// review prose it authors.
+#[tokio::test]
+async fn debt_projection_and_author_inventory_after_merge() {
+    // Three judgment answers: the first author's grouping, the refine
+    // synthesis that mints the unknown, and the corrective change's
+    // author grouping.
+    let session = Session::bare(vec![
+        mock::answers::greeting_grouping(),
+        mock::answers::greeting_unknown_synthesis(),
+        mock::answers::greeting_grouping(),
+    ]);
+    let root = session.root().to_path_buf();
+    scaffold(&session).await;
+    execute(&session, Some(GapPolicy::Defer)).await;
+
+    // The projection reads the merged baseline note, never fact logs.
+    let debt =
+        run::<slice::handlers::Debt, _, _>(session.provider(), slice::handlers::DebtInput {})
+            .await
+            .expect("debt projects");
+    assert_eq!(debt.rows.len(), 1, "{:?}", debt.rows);
+    let row = &debt.rows[0];
+    assert_eq!(row.domain, "greeting");
+    assert_eq!(row.req, "REQ-001");
+    assert_eq!(row.status, RequirementStatus::Unknown);
+    let note = row.deferral.as_ref().expect("self-describing note");
+    assert_eq!(note.origin, DeferralOrigin::Policy);
+    assert_eq!(note.change, "demo");
+    assert!(note.reason.starts_with("deferred by gap-policy under epoch "), "{}", note.reason);
+    assert!(note.age_days <= 1, "the deferral happened just now: {note:?}");
+
+    // Close the change, then author the corrective one: the review
+    // prose carries the backlog.
+    run::<plan::handlers::Archive, _, _>(
+        session.provider(),
+        plan::handlers::ArchiveInput::default(),
+    )
+    .await
+    .expect("archive");
+    run::<plan::handlers::Author, _, _>(
+        session.provider(),
+        plan::handlers::AuthorInput {
+            name: "demo".to_string(),
+            sources: support::greeting_binding(),
+            intent: None,
+            force: false,
+        },
+    )
+    .await
+    .expect("corrective author");
+
+    let brief = fs::read_to_string(root.join("change.md")).expect("change.md");
+    assert!(brief.contains("## Carried debt"), "{brief}");
+    assert!(brief.contains("Unknowns:"), "{brief}");
+    assert!(
+        brief.contains("- greeting/REQ-001 greeting error handling — deferred by gap-policy"),
+        "{brief}"
+    );
+    assert!(brief.contains("(policy, change demo, "), "{brief}");
+}
+
 /// D6 visibility at the boundary: the archive summary renders
 /// deferred conflicts separately from deferred unknowns, joined from
 /// staged wave and deferral facts.

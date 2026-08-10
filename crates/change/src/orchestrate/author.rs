@@ -134,7 +134,11 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     );
     journal::append_one(layout, &event)?;
 
-    persist_gate_prose(layout, name, &gate, discovery)?;
+    // The baseline debt inventory (RFC-86a D9): the same backlog
+    // `emery debt` projects, rendered into the review prose so the
+    // corrective change is scoped with it in view.
+    let debt = slice::debt::baseline(&layout.specs_dir(), now)?;
+    persist_gate_prose(layout, name, &gate, discovery, &debt)?;
     validate(layout)?;
 
     Ok(AuthorOutcome {
@@ -196,13 +200,20 @@ fn gate_missing() -> Error {
 }
 
 /// Persist the review prose: `change.md` framed under the
-/// deterministic `# Change — <name>` heading, and the `discovery.md`
-/// preamble through the validated [`Discovery::set_preamble`] writer
-/// (the lead inventory rides through untouched).
+/// deterministic `# Change — <name>` heading — plus the baseline debt
+/// inventory when the specs tree carries any (RFC-86a D9) — and the
+/// `discovery.md` preamble through the validated
+/// [`Discovery::set_preamble`] writer (the lead inventory rides
+/// through untouched).
 fn persist_gate_prose(
     layout: Layout<'_>, name: &str, gate: &GateProse, mut discovery: Discovery,
+    debt: &[slice::debt::DebtRow],
 ) -> Result<(), Error> {
-    let brief = format!("# Change — {name}\n\n{}\n", gate.change.trim());
+    let mut brief = format!("# Change — {name}\n\n{}\n", gate.change.trim());
+    if let Some(section) = slice::debt::markdown(debt) {
+        brief.push('\n');
+        brief.push_str(&section);
+    }
     bytes_write(&layout.change_brief_path(), brief.as_bytes())?;
 
     discovery.set_preamble(&discovery_preamble(name, gate))?;
