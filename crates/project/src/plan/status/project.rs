@@ -2,7 +2,6 @@
 //! → one [`StatusBody`] (RFC-86 D2 / D22 / D26).
 
 use std::ops::ControlFlow;
-use std::path::Path;
 
 use artifacts::spec::provenance::RequirementStatus;
 use error::Error;
@@ -131,33 +130,15 @@ fn clean_gaps(gaps: &super::super::gaps::GapsBody) -> bool {
 fn all_in_scope_refined(plan: &Plan, layout: Layout<'_>) -> Result<bool, Error> {
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
-        let meta = load_meta(&slice_dir)?;
+        let meta = SliceMetadata::load_optional(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
-        if !is_refined(&slice_dir) {
+        if !crate::slice::has_spec_artifacts(&slice_dir) {
             return Ok(false);
         }
     }
     Ok(true)
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(m) => Ok(Some(m)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
-    }
-}
-
-fn is_refined(slice_dir: &Path) -> bool {
-    slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file()
 }
 
 /// Authorized when the newest `plan.execute.started` epoch still

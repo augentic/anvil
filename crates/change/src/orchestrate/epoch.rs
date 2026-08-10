@@ -3,7 +3,6 @@
 //! gap inventory, and appends `plan.execute.started`.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use diagnostics::digest::sha256_hex;
 use error::Error;
@@ -110,11 +109,11 @@ fn assemble_coverage(
     let mut specs = BTreeMap::new();
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
-        let meta = load_meta(&slice_dir)?;
+        let meta = SliceMetadata::load_optional(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
-        let leaf = if has_spec_artifacts(&slice_dir)
+        let leaf = if project::slice::has_spec_artifacts(&slice_dir)
             && !slice::pins_drifted(layout, &slice_dir, entry.name.as_str())?
         {
             LeafSpecCoverage::Existing {
@@ -131,24 +130,6 @@ fn assemble_coverage(
         specs,
         unknown_waivers,
     })
-}
-
-fn has_spec_artifacts(slice_dir: &Path) -> bool {
-    slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file()
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(meta) => Ok(Some(meta)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
-    }
 }
 
 fn waiver_invalid(detail: impl Into<String>) -> Error {

@@ -7,7 +7,7 @@ pub mod lifecycle;
 pub mod metadata;
 pub mod outcome;
 
-pub use lifecycle::LifecycleStatus;
+pub use lifecycle::{LifecycleStatus, has_spec_artifacts};
 pub use metadata::{
     Outcome, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec, slice_not_found,
 };

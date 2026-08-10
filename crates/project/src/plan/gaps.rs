@@ -116,17 +116,7 @@ pub fn plan_gaps_body(plan: &Plan, layout: Layout<'_>) -> Result<GapsBody, Error
     let mut raw: Vec<RawFinding> = Vec::new();
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
-        let meta = match SliceMetadata::load(&slice_dir) {
-            Ok(m) => Some(m),
-            Err(
-                Error::ArtifactNotFound { .. }
-                | Error::Diag {
-                    code: "slice-not-found",
-                    ..
-                },
-            ) => None,
-            Err(err) => return Err(err),
-        };
+        let meta = SliceMetadata::load_optional(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }

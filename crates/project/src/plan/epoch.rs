@@ -3,8 +3,6 @@
 //! The newest `plan.execute.started` coverage vs the live `plan.yaml`
 //! and covered spec trees — shared by status Authorized and the gap gate.
 
-use std::path::Path;
-
 use diagnostics::digest::sha256_hex;
 use error::Error;
 
@@ -87,7 +85,7 @@ fn staleness(
     let ladders = project_ladders(plan, events);
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
-        let meta = load_meta(&slice_dir)?;
+        let meta = SliceMetadata::load_optional(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
@@ -118,18 +116,4 @@ fn staleness(
         }
     }
     Ok(None)
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(meta) => Ok(Some(meta)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
-    }
 }
