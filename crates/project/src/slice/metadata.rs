@@ -75,9 +75,11 @@ pub struct SliceMetadata {
 }
 
 /// Result of a target-adapter operation (guidance | build | merge) as
-/// recorded in `metadata.yaml`. An audit stamp for operators and
-/// tooling reading the archived slice — the execute loop never reads
-/// it; plan transitions project from journal facts and artifacts.
+/// recorded in `metadata.yaml`.
+///
+/// An audit stamp for operators and tooling reading the archived slice
+/// — the execute loop never reads it; plan transitions project from
+/// journal facts and artifacts.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Outcome {

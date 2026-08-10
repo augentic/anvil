@@ -197,3 +197,43 @@ async fn validate_reports_baseline_and_source_pin_drift() {
     assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
     assert!(!ids.iter().any(|id| id == "slice-base-drifted"), "baseline restored: {ids:?}");
 }
+
+#[tokio::test]
+async fn missing_plan_entry_fails_closed_on_pinned_sources() {
+    let session = Session::scripted(
+        "mock",
+        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
+    );
+    let root = session.root().to_path_buf();
+    author_and_refine(&session).await;
+
+    // Orphan the slice: drop its plan entry while base.yaml keeps its
+    // source pins. The pins can no longer be verified against a plan
+    // binding, so pin-drift must fail closed rather than skip them.
+    let layout = Layout::new(&root);
+    let plan_path = layout.plan_path();
+    let mut plan = Plan::load(&plan_path).expect("plan");
+    plan.entries.retain(|entry| entry.name != "login-flow");
+    artifacts::atomic::yaml_write(&plan_path, &plan).expect("rewrite plan");
+
+    let slice_dir = layout.slice_dir("login-flow");
+    assert!(
+        !Base::load(&slice_dir).expect("base.yaml").sources.is_empty(),
+        "fixture precondition: pinned sources recorded at refine"
+    );
+    assert!(
+        slice::pins_drifted(layout, &slice_dir, "login-flow").expect("probe"),
+        "pinned sources without a plan entry count as drifted"
+    );
+
+    let body = run::<slice::handlers::Validate, _, _>(
+        session.provider(),
+        slice::handlers::ValidateInput {
+            name: "login-flow".to_string(),
+        },
+    )
+    .await
+    .expect("unverifiable pins are review findings — validate still PASSes");
+    let ids = review_ids(&body);
+    assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
+}

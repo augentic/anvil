@@ -122,11 +122,10 @@ pub struct BaselineConflict {
 /// Atomic multi-class merge plus archive.
 ///
 /// Gates on a fact-substrate build record, writes each merged
-/// baseline, stamps the merge outcome into `metadata.yaml`, then
-/// archives the slice directory. The outcome stamp is written before
-/// the archive move so the archived `metadata.yaml` carries the
-/// merge-success audit stamp; progress projection reads journal facts
-/// and artifacts, never this field.
+/// baseline, stamps the merge outcome into `metadata.yaml` (before the
+/// archive move, so the archived copy carries the merge-success audit
+/// stamp; progress projection reads journal facts and artifacts, never
+/// this field), then archives the slice directory.
 /// `allow_composition_replace` threads only as far as the
 /// `overwrite_gate` precondition — never into the pure merge kernel.
 ///
