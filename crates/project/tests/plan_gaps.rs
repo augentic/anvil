@@ -1,15 +1,19 @@
 //! RFC-86 S16: typed gap inventory + shared-lead presentation rollup
-//! (Gaps / D18 / D19 / D24).
+//! (Gaps / D18 / D19 / D24) and the RFC-86a D2 disposition projection
+//! (deferral facts joined under the `(slice, digest)` match key).
 
 use std::collections::BTreeMap;
 use std::path::Path;
 
 use artifacts::spec::provenance::RequirementStatus;
+use jiff::Timestamp;
 use project::config::Layout;
+use project::journal::{DeferralOrigin, Event, EventKind};
 use project::plan::{
-    Entry, GapRow, Plan, SharedLeadRollup, SliceSourceBinding, in_scope, plan_gaps_body,
+    Disposition, Entry, GapRow, Plan, SharedLeadRollup, SliceSourceBinding, in_scope,
+    plan_gaps_body,
 };
-use project::slice::SliceMetadata;
+use project::slice::{RequirementBody, SliceMetadata};
 use tempfile::TempDir;
 
 fn entry(name: &str, sources: Vec<SliceSourceBinding>) -> Entry {
@@ -46,6 +50,52 @@ fn write_meta(slice_dir: &Path, dropped: bool) {
 
 fn write_model(slice_dir: &Path, body: &str) {
     std::fs::write(slice_dir.join("model.yaml"), body).expect("model.yaml");
+}
+
+/// Canonical digest of a title-only body — the shape the fixture
+/// models in this suite carry (no statement/scenarios/notes).
+fn title_digest(title: &str) -> String {
+    RequirementBody {
+        title,
+        statement: "",
+        scenarios: &[],
+        notes: None,
+    }
+    .digest()
+}
+
+fn ts(second: i64) -> Timestamp {
+    Timestamp::from_second(1_700_000_000 + second).expect("valid timestamp")
+}
+
+fn deferred(second: i64, writer: &str, sequence: u64, slice: &str, digest: &str) -> Event {
+    Event {
+        timestamp: ts(second),
+        writer: writer.into(),
+        sequence,
+        kind: EventKind::GapDeferred {
+            slice: slice.into(),
+            req: "REQ-000".into(),
+            requirement_digest: digest.into(),
+            reason: "deferred to next change".into(),
+            origin: DeferralOrigin::Operator,
+        },
+    }
+}
+
+fn retracted(second: i64, writer: &str, sequence: u64, slice: &str, digest: &str) -> Event {
+    Event {
+        timestamp: ts(second),
+        writer: writer.into(),
+        sequence,
+        kind: EventKind::GapDeferralRetracted {
+            slice: slice.into(),
+            req: "REQ-000".into(),
+            requirement_digest: digest.into(),
+            reason: "reopened".into(),
+            origin: DeferralOrigin::Operator,
+        },
+    }
 }
 
 #[test]
@@ -95,7 +145,7 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
 "#,
     );
 
-    let body = plan_gaps_body(&staged, Layout::new(root)).expect("gaps");
+    let body = plan_gaps_body(&staged, Layout::new(root), &[]).expect("gaps");
     assert_eq!(body.plan, "test");
     assert_eq!(body.rows.len(), 4, "agreed excluded; four typed gaps: {body:?}");
 
@@ -106,11 +156,14 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
             req: "REQ-003".into(),
             status: RequirementStatus::Unknown,
             summary: "password-reset path not evidenced".into(),
+            requirement_digest: Some(title_digest("password-reset path not evidenced")),
+            disposition: Some(Disposition::Open),
             shared_lead: Some("docs:conventions".into()),
         }
     );
     assert_eq!(body.rows[1].req, "REQ-007");
     assert_eq!(body.rows[1].status, RequirementStatus::Conflict);
+    assert_eq!(body.rows[1].disposition, Some(Disposition::Open));
     // Conflict contributes docs+intent; docs:conventions is multi-homed
     // across unknowns too, so the shared-lead annotation still applies.
     assert_eq!(body.rows[1].shared_lead.as_deref(), Some("docs:conventions"));
@@ -122,11 +175,14 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
             req: "REQ-008".into(),
             status: RequirementStatus::Unknown,
             summary: "reset copy not evidenced".into(),
+            requirement_digest: Some(title_digest("reset copy not evidenced")),
+            disposition: Some(Disposition::Open),
             shared_lead: Some("docs:conventions".into()),
         }
     );
     assert_eq!(body.rows[3].req, "REQ-012");
     assert_eq!(body.rows[3].status, RequirementStatus::Divergence);
+    assert_eq!(body.rows[3].disposition, None, "[divergence] takes no disposition");
 
     assert_eq!(
         body.rollups,
@@ -176,7 +232,7 @@ fn dropped_slice_excluded_from_inventory() {
     let meta = SliceMetadata::load(&abandoned).expect("load dropped meta");
     assert!(!in_scope(&staged, &staged.entries[1], Some(&meta)));
 
-    let body = plan_gaps_body(&staged, Layout::new(root)).expect("gaps");
+    let body = plan_gaps_body(&staged, Layout::new(root), &[]).expect("gaps");
     assert_eq!(body.rows.len(), 1);
     assert_eq!(body.rows[0].slice, "live");
     assert_eq!(body.rows[0].req, "REQ-001");
@@ -194,6 +250,197 @@ fn unrefined_in_scope_slice_contributes_no_rows() {
     let staged = plan(vec![entry("pending-work", vec![])]);
     write_meta(&root.join(".emery/slices/pending-work"), false);
 
-    let body = plan_gaps_body(&staged, Layout::new(root)).expect("gaps");
+    let body = plan_gaps_body(&staged, Layout::new(root), &[]).expect("gaps");
     assert!(body.is_empty());
+}
+
+/// Fixture for the disposition tests: one slice (`auth-login`) whose
+/// model carries an `[unknown]`, a `[conflict]`, and a `[divergence]`
+/// row.
+fn disposition_fixture(root: &Path) -> Plan {
+    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    let staged = plan(vec![entry("auth-login", vec![])]);
+    let slice_dir = root.join(".emery/slices/auth-login");
+    write_meta(&slice_dir, false);
+    write_model(
+        &slice_dir,
+        r"requirements:
+  - id: REQ-001
+    title: reset path not evidenced
+    status: unknown
+  - id: REQ-002
+    title: session TTL tied
+    status: conflict
+  - id: REQ-003
+    title: retry budget divergence
+    status: divergence
+",
+    );
+    staged
+}
+
+fn dispositions(body: &project::plan::GapsBody) -> Vec<(&str, Option<Disposition>)> {
+    body.rows.iter().map(|row| (row.req.as_str(), row.disposition)).collect()
+}
+
+#[test]
+fn deferral_covers_unknown_and_conflict_rows() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+
+    let events = vec![
+        deferred(1, "local", 1, "auth-login", &title_digest("reset path not evidenced")),
+        deferred(2, "local", 2, "auth-login", &title_digest("session TTL tied")),
+        // A fact naming the divergence row's digest must not
+        // disposition it — divergence takes none.
+        deferred(3, "local", 3, "auth-login", &title_digest("retry budget divergence")),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(
+        dispositions(&body),
+        vec![
+            ("REQ-001", Some(Disposition::Deferred)),
+            ("REQ-002", Some(Disposition::Deferred)),
+            ("REQ-003", None),
+        ]
+    );
+}
+
+#[test]
+fn retraction_reopens() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+    let digest = title_digest("reset path not evidenced");
+
+    let events = vec![
+        deferred(1, "local", 1, "auth-login", &digest),
+        retracted(2, "local", 2, "auth-login", &digest),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Open), "latest fact is the retraction");
+
+    // A deferral after the retraction re-covers the row.
+    let events = vec![
+        deferred(1, "local", 1, "auth-login", &digest),
+        retracted(2, "local", 2, "auth-login", &digest),
+        deferred(3, "local", 3, "auth-login", &digest),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred));
+}
+
+#[test]
+fn digest_change_lapses_and_exact_body_return_revives() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+    let slice_dir = root.join(".emery/slices/auth-login");
+
+    // Deferral minted against the original body.
+    let events =
+        vec![deferred(1, "local", 1, "auth-login", &title_digest("reset path not evidenced"))];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred));
+
+    // Re-refine reshapes the body — the digest disappears from the
+    // live model, so the fact lapses and the new row is open again.
+    write_model(
+        &slice_dir,
+        r"requirements:
+  - id: REQ-001
+    title: reset path reshaped by new evidence
+    status: unknown
+",
+    );
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Open), "lapsed on digest change");
+
+    // A later refine restores the exact body (under a renumbered id):
+    // liveness is recomputed from the union, so the old fact revives
+    // the disposition without re-assertion.
+    write_model(
+        &slice_dir,
+        r"requirements:
+  - id: REQ-009
+    title: reset path not evidenced
+    status: unknown
+",
+    );
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].req, "REQ-009");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred), "exact body revives");
+}
+
+#[test]
+fn duplicate_facts_idempotent() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+    let digest = title_digest("reset path not evidenced");
+
+    let events = vec![
+        deferred(1, "alpha", 1, "auth-login", &digest),
+        deferred(2, "bravo", 1, "auth-login", &digest),
+        deferred(3, "alpha", 2, "auth-login", &digest),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows.len(), 3, "duplicate facts mint no extra rows");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred));
+}
+
+#[test]
+fn two_writer_union_projects_one_disposition() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+    let digest = title_digest("reset path not evidenced");
+
+    // Same timestamp: `(timestamp, writer, sequence)` breaks the tie,
+    // so bravo's retraction is the latest fact and reopens the row.
+    let events = vec![
+        deferred(5, "alpha", 1, "auth-login", &digest),
+        retracted(5, "bravo", 1, "auth-login", &digest),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Open));
+
+    // Union order of the input slice does not matter — the fold keys
+    // on the envelope, not the position.
+    let events = vec![
+        retracted(5, "bravo", 1, "auth-login", &digest),
+        deferred(5, "alpha", 1, "auth-login", &digest),
+        deferred(5, "charlie", 1, "auth-login", &digest),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred), "charlie sorts last");
+}
+
+#[test]
+fn deferral_scoped_by_slice() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    let staged = plan(vec![entry("auth-login", vec![]), entry("payments", vec![])]);
+    // Identical bodies in two slices: the match key is `(slice,
+    // digest)`, so a deferral on one slice leaves the other open.
+    let model = r"requirements:
+  - id: REQ-001
+    title: reset path not evidenced
+    status: unknown
+";
+    for slice in ["auth-login", "payments"] {
+        let dir = root.join(".emery/slices").join(slice);
+        write_meta(&dir, false);
+        write_model(&dir, model);
+    }
+
+    let events =
+        vec![deferred(1, "local", 1, "auth-login", &title_digest("reset path not evidenced"))];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].slice, "auth-login");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred));
+    assert_eq!(body.rows[1].slice, "payments");
+    assert_eq!(body.rows[1].disposition, Some(Disposition::Open));
 }

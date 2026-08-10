@@ -11,7 +11,7 @@ use project::config::Layout;
 use project::journal::{
     self, ClosedPlanCoverage, Event, EventKind, LeafSpecCoverage, UnknownWaiver,
 };
-use project::plan::{Plan, dir_cid, in_scope, plan_gaps_body};
+use project::plan::{Plan, collect_events, dir_cid, in_scope, plan_gaps_body};
 use project::slice::SliceMetadata;
 
 /// One `--waive <slice>/<req>` selector (reason lands separately).
@@ -48,7 +48,7 @@ pub(super) fn validate_waivers(
         (false, Some(text)) => text.to_string(),
     };
 
-    let gaps = plan_gaps_body(plan, layout)?;
+    let gaps = plan_gaps_body(plan, layout, &collect_events(layout)?)?;
     let mut out = Vec::with_capacity(waive.len());
     for selector in waive {
         let Some(row) =

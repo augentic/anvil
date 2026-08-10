@@ -62,7 +62,7 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
             }
         }
     };
-    let gaps = plan_gaps_body(plan, layout)?;
+    let gaps = plan_gaps_body(plan, layout, &events)?;
     let all_refined = all_in_scope_refined(plan, layout)?;
     let milestones = Milestones {
         all_refined,

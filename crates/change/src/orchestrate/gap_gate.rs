@@ -45,7 +45,7 @@ fn check_gap_policy(
     layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage, events: &[Event],
 ) -> Result<(), Error> {
     let ClosedPlanCoverage::ClosedPlan { unknown_waivers, .. } = coverage;
-    let gaps = plan_gaps_body(plan, layout)?;
+    let gaps = plan_gaps_body(plan, layout, events)?;
     let leaf_rows: Vec<_> = gaps.rows.iter().filter(|row| row.slice == slice).collect();
 
     let mut blockers = Vec::new();

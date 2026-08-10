@@ -1,7 +1,7 @@
 //! Typed gap inventory projection.
 //!
-//! Pure read of in-scope slice artifacts into `(slice, req, status)` rows
-//! for `unknown` / `conflict` / `divergence`; dropped slices are excluded.
+//! In-scope `unknown`/`conflict`/`divergence` rows with `open | deferred`
+//! dispositions joined from the deferral fact union (RFC-86a D2).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -14,7 +14,20 @@ use super::in_scope;
 use super::model::{Entry, Plan};
 use crate::config::Layout;
 use crate::handler::Render;
-use crate::slice::SliceMetadata;
+use crate::journal::{Event, EventKind};
+use crate::slice::{RequirementBody, SliceMetadata};
+
+/// Computed gap disposition (RFC-86a D2): joined from the deferral
+/// fact union against the live model at projection time, never stored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum Disposition {
+    /// No live deferral covers the requirement.
+    Open,
+    /// A live deferral fact covers the requirement's `(slice, digest)`.
+    Deferred,
+}
 
 /// One open typed-status finding in the gap inventory.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -28,6 +41,16 @@ pub struct GapRow {
     pub status: RequirementStatus,
     /// Requirement title / summary line.
     pub summary: String,
+    /// Canonical requirement-body digest (`sha256:<hex>`) — the
+    /// deferral match key (RFC-86a D2). Present on `model.yaml`-backed
+    /// rows; the legacy `spec.md` fallback carries no body fields to
+    /// digest.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requirement_digest: Option<String>,
+    /// Computed disposition. Present on `unknown` / `conflict` rows;
+    /// `[divergence]` rows take no disposition (RFC-86a D2).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disposition: Option<Disposition>,
     /// Contributing `(source, lead)` shared across multiple open
     /// findings, rendered as `source:lead`. Absent when the row's
     /// contributors are not multi-homed in this inventory.
@@ -107,12 +130,21 @@ impl Render for GapsBody {
 
 /// Project the typed gap inventory for `plan` under `layout`.
 ///
+/// Each row's `open | deferred` disposition joins the deferral facts
+/// in `events` (the journal union). Liveness is recomputed, never
+/// stored: the latest defer/retract fact per `(slice, digest)` wins by
+/// `(timestamp, writer, sequence)`; duplicates are idempotent; a
+/// digest absent from the live model is simply not live (lapse), and
+/// its reappearance revives it (RFC-86a D2).
+///
 /// # Errors
 ///
 /// Propagates I/O and YAML failures when reading slice metadata or
 /// `model.yaml`. Missing slice trees and absent model/spec files are
 /// not errors — they contribute no rows.
-pub fn plan_gaps_body(plan: &Plan, layout: Layout<'_>) -> Result<GapsBody, Error> {
+pub fn plan_gaps_body(
+    plan: &Plan, layout: Layout<'_>, events: &[Event],
+) -> Result<GapsBody, Error> {
     let mut raw: Vec<RawFinding> = Vec::new();
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
@@ -125,6 +157,7 @@ pub fn plan_gaps_body(plan: &Plan, layout: Layout<'_>) -> Result<GapsBody, Error
         }
     }
 
+    let deferred = deferred_keys(events);
     let lead_hits = count_leads(&raw);
     let rollups = build_rollups(&raw, &lead_hits);
     let rows = raw
@@ -135,11 +168,14 @@ pub fn plan_gaps_body(plan: &Plan, layout: Layout<'_>) -> Result<GapsBody, Error
                 .iter()
                 .find(|key| lead_hits.get(*key).is_some_and(|n| *n > 1))
                 .map(|(source, lead)| format!("{source}:{lead}"));
+            let disposition = disposition(&finding, &deferred);
             GapRow {
                 slice: finding.slice,
                 req: finding.req,
                 status: finding.status,
                 summary: finding.summary,
+                requirement_digest: finding.digest,
+                disposition,
                 shared_lead,
             }
         })
@@ -152,12 +188,65 @@ pub fn plan_gaps_body(plan: &Plan, layout: Layout<'_>) -> Result<GapsBody, Error
     })
 }
 
+/// Disposition for one finding: `[divergence]` takes none; a live
+/// deferral on the row's `(slice, digest)` defers it; everything else
+/// is open (including digest-less `spec.md`-fallback rows, which no
+/// fact can match).
+fn disposition(finding: &RawFinding, deferred: &BTreeSet<(String, String)>) -> Option<Disposition> {
+    if finding.status == RequirementStatus::Divergence {
+        return None;
+    }
+    let covered = finding
+        .digest
+        .as_ref()
+        .is_some_and(|digest| deferred.contains(&(finding.slice.clone(), digest.clone())));
+    Some(if covered { Disposition::Deferred } else { Disposition::Open })
+}
+
+/// Envelope ordering key of one fact: `(timestamp, writer, sequence)`.
+type FactOrder = (jiff::Timestamp, String, u64);
+
+/// `(slice, digest)` pairs whose latest defer/retract fact is a
+/// deferral. Latest wins by `(timestamp, writer, sequence)` regardless
+/// of the slice of `events` being pre-sorted; duplicate facts fold
+/// idempotently.
+fn deferred_keys(events: &[Event]) -> BTreeSet<(String, String)> {
+    let mut latest: BTreeMap<(String, String), (FactOrder, bool)> = BTreeMap::new();
+    for event in events {
+        let (slice, digest, deferred) = match &event.kind {
+            EventKind::GapDeferred {
+                slice,
+                requirement_digest,
+                ..
+            } => (slice, requirement_digest, true),
+            EventKind::GapDeferralRetracted {
+                slice,
+                requirement_digest,
+                ..
+            } => (slice, requirement_digest, false),
+            _ => continue,
+        };
+        let order = (event.timestamp, event.writer.clone(), event.sequence);
+        let key = (slice.as_str().to_string(), digest.clone());
+        match latest.get(&key) {
+            Some((existing, _)) if *existing > order => {}
+            _ => {
+                latest.insert(key, (order, deferred));
+            }
+        }
+    }
+    latest.into_iter().filter_map(|(key, (_, deferred))| deferred.then_some(key)).collect()
+}
+
 /// One finding before shared-lead annotation.
 struct RawFinding {
     slice: String,
     req: String,
     status: RequirementStatus,
     summary: String,
+    /// Canonical body digest — `None` on `spec.md`-fallback rows,
+    /// which carry no body fields to digest.
+    digest: Option<String>,
     /// Contributing `(source, lead)` pairs from plan bindings ∩
     /// requirement sources.
     leads: BTreeSet<(String, String)>,
@@ -181,6 +270,27 @@ struct ModelReq {
     status: Option<RequirementStatus>,
     #[serde(default)]
     sources: Vec<String>,
+    #[serde(default)]
+    statement: String,
+    #[serde(default)]
+    scenarios: Vec<String>,
+    #[serde(default)]
+    notes: Option<String>,
+}
+
+impl ModelReq {
+    /// Canonical body digest — the same [`RequirementBody`] encoding
+    /// the typed `slice` model view computes, so both layers mint one
+    /// deferral match key (RFC-86a D2).
+    fn body_digest(&self) -> String {
+        RequirementBody {
+            title: &self.title,
+            statement: &self.statement,
+            scenarios: &self.scenarios,
+            notes: self.notes.as_deref(),
+        }
+        .digest()
+    }
 }
 
 fn slice_findings(entry: &Entry, slice_dir: &Path) -> Result<Vec<RawFinding>, Error> {
@@ -201,12 +311,14 @@ fn slice_findings(entry: &Entry, slice_dir: &Path) -> Result<Vec<RawFinding>, Er
 
 fn gap_from_model(entry: &Entry, req: ModelReq) -> Option<RawFinding> {
     let status = req.status.filter(|&s| is_gap(s))?;
+    let digest = req.body_digest();
     let id = req.id.filter(|s| !s.is_empty())?;
     Some(RawFinding {
         slice: entry.name.to_string(),
         req: id,
         status,
         summary: req.title,
+        digest: Some(digest),
         leads: contributing_leads(entry, &req.sources),
     })
 }
@@ -239,6 +351,7 @@ fn findings_from_specs(entry: &Entry, specs_dir: &Path) -> Vec<RawFinding> {
                 req: req.id,
                 status,
                 summary: req.name,
+                digest: None,
                 leads: contributing_leads(entry, &req.sources),
             });
         }

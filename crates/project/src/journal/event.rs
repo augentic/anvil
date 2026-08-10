@@ -471,6 +471,53 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         discovery_digest: Option<String>,
     },
+    /// A typed gap requirement was durably deferred (RFC-86a D2). The
+    /// `(slice, requirement-digest)` pair is the disposition match
+    /// key; liveness is recomputed against the live model at
+    /// projection time, never stored.
+    #[serde(rename = "gap.deferred", rename_all = "kebab-case")]
+    GapDeferred {
+        /// Slice that owns the requirement — scopes the digest join.
+        slice: SliceName,
+        /// Advisory `REQ-NNN` id at deferral time (presentation only —
+        /// a re-refine may renumber ids while the digest holds).
+        req: String,
+        /// Canonical requirement-body digest (`sha256:<hex>`).
+        requirement_digest: String,
+        /// Operator reason, or the synthesized policy reason.
+        reason: String,
+        /// Which surface dispositioned the requirement.
+        origin: DeferralOrigin,
+    },
+    /// An explicit retraction reopened a live deferral (RFC-86a
+    /// D2 / D3). Same match key as [`Self::GapDeferred`]; the latest
+    /// fact per `(slice, requirement-digest)` wins under projection.
+    #[serde(rename = "gap.deferral-retracted", rename_all = "kebab-case")]
+    GapDeferralRetracted {
+        /// Slice that owns the requirement — scopes the digest join.
+        slice: SliceName,
+        /// Advisory `REQ-NNN` id at retraction time.
+        req: String,
+        /// Canonical requirement-body digest (`sha256:<hex>`).
+        requirement_digest: String,
+        /// Operator reason for reopening the gap.
+        reason: String,
+        /// Which surface retracted the deferral.
+        origin: DeferralOrigin,
+    },
+}
+
+/// Closed origin on gap deferral facts (RFC-86a D2 / D3).
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, strum::Display,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum DeferralOrigin {
+    /// The explicit `emery plan defer` operator act.
+    Operator,
+    /// Gate-time minting under an effective `defer` gap policy.
+    Policy,
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`]
