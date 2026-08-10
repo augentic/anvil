@@ -247,29 +247,24 @@ fn rewrite_id_lines(text: &str, by_local: &BTreeMap<&str, &str>) -> String {
     out
 }
 
+/// Substitute every mapped `REQ` token in a single pass. A token is
+/// `REQ-` plus its maximal digit run, so `REQ-001` never matches inside
+/// `REQ-0010` — and because each token is looked up exactly once, a
+/// freshly written baseline id can never be re-rewritten by a later
+/// mapping whose local id happens to equal it (locals and baseline ids
+/// share the `REQ-NNN` grammar, so their number ranges overlap).
 fn rewrite_req_tokens(text: &str, by_local: &BTreeMap<&str, &str>) -> String {
-    let mut out = text.to_string();
-    for (local, baseline) in by_local {
-        out = replace_req_token(&out, local, baseline);
-    }
-    out
-}
-
-/// Replace `from` when not followed by another digit (so `REQ-001` does
-/// not clobber a hypothetical `REQ-0010`).
-fn replace_req_token(text: &str, from: &str, to: &str) -> String {
+    const PREFIX: &str = "REQ-";
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
-    while let Some(idx) = rest.find(from) {
+    while let Some(idx) = rest.find(PREFIX) {
+        let digits_start = idx + PREFIX.len();
+        let digits_len = rest[digits_start..].bytes().take_while(u8::is_ascii_digit).count();
+        let token_end = digits_start + digits_len;
+        let token = &rest[idx..token_end];
         out.push_str(&rest[..idx]);
-        let after = &rest[idx + from.len()..];
-        let boundary_ok = after.chars().next().is_none_or(|c| !c.is_ascii_digit());
-        if boundary_ok {
-            out.push_str(to);
-        } else {
-            out.push_str(from);
-        }
-        rest = after;
+        out.push_str(by_local.get(token).copied().unwrap_or(token));
+        rest = &rest[token_end..];
     }
     out.push_str(rest);
     out
