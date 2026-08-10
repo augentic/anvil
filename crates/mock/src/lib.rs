@@ -17,7 +17,8 @@ pub mod session;
 
 pub use ops::{
     Adapter, Code, DOCS, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey,
-    MissingOutput,
+    MissingOutput, NaBlocking, OversizedContinuation, StageEscape, ToolSource, VerifyContinuation,
+    VerifyOutputs,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use registry::catalog;

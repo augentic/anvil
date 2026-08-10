@@ -8,7 +8,9 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use serde::{Deserialize, Serialize};
 
-use super::core::{AdapterLocation, Axis, BuildInputDeclaration, PlatformsCapability};
+use super::core::{
+    AdapterLocation, Axis, BuildInputDeclaration, PlatformsCapability, WritableArtifactDeclaration,
+};
 use super::routed::RoutedId;
 
 /// Unified metadata answer across both adapter axes.
@@ -24,6 +26,11 @@ pub struct Metadata {
     /// Target platforms capability; absent for source adapters.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub platforms: Option<PlatformsCapability>,
+    /// Target-declared writable slice-artifact grants (RFC-90 D5);
+    /// empty for source adapters and targets that write no slice
+    /// artifacts.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub writable_artifacts: Vec<WritableArtifactDeclaration>,
 }
 
 /// One metadata dispatch by axis and routed adapter id.

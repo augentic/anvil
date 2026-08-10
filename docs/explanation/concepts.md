@@ -144,7 +144,7 @@ Emery splits adapters by direction.
 
 A **source adapter** is the input role. It reads external material (operator intent, written documentation, legacy code, screenshots) and emits `Evidence`. Operations: `survey` (plan-time, produces `Lead[]`) and `extract` (slice-time, produces `Evidence`). First-party defaults: `intent`, `documentation`, `typescript`, `captures`, `screenshots`.
 
-A **target adapter** is the output role. It consumes `spec.md` + `design.md` and produces code. Operations: `guidance` (idiom guidance read by core synthesis), `build` (writes code), `merge` (lands the slice). First-party defaults: `omnia` (Rust WASM service crates), `vectis` (cross-platform UI applications), `contracts` (API contracts).
+A **target adapter** is the output role. It consumes `spec.md` + `design.md` and produces code. Operations: `guidance` (idiom guidance read by core synthesis), the build-loop operations `build` / `verify` / `repair` / `review` (one pass per dispatch, driven by the engine's build phase machine), and `merge` (lands the slice). First-party defaults: `omnia` (Rust WASM service crates), `vectis` (cross-platform UI applications), `contracts` (API contracts).
 
 Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export. See [Anatomy of an adapter](adapter-anatomy.md).
 

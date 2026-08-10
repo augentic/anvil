@@ -8,7 +8,7 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Reply, Request};
 use project::adapter::{AdapterSelector, ResolvedSource, ResolvedTarget, Resolver};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
-use project::seam::wire::BuildReport;
+use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
 use project::seam::{self, Evidence, Input, Lead, MergePhase};
 
 /// The `adapter add` arguments the launcher needs to anchor the
@@ -215,7 +215,28 @@ impl seam::Target for Grammar {
     async fn build(
         &self, _id: String, _slice: String, _inputs: Vec<Input>, _context: seam::BuildContext,
         _workspace: seam::Workspace,
-    ) -> Result<BuildReport, seam::Error> {
+    ) -> Result<PhaseReport, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn verify(
+        &self, _id: String, _workspace: seam::Workspace,
+    ) -> Result<PhaseReport, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn repair(
+        &self, _id: String, _slice: String, _origin: RepairOrigin,
+        _findings: Vec<diagnostics::Diagnostic>, _continuation: Option<Vec<u8>>,
+        _workspace: seam::Workspace,
+    ) -> Result<PhaseReport, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn review(
+        &self, _id: String, _slice: String, _continuation: Option<Vec<u8>>,
+        _workspace: seam::Workspace,
+    ) -> Result<PhaseReport, seam::Error> {
         never_dispatched!()
     }
 

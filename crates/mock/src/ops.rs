@@ -5,8 +5,8 @@
 
 use adapter::registry::Doc;
 use adapter::seam::{
-    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, Report, SourceMetadata,
-    TargetMetadata, Workspace,
+    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
+    RepairOrigin, Report, SourceMetadata, TargetMetadata, Workspace, WritableArtifact,
 };
 use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
@@ -54,6 +54,9 @@ macro_rules! mock_source {
 
 macro_rules! mock_target {
     ($ty:ident, $name:literal) => {
+        mock_target!($ty, $name, Vec::new());
+    };
+    ($ty:ident, $name:literal, $writable:expr) => {
         impl Target for $ty {
             // Unpublished mock identity: a development placeholder
             // version, never a pin-matchable release.
@@ -67,6 +70,7 @@ macro_rules! mock_target {
                     emery_floor: None,
                     inputs: Vec::new(),
                     platforms: None,
+                    writable_artifacts: $writable,
                 }
             }
 
@@ -81,17 +85,31 @@ macro_rules! mock_target {
             async fn build<P: Model>(
                 _model: &P, ctx: &Context<'_>, slice: &str, inputs: &[Input],
                 _context: &BuildContext, workspace: &Workspace,
-            ) -> Result<Report, Error> {
-                // Artifact writes land in the private workspace; fail-build
-                // markers are control-plane on the project tree — ambient
-                // markers must not require re-freezing the recorded pin.
-                behaviour::build(
-                    workspace.root_path(),
-                    ctx.project_root,
-                    ctx.adapter_id,
-                    slice,
-                    inputs,
-                )
+            ) -> Result<PhaseReport, Error> {
+                // Artifact writes land in the private workspace and its
+                // lent stage; control markers stay on the project tree
+                // so they never require re-freezing the recorded pin.
+                behaviour::build(workspace, ctx.project_root, ctx.adapter_id, slice, inputs)
+            }
+
+            async fn verify<P: Model>(
+                _model: &P, ctx: &Context<'_>, workspace: &Workspace,
+            ) -> Result<PhaseReport, Error> {
+                behaviour::verify(workspace, ctx.project_root, ctx.adapter_id)
+            }
+
+            async fn repair<P: Model>(
+                _model: &P, _ctx: &Context<'_>, _slice: &str, origin: RepairOrigin,
+                _findings: &[PhaseFinding], _continuation: Option<&[u8]>, workspace: &Workspace,
+            ) -> Result<PhaseReport, Error> {
+                behaviour::repair(workspace, origin)
+            }
+
+            async fn review<P: Model>(
+                _model: &P, ctx: &Context<'_>, _slice: &str, continuation: Option<&[u8]>,
+                workspace: &Workspace,
+            ) -> Result<PhaseReport, Error> {
+                behaviour::review(workspace, ctx.project_root, continuation)
             }
 
             async fn merge<P: Model>(
@@ -107,12 +125,14 @@ macro_rules! mock_target {
     };
 }
 
-/// The default mock identity — both axes, like the WASM guest.
+/// The default mock identity — both axes, like the WASM guest. The
+/// target axis declares the `tasks.md` file grant so its builds may
+/// write the lent artifact stage.
 #[derive(Clone, Copy, Debug)]
 pub struct Adapter;
 
 mock_source!(Adapter, "mock");
-mock_target!(Adapter, "mock");
+mock_target!(Adapter, "mock", vec![WritableArtifact::file("tasks.md")]);
 
 /// The documentation half of the adversarial source pair.
 #[derive(Clone, Copy, Debug)]
@@ -162,3 +182,46 @@ mock_target!(FailMerge, "mock-fail-merge");
 pub struct MissingOutput;
 
 mock_target!(MissingOutput, "mock-missing-output");
+
+/// A target whose `verify` claims the reserved `tool` report source —
+/// for the RFC-90 source gate.
+#[derive(Clone, Copy, Debug)]
+pub struct ToolSource;
+
+mock_target!(ToolSource, "mock-tool-source");
+
+/// A target whose `verify` declares non-empty outputs — only `build`
+/// may declare outputs (an engine gate).
+#[derive(Clone, Copy, Debug)]
+pub struct VerifyOutputs;
+
+mock_target!(VerifyOutputs, "mock-verify-outputs");
+
+/// A target whose `verify` returns `not-applicable` while carrying a
+/// blocking finding — for the non-applicable coherence gate.
+#[derive(Clone, Copy, Debug)]
+pub struct NaBlocking;
+
+mock_target!(NaBlocking, "mock-na-blocking");
+
+/// A target whose `build` returns a continuation one byte over the
+/// engine's 1 MiB cap — for the continuation-size gate.
+#[derive(Clone, Copy, Debug)]
+pub struct OversizedContinuation;
+
+mock_target!(OversizedContinuation, "mock-oversized-continuation");
+
+/// A target whose `build` writes an undeclared staged artifact
+/// (`undeclared.md`) despite holding only the `tasks.md` grant — for
+/// the staged-artifact scope gate.
+#[derive(Clone, Copy, Debug)]
+pub struct StageEscape;
+
+mock_target!(StageEscape, "mock-stage-escape", vec![WritableArtifact::file("tasks.md")]);
+
+/// A target whose `verify` replaces the continuation — `verify` must
+/// not mutate it (an engine gate).
+#[derive(Clone, Copy, Debug)]
+pub struct VerifyContinuation;
+
+mock_target!(VerifyContinuation, "mock-verify-continuation");

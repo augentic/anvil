@@ -9,6 +9,8 @@
 
 .env
 target/
+!/crates/slice/src/orchestrate/target/
+!/crates/slice/src/orchestrate/target/**
 /emery
 
 **/*.rs.bk

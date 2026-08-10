@@ -4,7 +4,7 @@
 >
 > Owns: one local project seal per publication member; the branch, pull-request marker, and landing-order conventions that bind those members into one change; archive-time verification; and the shared machine-readable publication projection.
 >
-> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-92](rfc-92-distributed-execution.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
+> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-93](rfc-93-distributed-execution.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
 >
 > Defers: pushing branches, opening or merging pull requests, atomic cross-repository submission, automated rollback, cross-checkout CI, and parallel member preparation.
 
@@ -25,7 +25,7 @@ That collection is the **publication set**. Emery derives it from the plan, seal
 
 A **publication member** is a distinct adapter-bearing target used by at least one slice. A **project seal** turns that target's final accepted CID into its one local Git commit. A **publication set** binds the change name, members, sealed commits, branches, pull requests, and required landing order.
 
-RFC-88's target-wave commit is the accepted-CID transition; its initial one-leaf form is `emery slice merge`, and RFC-91 later extends membership without changing the fact shape. In this RFC, **publish** means creating the remote branch and pull request, while **land** means merging that pull request on the forge. A publication set is also distinct from an RFC-87 code patch, which relates one base CID to one result CID.
+RFC-88's target-wave commit is the accepted-CID transition; its initial one-leaf form is `emery slice merge`, and RFC-92 later extends membership without changing the fact shape. In this RFC, **publish** means creating the remote branch and pull request, while **land** means merging that pull request on the forge. A publication set is also distinct from an RFC-87 code patch, which relates one base CID to one result CID.
 
 ## Worked example
 
@@ -160,7 +160,7 @@ Plan-backed records remain derived under D2. External records are producer-autho
 
 Archive reads the resolved plan bindings and forge state serially. It does not prepare, capture, or inspect a product workspace.
 
-That keeps verification deterministic and avoids coupling a read-only publication check to checkout state. Parallel member preparation remains RFC-91 work.
+That keeps verification deterministic and avoids coupling a read-only publication check to checkout state. Parallel member preparation remains RFC-92 work.
 
 ### D10 — The forge provider owns publication reads
 
@@ -218,5 +218,5 @@ The seal prepares publication; it does not create a remote ref, pull request, me
 - **`submitWholeTopic` emulation** — requires Emery to merge and revert on the forge even though GitHub provides no atomic cross-repository operation. Ordered convergence is the honest guarantee.
 - **An external system as record owner** — [Sourcegraph Batch Changes](https://sourcegraph.com/docs/batch-changes) has the right tracking shape but the wrong authority for plan-backed changes. External systems may emit D8 records; they do not own Emery workflow state.
 - **Forge labels as the authoritative marker** — labels are useful views but are forge-specific and easy to retag. The pull-request trailer is portable and travels with the review record.
-- **Cross-checkout speculative CI in archive** — publication verification reads settled forge state. RFC-91's local domain gates own pre-merge composition; RFC-92 only transports that model.
+- **Cross-checkout speculative CI in archive** — publication verification reads settled forge state. RFC-92's local domain gates own pre-merge composition; RFC-93 only transports that model.
 - **Assuming leaf acyclicity implies publication acyclicity** — contracting several leaves onto one target can create a target cycle absent from the leaf graph. The contracted graph is validated explicitly.

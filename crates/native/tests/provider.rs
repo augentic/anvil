@@ -198,6 +198,7 @@ async fn build_merge_cross_seam() {
         id: "ws-1".to_string(),
         root: tmp.path().display().to_string(),
         artifacts: tmp.path().display().to_string(),
+        artifact_stage: None,
     };
 
     let inputs = vec![seam::Input::Proposal(seam::Payload::Path(

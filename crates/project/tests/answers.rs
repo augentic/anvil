@@ -34,6 +34,11 @@ fn report_golden() {
 }
 
 #[test]
+fn phase_report_golden() {
+    assert_golden("phase-report.schema.json", &project::answers::phase_report());
+}
+
+#[test]
 fn proposal_golden() {
     assert_golden("proposal.schema.json", &project::answers::proposal());
 }

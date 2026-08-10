@@ -30,7 +30,7 @@ The reference section is the lookup table for Emery. Use it when you need precis
 
 - [Adapter Contract](adapter-contract.md) — identity, metadata, operation signatures, sandboxing, resolver, and the authoring checklist.
 - [Source Adapters](sources/index.md) — `survey` + `extract` per first-party source adapter (intent, documentation, typescript, screenshots, captures).
-- [Target Adapters](targets/index.md) — `guidance` + `build` + `merge` per first-party target adapter (Omnia, Vectis, Contracts).
+- [Target Adapters](targets/index.md) — `guidance`, the `build` / `verify` / `repair` / `review` build loop, and `merge` per first-party target adapter (Omnia, Vectis, Contracts).
 
 ### Configuration
 

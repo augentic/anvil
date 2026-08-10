@@ -9,7 +9,9 @@ use std::future::Future;
 
 use artifacts::evidence::{AuthorityClass, Claim};
 use serde::{Deserialize, Serialize};
-pub use wire::BuildReport;
+pub use wire::{
+    BuildReport, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource, PhaseWrite, RepairOrigin,
+};
 
 use crate::snapshot::{CodePatch, SnapshotId};
 
@@ -104,15 +106,30 @@ pub struct BuildContext {
     pub sources: Vec<String>,
 }
 
+/// The attempt-local writable artifact stage, mirroring the WIT
+/// `artifact-stage` record (RFC-90 D5).
+///
+/// An agent-visible mirror rooted at the candidate slice tree. The
+/// engine seeds it before `build`, derives its diff after every
+/// mutating phase, enforces the target's declared writable-artifact
+/// grants, and promotes the diff transactionally on terminal success.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ArtifactStage {
+    /// Opaque identity of the stage preparation.
+    pub id: String,
+    /// Deployment-local path of the writable stage root.
+    pub root: String,
+}
+
 /// One prepared private workspace, mirroring the WIT `workspace`
 /// record (RFC-87).
 ///
 /// Guests share mount preopens, so no directory handle crosses the
 /// seam: `root` is a deployment-local path the receiving side resolves
 /// against its own preopens (or opens directly off-wasm), and
-/// `artifacts` is the agent-visible read-only artifact root for
-/// prompts that reference change-tree artifacts from inside a lent
-/// workspace.
+/// `artifacts` is the agent-visible read-only artifact root.
+/// `artifact_stage` is the writable slice-artifact mirror, present on
+/// the build-loop operations and absent on `merge`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Workspace {
     /// Opaque identity of the preparation.
@@ -121,6 +138,9 @@ pub struct Workspace {
     pub root: String,
     /// Agent-visible read-only artifact root (the project tree).
     pub artifacts: String,
+    /// Writable artifact stage for the active slice; absent on merge
+    /// dispatches, whose workspace view is read-only.
+    pub artifact_stage: Option<ArtifactStage>,
 }
 
 /// Which side of the deterministic core merge a `merge` dispatch runs
@@ -148,17 +168,45 @@ pub trait Source: Send + Sync {
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;
 }
 
-/// Synthesis guidance, slice builds, and phased merge gates for a
-/// target adapter.
+/// Synthesis guidance, the build-loop phase operations, and phased
+/// merge gates for a target adapter.
+///
+/// Each build-loop dispatch (`build` / `verify` / `repair` /
+/// `review`) performs exactly one operation and returns one typed
+/// [`PhaseReport`]; operation order, repair routing, and budgets are
+/// engine policy (RFC-90 D1).
 pub trait Target: Send + Sync {
     /// Guidance on the expected build artifacts for this target.
     fn guidance(&self, id: String) -> impl Future<Output = Result<String, Error>> + Send;
 
-    /// Build `slice` inside its prepared private workspace.
+    /// Generation only: build `slice` inside its prepared private
+    /// workspace. Must not verify, repair, or run standards
+    /// remediation; `build` alone declares outputs and the UI surface.
     fn build(
         &self, id: String, slice: String, inputs: Vec<Input>, context: BuildContext,
         workspace: Workspace,
-    ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
+    ) -> impl Future<Output = Result<PhaseReport, Error>> + Send;
+
+    /// One model-assisted check pass over the lent workspace. Receives
+    /// only the candidate workspace — every other operation names a
+    /// slice.
+    fn verify(
+        &self, id: String, workspace: Workspace,
+    ) -> impl Future<Output = Result<PhaseReport, Error>> + Send;
+
+    /// One findings-directed repair pass. `origin` names the engine
+    /// gate that supplied `findings` (the deterministic bounded repair
+    /// brief); the returned report never selects the next operation.
+    fn repair(
+        &self, id: String, slice: String, origin: RepairOrigin,
+        findings: Vec<diagnostics::Diagnostic>, continuation: Option<Vec<u8>>,
+        workspace: Workspace,
+    ) -> impl Future<Output = Result<PhaseReport, Error>> + Send;
+
+    /// One engineering-standards review pass.
+    fn review(
+        &self, id: String, slice: String, continuation: Option<Vec<u8>>, workspace: Workspace,
+    ) -> impl Future<Output = Result<PhaseReport, Error>> + Send;
 
     /// Run one target-specific merge gate (`phase`) around the engine's
     /// deterministic core merge. Dispatched twice per slice merge —

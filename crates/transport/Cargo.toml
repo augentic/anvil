@@ -18,6 +18,7 @@ name = "transport"
 emery-artifacts.workspace = true
 emery-change.workspace = true
 clap.workspace = true
+emery-diagnostics.workspace = true
 emery-error.workspace = true
 omnia-guest.workspace = true
 emery-project.workspace = true

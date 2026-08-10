@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Emery.
 ## A
 
 **Adapter**
-A versioned Emery extension. Emery splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance` + `build` + `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
+A versioned Emery extension. Emery splits adapters by direction: **source adapters** (operations `survey` + `extract`) and **target adapters** (operations `guidance`, the build loop `build` / `verify` / `repair` / `review`, and `merge`). Both ship as a single WebAssembly component exporting the matching axis interface from the WIT contract; metadata comes from the component's `metadata` export (no manifest file). See [Anatomy of an adapter](../explanation/adapter-anatomy.md).
 
 **Action**
 A grammar leaf in the `emery` CLI — the executable command path (`plan execute`, `journal show`). Registered in the typed command router with one concrete clap `Args` type and workflow operation.
@@ -31,7 +31,7 @@ A structured document that defines part of a slice. The core slice artifacts are
 The accumulated set of merged specs at `.emery/specs/` and merged contracts at `contracts/`. Represents the current known behavioural and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
-A markdown prompt file shipped by a source or target adapter that drives one operation, compiled into the adapter guest. Prompts live under `sources/<name>/prose/prompts/{survey,extract}.md` or `targets/<name>/prose/prompts/{guidance,build,merge}.md` in the adapters repo.
+A markdown prompt file shipped by a source or target adapter that drives one operation, compiled into the adapter guest. Prompts live under `sources/<name>/prose/prompts/` (survey, extract) or `targets/<name>/prose/prompts/` (guidance, the build-loop operations, merge) in the adapters repo; each performs exactly one pass — the engine owns retry loops.
 
 ## C
 
@@ -208,7 +208,7 @@ The plan-time operation declared by a source adapter. Reads the operator-bound s
 ## T
 
 **Target adapter**
-Output adapter role. Operations: `guidance` + `build` + `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Published as `emery:<name>@<semver>`; the guest crate lives at `targets/<name>/` in the adapters repo.
+Output adapter role. Operations: `guidance`, the build loop `build` / `verify` / `repair` / `review` (one pass per dispatch under the engine's phase machine), and `merge`. First-party defaults: `omnia`, `vectis`, `contracts`. Published as `emery:<name>@<semver>`; the guest crate lives at `targets/<name>/` in the adapters repo.
 
 **Top-level contract**
 A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document). Format detection decides what counts — never directory layout, file name, or a custom marker. Subject to the contract validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-emery-id` when present).

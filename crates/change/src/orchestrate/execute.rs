@@ -12,7 +12,7 @@ use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{LoopStep, NextActionKind, Plan, StatusBody, StopReason, plan_status_body};
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{PhaseSource, Source, Target, Workspaces};
 use tracing::Instrument as _;
 
 mod marker;
@@ -24,6 +24,9 @@ pub use marker::GuestMarker;
 pub struct PhaseRun {
     pub slice: String,
     pub step: LoopStep,
+    /// The terminal verification report's assurance source — carried
+    /// for build steps even on a clean pass (RFC-90 D3).
+    pub verification: Option<PhaseSource>,
 }
 
 /// How one [`execute`] run ended.
@@ -157,9 +160,13 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             run_phase(caps, paths, now, &adapter, step, &slice, advanced.target.as_deref()).await;
 
         match result {
-            Ok(()) => {
+            Ok(verification) => {
                 tracing::info!("{step} {slice} [entry {entry}/{total}] — completed");
-                phases.push(PhaseRun { slice, step });
+                phases.push(PhaseRun {
+                    slice,
+                    step,
+                    verification,
+                });
             }
             Err(err) => {
                 // The phase already journalled its failure terminal, so a
@@ -179,12 +186,14 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     }
 }
 
-/// Dispatch one loop phase for `slice` under the entry's tracing span.
+/// Dispatch one loop phase for `slice` under the entry's tracing
+/// span; a completed build step returns its terminal verification
+/// source.
 async fn run_phase<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     adapter: &project::adapter::ResolvedTarget, step: LoopStep, slice: &str,
     advanced_target: Option<&str>,
-) -> Result<(), Error> {
+) -> Result<Option<PhaseSource>, Error> {
     let layout = Layout::new(paths.project_root());
     let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
     match step {
@@ -199,13 +208,13 @@ async fn run_phase<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             slice::orchestrate::refine(caps, paths, now, slice, target)
                 .instrument(span)
                 .await
-                .map(drop)
+                .map(|_| None)
         }
         LoopStep::Build => {
             slice::orchestrate::build(caps.targets, layout, now, slice, &adapter.manifest)
                 .instrument(span)
                 .await
-                .map(drop)
+                .map(|outcome| outcome.verification)
         }
         LoopStep::Merge => {
             // The composition-replace override lives on the plan
@@ -220,7 +229,7 @@ async fn run_phase<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             slice::orchestrate::merge(caps.targets, layout, now, slice, allow_replace)
                 .instrument(span)
                 .await
-                .map(drop)
+                .map(|_| None)
         }
     }
 }

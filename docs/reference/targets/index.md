@@ -4,11 +4,12 @@
 
 ## Operations
 
-For what a target adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [Anatomy of an adapter](../../explanation/adapter-anatomy.md). The contract facts — three operations:
+For what a target adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [Anatomy of an adapter](../../explanation/adapter-anatomy.md). The contract facts — six operations:
 
 - `guidance` — idiom guidance consumed by core synthesis. Read into context when the refine phase writes `spec.md` / `design.md`. Empty `guidance` is valid.
-- `build` — implementation drive: consume **only** the build request's `inputs` manifest (rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`), write code (and any target-specific structured manifests like Vectis `composition.yaml`), run target-local validation, and write the build report to `build/report.yaml`. Driven by the build phase of `emery plan execute` — see [`emery plan execute`](../cli/plan.md#emery-plan-execute).
-- `merge` — landing gate: requires lifecycle `built`, re-runs the target's validators, surfaces conflicts, and drives verification commands. v1 adds **no** merge report — the merge phase is the writer and `slice.merge.*` events fire on its validator outcome.
+- `build` — generation only: consume **only** the build request's `inputs` manifest (rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`) and write code (and any target-specific structured manifests like Vectis `composition.yaml`) into the lent workspace, returning a typed phase report. It must not verify or repair — the engine assembles the terminal `build/report.yaml` itself. Driven by the build phase of `emery plan execute` — see [`emery plan execute`](../cli/plan.md#emery-plan-execute).
+- `verify`, `repair`, `review` — the rest of the build loop: one model-assisted check pass, one findings-directed repair pass, one engineering-standards review pass. The engine's phase machine dispatches them one pass at a time (`build → verify ⇄ repair → review ⇄ repair`) under engine-owned budgets; each returns a typed phase report. See the [Adapter contract](../adapter-contract.md#target-adapter-contract).
+- `merge` — landing gate: requires lifecycle `built`, re-runs the target's validators, surfaces conflicts, and drives verification commands. Dispatched twice per merge (preflight / postflight) — the merge phase is the writer and `slice.merge.*` events fire on its validator outcome.
 
 Target adapters do not own `spec.md` or `design.md` synthesis — that is **core**'s responsibility. The plan-level `Slice.target` field selects the target; v1 supports one target per project.
 
@@ -20,6 +21,7 @@ There is no manifest file. Identity is the guest crate's `(name, version)` — t
 | --------------- | -------- | ------- |
 | `emery-floor` | no       | Exact-semver minimum host-CLI version; resolve aborts with `adapter-cli-too-old` (exit 3) when the running binary is older. |
 | `inputs`        | no       | Flat list of `{ path, required }` declaring the target-specific build inputs `build` consumes (e.g. Vectis `tokens.yaml` / `assets.yaml` / `components.yaml` or the contracts `contracts/` subtree). Paths are relative to the build request's `inputs.root` (the slice tree); the CLI resolves them into `inputs.artifacts.additional[]`. A missing `required` path aborts the build phase with `target-build-input-missing`. v1 keeps the declaration a flat path list — globs and conditional inputs are deferred. Defaults to empty. |
+| `writable-artifacts` | no | Typed `{ path, kind: file \| tree }` grants naming the only slice artifacts the build-loop operations may write through the attempt-local artifact stage (e.g. Omnia `tasks.md`; Vectis `tasks.md`, `composition.yaml`, and its build bookkeeping subtree; Contracts `tasks.md` and `contracts/`). Paths are slice-relative, `/`-separated, no glob or `..` grammar. The engine rejects staged changes outside the grants. Defaults to empty. |
 | `platforms`     | no       | `{ required, allowed, default }` platforms capability; see the [Adapter contract](../adapter-contract.md#identity-and-metadata). |
 
 Deterministic helper behaviour is in-guest library code compiled into the adapter's component; there is no separate extension declaration or host-dispatched helper.
@@ -28,7 +30,8 @@ Deterministic helper behaviour is in-guest library code compiled into the adapte
 
 ```text
 refine phase   →  reads target.guidance   (idiom guidance for synthesis)
-build phase    →  drives target.build     (code generation)
+build phase    →  drives target.build → verify ⇄ repair → review ⇄ repair
+                  (the engine-owned build loop; one pass per dispatch)
 merge phase    →  drives target.merge     (validates and lands the slice)
 ```
 

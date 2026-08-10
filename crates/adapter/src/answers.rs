@@ -3,7 +3,8 @@
 use serde::Deserialize;
 
 use crate::seam::{
-    BuildOutput, ClaimKind, Error, Evidence, Finding, Lead, Report, Severity, Status, UiSurface,
+    BuildOutput, ClaimKind, Error, Evidence, Finding, Lead, PhaseFinding, PhaseOutcome,
+    PhaseReport, PhaseSource, PhaseWrite, Report, Severity, Status, UiSurface,
 };
 
 /// Answer schema gating `survey` replies.
@@ -14,6 +15,11 @@ pub const EVIDENCE_ANSWER_SCHEMA: &str = include_str!("../schemas/answers/eviden
 
 /// Answer schema gating `build` / `merge` replies.
 pub const REPORT_ANSWER_SCHEMA: &str = include_str!("../schemas/answers/report.schema.json");
+
+/// Answer schema gating the RFC-90 phase replies (`build` / `repair`
+/// / `verify` / `review`).
+pub const PHASE_REPORT_ANSWER_SCHEMA: &str =
+    include_str!("../schemas/answers/phase-report.schema.json");
 
 /// `survey` answer envelope (`{ "leads": [...] }`).
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -163,6 +169,56 @@ impl Diagnostic {
             rule_id: self.rule_id,
             severity: self.severity,
             detail: format!("{} — {}; remediation: {}", self.title, self.impact, self.remediation),
+        }
+    }
+}
+
+/// One RFC-90 phase answer body (`build` / `repair` / `verify` /
+/// `review`): the phase report minus the adapter-attached
+/// `next-continuation` — opaque session bytes never come from the
+/// model answer.
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct PhaseReportAnswer {
+    /// Adapter-selected phase outcome.
+    pub outcome: PhaseOutcome,
+    /// Required report-level assurance claim.
+    pub source: PhaseSource,
+    /// Full structured findings.
+    #[serde(default)]
+    pub findings: Vec<PhaseFinding>,
+    /// Candidate per-platform build outputs (`build` only).
+    #[serde(default)]
+    pub outputs: Vec<BuildOutput>,
+    /// Optional UI-surface signal (`build` only).
+    #[serde(default)]
+    pub ui_surface: Option<UiSurface>,
+    /// Audit-evidence writes performed by the phase.
+    #[serde(default)]
+    pub written: Vec<PhaseWrite>,
+}
+
+impl PhaseReportAnswer {
+    /// # Errors
+    ///
+    /// When the answer does not parse into the phase-report shape.
+    pub fn parse(answer: &str) -> Result<Self, serde_json::Error> {
+        serde_json::from_str(answer)
+    }
+
+    /// Project onto the seam-facing [`PhaseReport`], carrying no
+    /// continuation change (the adapter attaches one separately when
+    /// it has session state to preserve).
+    #[must_use]
+    pub fn into_report(self) -> PhaseReport {
+        PhaseReport {
+            outcome: self.outcome,
+            source: self.source,
+            findings: self.findings,
+            outputs: self.outputs,
+            ui_surface: self.ui_surface,
+            written: self.written,
+            next_continuation: None,
         }
     }
 }

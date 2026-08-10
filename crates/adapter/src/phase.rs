@@ -8,9 +8,13 @@ use std::path::Path;
 use omnia_guest::Model;
 use serde::Deserialize;
 
-use crate::answers::{REPORT_ANSWER_SCHEMA, ReportAnswer};
+use crate::answers::{
+    PHASE_REPORT_ANSWER_SCHEMA, PhaseReportAnswer, REPORT_ANSWER_SCHEMA, ReportAnswer,
+};
 use crate::judgment;
-use crate::seam::{Context, Error, Finding, Input, Payload, Report, Status, Workspace};
+use crate::seam::{
+    Context, Error, Finding, Input, Payload, PhaseFinding, PhaseReport, Report, Status, Workspace,
+};
 
 /// Answer schema for one internal phase leg (not part of the WIT contract).
 pub const PHASE_ANSWER_SCHEMA: &str = r#"{
@@ -71,6 +75,60 @@ pub async fn report<P: Model>(
     judgment::<P, ReportAnswer>(model, ctx, system, user, "report", REPORT_ANSWER_SCHEMA)
         .await
         .map(ReportAnswer::into_report)
+}
+
+/// Issue one RFC-90 phase leg and project onto the phase report.
+///
+/// Serves `build` / `repair` / `verify` / `review`. The caller
+/// attaches a continuation afterwards when it has session state to
+/// preserve.
+///
+/// # Errors
+///
+/// As [`judgment`].
+pub async fn phase_report<P: Model>(
+    model: &P, ctx: &Context<'_>, system: String, user: String, name: &str,
+) -> Result<PhaseReport, Error> {
+    judgment::<P, PhaseReportAnswer>(model, ctx, system, user, name, PHASE_REPORT_ANSWER_SCHEMA)
+        .await
+        .map(PhaseReportAnswer::into_report)
+}
+
+/// Render the typed repair brief for a repair prompt.
+///
+/// One numbered block per finding with rule id, severity, location,
+/// impact, and remediation — the deterministic engine projection,
+/// never a transcript reconstruction.
+#[must_use]
+pub fn render_findings(findings: &[PhaseFinding]) -> String {
+    use std::fmt::Write as _;
+
+    if findings.is_empty() {
+        return "(no findings were supplied)".to_string();
+    }
+    findings
+        .iter()
+        .enumerate()
+        .map(|(index, finding)| {
+            let rule = finding.rule_id.as_deref().unwrap_or("(no rule)");
+            let location = finding.location.as_ref().map_or_else(String::new, |location| {
+                let mut anchor = format!("\n   at: {}", location.path);
+                if let Some(line) = location.line {
+                    let _ = write!(anchor, ":{line}");
+                }
+                anchor
+            });
+            format!(
+                "{}. [{:?}] {rule} — {}{location}\n   impact: {}\n   remediation: {}",
+                index + 1,
+                finding.severity,
+                finding.title,
+                finding.impact,
+                finding.remediation,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 /// Join prompt bodies with `---` separators.
