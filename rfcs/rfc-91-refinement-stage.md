@@ -1,8 +1,10 @@
-# RFC-91: Staged Refinement
+# RFC-91: Refinement Stage
 
 > Status: Draft. Adds `plan refine`, reviewable refinement manifests, and wave-time target bases. Builds on [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md); [RFC-92](rfc-92-concurrent-execution.md), [RFC-93](rfc-93-distributed-execution.md), and [RFC-94](future/rfc-94-streaming-execution.md) own concurrency, distributed claims, and progressive execution.
 >
 > Patch ownership: this RFC amends implemented RFC-86 D6 / D8 / D12 / D14 / D22 / D25 / D26 and, once RFC-88 lands, RFC-88 D7 / D8 plus its public operator flow. The predecessor RFC texts remain unchanged.
+
+
 
 ## Intent
 
@@ -15,6 +17,8 @@ plan author → plan refine → plan execute → plan archive
 `plan refine` drains refinement for a closed plan and stops. `plan execute` accepts only exact, fresh refinement manifests; it never synthesizes a replacement and immediately builds it.
 
 ## Problem
+
+
 
 ### The public workflow has no specification boundary
 
@@ -52,7 +56,11 @@ Execute must cover the complete refinement bundle selected for build. `refine-un
 - A **refinement digest** is the content digest of the canonical manifest.
 - **Accepted** means the predecessor's target wave committed and advanced the target's accepted CID.
 
+
+
 ## Operator flow
+
+
 
 ### Author — topology only
 
@@ -105,6 +113,8 @@ If a manifest is missing or stale, execute fails before opening a workspace or t
 After publication, `emery plan archive` verifies its existing completion conditions and archives the change.
 
 ## Decisions
+
+
 
 ### D1 — `plan refine` is a first-class orchestration stage
 
@@ -254,6 +264,8 @@ This amends RFC-86 D6, D8, D12, D14, D22, D25, and D26, plus RFC-88 D7 and D8. R
 - A changed predecessor refinement invalidates dependent manifests through the recorded dependency digest.
 - A build or merge failure retains RFC-90's stop and retry behavior.
 
+
+
 ## Implementation requirements
 
 - Add `emery plan refine [--slice <slice>...]` and the ultrathin `/emery:refine` wrapper.
@@ -270,6 +282,8 @@ This amends RFC-86 D6, D8, D12, D14, D22, D25, and D26, plus RFC-88 D7 and D8. R
 - Update plan status, gaps hints, CLI output shapes, skills, workflow standards, and platform-series documentation.
 - Keep native and Wasm providers on one typed transport contract; add no source or target WIT operation.
 
+
+
 ## Acceptance criteria
 
 1. A three-leaf dependency chain reaches fresh manifests for all leaves through one serial `plan refine`, in topological order, with no target operation, wave, `BuildRecord`, product workspace freeze, or product-code change.
@@ -285,9 +299,11 @@ This amends RFC-86 D6, D8, D12, D14, D22, D25, and D26, plus RFC-88 D7 and D8. R
 11. Existing RFC-90 success, repair, review-remediation, failure, and attempt-abandonment fixtures pass without target WIT changes.
 12. `cargo make ci`, the wasm32 engine compile-check, and native integration suites pass.
 
+
+
 ## Rejected alternatives
 
-- **`plan execute --until refined`** — preserves code authorization and implicit-refinement semantics for a specs-only request.
+- `plan execute --until refined` — preserves code authorization and implicit-refinement semantics for a specs-only request.
 - **Fold refinement into author** — removes topology review and pays extraction and synthesis cost before the operator accepts decomposition.
 - **Stage specs only and synthesize design and tasks at build admission** — defers target-specific detail nearer accepted predecessor code, but splits synthesis into two legs, adds a second freshness surface, and excludes design and tasks from the covered bundle; revisit if retained outcomes (RFC-97) show dependent design quality degrading with chain depth.
 - **Keep implicit refine inside execute** — permits generation input that was never exactly covered to enter build, erasing the input fence and the review opportunity.
@@ -297,6 +313,6 @@ This amends RFC-86 D6, D8, D12, D14, D22, D25, and D26, plus RFC-88 D7 and D8. R
 - **Bind dependents to a consumed spec subset of the predecessor bundle** — regeneration nondeterminism means a re-refined predecessor rarely preserves any sub-artifact digest, so finer binding buys nothing; revisit if RFC-97 outcome data shows stable re-refinements.
 - **Persist immutable refinement-record history now** — the canonical manifest plus digest-bound execute and build records provide the closed-plan input fence; RFC-94 retains exact manifest revisions when progressive member admission requires them.
 - **Replace the scheduler in this RFC** — serial staged refinement needs a bounded refinement selector, not concurrent phase work items or distributed claim semantics.
-- **Replace `plan.execute.started` with a generic grant now** — closed execution has one authority mode; RFC-94 owns the second mode that justifies generalization.
+- **Replace** `plan.execute.started` **with a generic grant now** — closed execution has one authority mode; RFC-94 owns the second mode that justifies generalization.
 - **Treat the plan as globally Refined** — creates mutable barrier state instead of projecting freshness from per-leaf manifests.
 
