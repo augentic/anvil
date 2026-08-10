@@ -1,6 +1,6 @@
 # RFC-90: Build Verification
 
-> Status: Draft — step 5 of the platform-migration series, scale track ([platform.md](platform.md))
+> Status: Implemented — step 5 of the platform-migration series, scale track ([platform.md](platform.md))
 >
 > Owns: the engine-owned build phase machine, separate `target.build` / `target.repair` / `target.verify` / `target.review` WIT operations, bounded verification and repair rounds, typed intermediate reports, and removal of repair-loop control from adapter prose.
 >
