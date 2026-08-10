@@ -60,7 +60,7 @@ Each slice directory contains a `metadata.yaml` file managed exclusively by the 
 - **Phase timestamps** — `created_at` / `defined_at` / `completed_at` / `merged_at` / `dropped_at` (ISO 8601); lifecycle labels project from these plus artifacts.
 - **`target`** — the target adapter identifier used for this slice.
 - **`touched_specs`** — the list of spec files this slice affects.
-- **`outcome`** — latest phase outcome surface (optional).
+- **`outcome`** — optional audit stamp written at merge; progress is projected from journal facts and artifacts, never from this field.
 
 Never hand-edit `metadata.yaml`. All writes flow through the CLI.
 

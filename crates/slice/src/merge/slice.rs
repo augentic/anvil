@@ -125,7 +125,8 @@ pub struct BaselineConflict {
 /// baseline, stamps the merge outcome into `metadata.yaml`, then
 /// archives the slice directory. The outcome stamp is written before
 /// the archive move so the archived `metadata.yaml` carries the
-/// merge-success outcome the plan execute loop reads.
+/// merge-success audit stamp; progress projection reads journal facts
+/// and artifacts, never this field.
 /// `allow_composition_replace` threads only as far as the
 /// `overwrite_gate` precondition — never into the pure merge kernel.
 ///
