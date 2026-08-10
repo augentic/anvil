@@ -14,7 +14,7 @@ use super::in_scope;
 use super::model::{Entry, Plan};
 use crate::config::Layout;
 use crate::handler::Render;
-use crate::journal::{Event, EventKind};
+use crate::journal::{DeferralOrigin, Event, EventKind};
 use crate::slice::{RequirementBody, SliceMetadata};
 
 /// Computed gap disposition (RFC-86a D2): joined from the deferral
@@ -27,6 +27,58 @@ pub enum Disposition {
     Open,
     /// A live deferral fact covers the requirement's `(slice, digest)`.
     Deferred,
+}
+
+/// Covering deferral detail on a deferred row (RFC-86a D7): the
+/// reason and origin of the latest live `gap.deferred` fact.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct Deferral {
+    /// Operator reason, or the synthesized policy reason.
+    pub reason: String,
+    /// Which surface dispositioned the requirement.
+    pub origin: DeferralOrigin,
+}
+
+/// Deferred-gap debt counts with conflicts broken out (RFC-86a
+/// D6/D7): a shipped-around contradiction is always louder news than
+/// a shipped-around absence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebtCounts {
+    /// Deferred `[unknown]` rows.
+    pub unknown: usize,
+    /// Deferred `[conflict]` rows.
+    pub conflict: usize,
+}
+
+impl DebtCounts {
+    /// Total deferred rows.
+    #[must_use]
+    pub const fn total(&self) -> usize {
+        self.unknown + self.conflict
+    }
+
+    /// Whether the plan carries no deferred debt.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.total() == 0
+    }
+}
+
+/// `3 deferred gaps (2 unknown, 1 conflict)` — the debt line beside
+/// the `plan status` milestones (RFC-86a D7).
+impl std::fmt::Display for DebtCounts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let noun = if self.total() == 1 { "gap" } else { "gaps" };
+        write!(
+            f,
+            "{} deferred {noun} ({} unknown, {} conflict)",
+            self.total(),
+            self.unknown,
+            self.conflict
+        )
+    }
 }
 
 /// One open typed-status finding in the gap inventory.
@@ -51,6 +103,10 @@ pub struct GapRow {
     /// `[divergence]` rows take no disposition (RFC-86a D2).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disposition: Option<Disposition>,
+    /// Covering deferral's reason and origin — present exactly when
+    /// [`Self::disposition`] is deferred (RFC-86a D7).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deferral: Option<Deferral>,
     /// Contributing `(source, lead)` shared across multiple open
     /// findings, rendered as `source:lead`. Absent when the row's
     /// contributors are not multi-homed in this inventory.
@@ -86,10 +142,63 @@ pub struct GapsBody {
 }
 
 impl GapsBody {
-    /// Whether the inventory carries any open findings.
+    /// Whether the inventory carries any findings at all.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.rows.is_empty()
+    }
+
+    /// Whether any row's computed disposition is `open` — the set
+    /// next-actions and the strict gate compute over (RFC-86a D7).
+    #[must_use]
+    pub fn has_open(&self) -> bool {
+        self.rows.iter().any(|row| row.disposition == Some(Disposition::Open))
+    }
+
+    /// Deferred-debt counts with conflicts broken out (RFC-86a D6/D7).
+    #[must_use]
+    pub fn debt(&self) -> DebtCounts {
+        let mut counts = DebtCounts {
+            unknown: 0,
+            conflict: 0,
+        };
+        for row in &self.rows {
+            if row.disposition != Some(Disposition::Deferred) {
+                continue;
+            }
+            match row.status {
+                RequirementStatus::Unknown => counts.unknown += 1,
+                RequirementStatus::Conflict => counts.conflict += 1,
+                RequirementStatus::Divergence | RequirementStatus::Agreed => {}
+            }
+        }
+        counts
+    }
+
+    /// Render the deferred rows of one gap kind under `heading`, each
+    /// with the covering fact's reason and origin. Deferred conflicts
+    /// and deferred unknowns get separate blocks (RFC-86a D6/D7).
+    fn render_deferred(
+        &self, w: &mut dyn std::io::Write, status: RequirementStatus, heading: &str,
+    ) -> std::io::Result<()> {
+        let rows = self
+            .rows
+            .iter()
+            .filter(|row| row.disposition == Some(Disposition::Deferred) && row.status == status);
+        let mut headed = false;
+        for row in rows {
+            if !headed {
+                writeln!(w, "{heading}")?;
+                headed = true;
+            }
+            // Deferred rows carry the covering fact by construction.
+            let detail = row
+                .deferral
+                .as_ref()
+                .map_or_else(String::new, |d| format!(" — {} ({})", d.reason, d.origin));
+            writeln!(w, "  {}/{} {}{detail}", row.slice, row.req, truncate(&row.summary, 48))?;
+        }
+        Ok(())
     }
 }
 
@@ -101,20 +210,24 @@ impl Render for GapsBody {
         }
         writeln!(
             w,
-            "{:<14} {:<10} {:<12} {:<32} shared-lead",
-            "slice", "req", "status", "summary"
+            "{:<14} {:<10} {:<12} {:<12} {:<32} shared-lead",
+            "slice", "req", "status", "disposition", "summary"
         )?;
         for row in &self.rows {
             let shared = row.shared_lead.as_deref().unwrap_or("—");
+            let disposition = row.disposition.map_or_else(|| "—".to_string(), |d| d.to_string());
             writeln!(
                 w,
-                "{:<14} {:<10} {:<12} {:<32} {shared}",
+                "{:<14} {:<10} {:<12} {:<12} {:<32} {shared}",
                 row.slice,
                 row.req,
                 row.status,
+                disposition,
                 truncate(&row.summary, 32)
             )?;
         }
+        self.render_deferred(w, RequirementStatus::Unknown, "deferred unknowns:")?;
+        self.render_deferred(w, RequirementStatus::Conflict, "deferred conflicts:")?;
         for rollup in &self.rollups {
             writeln!(
                 w,
@@ -157,7 +270,7 @@ pub fn plan_gaps_body(
         }
     }
 
-    let deferred = deferred_keys(events);
+    let deferred = live_deferrals(events);
     let lead_hits = count_leads(&raw);
     let rollups = build_rollups(&raw, &lead_hits);
     let rows = raw
@@ -168,7 +281,7 @@ pub fn plan_gaps_body(
                 .iter()
                 .find(|key| lead_hits.get(*key).is_some_and(|n| *n > 1))
                 .map(|(source, lead)| format!("{source}:{lead}"));
-            let disposition = disposition(&finding, &deferred);
+            let (disposition, deferral) = disposition(&finding, &deferred);
             GapRow {
                 slice: finding.slice,
                 req: finding.req,
@@ -176,6 +289,7 @@ pub fn plan_gaps_body(
                 summary: finding.summary,
                 requirement_digest: finding.digest,
                 disposition,
+                deferral,
                 shared_lead,
             }
         })
@@ -188,42 +302,56 @@ pub fn plan_gaps_body(
     })
 }
 
-/// Disposition for one finding: `[divergence]` takes none; a live
-/// deferral on the row's `(slice, digest)` defers it; everything else
-/// is open (including digest-less `spec.md`-fallback rows, which no
-/// fact can match).
-fn disposition(finding: &RawFinding, deferred: &BTreeSet<(String, String)>) -> Option<Disposition> {
+/// Disposition and covering deferral for one finding: `[divergence]`
+/// takes none; a live deferral on the row's `(slice, digest)` defers
+/// it with the fact's reason and origin; everything else is open
+/// (including digest-less `spec.md`-fallback rows, which no fact can
+/// match).
+fn disposition(
+    finding: &RawFinding, deferred: &BTreeMap<(String, String), Deferral>,
+) -> (Option<Disposition>, Option<Deferral>) {
     if finding.status == RequirementStatus::Divergence {
-        return None;
+        return (None, None);
     }
-    let covered = finding
+    finding
         .digest
         .as_ref()
-        .is_some_and(|digest| deferred.contains(&(finding.slice.clone(), digest.clone())));
-    Some(if covered { Disposition::Deferred } else { Disposition::Open })
+        .and_then(|digest| deferred.get(&(finding.slice.clone(), digest.clone())))
+        .map_or((Some(Disposition::Open), None), |deferral| {
+            (Some(Disposition::Deferred), Some(deferral.clone()))
+        })
 }
 
 /// Envelope ordering key of one fact: `(timestamp, writer, sequence)`.
 type FactOrder = (jiff::Timestamp, String, u64);
 
-/// `(slice, digest)` pairs whose latest defer/retract fact is a
-/// deferral. Latest wins by `(timestamp, writer, sequence)` regardless
-/// of the slice of `events` being pre-sorted; duplicate facts fold
-/// idempotently.
-fn deferred_keys(events: &[Event]) -> BTreeSet<(String, String)> {
-    let mut latest: BTreeMap<(String, String), (FactOrder, bool)> = BTreeMap::new();
+/// Live deferral detail per `(slice, digest)`: present when the
+/// latest defer/retract fact is a deferral. Latest wins by
+/// `(timestamp, writer, sequence)` regardless of the slice of `events`
+/// being pre-sorted; duplicate facts fold idempotently.
+fn live_deferrals(events: &[Event]) -> BTreeMap<(String, String), Deferral> {
+    let mut latest: BTreeMap<(String, String), (FactOrder, Option<Deferral>)> = BTreeMap::new();
     for event in events {
-        let (slice, digest, deferred) = match &event.kind {
+        let (slice, digest, deferral) = match &event.kind {
             EventKind::GapDeferred {
                 slice,
                 requirement_digest,
+                reason,
+                origin,
                 ..
-            } => (slice, requirement_digest, true),
+            } => (
+                slice,
+                requirement_digest,
+                Some(Deferral {
+                    reason: reason.clone(),
+                    origin: *origin,
+                }),
+            ),
             EventKind::GapDeferralRetracted {
                 slice,
                 requirement_digest,
                 ..
-            } => (slice, requirement_digest, false),
+            } => (slice, requirement_digest, None),
             _ => continue,
         };
         let order = (event.timestamp, event.writer.clone(), event.sequence);
@@ -231,11 +359,11 @@ fn deferred_keys(events: &[Event]) -> BTreeSet<(String, String)> {
         match latest.get(&key) {
             Some((existing, _)) if *existing > order => {}
             _ => {
-                latest.insert(key, (order, deferred));
+                latest.insert(key, (order, deferral));
             }
         }
     }
-    latest.into_iter().filter_map(|(key, (_, deferred))| deferred.then_some(key)).collect()
+    latest.into_iter().filter_map(|(key, (_, deferral))| deferral.map(|live| (key, live))).collect()
 }
 
 /// One finding before shared-lead annotation.

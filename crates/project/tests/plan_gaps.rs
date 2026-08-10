@@ -10,8 +10,8 @@ use jiff::Timestamp;
 use project::config::Layout;
 use project::journal::{DeferralOrigin, Event, EventKind};
 use project::plan::{
-    Disposition, Entry, GapRow, Plan, SharedLeadRollup, SliceSourceBinding, in_scope,
-    plan_gaps_body,
+    DebtCounts, Deferral, Disposition, Entry, GapRow, Plan, SharedLeadRollup, SliceSourceBinding,
+    in_scope, plan_gaps_body,
 };
 use project::slice::{RequirementBody, SliceMetadata};
 use tempfile::TempDir;
@@ -158,6 +158,7 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
             summary: "password-reset path not evidenced".into(),
             requirement_digest: Some(title_digest("password-reset path not evidenced")),
             disposition: Some(Disposition::Open),
+            deferral: None,
             shared_lead: Some("docs:conventions".into()),
         }
     );
@@ -177,6 +178,7 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
             summary: "reset copy not evidenced".into(),
             requirement_digest: Some(title_digest("reset copy not evidenced")),
             disposition: Some(Disposition::Open),
+            deferral: None,
             shared_lead: Some("docs:conventions".into()),
         }
     );
@@ -415,6 +417,174 @@ fn two_writer_union_projects_one_disposition() {
     ];
     let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
     assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred), "charlie sorts last");
+}
+
+fn render(body: &project::plan::GapsBody) -> String {
+    let mut out = Vec::new();
+    project::handler::Render::render(body, &mut out).expect("render");
+    String::from_utf8(out).expect("utf8")
+}
+
+#[test]
+fn deferred_rows_carry_reason_and_origin() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+
+    let events =
+        vec![deferred(1, "local", 1, "auth-login", &title_digest("reset path not evidenced"))];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(
+        body.rows[0].deferral,
+        Some(Deferral {
+            reason: "deferred to next change".into(),
+            origin: DeferralOrigin::Operator,
+        }),
+        "deferred row carries the covering fact's reason and origin"
+    );
+    assert_eq!(body.rows[1].deferral, None, "open row carries no deferral detail");
+    assert_eq!(body.rows[2].deferral, None, "divergence row carries no deferral detail");
+
+    // Re-deferring supersedes: the latest fact's reason and origin win.
+    let mut events = events;
+    events.push(Event {
+        timestamp: ts(2),
+        writer: "local".into(),
+        sequence: 2,
+        kind: EventKind::GapDeferred {
+            slice: "auth-login".into(),
+            req: "REQ-001".into(),
+            requirement_digest: title_digest("reset path not evidenced"),
+            reason: "deferred by gap-policy under epoch 2024".into(),
+            origin: DeferralOrigin::Policy,
+        },
+    });
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(
+        body.rows[0].deferral,
+        Some(Deferral {
+            reason: "deferred by gap-policy under epoch 2024".into(),
+            origin: DeferralOrigin::Policy,
+        })
+    );
+}
+
+#[test]
+fn render_disposition_column_and_separated_deferred_sections() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+
+    let events = vec![
+        deferred(1, "local", 1, "auth-login", &title_digest("reset path not evidenced")),
+        deferred(2, "local", 2, "auth-login", &title_digest("session TTL tied")),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    let text = render(&body);
+
+    let header = text.lines().next().expect("header");
+    assert!(header.contains("disposition"), "disposition column header: {text}");
+    let unknown_row = text.lines().find(|l| l.contains("REQ-001")).expect("REQ-001 row");
+    assert!(unknown_row.contains("deferred"), "deferred disposition cell: {unknown_row}");
+    let divergence_row = text.lines().find(|l| l.contains("REQ-003")).expect("REQ-003 row");
+    assert!(divergence_row.contains('—'), "divergence takes no disposition: {divergence_row}");
+
+    // Deferred conflicts render separately from deferred unknowns
+    // (D6), each row with reason and origin.
+    let unknowns_at = text.find("deferred unknowns:").expect("deferred unknowns section");
+    let conflicts_at = text.find("deferred conflicts:").expect("deferred conflicts section");
+    assert!(unknowns_at < conflicts_at, "unknowns before conflicts: {text}");
+    let unknowns_section = &text[unknowns_at..conflicts_at];
+    assert!(unknowns_section.contains("auth-login/REQ-001"), "{text}");
+    assert!(unknowns_section.contains("deferred to next change (operator)"), "{text}");
+    let conflicts_section = &text[conflicts_at..];
+    assert!(conflicts_section.contains("auth-login/REQ-002"), "{text}");
+    assert!(!conflicts_section.contains("REQ-001"), "conflict section carries conflicts only");
+
+    // An all-open inventory renders no deferred sections.
+    let body = plan_gaps_body(&staged, Layout::new(root), &[]).expect("gaps");
+    let text = render(&body);
+    assert!(!text.contains("deferred unknowns:"), "{text}");
+    assert!(!text.contains("deferred conflicts:"), "{text}");
+}
+
+#[test]
+fn rollup_spans_both_dispositions() {
+    // D19 stays presentation-only over open and deferred rows alike:
+    // deferring one of two multi-homed findings keeps the shared-lead
+    // annotation and the rollup selectors intact.
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    let staged = plan(vec![
+        entry("auth-login", vec![SliceSourceBinding::structured("docs", "conventions")]),
+        entry("payments", vec![SliceSourceBinding::structured("docs", "conventions")]),
+    ]);
+    for (slice, title) in
+        [("auth-login", "reset path not evidenced"), ("payments", "reset copy not evidenced")]
+    {
+        let dir = root.join(".emery/slices").join(slice);
+        write_meta(&dir, false);
+        write_model(
+            &dir,
+            &format!(
+                "requirements:\n  - id: REQ-001\n    title: {title}\n    status: unknown\n    sources: [docs]\n"
+            ),
+        );
+    }
+
+    let events =
+        vec![deferred(1, "local", 1, "auth-login", &title_digest("reset path not evidenced"))];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert_eq!(body.rows[0].disposition, Some(Disposition::Deferred));
+    assert_eq!(body.rows[0].shared_lead.as_deref(), Some("docs:conventions"));
+    assert_eq!(body.rows[1].disposition, Some(Disposition::Open));
+    assert_eq!(
+        body.rollups,
+        vec![SharedLeadRollup {
+            source: "docs".into(),
+            lead: "conventions".into(),
+            selectors: vec!["auth-login".into(), "payments".into()],
+        }]
+    );
+}
+
+#[test]
+fn debt_counts_break_out_conflicts() {
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let staged = disposition_fixture(root);
+
+    let events = vec![
+        deferred(1, "local", 1, "auth-login", &title_digest("reset path not evidenced")),
+        deferred(2, "local", 2, "auth-login", &title_digest("session TTL tied")),
+    ];
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert!(!body.has_open(), "fully dispositioned — divergence takes no disposition");
+    let debt = body.debt();
+    assert_eq!(
+        debt,
+        DebtCounts {
+            unknown: 1,
+            conflict: 1,
+        }
+    );
+    assert_eq!(debt.to_string(), "2 deferred gaps (1 unknown, 1 conflict)");
+
+    // Retract the unknown: it reopens; the conflict stays debt.
+    let mut events = events;
+    events.push(retracted(3, "local", 3, "auth-login", &title_digest("reset path not evidenced")));
+    let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
+    assert!(body.has_open());
+    let debt = body.debt();
+    assert_eq!(
+        debt,
+        DebtCounts {
+            unknown: 0,
+            conflict: 1,
+        }
+    );
+    assert_eq!(debt.to_string(), "1 deferred gap (0 unknown, 1 conflict)");
 }
 
 #[test]

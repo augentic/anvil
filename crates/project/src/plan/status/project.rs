@@ -10,7 +10,7 @@ use super::super::execution::{
     JournalOverlay, Resolution, collect_events, next_eligible, project_ladders, resolve_entry,
     scan_union,
 };
-use super::super::gaps::plan_gaps_body;
+use super::super::gaps::{Disposition, GapsBody, plan_gaps_body};
 use super::super::in_scope;
 use super::super::model::{Entry, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
@@ -116,9 +116,11 @@ fn count(ladders: &std::collections::HashMap<SliceName, Status>, status: Status)
     ladders.values().filter(|s| **s == status).count()
 }
 
-/// Ready's clean-gap policy: no conflicts and zero open unknowns.
-/// Divergence is listed but does not block Ready (D22).
-fn clean_gaps(gaps: &super::super::gaps::GapsBody) -> bool {
+/// Ready's clean-gap policy: zero open **and** zero deferred
+/// unknowns / conflicts — dispositions never contribute to Ready, so
+/// a debt-carrying plan reaches build via Authorized only (D22 /
+/// RFC-86a D7). Divergence is listed but does not block Ready.
+fn clean_gaps(gaps: &GapsBody) -> bool {
     !gaps
         .rows
         .iter()
@@ -152,13 +154,13 @@ fn project_authorized(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Resu
 fn assemble(
     plan: &Plan, counts: StatusCounts, active: Option<&Entry>,
     ladders: &std::collections::HashMap<SliceName, Status>, mut resolution: Resolution,
-    gaps: super::super::gaps::GapsBody, milestones: Milestones,
+    gaps: GapsBody, milestones: Milestones,
 ) -> StatusBody {
-    // When every in-scope slice is refined but Ready fails, surface
-    // review-gaps instead of build (D22). Execute maps ReviewGaps →
-    // build; the gap gate joins dispositions / refuses open gaps.
+    // Refined with open findings → review-gaps instead of build (D22 /
+    // RFC-86a D7); a fully-dispositioned plan keeps the build dispatch.
+    // Execute maps ReviewGaps → build; the gap gate joins dispositions.
     if milestones.all_refined
-        && !milestones.ready
+        && gaps.has_open()
         && matches!(resolution.action, NextActionKind::Build)
     {
         resolution.action = NextActionKind::ReviewGaps;
@@ -185,9 +187,10 @@ fn assemble(
         action: resolution.action,
         current_step: current_step(&resolution),
         last_completed: resolution.last_completed,
-        resume: resume_point(plan, ladders, &resolution, &gaps, milestones.ready),
+        resume: resume_point(plan, ladders, &resolution, &gaps),
         ready: milestones.ready,
         authorized: milestones.authorized,
+        debt: gaps.debt(),
         slice: resolution.slice,
         project: resolution.project,
         stop: resolution.stop,
@@ -221,11 +224,11 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 /// `None` when no single command makes progress.
 fn resume_point(
     plan: &Plan, ladders: &std::collections::HashMap<SliceName, Status>, resolution: &Resolution,
-    gaps: &super::super::gaps::GapsBody, ready: bool,
+    gaps: &GapsBody,
 ) -> Option<String> {
     // A fresh plan (no entry has left projected `pending`) resumes
-    // through the execute loop, not a phase breakout. When refined but
-    // not Ready, point at deferral / gap closure instead.
+    // through the execute loop, not a phase breakout. When open
+    // findings block, point at deferral / gap closure instead.
     if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,
@@ -235,7 +238,7 @@ fn resume_point(
                 | NextActionKind::ReviewGaps
         )
     {
-        return Some(fresh_plan_resume(gaps, ready, resolution.action));
+        return Some(fresh_plan_resume(gaps, resolution.action));
     }
     match resolution.action {
         // Every phase resumes through the execute loop — there are no
@@ -256,31 +259,31 @@ fn resume_point(
     }
 }
 
-/// Post-author / all-pending resume (D26 / D22).
-fn fresh_plan_resume(
-    gaps: &super::super::gaps::GapsBody, ready: bool, action: NextActionKind,
-) -> String {
-    if action == NextActionKind::ReviewGaps || (!ready && action == NextActionKind::Build) {
+/// Post-author / all-pending resume (D26 / D22 / RFC-86a D7).
+fn fresh_plan_resume(gaps: &GapsBody, action: NextActionKind) -> String {
+    if action == NextActionKind::ReviewGaps || (gaps.has_open() && action == NextActionKind::Build)
+    {
         return gap_resume(gaps);
     }
-    // Unrefined or Ready: resume at execute (D26).
+    // Unrefined, Ready, or fully dispositioned: resume at execute
+    // (D26) — deferred debt never redirects the resume.
     "/emery:execute".to_string()
 }
 
-/// Resume when the change is not Ready: conflicts → fix inputs and
-/// re-execute (drifted pins re-refine under the epoch); unknowns-only
-/// → defer them durably with `plan defer` (RFC-86a D3).
-fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
-    if gaps.rows.iter().any(|r| r.status == RequirementStatus::Conflict) {
+/// Resume when open findings block Ready: the durable disposition act
+/// over every open row — `[unknown]` and `[conflict]` alike defer
+/// (RFC-86a D3/D6). Closing the gap at its source or an epoch-wide
+/// `emery plan execute --gap-policy defer` are the alternatives the
+/// gate hints carry. A fully-dispositioned inventory resumes at the
+/// execute loop (D7).
+fn gap_resume(gaps: &GapsBody) -> String {
+    let open: Vec<_> =
+        gaps.rows.iter().filter(|r| r.disposition == Some(Disposition::Open)).collect();
+    if open.is_empty() {
         return "emery plan execute".to_string();
     }
-    let unknowns: Vec<_> =
-        gaps.rows.iter().filter(|r| r.status == RequirementStatus::Unknown).collect();
-    if unknowns.is_empty() {
-        return "emery plan gaps".to_string();
-    }
     let mut parts = vec!["emery plan defer".to_string()];
-    for row in unknowns {
+    for row in open {
         parts.push(format!("{}/{}", row.slice, row.req));
     }
     parts.push("--reason <reason>".to_string());

@@ -285,9 +285,9 @@ fn dispatch_status(
             })
         }
         NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
-        // ReviewGaps is status when refined but not Ready. The loop
-        // still attempts build; `enforce_before_build` refuses open
-        // gaps under `strict` and mints policy deferrals under `defer`.
+        // ReviewGaps is status when open findings remain (RFC-86a D7).
+        // The loop still attempts build; `enforce_before_build` refuses
+        // open gaps under `strict`, mints policy deferrals under `defer`.
         NextActionKind::Build | NextActionKind::ReviewGaps => {
             ControlFlow::Continue(Some(LoopStep::Build))
         }
