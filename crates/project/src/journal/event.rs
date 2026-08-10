@@ -3,6 +3,7 @@
 //! Wire format is locked: dotted kebab-case event ids, kebab-case
 //! payload fields; Rust variants reach the wire via `#[serde(rename)]`.
 
+use artifacts::spec::provenance::RequirementStatus;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
@@ -304,6 +305,12 @@ pub enum EventKind {
         /// Slice-local id → final baseline `REQ-NNN` for every
         /// requirement in the member.
         identity_maps: Vec<IdentityMap>,
+        /// Deferred member set the wave carried into the baseline
+        /// (RFC-86a D5) — the committed audit trail names exactly
+        /// which debt this wave accepted. Empty when nothing was
+        /// deferred.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        deferred: Vec<DeferredMember>,
     },
     /// Target postflight gate succeeded after wave commit (RFC-86 D9).
     #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
@@ -554,6 +561,21 @@ pub enum LeafSpecCoverage {
     },
     /// Authorize refine-before-build for this leaf under the epoch.
     RefineUnderEpoch,
+}
+
+/// One deferred requirement in the member set snapshotted on
+/// [`EventKind::TargetMergeWaveCommitted`] (RFC-86a D5): the debt the
+/// committed wave carried into the baseline.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DeferredMember {
+    /// Final baseline `REQ-NNN` assigned at wave commit.
+    pub req: String,
+    /// Typed gap status of the folded row (`unknown` | `conflict`).
+    pub status: RequirementStatus,
+    /// Canonical requirement-body digest (`sha256:<hex>`) — the
+    /// deferral match key back into the `gap.deferred` facts.
+    pub requirement_digest: String,
 }
 
 /// One slice-local → baseline requirement identity mapping on

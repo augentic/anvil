@@ -132,6 +132,60 @@ fn gap_deferral_events_round_trip() {
 }
 
 #[test]
+fn wave_committed_deferred_snapshot_round_trips() {
+    // RFC-86a D5: the wave-commit fact snapshots the deferred member
+    // set it carried; a debt-free fact omits the field and prior
+    // journals without it stay parseable.
+    let committed = Event {
+        timestamp: ts(0),
+        writer: "alice".into(),
+        sequence: 1,
+        kind: EventKind::TargetMergeWaveCommitted {
+            target: "mock".into(),
+            digest: "sha256:abc".into(),
+            slice_name: "auth-login".into(),
+            commit_authorization: FactEpochRef {
+                writer: "alice".into(),
+                sequence: 1,
+            },
+            identity_maps: vec![],
+            deferred: vec![project::journal::DeferredMember {
+                req: "REQ-007".into(),
+                status: artifacts::spec::provenance::RequirementStatus::Conflict,
+                requirement_digest: "sha256:def".into(),
+            }],
+        },
+    };
+    let wire = serde_json::to_string(&committed).expect("serialize");
+    assert!(wire.contains(r#""deferred":[{"#), "{wire}");
+    assert!(wire.contains(r#""req":"REQ-007""#), "{wire}");
+    assert!(wire.contains(r#""status":"conflict""#), "{wire}");
+    assert!(wire.contains(r#""requirement-digest":"sha256:def""#), "{wire}");
+    assert_eq!(serde_json::from_str::<Event>(&wire).expect("parse"), committed);
+
+    // Empty set: skipped on the wire, defaulted on read.
+    let clean = Event {
+        timestamp: ts(1),
+        writer: "alice".into(),
+        sequence: 2,
+        kind: EventKind::TargetMergeWaveCommitted {
+            target: "mock".into(),
+            digest: "sha256:abc".into(),
+            slice_name: "auth-login".into(),
+            commit_authorization: FactEpochRef {
+                writer: "alice".into(),
+                sequence: 1,
+            },
+            identity_maps: vec![],
+            deferred: vec![],
+        },
+    };
+    let wire = serde_json::to_string(&clean).expect("serialize");
+    assert!(!wire.contains("deferred"), "empty snapshot stays off the wire: {wire}");
+    assert_eq!(serde_json::from_str::<Event>(&wire).expect("parse"), clean);
+}
+
+#[test]
 fn append_stamps_writer_and_monotonic_sequence() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();

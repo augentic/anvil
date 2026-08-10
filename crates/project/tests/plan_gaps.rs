@@ -439,8 +439,9 @@ fn deferred_rows_carry_reason_and_origin() {
         Some(Deferral {
             reason: "deferred to next change".into(),
             origin: DeferralOrigin::Operator,
+            deferred_at: ts(1),
         }),
-        "deferred row carries the covering fact's reason and origin"
+        "deferred row carries the covering fact's reason, origin, and timestamp"
     );
     assert_eq!(body.rows[1].deferral, None, "open row carries no deferral detail");
     assert_eq!(body.rows[2].deferral, None, "divergence row carries no deferral detail");
@@ -465,6 +466,7 @@ fn deferred_rows_carry_reason_and_origin() {
         Some(Deferral {
             reason: "deferred by gap-policy under epoch 2024".into(),
             origin: DeferralOrigin::Policy,
+            deferred_at: ts(2),
         })
     );
 }

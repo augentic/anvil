@@ -13,7 +13,9 @@ use project::seam::{self, MergePhase, Target, Workspaces};
 use project::snapshot::{CodePatch, SnapshotId};
 use project::wave::Wave;
 
-use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, identity, slice as slice_merge};
+use crate::merge::{
+    MergeCommit, PreviewEntry, artifact_classes, debt, identity, slice as slice_merge,
+};
 
 mod gate;
 
@@ -158,6 +160,12 @@ async fn gated<T: Target>(
     let identity_maps =
         journal_on_failure(layout, now, slice, identity::finalize(&layout.specs_dir(), slice_dir))?;
 
+    // Debt conservation (RFC-86a D5): project the deferred rows after
+    // identity finalization (final baseline ids) and stamp each staged
+    // debt row with its self-describing note before the fold.
+    let slice_debt = journal_on_failure(layout, now, slice, debt::carried(layout, slice))?;
+    journal_on_failure(layout, now, slice, debt::annotate(slice_dir, &slice_debt))?;
+
     // The deterministic core: validators, spec fold, Decision Record
     // promotion, lifecycle, and archive.
     let outcome = journal_on_failure(
@@ -169,7 +177,7 @@ async fn gated<T: Target>(
 
     // Wave commit fact — merge authority (RFC-86 D9 / D27). Strict
     // append: failures before this fact must not project merged.
-    emit_wave_committed(layout, now, slice, commit, &identity_maps)?;
+    emit_wave_committed(layout, now, slice, commit, &identity_maps, &slice_debt)?;
 
     // The slice is already merged and archived, so postflight failure
     // is terminal, never a rollback; persist any parseable report first
@@ -280,13 +288,15 @@ async fn apply_result(
     })
 }
 
-/// Append `target.merge.wave-committed` with identity maps.
+/// Append `target.merge.wave-committed` with identity maps and the
+/// deferred member-set snapshot (RFC-86a D5).
 ///
 /// Commit-authorization reuses the wave's build-authorization
 /// (serial execution normally uses the covering `plan.execute.started`
 /// epoch bound at wave open).
 fn emit_wave_committed(
     layout: Layout<'_>, now: Timestamp, slice: &str, commit: &WaveCommit, maps: &[IdentityMap],
+    slice_debt: &debt::SliceDebt,
 ) -> Result<(), Error> {
     let auth = &commit.wave.build_authorization;
     journal::append_one(
@@ -302,6 +312,15 @@ fn emit_wave_committed(
                     sequence: auth.sequence,
                 },
                 identity_maps: maps.to_vec(),
+                deferred: slice_debt
+                    .rows
+                    .iter()
+                    .map(|row| journal::DeferredMember {
+                        req: row.req.clone(),
+                        status: row.status,
+                        requirement_digest: row.requirement_digest.clone(),
+                    })
+                    .collect(),
             },
         ),
     )

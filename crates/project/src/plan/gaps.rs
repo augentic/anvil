@@ -30,7 +30,8 @@ pub enum Disposition {
 }
 
 /// Covering deferral detail on a deferred row (RFC-86a D7): the
-/// reason and origin of the latest live `gap.deferred` fact.
+/// reason, origin, and timestamp of the latest live `gap.deferred`
+/// fact.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Deferral {
@@ -38,6 +39,10 @@ pub struct Deferral {
     pub reason: String,
     /// Which surface dispositioned the requirement.
     pub origin: DeferralOrigin,
+    /// When the covering fact was appended — the deferral date the
+    /// merge fold stamps into the baseline debt note (RFC-86a D5).
+    #[serde(with = "crate::serde_time::rfc3339")]
+    pub deferred_at: jiff::Timestamp,
 }
 
 /// Deferred-gap debt counts with conflicts broken out (RFC-86a
@@ -345,6 +350,7 @@ fn live_deferrals(events: &[Event]) -> BTreeMap<(String, String), Deferral> {
                 Some(Deferral {
                     reason: reason.clone(),
                     origin: *origin,
+                    deferred_at: event.timestamp,
                 }),
             ),
             EventKind::GapDeferralRetracted {
