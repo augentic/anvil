@@ -241,6 +241,48 @@ async fn divergence_alone_does_not_block() {
 }
 
 #[tokio::test]
+async fn concurrent_stale_epoch_refuses_build_via_execute() {
+    let session = Session::bare(Vec::new());
+    init_mock(&session).await;
+    write_refined(
+        session.root(),
+        "a",
+        r"requirements:
+  - id: REQ-001
+    title: login works
+    status: agreed
+    sources: [intent]
+",
+    );
+    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+
+    // A concurrent writer stamps an epoch *after* this run opens its
+    // own (simulated with a later timestamp): the newest epoch governs
+    // the gate, and its coverage no longer matches the live plan, so
+    // the loop's build phase must refuse — through the full `Execute`
+    // boundary, not the kernel.
+    let peer_epoch = Event::new(
+        Timestamp::from_second(4_102_444_800).expect("timestamp"),
+        EventKind::PlanExecuteStarted {
+            coverage: ClosedPlanCoverage::ClosedPlan {
+                plan_digest:
+                    "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
+                specs: BTreeMap::new(),
+                unknown_waivers: Vec::new(),
+            },
+            discovery_digest: None,
+        },
+    );
+    append_for(Layout::new(session.root()), "peer", &[peer_epoch]).expect("peer epoch");
+
+    let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
+        .await
+        .expect_err("stale covering epoch must refuse build");
+    assert_eq!(err_code(&err), "plan-epoch-stale");
+    assert!(err.core().to_string().contains("plan.yaml"), "{err}");
+}
+
+#[tokio::test]
 async fn stale_existing_digest_refuses_build() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
