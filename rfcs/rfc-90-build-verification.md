@@ -4,7 +4,7 @@
 >
 > Owns: the engine-owned build phase machine, separate `target.build` / `target.repair` / `target.verify` / `target.review` WIT operations, bounded verification and repair rounds, typed intermediate reports, and removal of repair-loop control from adapter prose.
 >
-> Builds on implemented [RFC-86](rfc-86-change-facts.md) (recorded `base.yaml` pins, one-member waves at `targets/<target>/waves/<digest>.yaml`, and content-addressed `BuildRecord`s at `builds/<digest>.yaml`) and [RFC-87](rfc-87-working-trees.md). The observable sequential gate becomes [RFC-92](rfc-92-concurrent-execution.md)'s worker and conflict-domain convergence loop; [RFC-93](rfc-93-distributed-execution.md) transports its phase records without redefining it. [RFC-95](rfc-95-native-verification.md) owns the deferred deterministic native-verification follow-on.
+> Builds on implemented [RFC-86](rfc-86-change-facts.md) (recorded `base.yaml` pins, one-member waves at `targets/<target>/waves/<digest>.yaml`, and content-addressed `BuildRecord`s at `builds/<digest>.yaml`) and [RFC-87](rfc-87-working-trees.md). [RFC-86a](rfc-86a-gap-deferral.md)'s build-scope exclusion rides this machine: the request's `deferred[]` reaches every phase dispatch, the build phase report's `covered[]` is gated fail-fast against it (`target-build-deferred-covered`), and no phase — verification included — may fail a build for unimplemented deferred scenarios. The observable sequential gate becomes [RFC-92](rfc-92-concurrent-execution.md)'s worker and conflict-domain convergence loop; [RFC-93](rfc-93-distributed-execution.md) transports its phase records without redefining it. [RFC-95](rfc-95-native-verification.md) owns the deferred deterministic native-verification follow-on.
 
 
 

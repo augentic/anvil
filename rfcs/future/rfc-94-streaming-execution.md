@@ -1,6 +1,6 @@
 # RFC-94: Streaming Execution
 
-> Status: Draft — step 9 of the platform-migration series, scale track ([platform.md](../platform.md)). Phase A owns progressive refinement and depends on [RFC-88](../rfc-88-detached-changes.md), [RFC-91](../rfc-91-staged-refinement.md), and [RFC-92](../rfc-92-concurrent-execution.md) Phase A. Phase B owns unattended progressive build, candidate dependency frontiers, build-only policy admission, and deferred commit; it depends on completed RFC-92. Distribution through [RFC-93](../rfc-93-distributed-execution.md) is optional.
+> Status: Draft — step 9 of the platform-migration series, scale track ([platform.md](../platform.md)). Phase A owns progressive refinement and depends on [RFC-88](../rfc-88-detached-changes.md), [RFC-91](../rfc-91-refinement-stage.md), and [RFC-92](../rfc-92-concurrent-execution.md) Phase A. Phase B owns unattended progressive build, candidate dependency frontiers, build-only policy admission, and deferred commit; it depends on completed RFC-92. Distribution through [RFC-93](../rfc-93-distributed-execution.md) is optional.
 >
 > Patch ownership: this RFC amends RFC-86 D27, RFC-88 D1 / D3 / D7 / D8, and RFC-90's wave-only build envelope after those contracts land. Those predecessor RFC texts remain unchanged.
 
@@ -16,7 +16,7 @@ Time to first refinement and first build stop being bounded by complete-tree clo
 
 ## Relationship to staged execution
 
-[RFC-91](../rfc-91-staged-refinement.md) remains the complete-plan reference path:
+[RFC-91](../rfc-91-refinement-stage.md) remains the complete-plan reference path:
 
 ```text
 plan author → [optional review] → plan refine → [optional review] → plan execute

@@ -8,7 +8,7 @@
 >
 > Amends RFC-86 D1 (the in-place change home is `.emery/change/`, not all of `.emery/`) and D6 (closed-plan coverage transitively binds model-capability profiles). Amends RFC-87: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 include the target repository's durable state in its tree, the tree identity is named a **CID** in plan and discovery artifacts (RFC-87's `SnapshotId` is that CID), and the interim `apply` is deleted.
 >
-> Later amendment: [RFC-91](rfc-91-staged-refinement.md) replaces D8's `refine-under-epoch` and spec-only coverage with reviewed refinement-manifest digests. D7's accepted-CID rule remains: refinement no longer captures a target base, and wave open selects the current accepted CID before build.
+> Later amendment: [RFC-91](rfc-91-refinement-stage.md) replaces D8's `refine-under-epoch` and spec-only coverage with reviewed refinement-manifest digests. D7's accepted-CID rule remains: refinement no longer captures a target base, and wave open selects the current accepted CID before build.
 
 ## Intent
 
