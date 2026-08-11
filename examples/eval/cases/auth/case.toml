@@ -2,6 +2,11 @@
 # sources through the full workflow against the mock target. The hard
 # synthesis case is authority divergence (docs claim a 30-minute idle
 # timeout, code claims 15; documentation authority wins).
+#
+# The runner passes `--gap-policy defer` on `plan execute` by default
+# (RFC-86a D8) so the run drains unattended even when synthesis
+# honestly mints `[unknown]` rows; declare `gap-policy = "strict"` to
+# exercise the build gate instead.
 kind = "workflow"
 target = "mock"
 change = "auth"
