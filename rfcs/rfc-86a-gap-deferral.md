@@ -95,7 +95,7 @@ The build phase's request assembly gains a typed exclusion set: `BuildRequest` c
 - The `BuildRecord` records the deferred set the build consumed, extending RFC-86's input fence: a build is stale if the disposition set it was built under no longer matches, exactly as it is stale under pin drift.
 - RFC-90 verification must not fail a build for unimplemented deferred scenarios; deferred requirements are outside the verification surface by the same exclusion set. Whether verification additionally asserts positive *absence* — that no product code implements a deferred requirement's scenarios — is [RFC-90](rfc-90-build-verification.md)'s decision, taken there with `deferred[]` in hand (resolved question 7).
 
-The adapter-facing half (build and review prompt changes in `augentic/emery-adapters`) is a cross-repo implementation requirement, not new WIT surface — the deferred set rides the existing build-request envelope.
+The adapter-facing half (build and review prompt changes in `augentic/emery-adapters`) is a cross-repo implementation requirement. On the request side there is no new WIT surface — the deferred set rides the existing build-request envelope. As shipped, the report side does gain one WIT field: the `report` record carries `covered: list<string>` (slice-local requirement ids the operation claims to have implemented; empty when omitted), the coverage declaration the `target-build-deferred-covered` gate checks against the request's `deferred[]`.
 
 ### D5 — Debt is conserved: merge, baseline, archive
 
