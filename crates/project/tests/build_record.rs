@@ -51,6 +51,25 @@ fn write_and_load_latest_round_trip() {
 }
 
 #[test]
+fn from_capture_dedups_deferred_digests() {
+    // Identical requirement bodies legally share one digest (RFC-86a
+    // D2) — the record binds the unique, sorted set.
+    let first = format!("sha256:{}", "a".repeat(64));
+    let second = format!("sha256:{}", "b".repeat(64));
+    let record = BuildRecord::from_capture(
+        CodePatch {
+            base: cid('a'),
+            result: cid('b'),
+            touched: vec![],
+        },
+        cid('c'),
+        sample_report("login-flow"),
+        vec![second.clone(), first.clone(), second.clone()],
+    );
+    assert_eq!(record.deferred, [first, second]);
+}
+
+#[test]
 fn load_for_wave_selects_by_wave_not_mtime() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let slice_dir = Layout::new(tmp.path()).slice_dir("login-flow");

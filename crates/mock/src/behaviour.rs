@@ -253,17 +253,24 @@ mod targets {
         std::fs::write(&path, build_artifact(id, slice, inputs))
             .map_err(|err| Error::Io(err.to_string()))?;
         let mut success = report(Status::Success, vec![core_output(relative)]);
-        success.covered = claimed_covered(project_root);
+        success.covered = claimed_covered(project_root)?;
         Ok(success)
     }
 
     /// Requirement ids the build claims as `covered[]`: the
     /// whitespace-separated contents of the [`CLAIM_COVERED_MARKER`]
     /// control-plane file, empty when absent.
-    fn claimed_covered(project_root: &Path) -> Vec<String> {
-        std::fs::read_to_string(project_root.join(CLAIM_COVERED_MARKER))
-            .map(|text| text.split_whitespace().map(ToString::to_string).collect())
-            .unwrap_or_default()
+    ///
+    /// # Errors
+    ///
+    /// `Io` on any read failure other than the file being absent — a
+    /// broken control plane must not silently claim nothing.
+    fn claimed_covered(project_root: &Path) -> Result<Vec<String>, Error> {
+        match std::fs::read_to_string(project_root.join(CLAIM_COVERED_MARKER)) {
+            Ok(text) => Ok(text.split_whitespace().map(ToString::to_string).collect()),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+            Err(err) => Err(Error::Io(err.to_string())),
+        }
     }
 
     /// Marker file (project-root-relative) that flips the preflight merge

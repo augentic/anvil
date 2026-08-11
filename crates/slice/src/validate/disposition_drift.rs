@@ -31,6 +31,10 @@ fn drift(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Option<Drif
         .map(|req| req.requirement_digest)
         .collect();
     live.sort_unstable();
+    // Identical requirement bodies legally share one digest (RFC-86a
+    // D2), so the set comparison is over unique digests — mirroring
+    // the record side (`BuildRecord::from_capture`).
+    live.dedup();
     if live == record.deferred {
         return Ok(None);
     }
@@ -86,12 +90,12 @@ pub(super) fn findings(
                 "the deferred set recorded on a built slice's build record matches the live \
                  disposition projection",
                 format!(
-                    "slice `{name}` was built under {} deferred requirement(s) but the live \
-                     projection defers {} — a deferral was retracted, lapsed, or added after \
-                     the build; re-running `emery plan execute` re-builds this slice under \
-                     the current dispositions",
-                    drift.recorded.len(),
-                    drift.live.len()
+                    "slice `{name}` was built under deferred requirement digest(s) [{}] but \
+                     the live projection defers [{}] — a deferral was retracted, lapsed, or \
+                     added after the build; re-running `emery plan execute` re-builds this \
+                     slice under the current dispositions",
+                    digest_set(&drift.recorded),
+                    digest_set(&drift.live)
                 ),
                 Severity::Suggestion,
                 DiagnosticKind::Review,
@@ -102,4 +106,13 @@ pub(super) fn findings(
         })
         .into_iter()
         .collect())
+}
+
+/// Comma-joined digest set for the drift finding detail, `none` when
+/// empty — mirroring pin drift's pinned-vs-live digests.
+fn digest_set(digests: &[String]) -> String {
+    if digests.is_empty() {
+        return "none".to_string();
+    }
+    digests.join(", ")
 }

@@ -143,6 +143,7 @@ fn write_unknown_fixture(root: &std::path::Path) {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",

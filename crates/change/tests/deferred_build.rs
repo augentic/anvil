@@ -184,8 +184,29 @@ async fn retraction_after_build_drifts_dispositions() {
         slice::dispositions_drifted(layout, &slice_dir, "greeting").expect("probe"),
         "retraction reopens the row — the built record is stale"
     );
-    let ids = validate_reviews(&session).await;
-    assert!(ids.iter().any(|id| id == "slice-disposition-drifted"), "{ids:?}");
+    let body = run::<slice::handlers::Validate, _, _>(
+        session.provider(),
+        slice::handlers::ValidateInput {
+            name: "greeting".to_string(),
+        },
+    )
+    .await
+    .expect("drift is review — validate still PASSes");
+    let drift = body
+        .report()
+        .findings
+        .iter()
+        .find(|f| f.rule_id.as_deref() == Some("slice-disposition-drifted"))
+        .expect("drift review finding");
+    // The detail names the recorded and live digest sets, mirroring
+    // pin drift's pinned-vs-live digests.
+    let record = BuildRecord::load_latest(&slice_dir).expect("build record");
+    assert!(
+        drift.impact.contains(&record.deferred[0]),
+        "detail names the recorded digest: {}",
+        drift.impact
+    );
+    assert!(drift.impact.contains("[none]"), "detail names the (empty) live set: {}", drift.impact);
 }
 
 /// Loop staleness: a retraction between build and merge sends the

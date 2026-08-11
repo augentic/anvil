@@ -277,9 +277,15 @@ fn fresh_plan_resume(gaps: &GapsBody, action: NextActionKind) -> String {
 /// gate hints carry. A fully-dispositioned inventory resumes at the
 /// execute loop (D7).
 fn gap_resume(gaps: &GapsBody) -> String {
-    let open: Vec<_> =
-        gaps.rows.iter().filter(|r| r.disposition == Some(Disposition::Open)).collect();
+    let open: Vec<_> = gaps
+        .rows
+        .iter()
+        .filter(|r| r.disposition == Some(Disposition::Open) && r.requirement_digest.is_some())
+        .collect();
     if open.is_empty() {
+        // Nothing open, or only digest-less `spec.md`-fallback rows,
+        // which `plan defer` refuses (no deferral match key) — a
+        // re-refine under the epoch mints digest-bearing rows instead.
         return "emery plan execute".to_string();
     }
     let mut parts = vec!["emery plan defer".to_string()];

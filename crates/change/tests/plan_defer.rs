@@ -53,12 +53,15 @@ fn fixture() -> Session {
         r"requirements:
   - id: REQ-001
     title: reset path not evidenced
+    statement: ''
     status: unknown
   - id: REQ-002
     title: session TTL tied
+    statement: ''
     status: conflict
   - id: REQ-003
     title: retry budget divergence
+    statement: ''
     status: divergence
 ",
     );

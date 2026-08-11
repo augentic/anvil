@@ -404,7 +404,9 @@ struct ModelReq {
     status: Option<RequirementStatus>,
     #[serde(default)]
     sources: Vec<String>,
-    #[serde(default)]
+    /// Required, matching the strict typed model in `crates/slice` — a
+    /// malformed `model.yaml` must not mint a deferral match key over
+    /// an empty statement (RFC-86a D2).
     statement: String,
     #[serde(default)]
     scenarios: Vec<String>,

@@ -53,7 +53,7 @@ fn write_model(slice_dir: &Path, body: &str) {
 }
 
 /// Canonical digest of a title-only body — the shape the fixture
-/// models in this suite carry (no statement/scenarios/notes).
+/// models in this suite carry (empty statement, no scenarios/notes).
 fn title_digest(title: &str) -> String {
     RequirementBody {
         title,
@@ -116,10 +116,12 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
         r#"requirements:
   - id: REQ-003
     title: password-reset path not evidenced
+    statement: ''
     status: unknown
     sources: [docs]
   - id: REQ-007
     title: "session TTL: docs vs intent (tied)"
+    statement: ''
     status: conflict
     sources: [docs, intent]
 "#,
@@ -132,14 +134,17 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
         r#"requirements:
   - id: REQ-008
     title: reset copy not evidenced
+    statement: ''
     status: unknown
     sources: [docs]
   - id: REQ-012
     title: "retry budget: docs beat behaviour"
+    statement: ''
     status: divergence
     sources: [docs]
   - id: REQ-001
     title: agreed checkout path
+    statement: ''
     status: agreed
     sources: [docs]
 "#,
@@ -214,6 +219,7 @@ fn dropped_slice_excluded_from_inventory() {
         r"requirements:
   - id: REQ-001
     title: thin path
+    statement: ''
     status: unknown
     sources: [docs]
 ",
@@ -226,6 +232,7 @@ fn dropped_slice_excluded_from_inventory() {
         r"requirements:
   - id: REQ-009
     title: also thin
+    statement: ''
     status: unknown
     sources: [docs]
 ",
@@ -269,12 +276,15 @@ fn disposition_fixture(root: &Path) -> Plan {
         r"requirements:
   - id: REQ-001
     title: reset path not evidenced
+    statement: ''
     status: unknown
   - id: REQ-002
     title: session TTL tied
+    statement: ''
     status: conflict
   - id: REQ-003
     title: retry budget divergence
+    statement: ''
     status: divergence
 ",
     );
@@ -353,6 +363,7 @@ fn digest_change_lapses_and_exact_body_return_revives() {
         r"requirements:
   - id: REQ-001
     title: reset path reshaped by new evidence
+    statement: ''
     status: unknown
 ",
     );
@@ -367,6 +378,7 @@ fn digest_change_lapses_and_exact_body_return_revives() {
         r"requirements:
   - id: REQ-009
     title: reset path not evidenced
+    statement: ''
     status: unknown
 ",
     );
@@ -530,7 +542,7 @@ fn rollup_spans_both_dispositions() {
         write_model(
             &dir,
             &format!(
-                "requirements:\n  - id: REQ-001\n    title: {title}\n    status: unknown\n    sources: [docs]\n"
+                "requirements:\n  - id: REQ-001\n    title: {title}\n    statement: ''\n    status: unknown\n    sources: [docs]\n"
             ),
         );
     }
@@ -590,6 +602,31 @@ fn debt_counts_break_out_conflicts() {
 }
 
 #[test]
+fn model_missing_statement_is_rejected() {
+    // Parity with the strict typed model in `crates/slice`: a
+    // `model.yaml` row without a `statement` is malformed, and the
+    // inventory must refuse it rather than mint a deferral match key
+    // over an empty statement.
+    let tmp = TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    let staged = plan(vec![entry("auth-login", vec![])]);
+    let slice_dir = root.join(".emery/slices/auth-login");
+    write_meta(&slice_dir, false);
+    write_model(
+        &slice_dir,
+        r"requirements:
+  - id: REQ-001
+    title: reset path not evidenced
+    status: unknown
+",
+    );
+
+    let err = plan_gaps_body(&staged, Layout::new(root), &[]).expect_err("malformed model");
+    assert!(err.to_string().contains("statement"), "{err}");
+}
+
+#[test]
 fn deferral_scoped_by_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
@@ -600,6 +637,7 @@ fn deferral_scoped_by_slice() {
     let model = r"requirements:
   - id: REQ-001
     title: reset path not evidenced
+    statement: ''
     status: unknown
 ";
     for slice in ["auth-login", "payments"] {

@@ -141,6 +141,7 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
         r"requirements:
   - id: REQ-009
     title: contradiction left behind
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -151,6 +152,7 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -174,6 +176,7 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
         r"requirements:
   - id: REQ-009
     title: contradiction left behind
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -228,6 +231,7 @@ async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -269,6 +273,7 @@ async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
         r"requirements:
   - id: REQ-003
     title: reset path evidenced
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -333,6 +338,7 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",

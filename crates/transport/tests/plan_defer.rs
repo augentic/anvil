@@ -51,6 +51,7 @@ async fn fixture() -> (TempDir, Provider) {
         r"requirements:
   - id: REQ-001
     title: reset path not evidenced
+    statement: ''
     status: unknown
 ",
     )

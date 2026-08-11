@@ -96,6 +96,7 @@ async fn execute_json(provider: &Provider, extra: &[&str]) -> (u8, serde_json::V
 const CONFLICT_MODEL: &str = r"requirements:
   - id: REQ-001
     title: contradiction
+    statement: ''
     status: conflict
     sources: [intent]
 ";
@@ -143,6 +144,7 @@ async fn epoch_stale_on_wire() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",

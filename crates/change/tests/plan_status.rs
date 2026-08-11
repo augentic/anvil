@@ -593,6 +593,7 @@ mod milestones {
             r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -618,6 +619,7 @@ mod milestones {
             r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -655,6 +657,7 @@ mod milestones {
             r"requirements:
   - id: REQ-002
     title: auth disagree
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -667,6 +670,35 @@ mod milestones {
         assert!(
             resume.contains("emery plan defer") && resume.contains("a/REQ-002"),
             "open conflicts are deferrable (D6), got: {resume}"
+        );
+    }
+
+    #[tokio::test]
+    async fn digest_less_legacy_rows_resume_execute() {
+        // A `spec.md`-fallback inventory (refined slice, model without
+        // requirements) carries no requirement digests, so `plan defer`
+        // refuses its rows — the resume must hint re-refining under
+        // the epoch instead of a defer command that cannot succeed.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(project.root(), "a", "requirements: []\n");
+        let specs = project.root().join(".emery/slices/a/specs/auth");
+        std::fs::create_dir_all(&specs).expect("specs dir");
+        std::fs::write(
+            specs.join("spec.md"),
+            "### Requirement: reset path not evidenced [unknown]\n\
+             ID: REQ-001\n\
+             Sources: []\n\
+             Status: unknown\n",
+        )
+        .expect("spec.md");
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready);
+        assert_eq!(body.next_action, "review-gaps");
+        assert_eq!(
+            body.resume.as_deref(),
+            Some("emery plan execute"),
+            "digest-less rows resume at re-refine, not plan defer"
         );
     }
 
@@ -708,10 +740,12 @@ mod milestones {
             r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
   - id: REQ-002
     title: auth disagree
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -757,10 +791,12 @@ mod milestones {
             r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
   - id: REQ-005
     title: reset copy not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -791,6 +827,7 @@ mod milestones {
             r"requirements:
   - id: REQ-004
     title: authority chose
+    statement: ''
     status: divergence
     sources: [intent]
 ",
@@ -813,6 +850,7 @@ mod milestones {
             r"requirements:
   - id: REQ-001
     title: ok
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -853,6 +891,7 @@ mod milestones {
             r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -911,6 +950,7 @@ mod milestones {
             r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -957,6 +997,7 @@ mod milestones {
             r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",

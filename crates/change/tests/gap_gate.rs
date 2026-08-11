@@ -156,6 +156,7 @@ async fn conflict_blocks_build() {
         r"requirements:
   - id: REQ-001
     title: contradiction
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -183,6 +184,7 @@ async fn open_unknown_blocks_build() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -208,6 +210,7 @@ async fn deferred_unknown_passes_gap_gate() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -242,6 +245,7 @@ async fn deferred_conflict_passes_gap_gate() {
         r"requirements:
   - id: REQ-001
     title: contradiction
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -272,6 +276,7 @@ async fn deferral_covers_fresh_epoch_without_resupply() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -310,6 +315,7 @@ async fn retraction_reopens_the_gate() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -349,6 +355,7 @@ async fn digest_lapsed_deferral_blocks_again() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -364,6 +371,7 @@ async fn digest_lapsed_deferral_blocks_again() {
         r"requirements:
   - id: REQ-003
     title: reset path partially evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -388,6 +396,7 @@ async fn defer_flag_mints_policy_fact_for_open_unknown() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -437,6 +446,7 @@ async fn defer_flag_mints_policy_fact_for_tied_conflict() {
         r"requirements:
   - id: REQ-001
     title: contradiction
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -478,6 +488,7 @@ async fn project_declaration_defers_without_flag() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -509,6 +520,7 @@ async fn strict_flag_overrides_defer_declaration() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -542,6 +554,7 @@ async fn divergence_alone_does_not_block() {
         r"requirements:
   - id: REQ-012
     title: retry budget: docs beat behaviour
+    statement: ''
     status: divergence
     sources: [intent]
 ",
@@ -565,6 +578,7 @@ async fn concurrent_stale_epoch_refuses_build_via_execute() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -607,6 +621,7 @@ async fn stale_existing_digest_refuses_build() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -655,6 +670,7 @@ async fn stale_plan_digest_refuses_build() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",

@@ -46,12 +46,15 @@ pub struct Written {
 
 impl BuildRecord {
     /// Assemble a record from the captured patch, open wave, report,
-    /// and the consumed deferred digest set (sorted on entry).
+    /// and the consumed deferred digest set (sorted and deduplicated
+    /// on entry — identical requirement bodies legally share one
+    /// digest, RFC-86a D2).
     #[must_use]
     pub fn from_capture(
         patch: CodePatch, wave: SnapshotId, report: BuildReport, mut deferred: Vec<String>,
     ) -> Self {
         deferred.sort_unstable();
+        deferred.dedup();
         Self {
             base: patch.base,
             result: patch.result,
