@@ -495,8 +495,7 @@ pub enum EventKind {
     },
     /// `emery plan execute` opened an authorization epoch at start
     /// (RFC-86 D6 / D22). Presence projects the Authorized milestone.
-    /// The effective gap policy rides the coverage payload
-    /// (RFC-86a D3). Never named `plan.approved`.
+    /// Never named `plan.approved`.
     #[serde(rename = "plan.execute.started", rename_all = "kebab-case")]
     PlanExecuteStarted {
         /// Typed `closed-plan` coverage over the reviewed plan.
@@ -523,22 +522,6 @@ pub enum EventKind {
         /// Which surface dispositioned the requirement.
         origin: DeferralOrigin,
     },
-    /// An explicit retraction reopened a live deferral (RFC-86a
-    /// D2 / D3). Same match key as [`Self::GapDeferred`]; the latest
-    /// fact per `(slice, requirement-digest)` wins under projection.
-    #[serde(rename = "gap.deferral-retracted", rename_all = "kebab-case")]
-    GapDeferralRetracted {
-        /// Slice that owns the requirement — scopes the digest join.
-        slice: SliceName,
-        /// Advisory `REQ-NNN` id at retraction time.
-        req: String,
-        /// Canonical requirement-body digest (`sha256:<hex>`).
-        requirement_digest: String,
-        /// Operator reason for reopening the gap.
-        reason: String,
-        /// Which surface retracted the deferral.
-        origin: DeferralOrigin,
-    },
 }
 
 /// Closed origin on gap deferral facts (RFC-86a D2 / D3).
@@ -559,7 +542,8 @@ pub enum EventKind {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum DeferralOrigin {
-    /// The explicit `emery plan defer` operator act.
+    /// The retired explicit operator act (`emery plan defer`, now
+    /// removed) — read from historical fact logs only.
     Operator,
     /// Unconditional gate-time minting at the build gate.
     Policy,

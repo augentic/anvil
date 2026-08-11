@@ -147,29 +147,39 @@ async fn policy_deferred_unknown_conserved_through_merge_and_archive() {
     assert!(text.contains("greeting/REQ-001 — deferred by gap-policy under epoch "), "{text}");
 }
 
-/// Acceptance 6, operator path: the note carries the operator's
-/// reason and origin.
+/// Acceptance 6, pre-covered path: a durable deferral fact minted
+/// before execute covers the gate, and the note folds its reason and
+/// origin — not a fresh gate-time synthesis.
 #[tokio::test]
 async fn operator_deferral_note_carries_reason_and_origin() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
-    run::<plan::handlers::Defer, _, _>(
-        session.provider(),
-        plan::handlers::DeferInput {
-            selectors: vec![plan::handlers::DeferSelector {
-                slice: "greeting".into(),
-                req: "REQ-001".into(),
-            }],
-            reason: Some("carried to the next change".to_string()),
-            retract: false,
-        },
-    )
-    .await
-    .expect("defer");
 
-    // The durable operator deferral covers the gate — no policy mint.
+    // A pre-existing `origin: operator` fact (historical journals
+    // carry them; the operator verb itself is gone).
+    let gaps = run::<plan::handlers::Gaps, _, _>(session.provider(), plan::handlers::GapsInput {})
+        .await
+        .expect("gaps");
+    let row = gaps
+        .rows
+        .iter()
+        .find(|row| row.slice == "greeting" && row.req == "REQ-001")
+        .expect("greeting/REQ-001 gap row");
+    let fact = Event::new(
+        jiff::Timestamp::now(),
+        EventKind::GapDeferred {
+            slice: "greeting".into(),
+            req: "REQ-001".into(),
+            requirement_digest: row.requirement_digest.clone().expect("digest-bearing row"),
+            reason: "carried to the next change".into(),
+            origin: DeferralOrigin::Operator,
+        },
+    );
+    append_for(Layout::new(&root), DEFAULT_WRITER, &[fact]).expect("append deferral");
+
+    // The durable deferral covers the gate — no policy mint.
     execute(&session).await;
 
     let baseline =

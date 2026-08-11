@@ -250,8 +250,8 @@ impl Render for GapsBody {
 ///
 /// Each row's `open | deferred` disposition joins the deferral facts
 /// in `events` (the journal union). Liveness is recomputed, never
-/// stored: the latest defer/retract fact per `(slice, digest)` wins by
-/// `(timestamp, writer, sequence)`; duplicates are idempotent; a
+/// stored: the latest `gap.deferred` fact per `(slice, digest)` wins
+/// by `(timestamp, writer, sequence)`; duplicates are idempotent; a
 /// digest absent from the live model is simply not live (lapse), and
 /// its reappearance revives it (RFC-86a D2).
 ///
@@ -330,38 +330,30 @@ fn disposition(
 /// Envelope ordering key of one fact: `(timestamp, writer, sequence)`.
 type FactOrder = (jiff::Timestamp, String, u64);
 
-/// Live deferral detail per `(slice, digest)`: present when the
-/// latest defer/retract fact is a deferral. Latest wins by
-/// `(timestamp, writer, sequence)` regardless of the slice of `events`
-/// being pre-sorted; duplicate facts fold idempotently.
+/// Live deferral detail per `(slice, digest)`: the latest
+/// `gap.deferred` fact wins by `(timestamp, writer, sequence)` —
+/// its reason and origin supersede — regardless of the slice of
+/// `events` being pre-sorted; duplicate facts fold idempotently.
 fn live_deferrals(events: &[Event]) -> BTreeMap<(String, String), Deferral> {
-    let mut latest: BTreeMap<(String, String), (FactOrder, Option<Deferral>)> = BTreeMap::new();
+    let mut latest: BTreeMap<(String, String), (FactOrder, Deferral)> = BTreeMap::new();
     for event in events {
-        let (slice, digest, deferral) = match &event.kind {
-            EventKind::GapDeferred {
-                slice,
-                requirement_digest,
-                reason,
-                origin,
-                ..
-            } => (
-                slice,
-                requirement_digest,
-                Some(Deferral {
-                    reason: reason.clone(),
-                    origin: *origin,
-                    deferred_at: event.timestamp,
-                }),
-            ),
-            EventKind::GapDeferralRetracted {
-                slice,
-                requirement_digest,
-                ..
-            } => (slice, requirement_digest, None),
-            _ => continue,
+        let EventKind::GapDeferred {
+            slice,
+            requirement_digest,
+            reason,
+            origin,
+            ..
+        } = &event.kind
+        else {
+            continue;
+        };
+        let deferral = Deferral {
+            reason: reason.clone(),
+            origin: *origin,
+            deferred_at: event.timestamp,
         };
         let order = (event.timestamp, event.writer.clone(), event.sequence);
-        let key = (slice.as_str().to_string(), digest.clone());
+        let key = (slice.as_str().to_string(), requirement_digest.clone());
         match latest.get(&key) {
             Some((existing, _)) if *existing > order => {}
             _ => {
@@ -369,7 +361,7 @@ fn live_deferrals(events: &[Event]) -> BTreeMap<(String, String), Deferral> {
             }
         }
     }
-    latest.into_iter().filter_map(|(key, (_, deferral))| deferral.map(|live| (key, live))).collect()
+    latest.into_iter().map(|(key, (_, deferral))| (key, deferral)).collect()
 }
 
 /// One finding before shared-lead annotation.

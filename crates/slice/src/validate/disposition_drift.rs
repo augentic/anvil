@@ -106,7 +106,7 @@ pub(super) fn findings(
                  disposition projection",
                 format!(
                     "slice `{name}` was built under deferred requirement digest(s) [{}] but \
-                     the live projection defers [{}] — a deferral was retracted, lapsed, or \
+                     the live projection defers [{}] — a deferral lapsed or was \
                      added after the build; re-running `emery plan execute` re-builds this \
                      slice under the current dispositions",
                     digest_set(&drift.recorded),

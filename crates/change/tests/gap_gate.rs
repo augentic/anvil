@@ -9,9 +9,7 @@ use std::collections::BTreeMap;
 use std::fs;
 
 use change::orchestrate::enforce_before_build;
-use change::plan::handlers::{
-    Defer, DeferInput, DeferSelector, Execute, ExecuteInput, Gaps, GapsInput,
-};
+use change::plan::handlers::{Execute, ExecuteInput, Gaps, GapsInput};
 use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
@@ -83,21 +81,29 @@ fn policy_deferral_facts(root: &std::path::Path) -> Vec<(String, String, String)
         .collect()
 }
 
-/// Defer one `<slice>/<req>` through the operator act.
+/// Cover one `<slice>/<req>` with a pre-existing durable deferral
+/// fact — standing in for an earlier gate-time mint, now that the
+/// operator `plan defer` verb is gone. The `origin: operator` fact
+/// stays distinguishable from the gate's `origin: policy` mints.
 async fn defer(session: &Session, slice: &str, req: &str, reason: &str) {
-    run::<Defer, _, _>(
-        session.provider(),
-        DeferInput {
-            selectors: vec![DeferSelector {
-                slice: slice.into(),
-                req: req.into(),
-            }],
-            reason: Some(reason.into()),
-            retract: false,
+    let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
+    let row = gaps
+        .rows
+        .iter()
+        .find(|row| row.slice == slice && row.req == req)
+        .unwrap_or_else(|| panic!("gap row `{slice}/{req}` in the live inventory"));
+    let digest = row.requirement_digest.clone().expect("digest-bearing row");
+    let event = Event::new(
+        Timestamp::now(),
+        EventKind::GapDeferred {
+            slice: slice.into(),
+            req: req.into(),
+            requirement_digest: digest,
+            reason: reason.into(),
+            origin: DeferralOrigin::Operator,
         },
-    )
-    .await
-    .expect("plan defer");
+    );
+    append_for(Layout::new(session.root()), DEFAULT_WRITER, &[event]).expect("append deferral");
 }
 
 fn stamp_epoch(
@@ -300,49 +306,6 @@ async fn deferral_covers_fresh_epoch_without_resupply() {
         .filter(|e| matches!(e.kind, EventKind::PlanExecuteStarted { .. }))
         .count();
     assert_eq!(started, 2, "each non-drained execute opens its own epoch");
-}
-
-#[tokio::test]
-async fn retraction_remints_at_the_gate() {
-    // A retracted deferral reopens the row; the next execute's gate
-    // dispositions it again with a fresh policy fact.
-    let session = Session::bare(Vec::new());
-    init_mock(&session).await;
-    write_refined(
-        session.root(),
-        "a",
-        r"requirements:
-  - id: REQ-003
-    title: reset path not evidenced
-    statement: ''
-    status: unknown
-    sources: [intent]
-",
-    );
-    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
-    defer(&session, "a", "REQ-003", "reset path deferred").await;
-    run::<Defer, _, _>(
-        session.provider(),
-        DeferInput {
-            selectors: vec![DeferSelector {
-                slice: "a".into(),
-                req: "REQ-003".into(),
-            }],
-            reason: None,
-            retract: true,
-        },
-    )
-    .await
-    .expect("retract");
-
-    let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
-        .await
-        .expect_err("build fails later without pins; the gap gate must not");
-    assert_eq!(err_code(&err), "plan-execute-stopped", "{err}");
-
-    let facts = policy_deferral_facts(session.root());
-    assert_eq!(facts.len(), 1, "the reopened row is re-minted at the gate: {facts:?}");
-    assert_eq!(facts[0].1, "REQ-003");
 }
 
 #[tokio::test]

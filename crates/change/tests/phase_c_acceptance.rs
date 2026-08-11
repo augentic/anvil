@@ -17,8 +17,7 @@ use std::fs;
 
 use change::orchestrate::enforce_before_build;
 use change::plan::handlers::{
-    Author, AuthorInput, Defer, DeferInput, DeferSelector, Execute, ExecuteInput, Gaps, GapsInput,
-    Status, StatusInput,
+    Author, AuthorInput, Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput,
 };
 use change::{LoopStep, Plan};
 use diagnostics::digest::sha256_hex;
@@ -214,9 +213,10 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
     .expect("gap gate ignores dropped sibling conflict");
 }
 
-/// Acceptance #12 / D22 — open unknowns keep Ready false; deferring
-/// then executing reaches Authorized without Ready; clearing unknowns
-/// then projects Ready (deferrals never backfill Ready).
+/// Acceptance #12 / D22 — open unknowns keep Ready false; executing
+/// (the gate defers the unknown) reaches Authorized without Ready;
+/// clearing unknowns then projects Ready (deferrals never backfill
+/// Ready).
 #[tokio::test]
 async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
     let session = Session::bare(Vec::new());
@@ -240,21 +240,9 @@ async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
     assert!(!open.ready);
     assert!(!open.authorized);
 
-    // Durable deferral, then execute; build may fail later without
-    // pins — ignore the post-gate outcome and inspect milestones.
-    run::<Defer, _, _>(
-        session.provider(),
-        DeferInput {
-            selectors: vec![DeferSelector {
-                slice: "a".into(),
-                req: "REQ-003".into(),
-            }],
-            reason: Some("reset path deferred".into()),
-            retract: false,
-        },
-    )
-    .await
-    .expect("plan defer");
+    // Execute: the gate defers the unknown itself; build may fail
+    // later without pins — ignore the post-gate outcome and inspect
+    // milestones.
     drop(run::<Execute, _, _>(session.provider(), ExecuteInput::default()).await);
 
     let deferred = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
