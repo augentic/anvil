@@ -113,9 +113,9 @@ fn count(ladders: &std::collections::HashMap<SliceName, Status>, status: Status)
     ladders.values().filter(|s| **s == status).count()
 }
 
-/// Ready's clean-gap policy: zero open **and** zero deferred
-/// unknowns / conflicts — dispositions never contribute to Ready, so
-/// a debt-carrying plan reaches build via Authorized only (D22 /
+/// Ready: zero open **and** zero deferred findings (unknowns /
+/// conflicts). Dispositions never contribute to Ready, so a
+/// debt-carrying plan reaches build via Authorized only (D22 /
 /// RFC-86a D7). Divergence is listed but does not block Ready.
 fn clean_gaps(gaps: &GapsBody) -> bool {
     !gaps

@@ -173,10 +173,9 @@ pub struct StatusBody {
     /// makes progress (`stuck`, `slice-dropped`).
     pub resume: Option<String>,
     /// Ready milestone (RFC-86 D22 / RFC-86a D7): every in-scope
-    /// slice is refined and the clean gap policy passes — zero open
-    /// **and** zero deferred findings. Deferrals never contribute;
-    /// debt-carrying plans reach build via Authorized only. Never an
-    /// `approved` rung.
+    /// slice is refined with zero open **and** zero deferred
+    /// findings. Deferrals never contribute; debt-carrying plans
+    /// reach build via Authorized only. Never an `approved` rung.
     pub ready: bool,
     /// Authorized milestone (RFC-86 D22): a covering
     /// `plan.execute.started` epoch exists. Distinct from Ready even
