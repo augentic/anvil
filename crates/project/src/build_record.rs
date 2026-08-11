@@ -153,11 +153,24 @@ impl BuildRecord {
     /// `slice-build-record-ambiguous` when more than one does; parse /
     /// IO failures on present records.
     pub fn load_for_wave(slice_dir: &Path, wave: &SnapshotId) -> Result<Self, Error> {
+        Self::find_for_wave(slice_dir, wave)?.ok_or_else(|| missing_for_wave(slice_dir, wave))
+    }
+
+    /// The unique build record naming `wave`, or `None` when no record
+    /// does — the probe form of [`Self::load_for_wave`] for callers
+    /// (disposition-drift staleness) that treat a missing record as a
+    /// state, not a refusal.
+    ///
+    /// # Errors
+    ///
+    /// `slice-build-record-ambiguous` when more than one record names
+    /// `wave`; parse / IO failures on present records.
+    pub fn find_for_wave(slice_dir: &Path, wave: &SnapshotId) -> Result<Option<Self>, Error> {
         let mut matches: Vec<Self> =
             Self::load_all(slice_dir)?.into_iter().filter(|record| record.wave == *wave).collect();
         match matches.len() {
-            1 => Ok(matches.remove(0)),
-            0 => Err(missing_for_wave(slice_dir, wave)),
+            0 => Ok(None),
+            1 => Ok(Some(matches.remove(0))),
             found => Err(Error::Diag {
                 code: "slice-build-record-ambiguous",
                 detail: format!(

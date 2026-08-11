@@ -230,6 +230,135 @@ async fn retraction_after_build_drifts_dispositions() {
     assert!(drift.impact.contains("[none]"), "detail names the (empty) live set: {}", drift.impact);
 }
 
+/// A failed re-build leaves the newest wave without a record (orphan
+/// wave). The staleness probe must stay true — merge would refuse
+/// `slice-build-record-missing` against the orphan wave — so the next
+/// resume re-builds instead of wedging on the older record.
+#[tokio::test]
+async fn failed_rebuild_orphan_wave_stays_stale() {
+    let session = unknown_session();
+    let root = session.root().to_path_buf();
+    scaffold(&session).await;
+
+    // Park the loop between build and merge: the build succeeded and
+    // its record consumes the policy-minted deferral.
+    fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
+    run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect_err("parked at merge preflight");
+    fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
+
+    // Retract the deferral (drift) and make the redirected re-build
+    // fail: the loop opens a new wave, the build dies, no record
+    // consumes it.
+    defer_req(&session, true).await;
+    fs::write(root.join(behaviour::FAIL_BUILD_MARKER), "").expect("marker");
+    let stopped = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect_err("redirected re-build fails");
+    assert!(stopped.to_string().contains("build-failed"), "{stopped}");
+    fs::remove_file(root.join(behaviour::FAIL_BUILD_MARKER)).expect("remove marker");
+
+    // The older record still projects the slice as built, but the
+    // newest wave is an orphan — the probe must read stale, and
+    // validate must carry the orphan-wave advisory.
+    let layout = Layout::new(&root);
+    assert!(
+        slice::dispositions_drifted(layout, &layout.slice_dir("greeting"), "greeting")
+            .expect("probe"),
+        "an orphan wave (failed re-build) keeps the slice stale"
+    );
+    assert!(
+        validate_reviews(&session).await.iter().any(|id| id == "slice-wave-record-missing"),
+        "orphan wave carries the review advisory"
+    );
+
+    // The resume heals: re-build under the current dispositions (the
+    // gate already re-minted the deferral before the failed attempt),
+    // then merge against the fresh wave's record.
+    let drained = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect("resume re-builds the orphan wave and drains");
+    assert_eq!(drained.status, "drained");
+    let steps: Vec<LoopStep> = drained.phases.iter().map(|phase| phase.step).collect();
+    assert_eq!(
+        steps,
+        [LoopStep::Build, LoopStep::Merge],
+        "the orphan wave re-builds before merge; got {steps:?}"
+    );
+}
+
+/// A slice parked at merge with BOTH drifted pins and drifted
+/// dispositions re-refines first: the disposition redirect lands on
+/// the pin-drift check, so the re-build never runs under stale
+/// `base.yaml` pins.
+#[tokio::test]
+async fn drifted_pins_and_dispositions_rerefine_before_rebuild() {
+    // One extra synthesis answer feeds the forced re-refine.
+    let session = Session::bare(vec![
+        mock::answers::greeting_grouping(),
+        mock::answers::greeting_unknown_synthesis(),
+        mock::answers::greeting_unknown_synthesis(),
+    ]);
+    let root = session.root().to_path_buf();
+    scaffold(&session).await;
+
+    // Park the loop between build and merge under the defer policy.
+    fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
+    run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect_err("parked at merge preflight");
+    fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
+
+    // Drift both probes: retract the deferral (disposition drift) and
+    // plant an orphan source pin (pin drift).
+    defer_req(&session, true).await;
+    let layout = Layout::new(&root);
+    let slice_dir = layout.slice_dir("greeting");
+    let mut base = slice::Base::load(&slice_dir).expect("base.yaml after build");
+    base.sources.insert("gone".into(), project::plan::value_cid("orphan pin"));
+    base.write(&slice_dir).expect("plant orphan pin");
+
+    // The resume must re-refine before re-building: the disposition
+    // redirect (Merge → Build) lands on the pin-drift check
+    // (Build → Refine), so the fresh pins are frozen first.
+    let drained = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect("resume re-refines, re-builds, and drains");
+    assert_eq!(drained.status, "drained");
+    let steps: Vec<LoopStep> = drained.phases.iter().map(|phase| phase.step).collect();
+    assert_eq!(
+        steps,
+        [LoopStep::Refine, LoopStep::Build, LoopStep::Merge],
+        "stale pins re-refine before the disposition-drift re-build; got {steps:?}"
+    );
+}
+
 /// Loop staleness: a retraction between build and merge sends the
 /// slice back through the build gate — strict re-adjudicates the
 /// reopened row, defer re-mints, re-builds, and drains.

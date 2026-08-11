@@ -147,21 +147,9 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         };
         let slice = advanced.slice.clone();
 
-        // Refine staleness (RFC-86 coverage): drifted `base.yaml` pins
-        // force a re-refine before build; refine re-freezes the pins,
-        // so the probe settles false on the next pass.
-        let step = if step == LoopStep::Build
-            && slice::pins_drifted(layout, &layout.slice_dir(&slice), &slice)?
-        {
-            tracing::info!("base.yaml pins drifted for {slice} — re-refining under this epoch");
-            LoopStep::Refine
-        } else {
-            step
-        };
-
-        // Build staleness (RFC-86a D4): a built slice whose live
-        // deferred set drifted from its build record re-builds; the
-        // gap gate re-adjudicates any reopened rows first.
+        // Build staleness (RFC-86a D4): a built slice re-builds when
+        // its live deferred set drifted from its build record or the
+        // newest wave's re-build failed; the gap gate re-adjudicates.
         let step = if step == LoopStep::Merge
             && slice::dispositions_drifted(layout, &layout.slice_dir(&slice), &slice)?
         {
@@ -169,6 +157,18 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                 "deferred dispositions drifted for {slice} — re-building under this epoch"
             );
             LoopStep::Build
+        } else {
+            step
+        };
+
+        // Refine staleness (RFC-86 coverage): drifted `base.yaml` pins
+        // force a re-refine before build — including a build the
+        // disposition redirect above just scheduled; refine re-pins.
+        let step = if step == LoopStep::Build
+            && slice::pins_drifted(layout, &layout.slice_dir(&slice), &slice)?
+        {
+            tracing::info!("base.yaml pins drifted for {slice} — re-refining under this epoch");
+            LoopStep::Refine
         } else {
             step
         };

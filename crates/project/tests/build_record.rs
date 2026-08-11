@@ -116,6 +116,38 @@ fn load_for_wave_selects_by_wave_not_mtime() {
 }
 
 #[test]
+fn duplicate_records_for_one_wave_are_ambiguous() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let slice_dir = Layout::new(tmp.path()).slice_dir("login-flow");
+    std::fs::create_dir_all(&slice_dir).expect("slice dir");
+
+    // Two distinct records naming the same wave — selection must
+    // refuse rather than silently pick one.
+    for result in ['b', 'd'] {
+        BuildRecord::from_capture(
+            CodePatch {
+                base: cid('a'),
+                result: cid(result),
+                touched: vec![],
+            },
+            cid('c'),
+            sample_report("login-flow"),
+            vec![],
+        )
+        .write(&slice_dir)
+        .expect("write record");
+    }
+
+    let err = BuildRecord::load_for_wave(&slice_dir, &cid('c')).expect_err("duplicates refuse");
+    assert!(err.to_string().contains("slice-build-record-ambiguous"), "{err}");
+    let err = BuildRecord::find_for_wave(&slice_dir, &cid('c')).expect_err("probe refuses too");
+    assert!(err.to_string().contains("slice-build-record-ambiguous"), "{err}");
+
+    // The probe form reads a missing wave as a state, not a refusal.
+    assert_eq!(BuildRecord::find_for_wave(&slice_dir, &cid('f')).expect("probe"), None);
+}
+
+#[test]
 fn missing_record_is_typed() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let slice_dir = Layout::new(tmp.path()).slice_dir("empty");

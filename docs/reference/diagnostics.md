@@ -84,6 +84,8 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `emery plan execute`. |
 | `slice-base-drifted` / `slice-evidence-stale` | Review advisory: the slice's recorded `base.yaml` pins drifted from the current inputs. | No manual action — the next `emery plan execute` re-refines the slice under a new epoch. |
 | `slice-baseline-conflict` | Review advisory: the baseline drifted under a built slice since it was defined. | Fix inputs and re-run execute, or accept the merge-time conflict handling. |
+| `slice-disposition-drifted` | Review advisory: the deferred set a built slice's record consumed no longer matches the live dispositions (a deferral was retracted, lapsed, or added after the build). | No manual action — the next `emery plan execute` re-builds the slice under the current dispositions. |
+| `slice-wave-record-missing` | Review advisory: the slice's newest opened wave has no build record — the re-build it authorized failed. | No manual action — the next `emery plan execute` re-builds the slice before merge. |
 | `slice-authority-override-orphan-source` | An authority override names a source key the slice does not bind. | Fix the override: `emery plan amend <entry> --authority-override <kind>=<source>`. |
 | `slice-catalog-drift` | Evidence references a `component:` slug missing from (or rejected in) the Vectis catalog. | Review `.emery/design-system/components.yaml` — see [Component factoring](../explanation/components.md). |
 
@@ -98,6 +100,9 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `merge-delta-headers-required` | A hand-authored flat requirement block was submitted against a non-empty baseline. | Use the delta format (`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`) — see [Artifact format](artifact-format.md#delta-spec-format-modified-domain). |
 | `plan-entry-not-found` | The merge phase found no plan entry matching the slice. | Add the entry (`emery plan add`) or check the slice name. |
 | `slice-merge-entry-not-in-progress` | The plan entry exists but is not claimed. | Re-run `emery plan execute` — the loop claims entries itself. |
+| `target-wave-not-opened` | The merge phase found no `target.wave.opened` fact naming the slice. | Re-run `emery plan execute` — the build phase opens the wave merge resolves its record through. |
+| `slice-build-record-missing` | A built slice has no `builds/<digest>.yaml`, or none records the merge's authorized wave. | Re-run `emery plan execute` — the loop re-builds and mints the record. |
+| `slice-build-record-ambiguous` | More than one build record names the merge's authorized wave. | Remove the stale `builds/<digest>.yaml` duplicates, then re-run execute. |
 
 ## Source sandbox
 

@@ -18,13 +18,40 @@ struct Drift {
     live: Vec<String>,
 }
 
+/// How a built slice's wave-authorized record went stale.
+enum Staleness {
+    /// The newest opened wave has no build record (the re-build it
+    /// authorized failed) while an earlier record still projects the
+    /// slice as built — merge would refuse `slice-build-record-missing`.
+    OrphanWave { wave: String },
+    /// The record's consumed deferred set disagrees with the live
+    /// disposition projection.
+    Drifted(Drift),
+}
+
 /// Compare the wave-authorized build record's consumed deferred set
 /// against the live disposition projection. `None` when the slice has
-/// no opened wave or no record for it (nothing built to be stale), or
-/// when the sets agree.
-fn drift(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Option<Drift>> {
-    let Some(record) = wave_record(layout, slice_dir, name)? else {
+/// nothing built to be stale (no opened wave, or no record at all),
+/// or when the sets agree.
+fn staleness(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Option<Staleness>> {
+    let events = collect_events(layout)?;
+    let Some(digest) = events.iter().rev().find_map(|event| match &event.kind {
+        EventKind::TargetWaveOpened {
+            digest, slice_name, ..
+        } if slice_name.as_str() == name => Some(digest.clone()),
+        _ => None,
+    }) else {
         return Ok(None);
+    };
+    let wave = SnapshotId::parse(&digest)?;
+    let Some(record) = BuildRecord::find_for_wave(slice_dir, &wave)? else {
+        // A wave with no record and no earlier record is a plain
+        // failed first build — the build-failed stop already carries
+        // it, and status re-projects Build without this probe.
+        if !BuildRecord::present(slice_dir) {
+            return Ok(None);
+        }
+        return Ok(Some(Staleness::OrphanWave { wave: digest }));
     };
     let mut live: Vec<String> = crate::build::deferred::live_deferred(layout, name)?
         .into_iter()
@@ -38,43 +65,31 @@ fn drift(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Option<Drif
     if live == record.deferred {
         return Ok(None);
     }
-    Ok(Some(Drift {
+    Ok(Some(Staleness::Drifted(Drift {
         recorded: record.deferred,
         live,
-    }))
+    })))
 }
 
-/// The build record the slice's newest `target.wave.opened` fact
-/// authorizes — the record merge would consume. `None` without a wave
-/// fact or a matching record.
-fn wave_record(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Option<BuildRecord>> {
-    let events = collect_events(layout)?;
-    let Some(digest) = events.iter().rev().find_map(|event| match &event.kind {
-        EventKind::TargetWaveOpened {
-            digest, slice_name, ..
-        } if slice_name.as_str() == name => Some(digest.clone()),
-        _ => None,
-    }) else {
-        return Ok(None);
-    };
-    let wave = SnapshotId::parse(&digest)?;
-    Ok(BuildRecord::load_all(slice_dir)?.into_iter().find(|record| record.wave == wave))
-}
-
-/// True when the built slice's recorded deferred set no longer matches
-/// the live dispositions — the execute loop's re-build staleness probe
-/// (RFC-86a D4). False when nothing is built.
+/// The execute loop's re-build staleness probe (RFC-86a D4).
+///
+/// True when the built slice's wave-authorized record is stale — its
+/// recorded deferred set no longer matches the live dispositions, or
+/// the newest wave's re-build failed and left no record. False when
+/// nothing is built.
 ///
 /// # Errors
 ///
-/// Propagates plan / journal / record read failures.
+/// Propagates plan / journal / record read failures;
+/// `slice-build-record-ambiguous` on duplicate records for the wave.
 pub fn dispositions_drifted(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<bool> {
-    Ok(drift(layout, slice_dir, name)?.is_some())
+    Ok(staleness(layout, slice_dir, name)?.is_some())
 }
 
-/// Emit the disposition-drift review finding for one slice.
+/// Emit the disposition-drift (or orphan-wave) review finding for one
+/// slice.
 ///
-/// No-ops when the slice has no wave-authorized build record.
+/// No-ops when the slice has nothing built to be stale.
 /// Recomputes the live projection; rewrites nothing.
 ///
 /// # Errors
@@ -83,9 +98,9 @@ pub fn dispositions_drifted(layout: Layout<'_>, slice_dir: &Path, name: &str) ->
 pub(super) fn findings(
     layout: Layout<'_>, slice_dir: &Path, name: &str,
 ) -> Result<Vec<Diagnostic>> {
-    Ok(drift(layout, slice_dir, name)?
-        .map(|drift| {
-            Diagnostic::finding(
+    Ok(staleness(layout, slice_dir, name)?
+        .map(|staleness| match staleness {
+            Staleness::Drifted(drift) => Diagnostic::finding(
                 "slice-disposition-drifted",
                 "the deferred set recorded on a built slice's build record matches the live \
                  disposition projection",
@@ -102,7 +117,21 @@ pub(super) fn findings(
                 DiagnosticSource::Deterministic,
                 Artifact::Specs,
                 None,
-            )
+            ),
+            Staleness::OrphanWave { wave } => Diagnostic::finding(
+                "slice-wave-record-missing",
+                "a built slice's newest `target.wave.opened` fact has a matching build record",
+                format!(
+                    "slice `{name}` opened wave `{wave}` but no build record consumes it — the \
+                     re-build that wave authorized failed after re-opening the wave; \
+                     re-running `emery plan execute` re-builds this slice before merge"
+                ),
+                Severity::Suggestion,
+                DiagnosticKind::Review,
+                DiagnosticSource::Deterministic,
+                Artifact::Specs,
+                None,
+            ),
         })
         .into_iter()
         .collect())
