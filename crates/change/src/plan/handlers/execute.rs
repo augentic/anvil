@@ -1,6 +1,5 @@
 //! `plan execute` — the drained refine → build → merge loop. At start
-//! appends `plan.execute.started` with typed `closed-plan` coverage
-//! carrying the effective gap policy (RFC-86a D3).
+//! appends `plan.execute.started` with typed `closed-plan` coverage.
 
 use std::io::Write;
 

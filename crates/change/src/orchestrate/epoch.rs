@@ -1,6 +1,6 @@
 //! Authorization-epoch open at `plan execute` start: assembles typed
-//! `closed-plan` coverage carrying the effective gap policy and
-//! appends `plan.execute.started` (RFC-86 D6 / RFC-86a D3).
+//! `closed-plan` coverage and appends `plan.execute.started`
+//! (RFC-86 D6 / RFC-86a D3).
 
 use std::collections::BTreeMap;
 

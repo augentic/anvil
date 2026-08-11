@@ -66,7 +66,7 @@ pub fn enforce_before_build(
         return Err(digest_missing(&digest_less));
     }
 
-    let facts = policy_deferrals(&open, now, epoch);
+    let facts = deferrals(&open, now, epoch);
     if !facts.is_empty() {
         journal::append_batch(layout, &facts)?;
         tracing::info!(
@@ -80,7 +80,7 @@ pub fn enforce_before_build(
 /// One `gap.deferred` fact per open row (the synthesized epoch
 /// reason). Digest-less rows never reach here — the gate refuses
 /// them before minting.
-fn policy_deferrals(open: &[&GapRow], now: Timestamp, epoch: Timestamp) -> Vec<Event> {
+fn deferrals(open: &[&GapRow], now: Timestamp, epoch: Timestamp) -> Vec<Event> {
     let reason = format!("deferred at the build gate under epoch {epoch}");
     open.iter()
         .filter_map(|row| {

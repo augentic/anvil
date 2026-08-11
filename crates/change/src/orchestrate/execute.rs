@@ -171,7 +171,7 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         tracing::info!("{step} {slice} [entry {entry}/{total}] …");
         // Epoch freshness gates build before the target orchestration
         // (`plan-epoch-stale`); open gaps are dispositioned at the
-        // gate itself (policy deferrals) and never block.
+        // gate itself (gate-time deferrals) and never block.
         if step == LoopStep::Build {
             let plan = Plan::load(&layout.plan_path())?;
             super::enforce_before_build(layout, &plan, &slice, now)?;

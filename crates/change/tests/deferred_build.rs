@@ -266,7 +266,7 @@ async fn failed_rebuild_orphan_wave_stays_stale() {
     scaffold(&session).await;
 
     // Park the loop between build and merge: the build succeeded and
-    // its record consumes the policy-minted deferral.
+    // its record consumes the gate-minted deferral.
     fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
     run::<plan::handlers::Execute, _, _>(
         session.provider(),
@@ -407,7 +407,7 @@ async fn execute_rebuilds_after_deferral_lapse() {
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
     fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
 
-    // Lapse the policy-minted deferral: the parked build is stale.
+    // Lapse the gate-minted deferral: the parked build is stale.
     lapse_deferral(&root);
     let layout = Layout::new(&root);
     assert!(

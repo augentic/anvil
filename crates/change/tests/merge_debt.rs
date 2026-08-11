@@ -81,12 +81,12 @@ fn render_archive(body: &plan::handlers::ArchiveBody) -> String {
     String::from_utf8(out).expect("utf8")
 }
 
-/// Acceptance 6, policy path: the deferred unknown drains through
+/// Acceptance 6: the deferred unknown drains through
 /// merge; the baseline debt row is self-describing; the wave fact
 /// names the accepted debt; the unforced archive succeeds and renders
 /// the summary.
 #[tokio::test]
-async fn policy_deferred_unknown_conserved_through_merge_and_archive() {
+async fn deferred_unknown_conserved_through_merge_and_archive() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -172,7 +172,7 @@ async fn pre_covered_deferral_note_carries_reason() {
     );
     append_for(Layout::new(&root), DEFAULT_WRITER, &[fact]).expect("append deferral");
 
-    // The durable deferral covers the gate — no policy mint.
+    // The durable deferral covers the gate — no new mint.
     execute(&session).await;
 
     let baseline =

@@ -199,7 +199,7 @@ async fn refine_under_epoch_then_gap_gate_build() {
 
 /// RFC-86a acceptance #3: under `refine-under-epoch` the unknowns do
 /// not exist when execute starts; the gate dispositions them itself
-/// (one `origin: policy` fact each, synthesized reason) and the loop
+/// (one `gap.deferred` fact each, synthesized reason) and the loop
 /// proceeds through build and merge to drained.
 #[tokio::test]
 async fn refine_under_epoch_gate_mints_and_drains() {
@@ -235,7 +235,7 @@ async fn refine_under_epoch_gate_mints_and_drains() {
         "open gaps never park the loop; got {ran:?}"
     );
 
-    // Exactly one gate-time policy fact for the minted unknown.
+    // Exactly one gate-time deferral fact for the minted unknown.
     let deferrals: Vec<_> = read_union(Layout::new(&root))
         .expect("union")
         .into_iter()
@@ -246,13 +246,13 @@ async fn refine_under_epoch_gate_mints_and_drains() {
             _ => None,
         })
         .collect();
-    assert_eq!(deferrals.len(), 1, "one policy fact per open row: {deferrals:?}");
+    assert_eq!(deferrals.len(), 1, "one gate-time fact per open row: {deferrals:?}");
     let (slice, req, reason) = &deferrals[0];
     assert_eq!(slice, "greeting");
     assert_eq!(req, "REQ-001");
     assert!(
         reason.starts_with("deferred at the build gate under epoch "),
-        "synthesized policy reason: {reason}"
+        "synthesized gate reason: {reason}"
     );
 
     let project::journal::ClosedPlanCoverage::ClosedPlan { specs, .. } = started_coverage(&root);

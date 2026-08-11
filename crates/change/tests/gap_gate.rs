@@ -1,6 +1,6 @@
 //! RFC-86 S19 / RFC-86a: execute gap gate before build — open
 //! conflict / unknown rows are dispositioned at the gate itself
-//! (policy deferrals, unconditional), durable deferrals cover across
+//! (gate-time deferrals, unconditional), durable deferrals cover across
 //! epochs, epoch staleness (`plan-epoch-stale`).
 
 mod support;
@@ -150,13 +150,13 @@ async fn open_unknown_deferred_at_gate() {
     assert_eq!(err_code(&err), "plan-execute-stopped", "open unknown never gates: {err}");
 
     let facts = gate_minted_facts(session.root());
-    assert_eq!(facts.len(), 1, "one policy fact per open row: {facts:?}");
+    assert_eq!(facts.len(), 1, "one gate-time fact per open row: {facts:?}");
     let (slice, req, reason) = &facts[0];
     assert_eq!(slice, "a");
     assert_eq!(req, "REQ-003");
     assert!(
         reason.starts_with("deferred at the build gate under epoch "),
-        "synthesized policy reason: {reason}"
+        "synthesized gate reason: {reason}"
     );
 
     // The minted disposition is visible in the projected inventory.
@@ -190,7 +190,7 @@ async fn open_conflict_deferred_at_gate() {
     assert_eq!(err_code(&err), "plan-execute-stopped", "open conflict never gates: {err}");
 
     let facts = gate_minted_facts(session.root());
-    assert_eq!(facts.len(), 1, "one policy fact for the conflict: {facts:?}");
+    assert_eq!(facts.len(), 1, "one gate-time fact for the conflict: {facts:?}");
     assert_eq!(facts[0].1, "REQ-001");
 
     let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
