@@ -200,6 +200,27 @@ impl SliceMetadata {
         Ok(meta)
     }
 
+    /// [`Self::load`], with the two absence signals (`slice-not-found`,
+    /// absent `metadata.yaml`) collapsed to `Ok(None)`. Every other
+    /// failure propagates.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::YamlDe`] and [`Error::Io`] as for [`Self::load`].
+    pub fn load_opt(slice_dir: &Path) -> Result<Option<Self>, Error> {
+        match Self::load(slice_dir) {
+            Ok(meta) => Ok(Some(meta)),
+            Err(
+                Error::ArtifactNotFound { .. }
+                | Error::Diag {
+                    code: "slice-not-found",
+                    ..
+                },
+            ) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+
     /// Atomically write `metadata.yaml` to a slice directory,
     /// overwriting if present. Always trailing-newlined.
     ///

@@ -179,15 +179,9 @@ async fn run_phase<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     let layout = Layout::new(paths.project_root());
     let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
     match step {
-        // Unreachable by construction: dispatch_status never yields
-        // Refine — execute never refines (RFC-91 D5).
-        LoopStep::Refine => Err(Error::Diag {
-            code: "plan-refinement-required",
-            detail: format!(
-                "slice `{slice}` awaits refinement; run `emery plan refine` — execute never \
-                 refines"
-            ),
-        }),
+        LoopStep::Refine => {
+            unreachable!("dispatch_status never yields Refine — execute never refines (RFC-91 D5)")
+        }
         LoopStep::Build => {
             slice::orchestrate::build(caps.targets, layout, now, slice, &adapter.manifest)
                 .instrument(span)

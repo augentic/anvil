@@ -48,11 +48,10 @@ pub async fn refine_slices(
 ///
 /// Panics when the manifest is absent or unreadable.
 #[must_use]
-pub fn manifest_digest(root: &std::path::Path, slice: &str) -> String {
+pub fn manifest_digest(root: &std::path::Path, slice: &str) -> project::snapshot::SnapshotId {
     slice::refinement::file_digest(&project::config::Layout::new(root).slice_dir(slice))
         .expect("read refinement manifest")
         .expect("refinement manifest present")
-        .to_string()
 }
 
 /// Hand-stage a fresh refinement manifest for a hand-written slice
@@ -84,6 +83,10 @@ pub fn stage_manifest(root: &std::path::Path, slice: &str) {
     if !spec.exists() {
         std::fs::write(&spec, "## main\n").expect("spec.md");
     }
+    // The declared target binding is covered by the entry projection,
+    // so assembly must read the same `project.yaml` value freshness
+    // recomputes against (an uninitialised root degrades to none).
+    let config = project::config::ProjectConfig::load(root).ok();
     slice::refinement::assemble(
         layout,
         &plan,
@@ -92,6 +95,7 @@ pub fn stage_manifest(root: &std::path::Path, slice: &str) {
         slice::refinement::empty_digest(),
         Vec::new(),
         &[],
+        config.as_ref().and_then(|c| c.adapter.as_deref()),
     )
     .expect("assemble refinement manifest")
     .write(&slice_dir)
@@ -123,8 +127,10 @@ pub async fn refine(
         .iter()
         .find(|entry| entry.name == slice)
         .unwrap_or_else(|| panic!("plan entry `{slice}` missing"));
-    let target = project::target_policy::resumed(layout, slice)
-        .or_else(|_| project::target_policy::fresh(provider, paths, entry, slice, "refining"))?;
+    let target = match project::slice::SliceMetadata::load_opt(&layout.slice_dir(slice))? {
+        Some(meta) => meta.target,
+        None => project::target_policy::fresh(provider, paths, entry, slice, "refining")?,
+    };
     let config = project::config::ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(provider, &config, paths)?;
     slice::orchestrate::refine(
@@ -140,7 +146,7 @@ pub async fn refine(
 }
 
 /// Claim the next eligible plan entry — the execute loop's advance
-/// step, reached directly now that the standalone verb is retired.
+/// step, reached directly here so tests can park a claimed slice.
 ///
 /// # Panics
 ///

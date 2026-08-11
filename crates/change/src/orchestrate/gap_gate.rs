@@ -3,16 +3,13 @@
 //! epoch; divergence is allowed. Drift vs that epoch is `plan-epoch-stale`.
 
 use std::fmt::Write as _;
-use std::path::Path;
 
 use artifacts::spec::provenance::RequirementStatus;
-use diagnostics::digest::sha256_hex;
 use error::Error;
 use project::config::Layout;
 use project::handler::Render;
 use project::journal::{self, ClosedPlanCoverage, EventKind};
-use project::plan::{GapsBody, Plan, in_scope, plan_gaps_body};
-use project::slice::SliceMetadata;
+use project::plan::{GapsBody, Plan, plan_gaps_body};
 
 /// Enforce authorization-epoch freshness and the typed gap policy for
 /// `slice` before build.
@@ -26,7 +23,7 @@ use project::slice::SliceMetadata;
 ///   Detail includes the rendered gap inventory.
 pub fn enforce_before_build(layout: Layout<'_>, plan: &Plan, slice: &str) -> Result<(), Error> {
     let coverage = newest_coverage(layout)?;
-    check_epoch_fresh(layout, plan, slice, &coverage)?;
+    check_epoch_fresh(layout, slice, &coverage)?;
     check_gap_policy(layout, plan, slice, &coverage)
 }
 
@@ -50,7 +47,7 @@ fn newest_coverage(layout: Layout<'_>) -> Result<ClosedPlanCoverage, Error> {
 }
 
 fn check_epoch_fresh(
-    layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
+    layout: Layout<'_>, slice: &str, coverage: &ClosedPlanCoverage,
 ) -> Result<(), Error> {
     let ClosedPlanCoverage::ClosedPlan {
         plan_digest,
@@ -58,7 +55,7 @@ fn check_epoch_fresh(
         ..
     } = coverage;
 
-    let live_plan = live_plan_digest(layout)?;
+    let live_plan = Plan::file_digest(layout)?;
     if live_plan != *plan_digest {
         return Err(epoch_stale(format!(
             "`plan.yaml` digest drifted (epoch {plan_digest}, live {live_plan}) — re-run \
@@ -66,39 +63,26 @@ fn check_epoch_fresh(
         )));
     }
 
-    if !refinements.contains_key(slice) {
+    // The gate guards *this* build: only the claimed slice's covered
+    // digest is re-checked. Other covered leaves may legitimately have
+    // moved on (a merged predecessor's slice tree is archived).
+    let Some(covered) = refinements.get(slice) else {
         return Err(epoch_stale(format!(
             "slice `{slice}` is not in the covering epoch's per-leaf refinement coverage — \
              re-run `emery plan execute`"
         )));
+    };
+    match slice::refinement::file_digest(&layout.slice_dir(slice))? {
+        Some(live) if live == *covered => Ok(()),
+        Some(live) => Err(epoch_stale(format!(
+            "covered refinement digest for `{slice}` drifted (epoch {covered}, live {live}) — \
+             re-run `emery plan refine`, then `emery plan execute`"
+        ))),
+        None => Err(epoch_stale(format!(
+            "covered refinement manifest for `{slice}` is missing — re-run `emery plan refine`, \
+             then `emery plan execute`"
+        ))),
     }
-
-    for (name, covered) in refinements {
-        let Some(entry) = plan.entries.iter().find(|e| e.name.as_str() == name) else {
-            continue;
-        };
-        let slice_dir = layout.slice_dir(name.as_str());
-        let meta = load_meta(&slice_dir)?;
-        if !in_scope(plan, entry, meta.as_ref()) {
-            continue;
-        }
-        match slice::refinement::file_digest(&slice_dir)? {
-            Some(live) if live.to_string() == *covered => {}
-            Some(live) => {
-                return Err(epoch_stale(format!(
-                    "covered refinement digest for `{name}` drifted (epoch {covered}, live \
-                     {live}) — re-run `emery plan refine`, then `emery plan execute`"
-                )));
-            }
-            None => {
-                return Err(epoch_stale(format!(
-                    "covered refinement manifest for `{name}` is missing — re-run `emery plan \
-                     refine`, then `emery plan execute`"
-                )));
-            }
-        }
-    }
-    Ok(())
 }
 
 fn check_gap_policy(
@@ -158,25 +142,6 @@ fn check_gap_policy(
     detail.push('\n');
     detail.push_str(&render_inventory(&gaps));
     Err(gaps_unresolved(detail))
-}
-
-fn live_plan_digest(layout: Layout<'_>) -> Result<String, Error> {
-    let bytes = std::fs::read(layout.plan_path())?;
-    Ok(format!("sha256:{}", sha256_hex(&bytes)))
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(meta) => Ok(Some(meta)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
-    }
 }
 
 fn render_inventory(gaps: &GapsBody) -> String {

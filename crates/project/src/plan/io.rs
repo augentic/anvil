@@ -55,6 +55,18 @@ impl Plan {
         Ok(plan)
     }
 
+    /// `sha256:…` content digest of the on-disk `plan.yaml` bytes — the
+    /// identity `plan.execute.started` coverage stamps and the pre-build
+    /// gate re-checks.
+    ///
+    /// # Errors
+    ///
+    /// `Error::Io` when the file cannot be read.
+    pub fn file_digest(layout: Layout<'_>) -> Result<String, Error> {
+        let bytes = std::fs::read(layout.plan_path())?;
+        Ok(format!("sha256:{}", diagnostics::digest::sha256_hex(&bytes)))
+    }
+
     /// Serialize and write the plan to `path`, overwriting if present.
     ///
     /// Atomic: a temp file in the same directory then `rename`, so a

@@ -320,7 +320,7 @@ async fn preflight_parks_built() {
     scaffold_author(&session).await;
 
     // Trip the mock's failed preflight merge gate.
-    fs::write(root.join(behaviour::FAIL), "").expect("write marker");
+    fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("write marker");
 
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
@@ -346,7 +346,7 @@ async fn preflight_parks_built() {
 
     // Clear the gate and re-run execute: the loop resumes at the merge
     // phase and drains.
-    fs::remove_file(root.join(behaviour::FAIL)).expect("remove marker");
+    fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
     let resumed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
@@ -372,7 +372,7 @@ async fn postflight_terminal() {
     scaffold_author(&session).await;
 
     // Trip the mock's failed postflight merge gate.
-    fs::write(root.join(behaviour::FAIL_MERGE), "").expect("write marker");
+    fs::write(root.join(behaviour::POSTFLIGHT_FAIL), "").expect("write marker");
 
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
@@ -437,7 +437,7 @@ async fn postflight_terminal() {
 
     // Clear the gate and re-run execute: ack clears the sticky stop and
     // the single-entry plan drains.
-    fs::remove_file(root.join(behaviour::FAIL_MERGE)).expect("remove marker");
+    fs::remove_file(root.join(behaviour::POSTFLIGHT_FAIL)).expect("remove marker");
     let resumed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),

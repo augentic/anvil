@@ -5,7 +5,7 @@
 pub use source::{extract, survey};
 pub use targets::{
     BUILD_DIR, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER, CONTINUATION_V1, CONTINUATION_V2,
-    FAIL, FAIL_BUILD_MARKER, FAIL_MERGE, REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER,
+    PREFLIGHT_FAIL, FAIL_BUILD_MARKER, POSTFLIGHT_FAIL, REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER,
     REVIEW_REPAIRED, VERIFICATION_REPAIRED, VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER,
     VERIFY_FIXABLE_MARKER, build, build_artifact_path, guidance, merge, repair, review, verify,
 };
@@ -466,11 +466,11 @@ mod targets {
 
     /// Marker file (project-root-relative) that flips the preflight merge
     /// gate to a failed report while it exists.
-    pub const FAIL: &str = "mock-fail-merge-preflight";
+    pub const PREFLIGHT_FAIL: &str = "mock-fail-merge-preflight";
 
     /// Marker file (project-root-relative) that flips the postflight merge
     /// gate to a failed report while it exists.
-    pub const FAIL_MERGE: &str = "mock-fail-merge-postflight";
+    pub const POSTFLIGHT_FAIL: &str = "mock-fail-merge-postflight";
 
     /// One phased merge gate: a success report with no outputs, unless the
     /// id selects a failure profile or the matching per-phase marker file
@@ -484,8 +484,8 @@ mod targets {
             return Err(Error::Internal(format!("mock merge failure for `{id}`")));
         }
         let marker = match phase {
-            MergePhase::Preflight => FAIL,
-            MergePhase::Postflight => FAIL_MERGE,
+            MergePhase::Preflight => PREFLIGHT_FAIL,
+            MergePhase::Postflight => POSTFLIGHT_FAIL,
         };
         let status = if root.join(marker).is_file() { Status::Failure } else { Status::Success };
         Ok(report(status, Vec::new()))

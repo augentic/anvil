@@ -105,7 +105,10 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
 /// / `slice-refinement-stale`, RFC-91): recompute the slice's manifest
 /// against its live inputs and bundle. An absent plan or entry
 /// (archived slice) yields none; an absent `discovery.md` degrades to
-/// an empty lead inventory.
+/// an empty lead inventory. The stale advisory is suppressed once a
+/// build record exists — build promotion legitimately drifts bundle
+/// artifacts through `writable-artifacts[]`, and advising a re-refine
+/// would discard the completed build.
 fn refinement_findings(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>> {
     let plan_path = layout.plan_path();
     if !plan_path.is_file() {
@@ -121,6 +124,11 @@ fn refinement_findings(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>
         Vec::new()
     };
     let freshness = crate::refinement::freshness(layout, &plan, entry, &inventory)?;
+    if matches!(freshness, crate::refinement::Freshness::Stale { .. })
+        && project::build_record::BuildRecord::present(&layout.slice_dir(name))
+    {
+        return Ok(Vec::new());
+    }
     Ok(crate::refinement::findings(name, &freshness))
 }
 

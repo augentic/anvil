@@ -130,10 +130,10 @@ async fn in_workspace(
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
 ) -> Result<BuildOutcome, Error> {
     let refinement = crate::refinement::file_digest(slice_dir)?.ok_or_else(|| Error::Diag {
-        code: crate::refinement::MISSING_CODE,
+        code: "target-build-refinement-missing",
         detail: format!(
             "slice `{slice}` has no refinement manifest (refinement.yaml); run \
-                 `emery plan refine` before building"
+             `emery plan refine` before building"
         ),
     })?;
     let base = seam.freeze().await.map_err(|err| Error::Diag {

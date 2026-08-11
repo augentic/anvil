@@ -53,9 +53,8 @@ async fn status(project: &Session, plan: &Plan) -> StatusBody {
 
 /// Stage a live slice directory with optional abandon / refine / build
 /// artifact signals (not lifecycle status — projection ignores that).
-/// RFC-91: "refined" is refinement-manifest presence, so the refined
-/// and built rungs stage a `refinement.yaml` stub (presence-only —
-/// status never recomputes freshness).
+/// RFC-91 D2: "refined" is a FRESH refinement manifest, so the refined
+/// and built rungs stage one the status freshness recompute accepts.
 fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
     let slice_dir = root.join(".emery").join("slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
@@ -67,12 +66,12 @@ fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
         SliceArt::Refined => {
             std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
                 .expect("write model.yaml");
-            write_manifest_stub(&slice_dir);
+            write_manifest(root, name);
         }
         SliceArt::Built => {
             std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
                 .expect("write model.yaml");
-            write_manifest_stub(&slice_dir);
+            write_manifest(root, name);
             // Minimal fact-substrate build record (RFC-86 D27). Report
             // fields satisfy the closed BuildReport shape.
             let builds = slice_dir.join("builds");
@@ -96,11 +95,37 @@ fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
     std::fs::write(slice_dir.join("metadata.yaml"), meta).expect("write metadata");
 }
 
-/// Presence-only `refinement.yaml` stub — the status projection
-/// checks for the file, never its freshness.
-fn write_manifest_stub(slice_dir: &std::path::Path) {
-    std::fs::write(slice_dir.join("refinement.yaml"), "# stub refinement manifest\n")
-        .expect("write refinement.yaml");
+/// Stage a `refinement.yaml` the status projection's freshness
+/// recompute accepts: planning projections computed from the same
+/// minimal entry the suite's plans carry (no sources, no deps — plan
+/// siblings never enter a leaf's digests), the live empty baseline,
+/// and an empty bundle.
+fn write_manifest(root: &std::path::Path, name: &str) {
+    let plan = plan_with_changes(vec![change(name)]);
+    let layout = Layout::new(root);
+    let target = project::config::ProjectConfig::load(root).ok().and_then(|c| c.adapter);
+    let planning =
+        project::plan::Projections::compute(&plan, &plan.entries[0], &[], target.as_deref())
+            .expect("projections");
+    let manifest = slice::refinement::Manifest {
+        version: slice::refinement::VERSION,
+        slice: name.to_string(),
+        inputs: slice::refinement::Inputs {
+            planning: slice::refinement::Planning {
+                entry: planning.entry,
+                leads: planning.leads,
+                decomposition: planning.decomposition,
+            },
+            profile: slice::refinement::empty_digest(),
+            observations: slice::refinement::empty_digest(),
+            target_guidance: slice::refinement::empty_digest(),
+            baseline_specs: project::plan::dir_cid(&layout.specs_dir()).expect("dir cid"),
+            sources: std::collections::BTreeMap::new(),
+            dependencies: vec![],
+        },
+        bundle: vec![],
+    };
+    manifest.write(&layout.slice_dir(name)).expect("write refinement.yaml");
 }
 
 #[derive(Clone, Copy)]
@@ -577,15 +602,15 @@ mod milestones {
 
     use super::*;
 
-    /// Stage a refined slice: model + presence-only refinement stub
-    /// (RFC-91 — Ready requires every in-scope leaf refined).
+    /// Stage a refined slice: model + fresh refinement manifest
+    /// (RFC-91 D2 — Ready requires every in-scope leaf FRESH).
     fn write_model(root: &std::path::Path, name: &str, model: &str) {
         let slice_dir = root.join(".emery").join("slices").join(name);
         std::fs::create_dir_all(&slice_dir).expect("slice dir");
         std::fs::write(slice_dir.join("metadata.yaml"), "target: demo-target@1.0.0\n")
             .expect("metadata");
         std::fs::write(slice_dir.join("model.yaml"), model).expect("model");
-        write_manifest_stub(&slice_dir);
+        write_manifest(root, name);
     }
 
     #[tokio::test]
@@ -729,7 +754,10 @@ mod milestones {
         let mut refinements = BTreeMap::new();
         refinements.insert(
             "a".into(),
-            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+            project::snapshot::SnapshotId::parse(
+                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            )
+            .expect("digest"),
         );
         append(
             project.root(),

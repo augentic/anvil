@@ -60,7 +60,6 @@ fn write_refined_meta(root: &std::path::Path, slice: &str, model: &str, dropped:
         meta.push_str("dropped-at: \"2026-01-02T00:00:00Z\"\n");
     }
     fs::write(dir.join("metadata.yaml"), meta).expect("metadata");
-    // Specs tree so `dir_cid` is stable for Existing coverage stamps.
     fs::write(dir.join("specs").join(".keep"), "").expect("specs keep");
 }
 
@@ -106,7 +105,8 @@ fn live_plan_digest(root: &std::path::Path) -> String {
 }
 
 fn stamp_epoch(
-    root: &std::path::Path, plan_digest: &str, refinements: BTreeMap<String, String>,
+    root: &std::path::Path, plan_digest: &str,
+    refinements: BTreeMap<String, project::snapshot::SnapshotId>,
     unknown_waivers: Vec<UnknownWaiver>,
 ) {
     let ts = Timestamp::from_second(1_700_000_000).expect("timestamp");
@@ -227,21 +227,23 @@ async fn waive_skips_ready() {
     assert!(!open.ready);
     assert!(!open.authorized);
 
-    // Epoch + waive; build may fail later on the hand-staged slice —
-    // ignore the post-gate outcome and inspect milestones.
-    drop(
-        run::<Execute, _, _>(
-            session.provider(),
-            ExecuteInput {
-                waive: vec![WaiveSelector {
-                    slice: "a".into(),
-                    req: "REQ-003".into(),
-                }],
-                reason: Some("reset path deferred".into()),
-            },
-        )
-        .await,
-    );
+    // Epoch + waive; build fails later on the hand-staged slice — the
+    // failure must be post-gate before we inspect milestones.
+    let err = run::<Execute, _, _>(
+        session.provider(),
+        ExecuteInput {
+            waive: vec![WaiveSelector {
+                slice: "a".into(),
+                req: "REQ-003".into(),
+            }],
+            reason: Some("reset path deferred".into()),
+        },
+    )
+    .await
+    .expect_err("hand-staged slice stops after the epoch");
+    let code = err.core().variant_str().into_owned();
+    assert_ne!(code, "plan-gaps-unresolved", "waived unknown must pass the gate: {err:?}");
+    assert_ne!(code, "plan-refinement-required", "staged manifest covers the leaf: {err:?}");
 
     let waived = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
     assert!(waived.authorized, "execute --waive opens Authorized");
@@ -305,7 +307,7 @@ async fn coverage_wire_shape_stale() {
     );
     // RFC-91 D5: coverage carries exact per-leaf refinement digests —
     // no `existing` / `refine-under-epoch` spec coverage survives.
-    assert_eq!(coverage["refinements"]["greeting"], refinement_before);
+    assert_eq!(coverage["refinements"]["greeting"], refinement_before.as_str());
     assert!(!wire.to_string().contains("refine-under-epoch"), "{wire}");
     assert!(
         coverage.get("unknown-waivers").is_none()
@@ -458,7 +460,7 @@ async fn wave_opened_build_execute() {
     .await
     .expect("author");
     support::refine_plan(&session).await;
-    fs::write(root.join(behaviour::FAIL_MERGE), "").expect("marker");
+    fs::write(root.join(behaviour::POSTFLIGHT_FAIL), "").expect("marker");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await

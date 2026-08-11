@@ -14,9 +14,9 @@ use project::handler::ExecutionPaths;
 use project::plan::{
     Entry, Plan, Status, collect_events, in_scope, plan_gaps_body, project_ladders,
 };
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Source, Target};
 use project::slice::SliceMetadata;
-use slice::refinement::{self, Dependency, Freshness};
+use slice::refinement::{self, Dependency, Freshness, Live};
 
 use super::execute::GuestMarker;
 
@@ -40,13 +40,13 @@ pub enum RefineOutcome {
     },
     /// The drain halted on the first failed refinement (or an
     /// unrefineable predecessor); prior successful manifests stay.
+    /// Payload-free beyond the stop identity — re-running the drain is
+    /// the resume path.
     Stopped {
         /// Slice the stop is parked on.
         slice: String,
         /// The failing refinement's error detail.
         detail: String,
-        /// Slices refined before the stop, in drain order.
-        refined: Vec<String>,
     },
 }
 
@@ -69,7 +69,7 @@ pub enum RefineOutcome {
 ///
 /// Per-slice refinement failures do **not** surface here — they return
 /// as [`RefineOutcome::Stopped`].
-pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
+pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     selectors: &[String],
 ) -> Result<RefineOutcome, Error> {
@@ -82,7 +82,11 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     let inventory = discovery.leads();
 
     let ordered = topological(layout, &plan)?;
-    let targets = target_set(layout, &plan, &ordered, inventory, selectors)?;
+    // One shared freshness cache per drain: baseline, journaled
+    // post-merge baseline, source trees, and target binding hold still;
+    // manifest digests are never cached (the drain rewrites them).
+    let mut live = Live::new();
+    let targets = target_set(layout, &plan, &ordered, inventory, selectors, &mut live)?;
 
     let mut refined: Vec<String> = Vec::new();
     let mut skipped: Vec<String> = Vec::new();
@@ -93,26 +97,29 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         }
         // Re-entry resumes missing/stale work; fresh leaves are never
         // repeated.
-        if let Freshness::Fresh { .. } = refinement::freshness(layout, &plan, entry, inventory)? {
+        if let Freshness::Fresh { .. } =
+            refinement::freshness_with(layout, &plan, entry, inventory, &mut live)?
+        {
             skipped.push(name.to_string());
             continue;
         }
         // Dependent refinement requires every direct predecessor
         // currently fresh (RFC-91 D3); the fresh digests become the
         // ordered dependency pins.
-        let dependencies = match predecessor_pins(layout, &plan, entry, inventory)? {
+        let dependencies = match predecessor_pins(layout, &plan, entry, inventory, &mut live)? {
             Ok(dependencies) => dependencies,
             Err(detail) => {
                 return Ok(RefineOutcome::Stopped {
                     slice: name.to_string(),
                     detail,
-                    refined,
                 });
             }
         };
-        let target = match project::target_policy::resumed(layout, name) {
-            Ok(target) => target,
-            Err(_) => project::target_policy::fresh(caps.resolver, paths, entry, name, "refining")?,
+        // The recorded `metadata.yaml` target is authoritative once the
+        // slice exists; only absence falls through to a fresh resolve.
+        let target = match SliceMetadata::load_opt(&layout.slice_dir(name))? {
+            Some(meta) => meta.target,
+            None => project::target_policy::fresh(caps.resolver, paths, entry, name, "refining")?,
         };
         tracing::info!("refine {name} …");
         match slice::orchestrate::refine(
@@ -137,7 +144,6 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                 return Ok(RefineOutcome::Stopped {
                     slice: name.to_string(),
                     detail: err.to_string(),
-                    refined,
                 });
             }
         }
@@ -154,9 +160,12 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
 
 /// Ordered `(slice, refinement-digest)` pins over `entry.depends_on`.
 /// Returns `Err(detail)` (a typed stop, not a hard error) when a
-/// direct predecessor's manifest is not currently fresh.
+/// direct predecessor's manifest is not currently fresh. A predecessor
+/// whose slice tree was archived by merge or `plan drop` pins its
+/// archived manifest digest — an accepted predecessor satisfies
+/// "predecessor refined" a fortiori (RFC-91 D3).
 fn predecessor_pins(
-    layout: Layout<'_>, plan: &Plan, entry: &Entry, inventory: &[Lead],
+    layout: Layout<'_>, plan: &Plan, entry: &Entry, inventory: &[Lead], live: &mut Live,
 ) -> Result<Result<Vec<Dependency>, String>, Error> {
     let mut dependencies = Vec::with_capacity(entry.depends_on.len());
     for dep in &entry.depends_on {
@@ -165,17 +174,26 @@ fn predecessor_pins(
                 "predecessor `{dep}` has no plan entry; fix the entry's depends-on list"
             )));
         };
-        match refinement::freshness(layout, plan, dep_entry, inventory)? {
+        match refinement::freshness_with(layout, plan, dep_entry, inventory, live)? {
             Freshness::Fresh { digest } => dependencies.push(Dependency {
                 slice: dep.as_str().to_string(),
                 refinement: digest,
             }),
             Freshness::Missing => {
-                return Ok(Err(format!(
-                    "predecessor `{dep}` has no refinement manifest — dependent refinement \
-                     requires predecessor refined; run `emery plan refine` without selectors or \
-                     include the predecessor"
-                )));
+                // The live tree has no manifest: an accepted (merged or
+                // dropped) predecessor's archived manifest is the pin.
+                match refinement::predecessor_digest(layout, dep.as_str())? {
+                    Some(digest) => dependencies.push(Dependency {
+                        slice: dep.as_str().to_string(),
+                        refinement: digest,
+                    }),
+                    None => {
+                        return Ok(Err(format!(
+                            "predecessor `{dep}` has no refinement manifest (live or archived) — \
+                             dependent refinement requires predecessor refined"
+                        )));
+                    }
+                }
             }
             Freshness::Stale { reasons } => {
                 return Ok(Err(format!(
@@ -237,6 +255,7 @@ fn topological<'a>(layout: Layout<'_>, plan: &'a Plan) -> Result<Vec<&'a Entry>,
 /// freshness-projection failures.
 fn target_set(
     layout: Layout<'_>, plan: &Plan, ordered: &[&Entry], inventory: &[Lead], selectors: &[String],
+    live: &mut Live,
 ) -> Result<BTreeSet<String>, Error> {
     if selectors.is_empty() {
         return Ok(ordered.iter().map(|entry| entry.name.as_str().to_string()).collect());
@@ -274,7 +293,7 @@ fn target_set(
         }
         let dep_included = entry.depends_on.iter().any(|dep| targets.contains(dep.as_str()));
         let fresh = matches!(
-            refinement::freshness(layout, plan, entry, inventory)?,
+            refinement::freshness_with(layout, plan, entry, inventory, live)?,
             Freshness::Fresh { .. }
         );
         if dep_included || !fresh {

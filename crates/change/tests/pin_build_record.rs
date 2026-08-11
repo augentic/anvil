@@ -193,6 +193,20 @@ async fn validate_staleness() {
     )
     .await
     .expect("source drift is review");
-    let ids = review_ids(&body);
-    assert!(ids.iter().any(|id| id == "slice-refinement-stale"), "{ids:?}");
+    // Pin the *cause*, not just the rule id — the earlier baseline
+    // drift already fired `slice-refinement-stale`.
+    let details: Vec<_> = body
+        .report()
+        .findings
+        .iter()
+        .filter(|f| f.rule_id.as_deref() == Some("slice-refinement-stale"))
+        .map(|f| match &f.evidence {
+            diagnostics::FindingEvidence::Snippet { value } => value.clone(),
+            other => format!("{other:?}"),
+        })
+        .collect();
+    assert!(
+        details.iter().any(|d| d.contains("source `docs`")),
+        "staleness names the drifted source: {details:?}"
+    );
 }

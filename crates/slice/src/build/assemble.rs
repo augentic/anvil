@@ -3,7 +3,6 @@
 //! [`build_request`] is IO-free apart from existence checks against
 //! the slice tree — it never writes a journal, request file, or report.
 
-use std::ffi::OsStr;
 use std::path::Path;
 
 use error::{Error, Result};
@@ -52,30 +51,7 @@ pub fn build_request(
     })
 }
 
-/// Sorted `specs/<domain>/spec.md` paths (slice-tree relative) for each
-/// domain directory under `<slice_tree>/specs/` carrying a `spec.md`.
-///
-/// Returns an empty vector when `specs/` is missing — the request schema
-/// (`specs` `minItems: 1`) catches an empty list downstream. Shared
-/// with the refinement bundle so both cover the same canonical set.
-pub fn spec_paths(slice_tree: &Path) -> Result<Vec<String>> {
-    let specs_dir = slice_tree.join("specs");
-    if !specs_dir.is_dir() {
-        return Ok(Vec::new());
-    }
-    let mut paths: Vec<String> = Vec::new();
-    for entry in project::fs::dir_entries(&specs_dir)? {
-        let domain_dir = entry.path();
-        if !domain_dir.is_dir() || !domain_dir.join("spec.md").is_file() {
-            continue;
-        }
-        if let Some(domain) = domain_dir.file_name().and_then(OsStr::to_str) {
-            paths.push(format!("specs/{domain}/spec.md"));
-        }
-    }
-    paths.sort();
-    Ok(paths)
-}
+pub use project::slice::spec_paths;
 
 /// Resolve the manifest input declarations against the slice tree.
 ///

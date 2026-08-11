@@ -250,7 +250,10 @@ async fn apply_result(
     })
 }
 
-/// Append `target.merge.wave-committed` with identity maps.
+/// Append `target.merge.wave-committed` with identity maps and the
+/// post-merge baseline identity (RFC-91 D4): the `.emery/specs/` tree
+/// digest after the deterministic commit's baseline write, so sibling
+/// manifests recorded against the pre-merge baseline stay fresh.
 ///
 /// Commit-authorization reuses the wave's build-authorization
 /// (serial execution normally uses the covering `plan.execute.started`
@@ -259,6 +262,7 @@ fn emit_wave_committed(
     layout: Layout<'_>, now: Timestamp, slice: &str, commit: &WaveCommit, maps: &[IdentityMap],
 ) -> Result<(), Error> {
     let auth = &commit.wave.build_authorization;
+    let baseline = project::plan::dir_cid(&layout.specs_dir())?;
     journal::append_one(
         layout,
         &journal::Event::new(
@@ -272,6 +276,7 @@ fn emit_wave_committed(
                     sequence: auth.sequence,
                 },
                 identity_maps: maps.to_vec(),
+                baseline: Some(baseline),
             },
         ),
     )
@@ -342,7 +347,7 @@ fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
     if layout.slice_dir(slice).exists() {
         return None;
     }
-    let archive_path = latest_archive(&layout.archive_dir(), slice)?;
+    let archive_path = project::refinement::latest_archive(&layout.archive_dir(), slice)?;
     let metadata = project::slice::SliceMetadata::load(&archive_path).ok()?;
     metadata.merged_at?;
     Some(MergeOutcome {
@@ -350,23 +355,6 @@ fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
         decisions: vec![],
         archive_path,
     })
-}
-
-/// The newest `<YYYY-MM-DD>-<slice>` folder under the archive root,
-/// by the date prefix's lexicographic order.
-fn latest_archive(archive_dir: &Path, slice: &str) -> Option<PathBuf> {
-    const DATE_PREFIX_LEN: usize = "0000-00-00-".len();
-    let mut best: Option<String> = None;
-    for entry in std::fs::read_dir(archive_dir).ok()?.flatten() {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let dated_match = name.len() == DATE_PREFIX_LEN + slice.len()
-            && name.ends_with(slice)
-            && name.as_bytes().get(DATE_PREFIX_LEN - 1) == Some(&b'-');
-        if dated_match && entry.path().is_dir() && best.as_deref() < Some(name.as_str()) {
-            best = Some(name);
-        }
-    }
-    best.map(|name| archive_dir.join(name))
 }
 
 /// Read-only completion preflight, run before the `slice.merge.*`

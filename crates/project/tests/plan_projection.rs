@@ -60,9 +60,13 @@ fn base_plan() -> (Plan, Vec<Lead>) {
 }
 
 fn compute(plan: &Plan, name: &str, inventory: &[Lead]) -> Projections {
+    compute_for(plan, name, inventory, None)
+}
+
+fn compute_for(plan: &Plan, name: &str, inventory: &[Lead], target: Option<&str>) -> Projections {
     let entry = plan.entries.iter().find(|e| e.name.as_str() == name).expect("entry");
     let contributing = contributing_leads(entry, inventory).expect("leads");
-    Projections::compute(plan, entry, &contributing).expect("projections")
+    Projections::compute(plan, entry, &contributing, target).expect("projections")
 }
 
 #[test]
@@ -186,6 +190,23 @@ fn unbound_source_refuses() {
     let (mut plan, inventory) = base_plan();
     plan.sources.clear();
     let contributing = contributing_leads(&plan.entries[0], &inventory).expect("leads");
-    let err = Projections::compute(&plan, &plan.entries[0], &contributing).expect_err("unbound");
+    let err =
+        Projections::compute(&plan, &plan.entries[0], &contributing, None).expect_err("unbound");
     assert!(err.to_string().contains("plan-projection-source-unbound"), "{err}");
+}
+
+#[test]
+fn target_moves_entry() {
+    // Rebinding or re-pinning the declared target adapter moves the
+    // entry digest (staling the manifest); the leads and decomposition
+    // digests stay stable.
+    let (plan, inventory) = base_plan();
+    let before = compute_for(&plan, "orders-api", &inventory, Some("omnia"));
+    let after = compute_for(&plan, "orders-api", &inventory, Some("omnia@1.0.0"));
+    assert_ne!(before.entry, after.entry);
+    assert_eq!(before.leads, after.leads);
+    assert_eq!(before.decomposition, after.decomposition);
+
+    let unbound = compute_for(&plan, "orders-api", &inventory, None);
+    assert_ne!(unbound.entry, before.entry);
 }

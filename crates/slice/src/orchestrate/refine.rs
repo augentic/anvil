@@ -17,7 +17,7 @@ use project::handler::ExecutionPaths;
 use project::identity::{Decision, Surface};
 use project::journal::{self, EventKind};
 use project::plan::{Entry, Plan, resolve_topology};
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Source, Target};
 use project::snapshot::SnapshotId;
 
 use super::synthesize::SynthesizeRequest;
@@ -95,7 +95,7 @@ impl TagCounts {
 /// - `slice-refinement-*` / `target-build-input-missing` from the
 ///   manifest assembly, and filesystem failures from its write.
 #[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
-pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
+pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str, dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration],
 ) -> Result<RefineOutcome, Error> {
@@ -194,6 +194,7 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     // transition succeed (RFC-91 D4): an interrupted refinement leaves
     // no manifest for the attempt.
     let inventory = Discovery::load(&layout.discovery_path())?;
+    let config = ProjectConfig::load(layout.project_dir())?;
     refinement::assemble(
         layout,
         &plan,
@@ -202,6 +203,7 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         guidance_digest,
         dependencies,
         declarations,
+        config.adapter.as_deref(),
     )?
     .write(&slice_dir)?;
     tracing::info!(artifacts = artifacts.len(), "refine completed");

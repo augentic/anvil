@@ -330,6 +330,13 @@ pub enum EventKind {
         /// Slice-local id → final baseline `REQ-NNN` for every
         /// requirement in the member.
         identity_maps: Vec<IdentityMap>,
+        /// Post-merge `.emery/specs/` tree digest (RFC-91 D4): the
+        /// accepted baseline this commit advanced to. Freshness treats
+        /// a live tree matching the newest recorded value as accepted
+        /// plan-local drift, not staleness. Optional and additive —
+        /// absent on rows written before the field existed.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        baseline: Option<crate::snapshot::SnapshotId>,
     },
     /// Target postflight gate succeeded after wave commit (RFC-86 D9).
     #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
@@ -515,7 +522,7 @@ pub enum ClosedPlanCoverage {
         plan_digest: String,
         /// Sorted per-leaf refinement digests (`sha256:…` of each
         /// leaf's covered `refinement.yaml`).
-        refinements: std::collections::BTreeMap<String, String>,
+        refinements: std::collections::BTreeMap<String, crate::snapshot::SnapshotId>,
         /// Per-requirement unknown waivers nested on this epoch (D17).
         #[serde(rename = "unknown-waivers", default, skip_serializing_if = "Vec::is_empty")]
         unknown_waivers: Vec<UnknownWaiver>,

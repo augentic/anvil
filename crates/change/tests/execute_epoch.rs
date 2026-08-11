@@ -249,22 +249,24 @@ async fn valid_waive_nests_epoch() {
     // hand-written slice tree.
     support::stage_manifest(session.root(), "a");
 
-    // Loop may stop after the epoch (a hand-staged slice has no real
-    // build pathway) — the fact must still be recorded at start with
-    // nested waivers.
-    drop(
-        run::<Execute, _, _>(
-            session.provider(),
-            ExecuteInput {
-                waive: vec![WaiveSelector {
-                    slice: "a".into(),
-                    req: "REQ-003".into(),
-                }],
-                reason: Some("reset path deferred".into()),
-            },
-        )
-        .await,
-    );
+    // Loop stops after the epoch (a hand-staged slice has no real
+    // build pathway) — the stop must be post-gate, with the fact
+    // recorded at start carrying nested waivers.
+    let err = run::<Execute, _, _>(
+        session.provider(),
+        ExecuteInput {
+            waive: vec![WaiveSelector {
+                slice: "a".into(),
+                req: "REQ-003".into(),
+            }],
+            reason: Some("reset path deferred".into()),
+        },
+    )
+    .await
+    .expect_err("hand-staged slice stops after the epoch");
+    let code = err_code(&err);
+    assert_ne!(code, "plan-waiver-invalid", "waiver accepted: {err}");
+    assert_ne!(code, "plan-refinement-required", "staged manifest covers the leaf: {err}");
 
     let started = started_events(session.root());
     assert_eq!(started.len(), 1, "epoch recorded even when loop stops");
@@ -285,7 +287,7 @@ async fn valid_waive_nests_epoch() {
     assert_eq!(unknown_waivers[0].req, "REQ-003");
     assert_eq!(unknown_waivers[0].reason, "reset path deferred");
     assert!(
-        refinements.get("a").is_some_and(|d| d.starts_with("sha256:")),
+        refinements.get("a").is_some_and(|d| d.as_str().starts_with("sha256:")),
         "refined leaf → covered refinement digest; got {refinements:?}"
     );
 

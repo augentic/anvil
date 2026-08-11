@@ -41,19 +41,21 @@ pub enum ChangeKind {
     Deleted,
 }
 
-/// Engine-owned top-level slice subtrees excluded from the seed
+/// Engine-owned top-level slice entries excluded from the seed
 /// mirror: never target-writable slice intent (`build/` also keeps a
-/// re-seed from recursing into stages).
-const ENGINE_OWNED: [&str; 4] = ["build", "builds", "decisions", "merge"];
+/// re-seed from recursing into stages; `refinement.yaml` is the
+/// engine-atomically-written covered-input record, RFC-91 D4).
+const ENGINE_OWNED: [&str; 5] =
+    ["build", "builds", "decisions", "merge", project::slice::REFINEMENT_FILE];
 
 /// Seed the stage: copy the slice tree into `<attempt_dir>/stage/`,
 /// recording a manifest of relative path → content SHA-256.
 ///
-/// The slice's engine-owned top-level subtrees (`build/` attempt
+/// The slice's engine-owned top-level entries (`build/` attempt
 /// records, `builds/` `BuildRecord`s, `merge/` gate reports,
-/// `decisions/` Decision Records) are excluded — they are not
-/// target-writable slice intent. Symlinks are skipped: the mirror
-/// carries regular content only.
+/// `decisions/` Decision Records, `refinement.yaml`) are excluded —
+/// they are not target-writable slice intent. Symlinks are skipped:
+/// the mirror carries regular content only.
 ///
 /// # Errors
 ///

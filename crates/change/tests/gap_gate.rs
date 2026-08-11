@@ -16,7 +16,7 @@ use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, append_for, read_union,
 };
-use project::plan::{Plan, dir_cid};
+use project::plan::Plan;
 use support::plan_with_changes;
 
 /// Single-project plan entry so execute's workspace routing refusal
@@ -60,7 +60,8 @@ async fn init_mock(session: &Session) {
 }
 
 fn stamp_epoch(
-    root: &std::path::Path, plan_digest: &str, refinements: BTreeMap<String, String>,
+    root: &std::path::Path, plan_digest: &str,
+    refinements: BTreeMap<String, project::snapshot::SnapshotId>,
     unknown_waivers: Vec<project::journal::UnknownWaiver>,
 ) {
     let ts = Timestamp::from_second(1_700_000_000).expect("timestamp");
@@ -192,16 +193,25 @@ async fn divergence_alone() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
-        .expect_err("build may fail later without pins; divergence must not gate");
+        .expect_err("build may fail later on the hand-staged slice; divergence must not gate");
     let code = err_code(&err);
     assert_ne!(code, "plan-gaps-unresolved", "divergence is listed but allowed: {err}");
+    assert_ne!(code, "plan-refinement-required", "staged manifest must cover the leaf: {err}");
+
+    let started = read_union(Layout::new(session.root()))
+        .expect("union")
+        .into_iter()
+        .filter(|e| matches!(e.kind, EventKind::PlanExecuteStarted { .. }))
+        .count();
+    assert_eq!(started, 1, "gap gate ran past the epoch open");
 }
 
 #[tokio::test]
-async fn stale_existing_digest() {
+async fn stale_refinement_digest() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -223,14 +233,19 @@ async fn stale_existing_digest() {
     let mut refinements = BTreeMap::new();
     refinements.insert(
         "a".into(),
-        "sha256:deadbeef00000000000000000000000000000000000000000000000000000000".to_string(),
+        project::snapshot::SnapshotId::parse(
+            "sha256:deadbeef00000000000000000000000000000000000000000000000000000000",
+        )
+        .expect("digest"),
     );
     stamp_epoch(session.root(), &plan_digest, refinements, Vec::new());
 
     // Live refinement digest differs from the fabricated covering
     // digest, so the epoch is stale against the on-disk manifest.
     let live = support::manifest_digest(session.root(), "a");
-    assert!(live != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000");
+    assert!(
+        live.as_str() != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
+    );
 
     let err = enforce_before_build(layout, &plan, "a").expect_err("stale epoch");
     assert_eq!(err.variant_str(), "plan-epoch-stale");
@@ -255,10 +270,17 @@ async fn stale_plan_digest_refuses() {
     let plan = plan_with_changes(vec![leaf("a")]);
     write_plan(session.root(), &plan);
 
+    // The plan-digest check fires before any refinement lookup, so the
+    // covered refinement value is irrelevant here.
     let layout = Layout::new(session.root());
-    let live_specs = dir_cid(&layout.slice_dir("a").join("specs")).expect("specs cid").to_string();
     let mut refinements = BTreeMap::new();
-    refinements.insert("a".into(), live_specs);
+    refinements.insert(
+        "a".into(),
+        project::snapshot::SnapshotId::parse(
+            "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        )
+        .expect("digest"),
+    );
     stamp_epoch(
         session.root(),
         "sha256:0000000000000000000000000000000000000000000000000000000000000000",

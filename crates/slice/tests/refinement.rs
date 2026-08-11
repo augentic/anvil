@@ -97,6 +97,7 @@ fn assemble(root: &Path, plan: &Plan, inventory: &[Lead], deps: Vec<Dependency>)
         guidance(),
         deps,
         &declarations(),
+        None,
     )
     .expect("assemble")
 }
@@ -144,11 +145,11 @@ fn round_trip_digest() {
     let manifest = assemble(root.path(), &plan, &inventory, vec![]);
     manifest.write(&slice_dir).expect("write");
 
-    // Load reproduces the assembled value; the digest of the assembled
-    // value equals the digest of the on-disk file bytes.
+    // Load reproduces the assembled value; the on-disk file digest is
+    // the refinement identity everything downstream binds.
     assert_eq!(Manifest::load(&slice_dir).expect("load"), manifest);
-    let digest = manifest.digest().expect("digest");
-    assert_eq!(refinement::file_digest(&slice_dir).expect("file digest"), Some(digest.clone()));
+    let digest =
+        refinement::file_digest(&slice_dir).expect("file digest").expect("manifest present");
     SnapshotId::parse(digest.as_str()).expect("sha256:<64 hex>");
 
     match freshness_of(root.path(), &plan, &inventory) {
@@ -199,6 +200,7 @@ fn missing_artifact_refuses() {
         guidance(),
         vec![],
         &declarations(),
+        None,
     )
     .expect_err("missing tasks");
     assert!(err.to_string().contains("slice-refinement-input-missing"), "{err}");
@@ -217,6 +219,7 @@ fn missing_spec_refuses() {
         guidance(),
         vec![],
         &declarations(),
+        None,
     )
     .expect_err("no specs");
     assert!(err.to_string().contains("slice-refinement-input-missing"), "{err}");
@@ -235,6 +238,7 @@ fn missing_additional() {
         guidance(),
         vec![],
         &declarations(),
+        None,
     )
     .expect_err("missing required additional");
     assert!(err.to_string().contains("target-build-input-missing"), "{err}");
@@ -252,6 +256,7 @@ fn unclosed_pin_refuses() {
         guidance(),
         vec![],
         &declarations(),
+        None,
     )
     .expect_err("unclosed pin");
     assert!(err.to_string().contains("slice-refinement-pin-missing"), "{err}");
@@ -335,7 +340,9 @@ fn predecessor_binding() {
     shared.write(&shared_dir).expect("write shared");
     let dependency = Dependency {
         slice: "shared-types".into(),
-        refinement: shared.digest().expect("digest"),
+        refinement: refinement::file_digest(&shared_dir)
+            .expect("file digest")
+            .expect("shared manifest present"),
     };
     assemble(root.path(), &plan, &inventory, vec![dependency]).write(&slice_dir).expect("write");
     assert!(matches!(freshness_of(root.path(), &plan, &inventory), Freshness::Fresh { .. }));
@@ -353,6 +360,74 @@ fn predecessor_binding() {
     let freshness = freshness_of(root.path(), &plan, &inventory);
     assert!(
         stale_reasons(&freshness).iter().any(|r| r.contains("no refinement manifest")),
+        "{freshness:?}"
+    );
+}
+
+#[test]
+fn archived_pred_fresh() {
+    // A merged (or dropped) predecessor's slice tree moves to
+    // `.emery/archive/<stamp>-<slice>/` with its manifest; the archived
+    // digest satisfies the dependent's pin (RFC-91 D3). The newest
+    // archive entry wins.
+    let (root, plan, inventory) = fixture();
+    let layout = Layout::new(root.path());
+    let slice_dir = layout.slice_dir(SLICE);
+    let old_dir = layout.archive_dir().join("2026-01-01-shared-types");
+    let new_dir = layout.archive_dir().join("2026-02-01-shared-types");
+    std::fs::create_dir_all(&old_dir).expect("mkdir old archive");
+    std::fs::create_dir_all(&new_dir).expect("mkdir new archive");
+    let mut old = predecessor("shared-types");
+    old.inputs.target_guidance = guidance();
+    old.write(&old_dir).expect("write old");
+    predecessor("shared-types").write(&new_dir).expect("write new");
+
+    let dependency = Dependency {
+        slice: "shared-types".into(),
+        refinement: refinement::file_digest(&new_dir)
+            .expect("file digest")
+            .expect("archived manifest present"),
+    };
+    assemble(root.path(), &plan, &inventory, vec![dependency]).write(&slice_dir).expect("write");
+    assert!(matches!(freshness_of(root.path(), &plan, &inventory), Freshness::Fresh { .. }));
+}
+
+#[test]
+fn merged_baseline_fresh() {
+    // A plan-local wave commit journals the post-merge baseline; a live
+    // tree matching that newest journaled digest is accepted drift, not
+    // staleness (RFC-91 D4). Drift past the commit stales again.
+    let (root, plan, inventory) = fixture();
+    let layout = Layout::new(root.path());
+    let slice_dir = layout.slice_dir(SLICE);
+    assemble(root.path(), &plan, &inventory, vec![]).write(&slice_dir).expect("write");
+
+    std::fs::write(root.path().join(".emery/specs/login/spec.md"), b"sibling merged")
+        .expect("merge baseline");
+    let merged = project::plan::dir_cid(&layout.specs_dir()).expect("dir cid");
+    let event = project::journal::Event::new(
+        jiff::Timestamp::UNIX_EPOCH,
+        project::journal::EventKind::TargetMergeWaveCommitted {
+            target: "demo".into(),
+            digest: "sha256:0000".into(),
+            slice_name: "billing-api".into(),
+            commit_authorization: project::journal::FactEpochRef {
+                writer: "local".into(),
+                sequence: 1,
+            },
+            identity_maps: vec![],
+            baseline: Some(merged),
+        },
+    );
+    project::journal::append_one(layout, &event).expect("journal");
+    assert!(matches!(freshness_of(root.path(), &plan, &inventory), Freshness::Fresh { .. }));
+
+    // Drift past the journaled commit is staleness again.
+    std::fs::write(root.path().join(".emery/specs/login/spec.md"), b"post-merge drift")
+        .expect("drift");
+    let freshness = freshness_of(root.path(), &plan, &inventory);
+    assert!(
+        stale_reasons(&freshness).iter().any(|r| r.contains("baseline-specs")),
         "{freshness:?}"
     );
 }

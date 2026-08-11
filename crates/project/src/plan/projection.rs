@@ -38,15 +38,20 @@ impl Projections {
     /// Compute the three canonical projections for `entry`.
     ///
     /// `contributing` is the leaf's resolved contributing lead closure
-    /// in binding order (see [`contributing_leads`]).
+    /// in binding order (see [`contributing_leads`]); `target` is the
+    /// project's *declared* adapter reference from `project.yaml`
+    /// (name plus version pin when pinned) — the declared string only,
+    /// never a resolved identity, so the projection stays pure.
     ///
     /// # Errors
     ///
     /// `plan-projection-source-unbound` when an entry binding names a
     /// key absent from `plan.sources`; YAML serialization failures.
-    pub fn compute(plan: &Plan, entry: &Entry, contributing: &[Lead]) -> Result<Self, Error> {
+    pub fn compute(
+        plan: &Plan, entry: &Entry, contributing: &[Lead], target: Option<&str>,
+    ) -> Result<Self, Error> {
         Ok(Self {
-            entry: digest(&entry_projection(plan, entry)?)?,
+            entry: digest(&entry_projection(plan, entry, target)?)?,
             leads: digest(&LeadsProjection {
                 version: PROJECTION_VERSION,
                 slice: entry.name.as_str().to_string(),
@@ -55,7 +60,6 @@ impl Projections {
             decomposition: digest(&DecompositionProjection {
                 version: PROJECTION_VERSION,
                 terminal: entry.name.as_str().to_string(),
-                ancestry: Vec::new(),
                 depends_on: dependency_closure(plan, entry),
             })?,
         })
@@ -106,10 +110,9 @@ fn digest<T: Serialize>(value: &T) -> Result<SnapshotId, Error> {
 /// Canonical `entry` projection bytes. Owned clones of the entry's
 /// fields plus the plan-level binding declaration (minus the content
 /// `cid`, which the manifest records separately under
-/// `inputs.sources`). RFC-88 / RFC-92 fields (ownership envelope,
-/// protected inputs, oracles) are declared optional with
-/// absent-as-canonical-empty encoding so digests stay stable when
-/// those fields arrive.
+/// `inputs.sources`). Every optional field uses absent-as-canonical-
+/// empty encoding, so later additions with the same encoding are
+/// digest-neutral until they carry data.
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct EntryProjection {
@@ -117,6 +120,10 @@ struct EntryProjection {
     name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     project: Option<String>,
+    /// Declared target adapter reference from `project.yaml` —
+    /// rebinding or re-pinning the target stales every manifest.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     depends_on: Vec<SliceName>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -133,15 +140,6 @@ struct EntryProjection {
     authority_override: BTreeMap<ClaimKind, String>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     allow_composition_replace: bool,
-    /// RFC-88 ownership envelope — not yet introduced.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    ownership: Option<String>,
-    /// RFC-88 protected inputs — not yet introduced.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    protected_inputs: Vec<String>,
-    /// RFC-92 oracles — not yet introduced.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    oracles: Vec<String>,
 }
 
 /// One resolved `(source, lead)` binding plus the plan-level binding
@@ -179,16 +177,14 @@ struct LeadsProjection {
 struct DecompositionProjection {
     version: u32,
     terminal: String,
-    /// RFC-88 retained ancestry — canonical empty until decomposition
-    /// records land.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    ancestry: Vec<String>,
     /// Sorted transitive `depends-on` closure from `plan.yaml`.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     depends_on: Vec<SliceName>,
 }
 
-fn entry_projection(plan: &Plan, entry: &Entry) -> Result<EntryProjection, Error> {
+fn entry_projection(
+    plan: &Plan, entry: &Entry, target: Option<&str>,
+) -> Result<EntryProjection, Error> {
     let sources = entry
         .sources
         .iter()
@@ -217,6 +213,7 @@ fn entry_projection(plan: &Plan, entry: &Entry) -> Result<EntryProjection, Error
         version: PROJECTION_VERSION,
         name: entry.name.as_str().to_string(),
         project: entry.project.clone(),
+        target: target.map(str::to_string),
         depends_on: entry.depends_on.clone(),
         sources,
         context: entry.context.clone(),
@@ -225,9 +222,6 @@ fn entry_projection(plan: &Plan, entry: &Entry) -> Result<EntryProjection, Error
         disagreements: entry.disagreements.clone(),
         authority_override: entry.authority_override.by_kind.clone(),
         allow_composition_replace: entry.allow_composition_replace,
-        ownership: None,
-        protected_inputs: Vec::new(),
-        oracles: Vec::new(),
     })
 }
 

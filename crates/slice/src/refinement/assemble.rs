@@ -20,13 +20,12 @@ use crate::build::assemble::{
 
 /// Assemble the refinement manifest for `entry`.
 ///
-/// `inventory` is the full `discovery.md` lead set (the contributing
-/// closure resolves internally); `target_guidance` is the recorded
-/// identity of the guidance text synthesis consumed (supplied by the
-/// caller, never recomputed here); `dependencies` are the ordered
-/// predecessor `(slice, refinement-digest)` pairs; `declarations` is
-/// the bound target's build-inputs list — the bundle covers the same
-/// canonical set the target build request assembles.
+/// `inventory` is the full `discovery.md` lead set; `target_guidance`
+/// is the recorded identity of the guidance text synthesis consumed;
+/// `dependencies` are the ordered predecessor `(slice, digest)` pairs;
+/// `declarations` is the bound target's build-inputs list (the bundle
+/// covers the same canonical set as the build request); `target` is
+/// the declared adapter reference covered by the entry projection.
 ///
 /// # Errors
 ///
@@ -42,10 +41,10 @@ use crate::build::assemble::{
 pub fn assemble(
     layout: Layout<'_>, plan: &Plan, entry: &Entry, inventory: &[Lead],
     target_guidance: SnapshotId, dependencies: Vec<Dependency>,
-    declarations: &[BuildInputDeclaration],
+    declarations: &[BuildInputDeclaration], target: Option<&str>,
 ) -> Result<Manifest, Error> {
     let contributing = contributing_leads(entry, inventory)?;
-    let planning = Projections::compute(plan, entry, &contributing)?;
+    let planning = Projections::compute(plan, entry, &contributing, target)?;
     let slice_dir = layout.slice_dir(entry.name.as_str());
     Ok(Manifest {
         version: VERSION,

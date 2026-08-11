@@ -10,7 +10,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Source, Target};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, RefineOutcome};
@@ -29,7 +29,7 @@ pub struct RefineInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Refine;
 
-impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> for Refine {
+impl<P: Anchor + Model + Resolver + Source + Target> Operation<P> for Refine {
     type Error = project::handler::Error;
     type Input = RefineInput;
     type Output = RefineBody;
@@ -56,7 +56,7 @@ impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> f
             // Typed halt: the plan status card rides stdout while the
             // payload-free `plan-refine-stopped` envelope keeps stderr
             // (exit 2 / 422) — mirrors `plan execute`'s stop shape.
-            RefineOutcome::Stopped { slice, detail, .. } => {
+            RefineOutcome::Stopped { slice, detail } => {
                 let source = Error::validation_failed(
                     "plan-refine-stopped",
                     "the refinement drain reaches every targeted leaf",

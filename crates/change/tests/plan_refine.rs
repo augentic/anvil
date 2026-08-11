@@ -43,12 +43,18 @@ fn pair_grouping() -> String {
 }
 
 /// The greeting synthesis answer re-slotted for `slice`, with its
-/// claim anchored on the `source` binding key.
+/// claim anchored on the `source` binding key. The spec domain is the
+/// slice name, so the two leaves merge into disjoint baselines.
 fn synthesis_for(slice: &str, source: &str) -> String {
     let mut answer: serde_json::Value =
         serde_json::from_str(&mock::answers::greeting_synthesis()).expect("answer parses");
     answer["slice"] = json!(slice);
+    answer["model"]["requirements"][0]["domain"] = json!(slice);
     answer["model"]["requirements"][0]["claims"][0]["source"] = json!(source);
+    answer["artifacts"]["specs"][0]["domain"] = json!(slice);
+    let proposal = answer["artifacts"]["proposal"].as_str().expect("proposal");
+    answer["artifacts"]["proposal"] =
+        json!(proposal.replace("- greeting — the affected surface", &format!("- {slice} — the affected surface")));
     serde_json::to_string(&answer).expect("answer serialises")
 }
 
@@ -314,5 +320,40 @@ async fn stop_then_resume() {
     assert_eq!(resumed.skipped, ["alpha"]);
     assert!(manifest_path(&root, "beta").is_file());
     assert_eq!(support::manifest_digest(&root, "alpha"), alpha, "unrelated amend keeps fresh");
+    session.model().assert_exhausted();
+}
+
+// Regression: a multi-entry plan drains through execute. The first
+// merge archives `alpha`'s slice tree, so `beta`'s pre-build epoch
+// gate must re-check only the claimed slice — not every covered leaf —
+// or the loop dies `plan-epoch-stale` after the first merge.
+#[tokio::test]
+async fn pair_execute_drains() {
+    let session = Session::scripted(
+        "mock",
+        vec![pair_grouping(), synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],
+    );
+    author(&session, pair_bindings("mock")).await;
+    let drained = support::refine_plan(&session).await;
+    assert_eq!(drained.refined, ["alpha", "beta"]);
+
+    let executed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("execute drains both entries past the first merge");
+    assert_eq!(executed.status, "drained");
+    let ran: Vec<(&str, change::LoopStep)> =
+        executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
+    assert_eq!(
+        ran,
+        [
+            ("alpha", change::LoopStep::Build),
+            ("alpha", change::LoopStep::Merge),
+            ("beta", change::LoopStep::Build),
+            ("beta", change::LoopStep::Merge),
+        ]
+    );
     session.model().assert_exhausted();
 }

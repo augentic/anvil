@@ -3,9 +3,7 @@
 //! gap inventory, and appends `plan.execute.started`.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
-use diagnostics::digest::sha256_hex;
 use error::Error;
 use jiff::Timestamp;
 use project::build_record::BuildRecord;
@@ -13,7 +11,7 @@ use project::config::Layout;
 use project::journal::{self, ClosedPlanCoverage, Event, EventKind, UnknownWaiver};
 use project::plan::{Plan, Status, collect_events, in_scope, plan_gaps_body, project_ladders};
 use project::slice::SliceMetadata;
-use slice::refinement::{self, Freshness};
+use slice::refinement::{self, Freshness, Live};
 
 use crate::plan::wire::load_discovery;
 
@@ -100,29 +98,28 @@ pub(super) fn append_started(
 /// Build `closed-plan` coverage over in-scope leaves (RFC-91 D5).
 ///
 /// Every in-scope leaf **execute may still build** must project a
-/// fresh refinement manifest (`slice::refinement::freshness`); its
-/// exact refinement digest is covered. A missing or stale manifest
-/// fails typed **before** any epoch append — execute never authorizes
-/// a refinement that does not exist yet (`refine-under-epoch` is
-/// gone). Leaves past their build are not re-litigated: a merged leaf
-/// (projected `done`) contributes nothing, and a built leaf parked at
-/// merge carries the manifest digest its wave bound at build time —
-/// re-running execute is always the resume path.
+/// fresh refinement manifest; a missing or stale one fails typed
+/// before any epoch append — execute never refines. Leaves past their
+/// build are not re-litigated: a merged leaf (projected `done`)
+/// contributes nothing, and a built leaf parked at merge carries the
+/// manifest digest its wave bound at build time (resume path).
 fn assemble_coverage(
     layout: Layout<'_>, plan: &Plan, unknown_waivers: Vec<UnknownWaiver>,
 ) -> Result<ClosedPlanCoverage, Error> {
-    let plan_bytes = std::fs::read(layout.plan_path())?;
-    let plan_digest = format!("sha256:{}", sha256_hex(&plan_bytes));
+    let plan_digest = Plan::file_digest(layout)?;
 
     let discovery = load_discovery(layout)?;
     let inventory = discovery.as_ref().map_or(&[][..], |d| d.leads());
     let events = collect_events(layout)?;
     let ladders = project_ladders(plan, &events);
 
+    // One shared freshness cache across the leaves — the baseline and
+    // source trees do not move while coverage assembles.
+    let mut live = Live::new();
     let mut refinements = BTreeMap::new();
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
-        let meta = load_meta(&slice_dir)?;
+        let meta = SliceMetadata::load_opt(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
@@ -136,12 +133,12 @@ fn assemble_coverage(
             // Built, awaiting merge: build promotion may legitimately
             // drift the bundle inputs (`writable-artifacts[]`), so the
             // covered digest is the unchanged manifest the wave bound.
-            refinements.insert(name.to_string(), digest.to_string());
+            refinements.insert(name.to_string(), digest);
             continue;
         }
-        match refinement::freshness(layout, plan, entry, inventory)? {
+        match refinement::freshness_with(layout, plan, entry, inventory, &mut live)? {
             Freshness::Fresh { digest } => {
-                refinements.insert(name.to_string(), digest.to_string());
+                refinements.insert(name.to_string(), digest);
             }
             Freshness::Missing => {
                 return Err(refinement_required(format!(
@@ -170,20 +167,6 @@ const fn refinement_required(detail: String) -> Error {
     Error::Diag {
         code: "plan-refinement-required",
         detail,
-    }
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(meta) => Ok(Some(meta)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
     }
 }
 

@@ -1,10 +1,8 @@
 //! RFC-91 D1/D5 — the staged workflow: author (topology only) →
 //! `plan refine` (the specification drain) → gaps → execute
 //! (build/merge only, coverage over exact refinement digests).
-//!
-//! The old `refine-under-epoch` execute path is deleted: execute over
-//! an unrefined leaf fails typed `plan-refinement-required` and never
-//! auto-refines.
+//! Execute over an unrefined leaf fails typed
+//! `plan-refinement-required` and never auto-refines.
 
 mod support;
 
@@ -150,7 +148,7 @@ async fn shift_left_refine_execute() {
 
 /// Execute over an unrefined leaf fails typed
 /// `plan-refinement-required` before any epoch, workspace, or wave —
-/// execute never refines (RFC-91 D5; `refine-under-epoch` is gone).
+/// execute never refines (RFC-91 D5).
 #[tokio::test]
 async fn unrefined_execute_fails() {
     let session = Session::bare(suite_answers());
