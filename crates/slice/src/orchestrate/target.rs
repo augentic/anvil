@@ -259,6 +259,7 @@ async fn finalize(
             change: Some(&config.name),
         },
         grants: &adapter.writable_artifacts,
+        deferred: &request.deferred,
         workspace: staged,
         attempt,
         stage,

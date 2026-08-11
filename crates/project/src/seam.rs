@@ -10,7 +10,8 @@ use std::future::Future;
 use artifacts::evidence::{AuthorityClass, Claim};
 use serde::{Deserialize, Serialize};
 pub use wire::{
-    BuildReport, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource, PhaseWrite, RepairOrigin,
+    BuildReport, DeferredRequirement, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource,
+    PhaseWrite, RepairOrigin,
 };
 
 use crate::snapshot::{CodePatch, SnapshotId};

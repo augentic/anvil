@@ -37,7 +37,6 @@ const fn success_report() -> Report {
         findings: Vec::new(),
         outputs: Vec::new(),
         ui_surface: None,
-        covered: Vec::new(),
     }
 }
 

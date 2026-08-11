@@ -441,6 +441,12 @@ interface target {
     outputs: list<build-output>,
     /// Candidate UI-surface signal (`build` only).
     ui-surface: option<ui-surface>,
+    /// Slice-local requirement ids (`REQ-NNN`) the phase claims to
+    /// have implemented (`build` only). Empty when the answer omits
+    /// the key. The engine rejects any intersection with the build
+    /// request's `deferred[]` exclusion set
+    /// (`target-build-deferred-covered`).
+    covered: list<string>,
     /// Audit-evidence writes performed by the phase.
     written: list<phase-write>,
     /// Adapter-opaque continuation payload: `none` preserves the
@@ -533,11 +539,6 @@ interface target {
     outputs: list<build-output>,
     /// Optional per-slice UI-surface signal; absent reports stay valid.
     ui-surface: option<ui-surface>,
-    /// Slice-local requirement ids (`REQ-NNN`) the operation claims to
-    /// have implemented. Empty when the answer omits the key. The
-    /// caller rejects any intersection with the build request's
-    /// `deferred[]` exclusion set (`target-build-deferred-covered`).
-    covered: list<string>,
   }
 
   /// One adapter-declared build input: a path (relative to the slice

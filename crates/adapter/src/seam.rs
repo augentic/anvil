@@ -368,8 +368,11 @@ impl Finding {
     }
 }
 
-/// Judgment returned by `build` and `merge` — mirrors the WIT `report`
-/// record. The resulting state lives in the working tree, not here.
+/// Judgment returned by `merge` — mirrors the WIT `report` record.
+///
+/// The resulting state lives in the working tree, not here. The
+/// coverage claim rides the build phase report (RFC-86a D4), never
+/// the merge return.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Report {
     /// Operation outcome.
@@ -380,10 +383,6 @@ pub struct Report {
     pub outputs: Vec<BuildOutput>,
     /// Optional UI-surface signal.
     pub ui_surface: Option<UiSurface>,
-    /// Slice-local requirement ids the operation claims to have
-    /// implemented. Must never name a requirement from the build
-    /// request's `deferred[]` exclusion set (RFC-86a D4).
-    pub covered: Vec<String>,
 }
 
 impl Report {
@@ -396,7 +395,6 @@ impl Report {
             findings: Vec::new(),
             outputs: Vec::new(),
             ui_surface: None,
-            covered: Vec::new(),
         }
     }
 }
@@ -709,8 +707,8 @@ where
 }
 
 /// The typed result of exactly one build-phase operation — mirrors
-/// the WIT `target.phase-report` record (RFC-90 D2). `outputs` and
-/// `ui_surface` are meaningful only on `build` reports.
+/// the WIT `target.phase-report` record (RFC-90 D2). `outputs`,
+/// `ui_surface`, and `covered` are meaningful only on `build` reports.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PhaseReport {
     /// Adapter-selected outcome.
@@ -723,6 +721,10 @@ pub struct PhaseReport {
     pub outputs: Vec<BuildOutput>,
     /// Candidate UI-surface signal (`build` only).
     pub ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids the phase claims to have
+    /// implemented (`build` only). Must never name a requirement from
+    /// the build request's `deferred[]` exclusion set (RFC-86a D4).
+    pub covered: Vec<String>,
     /// Audit-evidence writes performed by the phase.
     pub written: Vec<PhaseWrite>,
     /// Adapter-opaque continuation: `None` preserves, `Some(vec![])`
@@ -741,6 +743,7 @@ impl PhaseReport {
             findings: Vec::new(),
             outputs: Vec::new(),
             ui_surface: None,
+            covered: Vec::new(),
             written: Vec::new(),
             next_continuation: None,
         }
@@ -757,6 +760,7 @@ impl PhaseReport {
             findings: Vec::new(),
             outputs: Vec::new(),
             ui_surface: None,
+            covered: Vec::new(),
             written: Vec::new(),
             next_continuation: None,
         }

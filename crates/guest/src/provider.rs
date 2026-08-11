@@ -411,7 +411,9 @@ fn widen_report(id: &str, slice: String, report: target::Report) -> BuildReport 
         report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
-        report.covered,
+        // The coverage claim rides `phase-report` (build only); the
+        // merge-op `report` carries none.
+        Vec::new(),
     )
 }
 
@@ -440,6 +442,7 @@ fn map_phase_report(report: target::PhaseReport) -> PhaseReport {
         ui_surface: report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
+        covered: report.covered,
         written: report.written.into_iter().map(map_phase_write).collect(),
         next_continuation: report.next_continuation,
     }

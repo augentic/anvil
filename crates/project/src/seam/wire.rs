@@ -238,6 +238,12 @@ pub struct PhaseReport {
     /// Candidate UI-surface signal (`build` only).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids (`REQ-NNN`) the phase claims to
+    /// have implemented (`build` only); defaults to `[]`. The engine
+    /// rejects any intersection with the request's `deferred[]`
+    /// exclusion set (RFC-86a D4).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub covered: Vec<String>,
     /// Audit-evidence writes performed by the phase; defaults to `[]`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub written: Vec<PhaseWrite>,
@@ -253,6 +259,22 @@ impl PhaseReport {
     #[must_use]
     pub fn has_blocking(&self) -> bool {
         self.findings.iter().any(is_blocking)
+    }
+
+    /// Reject a phase report claiming coverage of a requirement the
+    /// request excluded from build scope (RFC-86a D4) — the fail-fast
+    /// twin of [`BuildReport::enforce_deferred_not_covered`], run
+    /// against the build round before further phases dispatch.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Validation`] keyed on
+    /// `target-build-deferred-covered` (exit code 2) naming every
+    /// claimed deferred requirement.
+    pub fn enforce_deferred_not_covered(
+        &self, slice: &str, deferred: &[DeferredRequirement],
+    ) -> Result<()> {
+        deferred_not_covered(slice, &self.covered, deferred)
     }
 }
 
@@ -349,24 +371,7 @@ impl BuildReport {
     /// `target-build-deferred-covered` (exit code 2) naming every
     /// claimed deferred requirement.
     pub fn enforce_deferred_not_covered(&self, deferred: &[DeferredRequirement]) -> Result<()> {
-        let claimed: Vec<&str> = deferred
-            .iter()
-            .filter(|req| self.covered.contains(&req.id))
-            .map(|req| req.id.as_str())
-            .collect();
-        if claimed.is_empty() {
-            return Ok(());
-        }
-        Err(Error::validation_failed(
-            "target-build-deferred-covered",
-            "a build report never claims coverage of a deferred requirement",
-            format!(
-                "slice `{}` report claims coverage of deferred requirement(s) {} — deferred \
-                 requirements are excluded from build scope and conserved as debt",
-                self.slice,
-                claimed.join(", ")
-            ),
-        ))
+        deferred_not_covered(&self.slice, &self.covered, deferred)
     }
 
     /// Reject a [`BuildStatus::Success`] report whose `outputs[]`
@@ -451,6 +456,31 @@ impl BuildReport {
 /// `true` when the directory contains at least one entry.
 fn dir_has_entries(dir: &Path) -> bool {
     std::fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_some())
+}
+
+/// The RFC-86a D4 coverage-claim kernel shared by the phase-level and
+/// terminal-report gates: reject any `covered[]` / `deferred[]`
+/// intersection.
+fn deferred_not_covered(
+    slice: &str, covered: &[String], deferred: &[DeferredRequirement],
+) -> Result<()> {
+    let claimed: Vec<&str> = deferred
+        .iter()
+        .filter(|req| covered.contains(&req.id))
+        .map(|req| req.id.as_str())
+        .collect();
+    if claimed.is_empty() {
+        return Ok(());
+    }
+    Err(Error::validation_failed(
+        "target-build-deferred-covered",
+        "a build report never claims coverage of a deferred requirement",
+        format!(
+            "slice `{slice}` report claims coverage of deferred requirement(s) {} — deferred \
+             requirements are excluded from build scope and conserved as debt",
+            claimed.join(", ")
+        ),
+    ))
 }
 
 /// One model-assisted build finding, as both hosts stamp it at the

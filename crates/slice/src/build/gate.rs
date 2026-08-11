@@ -41,8 +41,8 @@ pub const CONTINUATION_LIMIT: usize = 1024 * 1024;
 ///   assurance claim that holds even when `findings` is empty);
 ///   finding sources `tool` and `human` never cross this seam;
 /// - `target-phase-output-declaration` — a non-`build` operation
-///   declared outputs or a UI surface (`build` alone owns those
-///   candidate values);
+///   declared outputs, a UI surface, or a coverage claim (`build`
+///   alone owns those candidate values);
 /// - `target-phase-not-applicable-dirty` — a `not-applicable` outcome
 ///   carried a blocking finding or a `written` entry;
 /// - `target-phase-write-escape` — a `written` path is empty,
@@ -65,13 +65,14 @@ pub fn accept(operation: PhaseOperation, report: &PhaseReport) -> Result<()> {
     }
     check_source_coherence(operation, report)?;
     if operation != PhaseOperation::Build
-        && (!report.outputs.is_empty() || report.ui_surface.is_some())
+        && (!report.outputs.is_empty() || report.ui_surface.is_some() || !report.covered.is_empty())
     {
         return Err(Error::Diag {
             code: "target-phase-output-declaration",
             detail: format!(
-                "the `{operation}` report declares outputs or a ui-surface; only `build` owns \
-                 output declaration and UI-surface classification"
+                "the `{operation}` report declares outputs, a ui-surface, or a coverage claim; \
+                 only `build` owns output declaration, UI-surface classification, and \
+                 requirement coverage"
             ),
         });
     }

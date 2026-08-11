@@ -340,6 +340,7 @@ mod targets {
         };
         let mut report = PhaseReport::completed(PhaseSource::Deterministic);
         report.outputs = vec![core_output(relative)];
+        report.covered = claimed_covered(project_root)?;
         report.written = written;
         report.next_continuation = next_continuation;
         Ok(report)
@@ -347,9 +348,8 @@ mod targets {
 
     /// Requirement ids the build claims as `covered[]`: the
     /// whitespace-separated contents of the [`CLAIM_COVERED_MARKER`]
-    /// control-plane file, empty when absent. Not yet wired onto the
-    /// build phase report — the coverage carrier moves to
-    /// `phase-report` in the RFC-86a re-home.
+    /// control-plane file, empty when absent — for the
+    /// deferred-coverage gates.
     ///
     /// # Errors
     ///
@@ -524,7 +524,6 @@ mod targets {
             findings: Vec::new(),
             outputs,
             ui_surface: None,
-            covered: Vec::new(),
         }
     }
 

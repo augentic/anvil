@@ -53,6 +53,7 @@ const fn report(source: PhaseSource, findings: Vec<Diagnostic>) -> PhaseReport {
         findings,
         outputs: Vec::new(),
         ui_surface: None,
+        covered: Vec::new(),
         written: Vec::new(),
         next_continuation: None,
     }
