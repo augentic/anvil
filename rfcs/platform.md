@@ -167,7 +167,7 @@ Outcome learning is a side loop, not an execution edge: terminal facts project o
 
 The tables list each RFC's hard dependencies and what it delivers. Step numbers are a **product-ownership / reading order** (fact substrate → workspace stem → product path, then scale), not a claim about landing chronology and not a single serial queue. [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md) are **implemented**: the fact and workspace stem plus the engine-owned build phase machine. The remaining workspace stand-in is merge-time `apply` (deleted by [RFC-88](rfc-88-detached-changes.md)). RFC-88's recursive authoring contract remains the product branch; RFC-91 adds the serial review boundary and wave-time base, RFC-92 owns concurrent phase scheduling, RFC-94 pipelines closed branches through that scheduler, and RFC-93 optionally distributes it — see [Working in parallel](#working-in-parallel). Every RFC owns an independently testable delivery; later steps extend rather than predeclare its wire contract.
 
-The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / D17 as amended by [RFC-86a](rfc-86a-gap-deferral.md): starting `emery plan execute` appends `plan.execute.started` with typed coverage carrying the effective gap policy; there is no separate `approve` verb, no projected `approved` rung, and no silent skip of gaps — open rows block under `strict`, and every deferral is a durable, journaled `gap.deferred` fact. RFC-91 preserves that event, replaces spec-only coverage with complete refinement-manifest digests, and removes `refine-under-epoch`; `plan refine` creates no code-work grant. RFC-94 adds progressive run and member admission for unattended candidate work. RFC-98 alone extends policy admission to accepted-CID mutation.
+The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / D17 as amended by [RFC-86a](rfc-86a-gap-deferral.md): starting `emery plan execute` appends `plan.execute.started` with typed coverage; there is no separate `approve` verb, no projected `approved` rung, and no silent skip of gaps — every open row is auto-deferred at the build gate as a durable, journaled `gap.deferred` fact (the `strict | defer` policy knob and the `plan defer` verb were deleted after RFC-86a landed). RFC-91 preserves that event, replaces spec-only coverage with complete refinement-manifest digests, and removes `refine-under-epoch`; `plan refine` creates no code-work grant. RFC-94 adds progressive run and member admission for unattended candidate work. RFC-98 alone extends policy admission to accepted-CID mutation.
 
 ### Product critical path — migrate and change a platform
 
@@ -259,8 +259,8 @@ emery plan refine     →  serially extract and synthesize every leaf in topolog
                          persist complete refinement manifests; stop before product code
 operator may review   →  read specs and gaps; correct inputs and re-refine as needed
 emery plan execute    →  cover the exact refinement manifests;
-                         enforce gap/status gates before build (open gaps block under
-                         strict; durable deferrals via plan defer / --gap-policy — RFC-86a);
+                         enforce gap/status gates before build (open gaps auto-defer at
+                         the gate as durable gap.deferred facts — RFC-86a as amended);
                          prepare private workspaces on demand (RFC-87); execute leaves;
                          commit target waves (RFC-88);
                          converge domains and extend waves across ready leaves (RFC-92);

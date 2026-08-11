@@ -70,8 +70,7 @@ emery plan add <entry> --sources <key>=<lead>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 emery plan remove <entry>                                  # pre-execution deferral (replaceable plan only)
 emery plan drop <entry> [--reason "..."]               # abandon a refined slice without merging
-emery plan defer <slice>/<req> --reason "..."          # durably defer an open gap requirement (--retract reopens)
-emery plan execute [--gap-policy strict|defer]         # authorization epoch + drained loop
+emery plan execute                                     # authorization epoch + drained loop
 emery plan status                                      # read-only next-action + Ready/Authorized + debt counts
 emery plan gaps                                        # typed gap inventory with open|deferred dispositions
 emery plan archive                                     # archive the drained plan (prints the carried-debt summary)

@@ -57,9 +57,8 @@ There are no per-slice breakout commands. When the loop stops (`refine-failed`, 
 
 - `emery plan drop <slice> [--reason "<why>"]` — abandon one entry's slice without merging.
 - `emery plan amend <slice> --allow-composition-replace true` — authorize a whole-document composition overwrite for that entry's merge.
-- `emery plan defer <slice>/<req> --reason "<why>"` — durably defer a named open gap requirement out of build scope (`--retract` reopens it).
-- `emery plan execute --gap-policy defer` — one-epoch policy override: disposition every open gap at the build gate instead of stopping. The standing declaration is written at init time by `emery init --gap-policy <strict|defer>` (recorded on `project.yaml`; absent means `strict`).
-- `emery debt` — read-only baseline debt projection: every carried `unknown` / `conflict` requirement under `.emery/specs/` with the reason, origin, originating change, and age from its deferral note.
+- `emery plan gaps` — read-only typed gap inventory with per-row `open | deferred` dispositions; open gaps never block build (the gate auto-defers them as durable `gap.deferred` facts).
+- `emery debt` — read-only baseline debt projection: every carried `unknown` / `conflict` requirement under `.emery/specs/` with the reason, originating change, and age from its deferral note.
 - `emery slice list | validate | provenance | model show` — read-only slice projections.
 
 ## Tracing and output
@@ -101,7 +100,6 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 | `adapter-cli-too-old` | An adapter requires a newer binary than the one installed | Reinstall the binary; if the adapter itself is stale, `emery adapter upgrade <name>` |
 | `plan-already-exists` | `/emery:plan` on a project that already has a `plan.yaml` | Continue the existing plan (`/emery:status`) or confirm the replace and re-run with `--force` |
 | `plan-execute-stopped` | The execute loop halted on a stop condition; the stop card names the reason | Fix the reported problem, then re-run `emery plan execute` — the loop resumes at the parked phase |
-| `plan-gaps-unresolved` | Open unknowns or conflicts block the gap gate before build under the `strict` gap policy | Fix inputs and re-run execute, defer named gaps with `emery plan defer <slice>/<req> --reason "<why>"`, or run `emery plan execute --gap-policy defer` |
 | `merge-postflight-failed` | The merge landed but the post-merge check failed; the entry is already `done` | Repair the baseline, then `/emery:execute` to acknowledge and continue |
 
 ### Project not initialized
