@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
+use artifacts::spec::provenance::RequirementStatus;
 use artifacts::spec::{REQ_ID_PATTERN, REQ_ID_PREFIX, SCENARIO_HEADING, parse_baseline};
 use diagnostics::{Artifact, Diagnostic};
 use regex::Regex;
@@ -100,7 +101,7 @@ pub fn validate_baseline(baseline: &str) -> Vec<Diagnostic> {
                 ),
             ));
         }
-        if !block.body.contains(scenario_needle) {
+        if !block.body.contains(scenario_needle) && !has_gap_status(&block.body) {
             results.push(fail(
                 RULE_REQ_HAS_SCENARIO,
                 RULE_REQ_HAS,
@@ -113,4 +114,16 @@ pub fn validate_baseline(baseline: &str) -> Vec<Diagnostic> {
     }
 
     results
+}
+
+/// `true` when the block body carries a gap `Status:` line (`unknown`
+/// or `conflict`). Gap-status bodies are non-operative by construction
+/// (RFC-86a D5) — an unknown is a gap statement and a conflict is only
+/// `Note:` lines — so debt rows fold into the baseline without a
+/// scenario. Divergence and agreed rows stay under the scenario rule.
+fn has_gap_status(body: &str) -> bool {
+    body.lines()
+        .filter_map(|line| line.trim().strip_prefix("Status:"))
+        .filter_map(|value| value.trim().parse::<RequirementStatus>().ok())
+        .any(|status| matches!(status, RequirementStatus::Unknown | RequirementStatus::Conflict))
 }

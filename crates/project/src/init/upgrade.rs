@@ -45,6 +45,17 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         false
     };
 
+    // Preserved when `--gap-policy` is absent (the load-then-rewrite
+    // carries the recorded value); updated when passed, mirroring
+    // `--platforms`.
+    let gap_policy_changed = match opts.gap_policy {
+        Some(policy) if cfg.gap_policy != Some(policy) => {
+            cfg.gap_policy = Some(policy);
+            true
+        }
+        _ => false,
+    };
+
     // The recorded binding is reported, never rewritten: a bare
     // record stays bare under local-first resolution.
     let adapter_binding = match opts.adapter {
@@ -53,7 +64,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     };
 
     let emery_version_changed = cfg.emery_version.as_deref() != Some(target.as_str());
-    let needs_write = emery_version_changed || platforms_changed;
+    let needs_write = emery_version_changed || platforms_changed || gap_policy_changed;
     if emery_version_changed {
         cfg.emery_version = Some(target.clone());
     }

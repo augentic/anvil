@@ -3,6 +3,8 @@
 > Status: Implemented. Adds `plan refine`, reviewable refinement manifests, and wave-time target bases. Builds on [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md); [RFC-92](rfc-92-concurrent-execution.md), [RFC-93](rfc-93-distributed-execution.md), and [RFC-94](future/rfc-94-streaming-execution.md) own concurrency, distributed claims, and progressive execution.
 >
 > Patch ownership: this RFC amends implemented RFC-86 D6 / D8 / D12 / D14 / D22 / D25 / D26 and, once RFC-88 lands, RFC-88 D7 / D8 plus its public operator flow. The predecessor RFC texts remain unchanged.
+>
+> Note ([RFC-86a](rfc-86a-gap-deferral.md), implemented after this draft): the per-epoch unknown-waiver surface referenced below (`--waive`, waivers nested on coverage) is deleted — gap dispositions are durable digest-bound `gap.deferred` facts written by `emery plan defer` or minted under an effective `defer` gap policy, and deferred requirements leave build scope rather than being built over. Read this draft's waiver mentions as that disposition surface; the refinement stage must respect the deferral fact union the same way execute does today. Reconcile the wording when this RFC is picked up.
 
 
 

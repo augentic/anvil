@@ -192,6 +192,11 @@ pub struct PhaseReportAnswer {
     /// Optional UI-surface signal (`build` only).
     #[serde(default)]
     pub ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids the phase claims to have
+    /// implemented (`build` only); must never name a deferred
+    /// requirement (RFC-86a D4).
+    #[serde(default)]
+    pub covered: Vec<String>,
     /// Audit-evidence writes performed by the phase.
     #[serde(default)]
     pub written: Vec<PhaseWrite>,
@@ -216,13 +221,14 @@ impl PhaseReportAnswer {
             findings: self.findings,
             outputs: self.outputs,
             ui_surface: self.ui_surface,
+            covered: self.covered,
             written: self.written,
             next_continuation: None,
         }
     }
 }
 
-/// `build` / `merge` answer body.
+/// `merge` answer body.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct ReportAnswer {

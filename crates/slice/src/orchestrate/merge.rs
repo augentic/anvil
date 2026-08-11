@@ -10,10 +10,12 @@ use project::config::{Layout, ProjectConfig};
 use project::journal::{self, EventKind, FactEpochRef, IdentityMap};
 use project::plan::{Plan, Status, collect_events, project_ladders};
 use project::seam::{self, MergePhase, Target, Workspaces};
-use project::snapshot::CodePatch;
+use project::snapshot::{CodePatch, SnapshotId};
 use project::wave::Wave;
 
-use crate::merge::{MergeCommit, PreviewEntry, artifact_classes, identity, slice as slice_merge};
+use crate::merge::{
+    MergeCommit, PreviewEntry, artifact_classes, debt, identity, slice as slice_merge,
+};
 
 mod gate;
 
@@ -158,6 +160,12 @@ async fn gated<T: Target>(
     let identity_maps =
         journal_on_failure(layout, now, slice, identity::finalize(&layout.specs_dir(), slice_dir))?;
 
+    // Debt conservation (RFC-86a D5): project the deferred rows after
+    // identity finalization (final baseline ids) and stamp each staged
+    // debt row with its self-describing note before the fold.
+    let slice_debt = journal_on_failure(layout, now, slice, debt::carried(layout, slice))?;
+    journal_on_failure(layout, now, slice, debt::annotate(slice_dir, &slice_debt))?;
+
     // The deterministic core: validators, spec fold, Decision Record
     // promotion, lifecycle, and archive.
     let outcome = journal_on_failure(
@@ -169,7 +177,7 @@ async fn gated<T: Target>(
 
     // Wave commit fact — merge authority (RFC-86 D9 / D27). Strict
     // append: failures before this fact must not project merged.
-    emit_wave_committed(layout, now, slice, commit, &identity_maps)?;
+    emit_wave_committed(layout, now, slice, commit, &identity_maps, &slice_debt)?;
 
     // The slice is already merged and archived, so postflight failure
     // is terminal, never a rollback; persist any parseable report first
@@ -204,12 +212,16 @@ async fn gated<T: Target>(
     Ok(outcome)
 }
 
-/// Load the newest build record, revalidate its one-member wave, and
-/// project the code patch merge still applies.
+/// Resolve the slice's authorized wave from the fact union, load the
+/// build record that wave names, revalidate the manifest, and project
+/// the code patch merge still applies. Record selection is by wave
+/// fact, never file mtime, so a stale record cannot shadow the
+/// authorized build.
 fn load_wave_commit(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
 ) -> Result<WaveCommit, Error> {
-    let record = BuildRecord::load_latest(slice_dir)?;
+    let opened = opened_wave_digest(layout, slice)?;
+    let record = BuildRecord::load_for_wave(slice_dir, &opened)?;
     let config = ProjectConfig::load(layout.project_dir())?;
     let wave = Wave::load_for_merge(layout, &config.name, slice, &record)?;
     let digest = wave.digest()?.as_str().to_string();
@@ -218,6 +230,32 @@ fn load_wave_commit(
         digest,
         patch: record.to_patch(),
     })
+}
+
+/// The newest `target.wave.opened` fact naming `slice` in the ordered
+/// event union — the wave the build phase authorized (RFC-86 D9).
+fn opened_wave_digest(layout: Layout<'_>, slice: &str) -> Result<SnapshotId, Error> {
+    let events = collect_events(layout)?;
+    let digest = events
+        .iter()
+        .rev()
+        .find_map(|event| match &event.kind {
+            EventKind::TargetWaveOpened {
+                digest, slice_name, ..
+            } if slice_name.as_str() == slice => Some(digest.clone()),
+            _ => None,
+        })
+        .ok_or_else(|| {
+            Error::validation_failed(
+                "target-wave-not-opened",
+                "a merge resolves its build record through the slice's `target.wave.opened` fact",
+                format!(
+                    "no `target.wave.opened` fact names slice `{slice}`; re-run \
+                     `emery plan execute` so the build phase opens a wave before merging"
+                ),
+            )
+        })?;
+    SnapshotId::parse(&digest)
 }
 
 /// Prepare the read-only workspace view of the slice's result snapshot.
@@ -251,15 +289,15 @@ async fn apply_result(
 }
 
 /// Append `target.merge.wave-committed` with identity maps and the
-/// post-merge baseline identity (RFC-91 D4): the `.emery/specs/` tree
-/// digest after the deterministic commit's baseline write, so sibling
-/// manifests recorded against the pre-merge baseline stay fresh.
+/// post-merge baseline identity (RFC-91 D4) and deferred member-set
+/// snapshot (RFC-86a D5).
 ///
 /// Commit-authorization reuses the wave's build-authorization
 /// (serial execution normally uses the covering `plan.execute.started`
 /// epoch bound at wave open).
 fn emit_wave_committed(
     layout: Layout<'_>, now: Timestamp, slice: &str, commit: &WaveCommit, maps: &[IdentityMap],
+    slice_debt: &debt::SliceDebt,
 ) -> Result<(), Error> {
     let auth = &commit.wave.build_authorization;
     let baseline = project::plan::dir_cid(&layout.specs_dir())?;
@@ -277,6 +315,15 @@ fn emit_wave_committed(
                 },
                 identity_maps: maps.to_vec(),
                 baseline: Some(baseline),
+                deferred: slice_debt
+                    .rows
+                    .iter()
+                    .map(|row| journal::DeferredMember {
+                        req: row.req.clone(),
+                        status: row.status,
+                        requirement_digest: row.requirement_digest.clone(),
+                    })
+                    .collect(),
             },
         ),
     )

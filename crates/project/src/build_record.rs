@@ -28,6 +28,12 @@ pub struct BuildRecord {
     pub wave: SnapshotId,
     /// Typed build report validated by the finalize tail.
     pub report: BuildReport,
+    /// Sorted requirement-body digests of the deferred set this build
+    /// consumed (RFC-86a D4) — the input fence for disposition drift:
+    /// a built slice whose live disposition set no longer matches is
+    /// stale, exactly like pin drift. Empty when nothing was deferred.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub deferred: Vec<String>,
 }
 
 /// Result of persisting a content-addressed build record.
@@ -40,15 +46,23 @@ pub struct Written {
 }
 
 impl BuildRecord {
-    /// Assemble a record from the captured patch, open wave, and report.
+    /// Assemble a record from the captured patch, open wave, report,
+    /// and the consumed deferred digest set (sorted and deduplicated
+    /// on entry — identical requirement bodies legally share one
+    /// digest, RFC-86a D2).
     #[must_use]
-    pub fn from_capture(patch: CodePatch, wave: SnapshotId, report: BuildReport) -> Self {
+    pub fn from_capture(
+        patch: CodePatch, wave: SnapshotId, report: BuildReport, mut deferred: Vec<String>,
+    ) -> Self {
+        deferred.sort_unstable();
+        deferred.dedup();
         Self {
             base: patch.base,
             result: patch.result,
             touched: patch.touched,
             wave,
             report,
+            deferred,
         }
     }
 
@@ -127,8 +141,53 @@ impl BuildRecord {
         Ok(Written { digest, path })
     }
 
+    /// Load the build record authorized by `wave` under
+    /// `slice_dir/builds/`.
+    ///
+    /// Selection is by the recorded wave digest, never file mtime, so
+    /// a stale record (earlier epoch, restored tree with scrambled
+    /// timestamps) cannot shadow the authorized build.
+    ///
+    /// # Errors
+    ///
+    /// `slice-build-record-missing` when no record names `wave`;
+    /// `slice-build-record-ambiguous` when more than one does; parse /
+    /// IO failures on present records.
+    pub fn load_for_wave(slice_dir: &Path, wave: &SnapshotId) -> Result<Self, Error> {
+        Self::find_for_wave(slice_dir, wave)?.ok_or_else(|| missing_for_wave(slice_dir, wave))
+    }
+
+    /// The unique build record naming `wave`, or `None` when no record
+    /// does — the probe form of [`Self::load_for_wave`] for callers
+    /// (disposition-drift staleness) that treat a missing record as a
+    /// state, not a refusal.
+    ///
+    /// # Errors
+    ///
+    /// `slice-build-record-ambiguous` when more than one record names
+    /// `wave`; parse / IO failures on present records.
+    pub fn find_for_wave(slice_dir: &Path, wave: &SnapshotId) -> Result<Option<Self>, Error> {
+        let mut matches: Vec<Self> =
+            Self::load_all(slice_dir)?.into_iter().filter(|record| record.wave == *wave).collect();
+        match matches.len() {
+            0 => Ok(None),
+            1 => Ok(Some(matches.remove(0))),
+            found => Err(Error::Diag {
+                code: "slice-build-record-ambiguous",
+                detail: format!(
+                    "slice `{}` has {found} build records naming wave `{wave}`; remove the \
+                     stale `builds/<digest>.yaml` duplicates before merging",
+                    slice_name(slice_dir)
+                ),
+            }),
+        }
+    }
+
     /// Load the newest build record under `slice_dir/builds/` (by
     /// modification time; ties break on path).
+    ///
+    /// Inspection helper for labs and tests; merge authority resolves
+    /// the record by its wave fact via [`Self::load_for_wave`].
     ///
     /// # Errors
     ///
@@ -230,14 +289,30 @@ fn load_path(path: &Path) -> Result<BuildRecord, Error> {
     Ok(serde_saphyr::from_str(&text)?)
 }
 
+fn slice_name(slice_dir: &Path) -> &str {
+    slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown")
+}
+
 fn missing(slice_dir: &Path) -> Error {
-    let name = slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown");
     Error::validation_failed(
         "slice-build-record-missing",
         "a built slice carries a fact-substrate build record",
         format!(
-            "slice `{name}` has no `builds/<digest>.yaml`; re-run `emery plan execute` so the \
-             build phase records it before merging"
+            "slice `{}` has no `builds/<digest>.yaml`; re-run `emery plan execute` so the \
+             build phase records it before merging",
+            slice_name(slice_dir)
+        ),
+    )
+}
+
+fn missing_for_wave(slice_dir: &Path, wave: &SnapshotId) -> Error {
+    Error::validation_failed(
+        "slice-build-record-missing",
+        "the merge phase loads the build record its authorized wave names",
+        format!(
+            "slice `{}` has no `builds/<digest>.yaml` recording wave `{wave}`; re-run \
+             `emery plan execute` so the build phase records it before merging",
+            slice_name(slice_dir)
         ),
     )
 }

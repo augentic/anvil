@@ -66,6 +66,14 @@ The architecture makes eight shifts to enable platform scale:
 8. **Learning is offline and versioned.** Retained outcomes become inert proposals and promoted future versions. In-flight work never rewrites its own instructions.
 
 
+1. **State becomes facts.** A change is a self-contained, version-control-neutral fact tree. Workflow status is projected from those facts, so a hosted service never becomes lifecycle authority.
+2. **Trees become values.** Every operation starts from an immutable snapshot in a private workspace and captures another snapshot. A code patch is the relation between the two; no shared working directory crosses an operation.
+3. **Location becomes disposable.** Plan authoring can begin in an empty directory, discover the participating repositories, and record their exact revisions. Execution creates private workspaces on demand. Archive leaves only merged baselines and forge history.
+4. **Build repair becomes engine-owned.** Generation, model-assisted verification, repair, and review become separate target WIT operations in a bounded engine loop rather than retries hidden in adapter prose. [RFC-95](rfc-95-native-verification.md) follows with deterministic native verification on the trusted host.
+5. **Model work becomes explicit.** Plan authoring surveys the pinned source set and recursively partitions it until every terminal scope is a buildable slice. During the singular slice build, `target.decompose` proposes one complete task graph and the engine validates it before dispatch.
+6. **Refinement becomes a fenced stage.** [RFC-91](rfc-91-refinement-stage.md) adds serial plan-wide refinement, covers complete reviewable refinement bundles, and moves target-base selection to wave open. [RFC-92](rfc-92-concurrent-execution.md) turns the serial loops into `(slice, phase, input-digest)` work items and concurrent frontiers.
+7. **Progress is a policy, not another workflow.** [RFC-94](future/rfc-94-streaming-execution.md) publishes closed branches, progressively refines them, and optionally builds non-authoritative candidate frontiers. Manual review remains available; unattended build uses exact policy admission; accepted-CID mutation remains separate.
+8. **Learning is offline and versioned.** [RFC-97](rfc-97-outcome-learning.md) turns retained outcomes into inert proposals and promoted future versions. [RFC-98](rfc-98-policy-gated-autonomy.md) permits unattended merge only under a pinned policy, protected evidence, native verification, exact commit admission, and bounded recovery.
 
 ### Scaling invariant
 
@@ -93,19 +101,19 @@ Six records answer different questions to decouple state from lifecycle:
 
 ## The series
 
-These tables list each RFC's hard dependencies and deliverables. Step numbers indicate a logical reading/product order, not a strict chronological queue.
+The tables list each RFC's hard dependencies and what it delivers. Step numbers are a **product-ownership / reading order** (fact substrate → workspace stem → product path, then scale), not a claim about landing chronology and not a single serial queue. [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md) are **implemented**: the fact and workspace stem plus the engine-owned build phase machine. The remaining workspace stand-in is merge-time `apply` (deleted by [RFC-88](rfc-88-detached-changes.md)). RFC-88's recursive authoring contract remains the product branch; RFC-91 adds the serial review boundary and wave-time base, RFC-92 owns concurrent phase scheduling, RFC-94 pipelines closed branches through that scheduler, and RFC-93 optionally distributes it — see [Working in parallel](#working-in-parallel). Every RFC owns an independently testable delivery; later steps extend rather than predeclare its wire contract.
+
+The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / D17 as amended by [RFC-86a](rfc-86a-gap-deferral.md): starting `emery plan execute` appends `plan.execute.started` with typed coverage carrying the effective gap policy; there is no separate `approve` verb, no projected `approved` rung, and no silent skip of gaps — open rows block under `strict`, and every deferral is a durable, journaled `gap.deferred` fact. RFC-91 preserves that event, replaces spec-only coverage with complete refinement-manifest digests, and removes `refine-under-epoch`; `plan refine` creates no code-work grant. RFC-94 adds progressive run and member admission for unattended candidate work. RFC-98 alone extends policy admission to accepted-CID mutation.
 
 ### Product critical path — migrate and change a platform
 
 
-| Step | RFC                                  | Title              | Delivers                                                                                      | Depends on |
-| ---- | ------------------------------------ | ------------------ | --------------------------------------------------------------------------------------------- | ---------- |
-| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts       | **Implemented:** Fact substrate, per-writer logs, pinned inputs.                              | —          |
-| 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces | **Implemented:** Immutable snapshots, private workspaces.                                     | 86         |
-| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes   | Complete single-node loop, detached home, recursive decomposition, buildable leaf projection. | 87         |
-| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets   | Project seal, publication identity across repositories with ordered landing.                  | 88         |
-
-
+| Step | RFC                                  | Title              | Delivers                                                                                                                                                                                                                                                                                       | Depends on                                      |
+| ---- | ------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts       | The substrate: the change as a version-control-neutral fact tree, projected status, per-writer event logs, explicit execution-authorization epochs, pinned per-leaf inputs, immutable one-member target-wave commit, merge-finalized requirement identity, desktop as the degenerate deployment | —                                               |
+| 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                                                             | implemented 86 pin/epoch/wave facts; interim `apply` until 88 |
+| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes   | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, capability-profile-bound conflict-domain decomposition, refinement feedback through focused child leads, a buildable leaf projection, and operation-local workspaces | implemented 86; implemented 87                  |
+| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets   | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                                                              | 88 (member derivation)                          |
 
 
 ### Scale track — staged and concurrent execution
@@ -134,6 +142,17 @@ These tables list each RFC's hard dependencies and deliverables. Step numbers in
 
 
 
+- **Implemented and in-flight RFCs stay frozen.** RFC-86 and RFC-90 are implemented substrates, and RFC-88 is the current implementation contract. RFC-91, RFC-94, RFC-97, and RFC-98 carry their changes as explicit forward patches; they do not revise those predecessor texts.
+- **RFC-86 is product-ownership step 1 and is implemented** — the fact substrate every later step consumes (projected status, per-writer logs, `plan.execute.started`, recorded pins, one-member waves, `builds/<digest>.yaml`). Product acceptance closeout (S23) is complete. It deleted the mechanics later steps would otherwise have synchronized (stored status, the single journal file, synthesis-time identity, unrecorded execute starts) and delivered the shift-left refine / gap-gate flow.
+- **RFC-87 is the shared workspace stem and has already landed.** Phase B retired build-time ambient freeze and `build/patch.yaml` against the `SnapshotId` / `prepare` / `capture` / `discard` contract. The remaining interim is merge-time `apply` (RFC-88 deletes it). Do not re-litigate whether workspaces “depend on finished 86.”
+- **After the stem, the series is a braid, not two independent pipelines:** RFC-90's engine-owned build verification and repair orchestration is implemented; RFC-88 settles recursive authoring, while RFC-91 follows the 86/87/90 substrate with a serial specs-first stage, complete refinement coverage, and wave-time target bases. RFC-92 joins 88, 90, and 91 in two deliveries: Phase A replaces serial model-work cursors with a bounded scheduler and pool; Phase B adds target task graphs, composition, convergence, and waves. RFC-93 distributes the completed local model. RFC-89 publication and RFC-93 multi-node execution remain orthogonal.
+- **RFC-91 is the staged-refinement prerequisite.** It owns the complete-plan review seam and exact manifest contract. It adds no approval state, so an automation may invoke refine and execute back to back over the same artifacts.
+- **RFC-92 Phase A is an early reusable substrate.** It owns work-item identity, cancellation, the bounded pool, and concurrent survey/extract/refine before target decomposition or multi-member waves land.
+- **RFC-94 is phased.** Phase A combines RFC-88 branch revisions, RFC-91 manifests, and RFC-92A to refine while authoring continues without code authority. Phase B waits for completed RFC-92 and adds policy-admitted candidate build, candidate dependency frontiers, and deferred commit. Neither phase waits on RFC-93.
+- **RFC-95 is the native-verification follow-on.** It depends on 87, 90, and 92, may land beside 93/94, and supplies the host-attested assurance RFC-98 requires.
+- **RFC-96 is the hosted/fleet readiness spine.** It consumes RFC-93 and worker capabilities including RFC-95; its own phase table remains authoritative.
+- **RFC-97 can start from implemented RFC-90.** Outcome projection and diagnostic recurrence need no concurrent or hosted runtime; RFC-92, RFC-94, and RFC-95 enrich the same record as they land.
+- **RFC-98 is last on the autonomy path.** It requires progressive candidates, host/protected verification, and promoted policy generations. It extends `plan run` through merge but leaves forge publication to RFC-89 and the operator.
 
 ## Working in parallel
 
@@ -154,20 +173,30 @@ With the foundational substrate (86/87/90) landed, independent tracks can procee
 
 ## Orchestration policies
 
-Emery uses distinct policies, not separate lifecycles, to govern how work progresses. 
+**Within RFC-86** (implemented): Phase A (per-writer logs, projection kernel, claim/retraction facts) in `crates/project`; Phase B (slice-scoped requirement ids, `MODIFIED` base digests, merge-time finalization, recorded pins, `BuildRecord`, one-member waves) in `crates/slice`; Phase C (`plan.execute.started`, gap gate, multi-writer) on top of A. The shared contract is the merge / wave fact that records the identity map. Remaining series stand-ins live outside this stem: flat `.emery/` change home (RFC-88 moves it) and merge-time `apply` (RFC-88 deletes it).
 
 **Migrate** and **change** differ only in authoring scope (discovering repositories via fingerprint vs explicit project membership). Both feed the same policy paths:
 
 ### 1. Reviewed policy
 
 ```text
-emery plan author     → initialize detached home, discover, pin, project buildable leaves
-operator review       → inspect and amend topology
-emery plan refine     → serially extract and synthesize every leaf; stop before product code
-operator review       → read specs and gaps; correct inputs
-emery plan execute    → cover manifests, execute leaves, commit waves, seal CIDs
-operator publishes    → push sealed branches, open PRs
-emery plan archive    → verify publication set, archive change
+emery plan author     →  initialize the detached home when needed; discover and pin
+                         targets/sources; recursively decompose surveyed leads;
+                         project buildable leaves into plan.yaml
+operator may review   →  inspect and amend topology
+emery plan refine     →  serially extract and synthesize every leaf in topological order;
+                         persist complete refinement manifests; stop before product code
+operator may review   →  read specs and gaps; correct inputs and re-refine as needed
+emery plan execute    →  cover the exact refinement manifests;
+                         enforce gap/status gates before build (open gaps block under
+                         strict; durable deferrals via plan defer / --gap-policy — RFC-86a);
+                         prepare private workspaces on demand (RFC-87); execute leaves;
+                         commit target waves (RFC-88);
+                         converge domains and extend waves across ready leaves (RFC-92);
+                         seal each drained target's final CID (RFC-89)
+operator publishes    →  push sealed branches; open and merge PRs
+emery plan archive    →  verify the publication set (RFC-89); archive
+rm -rf <dir>
 ```
 
 

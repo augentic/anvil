@@ -3,7 +3,7 @@
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx};
-use project::plan::{GapsBody, Plan, plan_gaps_body};
+use project::plan::{GapsBody, Plan, collect_events, plan_gaps_body};
 use serde::{Deserialize, Serialize};
 
 use super::require_file;
@@ -35,7 +35,8 @@ impl<P: Anchor> Operation<P> for Gaps {
         let cx = Ctx::load(context.provider)?;
         let plan_path = require_file(&cx)?;
         let plan = Plan::load(&plan_path)?;
-        let body = plan_gaps_body(&plan, cx.layout())?;
+        let events = collect_events(cx.layout())?;
+        let body = plan_gaps_body(&plan, cx.layout(), &events)?;
         Ok(body)
     }
 }

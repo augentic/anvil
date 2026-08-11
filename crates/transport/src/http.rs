@@ -119,9 +119,11 @@ where
         .route("/plan/{name}/amend", post!(::change::plan::handlers::Amend))
         .route("/plan/{name}/remove", post!(::change::plan::handlers::Remove))
         .route("/plan/{name}/drop", post!(::change::plan::handlers::Drop))
+        .route("/plan/defer", post!(::change::plan::handlers::Defer))
         .route("/plan/{name}/author", post!(::change::plan::handlers::Author))
         .route("/plan/refine", post!(::change::plan::handlers::Refine))
         .route("/plan/execute", post!(::change::plan::handlers::Execute))
         .route("/plan/archive", post!(::change::plan::handlers::Archive))
         .route("/journal", get!(project::journal::handlers::Show))
+        .route("/debt", get!(::slice::handlers::Debt))
 }

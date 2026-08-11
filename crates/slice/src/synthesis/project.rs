@@ -13,9 +13,6 @@ use crate::model::{ModelClaim, ModelRequirement, SliceModel};
 use crate::synthesis::authority::{ClaimRef, resolve};
 use crate::synthesis::baseline::{BaselineIndex, DomainKind};
 
-/// Domain used when a requirement has no explicit owner.
-const DEFAULT_DOMAIN: &str = "default";
-
 /// Header fields stamped onto persisted `model.yaml`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProjectionHeader {
@@ -51,8 +48,11 @@ pub fn project(
     let mut allocator = IdAllocator::new();
 
     for requirement in &mut model.requirements {
-        let domain = requirement_domain(requirement);
+        let domain = requirement.domain_or_default().to_string();
         let assigned = assign_requirement_id(requirement, &domain, baseline_index, &mut allocator)?;
+        // Stamp the resolved domain so persisted `model.yaml` is
+        // unambiguous for later readers (wave-commit identity).
+        requirement.domain = Some(domain);
         requirement.id = Some(assigned.id);
         requirement.baseline_digest = assigned.baseline_digest;
         if requirement.baseline_digest.is_none() {
@@ -87,10 +87,6 @@ pub fn project(
     check_id_grammar(&model)?;
 
     Ok(model)
-}
-
-fn requirement_domain(requirement: &ModelRequirement) -> String {
-    requirement.domain.clone().unwrap_or_else(|| DEFAULT_DOMAIN.to_string())
 }
 
 /// Slice-scoped id allocation — declaration order, ignoring baseline numbers.

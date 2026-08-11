@@ -20,6 +20,11 @@ use crate::provenance::{
 use crate::synthesis::authority::{Agreement, ClaimRef, resolve};
 use crate::synthesis::evidence::evidence_yaml_paths;
 
+/// Domain used when a requirement has no explicit owner. Shared by
+/// projection, spec rendering, and wave-commit identity so a
+/// domain-omitted requirement resolves the same baseline everywhere.
+pub const DEFAULT_DOMAIN: &str = "default";
+
 /// In-memory view of `model.yaml`, holding the header, the requirement
 /// set with inline provenance, and the task list.
 ///
@@ -104,6 +109,31 @@ pub struct ModelRequirement {
     /// Agent-authored free-form notes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
+}
+
+impl ModelRequirement {
+    /// Owning domain, falling back to [`DEFAULT_DOMAIN`] when omitted.
+    #[must_use]
+    pub fn domain_or_default(&self) -> &str {
+        self.domain.as_deref().unwrap_or(DEFAULT_DOMAIN)
+    }
+
+    /// Canonical `sha256:<hex>` digest of this requirement's body
+    /// content — the deferral match key (RFC-86a D2). Delegates to
+    /// [`project::slice::RequirementBody`]: only the agent-authored
+    /// body (title, statement, scenarios, notes) participates, so a
+    /// re-refine that renumbers `REQ-NNN` ids keeps the digest while
+    /// any body edit changes it.
+    #[must_use]
+    pub fn body_digest(&self) -> String {
+        project::slice::RequirementBody {
+            title: &self.title,
+            statement: &self.statement,
+            scenarios: &self.scenarios,
+            notes: self.notes.as_deref(),
+        }
+        .digest()
+    }
 }
 
 /// One inline claim under [`ModelRequirement::claims`].

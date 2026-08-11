@@ -7,7 +7,9 @@ use std::path::Path;
 
 use error::{Error, Result};
 use project::adapter::BuildInputDeclaration;
-use project::seam::wire::{BUILD_VERSION, BuildArtifacts, BuildInputs, BuildRequest};
+use project::seam::wire::{
+    BUILD_VERSION, BuildArtifacts, BuildInputs, BuildRequest, DeferredRequirement,
+};
 
 pub const PROPOSAL_ARTIFACT: &str = "proposal.md";
 pub const DESIGN_ARTIFACT: &str = "design.md";
@@ -18,9 +20,11 @@ pub const TASKS_ARTIFACT: &str = "tasks.md";
 ///
 /// `manifest_inputs` is the bound target's declared build-inputs list;
 /// `slice_tree` is the tree all artifact paths resolve against;
-/// `project_dir` is the working tree the target builds into. The
-/// `specs[]` are the per-domain `spec.md` files found under the slice
-/// tree (sorted); `additional[]` resolves in declaration order.
+/// `project_dir` is the working tree the target builds into.
+///
+/// The `specs[]` are the per-domain `spec.md` files found under the
+/// slice tree (sorted); `additional[]` resolves in declaration order;
+/// `deferred` is the caller-projected live deferred set (RFC-86a D4).
 ///
 /// # Errors
 ///
@@ -31,6 +35,7 @@ pub const TASKS_ARTIFACT: &str = "tasks.md";
 ///   exists but cannot be read.
 pub fn build_request(
     slice: &str, manifest_inputs: &[BuildInputDeclaration], slice_tree: &Path, project_dir: &Path,
+    deferred: Vec<DeferredRequirement>,
 ) -> Result<BuildRequest> {
     let specs = spec_paths(slice_tree)?;
     let additional = resolve_additional(manifest_inputs, slice_tree)?;
@@ -48,6 +53,7 @@ pub fn build_request(
                 additional,
             },
         },
+        deferred,
     })
 }
 

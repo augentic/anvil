@@ -177,6 +177,9 @@ pub fn widen_report(id: &str, slice: String, report: aseam::Report) -> BuildRepo
         report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
+        // The coverage claim rides the build phase report; the
+        // merge-op report carries none.
+        Vec::new(),
     )
 }
 
@@ -229,6 +232,7 @@ pub fn phase_report(report: aseam::PhaseReport) -> PhaseReport {
         ui_surface: report.ui_surface.map(|surface| UiSurface {
             screens: surface.screens,
         }),
+        covered: report.covered,
         written: report
             .written
             .into_iter()

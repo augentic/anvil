@@ -41,6 +41,7 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 |--------|---------|-----------|
 | [emery plan](plan.md) | Author, refine, execute, curate, and archive change plans (`plan refine` drains refinement; the build → merge loop runs inside `plan execute`) | The workflow spine |
 | [emery slice](slice.md) | Read-only per-slice projections: list, validate, provenance, model show | Slice inspection |
+| [emery debt](debt.md) | Read-only baseline debt projection: the carried `unknown` / `conflict` backlog with reason, origin, originating change, and age | Boundary review |
 | [emery adapter / source / target resolve](adapter.md) | Seed the project component cache and resolve adapters by axis | Adapter infrastructure |
 | [emery init](init.md) | Project scaffold | One-time setup |
 | [Vectis in-guest tools](vectis.md) | In-guest `vectis` behaviours (`validate`, `scaffold`, `sync`) inside the adapter guest | Adapter-owned validation, render-only scaffolding, and iOS scaffold repair |

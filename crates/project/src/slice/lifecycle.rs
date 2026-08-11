@@ -55,12 +55,16 @@ impl LifecycleStatus {
         if metadata.completed_at.is_some() || BuildRecord::present(slice_dir) {
             return Self::Built;
         }
-        if metadata.defined_at.is_some()
-            || slice_dir.join("model.yaml").is_file()
-            || slice_dir.join("spec.md").is_file()
-        {
+        if metadata.defined_at.is_some() || has_spec_artifacts(slice_dir) {
             return Self::Refined;
         }
         Self::Refining
     }
+}
+
+/// The canonical refine artifacts exist: `model.yaml` or `spec.md`
+/// under the slice directory.
+#[must_use]
+pub fn has_spec_artifacts(slice_dir: &Path) -> bool {
+    slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file()
 }

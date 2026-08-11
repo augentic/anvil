@@ -1,7 +1,7 @@
 //! On-disk `<slice_dir>/metadata.yaml` representation.
 //!
-//! [`SliceMetadata`] is the document; [`Outcome`] is the latest phase
-//! return surface; [`TouchedSpec`] lists the specs the slice mutates.
+//! [`SliceMetadata`] is the document; [`Outcome`] is the merge-time
+//! audit stamp; [`TouchedSpec`] lists the specs the slice mutates.
 
 use std::path::{Path, PathBuf};
 
@@ -65,16 +65,21 @@ pub struct SliceMetadata {
     /// Specs affected by this slice.
     #[serde(default)]
     pub touched_specs: Vec<TouchedSpec>,
-    /// Latest phase outcome. Written atomically by
-    /// the merge commit tail (stamps `Success` before the archive move).
-    /// History lives in `.emery/events/<writer>.jsonl` (workflow §Observability).
+    /// Audit stamp written by the merge commit tail (stamps `Success`
+    /// before the archive move). Nothing reads it back — progress is
+    /// projected from journal facts and slice artifacts (RFC-86 D2 /
+    /// D11). History lives in `.emery/events/<writer>.jsonl`
+    /// (workflow §Observability).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<Outcome>,
 }
 
 /// Result of a target-adapter operation (guidance | build | merge) as
-/// recorded in `metadata.yaml`. Read by the execute loop on phase
-/// return to decide the next plan transition.
+/// recorded in `metadata.yaml`.
+///
+/// An audit stamp for operators and tooling reading the archived slice
+/// — the execute loop never reads it; plan transitions project from
+/// journal facts and artifacts.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct Outcome {
@@ -200,14 +205,17 @@ impl SliceMetadata {
         Ok(meta)
     }
 
-    /// [`Self::load`], with the two absence signals (`slice-not-found`,
-    /// absent `metadata.yaml`) collapsed to `Ok(None)`. Every other
-    /// failure propagates.
+    /// [`Self::load`] with absence folded to `None`: an absent slice
+    /// directory (`slice-not-found`) or a directory without
+    /// `metadata.yaml` ([`Error::ArtifactNotFound`]) is the
+    /// fresh-slice signal, not an error.
     ///
     /// # Errors
     ///
-    /// [`Error::YamlDe`] and [`Error::Io`] as for [`Self::load`].
-    pub fn load_opt(slice_dir: &Path) -> Result<Option<Self>, Error> {
+    /// Propagates every other [`Self::load`] failure — a corrupt
+    /// `metadata.yaml` ([`Error::YamlDe`]) or a filesystem read error
+    /// ([`Error::Io`]).
+    pub fn load_optional(slice_dir: &Path) -> Result<Option<Self>, Error> {
         match Self::load(slice_dir) {
             Ok(meta) => Ok(Some(meta)),
             Err(
@@ -219,6 +227,15 @@ impl SliceMetadata {
             ) => Ok(None),
             Err(err) => Err(err),
         }
+    }
+
+    /// Alias for [`Self::load_optional`].
+    ///
+    /// # Errors
+    ///
+    /// As for [`Self::load_optional`].
+    pub fn load_opt(slice_dir: &Path) -> Result<Option<Self>, Error> {
+        Self::load_optional(slice_dir)
     }
 
     /// Atomically write `metadata.yaml` to a slice directory,

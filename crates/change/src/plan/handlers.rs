@@ -4,6 +4,7 @@ mod add;
 mod amend;
 mod archive;
 mod author;
+mod defer;
 mod drop;
 mod entry;
 mod execute;
@@ -24,6 +25,7 @@ pub use self::add::{Add, AddInput};
 pub use self::amend::{Amend, AmendInput};
 pub use self::archive::{Archive, ArchiveBody, ArchiveInput, ArchivedPlan};
 pub use self::author::{Author, AuthorBody, AuthorInput, AuthorSurvey};
+pub use self::defer::{Defer, DeferAction, DeferBody, DeferInput, DeferSelector, DeferredGap};
 pub use self::drop::{Drop, DropBody, DropInput};
 pub use self::entry::EntryBody;
 pub use self::execute::{Execute, ExecuteBody, ExecuteInput, ExecutePhase};
@@ -32,7 +34,6 @@ pub use self::refine::{Refine, RefineBody, RefineInput};
 pub use self::remove::{Remove, RemoveInput};
 pub use self::status::{Status, StatusInput};
 pub use self::validate::{Validate, ValidateInput};
-pub use crate::orchestrate::WaiveSelector;
 
 // ---- Shared helpers used across submodules ----
 

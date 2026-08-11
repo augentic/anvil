@@ -5,7 +5,7 @@
 
 use serde::Serialize;
 
-use super::gaps::GapsBody;
+use super::gaps::{DebtCounts, GapsBody};
 
 mod project;
 
@@ -23,11 +23,13 @@ pub enum NextActionKind {
     Build,
     /// The execute loop's merge phase awaits [`StatusBody::slice`].
     Merge,
-    /// In-scope slices are refined but the clean gap policy fails —
-    /// close conflicts / unknowns, or start execute with per-req
-    /// `--waive` for unknowns (RFC-86 D22). Not an execute-loop
-    /// phase; the loop maps this to build and the gap gate enforces
-    /// waivers / refuses unresolved findings.
+    /// In-scope slices are refined but **open** findings remain —
+    /// close conflicts / unknowns, or disposition them durably with
+    /// `plan defer` (RFC-86 D22 / RFC-86a D3/D7). Computed over open
+    /// findings only: a fully-dispositioned plan projects the build
+    /// phase, never review-gaps. Not an execute-loop phase; the loop
+    /// maps this to build and the gap gate joins dispositions /
+    /// refuses open findings.
     ReviewGaps,
     /// Halt the loop; [`StatusBody::stop`] carries the reason.
     Stop,
@@ -184,19 +186,26 @@ pub struct StatusBody {
     pub last_completed: Option<LoopStep>,
     /// Next valid resume point as a literal command — `emery plan
     /// execute` for dispatches and retryable stops (the loop owns
-    /// every phase), `/emery:execute` after author or when Ready
-    /// (D26), `emery plan execute --waive…` when skipping Ready with
-    /// open unknowns, `/emery:finalize` on drained. `None` when no
-    /// single command makes progress (`stuck`, `slice-dropped`).
+    /// every phase), `/emery:execute` after author or when no open
+    /// findings block (D26), `emery plan defer <slice>/<req>…` when
+    /// open findings block Ready, `/emery:finalize` on drained.
+    /// `None` when no single command makes progress (`stuck`,
+    /// `slice-dropped`).
     pub resume: Option<String>,
-    /// Ready milestone (RFC-86 D22): every in-scope slice is refined
-    /// and the clean gap policy passes (no conflicts; zero open
-    /// unknowns). Waivers never contribute. Never an `approved` rung.
+    /// Ready milestone (RFC-86 D22 / RFC-86a D7): every in-scope
+    /// slice is refined and the clean gap policy passes — zero open
+    /// **and** zero deferred findings. Deferrals never contribute;
+    /// debt-carrying plans reach build via Authorized only. Never an
+    /// `approved` rung.
     pub ready: bool,
     /// Authorized milestone (RFC-86 D22): a covering
     /// `plan.execute.started` epoch exists. Distinct from Ready even
-    /// when the waive list is empty. Never named `approved`.
+    /// when the plan is clean. Never named `approved`.
     pub authorized: bool,
+    /// Deferred-gap debt counts with conflicts broken out (RFC-86a
+    /// D7). Debt never parks the loop; it surfaces here and at the
+    /// change boundaries.
+    pub debt: DebtCounts,
     /// Stop classification, populated when [`Self::action`] is
     /// [`NextActionKind::Stop`].
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -225,6 +234,9 @@ impl crate::handler::Render for StatusBody {
             self.counts.done, self.counts.in_progress, self.counts.pending
         )?;
         writeln!(w, "ready: {}  authorized: {}", self.ready, self.authorized)?;
+        if !self.debt.is_empty() {
+            writeln!(w, "debt: {}", self.debt)?;
+        }
         match (self.action, &self.stop) {
             (NextActionKind::Drained, _) => writeln!(w, "{}", drained_line(&self.plan))?,
             (NextActionKind::Stop, Some(stop)) => {

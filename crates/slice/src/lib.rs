@@ -5,6 +5,7 @@
 pub(crate) mod actions;
 pub mod answers;
 pub mod build;
+pub mod debt;
 pub(crate) mod design_system;
 pub mod handlers;
 pub(crate) mod judgment;
@@ -37,3 +38,4 @@ pub(crate) use synthesis::render::provenance_lines;
 pub(crate) use synthesis::wire::{
     DependencyContext, DomainDetail, SourceInput, SynthesisInputs, SynthesisResponse, inputs,
 };
+pub use validate::dispositions_drifted;

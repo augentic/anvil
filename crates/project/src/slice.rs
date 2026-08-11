@@ -1,17 +1,18 @@
-//! The slice data model shared across the stack.
-//!
-//! Carries `metadata.yaml`, projected lifecycle labels, and the
-//! phase-outcome record; the slice loop itself lives in the `slice` crate.
+//! The slice data model shared across the stack: `metadata.yaml`,
+//! projected lifecycle labels, the phase-outcome record, and the
+//! requirement-body digest; the slice loop lives in the `slice` crate.
 
 pub mod lifecycle;
 pub mod metadata;
 pub mod outcome;
+pub mod requirement;
 
-pub use lifecycle::LifecycleStatus;
+pub use lifecycle::{LifecycleStatus, has_spec_artifacts};
 pub use metadata::{
     Outcome, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec, slice_not_found,
 };
 pub use outcome::Kind as OutcomeKind;
+pub use requirement::RequirementBody;
 
 /// Refinement-manifest filename inside a slice directory (RFC-91 D4).
 /// The manifest DTO and freshness kernel live in [`crate::refinement`];

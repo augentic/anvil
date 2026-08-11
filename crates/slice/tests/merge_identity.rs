@@ -95,7 +95,9 @@ fn stage_wave_and_record(session: &Session, slice: &str, base: SnapshotId) -> Sn
             findings: vec![],
             outputs: vec![],
             ui_surface: None,
+            covered: vec![],
         },
+        vec![],
     );
     record.write(&layout.slice_dir(slice)).expect("write build record");
     opened.digest
@@ -214,6 +216,79 @@ async fn wave_commit_assigns() {
     );
 }
 
+/// Merge resolves its build record through the newest
+/// `target.wave.opened` fact — a stale record with a newer mtime never
+/// shadows the authorized build.
+#[tokio::test]
+async fn stale_record_with_newer_mtime_is_not_merged() {
+    let session = Session::scripted("mock", Vec::new());
+    let layout = project::config::Layout::new(session.root());
+    let snapshot = session.provider().freeze().await.expect("freeze");
+
+    // A stale wave from an earlier epoch, opened first.
+    let stale_wave = Wave::one_member(
+        "demo",
+        snapshot.clone(),
+        SliceName::from("login-flow"),
+        SnapshotId::from_digest(&"c".repeat(64)),
+        vec![],
+        EpochRef {
+            writer: "local".into(),
+            sequence: 9,
+        },
+    );
+    let stale_opened = stale_wave.open(layout, ts()).expect("open stale wave");
+
+    // The authorized wave + record (the newest `target.wave.opened`).
+    let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot.clone());
+    stage_built_slice(&session, wave_digest.as_str());
+
+    // Write the stale record last so it carries the newest mtime.
+    let stale_record = project::build_record::BuildRecord::from_capture(
+        project::snapshot::CodePatch {
+            base: snapshot.clone(),
+            result: snapshot,
+            touched: vec![],
+        },
+        stale_opened.digest,
+        project::seam::wire::BuildReport {
+            version: 1,
+            slice: "login-flow".into(),
+            target: "mock@0.0.0".into(),
+            status: project::seam::wire::BuildStatus::Success,
+            findings: vec![],
+            outputs: vec![],
+            ui_surface: None,
+            covered: vec![],
+        },
+        vec![],
+    );
+    let written = stale_record.write(&layout.slice_dir("login-flow")).expect("write stale record");
+    let future = std::time::SystemTime::now() + std::time::Duration::from_hours(1);
+    fs::File::options()
+        .write(true)
+        .open(&written.path)
+        .expect("open stale record")
+        .set_modified(future)
+        .expect("set stale mtime");
+
+    merge(&session, "login-flow").await.expect("merge succeeds");
+
+    let events = read_union(layout).expect("union");
+    let committed = events
+        .iter()
+        .find_map(|event| match &event.kind {
+            EventKind::TargetMergeWaveCommitted { digest, .. } => Some(digest.clone()),
+            _ => None,
+        })
+        .expect("target.merge.wave-committed");
+    assert_eq!(
+        committed,
+        wave_digest.as_str(),
+        "merge committed the authorized wave, not the mtime-newest record"
+    );
+}
+
 /// Acceptance #3 — two slices refined against the same baseline merge
 /// without requirement-id collision (each keeps slice-local `REQ-001`
 /// until wave commit assigns distinct baseline numbers).
@@ -311,6 +386,229 @@ tasks:
     assert!(baselines.contains(&"REQ-009"), "{baselines:?}");
     assert!(baselines.contains(&"REQ-010"), "{baselines:?}");
     assert_eq!(baselines.len(), 2, "no shared baseline id: {baselines:?}");
+}
+
+/// Stage a slice whose MODIFIED row finalizes to a baseline id equal to
+/// a *later* slice-local id: local `REQ-001` maps to baseline `REQ-002`
+/// while local `REQ-002` (ADDED) maps to `REQ-003`.
+fn stage_overlapping_id_slice(session: &Session) {
+    let root = session.root();
+    let baseline = "### Requirement: User can log in\n\n\
+         ID: REQ-001\n\n\
+         Authentication via email and password only.\n\n\
+         #### Scenario: Valid credentials\n\n\
+         - GIVEN a registered user\n\
+         - WHEN they submit correct credentials\n\
+         - THEN they receive a session token\n\n\
+         ### Requirement: User can log out\n\n\
+         ID: REQ-002\n\n\
+         Session invalidation on logout.\n\n\
+         #### Scenario: Active session\n\n\
+         - GIVEN an authenticated user\n\
+         - WHEN they log out\n\
+         - THEN the session is invalidated\n";
+    fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline specs");
+    fs::write(root.join(".emery/specs/auth/spec.md"), baseline).expect("baseline");
+
+    let slice_dir = root.join(".emery/slices/login-flow");
+    let specs = slice_dir.join("specs/auth");
+    fs::create_dir_all(&specs).expect("slice specs");
+    // Local REQ-001 modifies baseline REQ-002; local REQ-002 is ADDED.
+    let delta = "# Auth slice\n\n\
+         ## MODIFIED Requirements\n\n\
+         ### Requirement: User can log out\n\n\
+         ID: REQ-001\n\n\
+         Logout invalidates every active session.\n\n\
+         #### Scenario: Active session\n\n\
+         - GIVEN an authenticated user\n\
+         - WHEN they log out\n\
+         - THEN every session is invalidated\n\n\
+         ## ADDED Requirements\n\n\
+         ### Requirement: Password reset entry\n\n\
+         ID: REQ-002\n\n\
+         A password reset entry exists on the login screen.\n\n\
+         #### Scenario: Open reset\n\n\
+         - GIVEN the login screen\n\
+         - WHEN the user opens reset\n\
+         - THEN the reset flow starts\n";
+    fs::write(specs.join("spec.md"), delta).expect("delta");
+    fs::write(
+        slice_dir.join("metadata.yaml"),
+        "target: mock\ntouched-specs:\n  - name: auth\n    type: modified\n",
+    )
+    .expect("metadata");
+
+    let index = BaselineIndex::build(&root.join(".emery/specs")).expect("baseline index");
+    let body = index.body("auth", "REQ-002").expect("baseline body");
+    let baseline_digest = format!("sha256:{}", sha256_hex(body.as_bytes()));
+    let model = format!(
+        r"version: 1
+slice: login-flow
+requirements:
+  - id: REQ-001
+    title: User can log out
+    status: agreed
+    domain: auth
+    baseline-id: REQ-002
+    baseline-digest: {baseline_digest}
+    sources: [docs]
+    claims:
+      - source: docs
+        id: logout.flow
+        kind: requirement
+    statement: Logout invalidates every active session.
+    scenarios:
+      - Active session
+  - id: REQ-002
+    title: Password reset entry
+    status: agreed
+    domain: auth
+    sources: [docs]
+    claims:
+      - source: docs
+        id: reset.entry
+        kind: requirement
+    statement: A password reset entry exists on the login screen.
+    scenarios:
+      - Open reset
+tasks:
+  - id: TASK-001
+    text: Harden logout.
+    satisfies: [REQ-001]
+  - id: TASK-002
+    text: Wire reset entry.
+    satisfies: [REQ-002]
+"
+    );
+    fs::write(slice_dir.join("model.yaml"), model).expect("model");
+    fs::write(
+        slice_dir.join("tasks.md"),
+        "# Tasks\n\n- TASK-001 satisfies REQ-001\n- TASK-002 satisfies REQ-002\n",
+    )
+    .expect("tasks");
+}
+
+/// A finalized id that equals a *later* slice-local id is written once
+/// and never chained through that later mapping: local `REQ-001`
+/// finalizes to baseline `REQ-002` and must survive the subsequent
+/// `REQ-002` → `REQ-003` substitution in `tasks.md`.
+#[tokio::test]
+async fn task_tokens_do_not_chain_into_later_mappings() {
+    let session = Session::scripted("mock", Vec::new());
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    stage_wave_and_record(&session, "login-flow", snapshot);
+    stage_overlapping_id_slice(&session);
+
+    merge(&session, "login-flow").await.expect("merge succeeds");
+
+    let date = ts().strftime("%Y-%m-%d").to_string();
+    let archived = session.root().join(".emery/archive").join(format!("{date}-login-flow"));
+    let tasks = fs::read_to_string(archived.join("tasks.md")).expect("archived tasks");
+    assert!(tasks.contains("TASK-001 satisfies REQ-002"), "{tasks}");
+    assert!(tasks.contains("TASK-002 satisfies REQ-003"), "{tasks}");
+    assert!(!tasks.contains("REQ-001"), "{tasks}");
+}
+
+/// A domain-omitted `MODIFIED` row resolves the shared default domain at
+/// wave commit — the same domain synthesis digested it under.
+#[tokio::test]
+async fn domain_omitted_modified_merges_under_default_domain() {
+    let session = Session::scripted("mock", Vec::new());
+    let root = session.root();
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    stage_wave_and_record(&session, "login-flow", snapshot);
+
+    let slice_dir = root.join(".emery/slices/login-flow");
+    let specs = slice_dir.join("specs/default");
+    fs::create_dir_all(&specs).expect("slice specs");
+    fs::create_dir_all(root.join(".emery/specs/default")).expect("baseline specs");
+    fs::write(root.join(".emery/specs/default/spec.md"), baseline_body()).expect("baseline");
+    let delta = "# Auth slice\n\n\
+         ## MODIFIED Requirements\n\n\
+         ### Requirement: User can log in\n\n\
+         ID: REQ-001\n\n\
+         Authentication via email/password *or* passkey.\n\n\
+         #### Scenario: Passkey login\n\n\
+         - GIVEN a registered user with a passkey\n\
+         - WHEN they authenticate via passkey\n\
+         - THEN they receive a session token\n";
+    fs::write(specs.join("spec.md"), delta).expect("delta");
+    fs::write(
+        slice_dir.join("metadata.yaml"),
+        "target: mock\ntouched-specs:\n  - name: default\n    type: modified\n",
+    )
+    .expect("metadata");
+
+    let index = BaselineIndex::build(&root.join(".emery/specs")).expect("baseline index");
+    let body = index.body("default", "REQ-007").expect("baseline body");
+    let baseline_digest = format!("sha256:{}", sha256_hex(body.as_bytes()));
+
+    // No `domain:` on the requirement — merge must fall back to the same
+    // default domain synthesis used when recording the digest.
+    let model = format!(
+        r"version: 1
+slice: login-flow
+requirements:
+  - id: REQ-001
+    title: User can log in
+    status: agreed
+    baseline-id: REQ-007
+    baseline-digest: {baseline_digest}
+    sources: [docs]
+    claims:
+      - source: docs
+        id: login.flow
+        kind: requirement
+    statement: Authentication via email/password or passkey.
+    scenarios:
+      - Passkey login
+tasks:
+  - id: TASK-001
+    text: Wire passkey login.
+    satisfies: [REQ-001]
+"
+    );
+    fs::write(slice_dir.join("model.yaml"), model).expect("model");
+    fs::write(slice_dir.join("tasks.md"), "# Tasks\n\n- TASK-001 satisfies REQ-001\n")
+        .expect("tasks");
+
+    merge(&session, "login-flow").await.expect("domain-omitted MODIFIED merges");
+
+    let merged =
+        fs::read_to_string(root.join(".emery/specs/default/spec.md")).expect("merged baseline");
+    assert!(merged.contains("ID: REQ-007"), "{merged}");
+    assert!(merged.contains("passkey"), "{merged}");
+}
+
+/// A slice decision's `related:` REQ ids are finalized to baseline
+/// numbers before promotion, mirroring the `tasks.md` rewrite.
+#[tokio::test]
+async fn decision_related_ids_finalized_at_merge() {
+    let session = Session::scripted("mock", Vec::new());
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
+    stage_built_slice(&session, wave_digest.as_str());
+    let decisions = session.root().join(".emery/slices/login-flow/decisions");
+    fs::create_dir_all(&decisions).expect("slice decisions");
+    fs::write(
+        decisions.join("passkey-auth.md"),
+        "---\nslug: passkey-auth\nstatus: accepted\nrelated: [REQ-001, REQ-002]\n---\n\n\
+         # Passkey auth\n\n## Context\n\nContext.\n\n## Decision\n\nDecision.\n\n\
+         ## Consequences\n\nConsequences.\n",
+    )
+    .expect("decision");
+
+    merge(&session, "login-flow").await.expect("merge succeeds");
+
+    let promoted =
+        fs::read_to_string(session.root().join(".emery/decisions/DEC-0001-passkey-auth.md"))
+            .expect("promoted decision");
+    // MODIFIED REQ-001 → baseline REQ-007; ADDED REQ-002 → REQ-009.
+    assert!(promoted.contains("REQ-007"), "{promoted}");
+    assert!(promoted.contains("REQ-009"), "{promoted}");
+    assert!(!promoted.contains("REQ-001"), "{promoted}");
+    assert!(!promoted.contains("REQ-002"), "{promoted}");
+    assert!(promoted.contains("## Context"), "body preserved: {promoted}");
 }
 
 #[tokio::test]

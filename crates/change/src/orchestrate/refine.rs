@@ -149,7 +149,8 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
         }
     }
 
-    let gaps = !plan_gaps_body(&plan, layout)?.is_empty();
+    let events = collect_events(layout)?;
+    let gaps = !plan_gaps_body(&plan, layout, &events)?.is_empty();
     Ok(RefineOutcome::Completed {
         plan: plan.name.to_string(),
         refined,

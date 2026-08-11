@@ -37,6 +37,7 @@ async fn gaps_operation_projects() {
         r"requirements:
   - id: REQ-003
     title: password-reset path not evidenced
+    statement: ''
     status: unknown
     sources: [docs]
 ",
@@ -47,6 +48,7 @@ async fn gaps_operation_projects() {
         r"requirements:
   - id: REQ-008
     title: reset copy not evidenced
+    statement: ''
     status: unknown
     sources: [docs]
 ",

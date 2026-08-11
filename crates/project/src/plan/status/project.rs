@@ -1,5 +1,5 @@
 //! The status projection: plan topology + artifacts + the fact union
-//! → one [`StatusBody`] (RFC-86 D2 / D22 / D26).
+//! → one [`StatusBody`] (RFC-86 D2 / D22 / D26 / RFC-86a / RFC-91).
 
 use std::ops::ControlFlow;
 
@@ -10,7 +10,7 @@ use super::super::execution::{
     JournalOverlay, Resolution, collect_events, next_eligible, project_ladders, resolve_entry,
     scan_union,
 };
-use super::super::gaps::plan_gaps_body;
+use super::super::gaps::{Disposition, GapsBody, plan_gaps_body};
 use super::super::in_scope;
 use super::super::model::{Entry, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
@@ -84,12 +84,12 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
             }
         }
     };
-    let gaps = plan_gaps_body(plan, layout)?;
+    let gaps = plan_gaps_body(plan, layout, &events)?;
     let all_refined = all_in_scope_refined(plan, layout, &inventory, &mut live)?;
     let milestones = Milestones {
         all_refined,
         ready: all_refined && clean_gaps(&gaps),
-        authorized: project_authorized(&events),
+        authorized: project_authorized(plan, layout, &events)?,
     };
     Ok(assemble(plan, counts, active, &ladders, resolution, gaps, milestones))
 }
@@ -138,9 +138,11 @@ fn count(ladders: &std::collections::HashMap<SliceName, Status>, status: Status)
     ladders.values().filter(|s| **s == status).count()
 }
 
-/// Ready's clean-gap policy: no conflicts and zero open unknowns.
-/// Divergence is listed but does not block Ready (D22).
-fn clean_gaps(gaps: &super::super::gaps::GapsBody) -> bool {
+/// Ready's clean-gap policy: zero open **and** zero deferred
+/// unknowns / conflicts — dispositions never contribute to Ready, so
+/// a debt-carrying plan reaches build via Authorized only (D22 /
+/// RFC-86a D7). Divergence is listed but does not block Ready.
+fn clean_gaps(gaps: &GapsBody) -> bool {
     !gaps
         .rows
         .iter()
@@ -158,7 +160,7 @@ fn all_in_scope_refined(
 ) -> Result<bool, Error> {
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
-        let meta = SliceMetadata::load_opt(&slice_dir)?;
+        let meta = SliceMetadata::load_optional(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
@@ -186,22 +188,24 @@ fn load_inventory(layout: Layout<'_>) -> Result<Vec<artifacts::discovery::Lead>,
     Ok(artifacts::discovery::Discovery::load(&path)?.leads().to_vec())
 }
 
-/// Authorized when any `plan.execute.started` fact is in the union.
-/// Covering / stale validation lands with the execute writer (S18/S19).
-fn project_authorized(events: &[Event]) -> bool {
-    events.iter().any(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }))
+/// Authorized when the newest `plan.execute.started` epoch still
+/// covers the live plan / refinement digests — the same freshness the
+/// execute gap gate enforces before build (RFC-86 D22 / RFC-91 D5).
+fn project_authorized(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Result<bool, Error> {
+    let freshness = super::super::epoch::freshness(layout, plan, events)?;
+    Ok(matches!(freshness, super::super::epoch::EpochFreshness::Fresh { .. }))
 }
 
 fn assemble(
     plan: &Plan, counts: StatusCounts, active: Option<&Entry>,
     ladders: &std::collections::HashMap<SliceName, Status>, mut resolution: Resolution,
-    gaps: super::super::gaps::GapsBody, milestones: Milestones,
+    gaps: GapsBody, milestones: Milestones,
 ) -> StatusBody {
-    // When every in-scope slice is refined but Ready fails, surface
-    // review-gaps instead of build (D22). Execute maps ReviewGaps →
-    // build; the gap gate enforces waivers / refuses unresolved gaps.
+    // Refined with open findings → review-gaps instead of build (D22 /
+    // RFC-86a D7); a fully-dispositioned plan keeps the build dispatch.
+    // Execute maps ReviewGaps → build; the gap gate joins dispositions.
     if milestones.all_refined
-        && !milestones.ready
+        && gaps.has_open()
         && matches!(resolution.action, NextActionKind::Build)
     {
         resolution.action = NextActionKind::ReviewGaps;
@@ -228,9 +232,10 @@ fn assemble(
         action: resolution.action,
         current_step: current_step(&resolution),
         last_completed: resolution.last_completed,
-        resume: resume_point(plan, ladders, &resolution, &gaps, milestones.ready),
+        resume: resume_point(plan, ladders, &resolution, &gaps),
         ready: milestones.ready,
         authorized: milestones.authorized,
+        debt: gaps.debt(),
         slice: resolution.slice,
         project: resolution.project,
         stop: resolution.stop,
@@ -264,11 +269,11 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
 /// `None` when no single command makes progress.
 fn resume_point(
     plan: &Plan, ladders: &std::collections::HashMap<SliceName, Status>, resolution: &Resolution,
-    gaps: &super::super::gaps::GapsBody, ready: bool,
+    gaps: &GapsBody,
 ) -> Option<String> {
     // A fresh plan (no entry has left projected `pending`) resumes
-    // through the execute loop, not a phase breakout. When refined but
-    // not Ready, point at waive / gap closure instead.
+    // through refine or execute depending on the projected action.
+    // When open findings block, point at deferral / gap closure.
     if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,
@@ -278,7 +283,7 @@ fn resume_point(
                 | NextActionKind::ReviewGaps
         )
     {
-        return Some(fresh_plan_resume(gaps, ready, resolution.action));
+        return Some(fresh_plan_resume(gaps, resolution.action));
     }
     match resolution.action {
         // Refinement resumes through `plan refine` (RFC-91 D1/D8);
@@ -300,36 +305,41 @@ fn resume_point(
     }
 }
 
-/// Post-author / all-pending resume (RFC-91 D8).
-fn fresh_plan_resume(
-    gaps: &super::super::gaps::GapsBody, ready: bool, action: NextActionKind,
-) -> String {
-    if action == NextActionKind::ReviewGaps || (!ready && action == NextActionKind::Build) {
+/// Post-author / all-pending resume (RFC-91 D8 / RFC-86a D7).
+fn fresh_plan_resume(gaps: &GapsBody, action: NextActionKind) -> String {
+    if action == NextActionKind::ReviewGaps || (gaps.has_open() && action == NextActionKind::Build)
+    {
         return gap_resume(gaps);
     }
-    // Missing / stale refinement resumes at refine; Ready resumes at
-    // execute (D8).
+    // Missing / stale refinement resumes at refine; Ready or
+    // fully-dispositioned resumes at execute (D8 / D26).
     if action == NextActionKind::Refine {
         return "/emery:refine".to_string();
     }
     "/emery:execute".to_string()
 }
 
-/// Resume when the change is not Ready: conflicts → fix inputs and
-/// re-refine (`emery plan refine`, RFC-91 D8); unknowns-only →
-/// execute with per-req `--waive`.
-fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
-    if gaps.rows.iter().any(|r| r.status == RequirementStatus::Conflict) {
+/// Resume when open findings block Ready: the durable disposition act
+/// over every open row — `[unknown]` and `[conflict]` alike defer
+/// (RFC-86a D3/D6). Closing the gap at its source or an epoch-wide
+/// `emery plan execute --gap-policy defer` are the alternatives the
+/// gate hints carry. A fully-dispositioned inventory resumes at the
+/// execute loop (D7).
+fn gap_resume(gaps: &GapsBody) -> String {
+    let open: Vec<_> = gaps
+        .rows
+        .iter()
+        .filter(|r| r.disposition == Some(Disposition::Open) && r.requirement_digest.is_some())
+        .collect();
+    if open.is_empty() {
+        // Nothing open, or only digest-less `spec.md`-fallback rows,
+        // which `plan defer` refuses (no deferral match key) — a
+        // re-refine mints digest-bearing rows instead.
         return "emery plan refine".to_string();
     }
-    let unknowns: Vec<_> =
-        gaps.rows.iter().filter(|r| r.status == RequirementStatus::Unknown).collect();
-    if unknowns.is_empty() {
-        return "emery plan gaps".to_string();
-    }
-    let mut parts = vec!["emery plan execute".to_string()];
-    for row in unknowns {
-        parts.push(format!("--waive {}/{}", row.slice, row.req));
+    let mut parts = vec!["emery plan defer".to_string()];
+    for row in open {
+        parts.push(format!("{}/{}", row.slice, row.req));
     }
     parts.push("--reason <reason>".to_string());
     parts.join(" ")

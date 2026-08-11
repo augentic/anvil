@@ -1,15 +1,19 @@
 //! `plan archive` — move the current plan into the archive and run
 //! the change-scoped snapshot sweep.
 
+use std::collections::BTreeMap;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use artifacts::spec::provenance::RequirementStatus;
 use error::Error;
+use jiff::Timestamp;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::build_record::BuildRecord;
 use project::handler::{Anchor, Ctx, Render};
-use project::plan::Plan;
+use project::journal::{DeferralOrigin, Event, EventKind};
+use project::plan::{Plan, collect_events};
 use project::seam::Workspaces;
 use project::snapshot::SnapshotId;
 use serde::{Deserialize, Serialize};
@@ -54,7 +58,12 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
         }
         let archive_dir = layout.archive_dir().join("plans");
         let brief_path = layout.change_brief_path();
-        let plan_name = Plan::load(&plan_path)?.name.into_string();
+        let plan = Plan::load(&plan_path)?;
+        let plan_name = plan.name.to_string();
+
+        // Carried-debt summary (RFC-86a D5/D9): read before the plan
+        // moves; advisory only — archiving never blocks on debt.
+        let debt = carried_debt(layout, &plan, cx.now())?;
 
         let (archived, archived_plans_dir) =
             Plan::archive(&plan_path, &brief_path, &archive_dir, input.force, cx.now())?;
@@ -76,9 +85,100 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
             archived,
             archived_plans_dir,
             swept_objects,
+            debt,
             plan: ArchivedPlan { name: plan_name },
         })
     }
+}
+
+/// The debt the archived change carried into the baseline: each
+/// committed wave's deferred member-set snapshot, joined back to its
+/// covering `gap.deferred` fact for reason, origin, and age.
+fn carried_debt(
+    layout: project::config::Layout<'_>, plan: &Plan, now: Timestamp,
+) -> Result<Vec<DebtRow>, Error> {
+    let events = collect_events(layout)?;
+    let deferrals = latest_deferrals(&events);
+    let mut rows = Vec::new();
+    for entry in &plan.entries {
+        let Some(members) = latest_wave_deferred(&events, entry.name.as_str()) else {
+            continue;
+        };
+        for member in members {
+            // Every member was covered by a deferral fact at merge
+            // time; a join miss (pruned or damaged journal) degrades
+            // to a placeholder row rather than dropping the debt.
+            let deferral = deferrals
+                .get(&(entry.name.as_str().to_string(), member.requirement_digest.clone()))
+                .map(|(reason, origin, deferred_at)| {
+                    let age_days =
+                        u64::try_from((now.as_second() - deferred_at.as_second()).max(0))
+                            .unwrap_or(0)
+                            / 86_400;
+                    DebtDetail {
+                        reason: reason.clone(),
+                        origin: *origin,
+                        deferred_at: *deferred_at,
+                        age_days,
+                    }
+                });
+            if deferral.is_none() {
+                tracing::warn!(
+                    "no covering gap.deferred fact for wave snapshot member {}/{} ({}); \
+                     rendering the debt row without its provenance detail",
+                    entry.name.as_str(),
+                    member.req,
+                    member.requirement_digest
+                );
+            }
+            rows.push(DebtRow {
+                slice: entry.name.as_str().to_string(),
+                req: member.req.clone(),
+                status: member.status,
+                deferral,
+            });
+        }
+    }
+    Ok(rows)
+}
+
+/// Deferred member set of the newest `target.merge.wave-committed`
+/// fact naming `slice`, or `None` when the slice never merged.
+fn latest_wave_deferred<'e>(
+    events: &'e [Event], slice: &str,
+) -> Option<&'e [project::journal::DeferredMember]> {
+    events.iter().rev().find_map(|event| match &event.kind {
+        EventKind::TargetMergeWaveCommitted {
+            slice_name, deferred, ..
+        } if slice_name.as_str() == slice => Some(deferred.as_slice()),
+        _ => None,
+    })
+}
+
+/// Latest `gap.deferred` detail per `(slice, digest)`. Retractions are
+/// deliberately not folded in: the wave snapshot is the authority that
+/// the debt landed, and a post-merge retraction must not erase the
+/// summary's reason.
+fn latest_deferrals(
+    events: &[Event],
+) -> BTreeMap<(String, String), (String, DeferralOrigin, Timestamp)> {
+    let mut latest = BTreeMap::new();
+    for event in events {
+        if let EventKind::GapDeferred {
+            slice,
+            requirement_digest,
+            reason,
+            origin,
+            ..
+        } = &event.kind
+        {
+            latest.insert(
+                (slice.as_str().to_string(), requirement_digest.clone()),
+                (reason.clone(), *origin, event.timestamp),
+            );
+        }
+    }
+    latest
 }
 
 /// Every snapshot pin recorded beneath one level of slice-shaped
@@ -126,8 +226,44 @@ pub struct ArchiveBody {
     pub archived_plans_dir: Option<PathBuf>,
     /// Snapshot objects deleted by the change-scoped sweep.
     pub swept_objects: usize,
+    /// Debt the archived change carried into the baseline (RFC-86a
+    /// D5/D9) — advisory; archiving never blocks on debt.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub debt: Vec<DebtRow>,
     /// The archived plan's identity.
     pub plan: ArchivedPlan,
+}
+
+/// One carried-debt row in the archive summary.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebtRow {
+    /// Slice that folded the row into the baseline.
+    pub slice: String,
+    /// Final baseline `REQ-NNN`.
+    pub req: String,
+    /// Typed gap status (`unknown` | `conflict`).
+    pub status: RequirementStatus,
+    /// The covering `gap.deferred` fact's detail. `None` when the
+    /// fact join misses (a pruned or damaged journal) — the row is
+    /// still debt, just without its provenance detail.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deferral: Option<DebtDetail>,
+}
+
+/// The covering deferral fact's detail on one carried-debt row.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebtDetail {
+    /// Covering deferral's reason.
+    pub reason: String,
+    /// Which surface dispositioned the requirement.
+    pub origin: DeferralOrigin,
+    /// When the covering fact was appended.
+    #[serde(with = "project::serde_time::rfc3339")]
+    pub deferred_at: Timestamp,
+    /// Whole days between the deferral and the archive.
+    pub age_days: u64,
 }
 
 /// The archived plan's identity.
@@ -138,6 +274,39 @@ pub struct ArchivedPlan {
     pub name: String,
 }
 
+impl ArchiveBody {
+    /// Render the carried-debt rows of one gap kind under `heading` —
+    /// deferred conflicts and deferred unknowns get separate blocks
+    /// (RFC-86a D6: a shipped-around contradiction is louder news).
+    fn render_debt(
+        &self, w: &mut dyn Write, status: RequirementStatus, heading: &str,
+    ) -> std::io::Result<()> {
+        let mut headed = false;
+        for row in self.debt.iter().filter(|row| row.status == status) {
+            if !headed {
+                writeln!(w, "    {heading}")?;
+                headed = true;
+            }
+            match &row.deferral {
+                Some(detail) => {
+                    let noun = if detail.age_days == 1 { "day" } else { "days" };
+                    writeln!(
+                        w,
+                        "      {}/{} — {} ({}, {} {noun})",
+                        row.slice, row.req, detail.reason, detail.origin, detail.age_days
+                    )?;
+                }
+                None => writeln!(
+                    w,
+                    "      {}/{} — reason unavailable (no covering deferral fact)",
+                    row.slice, row.req
+                )?,
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Render for ArchiveBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         writeln!(w, "archived plan `{}`", self.plan.name)?;
@@ -146,6 +315,11 @@ impl Render for ArchiveBody {
             writeln!(w, "  working directory: {}", dir.display())?;
         }
         writeln!(w, "  swept snapshot objects: {}", self.swept_objects)?;
+        if !self.debt.is_empty() {
+            writeln!(w, "  carried debt ({} deferred):", self.debt.len())?;
+            self.render_debt(w, RequirementStatus::Unknown, "unknown:")?;
+            self.render_debt(w, RequirementStatus::Conflict, "conflict:")?;
+        }
         Ok(())
     }
 }

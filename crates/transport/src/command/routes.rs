@@ -29,10 +29,22 @@ pub(super) struct InitArgs {
     /// Comma-separated target platforms.
     #[arg(long)]
     platforms: Option<String>,
+    /// Gap policy declaration (`strict` or `defer`) recorded on
+    /// `project.yaml`; absent means `strict`.
+    #[arg(long)]
+    gap_policy: Option<project::GapPolicy>,
     /// Re-enter initialization to bump the Emery version pin.
     #[arg(long, conflicts_with_all = ["adapter", "name", "description"])]
     pub(super) upgrade: bool,
 }
+
+/// Arguments for `debt` — none.
+#[derive(Clone, Copy, Debug, Args)]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "clap's `Args` derive requires a braced struct"
+)]
+pub(super) struct DebtArgs {}
 
 #[derive(Clone, Copy)]
 struct NamespaceHelp {
@@ -216,7 +228,7 @@ where
         plan::GapsArgs,
         ::change::plan::handlers::Gaps,
         "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions",
-        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions.\n\nDerived from on-disk `model.yaml` / `specs/<domain>/spec.md` — not a second file to keep in sync. Dropped slices are excluded. Shared-lead rollup is presentation only; waivers and the execute gap gate stay per-requirement."
+        "Read-only typed gap inventory across in-scope slices (`unknown` / `conflict` / `divergence`) with shared-lead re-refine suggestions.\n\nDerived from on-disk `model.yaml` / `specs/<domain>/spec.md` — not a second file to keep in sync. Dropped slices are excluded. Shared-lead rollup is presentation only; deferral dispositions and the execute gap gate stay per-requirement."
     );
     route!(["plan", "add"], plan::AddArgs, ::change::plan::handlers::Add, "Add a new plan entry");
     route!(
@@ -240,11 +252,18 @@ where
         "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
     );
     route!(
+        ["plan", "defer"],
+        plan::DeferArgs,
+        ::change::plan::handlers::Defer,
+        "Durably defer one or more open gap requirements (`<slice>/<req>` + `--reason`) by appending digest-bound `gap.deferred` facts; `--retract` reopens live deferrals",
+        "Durably defer one or more open gap requirements by appending digest-bound `gap.deferred` journal facts (RFC-86a D3).\n\nThe explicit disposition act one level below `plan drop` (drop : slice :: defer : requirement): the requirement's `(slice, digest)` pair is covered across resumes and fresh epochs with no re-supply. A re-refine that reshapes the requirement body lapses the deferral automatically; restoring the exact body revives it. `--retract` appends `gap.deferral-retracted` and must name a live deferral.\n\nWrites journal facts only — `plan.yaml`, `model.yaml`, and `spec.md` are untouched; `emery plan gaps` projects the resulting dispositions. Refuses unknown selectors, a missing `--reason` on defer, `[divergence]` rows, and retractions of non-live deferrals with `plan-deferral-invalid` (exit 2). CLI-only, like `plan drop` — no skill wrapper."
+    );
+    route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
         "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nAn existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nWhen the baseline carries deferred debt, `change.md` also renders the carried-debt inventory (the same backlog `emery debt` projects), so a corrective change is scoped with it in view. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "refine"],
@@ -257,14 +276,21 @@ where
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) covering the exact per-leaf refinement digests, then build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--waive <slice>/<req>` + `--reason` for open `[unknown]`s",
-        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests plus any `--waive` unknown-waivers. Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nRepeatable `--waive <slice>/<req>` with required `--reason` waives open `[unknown]` requirements only (`[conflict]` is never waiveable; `plan-waiver-invalid` on misuse). Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) covering exact per-leaf refinement digests and the effective gap policy, then build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--gap-policy <strict|defer>` one-epoch override",
+        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests plus the effective gap policy (RFC-86a D3: `--gap-policy` flag, else the `project.yaml` declaration, else `strict`). Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows refuse with `plan-gaps-unresolved` under `strict` (defer them with `emery plan defer`). Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
         plan::ArchiveArgs,
         ::change::plan::handlers::Archive,
         "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
+    );
+    route!(
+        ["debt"],
+        DebtArgs,
+        ::slice::handlers::Debt,
+        "Read-only baseline debt projection: list every carried `unknown` / `conflict` requirement under `.emery/specs/` with the reason, origin, originating change, and age from its deferral note",
+        "Read-only baseline debt projection (RFC-86a D9) — the backlog looking ahead.\n\nWalks the baseline specs under `.emery/specs/` and lists every requirement whose status is `unknown` or `conflict`, with the reason, origin (`operator | policy`), originating change, and age parsed from the self-describing deferral note the merge fold appended. Conflicts render separately from unknowns. Reads the baseline alone — never archived fact logs — and writes nothing. `plan author` renders the same inventory in the review prose it authors, so a corrective change is scoped with the backlog in view."
     );
     route!(
         ["journal", "show"],
@@ -320,13 +346,15 @@ convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
 convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
 convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice });
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { waive, reason });
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { gap_policy });
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
 convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason });
+convert!(plan::DeferArgs => ::change::plan::handlers::DeferInput { selectors, reason, retract });
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
+convert!(DebtArgs => ::slice::handlers::DebtInput {});
 
-convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });
+convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, gap_policy, upgrade });

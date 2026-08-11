@@ -19,9 +19,12 @@ use crate::synthesis::evidence::read_evidence_dir;
 mod baseline_conflict;
 mod catalog;
 mod decisions;
+mod disposition_drift;
 mod model_drift;
 mod pre_adapter;
 mod spec_location;
+
+pub use disposition_drift::dispositions_drifted;
 
 /// Outcome of the full validation sweep ([`run`]).
 ///
@@ -89,11 +92,13 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
     }
 
     // Non-blocking review advisories (thin synopses, refinement
-    // freshness, baseline drift) ride the adapter-findings surface;
-    // only a blocking diagnostic gates the exit.
+    // freshness, disposition drift, baseline drift) ride the
+    // adapter-findings surface; only a blocking diagnostic gates the
+    // exit. Pin drift is superseded by refinement freshness (RFC-91).
     let mut findings = artifacts::validate::validate_slice(&slice_dir)?;
     findings.append(&mut pre_adapter::synopsis_thin(layout)?);
     findings.append(&mut refinement_findings(layout, name)?);
+    findings.append(&mut disposition_drift::findings(layout, &slice_dir, name)?);
     findings.append(&mut baseline_conflict::findings(layout, &slice_dir)?);
     Ok(Validation::Adapter {
         findings,

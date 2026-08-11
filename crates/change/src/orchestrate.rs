@@ -13,7 +13,6 @@ mod survey;
 pub use project::seam::Capabilities;
 
 pub use self::author::{AuthorOutcome, author};
-pub use self::epoch::WaiveSelector;
 pub use self::execute::{ExecuteOutcome, execute};
 pub use self::gap_gate::enforce_before_build;
 pub use self::refine::{RefineOutcome, refine};

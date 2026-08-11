@@ -265,6 +265,7 @@ async fn finalize(
             change: Some(&config.name),
         },
         grants: &adapter.writable_artifacts,
+        deferred: &request.deferred,
         workspace: staged,
         attempt,
         stage,
@@ -321,7 +322,10 @@ fn write_request(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
     manifest_inputs: &[project::adapter::BuildInputDeclaration],
 ) -> Result<BuildRequest, Error> {
-    let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir())?;
+    // The build's exclusion set (RFC-86a D4): every deferred gap row
+    // on the slice, projected from the dispositions at request time.
+    let deferred = crate::build::deferred::live_deferred(layout, slice)?;
+    let request = build_request(slice, manifest_inputs, slice_dir, layout.project_dir(), deferred)?;
     let yaml = project::fs::yaml(&request)?;
 
     let build_dir = slice_dir.join("build");

@@ -35,9 +35,10 @@ struct LeadsAnswer {
     leads: Vec<Lead>,
 }
 
-/// The `build` / `merge` answer: the report minus the envelope keys
+/// The `merge` answer: the report minus the envelope keys
 /// (`version`, `slice`, `target`) the caller already knows and stamps
-/// when widening onto the canonical report.
+/// when widening onto the canonical report. The coverage claim rides
+/// the build phase answer, never the merge return.
 #[derive(JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 #[expect(dead_code, reason = "fields exist only for schemars schema generation")]
@@ -75,6 +76,12 @@ struct PhaseReportAnswer {
     /// Optional UI-surface signal (`build` only).
     #[serde(default)]
     ui_surface: Option<UiSurface>,
+    /// Slice-local requirement ids (`REQ-NNN`) the phase claims to
+    /// have implemented (`build` only); default `[]`. Must never name
+    /// a requirement from the build request's `deferred[]` exclusion
+    /// set (RFC-86a D4).
+    #[serde(default)]
+    covered: Vec<String>,
     /// Audit-evidence writes performed by the phase; default `[]`.
     #[serde(default)]
     written: Vec<PhaseWrite>,
@@ -171,15 +178,15 @@ pub fn evidence() -> Value {
     schema
 }
 
-/// The `build` / `merge` answer schema.
+/// The `merge` answer schema.
 #[must_use]
 pub fn report() -> Value {
     root_schema::<ReportAnswer>(
         "report.schema.json",
-        "Emery build/merge answer",
+        "Emery merge answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to a target \
-         adapter's build or merge operation: the report shape minus the envelope keys \
+         adapter's merge operation: the report shape minus the envelope keys \
          (`version`, `slice`, `target`) the caller already knows.",
     )
 }

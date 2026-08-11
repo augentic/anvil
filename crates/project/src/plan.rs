@@ -9,6 +9,7 @@ pub mod archive;
 pub mod authority_override;
 pub mod create;
 pub mod doctor;
+pub mod epoch;
 mod execution;
 pub mod gaps;
 pub mod io;
@@ -26,7 +27,9 @@ pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
 pub use doctor::{advance_gate, author_gate, detect, full_report};
 pub use execution::{collect_events, project_ladders};
-pub use gaps::{GapRow, GapsBody, SharedLeadRollup, plan_gaps_body};
+pub use gaps::{
+    DebtCounts, Deferral, Disposition, GapRow, GapsBody, SharedLeadRollup, plan_gaps_body,
+};
 pub use model::{
     AuthorityOverride, Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Patch, Plan,
     SliceSourceBinding, SourceBinding, Status,

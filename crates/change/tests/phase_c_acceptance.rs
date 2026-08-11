@@ -6,8 +6,8 @@
 //!
 //! - in-scope drop (D24 / #13)
 //! - coverage wire shape + stale epoch (#8)
-//! - Ready skipped when waiving; clear → Ready (D22 / #12)
-//! - post-author resume naming (D26 / #14)
+//! - Ready skipped when deferring; clear → Ready (D22 / #12 / RFC-86a)
+//! - post-author resume naming (RFC-91 D8 / #14)
 //! - one-member wave opened before build under execute (D9 / #15)
 
 mod support;
@@ -17,7 +17,8 @@ use std::fs;
 
 use change::orchestrate::enforce_before_build;
 use change::plan::handlers::{
-    Author, AuthorInput, Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput, WaiveSelector,
+    Author, AuthorInput, Defer, DeferInput, DeferSelector, Execute, ExecuteInput, Gaps, GapsInput,
+    Status, StatusInput,
 };
 use change::{LoopStep, Plan};
 use diagnostics::digest::sha256_hex;
@@ -26,8 +27,9 @@ use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
+use project::GapPolicy;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, UnknownWaiver, append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, append_for, read_union,
 };
 use support::plan_with_changes;
 
@@ -107,7 +109,6 @@ fn live_plan_digest(root: &std::path::Path) -> String {
 fn stamp_epoch(
     root: &std::path::Path, plan_digest: &str,
     refinements: BTreeMap<String, project::snapshot::SnapshotId>,
-    unknown_waivers: Vec<UnknownWaiver>,
 ) {
     let ts = Timestamp::from_second(1_700_000_000).expect("timestamp");
     let event = Event::new(
@@ -116,7 +117,7 @@ fn stamp_epoch(
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
                 refinements,
-                unknown_waivers,
+                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },
@@ -196,16 +197,21 @@ async fn dropped_slice_excluded() {
     // gap gate must not see the dropped conflict.
     let mut refinements = BTreeMap::new();
     refinements.insert("clean".into(), support::manifest_digest(root, "clean"));
-    stamp_epoch(root, &live_plan_digest(root), refinements, Vec::new());
-    enforce_before_build(Layout::new(root), &plan, "clean")
-        .expect("gap gate ignores dropped sibling conflict");
+    stamp_epoch(root, &live_plan_digest(root), refinements);
+    enforce_before_build(
+        Layout::new(root),
+        &plan,
+        "clean",
+        Timestamp::from_second(1_700_000_100).expect("timestamp"),
+    )
+    .expect("gap gate ignores dropped sibling conflict");
 }
 
-/// Acceptance #12 / D22 — open unknowns keep Ready false; execute with
-/// `--waive` reaches Authorized without Ready; clearing unknowns then
-/// projects Ready (waivers never backfill Ready).
+/// Acceptance #12 / D22 — open unknowns keep Ready false; deferring
+/// then executing reaches Authorized without Ready; clearing unknowns
+/// then projects Ready (deferrals never backfill Ready).
 #[tokio::test]
-async fn waive_skips_ready() {
+async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     let root = session.root();
@@ -216,6 +222,7 @@ async fn waive_skips_ready() {
         r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -227,29 +234,28 @@ async fn waive_skips_ready() {
     assert!(!open.ready);
     assert!(!open.authorized);
 
-    // Epoch + waive; build fails later on the hand-staged slice — the
-    // failure must be post-gate before we inspect milestones.
-    let err = run::<Execute, _, _>(
+    // Durable deferral, then execute; build may fail later without
+    // pins — ignore the post-gate outcome and inspect milestones.
+    run::<Defer, _, _>(
         session.provider(),
-        ExecuteInput {
-            waive: vec![WaiveSelector {
+        DeferInput {
+            selectors: vec![DeferSelector {
                 slice: "a".into(),
                 req: "REQ-003".into(),
             }],
             reason: Some("reset path deferred".into()),
+            retract: false,
         },
     )
     .await
-    .expect_err("hand-staged slice stops after the epoch");
-    let code = err.core().variant_str().into_owned();
-    assert_ne!(code, "plan-gaps-unresolved", "waived unknown must pass the gate: {err:?}");
-    assert_ne!(code, "plan-refinement-required", "staged manifest covers the leaf: {err:?}");
+    .expect("plan defer");
+    drop(run::<Execute, _, _>(session.provider(), ExecuteInput::default()).await);
 
-    let waived = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
-    assert!(waived.authorized, "execute --waive opens Authorized");
-    assert!(!waived.ready, "waivers never contribute to Ready");
+    let deferred = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
+    assert!(deferred.authorized, "execute opens Authorized");
+    assert!(!deferred.ready, "deferrals never contribute to Ready");
     assert!(!root.join(".emery/approvals").exists(), "no approvals/ tree");
-    assert!(!serde_json::to_string(&waived).expect("json").contains("approved"));
+    assert!(!serde_json::to_string(&deferred).expect("json").contains("approved"));
 
     // Clear the unknown on disk — Ready becomes true while the prior
     // epoch may still project Authorized (fresh execute is a separate act).
@@ -259,6 +265,7 @@ async fn waive_skips_ready() {
         r"requirements:
   - id: REQ-003
     title: reset path evidenced
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -308,12 +315,10 @@ async fn coverage_wire_shape_stale() {
     // RFC-91 D5: coverage carries exact per-leaf refinement digests —
     // no `existing` / `refine-under-epoch` spec coverage survives.
     assert_eq!(coverage["refinements"]["greeting"], refinement_before.as_str());
+    assert_eq!(coverage["gap-policy"], "strict", "effective policy on the wire: {coverage}");
     assert!(!wire.to_string().contains("refine-under-epoch"), "{wire}");
-    assert!(
-        coverage.get("unknown-waivers").is_none()
-            || coverage["unknown-waivers"].as_array().is_some_and(Vec::is_empty),
-        "empty waive list omitted or empty: {coverage}"
-    );
+    assert!(coverage.get("unknown-waivers").is_none(), "waiver field deleted: {coverage}");
+    assert!(coverage.get("specs").is_none(), "spec coverage deleted: {coverage}");
     assert!(!wire.to_string().contains("approved"));
     assert!(!root.join(".emery/approvals").exists());
 
@@ -337,15 +342,20 @@ async fn coverage_wire_shape_stale() {
     let digest = support::manifest_digest(session2.root(), "a");
     let mut refinements = BTreeMap::new();
     refinements.insert("a".into(), digest.clone());
-    stamp_epoch(session2.root(), &live_plan_digest(session2.root()), refinements, Vec::new());
+    stamp_epoch(session2.root(), &live_plan_digest(session2.root()), refinements);
     // A hand edit changes the manifest's byte identity out from under
     // the covering epoch.
     let manifest_path = session2.root().join(".emery/slices/a/refinement.yaml");
     let mut manifest = fs::read_to_string(&manifest_path).expect("manifest");
     manifest.push_str("# drift\n");
     fs::write(&manifest_path, manifest).expect("drift");
-    let err = enforce_before_build(Layout::new(session2.root()), &plan, "a")
-        .expect_err("covered refinement drift → stale");
+    let err = enforce_before_build(
+        Layout::new(session2.root()),
+        &plan,
+        "a",
+        Timestamp::from_second(1_700_000_100).expect("timestamp"),
+    )
+    .expect_err("covered refinement drift → stale");
     assert_eq!(err.variant_str(), "plan-epoch-stale");
     assert_ne!(support::manifest_digest(session2.root(), "a"), digest);
 }

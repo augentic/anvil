@@ -5,8 +5,8 @@ Scaffold the `.emery/` project structure and starter agent context.
 ## Synopsis
 
 ```bash
-emery init <adapter> [--name <project-name>] [--description "<description>"] [--platforms <csv>]
-emery init --upgrade
+emery init <adapter> [--name <project-name>] [--description "<description>"] [--platforms <csv>] [--gap-policy <strict|defer>]
+emery init --upgrade [--gap-policy <strict|defer>]
 ```
 
 ## Description
@@ -37,7 +37,8 @@ This is the CLI command invoked by [`/emery:init`](../../../plugins/emery/skills
 | `--name` | Project name (defaults to the project directory basename). |
 | `--description` | Free-form project description (tech stack, architecture, testing) |
 | `--platforms` | Comma-separated target platform set (e.g. `core,ios,android`). Required when the target adapter declares `platforms.required`; `core` is mandatory in every set. |
-| `--upgrade` | Re-enter an initialized project: bump the `emery` pin, re-scaffold preservation-safe files only, and re-resolve the declared adapter. Mutually exclusive with every other argument. |
+| `--gap-policy` | Gap-policy declaration (`strict` or `defer`) written to `project.yaml.gap-policy` — the standing default for every `emery plan execute` epoch (a per-epoch `--gap-policy` flag on execute overrides it for one run). Absent means `strict`. `init --upgrade` preserves an existing declaration, or rewrites it when the flag is supplied. Like every `project.yaml` field, CLI-written only. |
+| `--upgrade` | Re-enter an initialized project: bump the `emery` pin, re-scaffold preservation-safe files only, and re-resolve the declared adapter. Combinable with `--gap-policy`; mutually exclusive with the other arguments. |
 | `--format` | Global output format: `json` for structured automation output |
 
 ## JSON output

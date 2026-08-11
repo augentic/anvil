@@ -60,6 +60,7 @@
   - [emery init](reference/cli/init.md)
   - [emery slice](reference/cli/slice.md)
   - [emery plan](reference/cli/plan.md)
+  - [emery debt](reference/cli/debt.md)
   - [emery adapter, source and target resolve](reference/cli/adapter.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)
   - [Vectis WASI tools](reference/cli/vectis.md)

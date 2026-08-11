@@ -6,5 +6,6 @@ pub(crate) mod assemble;
 pub mod attempt;
 pub mod brief;
 pub mod canonical;
+pub mod deferred;
 pub mod gate;
 pub mod stage;

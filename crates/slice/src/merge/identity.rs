@@ -1,11 +1,12 @@
 //! Wave-commit requirement identity finalization.
 //!
-//! Merge rewrites slice specs, `model.yaml`, and `tasks.md` in place
-//! before the delta fold so the engine sees final baseline `REQ` ids.
+//! Merge rewrites slice specs, `model.yaml`, `tasks.md`, and decision
+//! `related:` ids in place before the delta fold sees baseline `REQ` ids.
 
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use artifacts::decision::{DecisionRecord, split_frontmatter};
 use diagnostics::digest::sha256_hex;
 use error::Error;
 use project::journal::IdentityMap;
@@ -60,6 +61,7 @@ pub fn finalize(specs_dir: &Path, slice_dir: &Path) -> Result<Vec<IdentityMap>, 
 
     rewrite_spec_ids(slice_dir, &by_local)?;
     rewrite_tasks_ids(slice_dir, &by_local)?;
+    rewrite_decision_related(slice_dir, &by_local)?;
     artifacts::atomic::yaml_write(&model_path, &model)?;
 
     Ok(maps)
@@ -96,7 +98,7 @@ fn assign_maps(model: &SliceModel, baseline: &BaselineIndex) -> Result<Vec<Ident
 fn reject_drifted(
     req: &crate::model::ModelRequirement, baseline_id: &str, baseline: &BaselineIndex,
 ) -> Result<(), Error> {
-    let domain = req.domain.as_deref().unwrap_or("core");
+    let domain = req.domain_or_default();
     let Some(expected) = req.baseline_digest.as_deref() else {
         return Err(Error::validation_failed(
             "merge-base-drifted",
@@ -184,6 +186,46 @@ fn rewrite_tasks_ids(slice_dir: &Path, by_local: &BTreeMap<&str, &str>) -> Resul
     Ok(())
 }
 
+/// Rewrite slice-local `related:` REQ ids in each `decisions/*.md`
+/// front-matter so promotion carries baseline ids; the Markdown body
+/// is preserved verbatim. A record whose front-matter does not parse
+/// is skipped here — the promotion kernel raises its own
+/// `decision-record-malformed` diagnostic.
+fn rewrite_decision_related(
+    slice_dir: &Path, by_local: &BTreeMap<&str, &str>,
+) -> Result<(), Error> {
+    let dir = slice_dir.join("decisions");
+    if !dir.is_dir() {
+        return Ok(());
+    }
+    for path in project::decisions::list_md_files(&dir)? {
+        let text = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
+            op: "read",
+            path: path.clone(),
+            source,
+        })?;
+        let Some((front, body)) = split_frontmatter(&text) else {
+            continue;
+        };
+        let Ok(mut record) = serde_saphyr::from_str::<DecisionRecord>(front) else {
+            continue;
+        };
+        let mut changed = false;
+        for id in &mut record.related {
+            if let Some(baseline_id) = by_local.get(id.as_str()) {
+                *id = (*baseline_id).to_string();
+                changed = true;
+            }
+        }
+        if !changed {
+            continue;
+        }
+        let yaml = artifacts::atomic::serialise_yaml(&record)?;
+        artifacts::atomic::bytes_write(&path, format!("---\n{yaml}---\n{body}").as_bytes())?;
+    }
+    Ok(())
+}
+
 fn rewrite_id_lines(text: &str, by_local: &BTreeMap<&str, &str>) -> String {
     let mut out = String::with_capacity(text.len());
     for (i, line) in text.lines().enumerate() {
@@ -205,29 +247,24 @@ fn rewrite_id_lines(text: &str, by_local: &BTreeMap<&str, &str>) -> String {
     out
 }
 
+/// Substitute every mapped `REQ` token in a single pass. A token is
+/// `REQ-` plus its maximal digit run, so `REQ-001` never matches inside
+/// `REQ-0010` — and because each token is looked up exactly once, a
+/// freshly written baseline id can never be re-rewritten by a later
+/// mapping whose local id happens to equal it (locals and baseline ids
+/// share the `REQ-NNN` grammar, so their number ranges overlap).
 fn rewrite_req_tokens(text: &str, by_local: &BTreeMap<&str, &str>) -> String {
-    let mut out = text.to_string();
-    for (local, baseline) in by_local {
-        out = replace_req_token(&out, local, baseline);
-    }
-    out
-}
-
-/// Replace `from` when not followed by another digit (so `REQ-001` does
-/// not clobber a hypothetical `REQ-0010`).
-fn replace_req_token(text: &str, from: &str, to: &str) -> String {
+    const PREFIX: &str = "REQ-";
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
-    while let Some(idx) = rest.find(from) {
+    while let Some(idx) = rest.find(PREFIX) {
+        let digits_start = idx + PREFIX.len();
+        let digits_len = rest[digits_start..].bytes().take_while(u8::is_ascii_digit).count();
+        let token_end = digits_start + digits_len;
+        let token = &rest[idx..token_end];
         out.push_str(&rest[..idx]);
-        let after = &rest[idx + from.len()..];
-        let boundary_ok = after.chars().next().is_none_or(|c| !c.is_ascii_digit());
-        if boundary_ok {
-            out.push_str(to);
-        } else {
-            out.push_str(from);
-        }
-        rest = after;
+        out.push_str(by_local.get(token).copied().unwrap_or(token));
+        rest = &rest[token_end..];
     }
     out.push_str(rest);
     out

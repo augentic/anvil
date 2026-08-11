@@ -288,17 +288,8 @@ const fn phase_max(left: Phase, right: Phase) -> Phase {
 /// stamp is an artifact field, not the lifecycle status enum (RFC-86
 /// D2 / D24).
 fn is_dropped(slice_dir: &Path) -> Result<bool, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(metadata) => Ok(metadata.dropped_at.is_some()),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(false),
-        Err(err) => Err(err),
-    }
+    let meta = SliceMetadata::load_optional(slice_dir)?;
+    Ok(meta.is_some_and(|metadata| metadata.dropped_at.is_some()))
 }
 
 /// The folded journal facts for one entry's active window.

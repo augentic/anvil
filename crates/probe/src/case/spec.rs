@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use anyhow::{Context as _, Result, bail, ensure};
+use project::GapPolicy;
 use serde::Deserialize;
 
 /// One eval case, parsed from `case.toml` by its `kind` tag.
@@ -53,6 +54,15 @@ pub struct Workflow {
     /// Default stop rung; `--until` overrides per run.
     #[serde(default)]
     pub until: WorkflowUntil,
+    /// Gap policy passed to `plan execute` as `--gap-policy`. Absent
+    /// means `defer` so unattended runs drain past honest `[unknown]`
+    /// rows (RFC-86a D8); pin `strict` to exercise the build gate.
+    #[serde(default = "default_gap_policy")]
+    pub gap_policy: GapPolicy,
+}
+
+const fn default_gap_policy() -> GapPolicy {
+    GapPolicy::Defer
 }
 
 /// One `git clone --depth 1` populating the sibling `fixture/` cache.

@@ -4,6 +4,7 @@
 
 mod artifact_class;
 mod composition;
+pub mod debt;
 mod engine;
 pub mod identity;
 pub mod slice;
