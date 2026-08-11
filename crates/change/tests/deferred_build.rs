@@ -20,10 +20,7 @@ use project::seam::wire::BuildRequest;
 /// The minimal profile whose refine mints one `[unknown]` row
 /// (`greeting/REQ-001`).
 fn unknown_session() -> Session {
-    Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synth(),
-    ])
+    Session::bare(vec![mock::answers::greeting_grouping(), mock::answers::greeting_unknown_synth()])
 }
 
 async fn scaffold(session: &Session) {

@@ -7,8 +7,8 @@ pub use targets::{
     BUILD_DIR, CLAIM_COVERED_MARKER, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER,
     CONTINUATION_V1, CONTINUATION_V2, FAIL_BUILD_MARKER, POSTFLIGHT_FAIL, PREFLIGHT_FAIL,
     REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED,
-    VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build,
-    build_artifact_path, claimed_covered, guidance, merge, repair, review, verify,
+    VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build, build_artifact_path,
+    claimed_covered, guidance, merge, repair, review, verify,
 };
 
 mod source {
