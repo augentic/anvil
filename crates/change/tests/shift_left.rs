@@ -10,7 +10,6 @@ mod support;
 use change::{LoopStep, plan};
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{DeferralOrigin, EventKind, LeafSpecCoverage, read_union};
 use project::plan::dir_cid;
@@ -199,11 +198,11 @@ async fn refine_under_epoch_then_gap_gate_build() {
 }
 
 /// RFC-86a acceptance #3: under `refine-under-epoch` the unknowns do
-/// not exist when execute starts; the `defer` policy dispositions them
-/// at the build gate (one `origin: policy` fact each, synthesized
-/// reason) and the loop proceeds through build and merge to drained.
+/// not exist when execute starts; the gate dispositions them itself
+/// (one `origin: policy` fact each, synthesized reason) and the loop
+/// proceeds through build and merge to drained.
 #[tokio::test]
-async fn refine_under_epoch_defer_policy_mints_and_drains() {
+async fn refine_under_epoch_gate_mints_and_drains() {
     let session = Session::bare(vec![
         mock::answers::greeting_grouping(),
         mock::answers::greeting_unknown_synthesis(),
@@ -219,12 +218,10 @@ async fn refine_under_epoch_defer_policy_mints_and_drains() {
 
     let executed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
-    .expect("defer policy drains over the minted unknown");
+    .expect("the gate defers the minted unknown and drains");
     assert_eq!(executed.status, "drained");
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
@@ -235,7 +232,7 @@ async fn refine_under_epoch_defer_policy_mints_and_drains() {
             ("greeting", LoopStep::Build),
             ("greeting", LoopStep::Merge),
         ],
-        "defer never parks the loop; got {ran:?}"
+        "open gaps never park the loop; got {ran:?}"
     );
 
     // Exactly one gate-time policy fact for the minted unknown.
@@ -262,11 +259,7 @@ async fn refine_under_epoch_defer_policy_mints_and_drains() {
         "synthesized policy reason: {reason}"
     );
 
-    // The effective policy rode the coverage payload.
-    let project::journal::ClosedPlanCoverage::ClosedPlan {
-        gap_policy, specs, ..
-    } = started_coverage(&root);
-    assert_eq!(gap_policy, GapPolicy::Defer);
+    let project::journal::ClosedPlanCoverage::ClosedPlan { specs, .. } = started_coverage(&root);
     assert_eq!(specs.get("greeting"), Some(&LeafSpecCoverage::RefineUnderEpoch));
 
     let journal = journal_text(&root);

@@ -63,7 +63,6 @@ fn execute_validation_codes_carry_hints() {
     // docs/reference/diagnostics.md.
     for (code, expect) in [
         ("plan-epoch-stale", "emery plan execute"),
-        ("plan-gaps-unresolved", "emery plan defer"),
         ("plan-deferral-invalid", "--reason"),
         ("guest-marker-held", ".emery/guest.lock"),
     ] {

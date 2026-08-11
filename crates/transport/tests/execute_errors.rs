@@ -1,8 +1,9 @@
 //! Wire-contract coverage for the RFC-86 execute validation codes:
 //! argv through the command router → exit 2 with the kebab-case
-//! discriminant on the JSON `error` envelope (`plan-gaps-unresolved`,
-//! `plan-epoch-stale`), plus the RFC-86a waiver hard cut (`--waive`
-//! is unknown argv; `--gap-policy` is the closed override).
+//! discriminant on the JSON `error` envelope (`plan-epoch-stale`;
+//! open gaps defer at the gate and never refuse), plus the RFC-86a
+//! waiver hard cut (`--waive` is unknown argv; `--gap-policy` is the
+//! closed override).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -129,13 +130,22 @@ async fn gap_policy_rejects_values_outside_the_closed_enum() {
 }
 
 #[tokio::test]
-async fn gaps_unresolved_on_wire() {
-    let (_project, provider) = fixture(CONFLICT_MODEL).await;
+async fn open_gaps_defer_at_gate_on_wire() {
+    // The gap-policy gate is gone: an open conflict no longer refuses
+    // execute — the gate mints its deferral fact and the run proceeds
+    // past the gate (stopping later on the fixture's missing pins).
+    let (project, provider) = fixture(CONFLICT_MODEL).await;
 
     let (exit, envelope) = execute_json(&provider, &[]).await;
     assert_eq!(exit, 2);
-    assert_eq!(envelope["error"], "plan-gaps-unresolved");
+    assert_eq!(envelope["error"], "plan-execute-stopped");
     assert_eq!(envelope["exit-code"], 2);
+
+    let minted = project::journal::read_union(Layout::new(project.path()))
+        .expect("union")
+        .into_iter()
+        .any(|event| matches!(event.kind, EventKind::GapDeferred { .. }));
+    assert!(minted, "the gate journals the deferral before proceeding");
 }
 
 #[tokio::test]

@@ -12,7 +12,6 @@ use artifacts::spec::provenance::RequirementStatus;
 use change::plan;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
     DEFAULT_WRITER, DeferralOrigin, DeferredMember, Event, EventKind, FactEpochRef, append_for,
@@ -52,10 +51,10 @@ async fn scaffold(session: &Session) {
     .expect("author");
 }
 
-async fn execute(session: &Session, gap_policy: Option<GapPolicy>) {
+async fn execute(session: &Session) {
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput { gap_policy },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect("execute drains");
@@ -92,7 +91,7 @@ async fn policy_deferred_unknown_conserved_through_merge_and_archive() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
-    execute(&session, Some(GapPolicy::Defer)).await;
+    execute(&session).await;
 
     // The folded baseline row: status preserved, final baseline id,
     // and the appended self-describing note (origin, change, date,
@@ -170,8 +169,8 @@ async fn operator_deferral_note_carries_reason_and_origin() {
     .await
     .expect("defer");
 
-    // Strict default: the durable deferral covers the gate.
-    execute(&session, None).await;
+    // The durable operator deferral covers the gate — no policy mint.
+    execute(&session).await;
 
     let baseline =
         fs::read_to_string(root.join(".emery/specs/greeting/spec.md")).expect("merged baseline");
@@ -201,7 +200,7 @@ async fn debt_projection_and_author_inventory_after_merge() {
     ]);
     let root = session.root().to_path_buf();
     scaffold(&session).await;
-    execute(&session, Some(GapPolicy::Defer)).await;
+    execute(&session).await;
 
     // The projection reads the merged baseline note, never fact logs.
     let debt =

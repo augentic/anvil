@@ -174,9 +174,9 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         };
 
         tracing::info!("{step} {slice} [entry {entry}/{total}] …");
-        // Gap policy + epoch freshness gate build before the target
-        // orchestration (`plan-gaps-unresolved` / `plan-epoch-stale`);
-        // under `defer` the gate mints policy deferrals instead (D3/D6).
+        // Epoch freshness gates build before the target orchestration
+        // (`plan-epoch-stale`); open gaps are dispositioned at the
+        // gate itself (policy deferrals) and never block.
         if step == LoopStep::Build {
             let plan = Plan::load(&layout.plan_path())?;
             super::enforce_before_build(layout, &plan, &slice, now)?;
@@ -309,8 +309,8 @@ fn dispatch_status(
         }
         NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
         // ReviewGaps is status when open findings remain (RFC-86a D7).
-        // The loop still attempts build; `enforce_before_build` refuses
-        // open gaps under `strict`, mints policy deferrals under `defer`.
+        // The loop still attempts build; `enforce_before_build` mints
+        // policy deferrals for open gaps and proceeds.
         NextActionKind::Build | NextActionKind::ReviewGaps => {
             ControlFlow::Continue(Some(LoopStep::Build))
         }

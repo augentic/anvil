@@ -12,7 +12,6 @@ use diagnostics::DiagnosticKind;
 use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::build_record::BuildRecord;
 use project::config::Layout;
 use project::seam::wire::BuildRequest;
@@ -245,9 +244,7 @@ async fn failed_rebuild_orphan_wave_stays_stale() {
     fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
     run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("parked at merge preflight");
@@ -260,9 +257,7 @@ async fn failed_rebuild_orphan_wave_stays_stale() {
     fs::write(root.join(behaviour::FAIL_BUILD_MARKER), "").expect("marker");
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("redirected re-build fails");
@@ -288,9 +283,7 @@ async fn failed_rebuild_orphan_wave_stays_stale() {
     // then merge against the fresh wave's record.
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect("resume re-builds the orphan wave and drains");
@@ -318,13 +311,11 @@ async fn drifted_pins_and_dispositions_rerefine_before_rebuild() {
     let root = session.root().to_path_buf();
     scaffold(&session).await;
 
-    // Park the loop between build and merge under the defer policy.
+    // Park the loop between build and merge.
     fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
     run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("parked at merge preflight");
@@ -344,9 +335,7 @@ async fn drifted_pins_and_dispositions_rerefine_before_rebuild() {
     // (Build → Refine), so the fresh pins are frozen first.
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect("resume re-refines, re-builds, and drains");
@@ -360,8 +349,8 @@ async fn drifted_pins_and_dispositions_rerefine_before_rebuild() {
 }
 
 /// Loop staleness: a retraction between build and merge sends the
-/// slice back through the build gate — strict re-adjudicates the
-/// reopened row, defer re-mints, re-builds, and drains.
+/// slice back through the build gate — the gate re-mints the
+/// reopened row's disposition, re-builds, and drains.
 #[tokio::test]
 async fn execute_rebuilds_after_deferral_retraction() {
     let session = unknown_session();
@@ -372,9 +361,7 @@ async fn execute_rebuilds_after_deferral_retraction() {
     fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("parked at merge preflight");
@@ -390,27 +377,15 @@ async fn execute_rebuilds_after_deferral_retraction() {
         "retraction drifts the parked build"
     );
 
-    // A strict resume goes back through the build gate instead of
-    // merging the stale record — the reopened row refuses the build.
-    let err = run::<plan::handlers::Execute, _, _>(
-        session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Strict),
-        },
-    )
-    .await
-    .expect_err("strict resume re-adjudicates the reopened row");
-    assert!(err.to_string().contains("plan-gaps-unresolved"), "{err}");
-
-    // A defer resume re-mints the disposition, re-builds, and drains.
+    // The resume goes back through the build gate instead of merging
+    // the stale record — the gate re-mints the reopened row's
+    // disposition, re-builds, and drains.
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
-    .expect("defer resume rebuilds and drains");
+    .expect("resume rebuilds and drains");
     assert_eq!(drained.status, "drained");
     let steps: Vec<(&str, LoopStep)> =
         drained.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
