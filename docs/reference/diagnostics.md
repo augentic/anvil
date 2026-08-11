@@ -92,6 +92,7 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
+| `plan-gap-digest-missing` | An open `[unknown]` / `[conflict]` row carries no requirement digest (a legacy `spec.md`-fallback inventory), so no deferral fact can take it out of build scope; the gap gate refuses rather than building over it. | Re-run `emery plan execute` — the refine phase rewrites `model.yaml` and mints the digests deferrals match on. |
 | `target-build-input-missing` | A `required` adapter-declared build input is absent from the slice tree. | Supply the input file (e.g. Vectis `tokens.yaml`) and re-run execute. |
 | `target-build-success-with-blocking-finding` | The target reported `status: success` but its report carries a blocking finding; the gate refuses. | Fix the finding the report names, then re-run execute. |
 | `target-build-deferred-covered` | The build phase report's `covered[]` claims a requirement the request's `deferred[]` excluded from build scope; the phase machine halts the attempt before verification. | Deferred requirements are out of the build's obligations — fix the target build so it neither implements nor claims them, then re-run execute. |

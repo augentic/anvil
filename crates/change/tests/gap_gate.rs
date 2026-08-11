@@ -198,6 +198,39 @@ async fn open_conflict_deferred_at_gate() {
 }
 
 #[tokio::test]
+async fn digest_less_open_row_refused_at_gate() {
+    // A legacy `spec.md`-fallback inventory (refined slice, model
+    // without requirements) carries no requirement digests — no fact
+    // can take its open rows out of build scope, so the gate refuses
+    // instead of building over the gap silently.
+    let session = Session::bare(Vec::new());
+    init_mock(&session).await;
+    write_refined(session.root(), "a", "requirements: []\n");
+    let specs = session.root().join(".emery/slices/a/specs/auth");
+    fs::create_dir_all(&specs).expect("specs dir");
+    fs::write(
+        specs.join("spec.md"),
+        "### Requirement: reset path not evidenced [unknown]\n\
+         ID: REQ-001\n\
+         Sources: []\n\
+         Status: unknown\n",
+    )
+    .expect("spec.md");
+    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+
+    let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
+        .await
+        .expect_err("a digest-less open row must refuse at the gate");
+    assert_eq!(err_code(&err), "plan-gap-digest-missing", "{err}");
+    let detail = err.core().to_string();
+    assert!(detail.contains("a/REQ-001"), "the detail names the row: {detail}");
+    assert!(
+        gate_minted_facts(session.root()).is_empty(),
+        "the refusal mints nothing — no fact without a match key"
+    );
+}
+
+#[tokio::test]
 async fn deferred_unknown_passes_gap_gate() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
