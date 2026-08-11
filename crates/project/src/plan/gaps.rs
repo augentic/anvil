@@ -150,13 +150,6 @@ impl GapsBody {
         self.rows.is_empty()
     }
 
-    /// Whether any row's computed disposition is `open` — the set
-    /// next-actions and the strict gate compute over (RFC-86a D7).
-    #[must_use]
-    pub fn has_open(&self) -> bool {
-        self.rows.iter().any(|row| row.disposition == Some(Disposition::Open))
-    }
-
     /// Deferred-debt counts with conflicts broken out (RFC-86a D6/D7).
     #[must_use]
     pub fn debt(&self) -> DebtCounts {

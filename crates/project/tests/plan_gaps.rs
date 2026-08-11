@@ -540,7 +540,15 @@ fn debt_counts_break_out_conflicts() {
         deferred(2, "local", 2, "auth-login", &title_digest("session TTL tied")),
     ];
     let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
-    assert!(!body.has_open(), "fully dispositioned — divergence takes no disposition");
+    assert_eq!(
+        dispositions(&body),
+        vec![
+            ("REQ-001", Some(Disposition::Deferred)),
+            ("REQ-002", Some(Disposition::Deferred)),
+            ("REQ-003", None),
+        ],
+        "fully dispositioned — divergence takes no disposition"
+    );
     let debt = body.debt();
     assert_eq!(
         debt,
@@ -554,7 +562,14 @@ fn debt_counts_break_out_conflicts() {
     // Only the conflict deferred: the unknown stays open.
     let events = vec![deferred(2, "local", 2, "auth-login", &title_digest("session TTL tied"))];
     let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
-    assert!(body.has_open());
+    assert_eq!(
+        dispositions(&body),
+        vec![
+            ("REQ-001", Some(Disposition::Open)),
+            ("REQ-002", Some(Disposition::Deferred)),
+            ("REQ-003", None),
+        ]
+    );
     let debt = body.debt();
     assert_eq!(
         debt,
