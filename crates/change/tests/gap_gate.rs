@@ -18,8 +18,7 @@ use mock::session::Session;
 use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event, EventKind, append_for,
-    read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event, EventKind, append_for, read_union,
 };
 use project::plan::{Disposition, Plan};
 use support::plan_with_changes;
@@ -658,8 +657,7 @@ async fn stale_refinement_digest_refuses_build() {
 
     let live = support::manifest_digest(session.root(), "a");
     assert!(
-        live.as_str()
-            != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
+        live.as_str() != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
     );
 
     let err = enforce_before_build(

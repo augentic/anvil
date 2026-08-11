@@ -261,10 +261,7 @@ async fn refine_under_epoch_defer_policy_mints_and_drains() {
         ..
     } = started_coverage(&root);
     assert_eq!(gap_policy, GapPolicy::Defer);
-    assert!(
-        refinements.contains_key("greeting"),
-        "refinement digest covered: {refinements:?}"
-    );
+    assert!(refinements.contains_key("greeting"), "refinement digest covered: {refinements:?}");
 
     let journal = journal_text(&root);
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");

@@ -1001,8 +1001,10 @@ mod milestones {
 
         let path = project.root().join(".emery/slices/a/refinement.yaml");
         let mut body = std::fs::read_to_string(&path).expect("manifest");
-        body.push_str("# drift
-");
+        body.push_str(
+            "# drift
+",
+        );
         std::fs::write(&path, body).expect("mutate manifest");
         let body = status(&project, &plan).await;
         assert!(!body.authorized, "covered-refinement drift clears Authorized");

@@ -26,8 +26,8 @@ use jiff::Timestamp;
 use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
-use project::config::Layout;
 use project::GapPolicy;
+use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, append_for, read_union,
 };
