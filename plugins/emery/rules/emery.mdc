@@ -58,7 +58,8 @@ There are no per-slice breakout commands. When the loop stops (`refine-failed`, 
 - `emery plan drop <slice> [--reason "<why>"]` — abandon one entry's slice without merging.
 - `emery plan amend <slice> --allow-composition-replace true` — authorize a whole-document composition overwrite for that entry's merge.
 - `emery plan defer <slice>/<req> --reason "<why>"` — durably defer a named open gap requirement out of build scope (`--retract` reopens it).
-- `emery plan execute --gap-policy defer` — one-epoch policy override: disposition every open gap at the build gate instead of stopping.
+- `emery plan execute --gap-policy defer` — one-epoch policy override: disposition every open gap at the build gate instead of stopping. The standing declaration is written at init time by `emery init --gap-policy <strict|defer>` (recorded on `project.yaml`; absent means `strict`).
+- `emery debt` — read-only baseline debt projection: every carried `unknown` / `conflict` requirement under `.emery/specs/` with the reason, origin, originating change, and age from its deferral note.
 - `emery slice list | validate | provenance | model show` — read-only slice projections.
 
 ## Tracing and output
