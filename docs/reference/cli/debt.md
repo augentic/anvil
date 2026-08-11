@@ -21,9 +21,9 @@ The projection reads the baseline alone — never archived fact logs — and wri
 ```text
 baseline debt (2 carried rows):
   unknown:
-    orders/REQ-007 Password reset flow — deferred by gap-policy under epoch 2026-08-01T02:11:04Z (change auth-login, 12 days)
+    orders/REQ-007 Password reset flow — deferred at the build gate under epoch 2026-08-01T02:11:04Z (change auth-login, 12 days)
   conflict:
-    orders/REQ-011 Session timeout — deferred by gap-policy under epoch 2026-08-01T02:11:04Z (change auth-login, 12 days)
+    orders/REQ-011 Session timeout — deferred at the build gate under epoch 2026-08-01T02:11:04Z (change auth-login, 12 days)
 ```
 
 ## JSON output

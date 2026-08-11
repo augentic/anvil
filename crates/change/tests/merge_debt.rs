@@ -101,7 +101,7 @@ async fn policy_deferred_unknown_conserved_through_merge_and_archive() {
     assert!(baseline.contains("Status: unknown"), "{baseline}");
     assert!(baseline.contains("ID: REQ-001"), "{baseline}");
     assert!(baseline.contains("Note: deferred — change: demo; date: "), "{baseline}");
-    assert!(baseline.contains("; reason: deferred by gap-policy under epoch "), "{baseline}");
+    assert!(baseline.contains("; reason: deferred at the build gate under epoch "), "{baseline}");
 
     // The wave-commit fact snapshots exactly the debt it accepted,
     // digest-bound to the covering deferral fact.
@@ -135,11 +135,11 @@ async fn policy_deferred_unknown_conserved_through_merge_and_archive() {
     assert_eq!(row.req, "REQ-001");
     assert_eq!(row.status, RequirementStatus::Unknown);
     let detail = row.deferral.as_ref().expect("covering deferral detail");
-    assert!(detail.reason.starts_with("deferred by gap-policy under epoch "), "{}", detail.reason);
+    assert!(detail.reason.starts_with("deferred at the build gate under epoch "), "{}", detail.reason);
     let text = render_archive(&archived);
     assert!(text.contains("carried debt (1 deferred):"), "{text}");
     assert!(text.contains("unknown:"), "{text}");
-    assert!(text.contains("greeting/REQ-001 — deferred by gap-policy under epoch "), "{text}");
+    assert!(text.contains("greeting/REQ-001 — deferred at the build gate under epoch "), "{text}");
 }
 
 /// Acceptance 6, pre-covered path: a durable deferral fact minted
@@ -214,7 +214,7 @@ async fn debt_projection_and_author_inventory_after_merge() {
     assert_eq!(row.status, RequirementStatus::Unknown);
     let note = row.deferral.as_ref().expect("self-describing note");
     assert_eq!(note.change, "demo");
-    assert!(note.reason.starts_with("deferred by gap-policy under epoch "), "{}", note.reason);
+    assert!(note.reason.starts_with("deferred at the build gate under epoch "), "{}", note.reason);
     assert!(note.age_days <= 1, "the deferral happened just now: {note:?}");
 
     // Close the change, then author the corrective one: the review
@@ -241,7 +241,7 @@ async fn debt_projection_and_author_inventory_after_merge() {
     assert!(brief.contains("## Carried debt"), "{brief}");
     assert!(brief.contains("Unknowns:"), "{brief}");
     assert!(
-        brief.contains("- greeting/REQ-001 greeting error handling — deferred by gap-policy"),
+        brief.contains("- greeting/REQ-001 greeting error handling — deferred at the build gate"),
         "{brief}"
     );
     assert!(brief.contains("(change demo, "), "{brief}");

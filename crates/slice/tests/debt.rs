@@ -31,7 +31,7 @@ Sources: docs, code\n\
 Status: conflict\n\n\
 Note: docs says 30 minutes\n\
 Note: code says 15 minutes\n\n\
-Note: deferred — change: demo; date: 2023-11-14; reason: deferred by gap-policy under epoch 2023-11-14T00:00:00Z\n\n\
+Note: deferred — change: demo; date: 2023-11-14; reason: deferred at the build gate under epoch 2023-11-14T00:00:00Z\n\n\
 ### Requirement: greeting text\n\
 ID: REQ-003\n\
 Sources: docs\n\
@@ -87,7 +87,7 @@ fn baseline_rows_carry_note_fields() {
     assert_eq!((conflict.domain.as_str(), conflict.req.as_str()), ("auth", "REQ-002"));
     assert_eq!(conflict.status, RequirementStatus::Conflict);
     let note = conflict.deferral.as_ref().expect("deferral note");
-    assert!(note.reason.starts_with("deferred by gap-policy under epoch "), "{}", note.reason);
+    assert!(note.reason.starts_with("deferred at the build gate under epoch "), "{}", note.reason);
     assert_eq!(note.age_days, 0);
 
     let noteless = &rows[2];
@@ -189,5 +189,5 @@ fn markdown_section_renders_inventory() {
     let unknowns_at = section.find("Unknowns:").expect("unknowns heading");
     let conflicts_at = section.find("Conflicts:").expect("conflicts heading");
     assert!(unknowns_at < conflicts_at, "unknowns render before conflicts: {section}");
-    assert!(section.contains("- auth/REQ-002 session TTL — deferred by gap-policy"), "{section}");
+    assert!(section.contains("- auth/REQ-002 session TTL — deferred at the build gate"), "{section}");
 }

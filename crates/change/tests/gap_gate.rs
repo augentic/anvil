@@ -71,7 +71,7 @@ fn gate_minted_facts(root: &std::path::Path) -> Vec<(String, String, String)> {
         .filter_map(|event| match event.kind {
             EventKind::GapDeferred {
                 slice, req, reason, ..
-            } if reason.starts_with("deferred by gap-policy under epoch ") => {
+            } if reason.starts_with("deferred at the build gate under epoch ") => {
                 Some((slice.as_str().to_string(), req, reason))
             }
             _ => None,
@@ -155,7 +155,7 @@ async fn open_unknown_deferred_at_gate() {
     assert_eq!(slice, "a");
     assert_eq!(req, "REQ-003");
     assert!(
-        reason.starts_with("deferred by gap-policy under epoch "),
+        reason.starts_with("deferred at the build gate under epoch "),
         "synthesized policy reason: {reason}"
     );
 
@@ -380,7 +380,7 @@ async fn digest_lapsed_deferral_reminted_at_gate() {
     let facts = gate_minted_facts(session.root());
     assert_eq!(facts.len(), 1, "the lapsed row is re-minted at the gate: {facts:?}");
     assert!(
-        facts[0].2.starts_with("deferred by gap-policy under epoch "),
+        facts[0].2.starts_with("deferred at the build gate under epoch "),
         "gate-time fact, not the pre-seeded one: {}",
         facts[0].2
     );

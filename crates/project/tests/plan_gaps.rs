@@ -436,14 +436,14 @@ fn deferred_rows_carry_reason() {
             slice: "auth-login".into(),
             req: "REQ-001".into(),
             requirement_digest: title_digest("reset path not evidenced"),
-            reason: "deferred by gap-policy under epoch 2024".into(),
+            reason: "deferred at the build gate under epoch 2024".into(),
         },
     });
     let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
     assert_eq!(
         body.rows[0].deferral,
         Some(Deferral {
-            reason: "deferred by gap-policy under epoch 2024".into(),
+            reason: "deferred at the build gate under epoch 2024".into(),
             deferred_at: ts(2),
         })
     );

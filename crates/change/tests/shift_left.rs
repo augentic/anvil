@@ -251,7 +251,7 @@ async fn refine_under_epoch_gate_mints_and_drains() {
     assert_eq!(slice, "greeting");
     assert_eq!(req, "REQ-001");
     assert!(
-        reason.starts_with("deferred by gap-policy under epoch "),
+        reason.starts_with("deferred at the build gate under epoch "),
         "synthesized policy reason: {reason}"
     );
 
