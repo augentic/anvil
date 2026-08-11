@@ -189,5 +189,8 @@ fn markdown_section_renders_inventory() {
     let unknowns_at = section.find("Unknowns:").expect("unknowns heading");
     let conflicts_at = section.find("Conflicts:").expect("conflicts heading");
     assert!(unknowns_at < conflicts_at, "unknowns render before conflicts: {section}");
-    assert!(section.contains("- auth/REQ-002 session TTL — deferred at the build gate"), "{section}");
+    assert!(
+        section.contains("- auth/REQ-002 session TTL — deferred at the build gate"),
+        "{section}"
+    );
 }

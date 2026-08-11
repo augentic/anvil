@@ -135,7 +135,11 @@ async fn deferred_unknown_conserved_through_merge_and_archive() {
     assert_eq!(row.req, "REQ-001");
     assert_eq!(row.status, RequirementStatus::Unknown);
     let detail = row.deferral.as_ref().expect("covering deferral detail");
-    assert!(detail.reason.starts_with("deferred at the build gate under epoch "), "{}", detail.reason);
+    assert!(
+        detail.reason.starts_with("deferred at the build gate under epoch "),
+        "{}",
+        detail.reason
+    );
     let text = render_archive(&archived);
     assert!(text.contains("carried debt (1 deferred):"), "{text}");
     assert!(text.contains("unknown:"), "{text}");
