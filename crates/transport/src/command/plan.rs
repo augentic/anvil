@@ -110,14 +110,13 @@ pub struct StatusArgs {}
 )]
 pub struct GapsArgs {}
 
-/// Arguments for `plan execute`.
+/// Arguments for `plan execute` — none.
 #[derive(Clone, Copy, Debug, Args)]
-pub struct ExecuteArgs {
-    /// One-epoch gap-policy override (`strict` or `defer`). Absent
-    /// falls back to the `project.yaml` declaration, else `strict`.
-    #[arg(long = "gap-policy", value_name = "POLICY")]
-    pub gap_policy: Option<project::GapPolicy>,
-}
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "clap's `Args` derive requires a braced struct"
+)]
+pub struct ExecuteArgs {}
 
 /// Arguments for `plan remove`.
 #[derive(Debug, Args)]

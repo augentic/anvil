@@ -2,8 +2,7 @@
 //! argv through the command router → exit 2 with the kebab-case
 //! discriminant on the JSON `error` envelope (`plan-epoch-stale`;
 //! open gaps defer at the gate and never refuse), plus the RFC-86a
-//! waiver hard cut (`--waive` is unknown argv; `--gap-policy` is the
-//! closed override).
+//! waiver hard cut (`--waive` is unknown argv).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -14,7 +13,6 @@ use mock::invoke::run;
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
 use omnia_testkit::model::Harness;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{ClosedPlanCoverage, Event, EventKind, append_for};
 use project::plan::{AuthorityOverride, Entry, Plan};
@@ -119,17 +117,6 @@ async fn waive_is_unknown_argv() {
 }
 
 #[tokio::test]
-async fn gap_policy_rejects_values_outside_the_closed_enum() {
-    let (_project, provider) = fixture(CONFLICT_MODEL).await;
-    let router =
-        transport::command::router(Invoker::new("emery", provider.clone())).expect("router");
-    let response = router.execute(["emery", "plan", "execute", "--gap-policy", "sometimes"]).await;
-    assert_eq!(response.exit, 2);
-    let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("--gap-policy"), "clap names the offending flag: {stderr}");
-}
-
-#[tokio::test]
 async fn open_gaps_defer_at_gate_on_wire() {
     // The gap-policy gate is gone: an open conflict no longer refuses
     // execute — the gate mints its deferral fact and the run proceeds
@@ -170,7 +157,6 @@ async fn epoch_stale_on_wire() {
                 plan_digest:
                     "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
                 specs: BTreeMap::new(),
-                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },

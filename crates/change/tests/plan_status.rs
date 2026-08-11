@@ -26,7 +26,6 @@ use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event as JournalEvent, EventKind,
@@ -872,7 +871,6 @@ mod milestones {
                     coverage: ClosedPlanCoverage::ClosedPlan {
                         plan_digest: live_plan_digest(root),
                         specs,
-                        gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
                 },
@@ -928,7 +926,6 @@ mod milestones {
                             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                                 .into(),
                         specs,
-                        gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
                 },

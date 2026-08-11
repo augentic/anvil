@@ -29,10 +29,6 @@ pub(super) struct InitArgs {
     /// Comma-separated target platforms.
     #[arg(long)]
     platforms: Option<String>,
-    /// Gap policy declaration (`strict` or `defer`) recorded on
-    /// `project.yaml`; absent means `strict`.
-    #[arg(long)]
-    gap_policy: Option<project::GapPolicy>,
     /// Re-enter initialization to bump the Emery version pin.
     #[arg(long, conflicts_with_all = ["adapter", "name", "description"])]
     pub(super) upgrade: bool,
@@ -269,8 +265,8 @@ where
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) with the effective gap policy, then advance → refine → build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--gap-policy <strict|defer>` one-epoch override",
-        "Run the drained execute loop in the engine guest.\n\nAt start appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6) — per-leaf `existing` spec digests or `refine-under-epoch`, plus the effective gap policy (RFC-86a D3: `--gap-policy` flag, else the `project.yaml` declaration, else `strict`). Then advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows are dispositioned at the gate (one `gap.deferred` fact each) and build proceeds — nothing blocks. No `plan approve` / `plan refine` verbs. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch), then advance → refine → build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`)",
+        "Run the drained execute loop in the engine guest.\n\nAt start appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6) — per-leaf `existing` spec digests or `refine-under-epoch`. Then advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows are dispositioned at the gate (one `gap.deferred` fact each) and build proceeds — nothing blocks. No `plan approve` / `plan refine` verbs. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
@@ -338,7 +334,7 @@ convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than,
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
 convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { gap_policy });
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
@@ -349,4 +345,4 @@ convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
 convert!(DebtArgs => ::slice::handlers::DebtInput {});
 
-convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, gap_policy, upgrade });
+convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });

@@ -272,10 +272,9 @@ fn fresh_plan_resume(gaps: &GapsBody, action: NextActionKind) -> String {
 
 /// Resume when open findings block Ready: the durable disposition act
 /// over every open row — `[unknown]` and `[conflict]` alike defer
-/// (RFC-86a D3/D6). Closing the gap at its source or an epoch-wide
-/// `emery plan execute --gap-policy defer` are the alternatives the
-/// gate hints carry. A fully-dispositioned inventory resumes at the
-/// execute loop (D7).
+/// (RFC-86a D3/D6). Closing the gap at its source is the alternative
+/// the gate hints carry. A fully-dispositioned inventory resumes at
+/// the execute loop (D7).
 fn gap_resume(gaps: &GapsBody) -> String {
     let open: Vec<_> = gaps
         .rows

@@ -13,7 +13,6 @@ fn input(adapter: &str) -> project::init::handlers::InitInput {
         name: Some("demo-project".to_string()),
         description: None,
         platforms: None,
-        gap_policy: None,
         upgrade: false,
     }
 }

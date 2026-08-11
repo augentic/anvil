@@ -8,7 +8,6 @@ use error::Error;
 use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
-use project::GapPolicy;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::plan::LoopStep;
@@ -17,15 +16,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome};
 
-/// Wire input for `plan execute`.
+/// Wire input for `plan execute` (no fields).
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct ExecuteInput {
-    /// One-epoch `--gap-policy` override. `None` falls back to the
-    /// `project.yaml` declaration, else `strict` (RFC-86a D3).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub gap_policy: Option<GapPolicy>,
-}
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde deserialises the wire `{}` object into a braced struct only"
+)]
+pub struct ExecuteInput {}
 
 /// `emery plan execute` → the internal execute orchestration — the
 /// drained refine → build → merge loop.
@@ -40,9 +37,10 @@ impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> f
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
+        let ExecuteInput {} = input;
         let cx = Ctx::load(context.provider)?;
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), input.gap_policy).await?;
+        let outcome = orchestrate::execute(caps, &cx.paths, cx.now()).await?;
         match outcome {
             ExecuteOutcome::Drained { plan, phases } => Ok(ExecuteBody {
                 status: "drained",

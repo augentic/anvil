@@ -16,7 +16,6 @@ use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event, EventKind, LeafSpecCoverage,
@@ -111,7 +110,6 @@ fn stamp_epoch(
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
                 specs,
-                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },
@@ -193,40 +191,6 @@ async fn open_conflict_deferred_at_gate() {
     assert_eq!(facts.len(), 1, "one policy fact for the conflict: {facts:?}");
     assert_eq!(facts[0].1, "REQ-001");
 
-    let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
-    assert_eq!(gaps.rows[0].disposition, Some(Disposition::Deferred), "{:?}", gaps.rows);
-}
-
-#[tokio::test]
-async fn gap_policy_flag_is_inert_at_the_gate() {
-    // The parseable `--gap-policy` knob is no longer consulted by the
-    // gate: `strict` mints identically to the default.
-    let session = Session::bare(Vec::new());
-    init_mock(&session).await;
-    write_refined(
-        session.root(),
-        "a",
-        r"requirements:
-  - id: REQ-003
-    title: reset path not evidenced
-    statement: ''
-    status: unknown
-    sources: [intent]
-",
-    );
-    write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
-
-    let err = run::<Execute, _, _>(
-        session.provider(),
-        ExecuteInput {
-            gap_policy: Some(GapPolicy::Strict),
-        },
-    )
-    .await
-    .expect_err("build fails later without pins; the gap gate must not");
-    assert_eq!(err_code(&err), "plan-execute-stopped", "strict never gates: {err}");
-
-    assert_eq!(policy_deferral_facts(session.root()).len(), 1);
     let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
     assert_eq!(gaps.rows[0].disposition, Some(Disposition::Deferred), "{:?}", gaps.rows);
 }
@@ -488,7 +452,6 @@ async fn concurrent_stale_epoch_refuses_build_via_execute() {
                 plan_digest:
                     "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
                 specs: BTreeMap::new(),
-                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },

@@ -8,7 +8,6 @@ use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::operation::SourceOperation;
-use crate::gap_policy::GapPolicy;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
 
@@ -562,7 +561,7 @@ pub enum EventKind {
 pub enum DeferralOrigin {
     /// The explicit `emery plan defer` operator act.
     Operator,
-    /// Gate-time minting under an effective `defer` gap policy.
+    /// Unconditional gate-time minting at the build gate.
     Policy,
 }
 
@@ -580,11 +579,6 @@ pub enum ClosedPlanCoverage {
         /// Sorted per-leaf coverage: `existing { digest }` or
         /// `refine-under-epoch`.
         specs: std::collections::BTreeMap<String, LeafSpecCoverage>,
-        /// The **effective** gap policy this epoch runs under —
-        /// per-epoch `--gap-policy` flag, else the `project.yaml`
-        /// declaration, else `strict` (RFC-86a D3).
-        #[serde(rename = "gap-policy")]
-        gap_policy: GapPolicy,
     },
 }
 

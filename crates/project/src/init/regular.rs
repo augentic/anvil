@@ -71,7 +71,6 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         emery_version: Some(emery_version.clone()),
         rules,
         platforms: validated_platforms,
-        gap_policy: opts.gap_policy,
     };
 
     let config_path = layout.config_path();

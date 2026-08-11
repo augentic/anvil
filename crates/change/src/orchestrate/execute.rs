@@ -7,7 +7,6 @@ use std::ops::ControlFlow;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use project::GapPolicy;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
@@ -84,14 +83,10 @@ pub enum ExecuteOutcome {
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
-    gap_policy: Option<GapPolicy>,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
-    // Effective gap policy for this epoch (RFC-86a D3): per-epoch
-    // flag, else the `project.yaml` declaration, else `strict`.
-    let gap_policy = gap_policy.or(config.gap_policy).unwrap_or_default();
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
     // A drained plan is a read-only no-op: opening a fresh
@@ -105,8 +100,8 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     }
     // Every non-drained execute path (including resume) appends
     // `plan.execute.started` at start with typed `closed-plan`
-    // coverage carrying the effective gap policy.
-    super::epoch::append_started(layout, &plan, now, gap_policy)?;
+    // coverage.
+    super::epoch::append_started(layout, &plan, now)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {

@@ -39,7 +39,6 @@ async fn regular_mode() {
             name: Some("demo-project".into()),
             description: None,
             platforms: None,
-            gap_policy: None,
             upgrade: false,
         },
     )
@@ -126,7 +125,6 @@ async fn regular_mode_component_free() {
                 name: Some("demo-project".into()),
                 description: None,
                 platforms: None,
-                gap_policy: None,
                 upgrade: false,
             },
         ))
@@ -157,7 +155,6 @@ async fn local_component_mirrored() {
             name: Some("demo-project".into()),
             description: None,
             platforms: None,
-            gap_policy: None,
             upgrade: false,
         },
     )
@@ -207,7 +204,6 @@ async fn local_component_mirrored() {
             name: None,
             description: None,
             platforms: None,
-            gap_policy: None,
             upgrade: true,
         },
     )
@@ -248,7 +244,6 @@ async fn local_component_outside_mounts() {
             name: Some("demo-project".into()),
             description: None,
             platforms: None,
-            gap_policy: None,
             upgrade: false,
         },
     )

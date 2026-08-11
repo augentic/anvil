@@ -26,7 +26,6 @@ use jiff::Timestamp;
 use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, append_for, read_union,
@@ -118,7 +117,6 @@ fn stamp_epoch(
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
                 specs,
-                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },
@@ -323,7 +321,7 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
     );
     assert_eq!(coverage["specs"]["greeting"]["kind"], "existing");
     assert_eq!(coverage["specs"]["greeting"]["digest"], specs_before);
-    assert_eq!(coverage["gap-policy"], "strict", "effective policy on the wire: {coverage}");
+    assert!(coverage.get("gap-policy").is_none(), "gap-policy field deleted: {coverage}");
     assert!(coverage.get("unknown-waivers").is_none(), "waiver field deleted: {coverage}");
     assert!(!wire.to_string().contains("approved"));
     assert!(!root.join(".emery/approvals").exists());
