@@ -1,6 +1,7 @@
 //! RFC-86a Acceptance #5 / D4 — build-scope exclusion: the request's
-//! `deferred[]`, the deferred-covered report gate, the record's
-//! consumed set, and disposition-drift staleness at merge time.
+//! `deferred[]`, the fail-fast deferred-covered gate under the RFC-90
+//! phase machine, the record's consumed set, and disposition-drift
+//! staleness at merge time.
 
 mod support;
 
@@ -129,8 +130,10 @@ async fn request_and_record_bind_the_deferred_set() {
     );
 }
 
-/// A report claiming coverage of a deferred requirement refuses the
-/// build (`target-build-deferred-covered`); no record lands.
+/// A build phase report claiming coverage of a deferred requirement
+/// halts the machine fail-fast (`target-build-deferred-covered`):
+/// verify never dispatches, the failed canonical projection carries
+/// the engine finding, and no record lands.
 #[tokio::test]
 async fn covered_deferred_requirement_refuses_build() {
     let session = unknown_session();
@@ -141,8 +144,26 @@ async fn covered_deferred_requirement_refuses_build() {
 
     fs::write(root.join(behaviour::CLAIM_COVERED_MARKER), "REQ-001").expect("marker");
 
-    let err = support::build(&session, "greeting").await.expect_err("report gate refuses");
+    let err = support::build(&session, "greeting").await.expect_err("machine gate refuses");
     assert!(err.to_string().contains("target-build-deferred-covered"), "{err}");
+    // Fail-fast placement (RFC-86a D4 under the RFC-90 machine): the
+    // gate fires on the admitted build round, before a verify /
+    // review dispatch is spent on an out-of-contract candidate.
+    assert_eq!(
+        support::phase_files(&root, "greeting", 1),
+        ["01-build.yaml"],
+        "the coverage claim halts the attempt before verify dispatches"
+    );
+    let report = support::canonical_report(&root, "greeting");
+    assert_eq!(report.status, slice::BuildStatus::Failure);
+    assert!(
+        report
+            .findings
+            .iter()
+            .any(|f| f.rule_id.as_deref() == Some("target-build-deferred-covered")),
+        "engine-authored terminal finding present: {:?}",
+        report.findings
+    );
     assert!(
         !BuildRecord::present(&Layout::new(&root).slice_dir("greeting")),
         "a refused build mints no record"

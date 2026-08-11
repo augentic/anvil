@@ -388,6 +388,14 @@ mod phase_gate {
         let err = gate::accept(PhaseOperation::Repair, &with_surface)
             .expect_err("repair ui-surface rejected");
         assert_eq!(code(&err), "target-phase-output-declaration");
+
+        // The coverage claim is build-only too (RFC-86a D4): a
+        // non-`build` phase claiming `covered[]` trips the same gate.
+        let mut with_claim = report(PhaseSource::ModelAssisted, Vec::new());
+        with_claim.covered = vec!["REQ-001".to_string()];
+        let err = gate::accept(PhaseOperation::Verify, &with_claim)
+            .expect_err("verify coverage claim rejected");
+        assert_eq!(code(&err), "target-phase-output-declaration");
     }
 
     #[test]
