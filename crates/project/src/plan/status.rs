@@ -22,14 +22,6 @@ pub enum NextActionKind {
     Build,
     /// The execute loop's merge phase awaits [`StatusBody::slice`].
     Merge,
-    /// In-scope slices are refined but **open** findings remain —
-    /// close conflicts / unknowns, or disposition them durably with
-    /// `plan defer` (RFC-86 D22 / RFC-86a D3/D7). Computed over open
-    /// findings only: a fully-dispositioned plan projects the build
-    /// phase, never review-gaps. Not an execute-loop phase; the loop
-    /// maps this to build and the gap gate joins dispositions /
-    /// refuses open findings.
-    ReviewGaps,
     /// Halt the loop; [`StatusBody::stop`] carries the reason.
     Stop,
     /// No pending or in-progress entries remain — the only clean exit.
@@ -156,19 +148,18 @@ pub struct StatusBody {
     /// Name of the active `in-progress` entry, when one exists.
     pub active: Option<String>,
     /// Rendered projection — `refine|build|merge <slice>`,
-    /// `review-gaps`, `stop <reason>`, or `drained`.
+    /// `stop <reason>`, or `drained`.
     pub next_action: String,
     /// Closed verb behind [`Self::next_action`].
     pub action: NextActionKind,
-    /// Slice the action targets; `None` on `stop`-without-slice,
-    /// `review-gaps`, and `drained`.
+    /// Slice the action targets; `None` on `stop`-without-slice
+    /// and `drained`.
     pub slice: Option<String>,
     /// Bound project of the targeted entry, when set.
     pub project: Option<String>,
     /// Step the targeted slice is currently at — the awaited
     /// phase, including a phase the loop is stopped on. `None` when no
-    /// slice is targeted (`stuck`, `slice-dropped`, `review-gaps`,
-    /// `drained`).
+    /// slice is targeted (`stuck`, `slice-dropped`, `drained`).
     pub current_step: Option<LoopStep>,
     /// Most recent step the targeted slice completed, from artifacts
     /// and success facts (`refined` → `refine`, `built` → `build`, a
@@ -177,11 +168,9 @@ pub struct StatusBody {
     pub last_completed: Option<LoopStep>,
     /// Next valid resume point as a literal command — `emery plan
     /// execute` for dispatches and retryable stops (the loop owns
-    /// every phase), `/emery:execute` after author or when no open
-    /// findings block (D26), `emery plan defer <slice>/<req>…` when
-    /// open findings block Ready, `/emery:finalize` on drained.
-    /// `None` when no single command makes progress (`stuck`,
-    /// `slice-dropped`).
+    /// every phase), `/emery:execute` after author (D26),
+    /// `/emery:finalize` on drained. `None` when no single command
+    /// makes progress (`stuck`, `slice-dropped`).
     pub resume: Option<String>,
     /// Ready milestone (RFC-86 D22 / RFC-86a D7): every in-scope
     /// slice is refined and the clean gap policy passes — zero open
