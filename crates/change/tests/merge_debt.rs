@@ -139,8 +139,9 @@ async fn policy_deferred_unknown_conserved_through_merge_and_archive() {
     assert_eq!(row.slice, "greeting");
     assert_eq!(row.req, "REQ-001");
     assert_eq!(row.status, RequirementStatus::Unknown);
-    assert_eq!(row.origin, DeferralOrigin::Policy);
-    assert!(row.reason.starts_with("deferred by gap-policy under epoch "), "{}", row.reason);
+    let detail = row.deferral.as_ref().expect("covering deferral detail");
+    assert_eq!(detail.origin, DeferralOrigin::Policy);
+    assert!(detail.reason.starts_with("deferred by gap-policy under epoch "), "{}", detail.reason);
     let text = render_archive(&archived);
     assert!(text.contains("carried debt (1 deferred):"), "{text}");
     assert!(text.contains("unknown:"), "{text}");
@@ -327,7 +328,8 @@ async fn archive_renders_conflicts_separately_from_unknowns() {
     .await
     .expect("forced archive with staged debt");
     assert_eq!(archived.debt.len(), 2, "{:?}", archived.debt);
-    assert!(archived.debt[0].age_days > 300, "aged deferral: {:?}", archived.debt[0]);
+    let detail = archived.debt[0].deferral.as_ref().expect("covering deferral detail");
+    assert!(detail.age_days > 300, "aged deferral: {:?}", archived.debt[0]);
 
     let text = render_archive(&archived);
     let unknown_at = text.find("unknown:").expect("unknown heading");
@@ -341,4 +343,65 @@ async fn archive_renders_conflicts_separately_from_unknowns() {
             < text.lines().position(|l| l == conflict_line).expect("conflict row position"),
         "the conflict row renders under the conflict heading: {text}"
     );
+}
+
+/// A wave snapshot member whose covering `gap.deferred` fact is
+/// missing (a pruned or damaged journal) still renders in the archive
+/// summary — as a placeholder row, never silently dropped.
+#[tokio::test]
+async fn archive_renders_placeholder_on_deferral_fact_join_miss() {
+    let session = Session::bare(Vec::new());
+    let root = session.root().to_path_buf();
+    run::<project::init::handlers::Init, _, _>(
+        session.provider(),
+        project::init::handlers::InitInput {
+            adapter: Some("mock".to_string()),
+            name: Some("demo".to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    .expect("init");
+    support::plan_with_changes(vec![support::change("a")])
+        .save(&Layout::new(&root).plan_path())
+        .expect("save plan");
+
+    // A committed wave snapshotting one debt member, with no
+    // gap.deferred fact anywhere in the journal.
+    let committed = Event::new(
+        jiff::Timestamp::from_second(1_700_000_000).expect("timestamp"),
+        EventKind::TargetMergeWaveCommitted {
+            target: "mock".into(),
+            digest: "sha256:abc".into(),
+            slice_name: "a".into(),
+            commit_authorization: FactEpochRef {
+                writer: DEFAULT_WRITER.into(),
+                sequence: 1,
+            },
+            identity_maps: vec![],
+            deferred: vec![DeferredMember {
+                req: "REQ-009".into(),
+                status: RequirementStatus::Unknown,
+                requirement_digest: "sha256:orphan".into(),
+            }],
+        },
+    );
+    append_for(Layout::new(&root), DEFAULT_WRITER, &[committed]).expect("stage fact");
+
+    let archived = run::<plan::handlers::Archive, _, _>(
+        session.provider(),
+        plan::handlers::ArchiveInput { force: true },
+    )
+    .await
+    .expect("archive with an orphan wave member");
+    assert_eq!(archived.debt.len(), 1, "{:?}", archived.debt);
+    let row = &archived.debt[0];
+    assert_eq!(row.slice, "a");
+    assert_eq!(row.req, "REQ-009");
+    assert_eq!(row.status, RequirementStatus::Unknown);
+    assert!(row.deferral.is_none(), "join miss carries no detail: {row:?}");
+
+    let text = render_archive(&archived);
+    assert!(text.contains("carried debt (1 deferred):"), "{text}");
+    assert!(text.contains("a/REQ-009 — reason unavailable (no covering deferral fact)"), "{text}");
 }

@@ -105,24 +105,37 @@ fn carried_debt(
             continue;
         };
         for member in members {
-            // Every snapshotted member was covered by a deferral fact
-            // at merge time; facts are append-only, so the join holds.
-            let Some((reason, origin, deferred_at)) = deferrals
+            // Every member was covered by a deferral fact at merge
+            // time; a join miss (pruned or damaged journal) degrades
+            // to a placeholder row rather than dropping the debt.
+            let deferral = deferrals
                 .get(&(entry.name.as_str().to_string(), member.requirement_digest.clone()))
-            else {
-                continue;
-            };
-            let age_days = u64::try_from((now.as_second() - deferred_at.as_second()).max(0))
-                .unwrap_or(0)
-                / 86_400;
+                .map(|(reason, origin, deferred_at)| {
+                    let age_days =
+                        u64::try_from((now.as_second() - deferred_at.as_second()).max(0))
+                            .unwrap_or(0)
+                            / 86_400;
+                    DebtDetail {
+                        reason: reason.clone(),
+                        origin: *origin,
+                        deferred_at: *deferred_at,
+                        age_days,
+                    }
+                });
+            if deferral.is_none() {
+                tracing::warn!(
+                    "no covering gap.deferred fact for wave snapshot member {}/{} ({}); \
+                     rendering the debt row without its provenance detail",
+                    entry.name.as_str(),
+                    member.req,
+                    member.requirement_digest
+                );
+            }
             rows.push(DebtRow {
                 slice: entry.name.as_str().to_string(),
                 req: member.req.clone(),
                 status: member.status,
-                reason: reason.clone(),
-                origin: *origin,
-                deferred_at: *deferred_at,
-                age_days,
+                deferral,
             });
         }
     }
@@ -232,6 +245,17 @@ pub struct DebtRow {
     pub req: String,
     /// Typed gap status (`unknown` | `conflict`).
     pub status: RequirementStatus,
+    /// The covering `gap.deferred` fact's detail. `None` when the
+    /// fact join misses (a pruned or damaged journal) — the row is
+    /// still debt, just without its provenance detail.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deferral: Option<DebtDetail>,
+}
+
+/// The covering deferral fact's detail on one carried-debt row.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct DebtDetail {
     /// Covering deferral's reason.
     pub reason: String,
     /// Which surface dispositioned the requirement.
@@ -264,12 +288,21 @@ impl ArchiveBody {
                 writeln!(w, "    {heading}")?;
                 headed = true;
             }
-            let noun = if row.age_days == 1 { "day" } else { "days" };
-            writeln!(
-                w,
-                "      {}/{} — {} ({}, {} {noun})",
-                row.slice, row.req, row.reason, row.origin, row.age_days
-            )?;
+            match &row.deferral {
+                Some(detail) => {
+                    let noun = if detail.age_days == 1 { "day" } else { "days" };
+                    writeln!(
+                        w,
+                        "      {}/{} — {} ({}, {} {noun})",
+                        row.slice, row.req, detail.reason, detail.origin, detail.age_days
+                    )?;
+                }
+                None => writeln!(
+                    w,
+                    "      {}/{} — reason unavailable (no covering deferral fact)",
+                    row.slice, row.req
+                )?,
+            }
         }
         Ok(())
     }
