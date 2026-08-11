@@ -12,9 +12,95 @@ use mock::session::Session;
 use project::handler::Anchor as _;
 use serde_json::json;
 
-/// Drive the refine phase for one plan entry the way the execute
-/// loop's advance step does — the standalone `slice refine` verb is
-/// retired, so suites reach the orchestration directly.
+/// Drain the serial refinement stage through the public `plan refine`
+/// handler over every in-scope leaf (RFC-91 D1/D7).
+///
+/// # Panics
+///
+/// Panics when the drain stops instead of completing.
+pub async fn refine_plan(session: &Session) -> change::plan::handlers::RefineBody {
+    refine_slices(session, &[]).await.expect("plan refine drains")
+}
+
+/// `emery plan refine --slice …` through the public handler; empty
+/// selectors target every in-scope leaf.
+///
+/// # Errors
+///
+/// Propagates the handler's failures, including the typed
+/// `plan-refine-stopped` halt.
+pub async fn refine_slices(
+    session: &Session, slices: &[&str],
+) -> Result<change::plan::handlers::RefineBody, project::handler::Error> {
+    mock::invoke::run::<change::plan::handlers::Refine, _, _>(
+        session.provider(),
+        change::plan::handlers::RefineInput {
+            slice: slices.iter().map(ToString::to_string).collect(),
+        },
+    )
+    .await
+}
+
+/// Refinement digest (`sha256:…`) of the slice's on-disk
+/// `refinement.yaml` — for coverage assertions.
+///
+/// # Panics
+///
+/// Panics when the manifest is absent or unreadable.
+#[must_use]
+pub fn manifest_digest(root: &std::path::Path, slice: &str) -> String {
+    slice::refinement::file_digest(&project::config::Layout::new(root).slice_dir(slice))
+        .expect("read refinement manifest")
+        .expect("refinement manifest present")
+        .to_string()
+}
+
+/// Hand-stage a fresh refinement manifest for a hand-written slice
+/// tree: write the minimal bundle files (proposal / design / tasks +
+/// one per-domain spec) when absent, then assemble and persist
+/// `refinement.yaml` against the live `plan.yaml`, so execute's
+/// freshness recompute passes without a model-driven refine.
+///
+/// # Panics
+///
+/// Panics when the plan, the entry, or a write is unavailable.
+pub fn stage_manifest(root: &std::path::Path, slice: &str) {
+    let layout = project::config::Layout::new(root);
+    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
+    let entry =
+        plan.entries.iter().find(|e| e.name == slice).expect("plan entry for slice").clone();
+    let slice_dir = layout.slice_dir(slice);
+    let domain_dir = slice_dir.join("specs/main");
+    std::fs::create_dir_all(&domain_dir).expect("specs domain dir");
+    for (name, body) in
+        [("proposal.md", "# proposal\n"), ("design.md", "# design\n"), ("tasks.md", "# tasks\n")]
+    {
+        let path = slice_dir.join(name);
+        if !path.exists() {
+            std::fs::write(&path, body).expect("bundle file");
+        }
+    }
+    let spec = domain_dir.join("spec.md");
+    if !spec.exists() {
+        std::fs::write(&spec, "## main\n").expect("spec.md");
+    }
+    slice::refinement::assemble(
+        layout,
+        &plan,
+        &entry,
+        &[],
+        slice::refinement::empty_digest(),
+        Vec::new(),
+        &[],
+    )
+    .expect("assemble refinement manifest")
+    .write(&slice_dir)
+    .expect("write refinement manifest");
+}
+
+/// Drive the refine phase for one plan entry directly through the
+/// slice orchestration — for suites that pin a single slice without
+/// draining the whole plan.
 ///
 /// # Errors
 ///
@@ -39,7 +125,18 @@ pub async fn refine(
         .unwrap_or_else(|| panic!("plan entry `{slice}` missing"));
     let target = project::target_policy::resumed(layout, slice)
         .or_else(|_| project::target_policy::fresh(provider, paths, entry, slice, "refining"))?;
-    slice::orchestrate::refine(caps, paths, jiff::Timestamp::now(), slice, &target).await
+    let config = project::config::ProjectConfig::load(layout.project_dir())?;
+    let adapter = project::target_policy::project_adapter(provider, &config, paths)?;
+    slice::orchestrate::refine(
+        caps,
+        paths,
+        jiff::Timestamp::now(),
+        slice,
+        &target,
+        Vec::new(),
+        &adapter.manifest.inputs,
+    )
+    .await
 }
 
 /// Claim the next eligible plan entry — the execute loop's advance

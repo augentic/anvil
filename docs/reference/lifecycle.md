@@ -13,7 +13,7 @@ Emery's layered design is explained in [The Layered Stack](../explanation/layere
 
 ## Plan review and authorization
 
-The plan itself carries no stored lifecycle and no projected `approved` rung. The pause between `/emery:plan` and `emery plan execute` is the human topology-review seam. Starting execute opens the `plan.execute.started` authorization epoch (typed `closed-plan` coverage) and drives privileged work under gap gates — there is no separate `plan approve` verb. "Currently executing", Ready / Authorized, and "drained" are computed from artifacts and the per-writer fact union.
+The plan itself carries no stored lifecycle and no projected `approved` rung. The pause between `/emery:plan` and `emery plan refine` is the human topology-review seam, and the pause between `emery plan refine` and `emery plan execute` is the specification-review seam — both are opportunities for review, not attestations, and the engine adds no approval file. Starting execute opens the `plan.execute.started` authorization epoch (typed `closed-plan` coverage over the exact per-leaf refinement digests) and drives privileged work under gap gates — there is no separate `plan approve` verb, and execute never refines. "Currently executing", Ready / Authorized, and "drained" are computed from artifacts and the per-writer fact union.
 
 ## Per-entry ladder
 
@@ -32,23 +32,23 @@ Each slice's phase timestamps and artifacts project an independent lifecycle:
 
 | State      | Meaning                                                                 | Next states                  |
 | ---------- | ----------------------------------------------------------------------- | ---------------------------- |
-| `refining` | Slice directory created; the refine phase in-flight (extract + synthesize) | `refined`, `dropped`         |
-| `refined`  | Canonical artifacts present and validated; `base.yaml` pins recorded    | `built`, `dropped`           |
+| `refining` | Slice directory created; the refine drain in-flight (extract + synthesize) | `refined`, `dropped`         |
+| `refined`  | Canonical artifacts present and validated; `refinement.yaml` manifest written | `built`, `dropped`           |
 | `built`    | Fact-substrate build record + wave facts; ready for merge               | `merged`, `dropped`          |
 | `merged`   | Wave committed; specs applied to baseline; slice archived               | (terminal)                   |
 | `dropped`  | Slice discarded; archived without merging                               | (terminal)                   |
 
-`refining` is the transient state used while the refine phase runs. If extract fails for any bound source, the slice stays projecting `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding, then re-runs `emery plan execute`. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still projects `refined`. Open gaps block **build** under execute (or require an explicit `--waive` for `[unknown]`).
+`refining` is the transient state used while the `emery plan refine` drain runs. If extract fails for any bound source, the slice stays projecting `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding, then re-runs `emery plan refine`. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refinement still projects `refined`. Open gaps block **build** under execute (or require an explicit `--waive` for `[unknown]`).
 
 ## Transitions
 
-Every transition happens inside `emery plan execute` except the drop:
+Refinement transitions happen inside `emery plan refine`; build and merge transitions happen inside `emery plan execute`; the drop is its own verb:
 
 | Trigger                                          | Transition                       | Performed by                                     |
 | ------------------------------------------------ | -------------------------------- | ------------------------------------------------ |
 | The execute loop claims the next eligible row     | per-entry: `pending → in-progress` | the loop's claim step (claim facts)              |
-| The refine phase creates the slice                 | slice: (none) → `refining`         | the refine orchestration                         |
-| The refine phase completes synthesis               | slice: `refining → refined`        | the refine orchestration                         |
+| The refine drain creates the slice                 | slice: (none) → `refining`         | the `plan refine` orchestration                  |
+| The refine drain completes synthesis and writes `refinement.yaml` | slice: `refining → refined`        | the `plan refine` orchestration                  |
 | The build phase completes                          | slice: `refined → built`           | the build orchestration                          |
 | The merge phase succeeds                           | slice: `built → merged`; per-entry: `in-progress → done` | the merge orchestration (wave-commit + archive facts) |
 | `emery plan drop` invoked                          | slice: `* → dropped`               | `emery plan drop <name> --reason "..."`        |

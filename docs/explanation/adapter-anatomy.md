@@ -33,11 +33,11 @@ The WIT package also defines an additive combined `adapter` world (`export sourc
 
 ## How the roles meet the loop
 
-A source adapter participates twice: `survey` at plan time (one [lead](../appendices/glossary.md#l) per slice-sized unit into `discovery.md`) and `extract` at slice time (one `Evidence` document per bound source). A target adapter participates at every downstream phase: its `guidance` prompt is read into synthesis context at refine; its four build-loop operations — `build` (generation), `verify` (one check pass), `repair` (one findings-directed pass), `review` (one standards pass) — are dispatched one pass at a time by the engine's build phase machine, which owns operation order, repair budgets, and the final build report; and its `merge` operation gates the landing. The engine owns everything between — lifecycle, artifact schemas, synthesis, and state transitions — so an adapter contributes specialist behaviour without ever driving the workflow.
+A source adapter participates twice: `survey` at plan time (one [lead](../appendices/glossary.md#l) per slice-sized unit into `discovery.md`) and `extract` at refine time (one `Evidence` document per bound source, inside the `emery plan refine` drain). A target adapter participates at every downstream phase: its `guidance` prompt is read into synthesis context at refine; its four build-loop operations — `build` (generation), `verify` (one check pass), `repair` (one findings-directed pass), `review` (one standards pass) — are dispatched one pass at a time by the engine's build phase machine, which owns operation order, repair budgets, and the final build report; and its `merge` operation gates the landing. The engine owns everything between — lifecycle, artifact schemas, synthesis, and state transitions — so an adapter contributes specialist behaviour without ever driving the workflow.
 
 ```text
 /emery:plan    →  source.survey     (leads into discovery.md)
-refine phase   →  source.extract    (evidence/<source>.yaml)
+/emery:refine  →  source.extract    (evidence/<source>.yaml)
                →  target.guidance   (idiom guidance for synthesis)
 build phase    →  target.build → verify ⇄ repair → review ⇄ repair
                   (engine-driven build loop; one typed phase report per dispatch)
@@ -48,7 +48,7 @@ For the exact operation signatures, the lead and claim grammars, the sandbox pos
 
 ## Authority resolution
 
-Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class their evidence carries (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice during plan review via `emery plan amend <entry> --authority-override <claim-kind>=<source>` and then re-run `emery plan execute` (the drifted slice re-refines); the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md); the operator-facing walk-through is in [From sources to slices](reconciliation.md).
+Authority hierarchy is a property of the adapter, not of a slice. Source adapters declare which authority class their evidence carries (`intent` > `documentation` > `behaviour`); core synthesis uses the class to resolve disagreements between two `Evidence` rows for the same claim. Operators override per-slice during plan review via `emery plan amend <entry> --authority-override <claim-kind>=<source>` and then re-run `emery plan refine` (the amendment stales the slice's refinement manifest and the drain re-refines it); the kernel-rendered `spec.md` provenance lines are never hand-edited (doing so trips `slice-spec-provenance-stale`). Normative detail lives in [`crates/slice/prompts/synthesis/authority.md`](../../crates/slice/prompts/synthesis/authority.md); the operator-facing walk-through is in [From sources to slices](reconciliation.md).
 
 <div class="authority-widget">
   <h4>Resolution flow — click a scenario</h4>

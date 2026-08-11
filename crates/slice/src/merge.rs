@@ -15,6 +15,6 @@ pub use slice::{MergeCommit, PreviewEntry, conflict_check, summarise_operations}
 
 /// Count `### Requirement:` headings in one spec document — shared by
 /// the empty-baseline create path and the delta-header gate.
-pub fn count_requirement_headings(text: &str) -> usize {
+pub fn count_requirement(text: &str) -> usize {
     text.lines().filter(|line| line.trim_start().starts_with(artifacts::spec::REQ_HEADING)).count()
 }

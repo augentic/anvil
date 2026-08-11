@@ -10,7 +10,7 @@ use change::plan::handlers::{Execute, ExecuteInput, WaiveSelector};
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
-use project::journal::{ClosedPlanCoverage, EventKind, LeafSpecCoverage, read_union};
+use project::journal::{ClosedPlanCoverage, EventKind, read_union};
 use support::plan_with_changes;
 
 /// Single-project plan entry (`project: None`) so execute's workspace
@@ -77,10 +77,11 @@ fn write_model(root: &std::path::Path, slice: &str, yaml: &str) {
 }
 
 #[tokio::test]
-async fn execute_appends_closed_plan_epoch() {
+async fn execute_appends_closed() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     scaffold_author(&session).await;
+    support::refine_plan(&session).await;
 
     run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -92,7 +93,7 @@ async fn execute_appends_closed_plan_epoch() {
         coverage:
             ClosedPlanCoverage::ClosedPlan {
                 plan_digest,
-                specs,
+                refinements,
                 unknown_waivers,
             },
         discovery_digest,
@@ -103,13 +104,9 @@ async fn execute_appends_closed_plan_epoch() {
     assert!(plan_digest.starts_with("sha256:"), "{plan_digest}");
     assert!(discovery_digest.is_none());
     assert!(unknown_waivers.is_empty());
-    // At the moment the epoch is stamped, greeting has no specs yet
-    // (refine runs later in the same execute), so coverage is
-    // refine-under-epoch. Re-entry would see Existing after refine.
-    assert_eq!(
-        specs.get("greeting"),
-        Some(&LeafSpecCoverage::RefineUnderEpoch),
-        "unspec'd leaf at execute start → refine-under-epoch; got {specs:?}"
+    assert!(
+        refinements.contains_key("greeting"),
+        "covered leaf carries a refinement digest; got {refinements:?}"
     );
     assert!(started[0].sequence >= 1);
 
@@ -123,7 +120,7 @@ async fn execute_appends_closed_plan_epoch() {
 }
 
 #[tokio::test]
-async fn waive_without_reason_is_invalid() {
+async fn waive_without_reason() {
     let session = Session::bare(suite_answers());
     scaffold_author(&session).await;
 
@@ -144,7 +141,7 @@ async fn waive_without_reason_is_invalid() {
 }
 
 #[tokio::test]
-async fn reason_without_waive_is_invalid() {
+async fn reason_without_waive() {
     let session = Session::bare(suite_answers());
     scaffold_author(&session).await;
 
@@ -161,7 +158,7 @@ async fn reason_without_waive_is_invalid() {
 }
 
 #[tokio::test]
-async fn waive_absent_gap_is_invalid() {
+async fn waive_absent_gap_invalid() {
     let session = Session::bare(suite_answers());
     scaffold_author(&session).await;
 
@@ -224,7 +221,7 @@ async fn waive_conflict_is_invalid() {
 }
 
 #[tokio::test]
-async fn valid_waive_nests_on_epoch_coverage() {
+async fn valid_waive_nests_epoch() {
     let session = Session::bare(Vec::new());
     run::<project::init::handlers::Init, _, _>(
         session.provider(),
@@ -247,9 +244,14 @@ async fn valid_waive_nests_on_epoch_coverage() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    // Execute requires a fresh manifest for every in-scope leaf before
+    // it appends the epoch (RFC-91 D5) — stage one over the
+    // hand-written slice tree.
+    support::stage_manifest(session.root(), "a");
 
-    // Loop may stop after the epoch (build needs refine pins) — the
-    // fact must still be recorded at start with nested waivers.
+    // Loop may stop after the epoch (a hand-staged slice has no real
+    // build pathway) — the fact must still be recorded at start with
+    // nested waivers.
     drop(
         run::<Execute, _, _>(
             session.provider(),
@@ -269,7 +271,7 @@ async fn valid_waive_nests_on_epoch_coverage() {
     let EventKind::PlanExecuteStarted {
         coverage:
             ClosedPlanCoverage::ClosedPlan {
-                specs,
+                refinements,
                 unknown_waivers,
                 ..
             },
@@ -283,8 +285,8 @@ async fn valid_waive_nests_on_epoch_coverage() {
     assert_eq!(unknown_waivers[0].req, "REQ-003");
     assert_eq!(unknown_waivers[0].reason, "reset path deferred");
     assert!(
-        matches!(specs.get("a"), Some(LeafSpecCoverage::Existing { .. })),
-        "refined leaf → existing digest; got {specs:?}"
+        refinements.get("a").is_some_and(|d| d.starts_with("sha256:")),
+        "refined leaf → covered refinement digest; got {refinements:?}"
     );
 
     let status = run::<change::plan::handlers::Status, _, _>(

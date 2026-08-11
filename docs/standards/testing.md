@@ -95,14 +95,14 @@ A `TOTAL` drop on lines that are still live means real coverage was lost: backfi
 
 ## Test naming
 
-Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 30-char cap below counts the bare `fn` identifier, not the module path.
+Test function names are identifiers, not sentences — the same brevity rules as production code ([coding-standards.md §"Naming"](./coding-standards.md#naming)) apply. The enclosing context already names the subject: the `tests/<area>.rs` binary supplies `<area>`, and an in-file `mod tests` (or `mod doctor`) supplies its module. Don't restate it in every `fn`. The 25-char cap below counts the bare `fn` identifier, not the module path.
 
 - Drop tokens the binary name or enclosing module already supplies: in `layout.rs`, write `different_skeletons_error`, not `layout_different_skeletons_is_an_error`.
 - Group a cluster that shares a subject under a nested `mod <subject>` rather than repeating the subject as a prefix: six `mark_complete_*` tests become `mod mark_complete { fn idempotent() … }`.
 - Compress outcome tails to the assertion's shape: `_is_an_error` / `_returns_…_error` → `_errors`; `_validates_cleanly` → `_validates`; `_surfaces_as_a_single_error_entry` → `_one_error`.
 - Push the full narrative into the test body or a `//` comment above the `fn`, not the identifier.
 
-`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 30-char cap is house style enforced in review, not by a CI check.
+`module_name_repetitions` does not fire on `#[test]` fns; keep identifiers short anyway. The 25-char cap is mechanically enforced by the `ident_brevity` root-crate test (`tests/ident_brevity.rs`, part of `cargo make test`).
 
 ## Patterns to follow
 
@@ -131,5 +131,5 @@ Binaries not listed here assert structurally and carry no regenerable goldens.
 
 ## Test-side gotchas
 
-- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration phases (`slice::orchestrate::{refine, build, merge}` or the execute loop) when a test needs a stamped phase outcome.
+- Never hand-edit `metadata.yaml` from a test or fixture. Drive transitions through the orchestration phases (`slice::orchestrate::{refine, build, merge}`, the `plan refine` drain, or the execute loop) when a test needs a stamped phase outcome.
 - The live test retains its temporary project tree on failure and prints the path at start — inspect it rather than re-running blind.

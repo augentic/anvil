@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use diagnostics::digest::sha256_hex;
 use error::{Error, Result};
-use project::adapter::{WritableArtifactDeclaration, WritableArtifactKind};
+use project::adapter::{ArtifactDeclaration, WritableArtifactKind};
 
 use super::gate::malformed_relative_path;
 
@@ -307,9 +307,7 @@ fn promotion_failed(path: &str, stage: &str, err: &std::io::Error) -> Error {
 ///   when a grant's own path grammar is malformed;
 /// - [`Error::Diag`] keyed on `target-build-artifact-scope-violation`
 ///   naming the first change path outside every grant.
-pub fn enforce_grants(
-    changes: &[StageChange], grants: &[WritableArtifactDeclaration],
-) -> Result<()> {
+pub fn enforce_grants(changes: &[StageChange], grants: &[ArtifactDeclaration]) -> Result<()> {
     for grant in grants {
         if malformed_relative_path(&grant.path) {
             return Err(Error::Diag {
@@ -338,7 +336,7 @@ pub fn enforce_grants(
 }
 
 /// Whether one grant covers one change path.
-fn covers(grant: &WritableArtifactDeclaration, path: &str) -> bool {
+fn covers(grant: &ArtifactDeclaration, path: &str) -> bool {
     let granted = grant.path.trim_end_matches('/');
     match grant.kind {
         WritableArtifactKind::File => path == granted,

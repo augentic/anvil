@@ -4,7 +4,6 @@
 
 pub(crate) mod actions;
 pub mod answers;
-pub mod base;
 pub mod build;
 pub(crate) mod design_system;
 pub mod handlers;
@@ -13,13 +12,13 @@ pub(crate) mod merge;
 pub(crate) mod model;
 pub mod orchestrate;
 pub(crate) mod provenance;
+pub mod refinement;
 pub mod source;
 pub(crate) mod synthesis;
 pub(crate) mod validate;
 
 pub(crate) use actions::CreateIfExists;
 pub use actions::discard;
-pub use base::Base;
 pub(crate) use build::assemble::build_request;
 pub use model::SliceModel;
 pub(crate) use project::seam::wire::BuildRequest;
@@ -36,6 +35,5 @@ pub(crate) use synthesis::persist::{
 pub use synthesis::project::{ProjectionHeader, project};
 pub(crate) use synthesis::render::provenance_lines;
 pub(crate) use synthesis::wire::{
-    DomainDetail, SourceInput, SynthesisInputs, SynthesisResponse, inputs,
+    DependencyContext, DomainDetail, SourceInput, SynthesisInputs, SynthesisResponse, inputs,
 };
-pub use validate::pins_drifted;

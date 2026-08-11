@@ -11,7 +11,7 @@ use project::adapter::{AdapterSelector, TargetAdapter};
 use project::config::{Layout, ProjectConfig};
 use project::journal::{self, EventKind};
 use project::name::SliceName;
-use project::plan::{Plan, dir_cid};
+use project::plan::Plan;
 use project::seam::{ArtifactStage, BuildContext, Input, Payload, PhaseSource, Target, Workspaces};
 use project::wave::{EpochRef, Wave};
 
@@ -19,7 +19,7 @@ use self::machine::Machine;
 use super::target_id;
 use crate::build::canonical::Stamp;
 use crate::build::{attempt, stage};
-use crate::{Base, BuildRequest, BuildStatus, SliceMetadata, build_request};
+use crate::{BuildRequest, BuildStatus, SliceMetadata, build_request};
 
 /// The validated result of a completed [`build`]: the terminal
 /// report's slice / target / status, the finding count, and the
@@ -44,8 +44,8 @@ pub struct BuildOutcome {
 /// Build one slice through the seam and run the finalize tail.
 ///
 /// The build runs inside a disposable private workspace prepared from
-/// the refine-time target-base pin in `base.yaml` — never an ambient
-/// freeze; durable code state is only the captured snapshots.
+/// the product snapshot frozen and persisted at wave open (RFC-91 D6);
+/// durable code state is only the captured snapshots.
 /// `adapter` is the caller-resolved bound target, and its name must
 /// match the slice's recorded `metadata.yaml` target so the declared
 /// inputs and the seam dispatch can never resolve differently.
@@ -118,25 +118,31 @@ pub async fn build(
     Ok(outcome)
 }
 
-/// Bracket [`finalize`] with the workspace lifecycle: read the
-/// recorded target-base pin, open a one-member wave, prepare a
-/// writable private workspace from that pin, run the dispatch +
-/// finalize tail against it, and discard the workspace on every exit
-/// (best-effort — captured snapshots survive by digest and a leaked
-/// directory is GC territory, never a build failure).
+/// Bracket [`finalize`] with the workspace lifecycle: gate on the
+/// slice's refinement manifest, freeze the current product snapshot
+/// as the wave base (RFC-91 D6), persist + open the one-member wave,
+/// prepare a writable private workspace from that base, run the
+/// dispatch + finalize tail against it, and discard the workspace on
+/// every exit (best-effort — captured snapshots survive by digest and
+/// a leaked directory is GC territory, never a build failure).
 async fn in_workspace(
     seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
 ) -> Result<BuildOutcome, Error> {
-    let pins = Base::load(slice_dir).map_err(|err| Error::Diag {
-        code: "slice-base-missing",
+    let refinement = crate::refinement::file_digest(slice_dir)?.ok_or_else(|| Error::Diag {
+        code: crate::refinement::MISSING_CODE,
         detail: format!(
-            "slice `{slice}` has no readable base.yaml target-base pin; re-run \
-             `emery plan execute` so the refine phase records it before building ({err})"
+            "slice `{slice}` has no refinement manifest (refinement.yaml); run \
+                 `emery plan refine` before building"
         ),
     })?;
-    let base = pins.target_base;
-    let wave_digest = open_wave(layout, now, slice, slice_dir, &base)?;
+    let base = seam.freeze().await.map_err(|err| Error::Diag {
+        code: "target-base-freeze-failed",
+        detail: format!(
+            "freezing the product tree as the wave base for slice `{slice}` failed: {err}"
+        ),
+    })?;
+    let wave_digest = open_wave(layout, now, slice, &base, &refinement)?;
     let workspace =
         seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;
     let outcome =
@@ -148,10 +154,11 @@ async fn in_workspace(
     outcome
 }
 
-/// Open the one-member target wave for this build (RFC-86 D9).
+/// Open the one-member target wave for this build (RFC-86 D9),
+/// binding the wave-open base and the member's refinement digest.
 fn open_wave(
-    layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path,
-    base: &project::snapshot::SnapshotId,
+    layout: Layout<'_>, now: Timestamp, slice: &str, base: &project::snapshot::SnapshotId,
+    refinement: &project::snapshot::SnapshotId,
 ) -> Result<project::snapshot::SnapshotId, Error> {
     let config = ProjectConfig::load(layout.project_dir())?;
     let plan = Plan::load(&layout.plan_path())?;
@@ -163,12 +170,11 @@ fn open_wave(
                  depends-on / membership"
             ),
         })?;
-    let specs_dir = slice_dir.join("specs");
     let wave = Wave::one_member(
         config.name,
         base.clone(),
         SliceName::from(slice),
-        dir_cid(&specs_dir)?,
+        refinement.clone(),
         entry.depends_on.clone(),
         covering_epoch(layout),
     );

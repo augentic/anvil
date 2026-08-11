@@ -4,7 +4,7 @@
 [License: MIT OR Apache-2.0](#license)
 [Docs](https://emery.augentic.io/)
 
-Spec-driven development in [Cursor](https://cursor.com): plan a change, approve it, then `refine → build → merge` each slice from durable artifacts — not chat history.
+Spec-driven development in [Cursor](https://cursor.com): plan a change, refine every slice's specification, review it, then `build → merge` each slice from durable artifacts — not chat history.
 
 Emery uses **Source Adapters** (like `intent` or `typescript`) to ingest requirements and **Target Adapters** (like `contracts` or `omnia`) to generate outputs.
 
@@ -50,6 +50,7 @@ In Cursor Agent chat, in a fresh or disposable repository:
 When prompted, give a one-line intent such as: `Author an HTTP API contract for a health endpoint that returns status and version.` Then:
 
 ```text
+/emery:refine
 /emery:execute
 /emery:finalize first-contract
 ```
@@ -62,9 +63,11 @@ emery init contracts
 emery plan author first-contract \
   --intent "Author an HTTP API contract for a health endpoint that returns status and version."
 # review change.md, discovery.md, plan.yaml
-emery plan execute   # opens authorization epoch; drives the loop
-emery plan status     # must be drained
-emery plan archive    # after you publish via git
+emery plan refine    # drains refinement; writes each slice's specs
+# review .emery/slices/*/specs/
+emery plan execute   # opens authorization epoch; drives build → merge
+emery plan status    # must be drained
+emery plan archive   # after you publish via git
 ```
 
 What you should see after execute: slice artifacts under `.emery/slices/…`, generated files under `contracts/`, and merged baseline specs under `.emery/specs/`.
@@ -72,14 +75,14 @@ What you should see after execute: slice artifacts under `.emery/slices/…`, ge
 ## How it works: The rhythm
 
 ```text
-/emery:init  →  /emery:plan  →  review  →  /emery:execute  →  /emery:finalize
-                                    │
-                                    └─ per slice: refine → build → merge
+/emery:init  →  /emery:plan  →  review  →  /emery:refine  →  review  →  /emery:execute  →  /emery:finalize
+                                                 │                            │
+                                                 └─ per slice: refine         └─ per slice: build → merge
 ```
 
-The pause after planning is the operator review step: nothing privileged runs until you invoke `emery plan execute` — that journals `plan.execute.started` and drives the loop under gap gates. A one-slice change uses the same steps as a twelve-slice migration. Code generation lives in target adapters, not in Cursor skills.
+The pauses after planning and after refinement are the operator review steps: `/emery:plan` writes the topology, `emery plan refine` writes every slice's specification bundle, and nothing privileged runs until you invoke `emery plan execute` — that journals `plan.execute.started` over the exact refinement digests and drives the build → merge loop under gap gates. A one-slice change uses the same steps as a twelve-slice migration. Code generation lives in target adapters, not in Cursor skills.
 
-When `plan execute` parks, the stop card names the reason and the resume command — fix the input it points at and re-run `emery plan execute`; the loop resumes at the parked phase. Abandon a slice with `emery plan drop <entry>`.
+When `plan execute` parks, the stop card names the reason and the resume command — fix the input it points at and re-run `emery plan execute`; the loop resumes at the parked phase (a missing or stale refinement manifest resumes through `emery plan refine`). Abandon a slice with `emery plan drop <entry>`.
 
 ## Documentation & Guides
 

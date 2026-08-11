@@ -39,7 +39,7 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
-| [emery plan](plan.md) | Author, execute, curate, and archive change plans (the refine → build → merge loop runs inside `plan execute`) | The workflow spine |
+| [emery plan](plan.md) | Author, refine, execute, curate, and archive change plans (`plan refine` drains refinement; the build → merge loop runs inside `plan execute`) | The workflow spine |
 | [emery slice](slice.md) | Read-only per-slice projections: list, validate, provenance, model show | Slice inspection |
 | [emery adapter / source / target resolve](adapter.md) | Seed the project component cache and resolve adapters by axis | Adapter infrastructure |
 | [emery init](init.md) | Project scaffold | One-time setup |

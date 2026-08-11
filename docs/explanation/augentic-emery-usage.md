@@ -2,7 +2,7 @@
 
 Augentic-specific supplement: how **target adapters** (Omnia, Vectis, and friends) *consume* the standard artifacts. For artifact structure see [Artifact format](../reference/artifact-format.md) and [Artifacts in depth](./artifacts.md).
 
-Augentic uses stock Emery as its executable workflow contract. Operators drive `/emery:plan → emery plan execute` (which drives the `refine → build → merge` phases per slice). Target adapters read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during build, but must not redefine the runtime contract. Artifact validation runs automatically inside the build phase before implementation begins.
+Augentic uses stock Emery as its executable workflow contract. Operators drive `/emery:plan → emery plan refine → emery plan execute` (refine writes each slice's specification bundle; execute drives the `build → merge` phases per slice). Target adapters read the four artifacts `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during build, but must not redefine the runtime contract. Artifact validation runs automatically inside the build phase before implementation begins.
 
 ## Where specialists read and write
 

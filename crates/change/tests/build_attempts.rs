@@ -105,7 +105,7 @@ mod attempts {
     /// continuation is never loaded, its contents stay untouched, and
     /// the canonical report tracks only terminal attempts.
     #[tokio::test]
-    async fn interrupted_attempt_abandoned() {
+    async fn interrupted_attempt() {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
         support::build(&session, "greeting").await.expect("first build");
@@ -154,7 +154,7 @@ mod attempts {
     /// A failed attempt writes the failed canonical projection but
     /// never writes or replaces the earlier successful `BuildRecord`.
     #[tokio::test]
-    async fn failed_attempt_keeps_success_record() {
+    async fn failed_attempt_keeps() {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
         let dir = root.join(".emery/slices/greeting");

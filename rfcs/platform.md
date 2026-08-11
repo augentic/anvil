@@ -14,9 +14,9 @@ Do all of it with one Emery: the same binary, verbs, artifacts, and lifecycle on
 
 ## Where we are
 
-**Implemented:** RFC-86 (Change Facts), RFC-87 (Private Workspaces), and RFC-90 (Build Verification). The engine now runs a fact-based workflow over private workspaces with an engine-owned build phase machine.
+**Implemented:** RFC-86 (Change Facts), RFC-87 (Private Workspaces), RFC-90 (Build Verification), and RFC-91 (Refinement Stage). The engine now runs a fact-based workflow over private workspaces with an engine-owned build phase machine and a standalone refinement stage between plan authoring and execution.
 
-**Remaining:** Product detach (RFC-88/89), explicit and progressive refinement (RFC-91/94 Phase A), concurrent candidate execution (RFC-92/94 Phase B), trustworthy verification (RFC-95), and governed learning/autonomy (RFC-97/98).
+**Remaining:** Product detach (RFC-88/89), progressive refinement (RFC-94 Phase A), concurrent candidate execution (RFC-92/94 Phase B), trustworthy verification (RFC-95), and governed learning/autonomy (RFC-97/98).
 
 ### Dependency map
 
@@ -114,7 +114,7 @@ These tables list each RFC's hard dependencies and deliverables. Step numbers in
 | Step | RFC                                            | Title                 | Delivers                                                                                       | Depends on            |
 | ---- | ---------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- | --------------------- |
 | 5    | [RFC-90](rfc-90-build-verification.md)         | Build Verification    | **Implemented:** Engine-owned build loop, bounded repair policy, durable reports.              | 87                    |
-| 6    | [RFC-91](rfc-91-staged-refinement.md)          | Staged Refinement     | Serial plan-wide refinement, wave-time target bases, execute-time coverage.                    | 90                    |
+| 6    | [RFC-91](rfc-91-refinement-stage.md)           | Refinement Stage      | **Implemented:** Serial plan-wide refinement (`plan refine`), reviewable refinement manifests, wave-time target bases, execute-time coverage. | 90                    |
 | 7    | [RFC-92](rfc-92-concurrent-execution.md)       | Concurrent Execution  | Work item scheduling, concurrent frontiers, bottom-up convergence, multi-member target waves.  | 88, 91                |
 | 8    | [RFC-93](rfc-93-distributed-execution.md)      | Distributed Execution | Distribution of completed RFC-92 model between nodes via operation offers and remote pools.    | 92                    |
 | 9    | [RFC-94](future/rfc-94-streaming-execution.md) | Streaming Execution   | Phase A: publish/refine closed branches. Phase B: unattended candidate build, deferred commit. | A: 88, 91, 92A B: 92B |

@@ -9,7 +9,7 @@ use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
 
 use super::model::{Entry, Plan};
-use super::validate::orphan_authority_override_keys;
+use super::validate::orphan_authority_override;
 use crate::journal::{self, AuthorityOverrideAction};
 
 /// Build the batched `plan.amend.authority-override` event list
@@ -35,7 +35,7 @@ fn emit_override_events(
             (slice.to_string(), claim_kind.clone(), action),
             journal::Event::new(
                 now,
-                journal::EventKind::PlanAmendAuthorityOverride {
+                journal::EventKind::PlanAmendAuthority {
                     plan_name: plan_name.into(),
                     slice_name: slice.into(),
                     action,
@@ -150,7 +150,7 @@ pub fn emit_seed_events(
 
 /// Post-mutation orphan-source gate.
 ///
-/// Runs [`orphan_authority_override_keys`] on `plan` and short-circuits
+/// Runs [`orphan_authority_override`] on `plan` and short-circuits
 /// the CLI write with one `Error::Validation` (exit 2) when any finding
 /// fires. Catches new orphan overrides introduced by `plan amend`; the
 /// `plan add` path re-runs `Plan::validate`, which folds in the same
@@ -161,7 +161,7 @@ pub fn emit_seed_events(
 /// Returns `Error::Validation` when at least one orphan-source
 /// finding blocks (a `critical`/`important` violation).
 pub fn reject_orphans(plan: &Plan) -> Result<()> {
-    let findings: Vec<_> = orphan_authority_override_keys(&plan.entries)
+    let findings: Vec<_> = orphan_authority_override(&plan.entries)
         .into_iter()
         .filter(diagnostics::is_blocking)
         .collect();

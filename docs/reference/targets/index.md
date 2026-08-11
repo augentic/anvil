@@ -6,7 +6,7 @@
 
 For what a target adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [Anatomy of an adapter](../../explanation/adapter-anatomy.md). The contract facts — six operations:
 
-- `guidance` — idiom guidance consumed by core synthesis. Read into context when the refine phase writes `spec.md` / `design.md`. Empty `guidance` is valid.
+- `guidance` — idiom guidance consumed by core synthesis. Read into context when the `plan refine` drain writes `spec.md` / `design.md`. Empty `guidance` is valid.
 - `build` — generation only: consume **only** the build request's `inputs` manifest (rendered `proposal.md` / `spec.md` / `design.md` / `tasks.md` plus the adapter's declared `inputs[]`) and write code (and any target-specific structured manifests like Vectis `composition.yaml`) into the lent workspace, returning a typed phase report. It must not verify or repair — the engine assembles the terminal `build/report.yaml` itself. Driven by the build phase of `emery plan execute` — see [`emery plan execute`](../cli/plan.md#emery-plan-execute).
 - `verify`, `repair`, `review` — the rest of the build loop: one model-assisted check pass, one findings-directed repair pass, one engineering-standards review pass. The engine's phase machine dispatches them one pass at a time (`build → verify ⇄ repair → review ⇄ repair`) under engine-owned budgets; each returns a typed phase report. See the [Adapter contract](../adapter-contract.md#target-adapter-contract).
 - `merge` — landing gate: requires lifecycle `built`, re-runs the target's validators, surfaces conflicts, and drives verification commands. Dispatched twice per merge (preflight / postflight) — the merge phase is the writer and `slice.merge.*` events fire on its validator outcome.
@@ -29,7 +29,7 @@ Deterministic helper behaviour is in-guest library code compiled into the adapte
 ## How a target adapter participates in the loop
 
 ```text
-refine phase   →  reads target.guidance   (idiom guidance for synthesis)
+/emery:refine  →  reads target.guidance   (idiom guidance for synthesis)
 build phase    →  drives target.build → verify ⇄ repair → review ⇄ repair
                   (the engine-owned build loop; one pass per dispatch)
 merge phase    →  drives target.merge     (validates and lands the slice)

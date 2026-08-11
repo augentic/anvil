@@ -10,9 +10,9 @@ use error::{Error, Result};
 use project::adapter::BuildInputDeclaration;
 use project::seam::wire::{BUILD_VERSION, BuildArtifacts, BuildInputs, BuildRequest};
 
-const PROPOSAL_ARTIFACT: &str = "proposal.md";
-const DESIGN_ARTIFACT: &str = "design.md";
-const TASKS_ARTIFACT: &str = "tasks.md";
+pub const PROPOSAL_ARTIFACT: &str = "proposal.md";
+pub const DESIGN_ARTIFACT: &str = "design.md";
+pub const TASKS_ARTIFACT: &str = "tasks.md";
 
 /// Assemble a [`BuildRequest`] for `slice` from already-resolved
 /// inputs.
@@ -56,8 +56,9 @@ pub fn build_request(
 /// domain directory under `<slice_tree>/specs/` carrying a `spec.md`.
 ///
 /// Returns an empty vector when `specs/` is missing — the request schema
-/// (`specs` `minItems: 1`) catches an empty list downstream.
-fn spec_paths(slice_tree: &Path) -> Result<Vec<String>> {
+/// (`specs` `minItems: 1`) catches an empty list downstream. Shared
+/// with the refinement bundle so both cover the same canonical set.
+pub fn spec_paths(slice_tree: &Path) -> Result<Vec<String>> {
     let specs_dir = slice_tree.join("specs");
     if !specs_dir.is_dir() {
         return Ok(Vec::new());
@@ -80,8 +81,9 @@ fn spec_paths(slice_tree: &Path) -> Result<Vec<String>> {
 ///
 /// Present declarations contribute their path (declaration order);
 /// absent optional declarations are skipped; an absent `required`
-/// declaration aborts.
-fn resolve_additional(
+/// declaration aborts. Shared with the refinement bundle so both
+/// cover the same canonical set.
+pub fn resolve_additional(
     manifest_inputs: &[BuildInputDeclaration], slice_tree: &Path,
 ) -> Result<Vec<String>> {
     let mut additional: Vec<String> = Vec::new();

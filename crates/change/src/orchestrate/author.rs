@@ -83,8 +83,8 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
     let surveyed = super::survey_all(sources, resolver, paths, now).await?;
 
     // Source set is closed: record per-source tree `cid` pins before
-    // reconciliation. Refine later copies these into `base.yaml`;
-    // exact store population is not this step's job.
+    // reconciliation. Refinement later records these in the slice's
+    // refinement manifest.
     with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
         project::plan::close_source_pins(plan, paths.project_root()).map(Mutation::changed)
     })?;
@@ -148,8 +148,9 @@ pub async fn author<P: Model, S: Source, R: Resolver>(
 /// The literal closing hint the `/emery:plan` skill prints.
 fn gate_hint(name: &str) -> String {
     format!(
-        "Plan `{name}` is authored. Review it, then run `emery plan execute` \
-         to open the authorization epoch and drive the slices."
+        "Plan `{name}` is authored. Review it, then run `emery plan refine` \
+         to generate every slice's specification bundle; `emery plan execute` \
+         builds the refined slices afterwards."
     )
 }
 
@@ -215,7 +216,7 @@ fn discovery_preamble(name: &str, gate: &GateProse) -> String {
     format!(
         "# Discovery — {name}\n\n## Summary\n\n{}\n\n## Source inventory\n\n{}",
         gate.discovery_summary.trim(),
-        gate.discovery_source_inventory.trim()
+        gate.discovery_inventory.trim()
     )
 }
 

@@ -29,19 +29,19 @@ You do not need to read this guide front to back. Pick the row that matches wher
 Every change flows through one rhythm:
 
 1. **Plan** — `/emery:plan` surveys sources and writes `plan.yaml`. Exits for review.
-2. **Operator review** — you review, then run `emery plan execute` (opens the authorization epoch).
-3. **Execute** — the same `emery plan execute` loops per slice: refine → build → merge.
+2. **Refine** — after topology review, `emery plan refine` drains refinement per slice and writes each slice's specification bundle. Exits for review.
+3. **Execute** — you review the refined specifications, then run `emery plan execute` (opens the authorization epoch); it loops per slice: build → merge.
 4. **Finalize** — after operator-owned publication is complete, `/emery:finalize` archives the plan.
 
 <div class="pipeline">
 
 ![Emery change rhythm](../assets/diagrams/orientation/workflow-rhythm.svg)
 
-<p class="pipeline-caption">plan → operator review → execute → finalize — a one-slice change uses the same steps as a twelve-slice migration.</p>
+<p class="pipeline-caption">plan → review → refine → review → execute → finalize — a one-slice change uses the same steps as a twelve-slice migration.</p>
 </div>
 
 <div class="callout">
-  <strong>Review.</strong> The operator review step between plan and execute. <code>/emery:plan</code> exits after authoring; invoking <code>emery plan execute</code> opens the authorization epoch and drives the loop under gap gates. Nothing privileged runs until you invoke it.
+  <strong>Review.</strong> Two human review seams: after <code>/emery:plan</code> authors the topology, and after <code>emery plan refine</code> writes the specifications. Invoking <code>emery plan execute</code> opens the authorization epoch over the exact refinement digests and drives build → merge under gap gates. Nothing privileged runs until you invoke it.
 </div>
 
 ## Why artifacts matter
@@ -54,7 +54,7 @@ Artifacts are regular files — you commit and review them like source code. The
 
 ## What you interact with
 
-**`/emery:*` skills** — slash-commands in Cursor (`/emery:init`, `/emery:plan`, `/emery:execute`, `/emery:status`, `/emery:finalize`). Each skill elicits arguments, invokes one `emery` verb, and relays its output. The full list lives in the [Quick reference card](../reference/quick-reference.md).
+**`/emery:*` skills** — slash-commands in Cursor (`/emery:init`, `/emery:plan`, `/emery:refine`, `/emery:execute`, `/emery:status`, `/emery:finalize`). Each skill elicits arguments, invokes one `emery` verb, and relays its output. The full list lives in the [Quick reference card](../reference/quick-reference.md).
 
 If execute stops, the stop card names the reason and the resume command — fix the input it points at, then re-run `emery plan execute`; the loop resumes at the parked phase.
 

@@ -20,7 +20,7 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 
 | Plugin | Prefix | Purpose | Reference |
 | ------ | ------ | ------- | --------- |
-| **Emery** | `/emery:` | Workflow wrappers: `init`, `plan`, `execute`, `status`, `finalize` | [Skills](../skills/index.md) |
+| **Emery** | `/emery:` | Workflow wrappers: `init`, `plan`, `refine`, `execute`, `status`, `finalize` | [Skills](../skills/index.md) |
 
 The Omnia and Vectis target adapters are not Cursor plugins — they live under [`targets/` in the adapters repo](../targets/index.md) and contribute their `guidance`, build-loop (`build` / `verify` / `repair` / `review`), and `merge` operations to the workflow. See [Omnia target](../targets/omnia.md) and [Vectis target](../targets/vectis.md).
 
@@ -36,11 +36,12 @@ The **Emery** plugin provides the operator slash commands. **Target adapters** o
 
 ```text
 /emery:plan     →  surveys each bound source, proposes slices[]
-/emery:execute  →  per slice: refine (extract evidence, synthesize proposal/spec/design/tasks),
-                   build (drives the target adapter's build operation), merge (applies deltas
-                   to baseline, target-agnostic)
+/emery:refine   →  per slice: extract evidence, synthesize proposal/spec/design/tasks,
+                   write the refinement manifest (no code work)
+/emery:execute  →  per slice: build (drives the target adapter's build operation),
+                   merge (applies deltas to baseline, target-agnostic)
 ```
 
-Target-adapter build prompts read the artifacts produced by the refine phase and generate code. The artifacts are the interface between core synthesis and the target adapter.
+Target-adapter build prompts read the artifacts produced by refinement and generate code. The artifacts are the interface between core synthesis and the target adapter.
 
 Contributor notes for the marketplace layout and `--plugin-dir` preview: [Cursor operator plugins](../../contributing/operator-plugins.md).

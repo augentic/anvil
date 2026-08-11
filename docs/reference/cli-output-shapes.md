@@ -85,27 +85,40 @@ The guest-routed authoring orchestration: survey per bound source, reconcile lea
     { "source": "docs", "adapter": "documentation", "leads": ["identity-api"] }
   ],
   "slices": ["identity-contracts", "identity-service"],
-  "hint": "Plan `identity-revamp` is authored. Review it, then run `emery plan execute` to open the authorization epoch and drive the slices."
+  "hint": "Plan `identity-revamp` is authored. Review it, then run `emery plan refine` to generate every slice's specification bundle; `emery plan execute` builds the refined slices afterwards."
+}
+```
+
+### `emery plan refine`
+
+The refinement drain's success body — a stop surfaces on the error envelope instead (`error: "plan-refine-stopped"`, exit 2, with the canonical plan-status stop card on stdout), mirroring the execute stop shape. `refined` lists the slices this run refined and `skipped` the targeted slices whose manifest was already fresh, both in drain order; `gaps` is `true` when the in-scope gap inventory is non-empty (`[unknown]` / `[conflict]` / `[divergence]` are persisted review outputs, not failures). Text mode prints one `refined <slice>` / `fresh <slice> (skipped)` line per slice, an `open gaps remain — review with emery plan gaps` line when `gaps` is true, and closes with the canonical line pointing at `emery plan execute`.
+
+```json
+{
+  "status": "refined",
+  "plan": "identity-revamp",
+  "refined": ["identity-contracts", "identity-service"],
+  "skipped": ["password-reset"],
+  "gaps": false
 }
 ```
 
 ### `emery plan execute`
 
-The drained loop's success body — a stop surfaces on the error envelope instead (`error: "plan-execute-stopped"`, exit 2), so a driver tells a parked loop from a drained one without parsing prose. `phases[]` lists the phases this run completed, in order; a build phase additionally carries `verification` — the terminal verification report's assurance source (see [Build phase result](#build-phase-result)) — named even on a clean pass. Text mode prints the phase lines (the build line appends `(verification: <source>)`) and closes with the canonical `drained — run /emery:finalize <plan>` line.
+The drained loop's success body — a stop surfaces on the error envelope instead (`error: "plan-execute-stopped"`, exit 2), so a driver tells a parked loop from a drained one without parsing prose. The loop requires a fresh refinement manifest for every in-scope leaf before it opens the epoch — a missing or stale manifest fails typed (`error: "plan-refinement-required"`) with no epoch, workspace, or wave created, pointing at `emery plan refine`. `phases[]` lists the phases this run completed, in order; a build phase additionally carries `verification` — the terminal verification report's assurance source (see [Build phase result](#build-phase-result)) — named even on a clean pass. Text mode prints the phase lines (the build line appends `(verification: <source>)`) and closes with the canonical `drained — run /emery:finalize <plan>` line.
 
 ```json
 {
   "status": "drained",
   "plan": "identity-revamp",
   "phases": [
-    { "slice": "identity-contracts", "step": "refine" },
     { "slice": "identity-contracts", "step": "build", "verification": "model-assisted" },
     { "slice": "identity-contracts", "step": "merge" }
   ]
 }
 ```
 
-On `plan-execute-stopped`, stdout carries the canonical plan-status stop card beside the stderr envelope — the same `StatusBody` shape `emery plan status` projects (text renders `stop: <reason>` / `hint:` / `resume:`; JSON carries the structured body), so drivers need no follow-up `emery plan status` call.
+On `plan-execute-stopped`, stdout carries the canonical plan-status stop card beside the stderr envelope — the same `StatusBody` shape `emery plan status` projects (text renders `stop: <reason>` / `hint:` / `resume:`; JSON carries the structured body), so drivers need no follow-up `emery plan status` call. A `refinement-required` stop card's `resume:` is `emery plan refine` — execute never refines.
 
 ### Lead-reconciliation request envelope {#plan-reconcile-request}
 
@@ -152,7 +165,7 @@ Abandons one entry's slice without merging. The body carries the archive destina
 
 ### `emery plan status`
 
-Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` loop, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). On a fresh plan (nothing done, nothing in progress) the dispatch projections keep their `next-action` but `resume` names `/emery:execute` — the operator path starts with execute. The verb never writes: the execute loop's claim step stays the only `in-progress` writer.
+Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` rhythm, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). Refinement resumes through `emery plan refine` (`/emery:refine` on a fresh plan); build and merge resume through the execute loop (`/emery:execute` on a fresh, Ready plan). The verb never writes: the execute loop's claim step stays the only `in-progress` writer.
 
 ```json
 {
@@ -168,7 +181,7 @@ Read-only projection of the plan's execution state. `next-action` is the dispatc
   "next-action": "refine a",
   "plan": "demo",
   "project": "default",
-  "resume": "emery plan execute",
+  "resume": "emery plan refine",
   "slice": "a"
 }
 ```
@@ -248,7 +261,7 @@ The merge phase inside `emery plan execute` folds the slice's spec deltas into t
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the refine phase of `emery plan execute` assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree — they are not inlined on the wire), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the `emery plan refine` drain assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree — they are not inlined on the wire), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {

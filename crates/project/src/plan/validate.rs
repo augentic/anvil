@@ -79,7 +79,7 @@ impl Plan {
         results.extend(unknown_sources(self));
         results.extend(duplicate_source_keys(&self.entries));
         results.extend(context_paths(&self.entries));
-        results.extend(orphan_authority_override_keys(&self.entries));
+        results.extend(orphan_authority_override(&self.entries));
         results.extend(divergence_consistency(&self.entries));
         if let Some(dir) = slices_dir.filter(|d| d.is_dir()) {
             results.extend(slices_dir_consistency(self, dir));
@@ -203,7 +203,7 @@ fn duplicate_source_keys(changes: &[Entry]) -> Vec<Diagnostic> {
 ///
 /// Returns `Error::Validation` (`duplicate-source-key`) when at least
 /// one slice binds the same source key more than once.
-pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
+pub fn reject_duplicate_source(plan: &Plan) -> Result<()> {
     let findings: Vec<_> =
         duplicate_source_keys(&plan.entries).into_iter().filter(diagnostics::is_blocking).collect();
     let Some(first) = findings.first() else {
@@ -224,7 +224,7 @@ pub fn reject_duplicate_source_keys(plan: &Plan) -> Result<()> {
 /// claim kind. Public so `emery slice validate` can surface one
 /// slice's findings.
 #[must_use]
-pub fn orphan_authority_override_keys(changes: &[Entry]) -> Vec<Diagnostic> {
+pub fn orphan_authority_override(changes: &[Entry]) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     for entry in changes {
         if entry.authority_override.by_kind.is_empty() {

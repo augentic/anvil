@@ -70,7 +70,7 @@ fn eval_log_mirror() {
 }
 
 #[test]
-fn log_flags_peel_before_dispatch() {
+fn log_flags_peel_dispatch() {
     let tmp = TempDir::new().expect("tempdir");
     let project = tmp.path().join("project");
     std::fs::create_dir_all(&project).expect("mkdir");
@@ -96,7 +96,7 @@ fn log_flags_peel_before_dispatch() {
 }
 
 #[test]
-fn reserved_log_flags_conflict() {
+fn reserved_log_flags() {
     let argv = vec![
         "probe".to_string(),
         "--debug".to_string(),
@@ -112,7 +112,7 @@ fn reserved_log_flags_conflict() {
 }
 
 #[test]
-fn eval_log_inferred_per_case() {
+fn eval_log_inferred_per() {
     let tmp = TempDir::new().expect("tempdir");
     let sandbox = tmp.path().join("sandbox");
 

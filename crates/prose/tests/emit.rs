@@ -12,7 +12,7 @@ fn write(root: &Path, rel: &str, body: &str) {
 }
 
 #[test]
-fn table_is_sorted_and_complete() {
+fn table_sorted_complete() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let tree = tmp.path().join("prompts");
     write(&tree, "b.md", "# B\n");
@@ -57,7 +57,7 @@ fn good_links_pass() {
 }
 
 #[test]
-fn fenced_casts_are_not_links() {
+fn fenced_casts_links() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let tree = tmp.path().join("prompts");
     write(&tree, "a.md", "see [b](b.md)\n\n```swift\nprocessEffects([UInt8](effects))\n```\n");

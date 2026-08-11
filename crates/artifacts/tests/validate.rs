@@ -137,7 +137,7 @@ mod cross {
     }
 
     #[test]
-    fn proposal_without_spec_fails() {
+    fn proposal_without_spec() {
         let s = Slice::new();
         s.file("proposal.md", "## Domains\n\n- auth\n");
         // No specs/auth/spec.md on disk.

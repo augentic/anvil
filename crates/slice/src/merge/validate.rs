@@ -17,19 +17,19 @@ fn req_id_re() -> &'static Regex {
 }
 
 const RULE_NO_DUPLICATE_IDS: &str = "merge.no-duplicate-ids";
-const RULE_NO_DUPLICATE_IDS_DESC: &str = "baseline has no duplicate requirement IDs";
+const RULE_NO: &str = "baseline has no duplicate requirement IDs";
 
 const RULE_NO_DUPLICATE_NAMES: &str = "merge.no-duplicate-names";
-const RULE_NO_DUPLICATE_NAMES_DESC: &str = "baseline has no duplicate requirement names";
+const RULE_NO_DUPLICATE: &str = "baseline has no duplicate requirement names";
 
 const RULE_REQ_HAS_ID: &str = "merge.requirement-has-id";
 const RULE_REQ_HAS_ID_DESC: &str = "every requirement block carries an `ID:` line";
 
 const RULE_ID_MATCHES_PATTERN: &str = "merge.id-matches-pattern";
-const RULE_ID_MATCHES_PATTERN_DESC: &str = "requirement IDs match the canonical REQ-NNN pattern";
+const RULE_ID_MATCHES: &str = "requirement IDs match the canonical REQ-NNN pattern";
 
 const RULE_REQ_HAS_SCENARIO: &str = "merge.requirement-has-scenario";
-const RULE_REQ_HAS_SCENARIO_DESC: &str = "every requirement declares at least one scenario";
+const RULE_REQ_HAS: &str = "every requirement declares at least one scenario";
 
 /// Post-merge coherence validation.
 ///
@@ -58,7 +58,7 @@ pub fn validate_baseline(baseline: &str) -> Vec<Diagnostic> {
         if seen_ids.contains(block.id.as_str()) {
             results.push(fail(
                 RULE_NO_DUPLICATE_IDS,
-                RULE_NO_DUPLICATE_IDS_DESC,
+                RULE_NO,
                 format!("Duplicate ID: {}", block.id),
             ));
         }
@@ -71,7 +71,7 @@ pub fn validate_baseline(baseline: &str) -> Vec<Diagnostic> {
         if seen_names.contains(block.name.as_str()) {
             results.push(fail(
                 RULE_NO_DUPLICATE_NAMES,
-                RULE_NO_DUPLICATE_NAMES_DESC,
+                RULE_NO_DUPLICATE,
                 format!("Duplicate requirement name: {}", block.name),
             ));
         }
@@ -93,7 +93,7 @@ pub fn validate_baseline(baseline: &str) -> Vec<Diagnostic> {
         } else if !id_pattern.is_match(&block.id) {
             results.push(fail(
                 RULE_ID_MATCHES_PATTERN,
-                RULE_ID_MATCHES_PATTERN_DESC,
+                RULE_ID_MATCHES,
                 format!(
                     "Requirement '{}' has invalid ID '{}' (expected pattern: {})",
                     block.name, block.id, REQ_ID_PATTERN
@@ -103,7 +103,7 @@ pub fn validate_baseline(baseline: &str) -> Vec<Diagnostic> {
         if !block.body.contains(scenario_needle) {
             results.push(fail(
                 RULE_REQ_HAS_SCENARIO,
-                RULE_REQ_HAS_SCENARIO_DESC,
+                RULE_REQ_HAS,
                 format!(
                     "Requirement '{}' ({}) has no {} section",
                     block.name, block.id, SCENARIO_HEADING

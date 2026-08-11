@@ -32,7 +32,7 @@ fn stage(provider: &Provider, relative: &str, bytes: &[u8]) {
 }
 
 #[tokio::test]
-async fn target_seed_then_bare_init() {
+async fn target_seed_bare_init() {
     // No `.emery/` exists yet: the seed lands in the out-of-tree
     // cache, and the subsequent bare init resolves it as the project
     // target without any development build present.

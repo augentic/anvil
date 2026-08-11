@@ -59,7 +59,7 @@ mod package {
     }
 
     #[tokio::test]
-    async fn pin_resolves_as_store_identity() {
+    async fn pin_resolves_store() {
         let project = Provider::bare();
 
         run::<project::init::handlers::Init, _, _>(&project, input("emery:demo@1.2.0"))
@@ -127,7 +127,7 @@ mod bare {
     }
 
     #[tokio::test]
-    async fn upgrade_bare_cleared_cache() {
+    async fn upgrade_bare_cleared() {
         // `--upgrade` re-ensures the recorded binding: a bare record
         // whose cache entry was cleared resolves dispatch-first and
         // stays bare — no pin is written into the record.
@@ -207,7 +207,7 @@ mod shorthand {
     }
 
     #[tokio::test]
-    async fn invalid_not_registry_sugar() {
+    async fn invalid_registry_sugar() {
         for value in ["Demo-target", "demo-target@latest", "demo-target@1"] {
             let project = Provider::bare();
             let err = run::<project::init::handlers::Init, _, _>(&project, input(value))

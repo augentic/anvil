@@ -301,7 +301,7 @@ pub enum EventKind {
     /// rollback. `reason` carries a short human reason or finding code;
     /// the merged baseline stands.
     #[serde(rename = "target.merge.wave-postflight-failed", rename_all = "kebab-case")]
-    TargetMergeWavePostflightFailed {
+    MergeWavePostflightFailed {
         /// Target key under `.emery/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
@@ -386,7 +386,7 @@ pub enum EventKind {
     /// `emery plan amend --authority-override`, or the matching
     /// `--clear-*` flags.
     #[serde(rename = "plan.amend.authority-override", rename_all = "kebab-case")]
-    PlanAmendAuthorityOverride {
+    PlanAmendAuthority {
         /// Governing plan.
         plan_name: PlanName,
         /// Affected slice.
@@ -421,7 +421,7 @@ pub enum EventKind {
     /// until the next `target.merge.wave-postflight-failed`. No new CLI
     /// verb — re-running execute is the ack.
     #[serde(rename = "plan.merge-postflight.acknowledged", rename_all = "kebab-case")]
-    PlanMergePostflightAcknowledged {
+    PostflightAcknowledged {
         /// Slice whose postflight debt was acknowledged — already
         /// merged, archived, and stamped `done`.
         slice_name: SliceName,
@@ -500,37 +500,26 @@ pub enum EventKind {
     },
 }
 
-/// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`]
-/// (RFC-86 D6). Wire fields use explicit kebab-case renames — container
-/// `rename_all` does not reach internally-tagged variant fields.
+/// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`].
+///
+/// RFC-86 D6, RFC-91 D5. Wire fields use explicit kebab-case renames —
+/// container `rename_all` does not reach internally-tagged variant
+/// fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum ClosedPlanCoverage {
-    /// One reviewed plan digest with per-leaf spec coverage.
+    /// One reviewed plan digest with exact per-leaf refinement digests.
     ClosedPlan {
         /// Content digest of the reviewed `plan.yaml`.
         #[serde(rename = "plan-digest")]
         plan_digest: String,
-        /// Sorted per-leaf coverage: `existing { digest }` or
-        /// `refine-under-epoch`.
-        specs: std::collections::BTreeMap<String, LeafSpecCoverage>,
+        /// Sorted per-leaf refinement digests (`sha256:…` of each
+        /// leaf's covered `refinement.yaml`).
+        refinements: std::collections::BTreeMap<String, String>,
         /// Per-requirement unknown waivers nested on this epoch (D17).
         #[serde(rename = "unknown-waivers", default, skip_serializing_if = "Vec::is_empty")]
         unknown_waivers: Vec<UnknownWaiver>,
     },
-}
-
-/// Per-leaf spec coverage inside [`ClosedPlanCoverage::ClosedPlan`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "kebab-case")]
-pub enum LeafSpecCoverage {
-    /// Leaf already has a reviewed spec at this digest.
-    Existing {
-        /// Spec-tree digest (`sha256:…`).
-        digest: String,
-    },
-    /// Authorize refine-before-build for this leaf under the epoch.
-    RefineUnderEpoch,
 }
 
 /// One `[unknown]` waiver recorded on `plan.execute.started` (D17).
@@ -572,7 +561,7 @@ pub struct FactEpochRef {
     pub sequence: u64,
 }
 
-/// Closed `action` enum on [`EventKind::PlanAmendAuthorityOverride`].
+/// Closed `action` enum on [`EventKind::PlanAmendAuthority`].
 ///
 /// Mirrors the per-kind mutations emitted by the CLI surface
 /// (`--authority-override`, `--clear-authority-override`, and the

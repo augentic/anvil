@@ -2,13 +2,13 @@
 
 use crate::validate::{BriefContext, Rule, RuleOutcome, primitives};
 
-fn requirements_have_scenarios(ctx: &BriefContext<'_>) -> RuleOutcome {
+fn requirements_scenarios(ctx: &BriefContext<'_>) -> RuleOutcome {
     let Some(spec) = ctx.parsed_spec else {
         return RuleOutcome::Fail {
             detail: "spec was not parsed".to_string(),
         };
     };
-    if primitives::all_requirements_have_scenarios(spec) {
+    if primitives::all_requirements(spec) {
         RuleOutcome::Pass
     } else {
         RuleOutcome::Fail {
@@ -54,7 +54,7 @@ pub(super) const SPECS_RULES: &[Rule] = &[
     Rule {
         id: "specs.requirements-have-scenarios",
         description: "Every requirement has at least one scenario",
-        check: requirements_have_scenarios,
+        check: requirements_scenarios,
     },
     Rule {
         id: "specs.requirements-have-ids",

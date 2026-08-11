@@ -130,7 +130,7 @@ pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Stat
             }
             EventKind::SliceArchiveCreated { slice_name, .. }
             | EventKind::TargetMergeWaveCommitted { slice_name, .. }
-            | EventKind::TargetMergeWavePostflightFailed { slice_name, .. }
+            | EventKind::MergeWavePostflightFailed { slice_name, .. }
                 if ladders.contains_key(slice_name) =>
             {
                 ladders.insert(slice_name.clone(), Status::Done);
@@ -229,10 +229,11 @@ enum Phase {
 
 fn phase_progress(slice_dir: &Path, window: Option<&WindowFacts>) -> Phase {
     // RFC-86 D27: “built” from fact-substrate build records, not
-    // `build/patch.yaml`.
+    // `build/patch.yaml`. RFC-91: “refined” is refinement-manifest
+    // presence; staleness is enforced by execute / `slice validate`.
     let mut phase = if BuildRecord::present(slice_dir) {
         Phase::Built
-    } else if slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file() {
+    } else if slice_dir.join("refinement.yaml").is_file() {
         Phase::Refined
     } else {
         Phase::None
@@ -351,7 +352,7 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
                 }
                 terminal_seen = true;
             }
-            EventKind::TargetMergeWavePostflightFailed {
+            EventKind::MergeWavePostflightFailed {
                 slice_name: s,
                 reason,
                 ..

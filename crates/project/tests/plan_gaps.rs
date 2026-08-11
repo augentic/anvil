@@ -49,7 +49,7 @@ fn write_model(slice_dir: &Path, body: &str) {
 }
 
 #[test]
-fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
+fn multi_homed_lead() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
@@ -139,7 +139,7 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
 }
 
 #[test]
-fn dropped_slice_excluded_from_inventory() {
+fn dropped_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
@@ -186,7 +186,7 @@ fn dropped_slice_excluded_from_inventory() {
 }
 
 #[test]
-fn unrefined_in_scope_slice_contributes_no_rows() {
+fn unrefined_scope_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");

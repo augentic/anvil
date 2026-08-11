@@ -9,7 +9,7 @@ use artifacts::atomic::bytes_write;
 use diagnostics::Diagnostic;
 use error::Error;
 use jiff::Timestamp;
-use project::adapter::WritableArtifactDeclaration;
+use project::adapter::ArtifactDeclaration;
 use project::build_record::BuildRecord;
 use project::config::Layout;
 use project::journal::{self, EventKind};
@@ -74,7 +74,7 @@ pub(super) struct Machine<'a, S> {
     /// Engine identity stamped onto every canonicalized finding.
     pub stamp: Stamp<'a>,
     /// The target's declared `writable-artifacts[]` grants.
-    pub grants: &'a [WritableArtifactDeclaration],
+    pub grants: &'a [ArtifactDeclaration],
     /// The prepared product workspace with the artifact stage
     /// attached.
     pub workspace: Workspace,

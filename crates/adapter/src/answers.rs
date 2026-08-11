@@ -18,8 +18,7 @@ pub const REPORT_ANSWER_SCHEMA: &str = include_str!("../schemas/answers/report.s
 
 /// Answer schema gating the RFC-90 phase replies (`build` / `repair`
 /// / `verify` / `review`).
-pub const PHASE_REPORT_ANSWER_SCHEMA: &str =
-    include_str!("../schemas/answers/phase-report.schema.json");
+pub const PHASE_REPORT_ANSWER: &str = include_str!("../schemas/answers/phase-report.schema.json");
 
 /// `survey` answer envelope (`{ "leads": [...] }`).
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]

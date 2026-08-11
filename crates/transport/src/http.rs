@@ -120,6 +120,7 @@ where
         .route("/plan/{name}/remove", post!(::change::plan::handlers::Remove))
         .route("/plan/{name}/drop", post!(::change::plan::handlers::Drop))
         .route("/plan/{name}/author", post!(::change::plan::handlers::Author))
+        .route("/plan/refine", post!(::change::plan::handlers::Refine))
         .route("/plan/execute", post!(::change::plan::handlers::Execute))
         .route("/plan/archive", post!(::change::plan::handlers::Archive))
         .route("/journal", get!(project::journal::handlers::Show))

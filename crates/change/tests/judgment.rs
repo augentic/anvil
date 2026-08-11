@@ -37,7 +37,7 @@ async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project
 }
 
 #[tokio::test]
-async fn malformed_repaired_in_loop() {
+async fn malformed_repaired_loop() {
     let session =
         Session::scripted("mock", vec![malformed_answer(), mock::answers::greeting_grouping()]);
 
@@ -50,7 +50,7 @@ async fn malformed_repaired_in_loop() {
 }
 
 #[tokio::test]
-async fn unrepairable_exhausts_budget() {
+async fn unrepairable_exhausts() {
     let session = Session::scripted("mock", vec![malformed_answer(); JUDGMENT_BUDGET]);
 
     let err = author(&session).await.expect_err("the budget exhausts");

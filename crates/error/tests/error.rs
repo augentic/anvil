@@ -48,7 +48,7 @@ fn adapter_too_old_display() {
 }
 
 #[test]
-fn validation_code_and_display() {
+fn validation_code_display() {
     // The common path borrows a `&'static str` code, and
     // `validation_failed` folds `rule` + `detail` into one message.
     let err = Error::validation_failed("bad-thing", "rule", "detail");

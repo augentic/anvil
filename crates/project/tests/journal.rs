@@ -30,7 +30,7 @@ fn build_started(second: i64, slice: &str) -> Event {
 }
 
 #[test]
-fn reads_prior_actor_wire_fields() {
+fn reads_prior_actor_wire() {
     // Pre-rename journals and epoch refs used `actor`; read_union skips
     // unparseable lines, so missing aliases would silently drop history.
     let tmp = tempfile::TempDir::new().expect("tempdir");
@@ -77,7 +77,7 @@ fn reads_prior_actor_wire_fields() {
 }
 
 #[test]
-fn append_stamps_writer_and_monotonic_sequence() {
+fn append_stamps_writer() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
@@ -100,7 +100,7 @@ fn append_stamps_writer_and_monotonic_sequence() {
 }
 
 #[test]
-fn union_orders_by_timestamp_writer_sequence() {
+fn union_orders_timestamp() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
@@ -129,7 +129,7 @@ fn union_orders_by_timestamp_writer_sequence() {
 }
 
 #[test]
-fn append_one_uses_default_writer_only() {
+fn append_uses_default() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
@@ -147,7 +147,7 @@ fn append_one_uses_default_writer_only() {
 }
 
 #[test]
-fn emit_best_effort_writes_per_writer_log() {
+fn emit_best_effort_writes() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);
@@ -171,7 +171,7 @@ fn emit_best_effort_writes_per_writer_log() {
 }
 
 #[test]
-fn append_for_rejects_path_separator_writer() {
+fn append_rejects_path() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let err = append_for(layout(tmp.path()), "evil/name", &[build_started(0, "x")])
         .expect_err("path separator refused");
@@ -182,14 +182,14 @@ fn append_for_rejects_path_separator_writer() {
 }
 
 #[test]
-fn missing_events_dir_unions_empty() {
+fn missing_events_dir_unions() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let events = read_union(layout(tmp.path())).expect("missing is empty");
     assert!(events.is_empty());
 }
 
 #[tokio::test]
-async fn show_merges_per_writer_union() {
+async fn show_merges_per_writer() {
     let project = Session::scripted("demo", Vec::new());
     let root = project.root();
     let layout = layout(root);
@@ -242,7 +242,7 @@ fn released(second: i64, slice: &str) -> Event {
 }
 
 #[test]
-fn concurrent_claims_on_different_slices() {
+fn concurrent_claims() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
 
@@ -260,7 +260,7 @@ fn concurrent_claims_on_different_slices() {
 }
 
 #[test]
-fn same_slice_second_writer_conflicts() {
+fn slice_second_writer() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
 

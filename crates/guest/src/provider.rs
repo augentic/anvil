@@ -11,8 +11,8 @@ use diagnostics::{Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSo
 use error::Error;
 use project::adapter::metadata::{Metadata, Request};
 use project::adapter::{
-    AdapterSelector, Axis, BuildInputDeclaration, PlatformsCapability, ResolvedSource,
-    ResolvedTarget, Resolver, WritableArtifactDeclaration, WritableArtifactKind,
+    AdapterSelector, ArtifactDeclaration, Axis, BuildInputDeclaration, PlatformsCapability,
+    ResolvedSource, ResolvedTarget, Resolver, WritableArtifactKind,
 };
 use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT, PROJECT_ROOT_ENV};
 use project::seam::wire::{
@@ -310,7 +310,7 @@ pub fn metadata(request: &Request<'_>) -> Result<Metadata, Error> {
                 writable_artifacts: record
                     .writable_artifacts
                     .into_iter()
-                    .map(|artifact| WritableArtifactDeclaration {
+                    .map(|artifact| ArtifactDeclaration {
                         path: artifact.path,
                         kind: match artifact.kind {
                             target::WritableArtifactKind::File => WritableArtifactKind::File,

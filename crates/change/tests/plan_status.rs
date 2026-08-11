@@ -27,8 +27,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, Event as JournalEvent, EventKind, LeafSpecCoverage,
-    append_for,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event as JournalEvent, EventKind, append_for,
 };
 use support::{change, change_with_deps, plan_with_changes};
 
@@ -54,6 +53,9 @@ async fn status(project: &Session, plan: &Plan) -> StatusBody {
 
 /// Stage a live slice directory with optional abandon / refine / build
 /// artifact signals (not lifecycle status — projection ignores that).
+/// RFC-91: "refined" is refinement-manifest presence, so the refined
+/// and built rungs stage a `refinement.yaml` stub (presence-only —
+/// status never recomputes freshness).
 fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
     let slice_dir = root.join(".emery").join("slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
@@ -65,10 +67,12 @@ fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
         SliceArt::Refined => {
             std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
                 .expect("write model.yaml");
+            write_manifest_stub(&slice_dir);
         }
         SliceArt::Built => {
             std::fs::write(slice_dir.join("model.yaml"), "requirements: []\n")
                 .expect("write model.yaml");
+            write_manifest_stub(&slice_dir);
             // Minimal fact-substrate build record (RFC-86 D27). Report
             // fields satisfy the closed BuildReport shape.
             let builds = slice_dir.join("builds");
@@ -90,6 +94,13 @@ fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
         }
     }
     std::fs::write(slice_dir.join("metadata.yaml"), meta).expect("write metadata");
+}
+
+/// Presence-only `refinement.yaml` stub — the status projection
+/// checks for the file, never its freshness.
+fn write_manifest_stub(slice_dir: &std::path::Path) {
+    std::fs::write(slice_dir.join("refinement.yaml"), "# stub refinement manifest\n")
+        .expect("write refinement.yaml");
 }
 
 #[derive(Clone, Copy)]
@@ -163,12 +174,12 @@ mod next_action {
 
     #[tokio::test]
     async fn fresh_plan() {
-        // A fresh plan (nothing advanced, nothing done) resumes with
-        // `/emery:execute`; the `resume:` line is the only
-        // start-execution hint — no approval footer.
+        // A fresh plan (nothing advanced, nothing refined) resumes
+        // with `/emery:refine` (RFC-91 D8); the `resume:` line is the
+        // only hint — no approval footer.
         let project = Session::scripted("demo", Vec::new());
         let body = status(&project, &plan_with_changes(vec![change("a")])).await;
-        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:refine"));
         let mut out = Vec::new();
         project::handler::Render::render(&body, &mut out).expect("render");
         let text = String::from_utf8(out).expect("utf8");
@@ -242,7 +253,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn later_success_clears_failure() {
+    async fn later_success_clears() {
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", SliceArt::Refined);
         append(
@@ -267,7 +278,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn non_awaited_failure_ignored() {
+    async fn non_awaited_failure() {
         // The slice already carries a built artifact; a stale build
         // failure must not pin the projection off merge.
         let project = Session::scripted("demo", Vec::new());
@@ -279,7 +290,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn reclaim_shadows_old_failure() {
+    async fn reclaim_shadows_old() {
         // A fresh `plan.entry.advanced` (re-claim after undo, or a new
         // plan reusing the slice name) is newer than the failure, so
         // dispatch falls back to the artifact phase.
@@ -380,7 +391,7 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::TargetMergeWavePostflightFailed {
+                EventKind::MergeWavePostflightFailed {
                     target: "demo".into(),
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -414,7 +425,7 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::TargetMergeWavePostflightFailed {
+                    EventKind::MergeWavePostflightFailed {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
@@ -424,7 +435,7 @@ mod postflight_debt {
                 ),
                 Event::event(
                     ts(20),
-                    EventKind::PlanMergePostflightAcknowledged {
+                    EventKind::PostflightAcknowledged {
                         slice_name: "a".into(),
                     },
                 ),
@@ -437,7 +448,7 @@ mod postflight_debt {
     }
 
     #[tokio::test]
-    async fn sticky_blocks_next_pending() {
+    async fn sticky_blocks_next() {
         // Unacked postflight debt must not silently advance to the next
         // pending entry's refine.
         let project = Session::scripted("demo", Vec::new());
@@ -445,7 +456,7 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::TargetMergeWavePostflightFailed {
+                EventKind::MergeWavePostflightFailed {
                     target: "demo".into(),
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -469,7 +480,7 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::TargetMergeWavePostflightFailed {
+                    EventKind::MergeWavePostflightFailed {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
@@ -479,7 +490,7 @@ mod postflight_debt {
                 ),
                 Event::event(
                     ts(20),
-                    EventKind::PlanMergePostflightAcknowledged {
+                    EventKind::PostflightAcknowledged {
                         slice_name: "a".into(),
                     },
                 ),
@@ -495,7 +506,7 @@ mod re_entry {
     use super::*;
 
     #[tokio::test]
-    async fn merge_incomplete_done_stamp() {
+    async fn merge_incomplete_done() {
         let project = Session::scripted("demo", Vec::new());
         append(
             project.root(),
@@ -528,15 +539,15 @@ mod re_entry {
     }
 
     #[tokio::test]
-    async fn fresh_plan_resumes_execute() {
-        // A fresh plan projects the real next action but resumes with
-        // `/emery:execute` rather than a phase breakout — the loop, not
-        // a single phase, is the natural entry point.
+    async fn fresh_plan_resumes() {
+        // A fresh, unrefined plan projects `refine <slice>` and
+        // resumes with `/emery:refine` — the refinement drain, not the
+        // execute loop, is the natural entry point (RFC-91 D8).
         let project = Session::scripted("demo", Vec::new());
         let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine a");
-        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:refine"));
     }
 
     #[tokio::test]
@@ -566,16 +577,19 @@ mod milestones {
 
     use super::*;
 
+    /// Stage a refined slice: model + presence-only refinement stub
+    /// (RFC-91 — Ready requires every in-scope leaf refined).
     fn write_model(root: &std::path::Path, name: &str, model: &str) {
         let slice_dir = root.join(".emery").join("slices").join(name);
         std::fs::create_dir_all(&slice_dir).expect("slice dir");
         std::fs::write(slice_dir.join("metadata.yaml"), "target: demo-target@1.0.0\n")
             .expect("metadata");
         std::fs::write(slice_dir.join("model.yaml"), model).expect("model");
+        write_manifest_stub(&slice_dir);
     }
 
     #[tokio::test]
-    async fn refined_clean_is_ready_not_authorized() {
+    async fn refined_clean_ready() {
         // Clean gaps + refined → Ready. No plan.execute.started yet →
         // not Authorized. Resume stays at execute (D22 / D26).
         let project = Session::scripted("demo", Vec::new());
@@ -599,7 +613,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn open_unknowns_not_ready_review_gaps() {
+    async fn open_unknowns_ready() {
         // Refined + open unknowns → not Ready; next-action is
         // review-gaps; resume points at per-req --waive (D22).
         let project = Session::scripted("demo", Vec::new());
@@ -635,7 +649,9 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn conflict_resume_re_refine_not_waive() {
+    async fn conflict_resume_re_refine() {
+        // Conflicts resume at `emery plan refine` — fix inputs and
+        // re-refine (RFC-91 D8), never waive through execute.
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -651,11 +667,11 @@ mod milestones {
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert_eq!(body.next_action, "review-gaps");
-        assert_eq!(body.resume.as_deref(), Some("emery plan execute"));
+        assert_eq!(body.resume.as_deref(), Some("emery plan refine"));
     }
 
     #[tokio::test]
-    async fn divergence_alone_does_not_block_ready() {
+    async fn divergence_alone_block() {
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -674,7 +690,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn dropped_excluded_from_ready() {
+    async fn dropped_excluded_ready() {
         // Drop the gappy slice; the remaining refined sibling makes
         // the change Ready (D24).
         let project = Session::scripted("demo", Vec::new());
@@ -696,7 +712,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn epoch_fact_projects_authorized_without_ready() {
+    async fn epoch_fact_projects() {
         // Hand-stamped plan.execute.started → Authorized even while
         // unknowns keep Ready false (D22). Execute writer is S18.
         let project = Session::scripted("demo", Vec::new());
@@ -710,8 +726,11 @@ mod milestones {
     sources: [intent]
 ",
         );
-        let mut specs = BTreeMap::new();
-        specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
+        let mut refinements = BTreeMap::new();
+        refinements.insert(
+            "a".into(),
+            "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+        );
         append(
             project.root(),
             &[Event::event(
@@ -719,7 +738,7 @@ mod milestones {
                 EventKind::PlanExecuteStarted {
                     coverage: ClosedPlanCoverage::ClosedPlan {
                         plan_digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
-                        specs,
+                        refinements,
                         unknown_waivers: Vec::new(),
                     },
                     discovery_digest: None,
@@ -735,14 +754,14 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn fresh_unrefined_resume_execute() {
-        // D26: post-author resume stays /emery:execute; next-action
-        // may still name the refine phase.
+    async fn fresh_unrefined_resume() {
+        // RFC-91 D8: post-author resume is /emery:refine — refinement
+        // is a first-class stage between authoring and execution.
         let project = Session::scripted("demo", Vec::new());
         let body = status(&project, &plan_with_changes(vec![change("a")])).await;
         assert!(!body.ready);
         assert!(!body.authorized);
         assert_eq!(body.next_action, "refine a");
-        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:refine"));
     }
 }

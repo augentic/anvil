@@ -88,7 +88,7 @@ struct Milestones {
 fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
     let mut resolution = None;
     scan_union(events, |event| match &event.kind {
-        EventKind::TargetMergeWavePostflightFailed {
+        EventKind::MergeWavePostflightFailed {
             slice_name, reason, ..
         } if plan.entries.iter().any(|e| e.name == *slice_name) => {
             let entry = plan.entries.iter().find(|e| e.name == *slice_name);
@@ -102,7 +102,7 @@ fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
             }
             ControlFlow::Break(())
         }
-        EventKind::PlanMergePostflightAcknowledged { slice_name }
+        EventKind::PostflightAcknowledged { slice_name }
             if plan.entries.iter().any(|e| e.name == *slice_name) =>
         {
             resolution = None;
@@ -126,7 +126,9 @@ fn clean_gaps(gaps: &super::super::gaps::GapsBody) -> bool {
         .any(|row| matches!(row.status, RequirementStatus::Unknown | RequirementStatus::Conflict))
 }
 
-/// Every in-scope entry has refined artifacts (model.yaml or spec.md).
+/// Every in-scope entry has a refinement manifest (RFC-91 D2).
+/// Presence-only here: staleness needs the full freshness recompute,
+/// which lives with execute / `slice validate` in the slice crate.
 /// Empty in-scope set is vacuously refined.
 fn all_in_scope_refined(plan: &Plan, layout: Layout<'_>) -> Result<bool, Error> {
     for entry in &plan.entries {
@@ -157,7 +159,7 @@ fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
 }
 
 fn is_refined(slice_dir: &Path) -> bool {
-    slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file()
+    slice_dir.join("refinement.yaml").is_file()
 }
 
 /// Authorized when any `plan.execute.started` fact is in the union.
@@ -221,7 +223,7 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
         NextActionKind::Merge => Some(LoopStep::Merge),
         NextActionKind::ReviewGaps | NextActionKind::Drained => None,
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed => Some(LoopStep::Refine),
+            StopReason::RefineFailed | StopReason::RefinementRequired => Some(LoopStep::Refine),
             StopReason::BuildFailed => Some(LoopStep::Build),
             // `merge-incomplete` parks inside merge: the spec merge landed
             // but the per-entry `done` stamp has not. Postflight failure is
@@ -255,16 +257,17 @@ fn resume_point(
         return Some(fresh_plan_resume(gaps, ready, resolution.action));
     }
     match resolution.action {
-        // Every phase resumes through the execute loop — there are no
-        // phase-breakout verbs (RFC-86 three-verb surface).
-        NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge => {
-            Some("emery plan execute".to_string())
-        }
+        // Refinement resumes through `plan refine` (RFC-91 D1/D8);
+        // build and merge resume through the execute loop.
+        NextActionKind::Refine => Some("emery plan refine".to_string()),
+        NextActionKind::Build | NextActionKind::Merge => Some("emery plan execute".to_string()),
         NextActionKind::ReviewGaps => Some(gap_resume(gaps)),
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed
-            | StopReason::BuildFailed
+            StopReason::RefineFailed | StopReason::RefinementRequired => {
+                Some("emery plan refine".to_string())
+            }
+            StopReason::BuildFailed
             | StopReason::MergeConflict
             | StopReason::MergePostflightFailed
             | StopReason::MergeIncomplete => Some("emery plan execute".to_string()),
@@ -273,23 +276,27 @@ fn resume_point(
     }
 }
 
-/// Post-author / all-pending resume (D26 / D22).
+/// Post-author / all-pending resume (RFC-91 D8).
 fn fresh_plan_resume(
     gaps: &super::super::gaps::GapsBody, ready: bool, action: NextActionKind,
 ) -> String {
     if action == NextActionKind::ReviewGaps || (!ready && action == NextActionKind::Build) {
         return gap_resume(gaps);
     }
-    // Unrefined or Ready: resume at execute (D26).
+    // Missing / stale refinement resumes at refine; Ready resumes at
+    // execute (D8).
+    if action == NextActionKind::Refine {
+        return "/emery:refine".to_string();
+    }
     "/emery:execute".to_string()
 }
 
 /// Resume when the change is not Ready: conflicts → fix inputs and
-/// re-execute (drifted pins re-refine under the epoch); unknowns-only
-/// → execute with per-req `--waive`.
+/// re-refine (`emery plan refine`, RFC-91 D8); unknowns-only →
+/// execute with per-req `--waive`.
 fn gap_resume(gaps: &super::super::gaps::GapsBody) -> String {
     if gaps.rows.iter().any(|r| r.status == RequirementStatus::Conflict) {
-        return "emery plan execute".to_string();
+        return "emery plan refine".to_string();
     }
     let unknowns: Vec<_> =
         gaps.rows.iter().filter(|r| r.status == RequirementStatus::Unknown).collect();

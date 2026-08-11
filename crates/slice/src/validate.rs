@@ -5,12 +5,14 @@
 
 use std::path::{Path, PathBuf};
 
+use artifacts::discovery::Discovery;
 use artifacts::spec::provenance::RequirementTag;
 use diagnostics::Diagnostic;
 use error::Result;
 use jiff::Timestamp;
 use project::config::Layout;
 use project::journal::{Event, EventKind, append_batch};
+use project::plan::Plan;
 
 use crate::synthesis::evidence::read_evidence_dir;
 
@@ -18,11 +20,8 @@ mod baseline_conflict;
 mod catalog;
 mod decisions;
 mod model_drift;
-mod pin_drift;
 mod pre_adapter;
 mod spec_location;
-
-pub use pin_drift::pins_drifted;
 
 /// Outcome of the full validation sweep ([`run`]).
 ///
@@ -89,17 +88,40 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
         });
     }
 
-    // Non-blocking review advisories (thin synopses, pin drift,
-    // baseline drift since `defined_at`) ride the adapter-findings
-    // surface too; only a blocking diagnostic gates the exit.
+    // Non-blocking review advisories (thin synopses, refinement
+    // freshness, baseline drift) ride the adapter-findings surface;
+    // only a blocking diagnostic gates the exit.
     let mut findings = artifacts::validate::validate_slice(&slice_dir)?;
     findings.append(&mut pre_adapter::synopsis_thin(layout)?);
-    findings.append(&mut pin_drift::findings(layout, &slice_dir, name)?);
+    findings.append(&mut refinement_findings(layout, name)?);
     findings.append(&mut baseline_conflict::findings(layout, &slice_dir)?);
     Ok(Validation::Adapter {
         findings,
         synthesis_tags,
     })
+}
+
+/// Refinement-freshness review advisories (`slice-refinement-missing`
+/// / `slice-refinement-stale`, RFC-91): recompute the slice's manifest
+/// against its live inputs and bundle. An absent plan or entry
+/// (archived slice) yields none; an absent `discovery.md` degrades to
+/// an empty lead inventory.
+fn refinement_findings(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>> {
+    let plan_path = layout.plan_path();
+    if !plan_path.is_file() {
+        return Ok(Vec::new());
+    }
+    let plan = Plan::load(&plan_path)?;
+    let Some(entry) = plan.entries.iter().find(|entry| entry.name == name) else {
+        return Ok(Vec::new());
+    };
+    let inventory = if layout.discovery_path().is_file() {
+        Discovery::load(&layout.discovery_path())?.leads().to_vec()
+    } else {
+        Vec::new()
+    };
+    let freshness = crate::refinement::freshness(layout, &plan, entry, &inventory)?;
+    Ok(crate::refinement::findings(name, &freshness))
 }
 
 /// Append one `slice.synthesis.*` journal line per `(requirement-id,

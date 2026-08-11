@@ -1,6 +1,6 @@
-//! RFC-86 Acceptance #4 / D25 / D27 — pin → build-record → wave-commit
-//! fixture, plus pin-drift review signals (`slice-base-drifted` /
-//! `slice-evidence-stale`).
+//! RFC-86 Acceptance #4 — refinement-manifest → build-record →
+//! wave-commit fixture, plus refinement-freshness review signals
+//! (`slice-refinement-stale`, RFC-91).
 
 mod support;
 
@@ -14,7 +14,7 @@ use project::config::Layout;
 use project::journal::{EventKind, read_union};
 use project::plan::{Plan, value_cid};
 use project::slice::{LifecycleStatus, SliceMetadata};
-use slice::Base;
+use slice::refinement::Manifest;
 
 async fn author_and_refine(session: &Session) {
     run::<plan::handlers::Author, _, _>(
@@ -61,7 +61,7 @@ fn review_ids(body: &project::handler::ReportBody) -> Vec<String> {
 }
 
 #[tokio::test]
-async fn pin_build_record_wave_commit_and_apply() {
+async fn pin_build_record_wave() {
     let session = Session::scripted(
         "mock",
         vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
@@ -71,15 +71,30 @@ async fn pin_build_record_wave_commit_and_apply() {
 
     let layout = Layout::new(&root);
     let slice_dir = layout.slice_dir("login-flow");
-    let base = Base::load(&slice_dir).expect("base.yaml after refine");
-    assert!(
-        base.target_base.as_str().starts_with("sha256:"),
-        "target-base pin recorded: {}",
-        base.target_base
-    );
-    assert_eq!(base.sources["docs"], value_cid("The docs source."));
+    let manifest = Manifest::load(&slice_dir).expect("refinement.yaml after refine");
+    assert_eq!(manifest.inputs.sources["docs"], value_cid("The docs source."));
+    assert!(!manifest.bundle.is_empty(), "manifest covers the output bundle");
 
-    support::build(&session, "login-flow").await.expect("build from recorded pin");
+    // Fresh manifest → validate PASSes with no freshness reviews.
+    // (Checked before build: the mock target's granted `tasks.md`
+    // stage write legitimately stales the manifest afterwards.)
+    let clean = run::<slice::handlers::Validate, _, _>(
+        session.provider(),
+        slice::handlers::ValidateInput {
+            name: "login-flow".to_string(),
+        },
+    )
+    .await
+    .expect("validate passes");
+    let clean_reviews = review_ids(&clean);
+    assert!(
+        !clean_reviews
+            .iter()
+            .any(|id| id == "slice-refinement-missing" || id == "slice-refinement-stale"),
+        "no freshness reviews on a fresh manifest: {clean_reviews:?}"
+    );
+
+    support::build(&session, "login-flow").await.expect("build over the covered manifest");
 
     assert!(
         project::build_record::BuildRecord::present(&slice_dir),
@@ -100,21 +115,6 @@ async fn pin_build_record_wave_commit_and_apply() {
     let kinds = journal_kinds(&root);
     assert!(kinds.contains(&"target.wave.opened"), "{kinds:?}");
     assert!(kinds.contains(&"slice.build.succeeded"), "{kinds:?}");
-
-    // Clean pins → validate PASSes with no pin-drift reviews.
-    let clean = run::<slice::handlers::Validate, _, _>(
-        session.provider(),
-        slice::handlers::ValidateInput {
-            name: "login-flow".to_string(),
-        },
-    )
-    .await
-    .expect("validate passes");
-    let clean_reviews = review_ids(&clean);
-    assert!(
-        !clean_reviews.iter().any(|id| id == "slice-base-drifted" || id == "slice-evidence-stale"),
-        "no pin drift on clean pins: {clean_reviews:?}"
-    );
 
     support::merge(&session, "login-flow").await.expect("merge wave-commits");
 
@@ -153,7 +153,7 @@ async fn pin_build_record_wave_commit_and_apply() {
 }
 
 #[tokio::test]
-async fn validate_reports_baseline_and_source_pin_drift() {
+async fn validate_staleness() {
     let session = Session::scripted(
         "mock",
         vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
@@ -161,7 +161,7 @@ async fn validate_reports_baseline_and_source_pin_drift() {
     let root = session.root().to_path_buf();
     author_and_refine(&session).await;
 
-    // Move the baseline tree after refine pinned empty-cid.
+    // Move the baseline tree after refinement covered empty-cid.
     let specs = root.join(".emery/specs/auth");
     fs::create_dir_all(&specs).expect("baseline domain");
     fs::write(specs.join("spec.md"), "### Requirement: Drift bait\n\nID: REQ-001\n\nBody.\n")
@@ -174,11 +174,11 @@ async fn validate_reports_baseline_and_source_pin_drift() {
         },
     )
     .await
-    .expect("pin drift is review — validate still PASSes");
+    .expect("staleness is review — validate still PASSes");
     let ids = review_ids(&body);
-    assert!(ids.iter().any(|id| id == "slice-base-drifted"), "{ids:?}");
+    assert!(ids.iter().any(|id| id == "slice-refinement-stale"), "{ids:?}");
 
-    // Restore baseline pin agreement, then drift a bound source value.
+    // Restore baseline agreement, then drift a bound source value.
     fs::remove_dir_all(root.join(".emery/specs")).expect("clear drifted baseline");
     let plan_path = Layout::new(&root).plan_path();
     let mut plan = Plan::load(&plan_path).expect("plan");
@@ -194,76 +194,5 @@ async fn validate_reports_baseline_and_source_pin_drift() {
     .await
     .expect("source drift is review");
     let ids = review_ids(&body);
-    assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
-    assert!(!ids.iter().any(|id| id == "slice-base-drifted"), "baseline restored: {ids:?}");
-}
-
-/// A source bound after refine (no `base.yaml` pin) is pin drift —
-/// validate advises and `pins_drifted` forces re-refine under the epoch.
-#[tokio::test]
-async fn missing_source_pin_is_drift() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
-    );
-    let root = session.root().to_path_buf();
-    author_and_refine(&session).await;
-
-    let layout = Layout::new(&root);
-    let slice_dir = layout.slice_dir("login-flow");
-    let mut base = Base::load(&slice_dir).expect("base.yaml after refine");
-    assert!(base.sources.contains_key("code"), "fixture pins both sources");
-    base.sources.remove("code");
-    base.write(&slice_dir).expect("drop code pin — simulates amend --add-source after refine");
-
-    assert!(
-        slice::pins_drifted(layout, &slice_dir, "login-flow").expect("probe"),
-        "binding without a base.yaml pin must force re-refine"
-    );
-
-    let body = run::<slice::handlers::Validate, _, _>(
-        session.provider(),
-        slice::handlers::ValidateInput {
-            name: "login-flow".to_string(),
-        },
-    )
-    .await
-    .expect("missing pin is review — validate still PASSes");
-    let ids = review_ids(&body);
-    assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
-}
-
-/// A `base.yaml` pin for a source the entry no longer binds is pin
-/// drift — the set mismatch amend `--remove-source` leaves until the
-/// next refine rewrites the pin assembly.
-#[tokio::test]
-async fn orphan_source_pin_is_drift() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
-    );
-    let root = session.root().to_path_buf();
-    author_and_refine(&session).await;
-
-    let layout = Layout::new(&root);
-    let slice_dir = layout.slice_dir("login-flow");
-    let mut base = Base::load(&slice_dir).expect("base.yaml after refine");
-    base.sources.insert("gone".into(), value_cid("orphan pin"));
-    base.write(&slice_dir).expect("plant orphan pin");
-
-    assert!(
-        slice::pins_drifted(layout, &slice_dir, "login-flow").expect("probe"),
-        "orphan base.yaml pin must force re-refine"
-    );
-
-    let body = run::<slice::handlers::Validate, _, _>(
-        session.provider(),
-        slice::handlers::ValidateInput {
-            name: "login-flow".to_string(),
-        },
-    )
-    .await
-    .expect("orphan pin is review — validate still PASSes");
-    let ids = review_ids(&body);
-    assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
+    assert!(ids.iter().any(|id| id == "slice-refinement-stale"), "{ids:?}");
 }

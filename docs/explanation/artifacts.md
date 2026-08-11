@@ -6,7 +6,7 @@ This page explains *why* each artifact exists and *how they relate*. For the exa
 
 ## The dependency chain
 
-The refine phase synthesizes artifacts in dependency order. Each one answers a different question and feeds the next:
+The `emery plan refine` drain synthesizes artifacts in dependency order. Each one answers a different question and feeds the next:
 
 <div class="pipeline">
 

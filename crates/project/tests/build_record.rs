@@ -22,7 +22,7 @@ fn sample_report(slice: &str) -> BuildReport {
 }
 
 #[test]
-fn write_and_load_latest_round_trip() {
+fn write_load_latest_round() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = Layout::new(tmp.path());
     let slice_dir = layout.slice_dir("login-flow");

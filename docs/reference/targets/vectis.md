@@ -8,7 +8,7 @@
 
 ## Operations
 
-Closed WIT target contract: `guidance`, `build`, `verify`, `repair`, `review`, `merge`. Core synthesis (the refine phase) writes the canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
+Closed WIT target contract: `guidance`, `build`, `verify`, `repair`, `review`, `merge`. Core synthesis (the refinement stage, `emery plan refine`) writes the canonical artifacts; Vectis never writes them. `composition.yaml` is a build output, not a synthesis artifact.
 
 | Operation | Owns |
 | --------- | ---- |

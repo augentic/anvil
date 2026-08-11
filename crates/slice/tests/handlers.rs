@@ -122,7 +122,7 @@ mod init {
     }
 
     #[tokio::test]
-    async fn existing_agents_md_preserved() {
+    async fn existing_agents_md() {
         let project = Session::bare(Vec::new());
         let agents_path = project.root().join("AGENTS.md");
         fs::write(&agents_path, "# operator prose\n").expect("stage operator AGENTS.md");

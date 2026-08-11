@@ -80,6 +80,8 @@ Doc comments describe what this is today. Version-history tables, dated bumps, c
 
 Prefer short, idiomatic Rust names. Don't restate context the surrounding module, type, or function already supplies. Avoid `_local` / `_value` / `_helper` suffixes. New functions: 1–3 words. Predicates start with `is_` / `has_`. DTOs returned by handlers are `<Action>Body` / `<Action>Row`, never `<Action>Response` / `<Action>Json` (the type's role is `Body`; the format dispatch lives in `emit` — see [handler-shape.md](./handler-shape.md)).
 
+**Identifier length.** Declared item names (`fn` / `struct` / `enum` / `trait` / `type` / `const` / `static` / `mod`), named fields, and enum variants are **≤ 25 characters** (Unicode scalars on the bare identifier, not the module path). Mechanically enforced by the `ident_brevity` root-crate test (`tests/ident_brevity.rs`, part of `cargo make test`, so `check` and `ci` inherit it). Push narrative into docs, comments, or nested `mod` context — not into the identifier.
+
 A function defined in `mod <name>` (or `commands/<name>.rs`) MUST NOT carry `<name>` as a suffix or prefix on its own name — the module path already supplies that context. Clippy's `module_name_repetitions` (on by default through the `pedantic` group) catches this at lint time.
 
 ```rust
@@ -104,7 +106,7 @@ The codebase optimises for short reading over short writing. Concretely:
 - **Field prefixes**: a struct named `RegistryAmendmentArgs` does not carry `proposed_` on every field — the struct name already says "proposal".
 - **Comment redundancy**: don't paraphrase a `match` arm's variant in a `// …` comment when the variant's doc-comment already explains it. The same rule applies to `Exit::code()`'s inline comments mirroring variant docs.
 
-The `doc_brevity` root-crate test (see [Comments](#comments)) catches the mechanical density caps. Brevity at the type, field, and variant level is on you.
+The `doc_brevity` root-crate test (see [Comments](#comments)) catches the mechanical density caps. The `ident_brevity` root-crate test (see [Naming](#naming)) catches the 25-character identifier cap on items, fields, and variants.
 
 ## Format dispatch
 

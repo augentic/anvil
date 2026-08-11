@@ -295,7 +295,7 @@ fn postflight_terminal(
     );
     let event = journal::Event::new(
         now,
-        EventKind::TargetMergeWavePostflightFailed {
+        EventKind::MergeWavePostflightFailed {
             target: commit.wave.target.clone(),
             digest: commit.digest.clone(),
             slice_name: slice.into(),

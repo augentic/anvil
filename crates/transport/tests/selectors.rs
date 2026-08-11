@@ -31,7 +31,7 @@ fn adapter_add_project_dir() {
 }
 
 #[test]
-fn other_routes_project_no_seed() {
+fn routes_project_seed() {
     assert_eq!(seed_request(&argv(&["plan", "status"])), None);
     assert_eq!(seed_request(&argv(&["init", "./mock.wasm"])), None);
     assert_eq!(seed_request(&argv(&["slice", "build", "s1"])), None);
@@ -65,7 +65,7 @@ mod refresh {
     }
 
     #[test]
-    fn upgrade_all_flags_bindings() {
+    fn upgrade_all_flags() {
         // `--all` names nothing itself; the launcher widens the set
         // with the project's recorded bare bindings.
         let request = refresh_request(&argv(&["adapter", "upgrade", "--all"]));
@@ -90,7 +90,7 @@ mod refresh {
     }
 
     #[test]
-    fn upgrade_flags_recorded_binding() {
+    fn upgrade_flags_recorded() {
         // The launcher reads `project.yaml` at the anchored root to
         // widen the set; the projection only flags the intent.
         let request = refresh_request(&argv(&["init", "--upgrade"]));
@@ -99,7 +99,7 @@ mod refresh {
     }
 
     #[test]
-    fn pins_components_no_refresh() {
+    fn pins_components_refresh() {
         // Pinned versions are immutable; local components refresh
         // through `adapter add`.
         for args in [
@@ -112,7 +112,7 @@ mod refresh {
     }
 
     #[test]
-    fn other_routes_refresh_nothing() {
+    fn routes_refresh_nothing() {
         for args in [
             &["plan", "status"][..],
             &["adapter", "add", "./demo.wasm"][..],

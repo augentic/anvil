@@ -1,31 +1,34 @@
-//! The refine-phase orchestrator, driven by the execute loop.
+//! The refine-phase orchestrator, driven by the `plan refine` drain.
 //!
 //! A validate failure leaves the slice `refining` and fires no
-//! `slice.synthesize.failed`.
+//! `slice.synthesize.failed`; a failed refinement writes no manifest.
 
 use std::path::{Path, PathBuf};
 
+use artifacts::discovery::Discovery;
 use artifacts::spec::provenance::RequirementTag;
 use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use project::adapter::Resolver;
+use project::adapter::{BuildInputDeclaration, Resolver};
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::identity::{Decision, Surface};
 use project::journal::{self, EventKind};
 use project::plan::{Entry, Plan, resolve_topology};
 use project::seam::{Source, Target, Workspaces};
+use project::snapshot::SnapshotId;
 
 use super::synthesize::SynthesizeRequest;
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
+use crate::refinement::{self, Dependency};
 use crate::validate::{Validation, append_synthesis_journal};
 use crate::{
-    Base, BaselineIndex, CreateIfExists, DomainDetail, LifecycleStatus, ProjectionHeader,
-    actions as slice_actions, persist_synthesized, read_evidence_index, read_source_inputs,
-    synthesize_failure_reason,
+    BaselineIndex, CreateIfExists, DependencyContext, DomainDetail, LifecycleStatus,
+    ProjectionHeader, actions as slice_actions, persist_synthesized, read_evidence_index,
+    read_source_inputs, synthesize_failure_reason,
 };
 
 /// The result of a completed [`refine`].
@@ -70,9 +73,12 @@ impl TagCounts {
 
 /// Refine one plan entry's slice to `refined`.
 ///
-/// `target_value` is the resolved target the slice's `metadata.yaml`
-/// records (e.g. `omnia@1.0.0`) — caller-resolved by the execute
-/// loop's advance step.
+/// `target_value` is the caller-resolved target recorded in
+/// `metadata.yaml`; `dependencies` are the ordered predecessor
+/// `(slice, refinement-digest)` pairs (RFC-91 D3); `declarations` is
+/// the bound target's build-inputs list the manifest bundle mirrors.
+/// The manifest is written atomically only after validation and the
+/// `refined` transition — a failed refinement writes no manifest.
 ///
 /// # Errors
 ///
@@ -86,10 +92,12 @@ impl TagCounts {
 /// - `slice-provenance-invalid` / `slice-pre-adapter-gate` /
 ///   `slice-validation-failed` from the validate sweep.
 /// - the `slice-lifecycle` gate error from the `refined` transition.
+/// - `slice-refinement-*` / `target-build-input-missing` from the
+///   manifest assembly, and filesystem failures from its write.
 #[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
 pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
-    target_value: &str,
+    target_value: &str, dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration],
 ) -> Result<RefineOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     tracing::info!("refine started");
@@ -99,16 +107,7 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     let created =
         slice_actions::create(&parent_dir, slice, target_value, CreateIfExists::Continue, now)?;
     let slice_dir = created.dir;
-
-    // Pin assembly before extract (RFC-86 D4 / D25 / D27): copy closed
-    // plan source cids, baseline-spec digest, and freeze the product
-    // tree as the target-base pin build will prepare from.
     let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
-    let target_base = caps.targets.freeze().await.map_err(|err| Error::Diag {
-        code: "slice-base-freeze-failed",
-        detail: format!("freezing the product tree for slice `{slice}` base.yaml failed: {err}"),
-    })?;
-    Base::assemble(&plan, &entry, &baseline_specs_dir, target_base)?.write(&slice_dir)?;
 
     // Extract fan-out, serially in binding declaration order (the
     // skill's no-parallelism rule).
@@ -127,6 +126,7 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
     let (baseline, baseline_decisions) = baseline_identity(caps.resolver, paths, &entry)?;
     let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
+    let dependency_context = dependency_context(layout, &dependencies);
     let header = ProjectionHeader {
         version: 1,
         slice: slice.to_string(),
@@ -146,6 +146,7 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         baseline: &baseline,
         baseline_detail: &baseline_detail,
         baseline_decisions: &baseline_decisions,
+        dependencies: &dependency_context,
     };
 
     // Synthesis is model-dispatched: record the handoff, then bracket
@@ -159,7 +160,7 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         },
         SYNTHESIZE_SCOPE,
     );
-    let artifacts = journal::bracket(
+    let (artifacts, guidance_digest) = journal::bracket(
         layout,
         now,
         SYNTHESIZE_SCOPE,
@@ -174,9 +175,9 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             &slice_dir,
             &baseline_index,
         ),
-        |artifacts: &Vec<String>| EventKind::SliceSynthesizeCompleted {
+        |out: &(Vec<String>, SnapshotId)| EventKind::SliceSynthesizeCompleted {
             slice_name: slice.into(),
-            artifacts: artifacts.clone(),
+            artifacts: out.0.clone(),
         },
         |err| EventKind::SliceSynthesizeFailed {
             slice_name: slice.into(),
@@ -188,6 +189,21 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     let tags = validate(layout, now, slice)?;
 
     slice_actions::transition(&slice_dir, LifecycleStatus::Refined, now)?;
+
+    // The manifest is written only after validation and the `refined`
+    // transition succeed (RFC-91 D4): an interrupted refinement leaves
+    // no manifest for the attempt.
+    let inventory = Discovery::load(&layout.discovery_path())?;
+    refinement::assemble(
+        layout,
+        &plan,
+        &entry,
+        inventory.leads(),
+        guidance_digest,
+        dependencies,
+        declarations,
+    )?
+    .write(&slice_dir)?;
     tracing::info!(artifacts = artifacts.len(), "refine completed");
 
     Ok(RefineOutcome {
@@ -199,18 +215,44 @@ pub async fn refine<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
 }
 
 /// The judgment leg plus the native persist tail — one fallible unit
-/// so the `slice.synthesize.*` pair brackets both.
+/// so the `slice.synthesize.*` pair brackets both. Carries the
+/// guidance digest out for manifest assembly.
 async fn synthesize_and_persist<P: Model, T: Target>(
     model: &P, targets: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>, slice_dir: &Path,
     baseline_index: &BaselineIndex,
-) -> Result<Vec<String>, Error> {
-    let synthesized = super::synthesize(model, targets, request, kernel).await?;
-    persist_synthesized(
+) -> Result<(Vec<String>, SnapshotId), Error> {
+    let (synthesized, guidance_digest) = super::synthesize(model, targets, request, kernel).await?;
+    let artifacts = persist_synthesized(
         slice_dir,
         synthesized.response.artifacts,
         &synthesized.projected,
         baseline_index,
-    )
+    )?;
+    Ok((artifacts, guidance_digest))
+}
+
+/// Shape the ordered predecessor pairs into the synthesis inputs'
+/// change-local context: digest plus project-relative artifact root.
+fn dependency_context(layout: Layout<'_>, dependencies: &[Dependency]) -> Vec<DependencyContext> {
+    dependencies
+        .iter()
+        .map(|dependency| DependencyContext {
+            slice: dependency.slice.clone(),
+            refinement: dependency.refinement.to_string(),
+            artifacts_root: wire_path(layout, &layout.slice_dir(&dependency.slice)),
+        })
+        .collect()
+}
+
+/// Project-relative, `/`-joined form of `path` — the lent-tree path
+/// the synthesis inputs envelope hands the agent.
+fn wire_path(layout: Layout<'_>, path: &Path) -> String {
+    path.strip_prefix(layout.project_dir())
+        .unwrap_or(path)
+        .components()
+        .map(|component| component.as_os_str().to_string_lossy().into_owned())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 /// The `slice validate` sweep: pre-adapter gates, adapter rules, and

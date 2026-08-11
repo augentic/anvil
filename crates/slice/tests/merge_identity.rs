@@ -168,7 +168,7 @@ tasks:
 }
 
 #[tokio::test]
-async fn wave_commit_assigns_baseline_ids_and_records_maps() {
+async fn wave_commit_assigns() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
@@ -218,7 +218,7 @@ async fn wave_commit_assigns_baseline_ids_and_records_maps() {
 /// without requirement-id collision (each keeps slice-local `REQ-001`
 /// until wave commit assigns distinct baseline numbers).
 #[tokio::test]
-async fn two_slices_merge_without_req_collision() {
+async fn two_slices_merge_without() {
     let session = Session::scripted("mock", Vec::new());
     let root = session.root();
     fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline");
@@ -314,7 +314,7 @@ tasks:
 }
 
 #[tokio::test]
-async fn drifted_modified_rejects_before_wave_committed() {
+async fn drifted_modified_rejects() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, "login-flow", snapshot);
@@ -362,13 +362,12 @@ async fn drifted_modified_rejects_before_wave_committed() {
 }
 
 #[tokio::test]
-async fn postflight_failure_keeps_wave_committed() {
+async fn postflight_failure_keeps() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
     stage_built_slice(&session, wave_digest.as_str());
-    fs::write(session.root().join(mock::behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "")
-        .expect("postflight marker");
+    fs::write(session.root().join(mock::behaviour::FAIL_MERGE), "").expect("postflight marker");
 
     let err = merge(&session, "login-flow").await.expect_err("postflight fails");
     assert!(err.to_string().contains("target-merge-postflight-failed"), "{err}");
@@ -380,7 +379,7 @@ async fn postflight_failure_keeps_wave_committed() {
         "wave-committed before postflight"
     );
     assert!(
-        events.iter().any(|e| matches!(e.kind, EventKind::TargetMergeWavePostflightFailed { .. })),
+        events.iter().any(|e| matches!(e.kind, EventKind::MergeWavePostflightFailed { .. })),
         "wave-postflight-failed"
     );
     assert!(

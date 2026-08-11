@@ -22,7 +22,7 @@ fn write_slice_model(root: &std::path::Path, name: &str, model: &str) {
 }
 
 #[tokio::test]
-async fn gaps_operation_projects_multi_homed_lead() {
+async fn gaps_operation_projects() {
     let project = Session::scripted("demo", Vec::new());
     let mut auth = change("auth-login");
     auth.sources = vec![SliceSourceBinding::structured("docs", "conventions")];

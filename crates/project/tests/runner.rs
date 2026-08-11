@@ -25,7 +25,7 @@ mod validate {
     use super::*;
 
     #[test]
-    fn missing_artifact_fails_synth() {
+    fn missing_artifact() {
         let (_guard, project_dir) = stage_project();
         let slice_dir = project_dir.join(".emery/slices/synth-missing");
         fs::create_dir_all(&slice_dir).unwrap();

@@ -127,14 +127,12 @@ Sources: 1. Leads: 1.
 The skill exits after authoring and prints:
 
 ```text
-Plan `fix-typo` is authored. Review it, then run `emery plan execute` to open the authorization epoch and drive the slices.
+Plan `fix-typo` is authored. Review it, then run `emery plan refine` to generate every slice's specification bundle; `emery plan execute` builds the refined slices afterwards.
 ```
 
-#### Operator review step
+#### Topology review step
 
-Before any slice work runs, inspect `change.md` and `plan.yaml`. This pause is the **operator review step**. `/emery:plan` never starts execution itself; invoking `emery plan execute` opens the authorization epoch (`plan.execute.started`) and drives the loop under gap gates.
-
-Alternatively, run `/emery:execute`: it invokes the same command and continues straight into the execute loop below.
+Before refinement runs, inspect `change.md` and `plan.yaml`. This pause is the first **operator review step**: `/emery:plan` never runs refinement or execution itself.
 
 Learn more: [Amend a plan before executing](../how-to/amend-a-plan.md).
 </div>
@@ -142,30 +140,17 @@ Learn more: [Amend a plan before executing](../how-to/amend-a-plan.md).
 
 <div class="tutorial-step" data-step="03">
 <div class="step-label">03</div>
-<h3 class="step-title">Execute the slice</h3>
+<h3 class="step-title">Refine the slice</h3>
 
-Drive the per-slice loop:
+Drain refinement for the plan:
 
 ```text
-emery plan execute
+emery plan refine
 ```
 
-(`/emery:execute` runs this same loop.)
+(`/emery:refine` runs this same drain.)
 
-Inside execute, each slice runs **refine → build → merge**:
-
-<div class="pipeline">
-
-
-![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
-
-<p class="pipeline-caption">refine synthesizes artifacts; build implements tasks; merge folds specs into the baseline.</p>
-</div>
-
-
-##### After refine
-
-Under `.emery/slices/fix-typo/` you will find:
+Refinement extracts evidence from each bound source, synthesizes the slice artifacts, and records the exact inputs and outputs in `refinement.yaml`. Under `.emery/slices/fix-typo/` you will find:
 
 | File | Purpose |
 | ---- | ------- |
@@ -174,6 +159,7 @@ Under `.emery/slices/fix-typo/` you will find:
 | `design.md` | Technical approach |
 | `tasks.md` | Implementation sequence |
 | `evidence/intent.yaml` | What the intent source contributed |
+| `refinement.yaml` | The refinement manifest — exact inputs and output bundle, digested |
 
 Requirement blocks carry provenance, for example:
 
@@ -186,6 +172,35 @@ Status: agreed
 ```
 
 Exact wording varies with your intent; see refine fixtures for shape reference.
+
+#### Specification review step
+
+Refinement exits and prints the execute hint. This pause is the second **operator review step**: read the specs and design before authorizing the build. If you amend the plan or its sources here, re-run `emery plan refine` — the drain re-refines exactly the staled slices.
+</div>
+
+
+<div class="tutorial-step" data-step="04">
+<div class="step-label">04</div>
+<h3 class="step-title">Execute the slice</h3>
+
+Drive the per-slice loop:
+
+```text
+emery plan execute
+```
+
+(`/emery:execute` runs this same loop.)
+
+Invoking execute opens the authorization epoch (`plan.execute.started`) over the plan and refinement digests, then each slice runs **build → merge** — execute never refines; a missing or stale manifest stops it with `plan-refinement-required` before anything privileged runs:
+
+<div class="pipeline">
+
+
+![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
+
+<p class="pipeline-caption">refine synthesizes artifacts; build implements tasks; merge folds specs into the baseline.</p>
+</div>
+
 
 ##### After build
 
@@ -222,8 +237,8 @@ If execute stops instead — say the build fails — the stop message names the 
 </div>
 
 
-<div class="tutorial-step" data-step="04">
-<div class="step-label">04</div>
+<div class="tutorial-step" data-step="05">
+<div class="step-label">05</div>
 <h3 class="step-title">Finalize the change</h3>
 
 When every plan entry is `done`, close the change:
@@ -240,7 +255,7 @@ Before finalizing, publish the completed repository changes through your normal 
 
 
 > [!TIP]
-> **Done.** You completed the full rhythm: `/emery:init` scaffolds once; `/emery:plan` exits for review; `emery plan execute` is your approval and loops refine → build → merge; `/emery:finalize` closes the change.
+> **Done.** You completed the full rhythm: `/emery:init` scaffolds once; `/emery:plan` exits for topology review; `emery plan refine` writes the specifications and exits for review; `emery plan execute` is your authorization and loops build → merge; `/emery:finalize` closes the change.
 
 <div class="see-also">
 <strong>See also</strong>
@@ -248,6 +263,6 @@ Before finalizing, publish the completed repository changes through your normal 
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
 - [Your first multi-slice change](first-change.md) — three slices from documentation
 - [Quick reference card](../reference/quick-reference.md) — command cheat sheet
-- [Skills](../reference/skills/index.md) — `/emery:plan`, `/emery:execute`, `/emery:finalize` reference
+- [Skills](../reference/skills/index.md) — `/emery:plan`, `/emery:refine`, `/emery:execute`, `/emery:finalize` reference
 </div>
 

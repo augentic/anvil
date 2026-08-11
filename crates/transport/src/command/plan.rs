@@ -123,6 +123,16 @@ fn waive_selector(raw: &str) -> Result<::change::orchestrate::WaiveSelector, Str
     })
 }
 
+/// Arguments for `plan refine`.
+#[derive(Clone, Debug, Args)]
+pub struct RefineArgs {
+    /// Refine only this slice (repeatable). Selected slices bring in
+    /// the stale-or-missing predecessor closure needed to keep the
+    /// selected work coherent; fresh siblings are skipped.
+    #[arg(long = "slice", action = ArgAction::Append, value_name = "NAME")]
+    pub slice: Vec<String>,
+}
+
 /// Arguments for `plan execute`.
 #[derive(Clone, Debug, Args)]
 pub struct ExecuteArgs {

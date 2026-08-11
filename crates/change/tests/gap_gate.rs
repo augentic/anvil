@@ -14,7 +14,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, append_for, read_union,
 };
 use project::plan::{Plan, dir_cid};
 use support::plan_with_changes;
@@ -60,7 +60,7 @@ async fn init_mock(session: &Session) {
 }
 
 fn stamp_epoch(
-    root: &std::path::Path, plan_digest: &str, specs: BTreeMap<String, LeafSpecCoverage>,
+    root: &std::path::Path, plan_digest: &str, refinements: BTreeMap<String, String>,
     unknown_waivers: Vec<project::journal::UnknownWaiver>,
 ) {
     let ts = Timestamp::from_second(1_700_000_000).expect("timestamp");
@@ -69,7 +69,7 @@ fn stamp_epoch(
         EventKind::PlanExecuteStarted {
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
-                specs,
+                refinements,
                 unknown_waivers,
             },
             discovery_digest: None,
@@ -98,6 +98,7 @@ async fn conflict_blocks_build() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -110,7 +111,7 @@ async fn conflict_blocks_build() {
 }
 
 #[tokio::test]
-async fn unknown_blocks_without_waive() {
+async fn unknown_blocks_without() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -124,6 +125,7 @@ async fn unknown_blocks_without_waive() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -149,6 +151,7 @@ async fn waive_allows_gap_gate() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(
         session.provider(),
@@ -161,7 +164,7 @@ async fn waive_allows_gap_gate() {
         },
     )
     .await
-    .expect_err("build may fail later without pins; gap gate must not");
+    .expect_err("build may fail later on the hand-staged slice; gap gate must not");
     let code = err_code(&err);
     assert_ne!(code, "plan-gaps-unresolved", "waived unknown must pass gap gate: {err}");
     assert_ne!(code, "plan-epoch-stale", "fresh epoch must not be stale: {err}");
@@ -175,7 +178,7 @@ async fn waive_allows_gap_gate() {
 }
 
 #[tokio::test]
-async fn divergence_alone_does_not_block() {
+async fn divergence_alone() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -198,7 +201,7 @@ async fn divergence_alone_does_not_block() {
 }
 
 #[tokio::test]
-async fn stale_existing_digest_refuses_build() {
+async fn stale_existing_digest() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -213,25 +216,21 @@ async fn stale_existing_digest_refuses_build() {
     );
     let plan = plan_with_changes(vec![leaf("a")]);
     write_plan(session.root(), &plan);
+    support::stage_manifest(session.root(), "a");
 
     let layout = Layout::new(session.root());
     let plan_digest = live_plan_digest(session.root());
-    let mut specs = BTreeMap::new();
-    specs.insert(
+    let mut refinements = BTreeMap::new();
+    refinements.insert(
         "a".into(),
-        LeafSpecCoverage::Existing {
-            digest: "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
-                .into(),
-        },
+        "sha256:deadbeef00000000000000000000000000000000000000000000000000000000".to_string(),
     );
-    stamp_epoch(session.root(), &plan_digest, specs, Vec::new());
+    stamp_epoch(session.root(), &plan_digest, refinements, Vec::new());
 
-    // Live specs digest differs from the fabricated covering digest.
-    let live = dir_cid(&layout.slice_dir("a").join("specs")).expect("live specs cid");
-    assert!(
-        live.to_string()
-            != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
-    );
+    // Live refinement digest differs from the fabricated covering
+    // digest, so the epoch is stale against the on-disk manifest.
+    let live = support::manifest_digest(session.root(), "a");
+    assert!(live != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000");
 
     let err = enforce_before_build(layout, &plan, "a").expect_err("stale epoch");
     assert_eq!(err.variant_str(), "plan-epoch-stale");
@@ -240,7 +239,7 @@ async fn stale_existing_digest_refuses_build() {
 }
 
 #[tokio::test]
-async fn stale_plan_digest_refuses_build() {
+async fn stale_plan_digest_refuses() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -258,12 +257,12 @@ async fn stale_plan_digest_refuses_build() {
 
     let layout = Layout::new(session.root());
     let live_specs = dir_cid(&layout.slice_dir("a").join("specs")).expect("specs cid").to_string();
-    let mut specs = BTreeMap::new();
-    specs.insert("a".into(), LeafSpecCoverage::Existing { digest: live_specs });
+    let mut refinements = BTreeMap::new();
+    refinements.insert("a".into(), live_specs);
     stamp_epoch(
         session.root(),
         "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-        specs,
+        refinements,
         Vec::new(),
     );
 

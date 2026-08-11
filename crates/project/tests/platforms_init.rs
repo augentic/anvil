@@ -6,7 +6,7 @@ use mock::invoke::run;
 use support::{Provider, stage_cached_component};
 
 #[tokio::test]
-async fn vectis_platform_requirements() {
+async fn vectis_platform() {
     let cases = [
         (None, "project-platforms-required"),
         (Some("ios,android"), "project-platforms-must-include-core"),

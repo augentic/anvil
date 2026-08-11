@@ -10,8 +10,8 @@ use diagnostics::digest::sha256_hex;
 use error::Error;
 use project::config::Layout;
 use project::handler::Render;
-use project::journal::{self, ClosedPlanCoverage, EventKind, LeafSpecCoverage};
-use project::plan::{GapsBody, Plan, dir_cid, in_scope, plan_gaps_body};
+use project::journal::{self, ClosedPlanCoverage, EventKind};
+use project::plan::{GapsBody, Plan, in_scope, plan_gaps_body};
 use project::slice::SliceMetadata;
 
 /// Enforce authorization-epoch freshness and the typed gap policy for
@@ -20,7 +20,7 @@ use project::slice::SliceMetadata;
 /// # Errors
 ///
 /// - `plan-epoch-stale` — no covering `plan.execute.started`, plan /
-///   covered-spec digest drift, or `slice` absent from coverage.
+///   covered-refinement digest drift, or `slice` absent from coverage.
 /// - `plan-gaps-unresolved` — in-scope `[conflict]` on `slice`, or
 ///   `[unknown]` without a matching waiver on the covering epoch.
 ///   Detail includes the rendered gap inventory.
@@ -53,7 +53,9 @@ fn check_epoch_fresh(
     layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
 ) -> Result<(), Error> {
     let ClosedPlanCoverage::ClosedPlan {
-        plan_digest, specs, ..
+        plan_digest,
+        refinements,
+        ..
     } = coverage;
 
     let live_plan = live_plan_digest(layout)?;
@@ -64,14 +66,14 @@ fn check_epoch_fresh(
         )));
     }
 
-    if !specs.contains_key(slice) {
+    if !refinements.contains_key(slice) {
         return Err(epoch_stale(format!(
-            "slice `{slice}` is not in the covering epoch's per-leaf coverage — re-run \
-             `emery plan execute`"
+            "slice `{slice}` is not in the covering epoch's per-leaf refinement coverage — \
+             re-run `emery plan execute`"
         )));
     }
 
-    for (name, leaf) in specs {
+    for (name, covered) in refinements {
         let Some(entry) = plan.entries.iter().find(|e| e.name.as_str() == name) else {
             continue;
         };
@@ -80,19 +82,19 @@ fn check_epoch_fresh(
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
-        match leaf {
-            LeafSpecCoverage::Existing { digest } => {
-                let live = dir_cid(&slice_dir.join("specs"))?.to_string();
-                if live != *digest {
-                    return Err(epoch_stale(format!(
-                        "covered spec digest for `{name}` drifted (epoch {digest}, live {live}) — \
-                         re-run `emery plan execute`"
-                    )));
-                }
+        match slice::refinement::file_digest(&slice_dir)? {
+            Some(live) if live.to_string() == *covered => {}
+            Some(live) => {
+                return Err(epoch_stale(format!(
+                    "covered refinement digest for `{name}` drifted (epoch {covered}, live \
+                     {live}) — re-run `emery plan refine`, then `emery plan execute`"
+                )));
             }
-            LeafSpecCoverage::RefineUnderEpoch => {
-                // Epoch authorized refine-before-build; the specs
-                // produced under this epoch are the covered artifact.
+            None => {
+                return Err(epoch_stale(format!(
+                    "covered refinement manifest for `{name}` is missing — re-run `emery plan \
+                     refine`, then `emery plan execute`"
+                )));
             }
         }
     }

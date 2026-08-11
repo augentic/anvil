@@ -4,7 +4,7 @@ Inspect and edit a plan after `/emery:plan` and before executing it.
 
 **Prerequisites:** An authored plan whose entries are all `pending`; completed [Quick start](../tutorials/quick-start.md).
 
-The pause between plan authoring and execution is the operator review step. `/emery:plan` exits after authoring; you run `emery plan execute` — opening the authorization epoch — only after the plan looks right.
+The pause between plan authoring and refinement is the topology-review step. `/emery:plan` exits after authoring; you run `emery plan refine` only after the plan looks right, review the generated specifications, and then run `emery plan execute` — opening the authorization epoch over the exact refinement digests. Amending an entry stales its refinement manifest, so re-run `emery plan refine` after curation.
 
 ## Which verb when
 
@@ -62,13 +62,14 @@ emery plan validate --format json
 
 Surface Error-level findings before executing.
 
-## Step 4 — Execute
+## Step 4 — Refine, then execute
 
 ```bash
+emery plan refine
 emery plan execute
 ```
 
-Invoking execute on the reviewed plan journals `plan.execute.started` and drives the slices under gap gates.
+`emery plan refine` drains specification refinement for the reviewed plan (re-refining any slice the amendments staled); invoking execute afterwards journals `plan.execute.started` over the exact refinement digests and drives the slices under gap gates.
 
 ## Splitting one slice into two
 

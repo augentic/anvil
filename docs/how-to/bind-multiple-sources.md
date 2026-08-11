@@ -42,7 +42,7 @@ Single-source intent slices may omit `project` when only one project exists; the
 
 ## Uncertain reconciliation
 
-When cross-source grouping is uncertain, `/emery:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review it and amend before running `emery plan execute`.
+When cross-source grouping is uncertain, `/emery:plan` adds a `## Tentative merges` section to `change.md` (not `discovery.md`). Review it and amend before running `emery plan refine`.
 
 When summaries materially disagree on a merged slice, the plan skill adds `## Likely divergences` to `change.md` and invokes `emery plan amend <entry> --divergence likely`.
 

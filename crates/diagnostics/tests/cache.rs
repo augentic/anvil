@@ -10,7 +10,7 @@ use diagnostics::cache::{
 };
 
 #[test]
-fn project_ids_stable_distinct() {
+fn project_ids_stable() {
     let a = project_id(Path::new("/some/project/a"));
     let b = project_id(Path::new("/some/project/b"));
     assert_ne!(a, b);
@@ -46,7 +46,7 @@ fn sidecar_verifies_content() {
 }
 
 #[test]
-fn missing_sidecar_is_fail_closed() {
+fn missing_sidecar_fail() {
     let store = tempfile::tempdir().expect("store root");
     let entry = store.path().join("demo-target@1.2.0.wasm");
     std::fs::write(&entry, b"\0asm-component").expect("write component");
@@ -56,7 +56,7 @@ fn missing_sidecar_is_fail_closed() {
 }
 
 #[test]
-fn unreadable_is_not_mismatch() {
+fn unreadable_mismatch() {
     // A missing (or unreadable) entry is an I/O refusal, not a digest
     // drift — the two recoveries differ.
     let store = tempfile::tempdir().expect("store root");

@@ -1,6 +1,7 @@
 //! The native loop end to end: scaffold → `plan author` →
-//! `plan execute` (running it is the approval), driven through the
-//! same transport-neutral operations the shipped guest dispatches,
+//! `plan refine` (the specification drain) → `plan execute` (running
+//! it is the approval; it drains build → merge only), driven through
+//! the same transport-neutral operations the shipped guest dispatches,
 //! against the linked mock catalog — the *real* orchestrations,
 //! validation tails, and journal cadence run in-process with only the
 //! model scripted and adapter behaviour supplied by the mock core.
@@ -17,8 +18,9 @@ use mock::session::Session;
 
 /// The scripted answers for the whole loop, in dispatch order: the
 /// reconciliation grouping (author) and the synthesis response
-/// (execute's refine phase). Survey, extract, guidance, and build are
-/// deterministic mock operations — no model dispatch.
+/// (the `plan refine` drain). Survey, extract, guidance, and build are
+/// deterministic mock operations — no model dispatch; execute consumes
+/// no answers at all.
 fn suite_answers() -> Vec<String> {
     vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
 }
@@ -34,9 +36,9 @@ fn journal_text(root: &std::path::Path) -> String {
         .join("\n")
 }
 
-/// Scaffold a project bound to the mock target and author the
-/// single-slice plan (left for operator review — running execute is
-/// the approval) — the shared preamble of every loop test.
+/// Scaffold a project bound to the mock target, author the
+/// single-slice plan, and drain `plan refine` — the shared preamble of
+/// every loop test (running execute is the approval).
 async fn scaffold_author(session: &Session) {
     let scaffolded = run::<project::init::handlers::Init, _, _>(
         session.provider(),
@@ -64,11 +66,15 @@ async fn scaffold_author(session: &Session) {
     assert_eq!(authored.slices, ["greeting"]);
     assert_eq!(authored.surveyed.len(), 1);
     assert_eq!(authored.surveyed[0].leads, ["greeting"]);
-    assert!(authored.hint.contains("emery plan execute"), "{}", authored.hint);
+    assert!(authored.hint.contains("emery plan refine"), "{}", authored.hint);
+
+    let refined = support::refine_plan(session).await;
+    assert_eq!(refined.refined, ["greeting"]);
+    assert!(refined.skipped.is_empty(), "{:?}", refined.skipped);
 }
 
 #[tokio::test]
-async fn author_approve_execute_drains() {
+async fn author_approve_execute() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
 
@@ -82,20 +88,15 @@ async fn author_approve_execute_drains() {
     .expect("execute drains the plan");
     assert_eq!(executed.status, "drained");
     assert_eq!(executed.plan, "demo");
+    // Execute never refines (RFC-91 D5) — the drained loop runs the
+    // build and merge phases only.
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
-    assert_eq!(
-        ran,
-        [
-            ("greeting", LoopStep::Refine),
-            ("greeting", LoopStep::Build),
-            ("greeting", LoopStep::Merge),
-        ]
-    );
+    assert_eq!(ran, [("greeting", LoopStep::Build), ("greeting", LoopStep::Merge)]);
 
     // RFC-90 AC6: the drained JSON body names the terminal
     // verification source on the build phase even on a clean pass;
-    // refine / merge phases carry no verification key.
+    // the merge phase carries no verification key.
     let body = serde_json::to_value(&executed).expect("execute body serializes");
     let phases = body["phases"].as_array().expect("phases array");
     let build = phases.iter().find(|p| p["step"] == "build").expect("build phase");
@@ -191,18 +192,19 @@ async fn author_approve_execute_drains() {
         .expect("postflight report beside the archive");
     assert!(postflight.contains("status: success"), "{postflight}");
 
-    // Model cadence: one reconciliation leg, one synthesis leg —
-    // exactly the two scripted answers, all consumed.
+    // Model cadence: one reconciliation leg (author), one synthesis
+    // leg (the refine drain) — exactly the two scripted answers, all
+    // consumed; execute dispatched no model call.
     assert_eq!(requests.len(), 2);
     session.model().assert_exhausted();
 }
 
 // `plan archive` closes the change: the plan moves into the archive
 // and the change-scoped sweep collects every snapshot object whose GC
-// roots (the archived slice's `base.yaml` pin and build records)
-// belonged to the archived plan (RFC-88 D2).
+// roots (the archived slice's refinement-manifest input pins and
+// build records) belonged to the archived plan (RFC-88 D2).
 #[tokio::test]
-async fn archive_sweeps_change_snapshots() {
+async fn archive_sweeps_change() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
 
@@ -244,7 +246,7 @@ async fn archive_sweeps_change_snapshots() {
             path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.ends_with("-greeting"))
         })
         .expect("archived greeting slice");
-    assert!(slice_archive.join("base.yaml").is_file());
+    assert!(slice_archive.join("refinement.yaml").is_file());
 }
 
 /// Count regular files anywhere beneath `dir` (absent dir is zero).
@@ -318,7 +320,7 @@ async fn preflight_parks_built() {
     scaffold_author(&session).await;
 
     // Trip the mock's failed preflight merge gate.
-    fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("write marker");
+    fs::write(root.join(behaviour::FAIL), "").expect("write marker");
 
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
@@ -344,7 +346,7 @@ async fn preflight_parks_built() {
 
     // Clear the gate and re-run execute: the loop resumes at the merge
     // phase and drains.
-    fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
+    fs::remove_file(root.join(behaviour::FAIL)).expect("remove marker");
     let resumed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
@@ -370,7 +372,7 @@ async fn postflight_terminal() {
     scaffold_author(&session).await;
 
     // Trip the mock's failed postflight merge gate.
-    fs::write(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("write marker");
+    fs::write(root.join(behaviour::FAIL_MERGE), "").expect("write marker");
 
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
@@ -435,7 +437,7 @@ async fn postflight_terminal() {
 
     // Clear the gate and re-run execute: ack clears the sticky stop and
     // the single-entry plan drains.
-    fs::remove_file(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER)).expect("remove marker");
+    fs::remove_file(root.join(behaviour::FAIL_MERGE)).expect("remove marker");
     let resumed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
