@@ -307,6 +307,15 @@ async fn execute_reentry_noop() {
     project::handler::Render::render(&resumed, &mut out).expect("render");
     let text = String::from_utf8(out).expect("utf8");
     assert!(text.contains("drained \u{2014} run /emery:finalize demo"), "{text}");
+
+    // The drained re-entry short-circuits before the epoch append: no
+    // second authorization epoch lands on the journal.
+    let journal = journal_text(&root);
+    assert_eq!(
+        journal.matches("plan.execute.started").count(),
+        1,
+        "drained re-entry must not mint a new epoch: {journal}"
+    );
 }
 
 // A failed merge preflight gate parks the slice at `built`.

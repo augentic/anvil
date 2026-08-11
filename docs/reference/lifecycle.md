@@ -38,7 +38,7 @@ Each slice's phase timestamps and artifacts project an independent lifecycle:
 | `merged`   | Wave committed; specs applied to baseline; slice archived               | (terminal)                   |
 | `dropped`  | Slice discarded; archived without merging                               | (terminal)                   |
 
-`refining` is the transient state used while the refine phase runs. If extract fails for any bound source, the slice stays projecting `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding, then re-runs `emery plan execute`. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still projects `refined`. Open gaps block **build** under execute (or require an explicit `--waive` for `[unknown]`).
+`refining` is the transient state used while the refine phase runs. If extract fails for any bound source, the slice stays projecting `refining` until the operator amends the plan (e.g. via `emery plan amend <entry> --remove-source <key>`) or fixes the source binding, then re-runs `emery plan execute`. Synthesis tags (`[unknown]`, `[conflict]`, `[divergence]`) never park the slice — refine still projects `refined`. Open gaps block **build** under execute's `strict` gap policy; a deferred gap (`emery plan defer`, or gate-time minting under an effective `defer` policy) leaves build scope and is carried as debt instead.
 
 ## Transitions
 
@@ -60,7 +60,7 @@ Each slice directory contains a `metadata.yaml` file managed exclusively by the 
 - **Phase timestamps** — `created_at` / `defined_at` / `completed_at` / `merged_at` / `dropped_at` (ISO 8601); lifecycle labels project from these plus artifacts.
 - **`target`** — the target adapter identifier used for this slice.
 - **`touched_specs`** — the list of spec files this slice affects.
-- **`outcome`** — latest phase outcome surface (optional).
+- **`outcome`** — optional audit stamp written at merge; progress is projected from journal facts and artifacts, never from this field.
 
 Never hand-edit `metadata.yaml`. All writes flow through the CLI.
 

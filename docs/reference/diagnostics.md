@@ -38,6 +38,7 @@ Closed set rendered when `emery plan execute` halts (exit 2, `plan-execute-stopp
 | `plan-remove-plan-not-replaceable` | `emery plan remove` requires a fully pending plan (every entry `pending`). | Removal is a pre-execution action only; after execution starts, drop the entry's slice with `emery plan drop`. |
 | `plan-drop-no-slice` | `emery plan drop` found no slice tree for the entry (never refined). | Curate the entry with `emery plan remove` instead. |
 | `plan-remove-entry-referenced` | Another entry lists the removal target in `depends-on`. | Amend the dependent entry's `--depends-on` first. |
+| `plan-deferral-invalid` | `emery plan defer` named an unknown selector, omitted `--reason` on defer, targeted a row without gap status, or retracted a non-live deferral (exit 2). | Name open `[unknown]` / `[conflict]` rows from `emery plan gaps` as `<slice>/<req>` with `--reason`; `--retract` must name a live deferral. |
 | `plan-has-outstanding-work` | `emery plan archive` refused: the plan still has non-terminal entries (exit 1). | Drain the plan (merge or drop every entry) before archiving. |
 
 ## Plan reconcile (inside `emery plan author`)
@@ -83,6 +84,8 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `emery plan execute`. |
 | `slice-base-drifted` / `slice-evidence-stale` | Review advisory: the slice's recorded `base.yaml` pins drifted from the current inputs. | No manual action — the next `emery plan execute` re-refines the slice under a new epoch. |
 | `slice-baseline-conflict` | Review advisory: the baseline drifted under a built slice since it was defined. | Fix inputs and re-run execute, or accept the merge-time conflict handling. |
+| `slice-disposition-drifted` | Review advisory: the deferred set a built slice's record consumed no longer matches the live dispositions (a deferral was retracted, lapsed, or added after the build). | No manual action — the next `emery plan execute` re-builds the slice under the current dispositions. |
+| `slice-wave-record-missing` | Review advisory: the slice's newest opened wave has no build record — the re-build it authorized failed. | No manual action — the next `emery plan execute` re-builds the slice before merge. |
 | `slice-authority-override-orphan-source` | An authority override names a source key the slice does not bind. | Fix the override: `emery plan amend <entry> --authority-override <kind>=<source>`. |
 | `slice-catalog-drift` | Evidence references a `component:` slug missing from (or rejected in) the Vectis catalog. | Review `.emery/design-system/components.yaml` — see [Component factoring](../explanation/components.md). |
 
@@ -92,10 +95,14 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | ---- | ------- | -------- |
 | `target-build-input-missing` | A `required` adapter-declared build input is absent from the slice tree. | Supply the input file (e.g. Vectis `tokens.yaml`) and re-run execute. |
 | `target-build-success-with-blocking-finding` | The target reported `status: success` but its report carries a blocking finding; the gate refuses. | Fix the finding the report names, then re-run execute. |
-| `plan-gaps-unresolved` | Open `[conflict]` / unwaived `[unknown]` requirements block the gap gate before build. | Fix inputs and re-run execute, or defer named unknowns with `--waive <slice>/<req> --reason "<why>"`. |
+| `plan-gaps-unresolved` | Open (undeferred) `[unknown]` / `[conflict]` requirements block the gap gate before build under the `strict` gap policy. | Resolve the gaps at their source and re-run execute, defer them durably with `emery plan defer <slice>/<req> --reason "<why>"`, or run under `--gap-policy defer`. |
+| `target-build-deferred-covered` | The build phase report's `covered[]` claims a requirement the request's `deferred[]` excluded from build scope; the phase machine halts the attempt before verification. | Deferred requirements are out of the build's obligations — fix the target build so it neither implements nor claims them, then re-run execute. |
 | `merge-delta-headers-required` | A hand-authored flat requirement block was submitted against a non-empty baseline. | Use the delta format (`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`) — see [Artifact format](artifact-format.md#delta-spec-format-modified-domain). |
 | `plan-entry-not-found` | The merge phase found no plan entry matching the slice. | Add the entry (`emery plan add`) or check the slice name. |
 | `slice-merge-entry-not-in-progress` | The plan entry exists but is not claimed. | Re-run `emery plan execute` — the loop claims entries itself. |
+| `target-wave-not-opened` | The merge phase found no `target.wave.opened` fact naming the slice. | Re-run `emery plan execute` — the build phase opens the wave merge resolves its record through. |
+| `slice-build-record-missing` | A built slice has no `builds/<digest>.yaml`, or none records the merge's authorized wave. | Re-run `emery plan execute` — the loop re-builds and mints the record. |
+| `slice-build-record-ambiguous` | More than one build record names the merge's authorized wave. | Remove the stale `builds/<digest>.yaml` duplicates, then re-run execute. |
 
 ## Source sandbox
 

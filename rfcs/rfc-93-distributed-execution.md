@@ -6,7 +6,7 @@
 >
 > Does not own: scheduling policy, result convergence, merge semantics, workflow authority, or lifecycle.
 >
-> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), [RFC-91](rfc-91-staged-refinement.md), and [RFC-92](rfc-92-concurrent-execution.md). RFC-92 owns `(slice, phase, input-digest)` readiness and local operation claims; this RFC distributes those identities through offers, leases, ownership generations, and stale-result rejection.
+> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), [RFC-91](rfc-91-refinement-stage.md), and [RFC-92](rfc-92-concurrent-execution.md). RFC-92 owns `(slice, phase, input-digest)` readiness and local operation claims; this RFC distributes those identities through offers, leases, ownership generations, and stale-result rejection.
 >
 > Related: [RFC-89](rfc-89-publication-sets.md) binds publication across repositories after this RFC's distributed execution.
 >

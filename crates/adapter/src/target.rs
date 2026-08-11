@@ -415,6 +415,7 @@ impl From<crate::seam::PhaseReport> for PhaseReport {
             findings: report.findings.into_iter().map(Into::into).collect(),
             outputs: report.outputs.into_iter().map(Into::into).collect(),
             ui_surface: report.ui_surface.map(Into::into),
+            covered: report.covered,
             written: report.written.into_iter().map(Into::into).collect(),
             next_continuation: report.next_continuation,
         }

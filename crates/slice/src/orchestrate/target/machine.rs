@@ -14,8 +14,8 @@ use project::build_record::BuildRecord;
 use project::config::Layout;
 use project::journal::{self, EventKind};
 use project::seam::{
-    BuildContext, Input, PhaseReport, PhaseSource, RepairOrigin, Target, Workspace, Workspaces,
-    seam_failure,
+    BuildContext, DeferredRequirement, Input, PhaseReport, PhaseSource, RepairOrigin, Target,
+    Workspace, Workspaces, seam_failure,
 };
 use project::snapshot::{CodePatch, SnapshotId};
 
@@ -75,6 +75,10 @@ pub(super) struct Machine<'a, S> {
     pub stamp: Stamp<'a>,
     /// The target's declared `writable-artifacts[]` grants.
     pub grants: &'a [WritableArtifactDeclaration],
+    /// The request's `deferred[]` exclusion set (RFC-86a D4): the
+    /// coverage-claim gate input and, by digest, the `BuildRecord`'s
+    /// consumed set.
+    pub deferred: &'a [DeferredRequirement],
     /// The prepared product workspace with the artifact stage
     /// attached.
     pub workspace: Workspace,
@@ -111,8 +115,16 @@ impl<S: Target + Workspaces> Machine<'_, S> {
         let mut rounds = Rounds::default();
         match self.build_phase().await {
             Ok(report) => {
+                // Fail fast on a deferred coverage claim (RFC-86a D4)
+                // before spending verify / review dispatches; `commit`
+                // re-runs the gate on the terminal report.
+                let gated = report.enforce_deferred_not_covered(self.slice, self.deferred);
                 let blocking = report.has_blocking();
                 rounds.build = Some(report);
+                if let Err(error) = gated {
+                    rounds.halt = Some(Halt::Gate { error });
+                    return rounds;
+                }
                 if blocking {
                     rounds.halt = Some(Halt::Blocking {
                         operation: PhaseOperation::Build,
@@ -364,9 +376,10 @@ impl<S: Target + Workspaces> Machine<'_, S> {
     }
 
     /// The deterministic terminal-report projection (RFC-90 D2):
-    /// outputs and UI surface only from the build report; findings the
-    /// canonical union of the build report, the latest verify and
-    /// review reports, and any engine-authored terminal finding.
+    /// outputs, UI surface, and the coverage claim only from the build
+    /// report; findings the canonical union of the build report, the
+    /// latest verify and review reports, and any engine-authored
+    /// terminal finding.
     fn assemble(
         &self, status: BuildStatus, rounds: &Rounds, extra: Option<Diagnostic>,
     ) -> BuildReport {
@@ -376,10 +389,10 @@ impl<S: Target + Workspaces> Machine<'_, S> {
         }
         findings.extend(extra);
         let findings = canonical::canonicalize(findings, &self.stamp);
-        let (outputs, ui_surface) = rounds
+        let (outputs, ui_surface, covered) = rounds
             .build
             .as_ref()
-            .map(|report| (report.outputs.clone(), report.ui_surface))
+            .map(|report| (report.outputs.clone(), report.ui_surface, report.covered.clone()))
             .unwrap_or_default();
         BuildReport::stamped(
             &self.id,
@@ -388,6 +401,7 @@ impl<S: Target + Workspaces> Machine<'_, S> {
             findings,
             outputs,
             ui_surface,
+            covered,
         )
     }
 
@@ -404,7 +418,8 @@ impl<S: Target + Workspaces> Machine<'_, S> {
     ) -> Result<BuildOutcome, Error> {
         attempt::write_terminal(&self.attempt, report)?;
         self.project_canonical(report)?;
-        BuildRecord::from_capture(patch, self.wave.clone(), report.clone())
+        let consumed = self.deferred.iter().map(|req| req.requirement_digest.clone()).collect();
+        BuildRecord::from_capture(patch, self.wave.clone(), report.clone(), consumed)
             .write(self.slice_dir)?;
         stage::discard(&self.attempt.dir);
         if let Err(err) =
@@ -425,10 +440,12 @@ impl<S: Target + Workspaces> Machine<'_, S> {
     }
 
     /// The terminal success gates and irreversible tail head: blocking
-    /// / output gates, staged-diff grant validation, workspace
-    /// capture, and the transactional artifact promotion.
+    /// / deferred-coverage / output gates, staged-diff grant
+    /// validation, workspace capture, and the transactional artifact
+    /// promotion.
     async fn commit(&self, report: &BuildReport) -> Result<CodePatch, Error> {
         report.enforce_no_blocking()?;
+        report.enforce_deferred_not_covered(self.deferred)?;
         // Declared outputs live in the private workspace until capture.
         report.enforce_outputs_exist(Path::new(&self.workspace.root))?;
         let changes = self.stage.diff()?;

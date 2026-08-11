@@ -18,6 +18,9 @@ enum Drift {
     Baseline { pinned: String, live: String },
     /// A `base.yaml.sources` pin vs the live bound source tree.
     Source { key: String, pinned: String, live: String },
+    /// A `base.yaml.sources` pin with no covering plan entry — the live
+    /// digest cannot be recomputed, so the pin counts as drifted.
+    Unverifiable { key: String, pinned: String },
     /// Plan entry binds a source with no `base.yaml` pin (added after refine).
     SourceMissing { key: String },
     /// `base.yaml` pins a source the entry no longer binds (removed after refine).
@@ -25,7 +28,10 @@ enum Drift {
 }
 
 /// Walk every recorded pin and collect the drifted ones. Empty when
-/// `base.yaml` is absent (pre-refine).
+/// `base.yaml` is absent (pre-refine). Pinned sources verify against
+/// the plan's binding for this slice; when the plan carries no entry
+/// (orphaned or ad-hoc slice) every pinned source counts as drifted
+/// rather than silently passing (fail closed).
 fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>> {
     if !Base::path(slice_dir).is_file() {
         return Ok(Vec::new());
@@ -42,11 +48,15 @@ fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>
     }
 
     let plan_path = layout.plan_path();
-    if !plan_path.is_file() {
-        return Ok(out);
-    }
-    let plan = Plan::load(&plan_path)?;
-    let Some(entry) = plan.entries.iter().find(|entry| entry.name == name) else {
+    let plan = plan_path.is_file().then(|| Plan::load(&plan_path)).transpose()?;
+    let entry = plan
+        .as_ref()
+        .and_then(|plan| plan.entries.iter().find(|entry| entry.name == name).map(|e| (plan, e)));
+    let Some((plan, entry)) = entry else {
+        out.extend(base.sources.iter().map(|(key, pinned)| Drift::Unverifiable {
+            key: key.clone(),
+            pinned: pinned.to_string(),
+        }));
         return Ok(out);
     };
 
@@ -82,6 +92,9 @@ fn drifts(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Vec<Drift>
 /// True when any recorded `base.yaml` pin no longer matches the live
 /// baseline / source trees, or the entry's source set no longer matches
 /// the pinned keys — the execute loop's staleness probe.
+///
+/// Pinned sources with no covering plan entry count as drifted
+/// (fail closed).
 ///
 /// # Errors
 ///
@@ -120,6 +133,16 @@ pub(super) fn findings(
                     "slice `{name}` source `{key}` pin `{pinned}` drifted; live digest is \
                      `{live}` — re-running `emery plan execute` re-refines this slice so \
                      Evidence tracks the current source"
+                ),
+            ),
+            Drift::Unverifiable { key, pinned } => review(
+                "slice-evidence-stale",
+                "bound source pins in base.yaml match the live source trees Evidence was \
+                 extracted from",
+                format!(
+                    "slice `{name}` source `{key}` pin `{pinned}` cannot be verified — \
+                     plan.yaml carries no entry for this slice, so the pin is treated as \
+                     drifted; its Evidence cannot be trusted against the live sources"
                 ),
             ),
             Drift::SourceMissing { key } => review(

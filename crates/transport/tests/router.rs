@@ -60,7 +60,7 @@ fn http_parity() {
     assert_eq!(transport_only, expected);
     assert_eq!(http_types.difference(&command_types).count(), 0);
     assert_eq!(command_types.difference(&http_types).count(), 0);
-    assert_eq!(http_types.len(), 23);
+    assert_eq!(http_types.len(), 25);
 }
 
 #[tokio::test]
@@ -176,6 +176,28 @@ async fn argv_zero_replaced() {
     assert!(!stderr.contains("emery:engine@0.1.0"));
 }
 
+#[tokio::test]
+async fn init_gap_policy_flag() {
+    let project = tempfile::tempdir().expect("tempdir");
+    let router = command_router(project.path());
+
+    // A value outside the closed enum is refused at the grammar
+    // (usage error, exit 2) before any dispatch.
+    let rejected = router.execute(["emery", "init", "mock", "--gap-policy", "sometimes"]).await;
+    assert_eq!(rejected.exit, 2);
+    let stderr = String::from_utf8_lossy(&rejected.stderr);
+    assert!(stderr.contains("--gap-policy"), "clap names the offending flag: {stderr}");
+
+    // The typed value parses, converts, and lands on `project.yaml`.
+    let ok = router
+        .execute(["emery", "--format", "json", "init", "mock", "--gap-policy", "defer"])
+        .await;
+    assert_eq!(ok.exit, 0, "{}", String::from_utf8_lossy(&ok.stderr));
+    let config =
+        fs::read_to_string(project.path().join(".emery/project.yaml")).expect("project.yaml");
+    assert!(config.contains("gap-policy: defer"), "{config}");
+}
+
 #[derive(Clone, Copy)]
 enum Fixture {
     Project,
@@ -193,8 +215,17 @@ struct Case {
     json_channels: bool,
 }
 
-const fn cases() -> [Case; 9] {
+const fn cases() -> [Case; 10] {
     [
+        Case {
+            name: "debt empty baseline",
+            argv: &["emery", "debt"],
+            fixture: Fixture::Project,
+            exit: 0,
+            stdout: "baseline debt: none",
+            stderr: "",
+            json_channels: false,
+        },
         Case {
             name: "help",
             argv: &["emery", "--help"],

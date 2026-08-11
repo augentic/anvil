@@ -1,90 +1,27 @@
 //! Authorization-epoch open at `plan execute` start: assembles typed
-//! `closed-plan` coverage, validates `--waive` selectors against the
-//! gap inventory, and appends `plan.execute.started`.
+//! `closed-plan` coverage carrying the effective gap policy and
+//! appends `plan.execute.started` (RFC-86 D6 / RFC-86a D3).
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use diagnostics::digest::sha256_hex;
 use error::Error;
 use jiff::Timestamp;
+use project::GapPolicy;
 use project::config::Layout;
-use project::journal::{
-    self, ClosedPlanCoverage, Event, EventKind, LeafSpecCoverage, UnknownWaiver,
-};
-use project::plan::{Plan, dir_cid, in_scope, plan_gaps_body};
+use project::journal::{self, ClosedPlanCoverage, Event, EventKind, LeafSpecCoverage};
+use project::plan::{Plan, dir_cid, in_scope};
 use project::slice::SliceMetadata;
 
-/// One `--waive <slice>/<req>` selector (reason lands separately).
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct WaiveSelector {
-    /// Plan entry / slice name.
-    pub slice: String,
-    /// Requirement id (`REQ-NNN`).
-    pub req: String,
-}
-
-/// Validate CLI waivers against the typed gap inventory (D17).
-///
-/// Call before acquiring `guest.lock` so a bad `--waive` fails closed
-/// without holding the marker.
-///
-/// # Errors
-///
-/// `plan-waiver-invalid` when `--reason` / `--waive` pairing is wrong,
-/// a selector misses the inventory, or the target finding is not
-/// `[unknown]`. Propagates gaps I/O failures.
-pub(super) fn validate_waivers(
-    layout: Layout<'_>, plan: &Plan, waive: &[WaiveSelector], reason: Option<&str>,
-) -> Result<Vec<UnknownWaiver>, Error> {
-    let reason = match (waive.is_empty(), reason.map(str::trim)) {
-        (true, None | Some("")) => return Ok(Vec::new()),
-        (true, Some(_)) => {
-            return Err(waiver_invalid("`--reason` requires at least one `--waive <slice>/<req>`"));
-        }
-        (false, None | Some("")) => {
-            return Err(waiver_invalid("`--waive` requires `--reason` (non-empty)"));
-        }
-        (false, Some(text)) => text.to_string(),
-    };
-
-    let gaps = plan_gaps_body(plan, layout)?;
-    let mut out = Vec::with_capacity(waive.len());
-    for selector in waive {
-        let Some(row) =
-            gaps.rows.iter().find(|row| row.slice == selector.slice && row.req == selector.req)
-        else {
-            return Err(waiver_invalid(format!(
-                "no open gap for `{}/{}` — waive only an in-scope `[unknown]` requirement",
-                selector.slice, selector.req
-            )));
-        };
-        if row.status != artifacts::spec::provenance::RequirementStatus::Unknown {
-            return Err(waiver_invalid(format!(
-                "`{}/{}` is `{}` — only `[unknown]` may be waived (`[conflict]` is never \
-                 waiveable)",
-                selector.slice, selector.req, row.status
-            )));
-        }
-        out.push(UnknownWaiver {
-            slice: selector.slice.clone(),
-            req: selector.req.clone(),
-            reason: reason.clone(),
-        });
-    }
-    Ok(out)
-}
-
-/// Append `plan.execute.started` for already-validated waivers.
+/// Append `plan.execute.started` carrying the effective `gap_policy`.
 ///
 /// # Errors
 ///
 /// Propagates coverage-assembly and journal append failures.
 pub(super) fn append_started(
-    layout: Layout<'_>, plan: &Plan, now: Timestamp, unknown_waivers: Vec<UnknownWaiver>,
+    layout: Layout<'_>, plan: &Plan, now: Timestamp, gap_policy: GapPolicy,
 ) -> Result<(), Error> {
-    let coverage = assemble_coverage(layout, plan, unknown_waivers)?;
+    let coverage = assemble_coverage(layout, plan, gap_policy)?;
     let event = Event::new(
         now,
         EventKind::PlanExecuteStarted {
@@ -104,7 +41,7 @@ pub(super) fn append_started(
 /// `refine-under-epoch`, so the loop re-refines exactly the affected
 /// slices under this epoch.
 fn assemble_coverage(
-    layout: Layout<'_>, plan: &Plan, unknown_waivers: Vec<UnknownWaiver>,
+    layout: Layout<'_>, plan: &Plan, gap_policy: GapPolicy,
 ) -> Result<ClosedPlanCoverage, Error> {
     let plan_bytes = std::fs::read(layout.plan_path())?;
     let plan_digest = format!("sha256:{}", sha256_hex(&plan_bytes));
@@ -112,11 +49,11 @@ fn assemble_coverage(
     let mut specs = BTreeMap::new();
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
-        let meta = load_meta(&slice_dir)?;
+        let meta = SliceMetadata::load_optional(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
-        let leaf = if has_spec_artifacts(&slice_dir)
+        let leaf = if project::slice::has_spec_artifacts(&slice_dir)
             && !slice::pins_drifted(layout, &slice_dir, entry.name.as_str())?
         {
             LeafSpecCoverage::Existing {
@@ -131,32 +68,6 @@ fn assemble_coverage(
     Ok(ClosedPlanCoverage::ClosedPlan {
         plan_digest,
         specs,
-        unknown_waivers,
+        gap_policy,
     })
-}
-
-fn has_spec_artifacts(slice_dir: &Path) -> bool {
-    slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file()
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(meta) => Ok(Some(meta)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
-    }
-}
-
-fn waiver_invalid(detail: impl Into<String>) -> Error {
-    Error::validation_failed(
-        "plan-waiver-invalid",
-        "waive only an open `[unknown]` with `--reason`",
-        detail,
-    )
 }

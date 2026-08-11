@@ -29,6 +29,7 @@ strum.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+jiff.workspace = true
 emery-mock.workspace = true
 emery-native.workspace = true
 omnia-testkit.workspace = true

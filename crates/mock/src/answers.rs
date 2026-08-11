@@ -63,6 +63,41 @@ pub fn greeting_synthesis() -> String {
     .expect("synthesis serialises")
 }
 
+/// The minimal-profile synthesis with an evidence gap: the sole
+/// requirement carries no claims, so authority derivation mints
+/// `status: unknown` — the gate-time deferral fixtures ride this.
+///
+/// # Panics
+///
+/// Panics when the synthesis value stops serialising.
+#[must_use]
+pub fn greeting_unknown_synthesis() -> String {
+    serde_json::to_string(&json!({
+        "version": 2,
+        "kind": "response",
+        "slice": "greeting",
+        "model": {
+            "requirements": [{
+                "title": "greeting error handling",
+                "domain": "greeting",
+                "claims": [],
+                "statement": "The greeting service handles errors; behaviour is not evidenced.",
+                "scenarios": ["A failing request receives an error (behaviour unspecified)"]
+            }],
+            "tasks": [
+                { "id": "TASK-001", "text": "Emery the error handling.", "satisfies": ["REQ-001"] }
+            ]
+        },
+        "artifacts": {
+            "proposal": "# greeting\n\n## Why\n\nThe mock source surfaced it.\n\n## Domains\n\n- greeting — the affected surface\n\n## Non-goals\n\n- Nothing else.\n",
+            "design": "# Design\n\nHow the greeting slice lands.\n",
+            "tasks": "# Tasks\n\n## Implementation\n\n- [ ] 1.1 Emery the error handling (TASK-001)\n",
+            "specs": [{ "domain": "greeting", "content": "## greeting\nAgent prose body.\n" }]
+        }
+    }))
+    .expect("synthesis serialises")
+}
+
 /// The correct grouping over the adversarial lead catalog.
 ///
 /// The overlapping `login-flow` leads merge into one slice, the

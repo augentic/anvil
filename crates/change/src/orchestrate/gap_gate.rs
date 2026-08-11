@@ -1,149 +1,127 @@
-//! Gap policy + epoch freshness before build: conflicts always block;
-//! unknowns block unless waived on the covering `plan.execute.started`
-//! epoch; divergence is allowed. Drift vs that epoch is `plan-epoch-stale`.
+//! Gap policy + epoch freshness before build (RFC-86a D1/D3): deferred
+//! rows leave build scope; open rows block under `strict` and are
+//! dispositioned at the gate under `defer`; drift is `plan-epoch-stale`.
 
 use std::fmt::Write as _;
-use std::path::Path;
 
 use artifacts::spec::provenance::RequirementStatus;
-use diagnostics::digest::sha256_hex;
 use error::Error;
+use jiff::Timestamp;
+use project::GapPolicy;
 use project::config::Layout;
 use project::handler::Render;
-use project::journal::{self, ClosedPlanCoverage, EventKind, LeafSpecCoverage};
-use project::plan::{GapsBody, Plan, dir_cid, in_scope, plan_gaps_body};
-use project::slice::SliceMetadata;
+use project::journal::{self, ClosedPlanCoverage, DeferralOrigin, Event, EventKind};
+use project::plan::epoch::EpochFreshness;
+use project::plan::{Disposition, GapRow, GapsBody, Plan, collect_events, plan_gaps_body};
 
 /// Enforce authorization-epoch freshness and the typed gap policy for
 /// `slice` before build.
 ///
+/// Freshness is the shared [`project::plan::epoch::freshness`]
+/// predicate — the same rule `plan status` projects as Authorized.
+/// Under an effective `defer` policy the gate dispositions open rows
+/// itself: one `gap.deferred` fact per requirement (`origin: policy`,
+/// synthesized reason), then build proceeds (RFC-86a D3/D6). Minting
+/// is gate-time because `refine-under-epoch` rows do not exist earlier.
+///
 /// # Errors
 ///
 /// - `plan-epoch-stale` — no covering `plan.execute.started`, plan /
-///   covered-spec digest drift, or `slice` absent from coverage.
-/// - `plan-gaps-unresolved` — in-scope `[conflict]` on `slice`, or
-///   `[unknown]` without a matching waiver on the covering epoch.
+///   covered-spec digest drift, or an in-scope leaf absent from
+///   coverage.
+/// - `plan-gaps-unresolved` — an in-scope `[unknown]` / `[conflict]`
+///   on `slice` whose disposition is `open`, under an effective
+///   `strict` policy (or a digest-less legacy row no fact can cover).
 ///   Detail includes the rendered gap inventory.
-pub fn enforce_before_build(layout: Layout<'_>, plan: &Plan, slice: &str) -> Result<(), Error> {
-    let coverage = newest_coverage(layout)?;
-    check_epoch_fresh(layout, plan, slice, &coverage)?;
-    check_gap_policy(layout, plan, slice, &coverage)
-}
-
-/// Newest `closed-plan` coverage from the fact union.
-fn newest_coverage(layout: Layout<'_>) -> Result<ClosedPlanCoverage, Error> {
-    let events = journal::read_union(layout)?;
-    let Some(event) = events
+pub fn enforce_before_build(
+    layout: Layout<'_>, plan: &Plan, slice: &str, now: Timestamp,
+) -> Result<(), Error> {
+    let events = collect_events(layout)?;
+    // Fresh coverage implies a `plan.execute.started` fact in the
+    // union; the `now` fallback is unreachable by construction.
+    let epoch = events
         .iter()
         .rev()
         .find(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }))
-    else {
-        return Err(epoch_stale(
-            "no covering `plan.execute.started` — run `emery plan execute` to open an \
-             authorization epoch before build",
-        ));
+        .map_or(now, |event| event.timestamp);
+    let coverage = match project::plan::epoch::freshness(layout, plan, &events)? {
+        EpochFreshness::Unopened => {
+            return Err(epoch_stale(
+                "no covering `plan.execute.started` — run `emery plan execute` to open an \
+                 authorization epoch before build",
+            ));
+        }
+        EpochFreshness::Stale { detail } => return Err(epoch_stale(detail)),
+        EpochFreshness::Fresh { coverage } => coverage,
     };
-    match &event.kind {
-        EventKind::PlanExecuteStarted { coverage, .. } => Ok(coverage.clone()),
-        _ => unreachable!("filter matched PlanExecuteStarted"),
-    }
-}
-
-fn check_epoch_fresh(
-    layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
-) -> Result<(), Error> {
-    let ClosedPlanCoverage::ClosedPlan {
-        plan_digest, specs, ..
-    } = coverage;
-
-    let live_plan = live_plan_digest(layout)?;
-    if live_plan != *plan_digest {
-        return Err(epoch_stale(format!(
-            "`plan.yaml` digest drifted (epoch {plan_digest}, live {live_plan}) — re-run \
-             `emery plan execute`"
-        )));
-    }
-
-    if !specs.contains_key(slice) {
-        return Err(epoch_stale(format!(
-            "slice `{slice}` is not in the covering epoch's per-leaf coverage — re-run \
-             `emery plan execute`"
-        )));
-    }
-
-    for (name, leaf) in specs {
-        let Some(entry) = plan.entries.iter().find(|e| e.name.as_str() == name) else {
-            continue;
-        };
-        let slice_dir = layout.slice_dir(name.as_str());
-        let meta = load_meta(&slice_dir)?;
-        if !in_scope(plan, entry, meta.as_ref()) {
-            continue;
-        }
-        match leaf {
-            LeafSpecCoverage::Existing { digest } => {
-                let live = dir_cid(&slice_dir.join("specs"))?.to_string();
-                if live != *digest {
-                    return Err(epoch_stale(format!(
-                        "covered spec digest for `{name}` drifted (epoch {digest}, live {live}) — \
-                         re-run `emery plan execute`"
-                    )));
-                }
-            }
-            LeafSpecCoverage::RefineUnderEpoch => {
-                // Epoch authorized refine-before-build; the specs
-                // produced under this epoch are the covered artifact.
-            }
-        }
-    }
-    Ok(())
+    let gaps = plan_gaps_body(plan, layout, &events)?;
+    check_gap_policy(layout, slice, coverage, &gaps, now, epoch)
 }
 
 fn check_gap_policy(
-    layout: Layout<'_>, plan: &Plan, slice: &str, coverage: &ClosedPlanCoverage,
+    layout: Layout<'_>, slice: &str, coverage: &ClosedPlanCoverage, gaps: &GapsBody,
+    now: Timestamp, epoch: Timestamp,
 ) -> Result<(), Error> {
-    let ClosedPlanCoverage::ClosedPlan { unknown_waivers, .. } = coverage;
-    let gaps = plan_gaps_body(plan, layout)?;
+    let ClosedPlanCoverage::ClosedPlan { gap_policy, .. } = coverage;
     let leaf_rows: Vec<_> = gaps.rows.iter().filter(|row| row.slice == slice).collect();
 
-    let mut blockers = Vec::new();
-    let mut divergences = Vec::new();
-    for row in &leaf_rows {
-        match row.status {
-            RequirementStatus::Conflict => {
-                blockers.push(format!(
-                    "{}/{} [conflict] {} — not waiveable; resolve inputs and re-refine",
-                    row.slice, row.req, row.summary
-                ));
-            }
-            RequirementStatus::Unknown => {
-                let waived =
-                    unknown_waivers.iter().any(|w| w.slice == row.slice && w.req == row.req);
-                if !waived {
-                    blockers.push(format!(
-                        "{}/{} [unknown] {} — close the gap or `emery plan execute --waive {}/{} \
-                         --reason …`",
-                        row.slice, row.req, row.summary, row.slice, row.req
-                    ));
-                }
-            }
-            RequirementStatus::Divergence => {
-                divergences.push(format!("{}/{} [divergence] {}", row.slice, row.req, row.summary));
-            }
-            RequirementStatus::Agreed => {
-                // Gap inventory omits agreed rows; keep the match closed.
-            }
-        }
-    }
-
-    if blockers.is_empty() {
+    // A live deferral takes a row out of build scope (D1); the
+    // requirement is conserved as debt, never built over. Open
+    // dispositions exist only on `[unknown]` / `[conflict]` rows.
+    let open: Vec<&GapRow> = leaf_rows
+        .iter()
+        .filter(|row| row.disposition == Some(Disposition::Open))
+        .copied()
+        .collect();
+    if open.is_empty() {
         return Ok(());
     }
 
+    // Gate-time `origin: policy` minting (D3/D6): `defer` dispositions
+    // open rows — unknown and conflict alike — and build proceeds.
+    // Batch-or-nothing: a digest-less legacy row falls through to block.
+    if *gap_policy == GapPolicy::Defer
+        && let Some(facts) = policy_deferrals(&open, now, epoch)
+    {
+        journal::append_batch(layout, &facts)?;
+        tracing::info!(
+            "gap-policy defer: dispositioned {} open gap row(s) on `{slice}` at the build gate",
+            facts.len()
+        );
+        return Ok(());
+    }
+
+    let mut blockers = Vec::new();
+    for row in &open {
+        match row.status {
+            RequirementStatus::Conflict => {
+                blockers.push(format!(
+                    "{}/{} [conflict] {} — resolve inputs and re-refine, or defer it: `emery \
+                     plan defer {}/{} --reason …`",
+                    row.slice, row.req, row.summary, row.slice, row.req
+                ));
+            }
+            RequirementStatus::Unknown => {
+                blockers.push(format!(
+                    "{}/{} [unknown] {} — close the gap or defer it: `emery plan defer {}/{} \
+                     --reason …`",
+                    row.slice, row.req, row.summary, row.slice, row.req
+                ));
+            }
+            RequirementStatus::Divergence | RequirementStatus::Agreed => {
+                // Open dispositions never land on these; keep the
+                // match closed.
+            }
+        }
+    }
+    let divergences: Vec<String> = leaf_rows
+        .iter()
+        .filter(|row| row.status == RequirementStatus::Divergence)
+        .map(|row| format!("{}/{} [divergence] {}", row.slice, row.req, row.summary))
+        .collect();
+
     let mut detail = String::new();
-    detail.push_str("gap policy refused build for `");
-    detail.push_str(slice);
-    detail.push_str("`:\n");
+    let _ = writeln!(detail, "gap policy ({gap_policy}) refused build for `{slice}`:");
     for line in &blockers {
         let _ = writeln!(detail, "  - {line}");
     }
@@ -154,27 +132,30 @@ fn check_gap_policy(
         }
     }
     detail.push('\n');
-    detail.push_str(&render_inventory(&gaps));
+    detail.push_str(&render_inventory(gaps));
     Err(gaps_unresolved(detail))
 }
 
-fn live_plan_digest(layout: Layout<'_>) -> Result<String, Error> {
-    let bytes = std::fs::read(layout.plan_path())?;
-    Ok(format!("sha256:{}", sha256_hex(&bytes)))
-}
-
-fn load_meta(slice_dir: &Path) -> Result<Option<SliceMetadata>, Error> {
-    match SliceMetadata::load(slice_dir) {
-        Ok(meta) => Ok(Some(meta)),
-        Err(
-            Error::ArtifactNotFound { .. }
-            | Error::Diag {
-                code: "slice-not-found",
-                ..
-            },
-        ) => Ok(None),
-        Err(err) => Err(err),
-    }
+/// One `gap.deferred` fact per open row (`origin: policy`, the
+/// synthesized epoch reason), or `None` when any row carries no
+/// digest — nothing is appended for a partially-coverable set.
+fn policy_deferrals(open: &[&GapRow], now: Timestamp, epoch: Timestamp) -> Option<Vec<Event>> {
+    let reason = format!("deferred by gap-policy under epoch {epoch}");
+    open.iter()
+        .map(|row| {
+            let digest = row.requirement_digest.as_ref()?;
+            Some(Event::new(
+                now,
+                EventKind::GapDeferred {
+                    slice: row.slice.as_str().into(),
+                    req: row.req.clone(),
+                    requirement_digest: digest.clone(),
+                    reason: reason.clone(),
+                    origin: DeferralOrigin::Policy,
+                },
+            ))
+        })
+        .collect()
 }
 
 fn render_inventory(gaps: &GapsBody) -> String {
@@ -188,7 +169,7 @@ fn render_inventory(gaps: &GapsBody) -> String {
 fn gaps_unresolved(detail: impl Into<String>) -> Error {
     Error::validation_failed(
         "plan-gaps-unresolved",
-        "resolve or waive typed gaps before build",
+        "resolve or defer typed gaps before build",
         detail,
     )
 }

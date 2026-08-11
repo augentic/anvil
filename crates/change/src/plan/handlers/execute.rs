@@ -1,6 +1,6 @@
 //! `plan execute` — the drained refine → build → merge loop. At start
-//! appends `plan.execute.started` with typed `closed-plan` coverage;
-//! optional `--waive` / `--reason` nest unknown-waivers on that payload.
+//! appends `plan.execute.started` with typed `closed-plan` coverage
+//! carrying the effective gap policy (RFC-86a D3).
 
 use std::io::Write;
 
@@ -8,24 +8,23 @@ use error::Error;
 use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
+use project::GapPolicy;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::plan::LoopStep;
 use project::seam::{PhaseSource, Source, Target, Workspaces};
 use serde::{Deserialize, Serialize};
 
-use crate::orchestrate::{self, ExecuteOutcome, WaiveSelector};
+use crate::orchestrate::{self, ExecuteOutcome};
 
 /// Wire input for `plan execute`.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ExecuteInput {
-    /// Repeatable `--waive <slice>/<req>` selectors.
-    #[serde(default)]
-    pub waive: Vec<WaiveSelector>,
-    /// Required when `waive` is non-empty; applied to every selector.
+    /// One-epoch `--gap-policy` override. `None` falls back to the
+    /// `project.yaml` declaration, else `strict` (RFC-86a D3).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
+    pub gap_policy: Option<GapPolicy>,
 }
 
 /// `emery plan execute` → the internal execute orchestration — the
@@ -43,9 +42,7 @@ impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> f
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome =
-            orchestrate::execute(caps, &cx.paths, cx.now(), &input.waive, input.reason.as_deref())
-                .await?;
+        let outcome = orchestrate::execute(caps, &cx.paths, cx.now(), input.gap_policy).await?;
         match outcome {
             ExecuteOutcome::Drained { plan, phases } => Ok(ExecuteBody {
                 status: "drained",

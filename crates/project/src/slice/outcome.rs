@@ -4,8 +4,8 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Phase outcome reported to the `emery plan execute` loop. Unit
-/// variants serialise as `outcome: success` etc.
+/// Phase-outcome classification carried by the `metadata.yaml` audit
+/// stamp. Unit variants serialise as `outcome: success` etc.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, strum::Display)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

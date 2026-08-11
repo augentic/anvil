@@ -10,8 +10,9 @@ mod support;
 use change::{LoopStep, plan};
 use mock::invoke::run;
 use mock::session::Session;
+use project::GapPolicy;
 use project::config::Layout;
-use project::journal::{EventKind, LeafSpecCoverage, read_union};
+use project::journal::{DeferralOrigin, EventKind, LeafSpecCoverage, read_union};
 use project::plan::dir_cid;
 
 fn suite_answers() -> Vec<String> {
@@ -195,4 +196,79 @@ async fn refine_under_epoch_then_gap_gate_build() {
     );
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");
     assert!(root.join(".emery/specs/greeting/spec.md").is_file());
+}
+
+/// RFC-86a acceptance #3: under `refine-under-epoch` the unknowns do
+/// not exist when execute starts; the `defer` policy dispositions them
+/// at the build gate (one `origin: policy` fact each, synthesized
+/// reason) and the loop proceeds through build and merge to drained.
+#[tokio::test]
+async fn refine_under_epoch_defer_policy_mints_and_drains() {
+    let session = Session::bare(vec![
+        mock::answers::greeting_grouping(),
+        mock::answers::greeting_unknown_synthesis(),
+    ]);
+    let root = session.root().to_path_buf();
+    scaffold_init(&session).await;
+    author(&session).await;
+
+    assert!(
+        !root.join(".emery/slices/greeting/model.yaml").exists(),
+        "execute starts over unspec'd leaf — the unknown is minted under the epoch"
+    );
+
+    let executed = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput {
+            gap_policy: Some(GapPolicy::Defer),
+        },
+    )
+    .await
+    .expect("defer policy drains over the minted unknown");
+    assert_eq!(executed.status, "drained");
+    let ran: Vec<(&str, LoopStep)> =
+        executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
+    assert_eq!(
+        ran,
+        [
+            ("greeting", LoopStep::Refine),
+            ("greeting", LoopStep::Build),
+            ("greeting", LoopStep::Merge),
+        ],
+        "defer never parks the loop; got {ran:?}"
+    );
+
+    // Exactly one gate-time policy fact for the minted unknown.
+    let deferrals: Vec<_> = read_union(Layout::new(&root))
+        .expect("union")
+        .into_iter()
+        .filter_map(|event| match event.kind {
+            EventKind::GapDeferred {
+                slice,
+                req,
+                reason,
+                origin: DeferralOrigin::Policy,
+                ..
+            } => Some((slice.as_str().to_string(), req, reason)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(deferrals.len(), 1, "one policy fact per open row: {deferrals:?}");
+    let (slice, req, reason) = &deferrals[0];
+    assert_eq!(slice, "greeting");
+    assert_eq!(req, "REQ-001");
+    assert!(
+        reason.starts_with("deferred by gap-policy under epoch "),
+        "synthesized policy reason: {reason}"
+    );
+
+    // The effective policy rode the coverage payload.
+    let project::journal::ClosedPlanCoverage::ClosedPlan {
+        gap_policy, specs, ..
+    } = started_coverage(&root);
+    assert_eq!(gap_policy, GapPolicy::Defer);
+    assert_eq!(specs.get("greeting"), Some(&LeafSpecCoverage::RefineUnderEpoch));
+
+    let journal = journal_text(&root);
+    assert!(journal.contains("target.merge.wave-committed"), "{journal}");
 }

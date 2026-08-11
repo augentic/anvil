@@ -506,7 +506,7 @@
   "$id": "https://github.com/augentic/emery/answers/report.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a target adapter's build or merge operation: the report shape minus the envelope keys (`version`, `slice`, `target`) the caller already knows.",
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated answer to a target adapter's merge operation: the report shape minus the envelope keys (`version`, `slice`, `target`) the caller already knows.",
   "properties": {
     "findings": {
       "default": [],
@@ -544,6 +544,6 @@
   "required": [
     "status"
   ],
-  "title": "Emery build/merge answer",
+  "title": "Emery merge answer",
   "type": "object"
 }

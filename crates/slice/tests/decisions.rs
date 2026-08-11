@@ -101,7 +101,9 @@ async fn merge_promotes_and_supersedes() {
             findings: vec![],
             outputs: vec![],
             ui_surface: None,
+            covered: vec![],
         },
+        vec![],
     );
     record.write(&slice).expect("stage build record");
 

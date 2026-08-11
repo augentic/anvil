@@ -11,7 +11,8 @@ pub mod source;
 // enums and DTO types, and the propose/topology entry points the
 // native host and crate-level tests drive.
 pub use project::plan::{
-    AdvanceBody, AdvanceReason, AuthorityOverride, Disagreement, DisagreementValue, Divergence,
-    Entry, EntryPatch, GapRow, GapsBody, LoopStep, NextActionKind, Patch, Plan, SharedLeadRollup,
-    SliceSourceBinding, SourceBinding, Status, StatusBody, StatusCounts, StopBody, StopReason,
+    AdvanceBody, AdvanceReason, AuthorityOverride, DebtCounts, Deferral, Disagreement,
+    DisagreementValue, Disposition, Divergence, Entry, EntryPatch, GapRow, GapsBody, LoopStep,
+    NextActionKind, Patch, Plan, SharedLeadRollup, SliceSourceBinding, SourceBinding, Status,
+    StatusBody, StatusCounts, StopBody, StopReason,
 };

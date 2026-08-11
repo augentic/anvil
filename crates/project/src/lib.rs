@@ -10,6 +10,7 @@ pub mod build_record;
 pub mod config;
 pub mod decisions;
 pub mod fs;
+pub mod gap_policy;
 pub mod handler;
 pub mod identity;
 pub mod init;
@@ -26,4 +27,5 @@ pub mod target_policy;
 pub mod wave;
 pub mod workspace;
 
+pub use gap_policy::GapPolicy;
 pub use platform::Platform;

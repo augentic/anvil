@@ -110,36 +110,13 @@ pub struct StatusArgs {}
 )]
 pub struct GapsArgs {}
 
-/// Parse `--waive <slice>/<req>` into a [`change::orchestrate::WaiveSelector`].
-fn waive_selector(raw: &str) -> Result<::change::orchestrate::WaiveSelector, String> {
-    let (slice, req) =
-        raw.split_once('/').ok_or_else(|| format!("--waive must be <slice>/<req>, got `{raw}`"))?;
-    if slice.is_empty() || req.is_empty() {
-        return Err(format!("--waive must be <slice>/<req> with non-empty parts, got `{raw}`"));
-    }
-    Ok(::change::orchestrate::WaiveSelector {
-        slice: slice.to_string(),
-        req: req.to_string(),
-    })
-}
-
 /// Arguments for `plan execute`.
-#[derive(Clone, Debug, Args)]
+#[derive(Clone, Copy, Debug, Args)]
 pub struct ExecuteArgs {
-    /// Waive one open `[unknown]` requirement (`<slice>/<req>`). Repeatable.
-    /// Requires `--reason`. Conflicts are never waiveable.
-    #[arg(
-        long = "waive",
-        action = ArgAction::Append,
-        value_name = "SLICE/REQ",
-        value_parser = waive_selector,
-        requires = "reason"
-    )]
-    pub waive: Vec<::change::orchestrate::WaiveSelector>,
-    /// Operator reason applied to every `--waive` on this invocation.
-    /// Requires at least one `--waive`.
-    #[arg(long, value_name = "REASON", requires = "waive")]
-    pub reason: Option<String>,
+    /// One-epoch gap-policy override (`strict` or `defer`). Absent
+    /// falls back to the `project.yaml` declaration, else `strict`.
+    #[arg(long = "gap-policy", value_name = "POLICY")]
+    pub gap_policy: Option<project::GapPolicy>,
 }
 
 /// Arguments for `plan remove`.
@@ -158,6 +135,37 @@ pub struct DropArgs {
     /// the archive path.
     #[arg(long)]
     pub reason: Option<String>,
+}
+
+/// Parse `<slice>/<req>` into a
+/// [`::change::plan::handlers::DeferSelector`].
+fn defer_selector(raw: &str) -> Result<::change::plan::handlers::DeferSelector, String> {
+    let (slice, req) = raw
+        .split_once('/')
+        .ok_or_else(|| format!("selector must be <slice>/<req>, got `{raw}`"))?;
+    if slice.is_empty() || req.is_empty() {
+        return Err(format!("selector must be <slice>/<req> with non-empty parts, got `{raw}`"));
+    }
+    Ok(::change::plan::handlers::DeferSelector {
+        slice: slice.to_string(),
+        req: req.to_string(),
+    })
+}
+
+/// Arguments for `plan defer`.
+#[derive(Debug, Args)]
+pub struct DeferArgs {
+    /// Gap requirement selectors (`<slice>/<req>`), one or more.
+    #[arg(required = true, value_name = "SLICE/REQ", value_parser = defer_selector)]
+    pub selectors: Vec<::change::plan::handlers::DeferSelector>,
+    /// Reason recorded on every appended fact. Required to defer;
+    /// optional with `--retract`.
+    #[arg(long, value_name = "REASON")]
+    pub reason: Option<String>,
+    /// Retract live deferrals (append `gap.deferral-retracted`)
+    /// instead of deferring.
+    #[arg(long)]
+    pub retract: bool,
 }
 
 /// Arguments for `plan author`.

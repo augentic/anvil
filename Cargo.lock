@@ -1371,6 +1371,7 @@ dependencies = [
  "emery-native",
  "emery-project",
  "emery-slice",
+ "jiff",
  "omnia-guest",
  "omnia-testkit",
  "serde",

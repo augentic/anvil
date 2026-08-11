@@ -4,11 +4,12 @@
 
 pub use source::{extract, survey};
 pub use targets::{
-    BUILD_DIR, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER, CONTINUATION_V1, CONTINUATION_V2,
-    FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER, FAIL_MERGE_PREFLIGHT_MARKER,
-    REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED,
-    VERIFY_AFTER_REVIEW_FAIL_MARKER, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build,
-    build_artifact_path, guidance, merge, repair, review, verify,
+    BUILD_DIR, CLAIM_COVERED_MARKER, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER,
+    CONTINUATION_V1, CONTINUATION_V2, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER,
+    FAIL_MERGE_PREFLIGHT_MARKER, REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED,
+    VERIFICATION_REPAIRED, VERIFY_AFTER_REVIEW_FAIL_MARKER, VERIFY_BLOCKED_MARKER,
+    VERIFY_FIXABLE_MARKER, build, build_artifact_path, claimed_covered, guidance, merge, repair,
+    review, verify,
 };
 
 mod source {
@@ -198,6 +199,11 @@ mod targets {
     /// blocking-finding report while it exists.
     pub const FAIL_BUILD_MARKER: &str = "mock-fail-build";
 
+    /// Marker file (project-root-relative) whose whitespace-separated
+    /// requirement ids the build report claims as `covered[]` while it
+    /// exists — for the deferred-coverage report gate.
+    pub const CLAIM_COVERED_MARKER: &str = "mock-claim-covered";
+
     /// Directory (project-root-relative) mock builds write their
     /// observable output into.
     pub const BUILD_DIR: &str = "mock-build";
@@ -334,9 +340,27 @@ mod targets {
         };
         let mut report = PhaseReport::completed(PhaseSource::Deterministic);
         report.outputs = vec![core_output(relative)];
+        report.covered = claimed_covered(project_root)?;
         report.written = written;
         report.next_continuation = next_continuation;
         Ok(report)
+    }
+
+    /// Requirement ids the build claims as `covered[]`: the
+    /// whitespace-separated contents of the [`CLAIM_COVERED_MARKER`]
+    /// control-plane file, empty when absent — for the
+    /// deferred-coverage gates.
+    ///
+    /// # Errors
+    ///
+    /// `Io` on any read failure other than the file being absent — a
+    /// broken control plane must not silently claim nothing.
+    pub fn claimed_covered(project_root: &Path) -> Result<Vec<String>, Error> {
+        match std::fs::read_to_string(project_root.join(CLAIM_COVERED_MARKER)) {
+            Ok(text) => Ok(text.split_whitespace().map(ToString::to_string).collect()),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+            Err(err) => Err(Error::Io(err.to_string())),
+        }
     }
 
     /// One verification pass over the lent workspace: a clean

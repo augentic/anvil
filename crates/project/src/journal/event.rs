@@ -3,10 +3,12 @@
 //! Wire format is locked: dotted kebab-case event ids, kebab-case
 //! payload fields; Rust variants reach the wire via `#[serde(rename)]`.
 
+use artifacts::spec::provenance::RequirementStatus;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::operation::SourceOperation;
+use crate::gap_policy::GapPolicy;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
 
@@ -330,6 +332,12 @@ pub enum EventKind {
         /// Slice-local id → final baseline `REQ-NNN` for every
         /// requirement in the member.
         identity_maps: Vec<IdentityMap>,
+        /// Deferred member set the wave carried into the baseline
+        /// (RFC-86a D5) — the committed audit trail names exactly
+        /// which debt this wave accepted. Empty when nothing was
+        /// deferred.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        deferred: Vec<DeferredMember>,
     },
     /// Target postflight gate succeeded after wave commit (RFC-86 D9).
     #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
@@ -488,8 +496,8 @@ pub enum EventKind {
     },
     /// `emery plan execute` opened an authorization epoch at start
     /// (RFC-86 D6 / D22). Presence projects the Authorized milestone.
-    /// Optional `unknown-waivers` nest on the coverage payload (D17).
-    /// Never named `plan.approved`.
+    /// The effective gap policy rides the coverage payload
+    /// (RFC-86a D3). Never named `plan.approved`.
     #[serde(rename = "plan.execute.started", rename_all = "kebab-case")]
     PlanExecuteStarted {
         /// Typed `closed-plan` coverage over the reviewed plan.
@@ -498,6 +506,64 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         discovery_digest: Option<String>,
     },
+    /// A typed gap requirement was durably deferred (RFC-86a D2). The
+    /// `(slice, requirement-digest)` pair is the disposition match
+    /// key; liveness is recomputed against the live model at
+    /// projection time, never stored.
+    #[serde(rename = "gap.deferred", rename_all = "kebab-case")]
+    GapDeferred {
+        /// Slice that owns the requirement — scopes the digest join.
+        slice: SliceName,
+        /// Advisory `REQ-NNN` id at deferral time (presentation only —
+        /// a re-refine may renumber ids while the digest holds).
+        req: String,
+        /// Canonical requirement-body digest (`sha256:<hex>`).
+        requirement_digest: String,
+        /// Operator reason, or the synthesized policy reason.
+        reason: String,
+        /// Which surface dispositioned the requirement.
+        origin: DeferralOrigin,
+    },
+    /// An explicit retraction reopened a live deferral (RFC-86a
+    /// D2 / D3). Same match key as [`Self::GapDeferred`]; the latest
+    /// fact per `(slice, requirement-digest)` wins under projection.
+    #[serde(rename = "gap.deferral-retracted", rename_all = "kebab-case")]
+    GapDeferralRetracted {
+        /// Slice that owns the requirement — scopes the digest join.
+        slice: SliceName,
+        /// Advisory `REQ-NNN` id at retraction time.
+        req: String,
+        /// Canonical requirement-body digest (`sha256:<hex>`).
+        requirement_digest: String,
+        /// Operator reason for reopening the gap.
+        reason: String,
+        /// Which surface retracted the deferral.
+        origin: DeferralOrigin,
+    },
+}
+
+/// Closed origin on gap deferral facts (RFC-86a D2 / D3).
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum DeferralOrigin {
+    /// The explicit `emery plan defer` operator act.
+    Operator,
+    /// Gate-time minting under an effective `defer` gap policy.
+    Policy,
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`]
@@ -514,9 +580,11 @@ pub enum ClosedPlanCoverage {
         /// Sorted per-leaf coverage: `existing { digest }` or
         /// `refine-under-epoch`.
         specs: std::collections::BTreeMap<String, LeafSpecCoverage>,
-        /// Per-requirement unknown waivers nested on this epoch (D17).
-        #[serde(rename = "unknown-waivers", default, skip_serializing_if = "Vec::is_empty")]
-        unknown_waivers: Vec<UnknownWaiver>,
+        /// The **effective** gap policy this epoch runs under —
+        /// per-epoch `--gap-policy` flag, else the `project.yaml`
+        /// declaration, else `strict` (RFC-86a D3).
+        #[serde(rename = "gap-policy")]
+        gap_policy: GapPolicy,
     },
 }
 
@@ -533,16 +601,19 @@ pub enum LeafSpecCoverage {
     RefineUnderEpoch,
 }
 
-/// One `[unknown]` waiver recorded on `plan.execute.started` (D17).
+/// One deferred requirement in the member set snapshotted on
+/// [`EventKind::TargetMergeWaveCommitted`] (RFC-86a D5): the debt the
+/// committed wave carried into the baseline.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct UnknownWaiver {
-    /// Slice that owns the requirement.
-    pub slice: String,
-    /// Requirement id (`REQ-NNN`).
+pub struct DeferredMember {
+    /// Final baseline `REQ-NNN` assigned at wave commit.
     pub req: String,
-    /// Operator reason — required on the CLI.
-    pub reason: String,
+    /// Typed gap status of the folded row (`unknown` | `conflict`).
+    pub status: RequirementStatus,
+    /// Canonical requirement-body digest (`sha256:<hex>`) — the
+    /// deferral match key back into the `gap.deferred` facts.
+    pub requirement_digest: String,
 }
 
 /// One slice-local → baseline requirement identity mapping on

@@ -21,14 +21,16 @@
 mod support;
 
 use change::plan::handlers::{Status as StatusOp, StatusInput};
-use change::{LoopStep, NextActionKind, Plan, StatusBody};
+use change::{DebtCounts, LoopStep, NextActionKind, Plan, StatusBody};
+use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
+use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, Event as JournalEvent, EventKind, LeafSpecCoverage,
-    append_for,
+    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event as JournalEvent, EventKind,
+    LeafSpecCoverage, append_for,
 };
 use support::{change, change_with_deps, plan_with_changes};
 
@@ -44,6 +46,12 @@ impl Event {
 fn write_plan(project: &Session, plan: &Plan) {
     let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
     std::fs::write(project.root().join("plan.yaml"), yaml).expect("write plan.yaml");
+}
+
+/// Digest of the staged `plan.yaml`, as an epoch would stamp it.
+fn live_plan_digest(root: &std::path::Path) -> String {
+    let bytes = std::fs::read(root.join("plan.yaml")).expect("read plan.yaml");
+    format!("sha256:{}", sha256_hex(&bytes))
 }
 
 /// Project the status body for `plan` staged inside `project`.
@@ -585,6 +593,7 @@ mod milestones {
             r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -601,7 +610,8 @@ mod milestones {
     #[tokio::test]
     async fn open_unknowns_not_ready_review_gaps() {
         // Refined + open unknowns → not Ready; next-action is
-        // review-gaps; resume points at per-req --waive (D22).
+        // review-gaps; resume points at per-req plan defer (D22 /
+        // RFC-86a D3).
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -609,6 +619,7 @@ mod milestones {
             r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
@@ -621,10 +632,10 @@ mod milestones {
         assert_eq!(body.next_action, "review-gaps");
         let resume = body.resume.as_deref().expect("resume");
         assert!(
-            resume.contains("emery plan execute")
-                && resume.contains("--waive a/REQ-003")
+            resume.contains("emery plan defer")
+                && resume.contains("a/REQ-003")
                 && resume.contains("--reason"),
-            "resume must suggest waive path, got: {resume}"
+            "resume must suggest the durable defer act, got: {resume}"
         );
         let mut out = Vec::new();
         project::handler::Render::render(&body, &mut out).expect("render");
@@ -635,7 +646,10 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn conflict_resume_re_refine_not_waive() {
+    async fn open_conflict_resume_defers() {
+        // D6: `[conflict]` defers under the same exclusion semantics
+        // as `[unknown]`, so the resume suggests the durable act for
+        // open conflicts too (RFC-86a D7).
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -643,6 +657,7 @@ mod milestones {
             r"requirements:
   - id: REQ-002
     title: auth disagree
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -651,7 +666,156 @@ mod milestones {
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert_eq!(body.next_action, "review-gaps");
-        assert_eq!(body.resume.as_deref(), Some("emery plan execute"));
+        let resume = body.resume.as_deref().expect("resume");
+        assert!(
+            resume.contains("emery plan defer") && resume.contains("a/REQ-002"),
+            "open conflicts are deferrable (D6), got: {resume}"
+        );
+    }
+
+    #[tokio::test]
+    async fn digest_less_legacy_rows_resume_execute() {
+        // A `spec.md`-fallback inventory (refined slice, model without
+        // requirements) carries no requirement digests, so `plan defer`
+        // refuses its rows — the resume must hint re-refining under
+        // the epoch instead of a defer command that cannot succeed.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(project.root(), "a", "requirements: []\n");
+        let specs = project.root().join(".emery/slices/a/specs/auth");
+        std::fs::create_dir_all(&specs).expect("specs dir");
+        std::fs::write(
+            specs.join("spec.md"),
+            "### Requirement: reset path not evidenced [unknown]\n\
+             ID: REQ-001\n\
+             Sources: []\n\
+             Status: unknown\n",
+        )
+        .expect("spec.md");
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready);
+        assert_eq!(body.next_action, "review-gaps");
+        assert_eq!(
+            body.resume.as_deref(),
+            Some("emery plan execute"),
+            "digest-less rows resume at re-refine, not plan defer"
+        );
+    }
+
+    /// Canonical digest of a title-only requirement body — the shape
+    /// this suite's fixture models carry.
+    fn title_digest(title: &str) -> String {
+        project::slice::RequirementBody {
+            title,
+            statement: "",
+            scenarios: &[],
+            notes: None,
+        }
+        .digest()
+    }
+
+    fn gap_deferred(seconds: i64, slice: &str, req: &str, title: &str) -> JournalEvent {
+        Event::event(
+            ts(seconds),
+            EventKind::GapDeferred {
+                slice: slice.into(),
+                req: req.into(),
+                requirement_digest: title_digest(title),
+                reason: "carried to next change".into(),
+                origin: DeferralOrigin::Operator,
+            },
+        )
+    }
+
+    #[tokio::test]
+    async fn deferred_everything_resumes_execute() {
+        // RFC-86a D7: next-actions compute over open findings only —
+        // a fully-dispositioned plan projects the build dispatch and
+        // resumes at execute, never review-gaps. Ready stays
+        // clean-only: the carried debt keeps it false.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    statement: ''
+    status: unknown
+    sources: [intent]
+  - id: REQ-002
+    title: auth disagree
+    statement: ''
+    status: conflict
+    sources: [intent]
+",
+        );
+        append(
+            project.root(),
+            &[
+                gap_deferred(0, "a", "REQ-003", "reset path not evidenced"),
+                gap_deferred(1, "a", "REQ-002", "auth disagree"),
+            ],
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready, "deferrals never contribute to Ready (D22)");
+        assert_eq!(body.action, NextActionKind::Build);
+        assert_eq!(body.next_action, "build a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert_eq!(
+            body.debt,
+            DebtCounts {
+                unknown: 1,
+                conflict: 1,
+            }
+        );
+        let mut out = Vec::new();
+        project::handler::Render::render(&body, &mut out).expect("render");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(
+            text.contains("debt: 2 deferred gaps (1 unknown, 1 conflict)"),
+            "debt line with conflicts broken out, got:\n{text}"
+        );
+        assert!(!text.contains("review-gaps"), "never review-gaps when fully deferred:\n{text}");
+    }
+
+    #[tokio::test]
+    async fn open_rows_only_drive_review_gaps() {
+        // A deferred row beside an open one: review-gaps stands, and
+        // the resume names only the open selector (RFC-86a D7).
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-003
+    title: reset path not evidenced
+    statement: ''
+    status: unknown
+    sources: [intent]
+  - id: REQ-005
+    title: reset copy not evidenced
+    statement: ''
+    status: unknown
+    sources: [intent]
+",
+        );
+        append(project.root(), &[gap_deferred(0, "a", "REQ-003", "reset path not evidenced")]);
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready);
+        assert_eq!(body.next_action, "review-gaps");
+        assert_eq!(
+            body.debt,
+            DebtCounts {
+                unknown: 1,
+                conflict: 0,
+            }
+        );
+        let resume = body.resume.as_deref().expect("resume");
+        assert!(resume.contains("a/REQ-005"), "open row in the defer resume: {resume}");
+        assert!(!resume.contains("a/REQ-003"), "deferred row needs no re-supply: {resume}");
     }
 
     #[tokio::test]
@@ -663,6 +827,7 @@ mod milestones {
             r"requirements:
   - id: REQ-004
     title: authority chose
+    statement: ''
     status: divergence
     sources: [intent]
 ",
@@ -685,6 +850,7 @@ mod milestones {
             r"requirements:
   - id: REQ-001
     title: ok
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -695,10 +861,29 @@ mod milestones {
         assert!(body.gaps.rows.is_empty());
     }
 
+    /// Stamp a `plan.execute.started` epoch covering the staged
+    /// `plan.yaml` with the given per-leaf coverage.
+    fn stamp_epoch(root: &std::path::Path, specs: BTreeMap<String, LeafSpecCoverage>) {
+        append(
+            root,
+            &[Event::event(
+                ts(0),
+                EventKind::PlanExecuteStarted {
+                    coverage: ClosedPlanCoverage::ClosedPlan {
+                        plan_digest: live_plan_digest(root),
+                        specs,
+                        gap_policy: GapPolicy::Strict,
+                    },
+                    discovery_digest: None,
+                },
+            )],
+        );
+    }
+
     #[tokio::test]
     async fn epoch_fact_projects_authorized_without_ready() {
-        // Hand-stamped plan.execute.started → Authorized even while
-        // unknowns keep Ready false (D22). Execute writer is S18.
+        // A covering plan.execute.started → Authorized even while
+        // unknowns keep Ready false (D22).
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -706,10 +891,31 @@ mod milestones {
             r"requirements:
   - id: REQ-003
     title: reset path not evidenced
+    statement: ''
     status: unknown
     sources: [intent]
 ",
         );
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        let mut specs = BTreeMap::new();
+        specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
+        stamp_epoch(project.root(), specs);
+        let body = status(&project, &plan).await;
+        assert!(!body.ready, "an epoch must not backfill Ready");
+        assert!(body.authorized);
+        let json = serde_json::to_string(&body).expect("json");
+        assert!(!json.contains("\"approved\""), "{json}");
+    }
+
+    #[tokio::test]
+    async fn drifted_plan_digest_clears_authorized() {
+        // An epoch whose plan digest no longer matches the live
+        // `plan.yaml` does not authorize — same freshness rule as the
+        // execute gap gate.
+        let project = Session::scripted("demo", Vec::new());
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
         let mut specs = BTreeMap::new();
         specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
         append(
@@ -718,20 +924,104 @@ mod milestones {
                 ts(0),
                 EventKind::PlanExecuteStarted {
                     coverage: ClosedPlanCoverage::ClosedPlan {
-                        plan_digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".into(),
+                        plan_digest:
+                            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                .into(),
                         specs,
-                        unknown_waivers: Vec::new(),
+                        gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
                 },
             )],
         );
-        let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
-        assert!(!body.ready, "waivers/epoch must not backfill Ready");
-        assert!(body.authorized);
-        let json = serde_json::to_string(&body).expect("json");
-        assert!(!json.contains("\"approved\""), "{json}");
+        assert!(!body.authorized, "drifted plan digest must not authorize");
+    }
+
+    #[tokio::test]
+    async fn covered_spec_drift_clears_authorized() {
+        // Mutating a covered spec tree after the epoch stamps clears
+        // Authorized while the old epoch remains in the union; build
+        // refuses `plan-epoch-stale` on the same rule.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-001
+    title: login works
+    statement: ''
+    status: agreed
+    sources: [intent]
+",
+        );
+        let specs_dir = project.root().join(".emery/slices/a/specs");
+        std::fs::create_dir_all(&specs_dir).expect("specs dir");
+        std::fs::write(specs_dir.join("spec.md"), "# a\n").expect("spec.md");
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        let mut specs = BTreeMap::new();
+        specs.insert(
+            "a".into(),
+            LeafSpecCoverage::Existing {
+                digest: project::plan::dir_cid(&specs_dir).expect("specs cid").to_string(),
+            },
+        );
+        stamp_epoch(project.root(), specs);
+
+        let fresh = status(&project, &plan).await;
+        assert!(fresh.authorized, "covering epoch authorizes");
+
+        std::fs::write(specs_dir.join("spec.md"), "# a (drifted)\n").expect("mutate spec.md");
+        let body = status(&project, &plan).await;
+        assert!(!body.authorized, "covered-spec drift clears Authorized");
+
+        let err = change::orchestrate::enforce_before_build(
+            Layout::new(project.root()),
+            &plan,
+            "a",
+            Timestamp::from_second(1_700_000_100).expect("timestamp"),
+        )
+        .expect_err("stale epoch refuses build");
+        assert_eq!(err.variant_str(), "plan-epoch-stale");
+    }
+
+    #[tokio::test]
+    async fn merged_leaf_absence_is_not_drift() {
+        // Merge archives the slice tree; a done leaf's absent specs
+        // are completion under the epoch, not drift.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-001
+    title: login works
+    statement: ''
+    status: agreed
+    sources: [intent]
+",
+        );
+        let slice_dir = project.root().join(".emery/slices/a");
+        let specs_dir = slice_dir.join("specs");
+        std::fs::create_dir_all(&specs_dir).expect("specs dir");
+        std::fs::write(specs_dir.join("spec.md"), "# a\n").expect("spec.md");
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        let mut specs = BTreeMap::new();
+        specs.insert(
+            "a".into(),
+            LeafSpecCoverage::Existing {
+                digest: project::plan::dir_cid(&specs_dir).expect("specs cid").to_string(),
+            },
+        );
+        stamp_epoch(project.root(), specs);
+        append(project.root(), &[archived(10, "a")]);
+        std::fs::remove_dir_all(&slice_dir).expect("archive removes slice tree");
+
+        let body = status(&project, &plan).await;
+        assert_eq!(body.next_action, "drained");
+        assert!(body.authorized, "archived covered leaf keeps the epoch fresh");
     }
 
     #[tokio::test]

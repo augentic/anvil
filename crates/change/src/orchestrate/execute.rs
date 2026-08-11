@@ -7,6 +7,7 @@ use std::ops::ControlFlow;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
+use project::GapPolicy;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
@@ -83,19 +84,29 @@ pub enum ExecuteOutcome {
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
-    waive: &[super::WaiveSelector], reason: Option<&str>,
+    gap_policy: Option<GapPolicy>,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
-    // Validate waivers before taking the marker so a bad `--waive`
-    // fails closed without holding `guest.lock`.
+    // Effective gap policy for this epoch (RFC-86a D3): per-epoch
+    // flag, else the `project.yaml` declaration, else `strict`.
+    let gap_policy = gap_policy.or(config.gap_policy).unwrap_or_default();
     let plan = Plan::load(&layout.plan_path())?;
-    let unknown_waivers = super::epoch::validate_waivers(layout, &plan, waive, reason)?;
     let _marker = GuestMarker::acquire(layout, now)?;
-    // Every execute path appends `plan.execute.started` at start
-    // with typed `closed-plan` coverage (optional unknown-waivers).
-    super::epoch::append_started(layout, &plan, now, unknown_waivers)?;
+    // A drained plan is a read-only no-op: opening a fresh
+    // authorization epoch would journal coverage nothing runs under.
+    let status = plan_status_body(&plan, layout)?;
+    if status.action == NextActionKind::Drained {
+        return Ok(ExecuteOutcome::Drained {
+            plan: status.plan,
+            phases: Vec::new(),
+        });
+    }
+    // Every non-drained execute path (including resume) appends
+    // `plan.execute.started` at start with typed `closed-plan`
+    // coverage carrying the effective gap policy.
+    super::epoch::append_started(layout, &plan, now, gap_policy)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {
@@ -136,9 +147,23 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         };
         let slice = advanced.slice.clone();
 
+        // Build staleness (RFC-86a D4): a built slice re-builds when
+        // its live deferred set drifted from its build record or the
+        // newest wave's re-build failed; the gap gate re-adjudicates.
+        let step = if step == LoopStep::Merge
+            && slice::dispositions_drifted(layout, &layout.slice_dir(&slice), &slice)?
+        {
+            tracing::info!(
+                "deferred dispositions drifted for {slice} — re-building under this epoch"
+            );
+            LoopStep::Build
+        } else {
+            step
+        };
+
         // Refine staleness (RFC-86 coverage): drifted `base.yaml` pins
-        // force a re-refine before build; refine re-freezes the pins,
-        // so the probe settles false on the next pass.
+        // force a re-refine before build — including a build the
+        // disposition redirect above just scheduled; refine re-pins.
         let step = if step == LoopStep::Build
             && slice::pins_drifted(layout, &layout.slice_dir(&slice), &slice)?
         {
@@ -149,12 +174,12 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         };
 
         tracing::info!("{step} {slice} [entry {entry}/{total}] …");
-        // Gap policy + epoch freshness refuse build before the target
-        // orchestration runs — hard validation (not a typed stop):
-        // `plan-gaps-unresolved` / `plan-epoch-stale`.
+        // Gap policy + epoch freshness gate build before the target
+        // orchestration (`plan-gaps-unresolved` / `plan-epoch-stale`);
+        // under `defer` the gate mints policy deferrals instead (D3/D6).
         if step == LoopStep::Build {
             let plan = Plan::load(&layout.plan_path())?;
-            super::enforce_before_build(layout, &plan, &slice)?;
+            super::enforce_before_build(layout, &plan, &slice, now)?;
         }
         let result =
             run_phase(caps, paths, now, &adapter, step, &slice, advanced.target.as_deref()).await;
@@ -283,9 +308,9 @@ fn dispatch_status(
             })
         }
         NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
-        // ReviewGaps is status when refined but not Ready. The
-        // loop still attempts build; `enforce_before_build` applies
-        // waivers on the covering epoch and refuses unresolved gaps.
+        // ReviewGaps is status when open findings remain (RFC-86a D7).
+        // The loop still attempts build; `enforce_before_build` refuses
+        // open gaps under `strict`, mints policy deferrals under `defer`.
         NextActionKind::Build | NextActionKind::ReviewGaps => {
             ControlFlow::Continue(Some(LoopStep::Build))
         }
