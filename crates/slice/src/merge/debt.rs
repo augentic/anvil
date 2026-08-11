@@ -48,9 +48,13 @@ impl CarriedDebt {
     #[must_use]
     pub fn note_line(&self, change: &str) -> String {
         let date = self.deferred_at.strftime("%Y-%m-%d");
+        // The reason is single-line by construction (`plan defer`
+        // rejects newlines), but the note must stay one parseable
+        // line regardless — collapse residual whitespace runs.
+        let reason = self.reason.split_whitespace().collect::<Vec<_>>().join(" ");
         format!(
-            "{NOTE_PREFIX}origin: {}; change: {change}; date: {date}; reason: {}",
-            self.origin, self.reason
+            "{NOTE_PREFIX}origin: {}; change: {change}; date: {date}; reason: {reason}",
+            self.origin
         )
     }
 }
@@ -180,4 +184,98 @@ fn annotate_text(text: &str, notes: &BTreeMap<&str, String>) -> String {
         flush(&mut out, &mut block, &mut block_id);
     }
     out.join("\n")
+}
+
+// The kernel is `pub(crate)` — the round trip against the public
+// `debt::baseline` parse is only reachable in-process.
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use jiff::Timestamp;
+
+    use super::*;
+
+    /// 2023-11-14T22:13:20Z.
+    fn ts() -> Timestamp {
+        Timestamp::from_second(1_700_000_000).expect("valid timestamp")
+    }
+
+    const GAP_DELTA: &str = "\
+        ### Requirement: greeting error handling [unknown]\n\
+        ID: REQ-001\n\
+        Sources: []\n\
+        Status: unknown\n\n\
+        The greeting service handles errors; behaviour is not evidenced.\n\n\
+        ### Requirement: session TTL [conflict]\n\
+        ID: REQ-002\n\
+        Sources: docs, code\n\
+        Status: conflict\n\n\
+        Note: docs says 30 minutes\n\
+        Note: code says 15 minutes\n";
+
+    /// D5/D9 round trip: `annotate` stamps one parseable note line
+    /// per debt row. Reason-last keeps a delimiter-heavy reason
+    /// (embedded `"; reason: "` / `"; date: "`) intact through the
+    /// fixed-key parse, a residual newline collapses rather than
+    /// splitting the note, and a conflict row keeps both arms'
+    /// `Note:` lines.
+    #[test]
+    fn note_round_trip() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let slice_dir = dir.path().join("slice");
+        let specs = slice_dir.join("specs/greeting");
+        fs::create_dir_all(&specs).expect("slice specs");
+        fs::write(specs.join("spec.md"), GAP_DELTA).expect("delta");
+
+        let debt = SliceDebt {
+            change: "demo".into(),
+            rows: vec![
+                CarriedDebt {
+                    req: "REQ-001".into(),
+                    status: RequirementStatus::Unknown,
+                    requirement_digest: "d1".into(),
+                    reason: "blocked; reason: awaiting upstream;\ndate: slips to Q3".into(),
+                    origin: DeferralOrigin::Operator,
+                    deferred_at: ts(),
+                },
+                CarriedDebt {
+                    req: "REQ-002".into(),
+                    status: RequirementStatus::Conflict,
+                    requirement_digest: "d2".into(),
+                    reason: "TTL owner decides next change".into(),
+                    origin: DeferralOrigin::Policy,
+                    deferred_at: ts(),
+                },
+            ],
+        };
+        annotate(&slice_dir, &debt).expect("annotate");
+
+        let rows = crate::debt::baseline(&slice_dir.join("specs"), ts()).expect("baseline");
+        assert_eq!(rows.len(), 2, "{rows:?}");
+
+        let unknown = &rows[0];
+        assert_eq!(unknown.req, "REQ-001");
+        assert_eq!(unknown.status, RequirementStatus::Unknown);
+        let note = unknown.deferral.as_ref().expect("operator note");
+        // The embedded delimiters survive; the newline collapsed to a
+        // space.
+        assert_eq!(note.reason, "blocked; reason: awaiting upstream; date: slips to Q3");
+        assert_eq!(note.origin, DeferralOrigin::Operator);
+        assert_eq!(note.change, "demo");
+        assert_eq!(note.deferred_on, "2023-11-14");
+        assert_eq!(note.age_days, 0);
+
+        let conflict = &rows[1];
+        assert_eq!(conflict.req, "REQ-002");
+        assert_eq!(conflict.status, RequirementStatus::Conflict);
+        let note = conflict.deferral.as_ref().expect("policy note");
+        assert_eq!(note.reason, "TTL owner decides next change");
+        assert_eq!(note.origin, DeferralOrigin::Policy);
+
+        // Both conflict arms survive annotation.
+        let annotated = fs::read_to_string(specs.join("spec.md")).expect("annotated spec");
+        assert!(annotated.contains("Note: docs says 30 minutes"), "{annotated}");
+        assert!(annotated.contains("Note: code says 15 minutes"), "{annotated}");
+    }
 }

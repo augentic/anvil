@@ -219,6 +219,32 @@ async fn missing_reason_on_defer_refused() {
     assert_eq!(validation(&err).0, "plan-deferral-invalid");
 }
 
+/// The reason folds into the baseline as one `Note:` line (D5), so a
+/// multiline reason is refused before any fact is written.
+#[tokio::test]
+async fn multiline_reason_refused() {
+    let project = fixture();
+    let err = run::<Defer, _, _>(
+        project.provider(),
+        defer_input(
+            vec![selector("auth-login", "REQ-001")],
+            Some("reset path waits\non the upstream fix"),
+            false,
+        ),
+    )
+    .await
+    .expect_err("multiline reason");
+    let (code, detail) = validation(&err);
+    assert_eq!(code, "plan-deferral-invalid");
+    assert!(detail.contains("single line"), "{detail}");
+
+    let events = read_union(Layout::new(project.root())).expect("union");
+    assert!(
+        !events.iter().any(|event| matches!(event.kind, EventKind::GapDeferred { .. })),
+        "a refused reason appends nothing"
+    );
+}
+
 #[tokio::test]
 async fn divergence_row_takes_no_disposition() {
     let project = fixture();

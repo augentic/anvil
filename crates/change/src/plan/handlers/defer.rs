@@ -118,10 +118,15 @@ fn fact_kind(gap: &DeferredGap, retract: bool, reason: &str) -> EventKind {
     }
 }
 
-/// Resolve the fact reason: required (non-empty) to defer; a retract
-/// without `--reason` records the synthesized retraction reason.
+/// Resolve the fact reason: required (non-empty, single-line) to
+/// defer; a retract without `--reason` records the synthesized
+/// retraction reason. Single-line because the reason folds into the
+/// baseline as one self-describing `Note:` line (RFC-86a D5).
 fn resolve_reason(retract: bool, reason: Option<&str>) -> Result<String, Error> {
     match reason.map(str::trim).filter(|text| !text.is_empty()) {
+        Some(text) if text.contains(['\n', '\r']) => Err(deferral_invalid(
+            "`--reason` must be a single line — it folds into the baseline as one `Note:` line",
+        )),
         Some(text) => Ok(text.to_string()),
         None if retract => Ok("retracted by operator".to_string()),
         None => Err(deferral_invalid(
