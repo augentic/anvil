@@ -12,7 +12,7 @@ Emery has two adapter roles with a shared shape. **Source adapters** turn extern
   </div>
   <div class="audience">
     <div class="who">Target author</div>
-    <div class="path"><a href="#two-roles-one-shared-shape">Roles</a> → <a href="../reference/adapter-contract.md#target-adapter-contract">guidance + build + merge contract</a></div>
+    <div class="path"><a href="#two-roles-one-shared-shape">Roles</a> → <a href="../reference/adapter-contract.md#target-adapter-contract">guidance + build loop + merge contract</a></div>
   </div>
   <div class="audience">
     <div class="who">Operator</div>
@@ -25,7 +25,7 @@ Emery has two adapter roles with a shared shape. **Source adapters** turn extern
 | Axis     | Role   | Operations                   | Default examples                                       | Lives under                |
 | -------- | ------ | ---------------------------- | ------------------------------------------------------ | -------------------------- |
 | `source` | input  | `survey`, `extract`          | `intent`, `documentation`, `typescript`, `screenshots` | `sources/<name>/` |
-| `target` | output | `guidance`, `build`, `merge` | `omnia`, `vectis`, `contracts`                         | `targets/<name>/` |
+| `target` | output | `guidance`, `build`, `verify`, `repair`, `review`, `merge` | `omnia`, `vectis`, `contracts`                         | `targets/<name>/` |
 
 Both ship as a single WebAssembly component exporting the matching axis interface from the closed WIT contract (`wit/emery.wit`) — one component, no manifest file. The shared shape is the **plugin** (a vocabulary noun for the audience tag, not the Rust module name) — same component contract, same prose layout in the authoring repo. The axis decides the operations, which derive from the WIT contract rather than being declared on the wire.
 
@@ -33,13 +33,14 @@ The WIT package also defines an additive combined `adapter` world (`export sourc
 
 ## How the roles meet the loop
 
-A source adapter participates twice: `survey` at plan time (one [lead](../appendices/glossary.md#l) per slice-sized unit into `discovery.md`) and `extract` at slice time (one `Evidence` document per bound source). A target adapter participates three times per slice: its `guidance` prompt is read into synthesis context at refine, its `build` operation generates the code, and its `merge` operation gates the landing. The engine owns everything between — lifecycle, artifact schemas, synthesis, and state transitions — so an adapter contributes specialist behaviour without ever driving the workflow.
+A source adapter participates twice: `survey` at plan time (one [lead](../appendices/glossary.md#l) per slice-sized unit into `discovery.md`) and `extract` at slice time (one `Evidence` document per bound source). A target adapter participates at every downstream phase: its `guidance` prompt is read into synthesis context at refine; its four build-loop operations — `build` (generation), `verify` (one check pass), `repair` (one findings-directed pass), `review` (one standards pass) — are dispatched one pass at a time by the engine's build phase machine, which owns operation order, repair budgets, and the final build report; and its `merge` operation gates the landing. The engine owns everything between — lifecycle, artifact schemas, synthesis, and state transitions — so an adapter contributes specialist behaviour without ever driving the workflow.
 
 ```text
 /emery:plan    →  source.survey     (leads into discovery.md)
 refine phase   →  source.extract    (evidence/<source>.yaml)
                →  target.guidance   (idiom guidance for synthesis)
-build phase    →  target.build      (code generation)
+build phase    →  target.build → verify ⇄ repair → review ⇄ repair
+                  (engine-driven build loop; one typed phase report per dispatch)
 merge phase    →  target.merge      (preflight/postflight landing gates)
 ```
 

@@ -99,7 +99,7 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Gap disposition | `gap.deferred`, `gap.deferral-retracted` | `emery plan defer` (`origin: operator`) and the build gate under an effective `defer` policy (`origin: policy`) — durable digest-bound deferral facts (RFC-86a D2/D3) |
 | Claim | `slice.claimed`, `slice.released` | exclusive per-slice claim / release facts (RFC-86 D7 / D23); the execute loop's claim step |
 | Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the refine phase's synthesis leg and its `refined` transition, `emery source extract` |
-| Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed` | the execute loop's build phase |
+| Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed`, `slice.build.phase-completed` | the execute loop's build phase (`phase-completed` is per-attempt ordinal evidence for each engine-selected build phase — RFC-90 D6) |
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created`, `target.merge.wave-committed`, `target.merge.wave-succeeded`, `target.merge.wave-postflight-failed` | the execute loop's merge phase (wave commit + postflight; RFC-86 D9) |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent`, `target.wave.opened` | `emery source survey` / `extract`, the build phase's request-assembly leg, one-member target-wave open (RFC-86 D9) |
 

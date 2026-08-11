@@ -2,9 +2,15 @@
 
 > Status: Draft
 
-The [platform RFC chain](platform.md) is the current delivery spine; [architecture.md](architecture.md) owns the runtime boundary. This file lists only distinct follow-ons that remain useful after that series. Each starts when its trigger is observed, not merely when its prerequisites exist.
+The [platform RFC chain](platform.md) is the current delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-96 Platform Readiness](rfc-96-platform-readiness.md) is the hosted/fleet readiness spine that follows RFC-93. This file lists only distinct follow-ons that remain useful after those series. Each starts when its trigger is observed, not merely when its prerequisites exist.
 
 ## After the platform
+
+### RFC-96: Platform readiness
+
+**Goal:** Retire desktop-shaped host authority (`$EMERY_HOME` adapter stores, bare-name newest-local, process-local journals/MCP/Cursor credentials, homogeneous toolchains) so a hosted multi-node deployment is the same Emery with swapped Omnia backends and host policy.
+**Trigger:** RFC-93's distributed contract is stable enough to bind, or Omnia backends approach the D10 conformance bar.
+**Sequence:** Phases A–E in [rfc-96-platform-readiness.md](rfc-96-platform-readiness.md) (conformance & homes → adapter values & locks → worker capabilities → hosted judgment & ingress → tenancy & operations).
 
 ### RM-17: Forge publication providers
 

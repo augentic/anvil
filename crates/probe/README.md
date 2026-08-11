@@ -100,7 +100,7 @@ Emery core has two steps that require a model's judgement.
 | `synthesis` | Synthesize | `slice`  | Reconcile *extracted* evidence with baseline context and target guidance, to produce build artifacts such as `proposal.md`, `spec.md`, etc. |
 
 
-The execution and repair loop lives in the `project` crate and are considered infrastructure, not judgment. Source `survey` / `extract` and target `guidance` / `build` / `merge` are adapter operations.
+The execution and repair loop lives in the `project` crate and are considered infrastructure, not judgment. Source `survey` / `extract` and target `guidance` / `build` / `verify` / `repair` / `review` / `merge` are adapter operations.
 
 A workflow case stopped at `--until plan` isolates the proposal leg. A full
 workflow case runs synthesis as part of the complete `refine → build →

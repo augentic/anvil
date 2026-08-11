@@ -35,9 +35,11 @@ pub(super) fn append_started(
 /// Build `closed-plan` coverage over in-scope leaves.
 ///
 /// A leaf covers as `existing` only when its specs are present **and**
-/// its recorded `base.yaml` pins still match the live trees; a
-/// pin-drifted refined slice re-enters as `refine-under-epoch`, so the
-/// loop re-refines exactly the affected slices under this epoch.
+/// its recorded `base.yaml` pins still match the live trees and the
+/// entry's current source set (a source added or removed after refine
+/// counts as drift); a pin-drifted refined slice re-enters as
+/// `refine-under-epoch`, so the loop re-refines exactly the affected
+/// slices under this epoch.
 fn assemble_coverage(
     layout: Layout<'_>, plan: &Plan, gap_policy: GapPolicy,
 ) -> Result<ClosedPlanCoverage, Error> {

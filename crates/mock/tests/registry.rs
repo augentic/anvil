@@ -1,7 +1,9 @@
 //! The exhaustive catalog inventory and the failure profiles, all
 //! exercised through the SDK trait surface (no provider hooks).
 
-use adapter::seam::{BuildContext, Context, Error, Input, MergePhase, Payload, Status, Workspace};
+use adapter::seam::{
+    BuildContext, Context, Error, Input, MergePhase, Payload, PhaseOutcome, Workspace,
+};
 use adapter::{Source, Target};
 use mock::{
     Adapter, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput, catalog,
@@ -29,6 +31,12 @@ fn inventory() {
             (Axis::Target, "mock-fail-build"),
             (Axis::Target, "mock-fail-merge"),
             (Axis::Target, "mock-missing-output"),
+            (Axis::Target, "mock-tool-source"),
+            (Axis::Target, "mock-verify-outputs"),
+            (Axis::Target, "mock-na-blocking"),
+            (Axis::Target, "mock-oversized-continuation"),
+            (Axis::Target, "mock-stage-escape"),
+            (Axis::Target, "mock-verify-continuation"),
         ]
     );
 }
@@ -53,6 +61,7 @@ fn workspace(root: &std::path::Path) -> Workspace {
         id: "ws-mock".to_string(),
         root: root.display().to_string(),
         artifacts: root.display().to_string(),
+        artifact_stage: None,
     }
 }
 
@@ -126,8 +135,8 @@ async fn missing_output_names_path() {
         &workspace(tmp.path()),
     )
     .await
-    .expect("missing-output reports success");
-    assert_eq!(report.status, Status::Success);
+    .expect("missing-output reports completion");
+    assert_eq!(report.outcome, PhaseOutcome::Completed);
     assert_eq!(report.outputs.len(), 1);
     assert!(!tmp.path().join(&report.outputs[0].path).exists(), "the output is never written");
 }
@@ -154,7 +163,7 @@ async fn build_writes_artifact() {
     )
     .await
     .expect("mock builds");
-    assert_eq!(report.status, Status::Success);
+    assert_eq!(report.outcome, PhaseOutcome::Completed);
 
     let artifact = mock::behaviour::build_artifact_path(tmp.path(), "greeting");
     let body = std::fs::read_to_string(artifact).expect("artifact written");

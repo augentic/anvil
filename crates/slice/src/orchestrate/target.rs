@@ -1,28 +1,29 @@
 //! Target-axis build orchestrator.
 
+mod machine;
+
 use std::path::Path;
 
 use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::{AdapterSelector, TargetAdapter};
-use project::build_record::BuildRecord;
 use project::config::{Layout, ProjectConfig};
 use project::journal::{self, EventKind};
 use project::name::SliceName;
 use project::plan::{Plan, dir_cid};
-use project::seam::{BuildContext, Input, Payload, Target, Workspaces};
+use project::seam::{ArtifactStage, BuildContext, Input, Payload, PhaseSource, Target, Workspaces};
 use project::wave::{EpochRef, Wave};
 
-use super::{seam_failure, target_id};
-use crate::{
-    Base, BuildRequest, BuildStatus, LifecycleStatus, SliceMetadata, actions as slice_actions,
-    build_request,
-};
+use self::machine::Machine;
+use super::target_id;
+use crate::build::canonical::Stamp;
+use crate::build::{attempt, stage};
+use crate::{Base, BuildRequest, BuildStatus, SliceMetadata, build_request};
 
-/// The validated result of a completed [`build`], mirroring the native
-/// finalize output: the report's slice / target / status plus the
-/// finding count.
+/// The validated result of a completed [`build`]: the terminal
+/// report's slice / target / status, the finding count, and the
+/// terminal verification's assurance source.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildOutcome {
     /// Slice that was built.
@@ -31,8 +32,13 @@ pub struct BuildOutcome {
     pub target: String,
     /// Report status.
     pub status: BuildStatus,
-    /// Finding count on the report.
+    /// Finding count on the terminal report.
     pub findings: usize,
+    /// The terminal verification report's assurance source — named
+    /// even on a clean pass, so a green result reads as the
+    /// candidate passing its own reported checks, never as an
+    /// independent oracle (RFC-90 D3).
+    pub verification: Option<PhaseSource>,
 }
 
 /// Build one slice through the seam and run the finalize tail.
@@ -104,7 +110,11 @@ pub async fn build(
         },
     )
     .await?;
-    tracing::info!(status = ?outcome.status, "build completed");
+    tracing::info!(
+        status = ?outcome.status,
+        verification = outcome.verification.map(|source| source.to_string()),
+        "build completed"
+    );
     Ok(outcome)
 }
 
@@ -199,71 +209,102 @@ fn workspace_failure(operation: &'static str, slice: &str, err: &project::seam::
     }
 }
 
-/// Dispatch `seam.build` and run the native finalize tail over the
-/// returned report. Wrapped by [`build`] so the `slice.build.*` pair
-/// brackets it.
+/// Run the RFC-90 D1 phase machine for one build attempt: allocate
+/// the attempt, seed the artifact stage, redirect slice-tree inputs
+/// onto the stage, and hand the envelope to [`Machine::execute`].
+/// Wrapped by [`build`] so the `slice.build.*` pair brackets it.
 #[expect(clippy::too_many_arguments, reason = "internal seam-dispatch kernel; callers use `build`")]
 async fn finalize(
     seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
     workspace: &project::seam::Workspace, wave: project::snapshot::SnapshotId,
 ) -> Result<BuildOutcome, Error> {
-    let inputs = read_inputs(request)?;
     let context = build_context(layout, slice)?;
     let id = target_id(adapter);
-    let report = seam
-        .build(id.clone(), slice.to_string(), inputs, context, workspace.clone())
-        .await
-        .map_err(|err| seam_failure("build", &id, &err))?;
+    let config = ProjectConfig::load(layout.project_dir())?;
 
-    // Persist the typed report before anything acts on it, so the
-    // on-disk `build/report.yaml` matches what the tail validated
-    // (parity with the native finalize reading the agent's file).
-    let yaml = project::fs::yaml(&report)?;
-    bytes_write(&slice_dir.join("build").join("report.yaml"), yaml.as_bytes())?;
+    let attempt = attempt::allocate(slice_dir)?;
+    attempt::copy_request(&attempt, slice_dir)?;
+    let stage = stage::seed(&attempt.dir, slice_dir)?;
 
-    if report.slice != slice {
-        return Err(Error::validation_failed(
-            "target-build-report-slice-mismatch",
-            "the build report's slice matches the slice being finalized",
-            format!("report names slice `{}`, but the build ran for `{slice}`", report.slice),
-        ));
+    // Build inputs beneath the active slice resolve against the
+    // stage, so later phases read prior staged writes (RFC-90 D5).
+    let slice_prefix = relative_str(&request.inputs.root, &request.project_dir);
+    let stage_prefix = relative_str(stage.root(), &request.project_dir);
+    let inputs = match (&slice_prefix, &stage_prefix) {
+        (Some(slice_rel), Some(stage_rel)) => read_inputs(request)?
+            .into_iter()
+            .map(|input| restage_input(input, slice_rel, stage_rel))
+            .collect(),
+        _ => read_inputs(request)?,
+    };
+
+    let mut staged = workspace.clone();
+    staged.artifact_stage = Some(ArtifactStage {
+        id: format!("attempt-{:04}", attempt.id),
+        root: stage.root().display().to_string(),
+    });
+
+    let machine = Machine {
+        seam,
+        layout,
+        now,
+        id,
+        slice,
+        slice_dir,
+        wave,
+        stamp: Stamp {
+            target_adapter: &adapter.name,
+            slice,
+            change: Some(&config.name),
+        },
+        grants: &adapter.writable_artifacts,
+        workspace: staged,
+        attempt,
+        stage,
+        inputs: Some(inputs),
+        context: Some(context),
+        ordinal: 0,
+    };
+    machine.execute().await
+}
+
+/// `path` relative to `base` as a '/'-separated string, or `None`
+/// when `path` is not beneath `base`.
+fn relative_str(path: &Path, base: &Path) -> Option<String> {
+    let relative = path.strip_prefix(base).ok()?;
+    Some(
+        relative
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/"),
+    )
+}
+
+/// Redirect one resolved input payload from the authoritative slice
+/// tree onto the attempt's artifact stage. The engine-owned `build/`
+/// subtree is excluded from the stage and stays on its authoritative
+/// path.
+fn restage_input(input: Input, slice_prefix: &str, stage_prefix: &str) -> Input {
+    let restage = |payload: Payload| match payload {
+        Payload::Path(path) => {
+            match path.strip_prefix(slice_prefix).and_then(|rest| rest.strip_prefix('/')) {
+                Some(rest) if rest != "build" && !rest.starts_with("build/") => {
+                    Payload::Path(format!("{stage_prefix}/{rest}"))
+                }
+                _ => Payload::Path(path),
+            }
+        }
+        other @ Payload::Body(_) => other,
+    };
+    match input {
+        Input::Proposal(payload) => Input::Proposal(restage(payload)),
+        Input::Design(payload) => Input::Design(restage(payload)),
+        Input::Tasks(payload) => Input::Tasks(restage(payload)),
+        Input::Spec(payload) => Input::Spec(restage(payload)),
+        Input::Other(payload) => Input::Other(restage(payload)),
     }
-
-    report.enforce_no_blocking()?;
-    // A deferred requirement is out of build scope (RFC-86a D4); a
-    // report claiming it is a contract violation.
-    report.enforce_deferred_not_covered(&request.deferred)?;
-    // Declared outputs live in the private workspace until capture.
-    report.enforce_outputs_exist(Path::new(&workspace.root))?;
-    if report.status == BuildStatus::Failure {
-        return Err(Error::Diag {
-            code: "target-build-failed",
-            detail: format!(
-                "target `{}` reported a failed build for slice `{slice}` ({} finding(s))",
-                report.target,
-                report.findings.len()
-            ),
-        });
-    }
-
-    // Capture the result tree and persist the fact-substrate build
-    // record (RFC-86 D27) — `build/patch.yaml` is no longer authority.
-    let patch = seam
-        .capture(workspace.id.clone())
-        .await
-        .map_err(|err| workspace_failure("capture", slice, &err))?;
-    let consumed = request.deferred.iter().map(|req| req.requirement_digest.clone()).collect();
-    BuildRecord::from_capture(patch, wave, report.clone(), consumed).write(slice_dir)?;
-
-    slice_actions::transition(slice_dir, LifecycleStatus::Built, now)?;
-
-    Ok(BuildOutcome {
-        slice: slice.to_string(),
-        target: report.target,
-        status: report.status,
-        findings: report.findings.len(),
-    })
 }
 
 /// Assemble the build request from the declared inputs and persist it

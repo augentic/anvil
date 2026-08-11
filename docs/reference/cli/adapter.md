@@ -53,7 +53,7 @@ Resolve a target adapter by identity and emit the wire-stable envelope.
 emery target resolve <value>
 ```
 
-`<value>` may be a bare adapter name (`omnia`), a package reference (`emery:omnia@1.0.0`), or a local `.wasm` path. The `guidance`, `build`, and `merge` prompts are compiled into the adapter guest.
+`<value>` may be a bare adapter name (`omnia`), a package reference (`emery:omnia@1.0.0`), or a local `.wasm` path. The target operation prompts (`guidance`, the build loop, `merge`) are compiled into the adapter guest.
 
 ## Resolve envelope
 

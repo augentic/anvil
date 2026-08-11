@@ -27,6 +27,7 @@ fn workspace() -> Workspace {
         id: "ws-1".to_string(),
         root: "/emery-workspaces/ws-1".to_string(),
         artifacts: "/host/project".to_string(),
+        artifact_stage: None,
     }
 }
 

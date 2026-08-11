@@ -36,7 +36,28 @@ type BuildFn = for<'a> fn(
     &'a [aseam::Input],
     &'a aseam::BuildContext,
     &'a aseam::Workspace,
-) -> BoxFuture<'a, Result<aseam::Report, aseam::Error>>;
+) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
+type VerifyFn = for<'a> fn(
+    &'a DynModel,
+    &'a Context<'a>,
+    &'a aseam::Workspace,
+) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
+type RepairFn = for<'a> fn(
+    &'a DynModel,
+    &'a Context<'a>,
+    &'a str,
+    aseam::RepairOrigin,
+    &'a [aseam::PhaseFinding],
+    Option<&'a [u8]>,
+    &'a aseam::Workspace,
+) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
+type ReviewFn = for<'a> fn(
+    &'a DynModel,
+    &'a Context<'a>,
+    &'a str,
+    Option<&'a [u8]>,
+    &'a aseam::Workspace,
+) -> BoxFuture<'a, Result<aseam::PhaseReport, aseam::Error>>;
 type MergeFn = for<'a> fn(
     &'a DynModel,
     &'a Context<'a>,
@@ -48,8 +69,18 @@ type MergeFn = for<'a> fn(
 /// The monomorphized operation legs of one linked adapter.
 #[derive(Clone, Copy)]
 enum Ops {
-    Source { survey: SurveyFn, extract: ExtractFn },
-    Target { guidance: GuidanceFn, build: BuildFn, merge: MergeFn },
+    Source {
+        survey: SurveyFn,
+        extract: ExtractFn,
+    },
+    Target {
+        guidance: GuidanceFn,
+        build: BuildFn,
+        verify: VerifyFn,
+        repair: RepairFn,
+        review: ReviewFn,
+        merge: MergeFn,
+    },
 }
 
 /// One Rust adapter crate linked into the host.
@@ -252,10 +283,66 @@ impl Catalog {
     pub(crate) async fn build(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str, inputs: &[aseam::Input],
         context: &aseam::BuildContext, workspace: &aseam::Workspace,
-    ) -> Result<aseam::Report, aseam::Error> {
+    ) -> Result<aseam::PhaseReport, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
             Some(Ops::Target { build, .. }) => {
                 build(model, ctx, slice, inputs, context, workspace).await
+            }
+            _ => Err(unlinked(id)),
+        }
+    }
+
+    /// Dispatch `verify` to the linked target adapter behind `id`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the adapter's failure, or `invalid-request` when `id`
+    /// routes to no linked target.
+    pub(crate) async fn verify(
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str, workspace: &aseam::Workspace,
+    ) -> Result<aseam::PhaseReport, aseam::Error> {
+        match self.find(id).map(|entry| entry.ops) {
+            Some(Ops::Target { verify, .. }) => verify(model, ctx, workspace).await,
+            _ => Err(unlinked(id)),
+        }
+    }
+
+    /// Dispatch `repair` to the linked target adapter behind `id`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the adapter's failure, or `invalid-request` when `id`
+    /// routes to no linked target.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "internal dispatch shim mirroring the seam repair signature; one call site"
+    )]
+    pub(crate) async fn repair(
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
+        origin: aseam::RepairOrigin, findings: &[aseam::PhaseFinding], continuation: Option<&[u8]>,
+        workspace: &aseam::Workspace,
+    ) -> Result<aseam::PhaseReport, aseam::Error> {
+        match self.find(id).map(|entry| entry.ops) {
+            Some(Ops::Target { repair, .. }) => {
+                repair(model, ctx, slice, origin, findings, continuation, workspace).await
+            }
+            _ => Err(unlinked(id)),
+        }
+    }
+
+    /// Dispatch `review` to the linked target adapter behind `id`.
+    ///
+    /// # Errors
+    ///
+    /// Returns the adapter's failure, or `invalid-request` when `id`
+    /// routes to no linked target.
+    pub(crate) async fn review(
+        &self, model: &DynModel, ctx: &Context<'_>, id: &str, slice: &str,
+        continuation: Option<&[u8]>, workspace: &aseam::Workspace,
+    ) -> Result<aseam::PhaseReport, aseam::Error> {
+        match self.find(id).map(|entry| entry.ops) {
+            Some(Ops::Target { review, .. }) => {
+                review(model, ctx, slice, continuation, workspace).await
             }
             _ => Err(unlinked(id)),
         }
@@ -322,6 +409,21 @@ impl Builder {
                 guidance: |model, ctx| Box::pin(A::guidance(model, ctx)),
                 build: |model, ctx, slice, inputs, context, workspace| {
                     Box::pin(A::build(model, ctx, slice, inputs, context, workspace))
+                },
+                verify: |model, ctx, workspace| Box::pin(A::verify(model, ctx, workspace)),
+                repair: |model, ctx, slice, origin, findings, continuation, workspace| {
+                    Box::pin(A::repair(
+                        model,
+                        ctx,
+                        slice,
+                        origin,
+                        findings,
+                        continuation,
+                        workspace,
+                    ))
+                },
+                review: |model, ctx, slice, continuation, workspace| {
+                    Box::pin(A::review(model, ctx, slice, continuation, workspace))
                 },
                 merge: |model, ctx, slice, phase, workspace| {
                     Box::pin(A::merge(model, ctx, slice, phase, workspace))

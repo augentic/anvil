@@ -45,7 +45,7 @@ The guest orchestration owns the sequencing, the judgment legs (extract, synthes
 | Phase    | Role                                                                              |
 | -------- | --------------------------------------------------------------------------------- |
 | `refine` | Extract per bound source, synthesis, validation; transitions the slice `refined` |
-| `build`  | The target adapter's build operation and the `built` gate                        |
+| `build`  | The engine-driven build loop over the target's build/verify/repair/review operations and the `built` gate |
 | `merge`  | Baseline delta merge, archive; only writer of per-entry `done`                   |
 
 The matching CLI surface is read-only inspection: `slice list`, `slice validate` (including pin-drift and baseline-conflict advisories), `slice provenance`, and `slice model show`. Abandoning a slice is a plan act: `emery plan drop <entry>`.

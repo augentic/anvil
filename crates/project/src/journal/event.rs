@@ -219,6 +219,33 @@ pub enum EventKind {
         /// Short human reason / finding code for the failure.
         reason: String,
     },
+    /// One engine-selected build phase returned a report that was
+    /// persisted under the attempt tree (RFC-90 D6). Ordinal evidence
+    /// inside the `slice.build.started` / `.succeeded` / `.failed`
+    /// envelope — never lifecycle authority. `elapsed-ms` is
+    /// engine-measured raw telemetry outside the report digest.
+    #[serde(rename = "slice.build.phase-completed", rename_all = "kebab-case")]
+    SliceBuildPhaseCompleted {
+        /// Affected slice.
+        slice_name: SliceName,
+        /// Attempt ordinal (the numeric id of
+        /// `build/attempts/<attempt>/`, 1-based).
+        attempt: u32,
+        /// Phase ordinal within the attempt (the numeric prefix of
+        /// `phases/<ordinal>-<operation>.yaml`, 1-based).
+        ordinal: u32,
+        /// Kebab-case phase operation (`build | verify | repair |
+        /// review`).
+        operation: String,
+        /// Kebab-case report-level phase source (`deterministic |
+        /// model-assisted | hybrid`).
+        source: String,
+        /// `sha256:<hex>` digest of the persisted phase-report bytes.
+        report_digest: String,
+        /// Engine-measured wall-clock duration of the dispatch, in
+        /// milliseconds. Outside the report digest.
+        elapsed_ms: u64,
+    },
     /// The merge phase began folding the slice's deltas into the
     /// baseline. The `slice.merge.*` pair
     /// fires on the merge validator outcome, not on a

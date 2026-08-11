@@ -203,6 +203,7 @@ pub fn target(
             requires_emery: floor,
             inputs: metadata.inputs,
             platforms: metadata.platforms,
+            writable_artifacts: metadata.writable_artifacts,
         },
         origin,
     })

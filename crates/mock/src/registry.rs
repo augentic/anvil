@@ -3,7 +3,9 @@
 use native::Catalog;
 
 use crate::ops::{
-    Adapter, Code, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey, MissingOutput,
+    Adapter, Code, Docs, FailBuild, FailExtract, FailGuidance, FailMerge, FailSurvey,
+    MissingOutput, NaBlocking, OversizedContinuation, StageEscape, ToolSource, VerifyContinuation,
+    VerifyOutputs,
 };
 
 /// Every mock catalog identity, success and failure profiles alike.
@@ -29,6 +31,12 @@ pub fn catalog() -> Catalog {
         .target::<FailBuild>()
         .target::<FailMerge>()
         .target::<MissingOutput>()
+        .target::<ToolSource>()
+        .target::<VerifyOutputs>()
+        .target::<NaBlocking>()
+        .target::<OversizedContinuation>()
+        .target::<StageEscape>()
+        .target::<VerifyContinuation>()
         .build()
         .expect("the mock catalog is statically valid")
 }

@@ -198,6 +198,8 @@ async fn validate_reports_baseline_and_source_pin_drift() {
     assert!(!ids.iter().any(|id| id == "slice-base-drifted"), "baseline restored: {ids:?}");
 }
 
+/// Pinned sources with no covering plan entry cannot be verified —
+/// pin-drift fails closed instead of silently passing them.
 #[tokio::test]
 async fn missing_plan_entry_fails_closed_on_pinned_sources() {
     let session = Session::scripted(
@@ -234,6 +236,76 @@ async fn missing_plan_entry_fails_closed_on_pinned_sources() {
     )
     .await
     .expect("unverifiable pins are review findings — validate still PASSes");
+    let ids = review_ids(&body);
+    assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
+}
+
+/// A source bound after refine (no `base.yaml` pin) is pin drift —
+/// validate advises and `pins_drifted` forces re-refine under the epoch.
+#[tokio::test]
+async fn missing_source_pin_is_drift() {
+    let session = Session::scripted(
+        "mock",
+        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
+    );
+    let root = session.root().to_path_buf();
+    author_and_refine(&session).await;
+
+    let layout = Layout::new(&root);
+    let slice_dir = layout.slice_dir("login-flow");
+    let mut base = Base::load(&slice_dir).expect("base.yaml after refine");
+    assert!(base.sources.contains_key("code"), "fixture pins both sources");
+    base.sources.remove("code");
+    base.write(&slice_dir).expect("drop code pin — simulates amend --add-source after refine");
+
+    assert!(
+        slice::pins_drifted(layout, &slice_dir, "login-flow").expect("probe"),
+        "binding without a base.yaml pin must force re-refine"
+    );
+
+    let body = run::<slice::handlers::Validate, _, _>(
+        session.provider(),
+        slice::handlers::ValidateInput {
+            name: "login-flow".to_string(),
+        },
+    )
+    .await
+    .expect("missing pin is review — validate still PASSes");
+    let ids = review_ids(&body);
+    assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
+}
+
+/// A `base.yaml` pin for a source the entry no longer binds is pin
+/// drift — the set mismatch amend `--remove-source` leaves until the
+/// next refine rewrites the pin assembly.
+#[tokio::test]
+async fn orphan_source_pin_is_drift() {
+    let session = Session::scripted(
+        "mock",
+        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
+    );
+    let root = session.root().to_path_buf();
+    author_and_refine(&session).await;
+
+    let layout = Layout::new(&root);
+    let slice_dir = layout.slice_dir("login-flow");
+    let mut base = Base::load(&slice_dir).expect("base.yaml after refine");
+    base.sources.insert("gone".into(), value_cid("orphan pin"));
+    base.write(&slice_dir).expect("plant orphan pin");
+
+    assert!(
+        slice::pins_drifted(layout, &slice_dir, "login-flow").expect("probe"),
+        "orphan base.yaml pin must force re-refine"
+    );
+
+    let body = run::<slice::handlers::Validate, _, _>(
+        session.provider(),
+        slice::handlers::ValidateInput {
+            name: "login-flow".to_string(),
+        },
+    )
+    .await
+    .expect("orphan pin is review — validate still PASSes");
     let ids = review_ids(&body);
     assert!(ids.iter().any(|id| id == "slice-evidence-stale"), "{ids:?}");
 }

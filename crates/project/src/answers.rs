@@ -6,7 +6,9 @@
 use schemars::JsonSchema;
 use serde_json::{Value, json};
 
-use crate::seam::wire::{BuildOutput, BuildStatus, UiSurface};
+use crate::seam::wire::{
+    BuildOutput, BuildStatus, PhaseOutcome, PhaseSource, PhaseWrite, UiSurface,
+};
 use crate::seam::{Evidence, Lead};
 
 /// `$id` base for the generated answer documents.
@@ -56,6 +58,31 @@ struct ReportAnswer {
     /// from the build request's `deferred[]` exclusion set.
     #[serde(default)]
     covered: Vec<String>,
+}
+
+/// The `build` / `repair` / `verify` / `review` phase answer: the
+/// RFC-90 phase report minus the adapter-attached `next-continuation`
+/// (opaque session bytes never come from the model answer).
+#[derive(JsonSchema)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+#[expect(dead_code, reason = "fields exist only for schemars schema generation")]
+struct PhaseReportAnswer {
+    /// Adapter-selected phase outcome.
+    outcome: PhaseOutcome,
+    /// Required report-level assurance claim.
+    source: PhaseSource,
+    /// Full structured diagnostics; default `[]`.
+    #[serde(default)]
+    findings: Vec<diagnostics::Diagnostic>,
+    /// Candidate per-platform build outputs (`build` only); default `[]`.
+    #[serde(default)]
+    outputs: Vec<BuildOutput>,
+    /// Optional UI-surface signal (`build` only).
+    #[serde(default)]
+    ui_surface: Option<UiSurface>,
+    /// Audit-evidence writes performed by the phase; default `[]`.
+    #[serde(default)]
+    written: Vec<PhaseWrite>,
 }
 
 /// Generate the root answer schema for `T`, stamping the `$id`,
@@ -160,6 +187,39 @@ pub fn report() -> Value {
          adapter's build or merge operation: the report shape minus the envelope keys \
          (`version`, `slice`, `target`) the caller already knows.",
     )
+}
+
+/// The RFC-90 phase answer schema gating `build` / `repair` /
+/// `verify` / `review` replies.
+///
+/// The generated shape drops `id` and `fingerprint` from the
+/// diagnostic's required set: the engine renumbers report-local ids
+/// and verifies-or-recomputes fingerprints on every accepted phase
+/// report, so the model never has to mint either.
+///
+/// # Panics
+///
+/// Panics when the generated schema drops the patched Diagnostic
+/// definition — a compile-adjacent invariant, not a runtime input
+/// condition.
+#[must_use]
+pub fn phase_report() -> Value {
+    let mut schema = root_schema::<PhaseReportAnswer>(
+        "phase-report.schema.json",
+        "Emery build-phase answer",
+        "Generated judgment-answer schema — generated from the Rust wire types by \
+         project::answers; do not edit. Validates the schema-gated answer to a target \
+         adapter's build, repair, verify, or review operation (RFC-90): one typed phase \
+         report. Blocking findings and dispatch errors determine failure — there is no \
+         adapter-selected success/failure. Finding `id` and `fingerprint` are optional on \
+         the answer; the engine renumbers and recomputes both.",
+    );
+    let required = schema
+        .pointer_mut("/$defs/Diagnostic/required")
+        .and_then(Value::as_array_mut)
+        .expect("phase answer schema carries the Diagnostic required set");
+    required.retain(|entry| entry != "id" && entry != "fingerprint");
+    schema
 }
 
 /// The plan-time lead-reconciliation answer schema.

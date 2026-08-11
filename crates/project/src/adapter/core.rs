@@ -82,6 +82,32 @@ pub struct BuildInputDeclaration {
     pub required: bool,
 }
 
+/// Grant grammar for one writable slice artifact (RFC-90 D5),
+/// mirroring the WIT `writable-artifact-kind` enum.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum WritableArtifactKind {
+    /// The grant names exactly one slice-relative file.
+    File,
+    /// The grant names a directory and its descendants.
+    Tree,
+}
+
+/// One target-declared writable slice artifact from the metadata
+/// answer (RFC-90 D5), mirroring the WIT `writable-artifact` record.
+///
+/// Paths use `/`, must be relative, and admit no glob or `..`
+/// grammar. The engine rejects any staged-artifact change outside the
+/// declared grants, even when the phase omits it from `written`.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct WritableArtifactDeclaration {
+    /// Slice-relative path of the granted file or tree root.
+    pub path: String,
+    /// File or tree grant.
+    pub kind: WritableArtifactKind,
+}
+
 /// Where an adapter component was located on disk. The carried path is
 /// the single `.wasm` component file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,6 +206,11 @@ pub struct TargetAdapter {
     /// tokens it accepts, whether projects must declare platforms, and
     /// the default set for greenfield scaffolding.
     pub platforms: Option<PlatformsCapability>,
+    /// Typed writable slice-artifact grants from the metadata answer
+    /// (RFC-90 D5). The build phase's staged-artifact gate rejects any
+    /// change outside these grants. Empty when the target writes no
+    /// slice artifacts.
+    pub writable_artifacts: Vec<WritableArtifactDeclaration>,
 }
 
 /// A resolved [`SourceAdapter`] paired with its deployment-neutral
@@ -215,12 +246,19 @@ impl SourceAdapter {
 
 impl TargetAdapter {
     /// Iterator over the target operations this adapter serves, in
-    /// ascending kebab-name order (`build < guidance < merge`) — the
+    /// ascending kebab-name order
+    /// (`build < guidance < merge < repair < review < verify`) — the
     /// axis's closed WIT operation set (`wit/emery.wit`:
-    /// guidance/build/merge).
+    /// guidance/build/repair/verify/review/merge, RFC-90).
     pub(crate) fn operations() -> impl Iterator<Item = &'static TargetOperation> {
-        const WIT_OPERATIONS: &[TargetOperation] =
-            &[TargetOperation::Build, TargetOperation::Guidance, TargetOperation::Merge];
+        const WIT_OPERATIONS: &[TargetOperation] = &[
+            TargetOperation::Build,
+            TargetOperation::Guidance,
+            TargetOperation::Merge,
+            TargetOperation::Repair,
+            TargetOperation::Review,
+            TargetOperation::Verify,
+        ];
         WIT_OPERATIONS.iter()
     }
 }

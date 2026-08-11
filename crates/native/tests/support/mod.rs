@@ -12,8 +12,9 @@
 
 use adapter::registry::Doc;
 use adapter::seam::{
-    BuildContext, BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, Platform, Report,
-    SourceMetadata, Status, TargetMetadata, Workspace,
+    BuildContext, BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding,
+    PhaseReport, PhaseSource, Platform, RepairOrigin, Report, SourceMetadata, Status,
+    TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
@@ -82,6 +83,7 @@ impl Target for Probe {
             emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
+            writable_artifacts: Vec::new(),
         }
     }
 
@@ -96,8 +98,28 @@ impl Target for Probe {
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, slice: &str, inputs: &[Input], _context: &BuildContext,
         _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(echo(format!("build:{slice}:{}", inputs.len())))
+    ) -> Result<PhaseReport, Error> {
+        Ok(phase_echo(format!("build:{slice}:{}", inputs.len())))
+    }
+
+    async fn verify<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn repair<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
+        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn review<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
+        _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
     }
 
     async fn merge<P: Model>(
@@ -127,6 +149,7 @@ impl Target for FailGuidance {
             emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
+            writable_artifacts: Vec::new(),
         }
     }
 
@@ -141,8 +164,28 @@ impl Target for FailGuidance {
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
         _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn verify<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn repair<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
+        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn review<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
+        _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
     }
 
     async fn merge<P: Model>(
@@ -168,6 +211,7 @@ impl Target for Floored {
             emery_floor: Some("9.9.9".to_string()),
             inputs: Vec::new(),
             platforms: None,
+            writable_artifacts: Vec::new(),
         }
     }
 
@@ -182,8 +226,28 @@ impl Target for Floored {
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
         _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn verify<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn repair<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
+        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn review<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
+        _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
     }
 
     async fn merge<P: Model>(
@@ -244,6 +308,7 @@ impl Target for Pinned {
             emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
+            writable_artifacts: Vec::new(),
         }
     }
 
@@ -258,8 +323,28 @@ impl Target for Pinned {
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
         _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn verify<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn repair<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
+        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn review<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
+        _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
     }
 
     async fn merge<P: Model>(
@@ -285,6 +370,7 @@ impl Target for BadVersion {
             emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
+            writable_artifacts: Vec::new(),
         }
     }
 
@@ -299,8 +385,28 @@ impl Target for BadVersion {
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
         _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn verify<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn repair<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
+        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn review<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
+        _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
     }
 
     async fn merge<P: Model>(
@@ -326,6 +432,7 @@ impl Target for ProbeV2 {
             emery_floor: None,
             inputs: Vec::new(),
             platforms: None,
+            writable_artifacts: Vec::new(),
         }
     }
 
@@ -340,8 +447,28 @@ impl Target for ProbeV2 {
     async fn build<P: Model>(
         _model: &P, _ctx: &Context<'_>, _slice: &str, _inputs: &[Input], _context: &BuildContext,
         _workspace: &Workspace,
-    ) -> Result<Report, Error> {
-        Ok(Report::success())
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::completed(PhaseSource::Deterministic))
+    }
+
+    async fn verify<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn repair<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _origin: RepairOrigin,
+        _findings: &[PhaseFinding], _continuation: Option<&[u8]>, _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
+    }
+
+    async fn review<P: Model>(
+        _model: &P, _ctx: &Context<'_>, _slice: &str, _continuation: Option<&[u8]>,
+        _workspace: &Workspace,
+    ) -> Result<PhaseReport, Error> {
+        Ok(PhaseReport::not_applicable())
     }
 
     async fn merge<P: Model>(
@@ -362,5 +489,17 @@ fn echo(path: String) -> Report {
             path,
         }],
         ui_surface: None,
+    }
+}
+
+/// A completed phase report whose single output path records the
+/// invocation.
+fn phase_echo(path: String) -> PhaseReport {
+    PhaseReport {
+        outputs: vec![BuildOutput {
+            platform: Platform::Core,
+            path,
+        }],
+        ..PhaseReport::completed(PhaseSource::Deterministic)
     }
 }
