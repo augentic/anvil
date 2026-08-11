@@ -12,7 +12,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::build_record::BuildRecord;
 use project::handler::{Anchor, Ctx, Render};
-use project::journal::{DeferralOrigin, Event, EventKind};
+use project::journal::{Event, EventKind};
 use project::plan::{Plan, collect_events};
 use project::seam::Workspaces;
 use project::snapshot::SnapshotId;
@@ -93,7 +93,7 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
 
 /// The debt the archived change carried into the baseline: each
 /// committed wave's deferred member-set snapshot, joined back to its
-/// covering `gap.deferred` fact for reason, origin, and age.
+/// covering `gap.deferred` fact for reason and age.
 fn carried_debt(
     layout: project::config::Layout<'_>, plan: &Plan, now: Timestamp,
 ) -> Result<Vec<DebtRow>, Error> {
@@ -110,14 +110,13 @@ fn carried_debt(
             // to a placeholder row rather than dropping the debt.
             let deferral = deferrals
                 .get(&(entry.name.as_str().to_string(), member.requirement_digest.clone()))
-                .map(|(reason, origin, deferred_at)| {
+                .map(|(reason, deferred_at)| {
                     let age_days =
                         u64::try_from((now.as_second() - deferred_at.as_second()).max(0))
                             .unwrap_or(0)
                             / 86_400;
                     DebtDetail {
                         reason: reason.clone(),
-                        origin: *origin,
                         deferred_at: *deferred_at,
                         age_days,
                     }
@@ -155,26 +154,22 @@ fn latest_wave_deferred<'e>(
     })
 }
 
-/// Latest `gap.deferred` detail per `(slice, digest)`. Retractions are
-/// deliberately not folded in: the wave snapshot is the authority that
-/// the debt landed, and a post-merge retraction must not erase the
-/// summary's reason.
-fn latest_deferrals(
-    events: &[Event],
-) -> BTreeMap<(String, String), (String, DeferralOrigin, Timestamp)> {
+/// Latest `gap.deferred` detail per `(slice, digest)` — the wave
+/// snapshot is the authority that the debt landed; this join only
+/// recovers the covering fact's reason and date.
+fn latest_deferrals(events: &[Event]) -> BTreeMap<(String, String), (String, Timestamp)> {
     let mut latest = BTreeMap::new();
     for event in events {
         if let EventKind::GapDeferred {
             slice,
             requirement_digest,
             reason,
-            origin,
             ..
         } = &event.kind
         {
             latest.insert(
                 (slice.as_str().to_string(), requirement_digest.clone()),
-                (reason.clone(), *origin, event.timestamp),
+                (reason.clone(), event.timestamp),
             );
         }
     }
@@ -258,8 +253,6 @@ pub struct DebtRow {
 pub struct DebtDetail {
     /// Covering deferral's reason.
     pub reason: String,
-    /// Which surface dispositioned the requirement.
-    pub origin: DeferralOrigin,
     /// When the covering fact was appended.
     #[serde(with = "project::serde_time::rfc3339")]
     pub deferred_at: Timestamp,
@@ -293,8 +286,8 @@ impl ArchiveBody {
                     let noun = if detail.age_days == 1 { "day" } else { "days" };
                     writeln!(
                         w,
-                        "      {}/{} — {} ({}, {} {noun})",
-                        row.slice, row.req, detail.reason, detail.origin, detail.age_days
+                        "      {}/{} — {} ({} {noun})",
+                        row.slice, row.req, detail.reason, detail.age_days
                     )?;
                 }
                 None => writeln!(

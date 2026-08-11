@@ -11,7 +11,7 @@ use change::{LoopStep, plan};
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
-use project::journal::{DeferralOrigin, EventKind, LeafSpecCoverage, read_union};
+use project::journal::{EventKind, LeafSpecCoverage, read_union};
 use project::plan::dir_cid;
 
 fn suite_answers() -> Vec<String> {
@@ -241,11 +241,7 @@ async fn refine_under_epoch_gate_mints_and_drains() {
         .into_iter()
         .filter_map(|event| match event.kind {
             EventKind::GapDeferred {
-                slice,
-                req,
-                reason,
-                origin: DeferralOrigin::Policy,
-                ..
+                slice, req, reason, ..
             } => Some((slice.as_str().to_string(), req, reason)),
             _ => None,
         })

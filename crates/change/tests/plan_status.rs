@@ -28,8 +28,8 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event as JournalEvent, EventKind,
-    LeafSpecCoverage, append_for,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event as JournalEvent, EventKind, LeafSpecCoverage,
+    append_for,
 };
 use support::{change, change_with_deps, plan_with_changes};
 
@@ -721,7 +721,6 @@ mod milestones {
                 req: req.into(),
                 requirement_digest: title_digest(title),
                 reason: "carried to next change".into(),
-                origin: DeferralOrigin::Operator,
             },
         )
     }

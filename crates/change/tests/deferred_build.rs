@@ -14,7 +14,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::build_record::BuildRecord;
 use project::config::Layout;
-use project::journal::{DEFAULT_WRITER, DeferralOrigin, Event, EventKind, append_for};
+use project::journal::{DEFAULT_WRITER, Event, EventKind, append_for};
 use project::seam::wire::BuildRequest;
 
 /// The minimal profile whose refine mints one `[unknown]` row
@@ -70,7 +70,6 @@ async fn defer_req(session: &Session) {
             req: "REQ-001".into(),
             requirement_digest: row.requirement_digest.clone().expect("digest-bearing row"),
             reason: "carried to the next change".into(),
-            origin: DeferralOrigin::Operator,
         },
     );
     append_for(Layout::new(session.root()), DEFAULT_WRITER, &[event]).expect("append deferral");

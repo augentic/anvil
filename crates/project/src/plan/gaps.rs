@@ -14,7 +14,7 @@ use super::in_scope;
 use super::model::{Entry, Plan};
 use crate::config::Layout;
 use crate::handler::Render;
-use crate::journal::{DeferralOrigin, Event, EventKind};
+use crate::journal::{Event, EventKind};
 use crate::slice::{RequirementBody, SliceMetadata};
 
 /// Computed gap disposition (RFC-86a D2): joined from the deferral
@@ -30,15 +30,12 @@ pub enum Disposition {
 }
 
 /// Covering deferral detail on a deferred row (RFC-86a D7): the
-/// reason, origin, and timestamp of the latest live `gap.deferred`
-/// fact.
+/// reason and timestamp of the latest live `gap.deferred` fact.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Deferral {
-    /// Operator reason, or the synthesized policy reason.
+    /// The synthesized gate-time reason.
     pub reason: String,
-    /// Which surface dispositioned the requirement.
-    pub origin: DeferralOrigin,
     /// When the covering fact was appended — the deferral date the
     /// merge fold stamps into the baseline debt note (RFC-86a D5).
     #[serde(with = "crate::serde_time::rfc3339")]
@@ -108,7 +105,7 @@ pub struct GapRow {
     /// `[divergence]` rows take no disposition (RFC-86a D2).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disposition: Option<Disposition>,
-    /// Covering deferral's reason and origin — present exactly when
+    /// Covering deferral's reason — present exactly when
     /// [`Self::disposition`] is deferred (RFC-86a D7).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deferral: Option<Deferral>,
@@ -181,8 +178,8 @@ impl GapsBody {
     }
 
     /// Render the deferred rows of one gap kind under `heading`, each
-    /// with the covering fact's reason and origin. Deferred conflicts
-    /// and deferred unknowns get separate blocks (RFC-86a D6/D7).
+    /// with the covering fact's reason. Deferred conflicts and
+    /// deferred unknowns get separate blocks (RFC-86a D6/D7).
     fn render_deferred(
         &self, w: &mut dyn std::io::Write, status: RequirementStatus, heading: &str,
     ) -> std::io::Result<()> {
@@ -197,10 +194,8 @@ impl GapsBody {
                 headed = true;
             }
             // Deferred rows carry the covering fact by construction.
-            let detail = row
-                .deferral
-                .as_ref()
-                .map_or_else(String::new, |d| format!(" — {} ({})", d.reason, d.origin));
+            let detail =
+                row.deferral.as_ref().map_or_else(String::new, |d| format!(" — {}", d.reason));
             writeln!(w, "  {}/{} {}{detail}", row.slice, row.req, truncate(&row.summary, 48))?;
         }
         Ok(())
@@ -309,7 +304,7 @@ pub fn plan_gaps_body(
 
 /// Disposition and covering deferral for one finding: `[divergence]`
 /// takes none; a live deferral on the row's `(slice, digest)` defers
-/// it with the fact's reason and origin; everything else is open
+/// it with the fact's reason; everything else is open
 /// (including digest-less `spec.md`-fallback rows, which no fact can
 /// match).
 fn disposition(
@@ -332,8 +327,8 @@ type FactOrder = (jiff::Timestamp, String, u64);
 
 /// Live deferral detail per `(slice, digest)`: the latest
 /// `gap.deferred` fact wins by `(timestamp, writer, sequence)` —
-/// its reason and origin supersede — regardless of the slice of
-/// `events` being pre-sorted; duplicate facts fold idempotently.
+/// its reason supersedes — regardless of the slice of `events` being
+/// pre-sorted; duplicate facts fold idempotently.
 fn live_deferrals(events: &[Event]) -> BTreeMap<(String, String), Deferral> {
     let mut latest: BTreeMap<(String, String), (FactOrder, Deferral)> = BTreeMap::new();
     for event in events {
@@ -341,7 +336,6 @@ fn live_deferrals(events: &[Event]) -> BTreeMap<(String, String), Deferral> {
             slice,
             requirement_digest,
             reason,
-            origin,
             ..
         } = &event.kind
         else {
@@ -349,7 +343,6 @@ fn live_deferrals(events: &[Event]) -> BTreeMap<(String, String), Deferral> {
         };
         let deferral = Deferral {
             reason: reason.clone(),
-            origin: *origin,
             deferred_at: event.timestamp,
         };
         let order = (event.timestamp, event.writer.clone(), event.sequence);

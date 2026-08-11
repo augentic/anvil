@@ -11,9 +11,8 @@ use artifacts::spec::provenance::RequirementStatus;
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
-use project::journal::DeferralOrigin;
 
-/// 2023-11-14T22:13:20Z — ten days after the operator note's date.
+/// 2023-11-14T22:13:20Z — ten days after the older note's date.
 fn ts() -> Timestamp {
     Timestamp::from_second(1_700_000_000).expect("valid timestamp")
 }
@@ -25,14 +24,14 @@ ID: REQ-001\n\
 Sources: []\n\
 Status: unknown\n\n\
 The login flow handles lockout; behaviour is not evidenced.\n\n\
-Note: deferred — origin: operator; change: demo; date: 2023-11-04; reason: lockout deferred to next change\n\n\
+Note: deferred — change: demo; date: 2023-11-04; reason: lockout deferred to next change\n\n\
 ### Requirement: session TTL [conflict]\n\
 ID: REQ-002\n\
 Sources: docs, code\n\
 Status: conflict\n\n\
 Note: docs says 30 minutes\n\
 Note: code says 15 minutes\n\n\
-Note: deferred — origin: policy; change: demo; date: 2023-11-14; reason: deferred by gap-policy under epoch 2023-11-14T00:00:00Z\n\n\
+Note: deferred — change: demo; date: 2023-11-14; reason: deferred by gap-policy under epoch 2023-11-14T00:00:00Z\n\n\
 ### Requirement: greeting text\n\
 ID: REQ-003\n\
 Sources: docs\n\
@@ -62,9 +61,9 @@ fn stage_baseline(specs: &Path) {
 }
 
 /// Acceptance 7: each carried row projects with every note field —
-/// reason, origin, originating change, and age — agreed and
-/// divergence rows are excluded, and a note-less gap row is listed
-/// without deferral detail.
+/// reason, originating change, and age — agreed and divergence rows
+/// are excluded, and a note-less gap row is listed without deferral
+/// detail.
 #[test]
 fn baseline_rows_carry_note_fields() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -78,9 +77,8 @@ fn baseline_rows_carry_note_fields() {
     assert_eq!((unknown.domain.as_str(), unknown.req.as_str()), ("auth", "REQ-001"));
     assert_eq!(unknown.status, RequirementStatus::Unknown);
     assert_eq!(unknown.summary, "password login");
-    let note = unknown.deferral.as_ref().expect("operator note");
+    let note = unknown.deferral.as_ref().expect("deferral note");
     assert_eq!(note.reason, "lockout deferred to next change");
-    assert_eq!(note.origin, DeferralOrigin::Operator);
     assert_eq!(note.change, "demo");
     assert_eq!(note.deferred_on, "2023-11-04");
     assert_eq!(note.age_days, 10);
@@ -88,8 +86,7 @@ fn baseline_rows_carry_note_fields() {
     let conflict = &rows[1];
     assert_eq!((conflict.domain.as_str(), conflict.req.as_str()), ("auth", "REQ-002"));
     assert_eq!(conflict.status, RequirementStatus::Conflict);
-    let note = conflict.deferral.as_ref().expect("policy note");
-    assert_eq!(note.origin, DeferralOrigin::Policy);
+    let note = conflict.deferral.as_ref().expect("deferral note");
     assert!(note.reason.starts_with("deferred by gap-policy under epoch "), "{}", note.reason);
     assert_eq!(note.age_days, 0);
 
@@ -123,7 +120,7 @@ fn mangled_note_degrades_to_no_detail() {
          ID: REQ-001\n\
          Sources: []\n\
          Status: unknown\n\n\
-         Note: deferred — origin: sometimes; change: demo; date: soon; reason: mangled\n",
+         Note: deferred — change: demo; date: soon; reason: mangled\n",
     )
     .expect("write spec");
 
@@ -134,7 +131,7 @@ fn mangled_note_degrades_to_no_detail() {
 
 /// The `emery debt` operation over an initialised project: conflicts
 /// render separately from unknowns (D6 visibility), each line carrying
-/// reason, origin, change, and age.
+/// reason, change, and age.
 #[tokio::test]
 async fn handler_renders_conflicts_separately() {
     let session = Session::scripted("mock", Vec::new());
@@ -154,8 +151,7 @@ async fn handler_renders_conflicts_separately() {
     // the pinned-clock age arithmetic is covered by the kernel tests.
     assert!(
         text.contains(
-            "auth/REQ-001 password login — lockout deferred to next change \
-             (operator, change demo, "
+            "auth/REQ-001 password login — lockout deferred to next change (change demo, "
         ),
         "{text}"
     );
@@ -186,7 +182,7 @@ fn markdown_section_renders_inventory() {
     assert!(
         section.contains(
             "- auth/REQ-001 password login — lockout deferred to next change \
-             (operator, change demo, 10 days)"
+             (change demo, 10 days)"
         ),
         "{section}"
     );

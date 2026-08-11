@@ -7,7 +7,7 @@ use jiff::Timestamp;
 use mock::session::Session;
 use project::build_record::BuildRecord;
 use project::config::Layout;
-use project::journal::{DEFAULT_WRITER, DeferralOrigin, Event, EventKind, append_for};
+use project::journal::{DEFAULT_WRITER, Event, EventKind, append_for};
 use project::name::SliceName;
 use project::seam::wire::{BuildReport, BuildStatus};
 use project::slice::RequirementBody;
@@ -66,7 +66,6 @@ async fn identical_bodies_share_one_digest_without_drift() {
                 req: "REQ-001".into(),
                 requirement_digest: digest.clone(),
                 reason: "carried to the next change".into(),
-                origin: DeferralOrigin::Operator,
             },
         )],
     )

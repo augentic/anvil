@@ -5,7 +5,7 @@
 use error::Error;
 use jiff::Timestamp;
 use project::config::Layout;
-use project::journal::{self, DeferralOrigin, Event, EventKind};
+use project::journal::{self, Event, EventKind};
 use project::plan::epoch::EpochFreshness;
 use project::plan::{Disposition, GapRow, Plan, collect_events, plan_gaps_body};
 
@@ -14,9 +14,9 @@ use project::plan::{Disposition, GapRow, Plan, collect_events, plan_gaps_body};
 ///
 /// Freshness is the shared [`project::plan::epoch::freshness`]
 /// predicate — the same rule `plan status` projects as Authorized.
-/// The gate mints one `gap.deferred` fact per open row (`origin:
-/// policy`, synthesized reason) and build proceeds — minting is
-/// gate-time because `refine-under-epoch` rows do not exist earlier.
+/// The gate mints one `gap.deferred` fact per open row (synthesized
+/// reason) and build proceeds — minting is gate-time because
+/// `refine-under-epoch` rows do not exist earlier.
 /// A digest-less legacy row has no match key and mints nothing.
 ///
 /// # Errors
@@ -70,9 +70,9 @@ pub fn enforce_before_build(
     Ok(())
 }
 
-/// One `gap.deferred` fact per open row (`origin: policy`, the
-/// synthesized epoch reason). A digest-less legacy row contributes no
-/// fact — it has no match key for any fact to cover.
+/// One `gap.deferred` fact per open row (the synthesized epoch
+/// reason). A digest-less legacy row contributes no fact — it has no
+/// match key for any fact to cover.
 fn policy_deferrals(open: &[&GapRow], now: Timestamp, epoch: Timestamp) -> Vec<Event> {
     let reason = format!("deferred by gap-policy under epoch {epoch}");
     open.iter()
@@ -85,7 +85,6 @@ fn policy_deferrals(open: &[&GapRow], now: Timestamp, epoch: Timestamp) -> Vec<E
                     req: row.req.clone(),
                     requirement_digest: digest.clone(),
                     reason: reason.clone(),
-                    origin: DeferralOrigin::Policy,
                 },
             ))
         })

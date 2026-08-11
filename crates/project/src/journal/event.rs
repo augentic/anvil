@@ -517,36 +517,9 @@ pub enum EventKind {
         req: String,
         /// Canonical requirement-body digest (`sha256:<hex>`).
         requirement_digest: String,
-        /// Operator reason, or the synthesized policy reason.
+        /// The synthesized gate-time reason.
         reason: String,
-        /// Which surface dispositioned the requirement.
-        origin: DeferralOrigin,
     },
-}
-
-/// Closed origin on gap deferral facts (RFC-86a D2 / D3).
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-    strum::Display,
-    strum::EnumString,
-)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum DeferralOrigin {
-    /// The retired explicit operator act (`emery plan defer`, now
-    /// removed) — read from historical fact logs only.
-    Operator,
-    /// Unconditional gate-time minting at the build gate.
-    Policy,
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`]

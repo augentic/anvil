@@ -16,8 +16,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event, EventKind, LeafSpecCoverage,
-    append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, append_for, read_union,
 };
 use project::plan::{Disposition, Plan, dir_cid};
 use support::plan_with_changes;
@@ -62,29 +61,27 @@ async fn init_mock(session: &Session) {
     .expect("init");
 }
 
-/// `(slice, req, reason)` of every `origin: policy` deferral fact in
-/// the journal union.
-fn policy_deferral_facts(root: &std::path::Path) -> Vec<(String, String, String)> {
+/// `(slice, req, reason)` of every gate-minted deferral fact in the
+/// journal union, told apart from pre-seeded facts by the gate's
+/// synthesized epoch reason.
+fn gate_minted_facts(root: &std::path::Path) -> Vec<(String, String, String)> {
     read_union(Layout::new(root))
         .expect("union")
         .into_iter()
         .filter_map(|event| match event.kind {
             EventKind::GapDeferred {
-                slice,
-                req,
-                reason,
-                origin: DeferralOrigin::Policy,
-                ..
-            } => Some((slice.as_str().to_string(), req, reason)),
+                slice, req, reason, ..
+            } if reason.starts_with("deferred by gap-policy under epoch ") => {
+                Some((slice.as_str().to_string(), req, reason))
+            }
             _ => None,
         })
         .collect()
 }
 
 /// Cover one `<slice>/<req>` with a pre-existing durable deferral
-/// fact — standing in for an earlier gate-time mint, now that the
-/// operator `plan defer` verb is gone. The `origin: operator` fact
-/// stays distinguishable from the gate's `origin: policy` mints.
+/// fact — standing in for an earlier gate-time mint. Its reason stays
+/// distinguishable from the gate's synthesized epoch reason.
 async fn defer(session: &Session, slice: &str, req: &str, reason: &str) {
     let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
     let row = gaps
@@ -100,7 +97,6 @@ async fn defer(session: &Session, slice: &str, req: &str, reason: &str) {
             req: req.into(),
             requirement_digest: digest,
             reason: reason.into(),
-            origin: DeferralOrigin::Operator,
         },
     );
     append_for(Layout::new(session.root()), DEFAULT_WRITER, &[event]).expect("append deferral");
@@ -130,7 +126,7 @@ fn live_plan_digest(root: &std::path::Path) -> String {
 
 #[tokio::test]
 async fn open_unknown_deferred_at_gate() {
-    // The gate dispositions open rows itself — one `origin: policy`
+    // The gate dispositions open rows itself — one `gap.deferred`
     // fact with the synthesized epoch reason — and build proceeds
     // (the post-gate failure here is the missing base pins, a stop).
     let session = Session::bare(Vec::new());
@@ -153,7 +149,7 @@ async fn open_unknown_deferred_at_gate() {
         .expect_err("build fails later without pins; the gap gate must not");
     assert_eq!(err_code(&err), "plan-execute-stopped", "open unknown never gates: {err}");
 
-    let facts = policy_deferral_facts(session.root());
+    let facts = gate_minted_facts(session.root());
     assert_eq!(facts.len(), 1, "one policy fact per open row: {facts:?}");
     let (slice, req, reason) = &facts[0];
     assert_eq!(slice, "a");
@@ -193,7 +189,7 @@ async fn open_conflict_deferred_at_gate() {
         .expect_err("build fails later without pins; the gap gate must not");
     assert_eq!(err_code(&err), "plan-execute-stopped", "open conflict never gates: {err}");
 
-    let facts = policy_deferral_facts(session.root());
+    let facts = gate_minted_facts(session.root());
     assert_eq!(facts.len(), 1, "one policy fact for the conflict: {facts:?}");
     assert_eq!(facts[0].1, "REQ-001");
 
@@ -224,8 +220,8 @@ async fn deferred_unknown_passes_gap_gate() {
         .expect_err("build may fail later without pins; gap gate must not");
     assert_eq!(err_code(&err), "plan-execute-stopped", "fresh epoch must not be stale: {err}");
     assert!(
-        policy_deferral_facts(session.root()).is_empty(),
-        "the operator's fact covers — the gate mints nothing"
+        gate_minted_facts(session.root()).is_empty(),
+        "the pre-existing fact covers — the gate mints nothing"
     );
 
     let started = read_union(Layout::new(session.root()))
@@ -261,8 +257,8 @@ async fn deferred_conflict_passes_gap_gate() {
         .expect_err("build may fail later without pins; gap gate must not");
     assert_eq!(err_code(&err), "plan-execute-stopped", "{err}");
     assert!(
-        policy_deferral_facts(session.root()).is_empty(),
-        "the operator's fact covers — the gate mints nothing"
+        gate_minted_facts(session.root()).is_empty(),
+        "the pre-existing fact covers — the gate mints nothing"
     );
 }
 
@@ -296,7 +292,7 @@ async fn deferral_covers_fresh_epoch_without_resupply() {
         .expect_err("build may fail later without pins; gap gate must not");
     assert_eq!(err_code(&err), "plan-execute-stopped", "{err}");
     assert!(
-        policy_deferral_facts(session.root()).is_empty(),
+        gate_minted_facts(session.root()).is_empty(),
         "the durable deferral covers both epochs — no gate-time mint"
     );
 
@@ -348,11 +344,11 @@ async fn digest_lapsed_deferral_reminted_at_gate() {
         .expect_err("build fails later without pins; the gap gate must not");
     assert_eq!(err_code(&err), "plan-execute-stopped", "{err}");
 
-    let facts = policy_deferral_facts(session.root());
+    let facts = gate_minted_facts(session.root());
     assert_eq!(facts.len(), 1, "the lapsed row is re-minted at the gate: {facts:?}");
     assert!(
         facts[0].2.starts_with("deferred by gap-policy under epoch "),
-        "gate-time fact, not the operator's: {}",
+        "gate-time fact, not the pre-seeded one: {}",
         facts[0].2
     );
     let gaps = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
@@ -381,7 +377,7 @@ async fn divergence_alone_does_not_block() {
         .expect_err("build may fail later without pins; divergence must not gate");
     assert_eq!(err_code(&err), "plan-execute-stopped", "{err}");
     assert!(
-        policy_deferral_facts(session.root()).is_empty(),
+        gate_minted_facts(session.root()).is_empty(),
         "divergence takes no disposition — nothing to mint"
     );
 }

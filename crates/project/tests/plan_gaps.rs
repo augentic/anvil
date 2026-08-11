@@ -8,7 +8,7 @@ use std::path::Path;
 use artifacts::spec::provenance::RequirementStatus;
 use jiff::Timestamp;
 use project::config::Layout;
-use project::journal::{DeferralOrigin, Event, EventKind};
+use project::journal::{Event, EventKind};
 use project::plan::{
     DebtCounts, Deferral, Disposition, Entry, GapRow, Plan, SharedLeadRollup, SliceSourceBinding,
     in_scope, plan_gaps_body,
@@ -78,7 +78,6 @@ fn deferred(second: i64, writer: &str, sequence: u64, slice: &str, digest: &str)
             req: "REQ-000".into(),
             requirement_digest: digest.into(),
             reason: "deferred to next change".into(),
-            origin: DeferralOrigin::Operator,
         },
     }
 }
@@ -380,7 +379,6 @@ fn two_writer_union_projects_one_disposition() {
             req: "REQ-000".into(),
             requirement_digest: digest.clone(),
             reason: reason.into(),
-            origin: DeferralOrigin::Operator,
         },
     };
 
@@ -409,7 +407,7 @@ fn render(body: &project::plan::GapsBody) -> String {
 }
 
 #[test]
-fn deferred_rows_carry_reason_and_origin() {
+fn deferred_rows_carry_reason() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -421,15 +419,14 @@ fn deferred_rows_carry_reason_and_origin() {
         body.rows[0].deferral,
         Some(Deferral {
             reason: "deferred to next change".into(),
-            origin: DeferralOrigin::Operator,
             deferred_at: ts(1),
         }),
-        "deferred row carries the covering fact's reason, origin, and timestamp"
+        "deferred row carries the covering fact's reason and timestamp"
     );
     assert_eq!(body.rows[1].deferral, None, "open row carries no deferral detail");
     assert_eq!(body.rows[2].deferral, None, "divergence row carries no deferral detail");
 
-    // Re-deferring supersedes: the latest fact's reason and origin win.
+    // Re-deferring supersedes: the latest fact's reason wins.
     let mut events = events;
     events.push(Event {
         timestamp: ts(2),
@@ -440,7 +437,6 @@ fn deferred_rows_carry_reason_and_origin() {
             req: "REQ-001".into(),
             requirement_digest: title_digest("reset path not evidenced"),
             reason: "deferred by gap-policy under epoch 2024".into(),
-            origin: DeferralOrigin::Policy,
         },
     });
     let body = plan_gaps_body(&staged, Layout::new(root), &events).expect("gaps");
@@ -448,7 +444,6 @@ fn deferred_rows_carry_reason_and_origin() {
         body.rows[0].deferral,
         Some(Deferral {
             reason: "deferred by gap-policy under epoch 2024".into(),
-            origin: DeferralOrigin::Policy,
             deferred_at: ts(2),
         })
     );
@@ -475,13 +470,13 @@ fn render_disposition_column_and_separated_deferred_sections() {
     assert!(divergence_row.contains('—'), "divergence takes no disposition: {divergence_row}");
 
     // Deferred conflicts render separately from deferred unknowns
-    // (D6), each row with reason and origin.
+    // (D6), each row with the covering fact's reason.
     let unknowns_at = text.find("deferred unknowns:").expect("deferred unknowns section");
     let conflicts_at = text.find("deferred conflicts:").expect("deferred conflicts section");
     assert!(unknowns_at < conflicts_at, "unknowns before conflicts: {text}");
     let unknowns_section = &text[unknowns_at..conflicts_at];
     assert!(unknowns_section.contains("auth-login/REQ-001"), "{text}");
-    assert!(unknowns_section.contains("deferred to next change (operator)"), "{text}");
+    assert!(unknowns_section.contains("deferred to next change"), "{text}");
     let conflicts_section = &text[conflicts_at..];
     assert!(conflicts_section.contains("auth-login/REQ-002"), "{text}");
     assert!(!conflicts_section.contains("REQ-001"), "conflict section carries conflicts only");

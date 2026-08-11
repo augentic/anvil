@@ -8,7 +8,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    DEFAULT_WRITER, DeferralOrigin, Event, EventKind, FactEpochRef, append_for, append_one, claim,
+    DEFAULT_WRITER, Event, EventKind, FactEpochRef, append_for, append_one, claim,
     emit_best_effort, handlers, read_union,
 };
 
@@ -89,20 +89,13 @@ fn gap_deferral_events_round_trip() {
             req: "REQ-003".into(),
             requirement_digest: "sha256:abc123".into(),
             reason: "reset path deferred to next change".into(),
-            origin: DeferralOrigin::Operator,
         },
     };
     let wire = serde_json::to_string(&deferred).expect("serialize");
     assert!(wire.contains(r#""event":"gap.deferred""#), "{wire}");
     assert!(wire.contains(r#""slice":"auth-login""#), "{wire}");
     assert!(wire.contains(r#""requirement-digest":"sha256:abc123""#), "{wire}");
-    assert!(wire.contains(r#""origin":"operator""#), "{wire}");
     assert_eq!(serde_json::from_str::<Event>(&wire).expect("parse"), deferred);
-
-    assert_eq!(
-        serde_json::to_value(DeferralOrigin::Policy).expect("origin"),
-        serde_json::Value::String("policy".into())
-    );
 
     // Through the per-writer file and back into the union.
     let tmp = tempfile::TempDir::new().expect("tempdir");
