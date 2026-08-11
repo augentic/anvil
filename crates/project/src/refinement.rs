@@ -10,8 +10,8 @@ use std::path::{Path, PathBuf};
 use diagnostics::digest::sha256_hex;
 use error::Error;
 pub use freshness::{
-    Freshness, Live, MISSING_CODE, STALE_CODE, findings, freshness, freshness_with,
-    latest_archive, predecessor_digest,
+    Freshness, Live, MISSING_CODE, STALE_CODE, findings, freshness, freshness_with, latest_archive,
+    predecessor_digest,
 };
 use serde::{Deserialize, Serialize};
 

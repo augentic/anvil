@@ -367,7 +367,8 @@ async fn postflight_failure_keeps() {
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
     stage_built_slice(&session, wave_digest.as_str());
-    fs::write(session.root().join(mock::behaviour::POSTFLIGHT_FAIL), "").expect("postflight marker");
+    fs::write(session.root().join(mock::behaviour::POSTFLIGHT_FAIL), "")
+        .expect("postflight marker");
 
     let err = merge(&session, "login-flow").await.expect_err("postflight fails");
     assert!(err.to_string().contains("target-merge-postflight-failed"), "{err}");

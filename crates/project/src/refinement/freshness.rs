@@ -13,7 +13,9 @@ use error::Error;
 use super::{Kind, Manifest, VERSION, file_digest};
 use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
-use crate::plan::{Entry, Plan, Projections, SourceBinding, contributing_leads, dir_cid, source_cid};
+use crate::plan::{
+    Entry, Plan, Projections, SourceBinding, contributing_leads, dir_cid, source_cid,
+};
 use crate::snapshot::SnapshotId;
 
 /// `emery slice validate` code for an absent refinement manifest.
@@ -41,18 +43,28 @@ pub enum Freshness {
     },
 }
 
-/// Per-run cache of the freshness inputs shared by every leaf: the
-/// live baseline cid, the newest journaled post-merge baseline
-/// (RFC-91 D4), per-source-key live cids, and the declared target
-/// binding. Manifest digests are never cached here — the refinement
-/// drain rewrites them between checks. One [`Live`] value serves one
-/// project root; the shared inputs do not move while a drain runs.
+/// Per-run cache of the freshness inputs shared by every leaf.
+///
+/// Covers the live baseline cid, the newest journaled post-merge
+/// baseline (RFC-91 D4), per-source-key live cids, and the declared
+/// target binding. Manifest digests are never cached here — the
+/// refinement drain rewrites them between checks. One [`Live`] value
+/// serves one project root; the shared inputs do not move mid-drain.
 #[derive(Debug, Default)]
 pub struct Live {
     baseline: Option<SnapshotId>,
-    merged: Option<Option<SnapshotId>>,
+    merged: Cached<Option<SnapshotId>>,
     sources: BTreeMap<String, SnapshotId>,
-    target: Option<Option<String>>,
+    target: Cached<Option<String>>,
+}
+
+/// Tri-state memo slot: distinguishes "not computed yet" from a
+/// computed value that may itself be absent.
+#[derive(Debug, Default)]
+enum Cached<T> {
+    #[default]
+    Unset,
+    Set(T),
 }
 
 impl Live {
@@ -73,19 +85,19 @@ impl Live {
     /// Newest journaled post-merge baseline digest
     /// (`target.merge.wave-committed` `baseline`), read once.
     fn merged(&mut self, layout: Layout<'_>) -> Result<Option<SnapshotId>, Error> {
-        if self.merged.is_none() {
-            let newest = journal::read_union(layout)?.iter().rev().find_map(|event| {
-                match &event.kind {
-                    EventKind::TargetMergeWaveCommitted {
-                        baseline: Some(baseline),
-                        ..
-                    } => Some(baseline.clone()),
-                    _ => None,
-                }
-            });
-            self.merged = Some(newest);
+        if let Cached::Set(newest) = &self.merged {
+            return Ok(newest.clone());
         }
-        Ok(self.merged.clone().expect("merged cached above"))
+        let newest =
+            journal::read_union(layout)?.iter().rev().find_map(|event| match &event.kind {
+                EventKind::TargetMergeWaveCommitted {
+                    baseline: Some(baseline),
+                    ..
+                } => Some(baseline.clone()),
+                _ => None,
+            });
+        self.merged = Cached::Set(newest.clone());
+        Ok(newest)
     }
 
     /// Live source-tree cid for `key`, computed once per key.
@@ -103,15 +115,16 @@ impl Live {
     /// Declared target binding from `project.yaml`, loaded once. An
     /// uninitialised root degrades to `None`.
     fn target(&mut self, layout: Layout<'_>) -> Result<Option<String>, Error> {
-        if self.target.is_none() {
-            let declared = match ProjectConfig::load(layout.project_dir()) {
-                Ok(config) => config.adapter,
-                Err(Error::NotInitialized) => None,
-                Err(err) => return Err(err),
-            };
-            self.target = Some(declared);
+        if let Cached::Set(declared) = &self.target {
+            return Ok(declared.clone());
         }
-        Ok(self.target.clone().expect("target cached above"))
+        let declared = match ProjectConfig::load(layout.project_dir()) {
+            Ok(config) => config.adapter,
+            Err(Error::NotInitialized) => None,
+            Err(err) => return Err(err),
+        };
+        self.target = Cached::Set(declared.clone());
+        Ok(declared)
     }
 }
 
@@ -226,11 +239,13 @@ pub fn findings(name: &str, freshness: &Freshness) -> Vec<Diagnostic> {
 }
 
 /// Refinement digest of `slice`'s manifest, falling back to the
-/// newest archive entry when the live slice tree has none: merge and
-/// `plan drop` move the whole tree — `refinement.yaml` included — to
-/// `.emery/archive/<stamp>-<slice>/`, and an accepted predecessor
-/// satisfies "predecessor refined" a fortiori (RFC-91 D3). `None`
-/// only when neither a live nor an archived manifest exists.
+/// newest archive entry when the live slice tree has none.
+///
+/// Merge and `plan drop` move the whole tree — `refinement.yaml`
+/// included — to `.emery/archive/<stamp>-<slice>/`, and an accepted
+/// predecessor satisfies "predecessor refined" a fortiori (RFC-91
+/// D3). `None` only when neither a live nor an archived manifest
+/// exists.
 ///
 /// # Errors
 ///
@@ -239,10 +254,7 @@ pub fn predecessor_digest(layout: Layout<'_>, slice: &str) -> Result<Option<Snap
     if let Some(digest) = file_digest(&layout.slice_dir(slice))? {
         return Ok(Some(digest));
     }
-    match latest_archive(&layout.archive_dir(), slice) {
-        Some(dir) => file_digest(&dir),
-        None => Ok(None),
-    }
+    latest_archive(&layout.archive_dir(), slice).map_or(Ok(None), |dir| file_digest(&dir))
 }
 
 /// The newest `<YYYY-MM-DD>-<slice>` folder under the archive root,

@@ -6,12 +6,13 @@ use std::path::Path;
 
 use artifacts::discovery::Lead;
 use diagnostics::digest::sha256_hex;
+use error::Error;
 use project::adapter::BuildInputDeclaration;
 use project::config::Layout;
 use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, close_source_pins};
 use project::snapshot::SnapshotId;
 use slice::refinement::{
-    self, Dependency, Freshness, Inputs, Kind, Manifest, Planning, empty_digest,
+    self, Dependency, Freshness, Inputs, Kind, Manifest, Planning, TargetInputs, empty_digest,
 };
 
 const SLICE: &str = "orders-api";
@@ -89,17 +90,24 @@ fn guidance() -> SnapshotId {
 }
 
 fn assemble(root: &Path, plan: &Plan, inventory: &[Lead], deps: Vec<Dependency>) -> Manifest {
+    try_assemble(root, plan, inventory, deps).expect("assemble")
+}
+
+fn try_assemble(
+    root: &Path, plan: &Plan, inventory: &[Lead], deps: Vec<Dependency>,
+) -> Result<Manifest, Error> {
     refinement::assemble(
         Layout::new(root),
         plan,
         &plan.entries[0],
         inventory,
-        guidance(),
+        TargetInputs {
+            guidance: guidance(),
+            declarations: &declarations(),
+            reference: None,
+        },
         deps,
-        &declarations(),
-        None,
     )
-    .expect("assemble")
 }
 
 fn freshness_of(root: &Path, plan: &Plan, inventory: &[Lead]) -> Freshness {
@@ -192,17 +200,7 @@ fn missing_artifact_refuses() {
     let (root, plan, inventory) = fixture();
     let slice_dir = Layout::new(root.path()).slice_dir(SLICE);
     std::fs::remove_file(slice_dir.join("tasks.md")).expect("rm");
-    let err = refinement::assemble(
-        Layout::new(root.path()),
-        &plan,
-        &plan.entries[0],
-        &inventory,
-        guidance(),
-        vec![],
-        &declarations(),
-        None,
-    )
-    .expect_err("missing tasks");
+    let err = try_assemble(root.path(), &plan, &inventory, vec![]).expect_err("missing tasks");
     assert!(err.to_string().contains("slice-refinement-input-missing"), "{err}");
 }
 
@@ -211,17 +209,7 @@ fn missing_spec_refuses() {
     let (root, plan, inventory) = fixture();
     let slice_dir = Layout::new(root.path()).slice_dir(SLICE);
     std::fs::remove_dir_all(slice_dir.join("specs")).expect("rm specs");
-    let err = refinement::assemble(
-        Layout::new(root.path()),
-        &plan,
-        &plan.entries[0],
-        &inventory,
-        guidance(),
-        vec![],
-        &declarations(),
-        None,
-    )
-    .expect_err("no specs");
+    let err = try_assemble(root.path(), &plan, &inventory, vec![]).expect_err("no specs");
     assert!(err.to_string().contains("slice-refinement-input-missing"), "{err}");
 }
 
@@ -230,17 +218,8 @@ fn missing_additional() {
     let (root, plan, inventory) = fixture();
     let slice_dir = Layout::new(root.path()).slice_dir(SLICE);
     std::fs::remove_file(slice_dir.join("notes.md")).expect("rm");
-    let err = refinement::assemble(
-        Layout::new(root.path()),
-        &plan,
-        &plan.entries[0],
-        &inventory,
-        guidance(),
-        vec![],
-        &declarations(),
-        None,
-    )
-    .expect_err("missing required additional");
+    let err = try_assemble(root.path(), &plan, &inventory, vec![])
+        .expect_err("missing required additional");
     assert!(err.to_string().contains("target-build-input-missing"), "{err}");
 }
 
@@ -248,17 +227,7 @@ fn missing_additional() {
 fn unclosed_pin_refuses() {
     let (root, mut plan, inventory) = fixture();
     plan.sources.get_mut("docs").expect("docs").cid = None;
-    let err = refinement::assemble(
-        Layout::new(root.path()),
-        &plan,
-        &plan.entries[0],
-        &inventory,
-        guidance(),
-        vec![],
-        &declarations(),
-        None,
-    )
-    .expect_err("unclosed pin");
+    let err = try_assemble(root.path(), &plan, &inventory, vec![]).expect_err("unclosed pin");
     assert!(err.to_string().contains("slice-refinement-pin-missing"), "{err}");
 }
 

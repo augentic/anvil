@@ -18,14 +18,23 @@ use crate::build::assemble::{
     DESIGN_ARTIFACT, PROPOSAL_ARTIFACT, TASKS_ARTIFACT, resolve_additional, spec_paths,
 };
 
+/// Facts about the bound target consumed by manifest assembly.
+#[derive(Debug, Clone)]
+pub struct TargetInputs<'a> {
+    /// Recorded identity of the guidance text synthesis consumed.
+    pub guidance: SnapshotId,
+    /// The target's build-inputs list — the bundle covers the same
+    /// canonical set as the build request.
+    pub declarations: &'a [BuildInputDeclaration],
+    /// Declared adapter reference covered by the entry projection.
+    pub reference: Option<&'a str>,
+}
+
 /// Assemble the refinement manifest for `entry`.
 ///
-/// `inventory` is the full `discovery.md` lead set; `target_guidance`
-/// is the recorded identity of the guidance text synthesis consumed;
-/// `dependencies` are the ordered predecessor `(slice, digest)` pairs;
-/// `declarations` is the bound target's build-inputs list (the bundle
-/// covers the same canonical set as the build request); `target` is
-/// the declared adapter reference covered by the entry projection.
+/// `inventory` is the full `discovery.md` lead set; `dependencies`
+/// are the ordered predecessor `(slice, digest)` pairs; `target`
+/// carries the bound target's facts.
 ///
 /// # Errors
 ///
@@ -39,12 +48,11 @@ use crate::build::assemble::{
 ///   adapter declaration is absent.
 /// - Filesystem failures from digest walks.
 pub fn assemble(
-    layout: Layout<'_>, plan: &Plan, entry: &Entry, inventory: &[Lead],
-    target_guidance: SnapshotId, dependencies: Vec<Dependency>,
-    declarations: &[BuildInputDeclaration], target: Option<&str>,
+    layout: Layout<'_>, plan: &Plan, entry: &Entry, inventory: &[Lead], target: TargetInputs<'_>,
+    dependencies: Vec<Dependency>,
 ) -> Result<Manifest, Error> {
     let contributing = contributing_leads(entry, inventory)?;
-    let planning = Projections::compute(plan, entry, &contributing, target)?;
+    let planning = Projections::compute(plan, entry, &contributing, target.reference)?;
     let slice_dir = layout.slice_dir(entry.name.as_str());
     Ok(Manifest {
         version: VERSION,
@@ -57,12 +65,12 @@ pub fn assemble(
             },
             profile: super::empty_digest(),
             observations: super::empty_digest(),
-            target_guidance,
+            target_guidance: target.guidance,
             baseline_specs: dir_cid(&layout.specs_dir())?,
             sources: source_pins(plan, entry)?,
             dependencies,
         },
-        bundle: bundle(&slice_dir, declarations)?,
+        bundle: bundle(&slice_dir, target.declarations)?,
     })
 }
 

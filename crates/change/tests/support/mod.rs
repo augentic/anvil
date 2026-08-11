@@ -92,10 +92,12 @@ pub fn stage_manifest(root: &std::path::Path, slice: &str) {
         &plan,
         &entry,
         &[],
-        slice::refinement::empty_digest(),
+        slice::refinement::TargetInputs {
+            guidance: slice::refinement::empty_digest(),
+            declarations: &[],
+            reference: config.as_ref().and_then(|c| c.adapter.as_deref()),
+        },
         Vec::new(),
-        &[],
-        config.as_ref().and_then(|c| c.adapter.as_deref()),
     )
     .expect("assemble refinement manifest")
     .write(&slice_dir)

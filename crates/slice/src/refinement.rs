@@ -4,7 +4,7 @@
 
 mod assemble;
 
-pub use assemble::assemble;
+pub use assemble::{TargetInputs, assemble};
 pub use project::refinement::{
     BundleEntry, Dependency, Freshness, Inputs, Kind, Live, MISSING_CODE, Manifest, Planning,
     STALE_CODE, VERSION, content_digest, empty_digest, file_digest, findings, freshness,

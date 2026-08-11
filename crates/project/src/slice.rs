@@ -19,7 +19,7 @@ pub use outcome::Kind as OutcomeKind;
 pub const REFINEMENT_FILE: &str = "refinement.yaml";
 
 /// Whether `slice_dir` holds a refinement manifest. Presence-only:
-/// staleness needs [`crate::refinement::freshness`]'s full recompute.
+/// staleness needs [`crate::refinement::freshness()`]'s full recompute.
 #[must_use]
 pub fn refinement_present(slice_dir: &std::path::Path) -> bool {
     slice_dir.join(REFINEMENT_FILE).is_file()

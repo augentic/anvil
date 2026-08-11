@@ -63,7 +63,7 @@ fn synthesis_for(slice: &str, source: &str) -> String {
 }
 
 /// One `value` binding per source key onto the minimal mock profile.
-fn bindings(keys: &[&str]) -> Vec<change::plan::wire::SourceAssign> {
+fn bindings(keys: &[&str]) -> Vec<plan::wire::SourceAssign> {
     keys.iter()
         .map(|key| {
             serde_json::from_value(json!({
@@ -76,7 +76,7 @@ fn bindings(keys: &[&str]) -> Vec<change::plan::wire::SourceAssign> {
         .collect()
 }
 
-async fn author(session: &Session, sources: Vec<change::plan::wire::SourceAssign>) {
+async fn author(session: &Session, sources: Vec<plan::wire::SourceAssign>) {
     run::<plan::handlers::Author, _, _>(
         session.provider(),
         plan::handlers::AuthorInput {
@@ -228,11 +228,13 @@ async fn merge_stop_reentry() {
     std::fs::remove_file(root.join(mock::behaviour::FAIL_BUILD_MARKER)).expect("rm marker");
     let executed = execute(&session).await.expect("re-entry drains");
     assert_eq!(executed.status, "drained");
-    assert_eq!(
-        support::manifest_digest(&root, "beta"),
-        beta_digest,
-        "beta drained without a re-refine"
-    );
+    // Beta merged and archived during the drain; its archived manifest
+    // still carries the pre-run digest — no re-refine happened.
+    let layout = project::config::Layout::new(&root);
+    let archived = slice::refinement::predecessor_digest(layout, "beta")
+        .expect("archive lookup")
+        .expect("archived manifest present");
+    assert_eq!(archived, beta_digest, "beta drained without a re-refine");
     session.model().assert_exhausted();
 }
 

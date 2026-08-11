@@ -53,8 +53,10 @@ fn synthesis_for(slice: &str, source: &str) -> String {
     answer["model"]["requirements"][0]["claims"][0]["source"] = json!(source);
     answer["artifacts"]["specs"][0]["domain"] = json!(slice);
     let proposal = answer["artifacts"]["proposal"].as_str().expect("proposal");
-    answer["artifacts"]["proposal"] =
-        json!(proposal.replace("- greeting — the affected surface", &format!("- {slice} — the affected surface")));
+    answer["artifacts"]["proposal"] = json!(proposal.replace(
+        "- greeting — the affected surface",
+        &format!("- {slice} — the affected surface")
+    ));
     serde_json::to_string(&answer).expect("answer serialises")
 }
 

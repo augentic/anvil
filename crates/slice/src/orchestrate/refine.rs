@@ -109,15 +109,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     let slice_dir = created.dir;
     let baseline_specs_dir = baseline_specs_dir(layout, &slice_dir);
 
-    // Extract fan-out, serially in binding declaration order (the
-    // skill's no-parallelism rule).
-    let mut extracted = Vec::with_capacity(entry.sources.len());
-    for binding in &entry.sources {
-        let source = binding.source().to_string();
-        let lead = binding.lead(slice).to_string();
-        super::extract(caps.sources, caps.resolver, paths, now, &source, &lead, slice).await?;
-        extracted.push((source, lead));
-    }
+    let extracted = extract_all(&caps, paths, now, slice, &entry).await?;
 
     // Assemble the kernel context the judgment leg projects against.
     let source_inputs = read_source_inputs(layout, &entry)?;
@@ -190,22 +182,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 
     slice_actions::transition(&slice_dir, LifecycleStatus::Refined, now)?;
 
-    // The manifest is written only after validation and the `refined`
-    // transition succeed (RFC-91 D4): an interrupted refinement leaves
-    // no manifest for the attempt.
-    let inventory = Discovery::load(&layout.discovery_path())?;
-    let config = ProjectConfig::load(layout.project_dir())?;
-    refinement::assemble(
-        layout,
-        &plan,
-        &entry,
-        inventory.leads(),
-        guidance_digest,
-        dependencies,
-        declarations,
-        config.adapter.as_deref(),
-    )?
-    .write(&slice_dir)?;
+    write_manifest(layout, &plan, &entry, guidance_digest, dependencies, declarations, &slice_dir)?;
     tracing::info!(artifacts = artifacts.len(), "refine completed");
 
     Ok(RefineOutcome {
@@ -214,6 +191,47 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
         extracted,
         tags,
     })
+}
+
+/// Extract fan-out, serially in binding declaration order (the
+/// skill's no-parallelism rule). Returns the `(source, lead)` pairs
+/// extracted, in binding order.
+async fn extract_all<P: Model, S: Source, T: Target, R: Resolver>(
+    caps: &super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
+    slice: &str, entry: &Entry,
+) -> Result<Vec<(String, String)>, Error> {
+    let mut extracted = Vec::with_capacity(entry.sources.len());
+    for binding in &entry.sources {
+        let source = binding.source().to_string();
+        let lead = binding.lead(slice).to_string();
+        super::extract(caps.sources, caps.resolver, paths, now, &source, &lead, slice).await?;
+        extracted.push((source, lead));
+    }
+    Ok(extracted)
+}
+
+/// Assemble and atomically write the refinement manifest. Runs only
+/// after validation and the `refined` transition succeed (RFC-91 D4):
+/// an interrupted refinement leaves no manifest for the attempt.
+fn write_manifest(
+    layout: Layout<'_>, plan: &Plan, entry: &Entry, guidance: SnapshotId,
+    dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration], slice_dir: &Path,
+) -> Result<(), Error> {
+    let inventory = Discovery::load(&layout.discovery_path())?;
+    let config = ProjectConfig::load(layout.project_dir())?;
+    refinement::assemble(
+        layout,
+        plan,
+        entry,
+        inventory.leads(),
+        refinement::TargetInputs {
+            guidance,
+            declarations,
+            reference: config.adapter.as_deref(),
+        },
+        dependencies,
+    )?
+    .write(slice_dir)
 }
 
 /// The judgment leg plus the native persist tail — one fallible unit
