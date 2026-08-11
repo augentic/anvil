@@ -1,7 +1,6 @@
 //! Authorization-epoch open at `plan execute` start: assembles typed
-//! `closed-plan` coverage carrying exact per-leaf refinement digests
-//! and the effective gap policy, then appends `plan.execute.started`
-//! (RFC-86 D6 / RFC-86a D3 / RFC-91 D5).
+//! `closed-plan` coverage (per-leaf refinement digests + effective gap
+//! policy) and appends `plan.execute.started` (RFC-86/86a/91).
 
 use std::collections::BTreeMap;
 

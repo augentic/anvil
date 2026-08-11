@@ -91,10 +91,9 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
         });
     }
 
-    // Non-blocking review advisories (thin synopses, refinement
-    // freshness, disposition drift, baseline drift) ride the
-    // adapter-findings surface; only a blocking diagnostic gates the
-    // exit. Pin drift is superseded by refinement freshness (RFC-91).
+    // Non-blocking review advisories (synopses, refinement freshness,
+    // disposition/baseline drift) ride adapter-findings; only a blocking
+    // diagnostic gates exit. Pin drift is superseded by RFC-91 freshness.
     let mut findings = artifacts::validate::validate_slice(&slice_dir)?;
     findings.append(&mut pre_adapter::synopsis_thin(layout)?);
     findings.append(&mut refinement_findings(layout, name)?);

@@ -1,8 +1,6 @@
-//! Authorization-epoch freshness (RFC-86 D22 / S19 / RFC-91 D5).
-//!
-//! The newest `plan.execute.started` coverage vs the live `plan.yaml`
-//! and covered refinement digests — shared by status Authorized and
-//! the gap gate.
+//! Authorization-epoch freshness (RFC-86 D22 / S19 / RFC-91 D5): newest
+//! `plan.execute.started` coverage vs live `plan.yaml` and covered
+//! refinement digests — shared by status Authorized and the gap gate.
 
 use error::Error;
 

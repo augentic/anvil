@@ -142,11 +142,9 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                 phases,
             });
         };
-        // Build staleness (RFC-86a D4): a built slice re-builds when
-        // its live deferred set drifted from its build record or the
-        // newest wave's re-build failed; the gap gate re-adjudicates.
-        // Pin / source drift is owned by the refinement stage (RFC-91):
-        // execute never re-refines — a stale manifest is a typed stop.
+        // Build staleness (RFC-86a D4): rebuild when deferred set drifted
+        // from the build record or the newest wave's rebuild failed.
+        // Pin/source drift is refinement's (RFC-91); execute never re-refines.
         let step = if step == LoopStep::Merge
             && slice::dispositions_drifted(layout, &layout.slice_dir(&slice), &slice)?
         {

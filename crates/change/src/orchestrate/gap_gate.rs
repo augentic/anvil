@@ -1,7 +1,6 @@
-//! Gap policy + epoch freshness before build (RFC-86a D1/D3 / RFC-91
-//! D5): deferred rows leave build scope; open rows block under
-//! `strict` and are dispositioned at the gate under `defer`; covered
-//! refinement digest drift is `plan-epoch-stale`.
+//! Gap policy + epoch freshness before build (RFC-86a/91): deferred
+//! rows leave build scope; open rows block under `strict` / mint under
+//! `defer`; covered refinement digest drift is `plan-epoch-stale`.
 
 use std::fmt::Write as _;
 
