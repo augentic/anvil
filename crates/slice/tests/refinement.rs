@@ -386,6 +386,7 @@ fn merged_baseline_fresh() {
             },
             identity_maps: vec![],
             baseline: Some(merged),
+            deferred: vec![],
         },
     );
     project::journal::append_one(layout, &event).expect("journal");

@@ -71,7 +71,7 @@ pub fn greeting_synthesis() -> String {
 ///
 /// Panics when the synthesis value stops serialising.
 #[must_use]
-pub fn greeting_unknown_synthesis() -> String {
+pub fn greeting_unknown_synth() -> String {
     serde_json::to_string(&json!({
         "version": 2,
         "kind": "response",

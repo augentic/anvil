@@ -62,7 +62,7 @@ fn body_change_sensitive() {
 // Identical bodies in one model share one digest (degenerate but legal
 // — same content, same decision).
 #[test]
-fn identical_bodies_share_digest() {
+fn same_body_digest() {
     let twice = format!(
         "{ORIGINAL}  - id: REQ-004\n    title: password reset\n    status: unknown\n    \
          sources: [docs]\n    statement: the reset path is not evidenced\n    scenarios:\n      - \

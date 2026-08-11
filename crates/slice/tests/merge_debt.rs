@@ -122,7 +122,7 @@ fn stage_wave_and_record(session: &Session, base: SnapshotId) {
 /// scenarios pass baseline coherence validation and land with status,
 /// tags, both conflict arms, and final baseline ids.
 #[tokio::test]
-async fn gap_rows_fold_into_baseline_with_status_preserved() {
+async fn fold_keeps_status() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, snapshot);

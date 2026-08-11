@@ -118,7 +118,7 @@ impl<S: Target + Workspaces> Machine<'_, S> {
                 // Fail fast on a deferred coverage claim (RFC-86a D4)
                 // before spending verify / review dispatches; `commit`
                 // re-runs the gate on the terminal report.
-                let gated = report.enforce_deferred_not_covered(self.slice, self.deferred);
+                let gated = report.enforce_defer_uncovered(self.slice, self.deferred);
                 let blocking = report.has_blocking();
                 rounds.build = Some(report);
                 if let Err(error) = gated {
@@ -445,7 +445,7 @@ impl<S: Target + Workspaces> Machine<'_, S> {
     /// promotion.
     async fn commit(&self, report: &BuildReport) -> Result<CodePatch, Error> {
         report.enforce_no_blocking()?;
-        report.enforce_deferred_not_covered(self.deferred)?;
+        report.enforce_defer_uncovered(self.deferred)?;
         // Declared outputs live in the private workspace until capture.
         report.enforce_outputs_exist(Path::new(&self.workspace.root))?;
         let changes = self.stage.diff()?;

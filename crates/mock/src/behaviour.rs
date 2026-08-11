@@ -5,10 +5,9 @@
 pub use source::{extract, survey};
 pub use targets::{
     BUILD_DIR, CLAIM_COVERED_MARKER, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER,
-    CONTINUATION_V1, CONTINUATION_V2, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER,
-    FAIL_MERGE_PREFLIGHT_MARKER, POSTFLIGHT_FAIL, PREFLIGHT_FAIL, REVIEW_BLOCKED_MARKER,
-    REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED, VERIFY_AFTER_REVIEW,
-    VERIFY_AFTER_REVIEW_FAIL_MARKER, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build,
+    CONTINUATION_V1, CONTINUATION_V2, FAIL_BUILD_MARKER, POSTFLIGHT_FAIL, PREFLIGHT_FAIL,
+    REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED,
+    VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build,
     build_artifact_path, claimed_covered, guidance, merge, repair, review, verify,
 };
 
@@ -493,18 +492,9 @@ mod targets {
     /// gate to a failed report while it exists.
     pub const PREFLIGHT_FAIL: &str = "mock-fail-merge-preflight";
 
-    /// Alias for [`PREFLIGHT_FAIL`] (RFC-86a test vocabulary).
-    pub const FAIL_MERGE_PREFLIGHT_MARKER: &str = PREFLIGHT_FAIL;
-
     /// Marker file (project-root-relative) that flips the postflight merge
     /// gate to a failed report while it exists.
     pub const POSTFLIGHT_FAIL: &str = "mock-fail-merge-postflight";
-
-    /// Alias for [`POSTFLIGHT_FAIL`] (RFC-86a test vocabulary).
-    pub const FAIL_MERGE_POSTFLIGHT_MARKER: &str = POSTFLIGHT_FAIL;
-
-    /// Alias for [`VERIFY_AFTER_REVIEW`].
-    pub const VERIFY_AFTER_REVIEW_FAIL_MARKER: &str = VERIFY_AFTER_REVIEW;
 
     /// One phased merge gate: a success report with no outputs, unless the
     /// id selects a failure profile or the matching per-phase marker file

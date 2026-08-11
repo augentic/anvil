@@ -96,7 +96,7 @@ fn validation(err: &project::handler::Error) -> (String, String) {
 }
 
 #[tokio::test]
-async fn defer_writes_operator_facts_covering_unknown_and_conflict() {
+async fn writes_operator_facts() {
     let project = fixture();
 
     let body: DeferBody = run::<Defer, _, _>(
@@ -155,7 +155,7 @@ async fn defer_writes_operator_facts_covering_unknown_and_conflict() {
 }
 
 #[tokio::test]
-async fn retract_reopens_a_live_deferral() {
+async fn retract_reopens_live() {
     let project = fixture();
     let target = vec![selector("auth-login", "REQ-001")];
 
@@ -200,7 +200,7 @@ async fn unknown_selector_refused() {
 }
 
 #[tokio::test]
-async fn missing_reason_on_defer_refused() {
+async fn missing_reason_refused() {
     let project = fixture();
     let err = run::<Defer, _, _>(
         project.provider(),
@@ -249,7 +249,7 @@ async fn multiline_reason_refused() {
 }
 
 #[tokio::test]
-async fn divergence_row_takes_no_disposition() {
+async fn divergence_no_disp() {
     let project = fixture();
     let err = run::<Defer, _, _>(
         project.provider(),
@@ -263,7 +263,7 @@ async fn divergence_row_takes_no_disposition() {
 }
 
 #[tokio::test]
-async fn retract_of_non_live_deferral_refused() {
+async fn retract_nonlive_refused() {
     let project = fixture();
     let err = run::<Defer, _, _>(
         project.provider(),
@@ -277,7 +277,7 @@ async fn retract_of_non_live_deferral_refused() {
 }
 
 #[tokio::test]
-async fn bad_selector_in_batch_writes_no_facts() {
+async fn bad_selector_no_facts() {
     let project = fixture();
     let err = run::<Defer, _, _>(
         project.provider(),

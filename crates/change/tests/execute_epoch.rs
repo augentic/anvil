@@ -75,7 +75,7 @@ fn write_model(root: &std::path::Path, slice: &str, yaml: &str) {
 }
 
 #[tokio::test]
-async fn execute_appends_closed_plan_epoch() {
+async fn appends_closed_epoch() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     scaffold_author(&session).await;
@@ -167,7 +167,7 @@ fn started_policy(root: &std::path::Path) -> GapPolicy {
 }
 
 #[tokio::test]
-async fn gap_policy_flag_rides_epoch_coverage() {
+async fn flag_rides_coverage() {
     let session = Session::bare(Vec::new());
     init_declared(&session, None).await;
     write_unknown_fixture(session.root());
@@ -209,7 +209,7 @@ async fn gap_policy_flag_rides_epoch_coverage() {
 }
 
 #[tokio::test]
-async fn project_declaration_resolves_without_flags() {
+async fn declaration_without_flag() {
     let session = Session::bare(Vec::new());
     init_declared(&session, Some(GapPolicy::Defer)).await;
     write_unknown_fixture(session.root());
@@ -224,7 +224,7 @@ async fn project_declaration_resolves_without_flags() {
 }
 
 #[tokio::test]
-async fn flag_overrides_declaration_for_one_epoch() {
+async fn flag_overrides_declare() {
     let session = Session::bare(Vec::new());
     init_declared(&session, Some(GapPolicy::Defer)).await;
     write_unknown_fixture(session.root());
@@ -247,7 +247,7 @@ async fn flag_overrides_declaration_for_one_epoch() {
 }
 
 #[tokio::test]
-async fn no_coverage_payload_carries_unknown_waivers() {
+async fn no_coverage_unknown() {
     // Acceptance 9 (hard cut): the coverage wire shape carries
     // `gap-policy` + `refinements`, never the deleted `unknown-waivers`
     // field or `refine-under-epoch` specs.

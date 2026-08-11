@@ -211,7 +211,7 @@ async fn dropped_slice_excluded() {
 /// then executing reaches Authorized without Ready; clearing unknowns
 /// then projects Ready (deferrals never backfill Ready).
 #[tokio::test]
-async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
+async fn deferral_reaches_ready() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     let root = session.root();

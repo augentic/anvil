@@ -118,7 +118,7 @@ async fn waive_is_unknown_argv() {
 }
 
 #[tokio::test]
-async fn gap_policy_rejects_values_outside_the_closed_enum() {
+async fn rejects_unknown_policy() {
     let (_project, provider) = fixture(CONFLICT_MODEL).await;
     let router =
         transport::command::router(Invoker::new("emery", provider.clone())).expect("router");

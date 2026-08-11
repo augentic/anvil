@@ -203,7 +203,7 @@ async fn open_unknown_blocks_build() {
 }
 
 #[tokio::test]
-async fn deferred_unknown_passes_gap_gate() {
+async fn deferred_unknown_ok() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -237,7 +237,7 @@ async fn deferred_unknown_passes_gap_gate() {
 }
 
 #[tokio::test]
-async fn deferred_conflict_passes_gap_gate() {
+async fn deferred_conflict_ok() {
     // D6: `[conflict]` defers under the same exclusion semantics —
     // build-over stays forbidden, exclusion proceeds.
     let session = Session::bare(Vec::new());
@@ -268,7 +268,7 @@ async fn deferred_conflict_passes_gap_gate() {
 }
 
 #[tokio::test]
-async fn deferral_covers_fresh_epoch_without_resupply() {
+async fn covers_without_resupply() {
     // Acceptance 2 / 9: the disposition is durable — a resume opens a
     // fresh epoch with no flags and the gate still proceeds; no path
     // demands re-supplying a decision already on the log.
@@ -311,7 +311,7 @@ async fn deferral_covers_fresh_epoch_without_resupply() {
 }
 
 #[tokio::test]
-async fn retraction_reopens_the_gate() {
+async fn retract_reopens_gate() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -349,7 +349,7 @@ async fn retraction_reopens_the_gate() {
 }
 
 #[tokio::test]
-async fn digest_lapsed_deferral_blocks_again() {
+async fn lapsed_blocks_again() {
     // Acceptance 2: a re-refine that changes the requirement body
     // lapses the deferral — the new row is open and blocks under
     // strict.
@@ -391,7 +391,7 @@ async fn digest_lapsed_deferral_blocks_again() {
 }
 
 #[tokio::test]
-async fn defer_flag_mints_policy_fact_for_open_unknown() {
+async fn flag_mints_unknown() {
     // Acceptance 3: under an effective `defer` policy the gate
     // dispositions open rows itself — one `origin: policy` fact with
     // the synthesized epoch reason — and build proceeds.
@@ -443,7 +443,7 @@ async fn defer_flag_mints_policy_fact_for_open_unknown() {
 }
 
 #[tokio::test]
-async fn defer_flag_mints_policy_fact_for_tied_conflict() {
+async fn flag_mints_conflict() {
     // D6: conflicts defer under the same gate-time policy minting —
     // build-over stays forbidden, exclusion proceeds.
     let session = Session::bare(Vec::new());
@@ -485,7 +485,7 @@ async fn defer_flag_mints_policy_fact_for_tied_conflict() {
 }
 
 #[tokio::test]
-async fn project_declaration_defers_without_flag() {
+async fn declare_defers_alone() {
     // Acceptance 4: a `project.yaml` `gap-policy: defer` declaration
     // alone makes the epoch defer — no flag supplied — and the
     // effective policy lands on the coverage payload.
@@ -519,7 +519,7 @@ async fn project_declaration_defers_without_flag() {
 }
 
 #[tokio::test]
-async fn strict_flag_overrides_defer_declaration() {
+async fn strict_overrides_defer() {
     // Acceptance 4: `--gap-policy strict` overrides the `project.yaml`
     // declaration for one run — the gate blocks and mints nothing.
     let session = Session::bare(Vec::new());
@@ -556,7 +556,7 @@ async fn strict_flag_overrides_defer_declaration() {
 }
 
 #[tokio::test]
-async fn divergence_alone_does_not_block() {
+async fn divergence_no_block() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -581,7 +581,7 @@ async fn divergence_alone_does_not_block() {
 }
 
 #[tokio::test]
-async fn concurrent_stale_epoch_refuses_build_via_execute() {
+async fn stale_epoch_refuses() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -625,7 +625,7 @@ async fn concurrent_stale_epoch_refuses_build_via_execute() {
 }
 
 #[tokio::test]
-async fn stale_refinement_digest_refuses_build() {
+async fn stale_refine_refuses() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -673,7 +673,7 @@ async fn stale_refinement_digest_refuses_build() {
 }
 
 #[tokio::test]
-async fn stale_plan_digest_refuses_build() {
+async fn stale_plan_refuses() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(

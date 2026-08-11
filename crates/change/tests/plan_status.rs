@@ -250,7 +250,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn later_success_clears_failure() {
+    async fn later_ok_clears_fail() {
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", SliceArt::Refined);
         append(
@@ -275,7 +275,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn non_awaited_failure_ignored() {
+    async fn non_awaited_ignored() {
         // The slice already carries a built artifact; a stale build
         // failure must not pin the projection off merge.
         let project = Session::scripted("demo", Vec::new());
@@ -287,7 +287,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn reclaim_shadows_old_failure() {
+    async fn reclaim_shadows_fail() {
         // A fresh `plan.entry.advanced` (re-claim after undo, or a new
         // plan reusing the slice name) is newer than the failure, so
         // dispatch falls back to the artifact phase.
@@ -445,7 +445,7 @@ mod postflight_debt {
     }
 
     #[tokio::test]
-    async fn sticky_blocks_next_pending() {
+    async fn sticky_blocks_pending() {
         // Unacked postflight debt must not silently advance to the next
         // pending entry's refine.
         let project = Session::scripted("demo", Vec::new());
@@ -503,7 +503,7 @@ mod re_entry {
     use super::*;
 
     #[tokio::test]
-    async fn merge_incomplete_done_stamp() {
+    async fn merge_incomplete_done() {
         let project = Session::scripted("demo", Vec::new());
         append(
             project.root(),
@@ -583,7 +583,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn refined_clean_is_ready_not_authorized() {
+    async fn ready_not_authorized() {
         // Clean gaps + refined → Ready. No plan.execute.started yet →
         // not Authorized. Resume stays at execute (D22 / D26).
         let project = Session::scripted("demo", Vec::new());
@@ -610,7 +610,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn open_unknowns_not_ready_review_gaps() {
+    async fn unknowns_review_gaps() {
         // Refined + open unknowns → not Ready; next-action is
         // review-gaps; resume points at per-req plan defer (D22 /
         // RFC-86a D3).
@@ -650,7 +650,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn open_conflict_resume_defers() {
+    async fn conflict_resume_defer() {
         // D6: `[conflict]` defers under the same exclusion semantics
         // as `[unknown]`, so the resume suggests the durable act for
         // open conflicts too (RFC-86a D7).
@@ -680,7 +680,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn digest_less_legacy_rows_resume_execute() {
+    async fn legacy_resume_execute() {
         // A `spec.md`-fallback inventory (refined slice, model without
         // requirements) carries no requirement digests, so `plan defer`
         // refuses its rows — the resume must hint re-refining under
@@ -736,7 +736,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn deferred_everything_resumes_execute() {
+    async fn all_deferred_execute() {
         // RFC-86a D7: next-actions compute over open findings only —
         // a fully-dispositioned plan projects the build dispatch and
         // resumes at execute, never review-gaps. Ready stays
@@ -791,7 +791,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn open_rows_only_drive_review_gaps() {
+    async fn open_drives_review() {
         // A deferred row beside an open one: review-gaps stands, and
         // the resume names only the open selector (RFC-86a D7).
         let project = Session::scripted("demo", Vec::new());
@@ -831,7 +831,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn divergence_alone_does_not_block_ready() {
+    async fn divergence_ready_ok() {
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -853,7 +853,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn dropped_excluded_from_ready() {
+    async fn dropped_not_ready() {
         // Drop the gappy slice; the remaining refined sibling makes
         // the change Ready (D24).
         let project = Session::scripted("demo", Vec::new());
@@ -901,7 +901,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn epoch_fact_projects_authorized_without_ready() {
+    async fn epoch_auth_no_ready() {
         // A covering plan.execute.started → Authorized even while
         // unknowns keep Ready false (D22).
         let project = Session::scripted("demo", Vec::new());
@@ -930,7 +930,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn drifted_plan_digest_clears_authorized() {
+    async fn plan_drift_clears_auth() {
         // An epoch whose plan digest no longer matches the live
         // `plan.yaml` does not authorize — same freshness rule as the
         // execute gap gate.
@@ -972,7 +972,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn covered_refinement_drift_clears_authorized() {
+    async fn refine_drift_clears() {
         // Mutating a covered refinement manifest after the epoch stamps
         // clears Authorized while the old epoch remains in the union;
         // build refuses `plan-epoch-stale` on the same rule.
@@ -1021,7 +1021,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn merged_leaf_absence_is_not_drift() {
+    async fn merged_absent_ok() {
         // Merge archives the slice tree; a done leaf's absent
         // refinement is completion under the epoch, not drift.
         let project = Session::scripted("demo", Vec::new());
@@ -1052,7 +1052,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn fresh_unrefined_resume_refine() {
+    async fn unrefined_resume() {
         // RFC-91 D8: post-author resume stays /emery:refine; next-action
         // names the refine phase.
         let project = Session::scripted("demo", Vec::new());

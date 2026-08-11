@@ -62,7 +62,7 @@ mod config {
     }
 
     #[test]
-    fn unknown_gap_policy_refused() {
+    fn unknown_policy_refused() {
         let err = case::parse(
             "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
              gap-policy = \"lenient\"\n\
@@ -504,7 +504,7 @@ async fn until_plan_leaves_entries() {
 // Acceptance 10 (RFC-86a D8): the runner's `plan execute` carries
 // `--gap-policy defer` by default, observed on the recorded epoch.
 #[tokio::test]
-async fn execute_defaults_to_defer_policy() {
+async fn defaults_to_defer() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(

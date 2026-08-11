@@ -57,7 +57,7 @@ fn validation_code_display() {
 }
 
 #[test]
-fn execute_validation_codes_carry_hints() {
+fn execute_codes_hint() {
     // The RFC-86 execute refusals are the operator's main exit-2
     // surface; each carries a recovery hint mirroring
     // docs/reference/diagnostics.md.

@@ -77,7 +77,7 @@ fn reads_prior_actor_wire() {
 }
 
 #[test]
-fn gap_deferral_events_round_trip() {
+fn deferral_round_trip() {
     // RFC-86a D2: dotted-kebab wire ids and kebab-case payload keys on
     // the two deferral facts, stable through serde and the file union.
     let deferred = Event {
@@ -132,7 +132,7 @@ fn gap_deferral_events_round_trip() {
 }
 
 #[test]
-fn wave_committed_deferred_snapshot_round_trips() {
+fn wave_defer_roundtrip() {
     // RFC-86a D5: the wave-commit fact snapshots the deferred member
     // set it carried; a debt-free fact omits the field and prior
     // journals without it stay parseable.
@@ -149,6 +149,7 @@ fn wave_committed_deferred_snapshot_round_trips() {
                 sequence: 1,
             },
             identity_maps: vec![],
+            baseline: None,
             deferred: vec![project::journal::DeferredMember {
                 req: "REQ-007".into(),
                 status: artifacts::spec::provenance::RequirementStatus::Conflict,
@@ -177,6 +178,7 @@ fn wave_committed_deferred_snapshot_round_trips() {
                 sequence: 1,
             },
             identity_maps: vec![],
+            baseline: None,
             deferred: vec![],
         },
     };
@@ -186,7 +188,7 @@ fn wave_committed_deferred_snapshot_round_trips() {
 }
 
 #[test]
-fn append_stamps_writer_and_monotonic_sequence() {
+fn append_stamps_writer() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
     let layout = layout(root);

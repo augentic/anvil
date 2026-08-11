@@ -220,7 +220,7 @@ async fn wave_commit_assigns() {
 /// `target.wave.opened` fact — a stale record with a newer mtime never
 /// shadows the authorized build.
 #[tokio::test]
-async fn stale_record_with_newer_mtime_is_not_merged() {
+async fn stale_mtime_not_merged() {
     let session = Session::scripted("mock", Vec::new());
     let layout = project::config::Layout::new(session.root());
     let snapshot = session.provider().freeze().await.expect("freeze");
@@ -391,7 +391,7 @@ tasks:
 /// Stage a slice whose MODIFIED row finalizes to a baseline id equal to
 /// a *later* slice-local id: local `REQ-001` maps to baseline `REQ-002`
 /// while local `REQ-002` (ADDED) maps to `REQ-003`.
-fn stage_overlapping_id_slice(session: &Session) {
+fn stage_overlap_ids(session: &Session) {
     let root = session.root();
     let baseline = "### Requirement: User can log in\n\n\
          ID: REQ-001\n\n\
@@ -493,11 +493,11 @@ tasks:
 /// finalizes to baseline `REQ-002` and must survive the subsequent
 /// `REQ-002` → `REQ-003` substitution in `tasks.md`.
 #[tokio::test]
-async fn task_tokens_do_not_chain_into_later_mappings() {
+async fn task_tokens_no_chain() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, "login-flow", snapshot);
-    stage_overlapping_id_slice(&session);
+    stage_overlap_ids(&session);
 
     merge(&session, "login-flow").await.expect("merge succeeds");
 
@@ -512,7 +512,7 @@ async fn task_tokens_do_not_chain_into_later_mappings() {
 /// A domain-omitted `MODIFIED` row resolves the shared default domain at
 /// wave commit — the same domain synthesis digested it under.
 #[tokio::test]
-async fn domain_omitted_modified_merges_under_default_domain() {
+async fn omit_domain_default() {
     let session = Session::scripted("mock", Vec::new());
     let root = session.root();
     let snapshot = session.provider().freeze().await.expect("freeze");
@@ -583,7 +583,7 @@ tasks:
 /// A slice decision's `related:` REQ ids are finalized to baseline
 /// numbers before promotion, mirroring the `tasks.md` rewrite.
 #[tokio::test]
-async fn decision_related_ids_finalized_at_merge() {
+async fn related_ids_finalize() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);

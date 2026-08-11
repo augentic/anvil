@@ -195,10 +195,10 @@ async fn unrefined_execute_fails() {
 /// at the build gate (one `origin: policy` fact each, synthesized
 /// reason) and the loop proceeds through build and merge to drained.
 #[tokio::test]
-async fn refine_under_epoch_defer_policy_mints_and_drains() {
+async fn refine_defer_drains() {
     let session = Session::bare(vec![
         mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synthesis(),
+        mock::answers::greeting_unknown_synth(),
     ]);
     let root = session.root().to_path_buf();
     scaffold_init(&session).await;
