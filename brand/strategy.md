@@ -2,29 +2,73 @@
 
 Companion to RFC-77 (release process) · registry, open-source, brand & naming, growth · omnia, backends, emery, emery-adapters · Jul 25, 2026
 
-> **Strategic posture: a consultancy's force multiplier, not a product.**
-> Every decision below is scored against one thesis: Emery is Propellerhead's delivery force multiplier — the revenue is services engagements, and the competition is other consultancies, not spec-kit / Kiro / Tessl. 
+> **Strategic posture: change — and selectively build — critical software without gambling with what matters.**
+> Propellerhead sells bounded delivery outcomes for new and existing critical systems. Modernization remains the market wedge; it is not the limit of the practice. Emery makes delivery repeatable and reviewable, while Omnia keeps application logic separate from infrastructure choices — the revenue is services engagements, and the competition is other consultancies, not spec-kit / Kiro / Tessl.
 >
-> **Emery isn't competing with AI coding tools; it's the delivery system that sits on top of them**. The crowded tooling market is validation, not threat: GitHub is paying to educate the category, and the free tools don't bid on delivery contracts. The guardrail is a trace test — every engine feature should trace to a client engagement need, and the scoreboard is margin per engagement and delivery speed, not framework adoption.
+> **Emery does not compete with AI coding tools; it governs the work they help produce.** Coding agents can research, implement, test, and review, and open-source models and tools will make those capabilities increasingly available. Emery connects agent work to evidence, stakeholder intent, unresolved uncertainty, explicit authorization, verification, and accepted state. The guardrail is a trace test — every engine feature should trace to a client engagement need, and the scoreboard is margin per engagement and delivery confidence, not framework adoption.
 >
 > If the roadmap starts optimising Emery as a product, this whole strategy needs re-scoring.
 
 
 ## What the services business needs
 
-Emery is not the strategy. It is the compounding delivery system for a focused services strategy:
+### Vision
 
-> **Evidence-backed modernization and ongoing change for regulated or poorly understood systems.**
+> **Critical software can evolve without losing the behaviour, knowledge, and trust it embodies.**
 
-The valuable promise is not “agentic development,” more agents, or legacy migration by itself. It is that Propellerhead can discover what an existing system actually does, expose uncertainty instead of concealing it, produce a reviewable specification, change the system faster with agents, demonstrate which behaviour was conserved, and leave a durable record of what changed, why, and on whose authority.
+Existing systems should be changeable without losing what the organisation depends on. New systems should begin with enough reflection, explicit intent, and infrastructure optionality that they do not become the next poorly understood estate.
+
+The client problem is not a shortage of code generation. For an existing system, it is that change is required while no one fully understands what the system does, which behaviour is intentional, or what the organisation can safely lose. For a new system, it is the pressure to generate implementation before people have considered consequences, acceptance, and long-term operating choices. Both failures discover the real contract too late.
+
+### Mission and promise
+
+Propellerhead establishes or recovers what a critical system should do and turns that understanding into a living foundation for safe, continuous change:
+
+> **We modernize critical systems in bounded, reviewable waves and selectively apply the same discipline to new systems whose consequences justify it.**
+
+The external promise should stay in buyer language:
+
+> **Propellerhead modernizes critical systems deliberately. We recover how they really work, establish what must be preserved, and deliver change in bounded waves. For selected new systems, we make intent, consequences, and infrastructure choices explicit before they harden into accidental constraints.**
+
+Every accepted change remains traceable to evidence, stakeholder authority, and verification. That trace is the reason to believe the promise, not the headline a buyer is asked to purchase.
+
+### Emery's role
+
+Emery is not the strategy or a substitute for delivery expertise. It is the compounding delivery system for a focused services proposition:
+
+> **Deliberate, evidence-backed delivery for new and existing critical systems.**
+
+The valuable promise is not “agentic development,” more agents, an audit trail by itself, or legacy migration by itself. It is that Propellerhead can establish or discover what a system should do, expose uncertainty instead of concealing it, consider the consequences with the people accountable for them, establish reviewable acceptance boundaries, use agents without surrendering judgment, and leave a durable record of what changed, why, and on whose authority.
+
+Coding tools make software production faster. Emery makes critical software work more deliberate and accountable. It can use coding agents as execution substrates without inheriting their chat history as lifecycle authority.
+
+### Human judgment is not an inefficiency
+
+As implementation becomes cheaper, the scarce capability moves upstream and downstream: choosing a worthwhile problem, reflecting on consequences, resolving ambiguity, shaping coherent boundaries, and deciding whether the result is acceptable. These are human acts supported by evidence, not delays to automate away.
+
+The review seams exist to create considered decisions, not ceremonial approval. Propellerhead's value lies partly in creating the conditions for clients, practitioners, and affected stakeholders to think well together. Agents widen the amount of work that can be attempted; humans remain responsible for deciding what deserves to exist and what good looks like.
+
+### Open source broadens access to agentic coding
+
+Open-source models, runtimes, coding agents, and reusable skills will continue to reduce the cost of competent software production. That democratisation is desirable and makes “we use advanced coding agents” a weaker differentiator every year.
+
+The durable services advantage is the practice around those tools: judgment, domain understanding, evidence quality, delivery discipline, infrastructure design, accountability, and learning from accepted outcomes. Keeping Omnia open and opening Emery and the general adapters reinforces that posture. Clients can inspect the machinery and retain optionality; Propellerhead competes on how well the practice is applied and improved.
+
+### Omnia makes infrastructure a replaceable host concern
+
+Omnia is a first-class part of the client proposition, not merely the runtime beneath Emery. Application logic compiles to WebAssembly components; Omnia gives each invocation a fresh isolated instance, while persistent state and external effects flow through typed provider capabilities. Concrete infrastructure — messaging, storage, identity, observability, model access, and other services — is supplied by the host runtime.
+
+That separation allows a supported backend to be swapped in the host without changing or recompiling guest application logic. It improves local-to-production parity, testability, security boundaries, and long-term infrastructure optionality. It does not make data migration or operational equivalence automatic; backend semantics and service qualities still need verification. The promise is narrower and valuable: infrastructure choice should require less application rewrite.
+
+Client feedback identifies this portability as one of the offer's most significant benefits. Website, deck, proposals, and case studies should show it explicitly and measure backend substitution without guest change where engagements use Omnia.
 
 ### The relationship model
 
-The offer has three connected stages.
+The offer has three connected stages, reached from either a new-system or modernization starting point.
 
-1. **Readiness and system archaeology.** A paid entry engagement establishes repository and runtime readiness, recovers requirements and behaviour, identifies verification gaps, produces a modernization roadmap, and prices subsequent work according to measured uncertainty. This is how fixed-price risk is bounded before Propellerhead accepts it.
-2. **Modernization in bounded waves.** Outcome-priced delivery proceeds against explicit acceptance boundaries. Each wave carries known evidence and protected checks or captures; unresolved intent stays visible; client stakeholders review topology and specifications; accepted results become the durable product baseline.
-3. **Continuous assurance and evolution.** After modernization, Propellerhead maintains the behavioural baseline, refreshes captures and verification profiles, manages carried debt, keeps specifications and client documentation current, delivers subsequent regulatory and product changes, and periodically reassesses readiness and conservation coverage.
+1. **Definition and readiness.** For an existing system, a paid entry engagement recovers critical behaviours, contradictions, unknowns, and verification gaps. For a new system, it establishes intent, constraints, consequences, acceptance, and infrastructure capabilities. Both define and price the first bounded delivery wave.
+2. **Build or modernization in bounded waves.** Outcome-priced delivery proceeds against explicit acceptance boundaries. Unresolved intent stays visible; client stakeholders review topology and specifications; agreed results become the durable product baseline.
+3. **Continuous assurance and evolution.** Propellerhead maintains the behavioural baseline, verification profile, decisions, and carried debt; delivers subsequent regulatory, product, and infrastructure changes; and periodically reassesses readiness and portability.
 
 The third stage creates the long-lived relationship. It is not a SaaS subscription disguised as consulting: the client owns its code, artifacts, evidence, and deployment. The relationship continues because another bounded change with Propellerhead is faster, safer, and more predictable than reconstructing the estate and its decisions again.
 
@@ -51,7 +95,9 @@ Leadership is measured by services outcomes:
 - elapsed time from intent to verified acceptance;
 - cost per verified result;
 - escaped defects and conservation failures;
-- human intervention per slice;
+- unplanned human recovery effort per slice (considered review is value, not waste);
+- material assumptions or consequences surfaced at human review seams;
+- supported infrastructure substitutions completed without guest application changes;
 - proportion of requirements backed by protected evidence;
 - readiness improvement and carried-debt trend;
 - repeat and expansion revenue;
@@ -110,6 +156,8 @@ adapter = { git = "https://github.com/augentic/emery.git", tag = "v0.28.0" }
 **Recommendation:** Open the platform (omnia, backends, emery). Open emery-adapters after an IP pass, keeping client-derived overlays private.
 
 You're already half committed: omnia and backends are public and on crates.io, and both private workspaces declare MIT / Apache-2.0 with public repository URLs in their metadata. The strategic thesis — the advantage is the thinking, not the replicable software — argues for finishing the move.
+
+Open source is also changing the category around the platform. Capable models, agent harnesses, skills, and evaluation tools will be available to organisations that could never justify a proprietary platform contract. Propellerhead should welcome that democratisation rather than defend access to code generation as scarce IP. A transparent delivery system and portable runtime help clients adopt agentic coding without making one consultancy or vendor the permanent owner of their development machinery.
 
 ### Why opening emery is close to forced
 
@@ -175,7 +223,7 @@ Demoted (kept for counsel fallback; do not lead with these):
 | 5    | Cragford | Crag + ford still etymologically strong, but **Crawford Software** (ERP consulting) fails the phone test — "Cragford / Crawford?" is a permanent sales tax. Also Cragsoft. Only revisit if Crossholt / Sureholt / Gateholt fail clearance and counsel clears the Crawford neighbourhood.                                                   |
 | 6    | Cragmere | Crag + mere: solidity plus clarity. Demoted for fuzzy adjacency — CragSoftware (AI studio), The Cragmere Group (NJ construction), and **Rockmere Partners** (Dallas AI transformation consultancy). Watch the "mere / mear" spelling in the say-it-aloud test.                                                                              |
 | 7    | Tarnholm | Tarn + holm: clean Nordic sound, but **kill for AU expansion** — [Tarn](https://tarn.au/) is a Melbourne AI/software studio in the growth market, and Sierra Nevada holds **TARNHUS** in class 42. "Holm" misheard as "home" remains a flattering failure mode if counsel somehow clears the Tarn neighbourhood.                           |
-| 8    | Darktarn | Strong imagery, clean search — but "dark" pulls against the transparency / audit story, and Darktrace sits one fuzzy syllable away in enterprise ears. US marks TARNHELM / TARNHUS for lawyer review. Last resort only.                                                                                                                     |
+| 8    | Darktarn | Strong imagery, clean search — but "dark" pulls against the recovery and trust story, and Darktrace sits one fuzzy syllable away in enterprise ears. US marks TARNHELM / TARNHUS for lawyer review. Last resort only.                                                                                                                     |
 | 9    | Emend    | Latin *emendare* — correct a text; strong fit for evidence-backed legacy rewrite (`emend plan`). Demoted for [lucaswiman/emend](https://github.com/lucaswiman/emend): live Python refactoring CLI on PyPI with the same binary and an `.emend/` scaffold. Brew / `cargo binstall` / git install avoid the PyPI name fight, but PATH shadow and `.emend/` clash remain if an engineer has both. Fine as an internal CLI if the scaffold dir does not copy `.emend/`; revisit before any public platform face. |
 
 
@@ -198,7 +246,7 @@ Principles: every public repo name self-describing without org context; repo nam
 
 ## 4 · Growth: NZD $10m → $50m in three years
 
-**Recommendation:** Keep this document as the platform layer, and put a market wedge on top — outcome-priced legacy modernization, sold on auditability, expanding into Australia — with M&A as an optional accelerant if organic growth undershoots.
+**Recommendation:** Keep this document as the platform layer, and put a market wedge on top — outcome-priced legacy modernization, sold on accountable change and infrastructure optionality, expanding into Australia — with M&A as an optional accelerant if organic growth undershoots.
 
 Everything above is a margin-and-credibility strategy; a force multiplier alone does not 5x a services firm. The growth layer is a market, pricing, and geography decision.
 
@@ -210,15 +258,23 @@ $50m from $10m is 5x — roughly 71% CAGR. At conventional T&M rates (~$250–30
 
 Emery's source adapters — `captures` (runtime behavior with replay digests), `screenshots`, `documentation`, `typescript` — plus evidence, provenance, and authority resolution constitute a **system-archaeology engine**: it recovers a provable specification from a running system nobody understands. That is the missing capability in the largest under-served enterprise market in Australasia: every bank, insurer, utility, and agency holds 20–40-year-old systems where every previous rewrite failed because *nobody could specify what the old system does*. Deal economics fit the arithmetic: modernization programs are $3–20m fixed-price engagements; five to eight concurrent programs is $50m.
 
-### The differentiator: accountability, not speed
+### Modernization is the wedge, not the practice boundary
 
-AI-accelerated delivery is already noise. **AI delivery with an audit trail** — every requirement traceable to evidence, conflicts resolved by declared authority, merges gated and journaled — is a category of one, structurally hard to copy, and it is the unlock that lets regulated buyers (government, banking, insurance, health) say yes to AI-built systems at all. Lead with "AI-built, evidence-backed, auditable." Fixed-price delivery risk is underwritten by the same evidence trail.
+The same deliberate-delivery method applies when a client needs a new critical system. New builds begin from intent and constraints rather than recovered legacy behaviour, but they still benefit from explicit authority, reflection before implementation, reviewable boundaries, verification, durable decisions, and continuous evolution.
 
-The beachhead already exists: two central-government clients and one local-government client are on the books today. Year 1 is not about winning government logos — it is about converting existing relationships into the first fixed-price modernization anchors and the public case studies that carry the audit story into Australia.
+Do not market a second generic “custom software development” proposition. Pursue new systems where the criticality justifies the method and where Omnia's infrastructure portability is commercially meaningful: long-lived systems, uncertain hosting futures, regulated deployment choices, or clients who want to retain bargaining power over cloud and managed-service providers.
+
+### The differentiator: accountable change, not faster coding
+
+AI-accelerated delivery is already noise and open source will make it broadly accessible. Buyers do not purchase an audit trail or an agent fleet for its own sake; they purchase a critical system they can commission and accept without betting the business on incomplete thinking. Lead with the outcome: understand or establish what matters, create room for human judgment, deliver in bounded waves, demonstrate the result, and preserve infrastructure options.
+
+The joined evidence trail makes the accountability promise credible: requirements traceable to evidence, conflicts resolved by declared authority, and delivery facts tied to the candidate. Omnia makes the portability promise concrete by separating guest application logic from host-selected infrastructure backends. Together they let regulated buyers (government, banking, insurance, health) adopt AI-assisted delivery without treating generated code or a current cloud choice as permanent authority.
+
+The beachhead already exists: two central-government clients and one local-government client are on the books today. Year 1 is not about winning government logos — it is about converting existing relationships into the first fixed-price modernization anchors and the public case studies that prove critical change can be bounded and accepted.
 
 ### The wedge is contested — the differentiator still holds
 
-Well-capitalized AI coding platforms now also sell brownfield modernization on speed and cost. **"We do legacy modernization with AI" is no longer differentiating on its own.** Lead with the audit trail and behavioural conservation, not the automation.
+Well-capitalized AI coding platforms now also sell brownfield modernization on speed and cost. **"We do legacy modernization with AI" is no longer differentiating on its own.** Lead with the critical outcome and behavioural conservation, then use the evidence trail to prove the claim.
 
 Emery's commercial artifact remains the joined, digest-bound delivery record: source evidence, authority resolution, `[unknown]` / `[conflict]` gaps, exact execution coverage, verification, and accepted state. An outer agent may drive typed commands and projections ([platform.md § Operator identity](../rfcs/platform.md#operator-identity-an-agent-may-drive-the-engine), [RM-24](../rfcs/roadmap.md#rm-24-operator-control-surface)); the engine stays a deterministic state machine over the fact log. Readiness as a paid entry engagement ([RFC-94](../rfcs/rfc-94-target-readiness.md)) and conservation under host-attested verification ([RFC-97](../rfcs/rfc-97-native-verification.md), [RFC-98](../rfcs/rfc-98-behavioural-conservation.md)) underwrite fixed-price delivery more directly than speculative concurrency. Sequencing authority is the [services programme](../rfcs/platform.md), not competitor feature checklists.
 
@@ -234,7 +290,7 @@ The RM-21 ecosystem play (third-party adapter authors, certification, marketplac
 
 | Year | Revenue target | Focus |
 | --- | --- | --- |
-| 1 | ~$15–17m | Convert the existing government relationships (two central, one local) into two or three fixed-price modernization anchors; add one financial-services anchor; AU entity + first AU deal; publish the provenance/audit story hard — it is the marketing. |
+| 1 | ~$15–17m | Convert the existing government relationships (two central, one local) into two or three fixed-price modernization anchors; add one financial-services anchor; AU entity + first AU deal; publish evidence that each programme preserved critical behaviour and bounded delivery risk. |
 | 2 | ~$25–30m | 4–6 concurrent programs, majority outcome-priced; hire delivery leadership ahead of the constraint; decide by mid-year whether the M&A lever is needed. |
 | 3 | ~$50m | Mostly organic programs; one acquired-and-retooled consultancy only if the year-2 checkpoint called for it. |
 

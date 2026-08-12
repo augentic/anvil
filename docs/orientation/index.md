@@ -3,7 +3,9 @@
 > [!NOTE]
 > Emery was previously distributed as **Specify**. If your installed Cursor plugin still registers `/spec:*` skills backed by a `specify` CLI, update to the current Augentic plugin release — every command in this guide uses the `emery` names.
 
-Emery orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build (or point Emery at existing documentation, intent, or legacy code), Emery generates a plan and durable artifacts, then the `emery` runtime and target adapters implement each slice from those artifacts. Operators drive the loop with `/emery:*` skills — thin slash-command wrappers that each run one `emery` command and relay its output.
+Emery is a delivery system for **accountable software change**. It is designed for work where intent is spread across people, documentation, existing code, and observed behaviour — and where uncertainty must remain visible rather than being guessed away. Emery reconciles those sources into reviewable specifications, records the exact inputs an operator authorizes, then drives implementation and verification from durable artifacts.
+
+Operators use Emery inside [Cursor](https://cursor.com) or through the CLI. The `emery` runtime owns the workflow and target adapters implement each slice; `/emery:*` skills are thin slash-command wrappers that each run one `emery` command and relay its output.
 
 ## A graduated path
 
@@ -44,9 +46,11 @@ Every change flows through one rhythm:
   <strong>Review.</strong> Two human review seams: after <code>/emery:plan</code> authors the topology, and after <code>emery plan refine</code> writes the specifications. Invoking <code>emery plan execute</code> opens the authorization epoch over the exact refinement digests and drives build → merge under gap gates. Nothing privileged runs until you invoke it.
 </div>
 
-## Why artifacts matter
+## Why evidence and artifacts matter
 
-Without Emery, reasoning lives in the chat and is lost when the session ends. Emery makes it durable in version-controlled files under `.emery/`. Plan-time artifacts (`change.md`, `plan.yaml`, `discovery.md`) coordinate the change; per-slice artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`) capture requirements and implementation sequencing. See [Artifacts in depth](../explanation/artifacts.md) for the full dependency chain.
+Without Emery, a coding agent can produce an answer without preserving which source supported it, where sources disagreed, what remained unknown, or which exact result an operator authorized. Reasoning lives in the chat and disappears when the session ends.
+
+Emery carries that reasoning in version-controlled files under `.emery/`. Evidence records what each source says; specifications preserve provenance and visible gaps; plan-time artifacts (`change.md`, `plan.yaml`, `discovery.md`) coordinate the change; per-slice artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`) capture requirements and implementation sequencing. See [Artifacts in depth](../explanation/artifacts.md) for the full dependency chain.
 
 ## Emery and git
 

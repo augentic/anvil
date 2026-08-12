@@ -2,7 +2,7 @@
 
 Companion to [strategy.md](./strategy.md) · shorter / likeable internal names · Jul 25, 2026
 
-> **Posture for this exercise:** the CLI is Propellerhead's delivery force multiplier. Clients buy Propellerhead; engineers run the tool. Trademark for the CLI is **not required** unless (or until) the binary becomes a marketed open-source platform brand.
+> **Posture for this exercise:** Propellerhead helps organisations build and change critical systems without losing what matters. The CLI is the internal delivery tool that makes considered, evidence-backed delivery repeatable; clients buy Propellerhead and engineers run the tool. Trademark for the CLI is **not required** unless (or until) the binary becomes a marketed open-source platform brand.
 >
 > That relaxes the §3 clearance bar in the registry strategy. Optimize for mouthfeel, shortness, and daily CLI use — not Nice classes 9/42.
 
@@ -25,7 +25,7 @@ Under that split, score **mouthfeel, shortness, metaphor, PATH friction**. Spec-
 
 - Ubiquitous PATH tools (`dig`, and anything that shadows a daily Unix command).
 - Famous same-niche binaries (GitHub spec-kit's `specify`; Go's `delve` debugger).
-- Tone that fights the audit story (`scrape`, `pry` as the marketed verb).
+- Tone that fights the recovery, preservation, and trust story (`scrape`, `pry` as the marketed verb).
 
 Different-vertical software (e.g. excava.app for field archaeology) is a **strategic demote** for a public archaeology metaphor, not an automatic internal kill. Revisit with counsel only if the CLI name becomes the public platform face.
 
@@ -39,14 +39,14 @@ Use this prompt when generating candidates:
 
 Role: Propellerhead engineers use this daily to deliver client software. Clients rarely see the name. Propellerhead stays the firm brand. Trademark for the CLI is **not required**; avoid only painful collisions (PATH, famous dev tools).
 
-Job of the name: feel like a sharp tool for *legacy discovery → modern, evidence-backed delivery*. Prefer short (≤6 letters ideal, ≤8 max), easy to say, slightly witty or tactile — not corporate compounds (`-holt` / `-mere` / `-ford` unless they earn it).
+Job of the name: feel like a sharp tool for *understand what matters → build or change deliberately → demonstrate the result*. Prefer short (≤6 letters ideal, ≤8 max), easy to say, slightly witty or tactile — not corporate compounds (`-holt` / `-mere` / `-ford` unless they earn it).
 
 Surfaces to imagine:
 
 - binary: `<name> init`
 - dir: `.<name>/`
 - skills: `/<abbr>:*` ok if binary is longer
-- sentence: “We’ll run it through `<name>` and show the evidence trail.”
+- sentence: “We’ll run it through `<name>` and show what changed and what we preserved.”
 
 Constraints:
 
@@ -59,8 +59,8 @@ Constraints:
 Generate 30 candidates in three buckets:
 
 1. **Tactile / tool** (wrench-in-hand)
-2. **Archaeology / uncover** (without copying Excava)
-3. **Proof / gate / trail** (audit story)
+2. **Recovery / uncover** (without copying Excava)
+3. **Preservation / proof** (confidence in the result)
 
 For each: 1-line why it’s likeable, CLI example, and any obvious collision. Then pick a top 8 “say it in the kitchen” shortlist — gut likeability over legal purity.
 
@@ -86,7 +86,7 @@ When kicking off a run, state tone: **tool**, **uncover**, **proof**, or a mix �
 | Length, spell, say-aloud | Trademark / Nice 9/42 |
 | `<name> init` naturalness | “Can we own search?” |
 | PATH / famous-tool clashes | Coined uniqueness for counsel |
-| Fits archaeology *or* audit | One name must carry the whole growth brand |
+| Fits deliberate craft *or* assurance | One name must carry the whole growth brand |
 
 
 ## Caution if OSS returns

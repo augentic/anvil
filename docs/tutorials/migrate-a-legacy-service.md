@@ -2,7 +2,7 @@
 <div class="eyebrow">Tutorial</div>
 <h1 class="hero-title">Migrate a legacy service</h1>
 
-Point Emery at an existing TypeScript codebase and drive it to an Omnia service: bind the code as a source, review the plan it surveys, refine and review the specs, then execute build → merge per slice. Bring any TypeScript repository you own.
+Point Emery at an existing TypeScript codebase, recover its behaviour into reviewable specifications, and drive it to an Omnia service. You will inspect what the source supports, surface what remains unknown, authorize the exact refined result, then execute build → merge per slice. Bring any TypeScript repository you own.
 
 <div class="meta-row">
 
@@ -10,7 +10,7 @@ Point Emery at an existing TypeScript codebase and drive it to an Omnia service:
 
 <span class="meta-chip"><strong>Target</strong> Omnia</span>
 
-<span class="meta-chip"><strong>Outcome</strong> Migrated service</span>
+<span class="meta-chip"><strong>Outcome</strong> Evidence-backed migration</span>
 
 </div>
 
@@ -21,7 +21,7 @@ Point Emery at an existing TypeScript codebase and drive it to an Omnia service:
 
 <h2><span class="num">1</span> What you will build</h2>
 
-An Omnia project whose specs and implementation are reconciled from a real legacy codebase rather than hand-written intent. The `typescript` source adapter surveys the legacy tree into slice-sized leads at plan time and extracts evidence from it at slice time; the migration then rides the same rhythm as every other change — only the plan row count differs.
+An Omnia project whose specs and implementation are reconciled from a real legacy codebase rather than hand-written intent. The `typescript` source adapter surveys the legacy tree into slice-sized leads at plan time and extracts evidence from it at slice time. Emery preserves the resulting provenance and gaps so you can review what the migration believes before authorizing implementation; the migration then rides the same rhythm as every other change — only the plan row count differs.
 
 Any TypeScript service works as the source — a small one (a single adapter or worker, not a monolith) keeps the first run short. This tutorial was developed against a small Kafka position adapter; substitute your own repository throughout.
 </section>
@@ -121,7 +121,14 @@ At any point, `emery plan status` (or `/emery:status`) is the read-only "where a
 
 The drain refines every slice serially. During refinement, the adapter's `extract` operation produces evidence YAML from the legacy code; that evidence carries `authority: behaviour`, the lowest class, so your intent wins any disagreement — see [Legacy migration at scale](../explanation/legacy-migration.md). Each refined slice records its exact inputs and output bundle in `refinement.yaml`.
 
-When the drain completes, read the specs — this pause is the specification review step. For a migration, this is where you catch a legacy behavior the extraction misread before any code is generated; amend the plan or fix the source and re-run `emery plan refine` to re-refine the staled slices.
+When the drain completes, read the specs and inspect the evidence trail:
+
+```bash
+emery plan gaps
+emery slice provenance <slice-name>
+```
+
+`plan gaps` shows every requirement synthesis left unknown or in conflict. `slice provenance` shows which source claims contributed to each requirement and how authority resolved disagreements. This is the specification review step: catch a legacy behaviour the extraction misread, distinguish an observed quirk from intended behaviour, and decide whether the stated boundary is safe before any code is generated. Amend the plan or fix the source and re-run `emery plan refine` to re-refine the staled slices.
 </div>
 
 
@@ -169,7 +176,7 @@ emery plan archive
 
 
 > [!TIP]
-> **Done looks like:** archived slice artifacts under `.emery/archive/`, Omnia output in the project tree, and the merged spec baseline under `.emery/specs/` — a durable trail from legacy code to generated service.
+> **Done looks like:** archived slice artifacts under `.emery/archive/`, Omnia output in the project tree, and the merged spec baseline under `.emery/specs/` — a durable chain from recovered evidence and reviewed provenance to the generated service.
 
 
 <section id="troubleshooting" markdown="1">

@@ -8,11 +8,13 @@
 
 ## Direction
 
-Emery is Propellerhead's delivery force multiplier, not the product strategy. The programme exists to support one services proposition:
+Propellerhead exists to build and change critical software without losing the behaviour, knowledge, and trust the organisation depends on. The programme supports one services promise:
 
-> **Evidence-backed modernization and ongoing change for regulated or poorly understood systems.**
+> **Establish or recover what a critical system must do, deliver it in bounded, reviewable waves, and preserve the result as the basis for future change.**
 
-The immediate goal is the smallest single-node system that can recover intent, price work honestly, prove that a modernization preserved behaviour, deliver across the repositories one programme actually touches, and leave a living baseline. Services expertise may supply topology and exception judgment. Concurrency, streaming, distribution, hosted fleets, and unattended merge are not prerequisites for that offer.
+Modernization remains the commercial wedge. A new system is the simpler evidence case: authoritative intent and constraints establish the initial baseline rather than system archaeology recovering one from existing behaviour.
+
+Emery is the delivery system behind that promise, not the product strategy. Its immediate goal is the smallest single-node system that can reconcile evidence with stakeholder intent, expose uncertainty, price work honestly, prove the delivered candidate against the assurance available, deliver across the repositories one programme actually touches, and leave a living baseline. Services expertise may supply topology and exception judgment. Concurrency, streaming, distribution, hosted fleets, and unattended merge are not prerequisites for that offer.
 
 The north-star architecture remains capable of scaling beyond one node and one reviewed run. It is no longer the default implementation queue. Scale is activated by measured engagement pull, not by architectural completeness.
 
