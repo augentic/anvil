@@ -1,6 +1,6 @@
 # RFC-100: Distributed Execution
 
-> Status: Draft — step 8 of the platform-migration series, scale track ([platform.md](platform.md))
+> Status: **Parked.** Reopen only after RFC-96 is complete and a production engagement requires one change to execute across more than one node. A second machine that can be served by independent changes is not the trigger.
 >
 > Owns: running one change across multiple nodes without changing its execution semantics. Adds distribution for facts, planning artifacts, domain rounds, and snapshots; slice ownership generations and stale-work rejection; claim-based remote execution and worker pools; and attach, resume, and detach.
 >

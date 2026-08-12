@@ -1,10 +1,10 @@
-# RFC-93: Outcome Learning
+# RFC-103: Outcome Learning
 
-> Status: Draft — evidence and promotion track after implemented [RFC-90](rfc-90-build-verification.md), extended by [RFC-96](rfc-96-concurrent-execution.md), [RFC-99](future/rfc-99-streaming-execution.md), and [RFC-97](rfc-97-native-verification.md). Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
+> Status: Draft — evidence and promotion track designed over implemented [RFC-90](rfc-90-build-verification.md), with its first useful delivery following [RFC-92](rfc-92-operation-model-policy.md) usage facts and the existing blind eval harness; extended by [RFC-94](rfc-94-target-readiness.md), [RFC-97](rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md), and [RFC-96](rfc-96-concurrent-execution.md). Parked [RFC-99](future/rfc-99-streaming-execution.md) may add progressive-execution dimensions if it is reopened. Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
 >
 > Patch ownership: this RFC amends RFC-88 D1 after RFC-88 lands by adding `outcome.yaml` to the detached change root and `.emery/change/outcome.yaml` to in-place mode. RFC-88 remains unchanged.
 >
-> Producers this RFC assumes: [RFC-92](rfc-92-operation-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block below, which is otherwise structurally `unknown`. [RFC-94](rfc-94-target-readiness.md) supplies per-target readiness bands and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions. None is required for the first cut; each adds a dimension to the same record.
+> Producers this RFC assumes: [RFC-92](rfc-92-operation-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block; the blind eval harness supplies promotion evidence. Those two are required for the first cut to learn rather than merely archive. [RFC-94](rfc-94-target-readiness.md) supplies per-target readiness bands, [RFC-97](rfc-97-native-verification.md) supplies execution-assurance and oracle-assurance facts, and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions.
 
 ## Intent
 
@@ -84,9 +84,14 @@ diagnostics:
     terminal: false
     resolved-by: verification-repair
 assurance:
-  model-assisted: 4
-  protected: 2
-  host-attested: 2
+  execution-assurance:
+    model-assisted: 4
+    host-attested: 2
+    hybrid: 0
+  oracle:
+    candidate: 4
+    protected: 2
+    mixed: 0
 cost:
   model-usage: unknown
 ```
@@ -189,7 +194,7 @@ Promotion runs the current and candidate versions against:
 
 The report separates:
 
-- accepted outcome and protected/host assurance;
+- accepted outcome, execution assurance, and oracle assurance;
 - first-pass success and repair trajectory;
 - unresolved-finding recurrence;
 - latency and provider-reported cost;
@@ -214,12 +219,12 @@ Future runs record the selected version. Existing runs remain pinned.
 
 Outcome learning never authorizes build or merge. A good historical success rate cannot:
 
-- waive a current unknown or conflict;
+- clear or exclude a current unknown or conflict;
 - replace exact member admission;
-- lower protected-oracle or host-profile requirements;
+- lower oracle-assurance or host-execution requirements;
 - increase a retry budget at runtime;
 - accept stale work;
-- turn a model review into tool assurance.
+- turn a model review into host-attested execution.
 
 ## Retention and privacy
 
@@ -229,7 +234,7 @@ Cross-product or cross-tenant aggregation is denied by default. Adapter-wide lea
 
 - removes project and source identifiers;
 - proves the source licence and data policy permit reuse;
-- retains enough version and assurance identity for evaluation;
+- retains enough version, execution-assurance, and oracle-assurance identity for evaluation;
 - is reviewed before entering a shared corpus.
 
 Deletion removes the record from future datasets and corpus builds. Released binaries or models follow their own provenance and revocation policy.
@@ -263,6 +268,6 @@ Deletion removes the record from future datasets and corpus builds. Released bin
 - **Mutable agent memory.** It is neither input-fenced nor reviewable and makes replay depend on hidden history.
 - **Let a successful run rewrite its own prompt.** One outcome is weak evidence, and in-run mutation destroys the meaning of its recorded input identity.
 - **Use blind grading as production verification.** Hidden evaluation protects the learning harness; it is not customer workflow authority.
-- **One scalar reward for every proposal.** Build correctness, requirement coverage, protected assurance, latency, and cost have different failure meanings.
+- **One scalar reward for every proposal.** Build correctness, requirement coverage, execution source, oracle assurance, latency, and cost have different failure meanings.
 - **Copy source bodies into a global corpus by default.** Product and tenancy boundaries remain authoritative.
 - **Automatically promote recurring observations into decisions.** Observations stay advisory until an operator accepts durable product intent.

@@ -4,7 +4,7 @@
 >
 > Patch ownership: this RFC amends implemented RFC-86 D6 / D8 / D12 / D14 / D22 / D25 / D26 and, once RFC-88 lands, RFC-88 D7 / D8 plus its public operator flow. The predecessor RFC texts remain unchanged.
 >
-> Note ([RFC-86a](rfc-86a-gap-deferral.md), implemented after this draft): the per-epoch unknown-waiver surface referenced below (`--waive`, waivers nested on coverage) is deleted — gap dispositions are durable digest-bound `gap.deferred` facts minted unconditionally at the build gate (the `strict | defer` policy knob and the `emery plan defer` verb were subsequently deleted too), and deferred requirements leave build scope rather than being built over. Read this draft's waiver mentions as that disposition surface; the refinement stage this RFC adds is the intended home of the operator pause on gaps, and it must respect the deferral fact union the same way execute does today. Reconcile the wording when this RFC is picked up.
+> Note ([RFC-86a](rfc-86a-gap-deferral.md), implemented after this draft): the per-epoch unknown-waiver surface referenced below (`--waive`, waivers nested on coverage) is deleted — gap dispositions are durable digest-bound `gap.deferred` facts minted unconditionally at the build gate (the `strict | defer` policy knob and the `emery plan defer` verb were subsequently deleted too), and deferred requirements leave build scope rather than being built over. Read this draft's waiver mentions as that disposition surface; the refinement stage this RFC adds is the intended home of the operator pause on gaps, and execute respects the same deferral fact union.
 
 
 
@@ -94,11 +94,11 @@ Changing a covered input or output makes the manifest stale. The operator re-run
 
 Bundle artifacts are engine-owned between refine and execute: a direct edit is detected as staleness, and re-refinement replaces it. Durable corrections travel through inputs — source material, plan amendments, and authority overrides — so every requirement retains provenance.
 
-An automation runner may invoke execute immediately after successful refinement. It still consumes the same exact manifests and gap policy; skipping the pause does not create another lifecycle or artifact shape.
+An automation runner may invoke execute immediately after successful refinement. It still consumes the same exact manifests and build-time gap gate; skipping the pause does not create another lifecycle or artifact shape.
 
 ### Execute — build and commit exact refinements
 
-`emery plan execute` requires a fresh refinement manifest for every in-scope leaf it may build. At start it appends `plan.execute.started` covering the exact plan and refinement digests plus any explicit unknown waivers.
+`emery plan execute` requires a fresh refinement manifest for every in-scope leaf it may build. At start it appends `plan.execute.started` covering the exact plan and refinement digests.
 
 It then drains the existing engine-owned build and merge phases:
 
@@ -108,7 +108,7 @@ target build → verify ⇄ repair → review ⇄ repair → target-wave merge
 
 If a manifest is missing or stale, execute fails before opening a workspace or target wave and points to `emery plan refine`.
 
-`--waive <slice>/<req> --reason <reason>` remains execute-only because a waiver authorizes build across a known, exactly covered unknown.
+Before each build, the RFC-86a gap gate mints one durable `gap.deferred` fact per remaining open `[unknown]` or `[conflict]`; deferred requirements leave build scope and are conserved as debt.
 
 ### Archive — unchanged
 
@@ -130,7 +130,7 @@ This supersedes RFC-86 D14 and D26. The earlier rejection preserved a three-verb
 
 ### D2 — Refinement adds no plan lifecycle state
 
-Completion remains per leaf. `Ready` is a read-only projection: every in-scope leaf has a fresh refinement manifest and the clean gap policy passes.
+Completion remains per leaf. `Ready` is a read-only projection: every in-scope leaf has a fresh refinement manifest and no open gap remains.
 
 The plan keeps no mutable lifecycle field and gains no `approved` rung. A successful `plan refine` means its requested work set reached the bound; it does not stamp a global Refined state.
 
@@ -194,7 +194,7 @@ The projections have the same bytes whether derived from a complete plan or an R
 
 Before RFC-88 lands, `decomposition` is the canonical single-node projection — the leaf as its own terminal with empty ancestry and the dependency closure taken from `plan.yaml` `depends-on` — and `entry` fields RFC-88 and RFC-96 have not yet introduced (ownership envelope, protected inputs and oracles) encode as canonical empty forms. The projection DTO declares those fields optional with absent-as-canonical-empty encoding, so digests stay stable as the fields arrive.
 
-`observations` is the canonical empty-set digest unless RFC-93 advisory observations were supplied to refinement. The digest covers their complete ordered identities and scopes.
+`observations` is the canonical empty-set digest unless RFC-103 advisory observations were supplied to refinement. The digest covers their complete ordered identities and scopes.
 
 The schema is generated from a Rust DTO and rejects unknown fields. `bundle` is assembled from the same canonical input declaration used by the target build request, including present adapter-declared additional inputs. A missing required input prevents successful refinement.
 
@@ -206,7 +206,7 @@ The artifact files remain the human-readable working view. Freshness recomputes 
 
 `plan refine` writes planning artifacts and creates no code-work grant. `plan.execute.started` remains the privileged-start fact.
 
-Its closed-plan coverage changes from per-leaf `existing | refine-under-epoch` spec coverage to exact per-leaf refinement digests. Optional unknown waivers remain nested on that fact.
+Its closed-plan coverage changes from per-leaf `existing | refine-under-epoch` spec coverage to exact per-leaf refinement digests. Per-epoch unknown waivers are removed; durable deferral facts are joined separately at the build gate.
 
 `refine-under-epoch` is removed. Execute cannot authorize a refinement that does not yet exist, because doing so would erase the exact input fence and the optional review seam.
 
@@ -237,8 +237,7 @@ RFC-96 owns the generic phase-work-item scheduler, concurrent work frontiers, an
 `plan status` remains read-only:
 
 - missing or stale manifests point to `/emery:refine`;
-- fresh manifests with conflicts point to input correction and re-refinement;
-- fresh manifests with unknowns point to correction or explicit execute waivers;
+- fresh manifests with conflicts or unknowns expose the gap inventory for review and correction; execute will defer any rows that remain open at the build gate;
 - clean refinement points to `/emery:execute`;
 - executed entries retain the existing build, merge, stop, and drained projections.
 
@@ -295,9 +294,9 @@ This amends RFC-86 D6, D8, D12, D14, D22, D25, and D26, plus RFC-88 D7 and D8. R
 5. Every path consumed by the assembled target build request appears in the refinement bundle. Changing any covered path makes execute refuse before wave open.
 6. Execute over an unrefined or stale leaf returns a typed refinement-required result and never auto-refines.
 7. A dependent build opens only after predecessor acceptance and records the then-current target CID as its wave base.
-8. Refinement succeeds with typed gaps. Conflicts remain non-waiveable; unknown waivers remain execute-only and bind to the covered refinement digest.
+8. Refinement succeeds with typed gaps. Execute gate-mints durable deferrals for any open conflicts or unknowns before build; those requirements leave build scope and remain debt.
 9. An interrupted refinement writes no successful manifest; restart neither treats partial artifacts as fresh nor repeats valid sibling refinements.
-10. An automation may invoke refine and execute back to back without an approval artifact; execute still covers the exact manifest digests and enforces the ordinary gap policy.
+10. An automation may invoke refine and execute back to back without an approval artifact; execute still covers the exact manifest digests and applies the ordinary gap gate.
 11. Existing RFC-90 success, repair, review-remediation, failure, and attempt-abandonment fixtures pass without target WIT changes.
 12. `cargo make ci`, the wasm32 engine compile-check, and native integration suites pass.
 
@@ -307,12 +306,12 @@ This amends RFC-86 D6, D8, D12, D14, D22, D25, and D26, plus RFC-88 D7 and D8. R
 
 - `plan execute --until refined` — preserves code authorization and implicit-refinement semantics for a specs-only request.
 - **Fold refinement into author** — removes topology review and pays extraction and synthesis cost before the operator accepts decomposition.
-- **Stage specs only and synthesize design and tasks at build admission** — defers target-specific detail nearer accepted predecessor code, but splits synthesis into two legs, adds a second freshness surface, and excludes design and tasks from the covered bundle; revisit if retained outcomes (RFC-93) show dependent design quality degrading with chain depth.
+- **Stage specs only and synthesize design and tasks at build admission** — defers target-specific detail nearer accepted predecessor code, but splits synthesis into two legs, adds a second freshness surface, and excludes design and tasks from the covered bundle; revisit if retained outcomes (RFC-103) show dependent design quality degrading with chain depth.
 - **Keep implicit refine inside execute** — permits generation input that was never exactly covered to enter build, erasing the input fence and the review opportunity.
 - **Accept hand-edited bundles through a re-manifest act** — severs requirement provenance from Evidence, stales `model.yaml` against its own specs, and reintroduces an approval artifact under another name.
 - **Keep refine-time target-base** — makes dependent builds consume a pre-predecessor base or forces ordinary re-refinement after code generation.
 - **Compare refinement baselines to every plan-local merge** — would stale covered dependent manifests as their predecessors commit.
-- **Bind dependents to a consumed spec subset of the predecessor bundle** — regeneration nondeterminism means a re-refined predecessor rarely preserves any sub-artifact digest, so finer binding buys nothing; revisit if RFC-93 outcome data shows stable re-refinements.
+- **Bind dependents to a consumed spec subset of the predecessor bundle** — regeneration nondeterminism means a re-refined predecessor rarely preserves any sub-artifact digest, so finer binding buys nothing; revisit if RFC-103 outcome data shows stable re-refinements.
 - **Persist immutable refinement-record history now** — the canonical manifest plus digest-bound execute and build records provide the closed-plan input fence; RFC-99 retains exact manifest revisions when progressive member admission requires them.
 - **Replace the scheduler in this RFC** — serial staged refinement needs a bounded refinement selector, not concurrent phase work items or distributed claim semantics.
 - **Replace** `plan.execute.started` **with a generic grant now** — closed execution has one authority mode; RFC-99 owns the second mode that justifies generalization.

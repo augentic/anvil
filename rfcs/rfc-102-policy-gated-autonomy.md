@@ -1,6 +1,6 @@
 # RFC-102: Policy-Gated Autonomy
 
-> Status: Draft — autonomy follow-on to [RFC-99](future/rfc-99-streaming-execution.md) Phase B, [RFC-97](rfc-97-native-verification.md), and [RFC-93](rfc-93-outcome-learning.md). Owns unattended accepted-CID mutation, promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](rfc-95-publication-sets.md).
+> Status: **Parked.** Reopen only after RFC-99 Phase B, RFC-97 Phase B, RFC-103 outcome promotion, RFC-94 readiness, and RFC-93 operator grants have landed **and** a client engagement requires unattended accepted-state mutation. Owns promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](rfc-95-publication-sets.md).
 >
 > Patch ownership: this RFC amends RFC-88 D7 / D8 after RFC-88 lands by adding policy-gated commit authorization beside closed `plan execute`; it does not revise RFC-88. It extends RFC-95's seal gate without granting forge publication.
 
@@ -16,13 +16,13 @@ without human pauses when every exact artifact, gap, protected oracle, native ve
 
 Autonomy means policy-gated progression, not model authority. The model cannot choose its policy, waive a gap, broaden scope, lower assurance, reset a budget, or decide that its own output may merge.
 
-### Scope: the engine's run, not the operator's verbs
+### Scope: engine autonomy and caller authority are separate policies
 
-This RFC governs what the **engine** may do inside one unattended run. It does not govern what an external **operator** asks for between runs, and the distinction matters because the operator need not be a person: nothing in the CLI requires one, and an autonomous driver can issue `plan defer`, `plan drop`, `plan amend --authority-override`, or `--force` exactly as a human can.
+The autonomy policy governs what the **engine** may do inside one unattended run. [RFC-93](rfc-93-operator-boundary.md) separately governs which CLI acts the caller may dispatch. The distinction matters because the operator need not be a person: nothing in the CLI requires one, and an autonomous driver can issue `plan drop`, `plan amend --authority-override`, or `--force` exactly as a human can.
 
-Those verbs are deliberately **out of autonomy-policy scope**. Bringing them in would make the policy a permission surface over the operator's own interface, which [RFC-86a](rfc-86a-gap-deferral.md) rejected when it replaced per-epoch waiver permission with durable dispositions, and which [RFC-86](rfc-86-change-facts.md) rejected again in refusing a countersign gate. The policy constrains artifacts, assurance, budgets, and admission — properties of *results*, which hold regardless of who called.
+Those verbs remain out of **autonomy-policy** scope: result admission must not vary merely because a human or agent invoked it. They are not therefore universally authorized. RFC-93 resolves and enforces the caller's operator grant before guest dispatch. This RFC consumes the resulting actor and grant records when compiling commit admission.
 
-What closes the loop is attribution, not restriction: [RFC-103](rfc-103-operator-attribution.md) records the acting operator's class and attestation on every fact, so an autonomous driver's dispositions are legible as such in review. An agent may drive the engine; an agent may not be the engine, and it may not extend its own grant by driving harder.
+An agent may drive the engine; an agent may not be the engine, and it may not extend its RFC-93 grant by driving harder.
 
 ## Prerequisite boundary
 
@@ -37,6 +37,8 @@ emery plan run --publication progressive --through merged --policy <profile>
 The command may progressively author, refine, and build before final closure. Entering its first commit-capable phase is unavailable unless the deployment resolves:
 
 - a promoted autonomy-policy generation;
+- a current operator grant admitting this invocation and its product/target scope;
+- an RFC-94 `unattended` readiness band for every written target, with current authority digests;
 - every required RFC-97 host-verification profile;
 - every protected input and oracle required by that policy;
 - the RFC-88 final planning closure and current accepted target state.
@@ -48,11 +50,13 @@ Single-node autonomy does not wait on distribution. Multi-node or multi-tenant a
 ## Terms
 
 - An **autonomy policy** is a closed, versioned, deployment-owned profile governing one unattended run class.
+- An **operator grant** is RFC-93's deployment-owned caller capability, consumed here by identity and digest.
+- A **policy bundle** is the immutable deployment resolution containing the applicable operator grant, autonomy policy, model routes, readiness profile, verification profiles, corpus governance, and egress/secret policy plus their individual and aggregate digests.
 - A **risk class** is one of `low | moderate | high | critical`; it selects one closed assurance and recovery profile for a target or slice.
 - A **commit admission** is the exact fact authorizing one closed target wave to mutate the accepted CID.
 - A **standing amendment rule** is a narrow, pre-authorized deterministic predicate over one inert RFC-88/RFC-96 amendment proposal.
 - A **recovery ladder** is the ordered bounded set of actions the engine may try before stopping.
-- A **policy generation** is a promoted RFC-93 version; changing it starts a new run grant.
+- A **policy generation** is a promoted RFC-103 version; changing it starts a new run grant.
 
 ## Autonomy policy
 
@@ -73,7 +77,8 @@ admission:
 risk-classes:
   high:
     assurance:
-      minimum: mixed
+      execution-assurance: host-attested
+      oracle-assurance: protected
       profiles: [build, test, clippy]
       required-oracles: [legacy-replays]
     budgets:
@@ -91,9 +96,11 @@ Closed enums and engine maxima bound every field. A policy may lower a compiled 
 
 Every referenced risk class must have one profile. The compiler selects the exact class from the slice override, target override, or default, records it on member and commit admission, and rejects an unclassified slice. A standing amendment cannot change the selected class.
 
-Projects, source artifacts, adapters, prompts, and models cannot write or redirect the policy registry. Deployment policy resolves the profile before the engine starts and returns its immutable generation and digest.
+Projects, source artifacts, adapters, prompts, and models cannot write or redirect the policy registry. Deployment policy resolves one immutable policy bundle before the engine starts and returns the typed policies the invocation needs plus their individual and aggregate digests. Organization or deployment minimums may be strengthened but never weakened by a project or invocation. Missing, malformed, contradictory, expired, or unverifiable policy fails closed.
 
-The policy resolver has closed `run | autonomy` kinds. RFC-99 `--through built` accepts a run policy. `--through merged` requires an autonomy policy promoted through RFC-93; the same CLI flag cannot silently upgrade one kind to the other.
+RFC-93 owns the desktop `local-owner` binding and restricted ingress. A regulated or multi-tenant autonomy profile requires host-attested identity and a deployment-issued grant; a self-declared actor label can never satisfy that requirement.
+
+The policy resolver has closed `run | autonomy` kinds. RFC-99 `--through built` accepts a run policy. `--through merged` requires an autonomy policy promoted through RFC-103; the same CLI flag cannot silently upgrade one kind to the other.
 
 ## Admission rules
 
@@ -103,25 +110,24 @@ Before the first commit-capable phase, unattended progression requires:
 
 - final RFC-88 closure with no open or superseded branch in the leaf projection;
 - exact source, target, adapter, model, and profile identities within policy scope;
+- current RFC-94 readiness authority digests whose bands admit the selected autonomy policy;
 - fresh RFC-91 refinement manifests for every in-scope leaf;
 - no `[conflict]` or `[unknown]`;
 - every divergence resolved by deterministic authority with complete provenance;
 - protected inputs and oracles fixed by the covered decomposition revision.
 
-No autonomy policy can waive unknowns or conflicts. A policy may require `agreed` only.
+No autonomy policy can waive unknowns or conflicts. Reviewed execution may have auto-deferred an open row at its build gate; that durable disposition preserves debt but does not change the requirement's `[unknown]` or `[conflict]` status and therefore remains ineligible for autonomous commit. A policy may require `agreed` only. A future policy kind that excludes a requirement from autonomous scope must record the exact requirement digest and carried-debt consequence; silence never counts as exclusion.
 
 ### Build
 
 Build admission reuses RFC-99 member admission and candidate frontiers. Every result remains non-authoritative until commit admission.
 
-The selected risk class's minimum assurance is one of:
+The selected risk class states two orthogonal minima:
 
-- `model-assisted` — candidate self-consistency only;
-- `protected` — at least one read-only protected input or oracle contributed to every required check;
-- `host-attested` — every required RFC-97 profile produced a valid host attestation;
-- `mixed` — the closed required combination.
+- `execution-assurance: host-attested | hybrid` — every required profile produced a valid RFC-97 host attestation; `hybrid` additionally requires the declared deterministic in-component contribution;
+- `oracle-assurance: candidate | protected | mixed` — whether checks consumed only candidate-writable inputs, at least one read-only protected input or oracle, or the policy's declared combination.
 
-Operator output and facts carry the actual assurance. A stronger label is never inferred from policy intent.
+`execution-assurance: model-assisted` may produce an RFC-99 non-authoritative candidate but can never satisfy autonomous commit admission. A green host-attested run over candidate-authored tests is `execution-assurance: host-attested` and `oracle-assurance: candidate`; host execution does not manufacture oracle independence. Operator output and facts carry both actual axes. A stronger label is never inferred from policy intent.
 
 ### Commit
 
@@ -136,6 +142,8 @@ Before each target-wave merge, the engine atomically writes commit admission cov
 - required host profile attestations;
 - terminal build and review reports;
 - autonomy-policy generation and selected risk classes;
+- per-target readiness authority digests and bands;
+- operator-grant identity, actor attestation, and policy-bundle digest;
 - complete recovery history;
 - target-wave membership and proposed result CID.
 
@@ -167,7 +175,7 @@ RFC-88 and RFC-96 amendment proposals remain inert by default. A standing rule m
 
 - the proposal kind is explicitly allowed;
 - source, target, product, and protected-oracle scope do not expand;
-- no adapter, model profile, authority override, gap waiver, or risk class changes;
+- no adapter, model profile, authority override, open-gap status, or risk class changes;
 - every new leaf remains inside the original lead and ownership envelope;
 - decomposition depth, node, and application budgets remain;
 - the old planning revision has not changed since proposal creation.
@@ -180,7 +188,7 @@ These proposal kinds are permanently operator-only:
 
 - source or target addition;
 - authority override;
-- unknown waiver;
+- requirement amendment that clears or excludes an open unknown or conflict;
 - protected-input or oracle removal;
 - model, adapter, profile, or policy change;
 - ownership-envelope widening;
@@ -200,11 +208,11 @@ Legacy migrations should prefer externally grounded checks. A policy may require
 
 The build agent may see protected inputs needed for repair, but cannot change them. Blind acceptance sets remain evaluation-only and unavailable to the production run.
 
-Passing candidate-authored tests alone is model-assisted assurance and cannot satisfy a protected or host-attested policy.
+Passing candidate-authored tests under a host profile is host-attested execution with candidate oracle assurance. It may satisfy a greenfield policy that explicitly permits `candidate`, but a modernization policy requiring protected conservation cannot be satisfied without its admitted oracle. Model-assisted execution alone never satisfies autonomous commit.
 
 ## Policy learning and promotion
 
-RFC-93 may propose a new autonomy-policy generation from outcome records. Promotion requires:
+RFC-103 may propose a new autonomy-policy generation from outcome records. Promotion requires:
 
 - deterministic schema and scope validation;
 - current-versus-candidate integration and replay runs;
@@ -242,26 +250,27 @@ RFC-95 forge publication remains a separate operator act. This RFC may create lo
 
 - Extend RFC-99 `plan run` with `--through merged` only when an autonomy policy resolves.
 - Add the closed autonomy-policy DTO, provider capability, generation identity, and fail-closed resolver.
-- Add exact `target.wave.commit-admitted` facts and preflight revalidation.
+- Consume RFC-93's actor and operator-grant records when resolving the immutable policy bundle; this RFC adds no second caller-authorization path.
+- Add exact `target.wave.commit-admitted` facts and preflight revalidation, including current RFC-94 readiness authority per written target.
 - Add recovery-ladder counters and typed terminal reasons.
 - Add standing amendment rules over the existing compare-and-set amendment kernel.
 - Project capture replay and contract Evidence into protected-oracle requirements without changing Evidence authority.
-- Resolve and enforce RFC-97 host profiles before commit admission.
-- Emit RFC-93 outcome fields for admissions, recovery, assurance, and policy generation.
+- Resolve and enforce RFC-97 host profiles with separate execution-assurance and oracle-assurance minima before commit admission.
+- Emit RFC-103 outcome fields for admissions, recovery, assurance, and policy generation.
 - Keep forge publication, policy promotion, and policy registry mutation outside the engine run.
 
 ## Acceptance criteria
 
-1. A clean fixture reaches merged from one `plan run` gesture with no human pause, no gap waiver, and exact policy, member, and commit admissions.
+1. A clean fixture reaches merged from one `plan run` gesture with no human pause and exact operator grant, policy bundle, member, and commit admissions.
 2. The same fixture under cap one and cap four produces the same accepted target CIDs and requirement identities.
-3. A conflict, unknown, missing protected oracle, missing host profile, stale attestation, or weaker actual assurance stops before commit admission.
+3. A conflict, unknown, auto-deferred open row, below-`unattended` or stale readiness assessment, missing protected oracle, missing host profile, stale attestation, model-only verification, or weaker actual assurance on either axis stops before commit admission.
 4. A three-leaf dependency chain builds through RFC-99 candidate frontiers and commits in topological waves against current accepted CIDs.
 5. A permitted boundary split applies once by compare-and-set; scope widening or a second application stops.
-6. An authority override, unknown waiver, protected-input removal, adapter/model/policy change, or forge action can never be standing-authorized.
+6. An authority override, open-requirement status change, protected-input removal, adapter/model/policy change, or forge action can never be standing-authorized.
 7. Exhausting any recovery budget stops; success elsewhere never resets its counter.
 8. Changing one admitted digest, including the observation set, invalidates exactly the affected wave and dependant admissions.
 9. Policy generation changes and revocation affect new admission without rewriting historical facts.
-10. Candidate-authored tests cannot satisfy protected or host-attested assurance.
+10. Candidate-authored tests run by the host report host-attested execution and candidate oracle assurance; they cannot satisfy protected oracle assurance, while model-assisted execution cannot satisfy any autonomous commit.
 11. Postflight failure remains non-rollback and requires operator acknowledgement.
 12. A blocking post-acceptance target complete round stops without autonomous repair or amendment under the same grant.
 13. Publication remains operator-owned, and all repository quality gates and blind autonomy fixtures pass.
@@ -271,9 +280,9 @@ RFC-95 forge publication remains a separate operator act. This RFC may create lo
 - **Treat unattended invocation as blanket approval.** The policy constrains scope; exact member and commit admissions constrain artifacts and results.
 - **Auto-waive gaps.** Missing or conflicting intent is not a repairable implementation defect.
 - **Let a model choose recovery actions.** Models return typed judgments and reports; the engine owns the ladder and counters.
-- **Invent free-form fix work from validation gaps in model context.** Comparable products let an orchestrator agent mint follow-up features after validators report. Under this RFC the only allowed forms of “fix work invented from findings” are the engine-owned recovery ladder and standing amendments over inert, digest-bound proposals — never mid-run conversational re-plan that widens scope, resets budgets, or invents topology outside those predicates. See [platform.md § Absorbed lessons](platform.md#absorbed-lessons-not-the-opposite-bet).
+- **Invent free-form fix work from validation gaps in model context.** Comparable products let an orchestrator agent mint follow-up features after validators report. Under this RFC the only allowed forms of “fix work invented from findings” are the engine-owned recovery ladder and standing amendments over inert, digest-bound proposals — never mid-run conversational re-plan that widens scope, resets budgets, or invents topology outside those predicates. See [platform.md § Absorbed lessons](platform.md#lessons-absorbed-from-comparable-systems).
 - **Apply every valid amendment automatically.** Structural validity does not imply policy authority.
 - **Use historical success as current assurance.** Every commit proves its own exact protected and host checks.
 - **Publish to the forge automatically.** Accepted local state and external publication retain separate authority and recovery domains.
-- **Mutate policy from runtime learning.** RFC-93 promotion creates a future generation; active runs remain pinned.
-- **Extend the policy to gate operator verbs.** An autonomous driver issuing `defer` / `drop` / `amend` / `--force` is an operator act, not a run phase; restricting it here would rebuild the permission surface RFC-86a removed. [RFC-103](rfc-103-operator-attribution.md) attributes those acts instead.
+- **Mutate policy from runtime learning.** RFC-103 promotion creates a future generation; active runs remain pinned.
+- **Put caller authorization inside the engine lifecycle or autonomy policy.** Caller authority belongs at the host dispatch boundary and composes with RFC-93 attribution. The guest still gates artifacts and results identically for every actor; it gains no approval rung, countersign transition, or per-epoch waiver surface.

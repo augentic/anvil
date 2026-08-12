@@ -1,6 +1,6 @@
 # RFC-95: Publication Sets
 
-> Status: Draft — step 4 of the platform-migration series ([platform.md](platform.md))
+> Status: Active product follow-on to RFC-88 in the [Services Delivery Programme](platform.md)
 >
 > Owns: one local project seal per publication member; the branch, pull-request marker, and landing-order conventions that bind those members into one change; archive-time verification; and the shared machine-readable publication projection.
 >

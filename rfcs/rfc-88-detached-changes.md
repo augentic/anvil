@@ -1,6 +1,6 @@
 # RFC-88: Detached Changes
 
-> Status: Draft — step 3 of the platform-migration series ([platform.md](platform.md))
+> Status: Active product contract in the [Services Delivery Programme](platform.md)
 >
 > Owns: the detached change home; discovery and immutable pinning of targets, sources, and adapters; capability-profile-bound conflict-domain decomposition; refinement feedback into focused child leads; the deterministic buildable-leaf projection into `plan.yaml`; and per-target execution over accepted CIDs.
 >
@@ -328,7 +328,7 @@ After RFC-95 publishes and archives the change, no coordination state is require
 
 ## Implementation requirements
 
-- The public workflow remains `emery plan author → emery plan execute → emery plan archive`; RFC-95 owns the seal and successful archive gate after execute.
+- The public workflow remains `emery plan author → emery plan refine → emery plan execute → emery plan archive`; refinement is planning-artifact-only under RFC-91, and RFC-95 owns the seal and successful archive gate after execute.
 - `Plan` gains `targets`, `discovery-digest`, `leads-digest`, `decomposition-digest`, model-capability profile ids and digests, exact source pins with `cid`, and singular `slices[].target`; `ProjectConfig` gains a unique kebab-case `product` list. The current `discovery.md` lead inventory becomes the canonically digestible `leads.md`. Validation checks discovery, retained lead revision, profiles, decomposition, and leaf projection as one unit.
 - Add the closed `decomposition.yaml` shape, canonical digest, bounded recursive partition kernel, closed complexity assessment, profile-scored leaf-readiness gate, domain-dependency compiler, exact projection validator, and RFC-95 target-contraction cycle check. CLI plan mutations must update the decomposition and reproject the plan or refuse; hand-edited drift never executes.
 - Retain every referenced lead and decomposition revision by digest. Add closed ownership and refinement-boundary proposal DTOs plus `emery plan amend --proposal <digest>`. Application compare-and-sets current planning digests, accepted-target frontiers, the committed-leaf set, and affected-work quiescence. Runtime recovery may author proposals but never apply them.

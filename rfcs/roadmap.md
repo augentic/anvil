@@ -2,15 +2,9 @@
 
 > Status: Draft
 
-The [platform RFC chain](platform.md) is the current delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-101 Platform Readiness](rfc-101-platform-readiness.md) is the hosted/fleet readiness spine that follows RFC-100, and the [evidence track](platform.md#evidence-track--what-the-series-asserts-but-cannot-yet-show) (RFC-92, RFC-94, RFC-98, RFC-103) closes the gaps between what the series asserts and what it can demonstrate. This file lists only distinct follow-ons that remain useful after those series. Each starts when its trigger is observed, not merely when its prerequisites exist.
+The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. RFC-99 through RFC-102 are parked in the programme and do not appear here as active follow-ons. This file lists smaller engagement- or evidence-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
 
-## After the platform
-
-### RFC-101: Platform readiness
-
-**Goal:** Retire desktop-shaped host authority (`$EMERY_HOME` adapter stores, bare-name newest-local, process-local journals/MCP/Cursor credentials, homogeneous toolchains) so a hosted multi-node deployment is the same Emery with swapped Omnia backends and host policy.
-**Trigger:** RFC-100's distributed contract is stable enough to bind, or Omnia backends approach the D10 conformance bar.
-**Sequence:** Phases A–E in [rfc-101-platform-readiness.md](rfc-101-platform-readiness.md) (conformance & homes → adapter values & locks → worker capabilities → hosted judgment & ingress → tenancy & operations).
+## Engagement-triggered
 
 ### RM-17: Forge publication providers
 
@@ -18,6 +12,18 @@ The [platform RFC chain](platform.md) is the current delivery spine; [architectu
 **Trigger:** RFC-88/95 are landed and manual branch/PR handoff becomes a material operator bottleneck. Emery still does not create repositories or acquire publication lifecycle authority.
 
 ## Evidence-triggered
+
+### RM-29: Governed model evaluation asset
+
+**Goal:** Publish reproducible evidence for the claim that typed operations, bounded recovery, host verification, and protected conservation let smaller models deliver competitive verified outcomes at lower cost.
+**Trigger:** RFC-92 usage facts and route policies plus RFC-97 Phase A host verification are stable enough to compare; RFC-98 adds the modernization-specific conservation rung when available.
+**Likely shape:** an evaluation suite owned by `probe`, not RFC-92 lifecycle code, reporting cost per verified result, escalation and repair rates, protected-oracle success, conservation coverage, elapsed time, and human correction load across pinned route policies. Add a Harbor-compatible outer runner for directly comparable single-task cases without flattening Emery's plan/refine/execute artifacts into Harbor's task contract. Publish case definitions, policy/model identities, repeated-run methodology, failures, and confidence intervals; vendor benchmark numbers are context, not ground truth.
+
+### RM-30: Journal OpenTelemetry projection
+
+**Goal:** Project selected workflow facts into a client's existing observability system without making the exporter lifecycle authority or activating the parked fleet programme.
+**Trigger:** an enterprise engagement requires centralized run visibility and cannot consume `emery journal show` or archived projections directly.
+**Likely shape:** a read-only, lossy journal → OpenTelemetry exporter with bounded span/event cardinality, stable semantic attributes, sensitive evidence and model content excluded by default, deployment-owned redaction and retention, and backpressure or exporter failure isolated from workflow progression. The fact log remains the source of truth; OTel data is an operational projection and never a replay substrate.
 
 ### RM-11: Dependency-aware compatibility gates
 
@@ -43,26 +49,17 @@ The [platform RFC chain](platform.md) is the current delivery spine; [architectu
 **Trigger:** a client engagement where the `documentation` source adapter reads material that a prior Emery change invalidated.
 **Likely shape:** a documentation *target* adapter whose build operation writes back agreed requirements and decisions. Adapter names are unique across axes, so it cannot reuse the `documentation` name. Authority ordering is the hard part and must not invert: `spec.md` remains authoritative, write-back is a projection of it, and the next survey must not treat Emery's own output as independent corroboration of Emery's own conclusions.
 
-### RM-24: Topology review projections
+### RM-24: Operator control surface
 
-**Goal:** Keep the post-authoring topology review genuinely reviewable at platform scale.
-**Trigger:** the first change where operators skip topology review because the artifact is too large to read — likely the first deep RFC-88 recursive decomposition across several repositories. Reaching this trigger through agent-driven operation counts and arrives sooner, since a driver never finds an artifact too large.
-**Likely shape:** read-only projections over `plan.yaml` and `discovery.md` (a decomposition tree, per-domain provenance, [RFC-94](rfc-94-target-readiness.md) bands in place). Deliberately not an editing surface and not a dashboard: amendment stays on `emery plan amend`, and the single-writer contract is what makes the review meaningful.
-**Why it is not only ergonomics:** the operator need not be a person ([Operator identity](platform.md#operator-identity-an-agent-may-drive-the-engine)). When a driver authors and proceeds without pausing, this projection is no longer the operator's convenience — it is the only place a human sees the topology an agent accepted. Read with [RFC-103](rfc-103-operator-attribution.md) attribution, that makes it an assurance surface, which raises its priority above the "too large to read" trigger alone. Pair with [RM-28](#rm-28-agent-operator-stop-and-resume-surface) for stop/resume and [RM-27](#rm-27-amendment-proposal-review-ergonomics) for recovery proposals; together they are Emery's answer to a conversational orchestrator's "unstick" UX without putting a model in the scheduler ([Absorbed lessons](platform.md#absorbed-lessons-not-the-opposite-bet)).
+**Goal:** Make topology, recovery proposals, and typed stops reviewable by a person and directly actionable by an outer agent without putting a model inside the scheduler.
+**Trigger:** the first agent-driven run spends material time interpreting an ambiguous stop; an operator skips topology or proposal review because the artifacts are too large; or proposal review measurably dominates a slice's wall-clock.
+**Likely shape:** three read-only projections over existing authority:
 
-### RM-27: Amendment-proposal review ergonomics
+- a decomposition tree over `plan.yaml` / `discovery.md`, with per-domain provenance and [RFC-94](rfc-94-target-readiness.md) bands;
+- a diff of an inert amendment proposal's candidate lead and decomposition revisions against current authority, plus a retrospective view of which proposal was applied and under which RFC-93 actor/grant;
+- an exact next-action card on every refine/execute stop naming the verb, selectors, input digests, and artifact paths the caller must fix or supply.
 
-**Goal:** Make reviewing and applying an inert amendment proposal fast, and make an applied proposal legible after the fact — operator time is the expensive input in a services engagement, and every recovery path in this architecture routes through a proposal.
-**Trigger:** the first change where a boundary escalation or ownership fan-in proposal is applied without being properly read, or where proposal review measurably dominates a slice's wall-clock. An agent operator applying a proposal is the same trigger arriving without the warning sign, since nothing about it looks slow.
-**Likely shape:** a read-only diff projection over a proposal's candidate lead-catalog and decomposition revisions against the current ones, plus a `plan status` projection that names the parked proposal and what applying it would change. The primitive is already right — RFC-88 keeps proposals inert and `plan amend` is the single writer. This is presentation only, and it must stay presentation only: the value of stop → inspect → fix inputs → re-run comes from the operator actually reading the proposal, so nothing here may add an "apply all" path or let a proposal apply itself.
-**Why it is not only ergonomics:** proposals are where recovery decisions are made, and an autonomous driver can apply one as readily as a person can — the engine records the act but gates nothing ([RFC-103](rfc-103-operator-attribution.md) D6). A retrospective projection of *which* proposals were applied and by which actor class is therefore the human's audit surface over agent-driven recovery, not a convenience. That argues for building the after-the-fact view alongside the before-the-fact diff rather than deferring it. Read with [RM-28](#rm-28-agent-operator-stop-and-resume-surface): this item owns proposal legibility; RM-28 owns naming the exact next verb when a stop is not yet a proposal.
-
-### RM-28: Agent-operator stop and resume surface
-
-**Goal:** Make typed stops as actionable for an outer agent (or human) as chatting with a stuck conversational orchestrator — without putting a model inside the scheduler.
-**Trigger:** an agent-driven eval, lab, or CI run spends wall-clock on ambiguous stops (re-reading prose, guessing which verb, inventing inputs) rather than on model work or a deliberate operator disposition.
-**Likely shape:** enrich `plan status` (and the refine/execute stop envelopes) so every parked reason projects a closed next action with the exact verb, selectors, and input digests or artifact paths the caller must fix or supply; keep recovery as stop → fix inputs → re-run. Deliberately not a chat surface and not an in-engine re-planner: [platform.md](platform.md#deliberately-rejected) rejects an agent as the orchestration layer; this item closes the UX gap at the call site ([Absorbed lessons](platform.md#absorbed-lessons-not-the-opposite-bet)).
-**Why it is not only ergonomics:** when the operator is an agent, a stop that requires narrative interpretation is an unrecoverable stall or an invitation to invent authority. A machine-readable next-action card is the resume path; [RM-24](#rm-24-topology-review-projections) and [RM-27](#rm-27-amendment-proposal-review-ergonomics) remain the human's audit surface over what the driver accepted or applied.
+Amendment stays on `emery plan amend`; the projections never apply work, add an “apply all” path, or become another dashboard authority. Recovery remains stop → inspect → fix inputs or apply one reviewed proposal → re-run. When an agent drives Emery these projections are the human audit surface over what it accepted, proposed, and changed, so this is assurance work rather than presentation polish.
 
 ### RM-25: Target runtime harness declaration
 

@@ -10,6 +10,59 @@ Companion to RFC-77 (release process) · registry, open-source, brand & naming, 
 > If the roadmap starts optimising Emery as a product, this whole strategy needs re-scoring.
 
 
+## What the services business needs
+
+Emery is not the strategy. It is the compounding delivery system for a focused services strategy:
+
+> **Evidence-backed modernization and ongoing change for regulated or poorly understood systems.**
+
+The valuable promise is not “agentic development,” more agents, or legacy migration by itself. It is that Propellerhead can discover what an existing system actually does, expose uncertainty instead of concealing it, produce a reviewable specification, change the system faster with agents, demonstrate which behaviour was conserved, and leave a durable record of what changed, why, and on whose authority.
+
+### The relationship model
+
+The offer has three connected stages.
+
+1. **Readiness and system archaeology.** A paid entry engagement establishes repository and runtime readiness, recovers requirements and behaviour, identifies verification gaps, produces a modernization roadmap, and prices subsequent work according to measured uncertainty. This is how fixed-price risk is bounded before Propellerhead accepts it.
+2. **Modernization in bounded waves.** Outcome-priced delivery proceeds against explicit acceptance boundaries. Each wave carries known evidence and protected checks or captures; unresolved intent stays visible; client stakeholders review topology and specifications; accepted results become the durable product baseline.
+3. **Continuous assurance and evolution.** After modernization, Propellerhead maintains the behavioural baseline, refreshes captures and verification profiles, manages carried debt, keeps specifications and client documentation current, delivers subsequent regulatory and product changes, and periodically reassesses readiness and conservation coverage.
+
+The third stage creates the long-lived relationship. It is not a SaaS subscription disguised as consulting: the client owns its code, artifacts, evidence, and deployment. The relationship continues because another bounded change with Propellerhead is faster, safer, and more predictable than reconstructing the estate and its decisions again.
+
+### Stickiness without lock-in
+
+Opening the framework means the engine cannot be the moat. That is healthy. Durable advantage comes from accumulated operational value:
+
+- **Living behavioural baseline** — the best available account of what the system does, carried with the product rather than left in a consultant's slide deck.
+- **Capture and replay corpus** — maintained evidence that future changes preserve behaviour.
+- **Decision and debt history** — institutional memory of why choices were made and which gaps remain.
+- **Client-specific overlays** — private domain rules, adapters, policies, and verification profiles built on the open framework.
+- **Governance integration** — Emery's facts and assurance enter the client's CI, release, observability, security, and approval processes.
+- **Practice velocity** — the shared rules, prompts, evaluation cases, and delivery methods improve after every engagement; a fork receives code, not the practice that keeps improving it.
+- **Account continuity** — people who understand both the estate and its evidence record remain available for the next wave.
+- **Reliable change cadence** — a client can begin another bounded wave without repeating discovery from zero.
+
+These are switching benefits, not switching barriers. Clients stay because continuing creates more value, not because leaving is technically prevented.
+
+### The scoreboard
+
+Leadership is measured by services outcomes:
+
+- gross margin per accepted outcome;
+- elapsed time from intent to verified acceptance;
+- cost per verified result;
+- escaped defects and conservation failures;
+- human intervention per slice;
+- proportion of requirements backed by protected evidence;
+- readiness improvement and carried-debt trend;
+- repeat and expansion revenue;
+- referenceable successful programmes.
+
+OSS adoption, agent count, token throughput, and task concurrency are supporting signals at most. None is the business result.
+
+### What the framework cannot substitute for
+
+Emery can improve delivery economics and assurance; it cannot create a leading services firm by itself. Propellerhead also needs rigorous deal qualification, fixed-price commercial governance, senior programme and delivery leadership, vertical domain expertise, account ownership, protected-data governance, lighthouse case studies, and a repeatable way to train delivery teams. Those capabilities may matter more commercially than the entire concurrency and fleet programme.
+
 
 ## Where the four repos stand today
 
@@ -169,9 +222,9 @@ The beachhead already exists: two central-government clients and one local-gover
 
 Two consequences. First, **"we do legacy modernization with AI" has stopped being differentiating on its own** — that window has closed, and positioning that leans on it will be met with a cheaper, faster competitor. Lead with the audit trail, not the automation.
 
-Second, **the audit story remains structurally defensible**, which is the more important half. Factory made the opposite architectural bet: their orchestration layer is itself an agent, session-based and conversational. That design has no substrate to hang evidence claims, authority resolution, `[unknown]` / `[conflict]` gaps, digest-bound deferrals, or requirement-to-source traceability on. They cannot easily produce the artifact this strategy sells, and reaching it would mean rebuilding their foundation rather than adding a feature. Emery's answer to the forgiving Missions UX is therefore not a chatty orchestrator on the roadmap — it is an **agent driver at the call site** over typed projections and stops ([platform.md § Operator identity](../rfcs/platform.md#operator-identity-an-agent-may-drive-the-engine), [Absorbed lessons](../rfcs/platform.md#absorbed-lessons-not-the-opposite-bet), [RM-28](../rfcs/roadmap.md#rm-28-agent-operator-stop-and-resume-surface)), while the engine stays a deterministic state machine over the fact log.
+Second, **the audit story remains structurally defensible**, which is the more important half. Factory's orchestration layer is itself an agent, session-based and conversational. Missions do externalize useful state into a validation contract, feature list, research notes, operational guidelines, and an evolving knowledge base; Factory also exposes control-plane audit logs, OpenTelemetry, and CI records. What its public architecture does not demonstrate is one semantic, digest-bound substrate joining source evidence, authority resolution, `[unknown]` / `[conflict]` gaps, exact execution coverage, verification, and accepted state. That joined delivery record is the artifact this strategy sells. Emery's answer to the forgiving Missions UX is therefore not a chatty orchestrator on the roadmap — it is an **agent driver at the call site** over typed projections and stops ([platform.md § Operator identity](../rfcs/platform.md#operator-identity-an-agent-may-drive-the-engine), [Lessons absorbed](../rfcs/platform.md#lessons-absorbed-from-comparable-systems), [RM-24](../rfcs/roadmap.md#rm-24-operator-control-surface)), while the engine stays a deterministic state machine over the fact log.
 
-Their own documentation corroborates the bet twice over. Their autonomous multi-step mode is gated on a high repository-readiness level because, in their words, without it "the mission cannot reliably verify its own work" — a well-funded team stating publicly that autonomous work fails on an unverifiable substrate, which is the commercial case for [RFC-94 target readiness](../rfcs/rfc-94-target-readiness.md) as a paid pre-engagement. And they publish open doubts about whether running agents in parallel beats sequential execution at all. Both point the same way: verification, not throughput, is the binding constraint — which is why [RFC-98 behavioural conservation](../rfcs/rfc-98-behavioural-conservation.md) underwrites fixed-price delivery more directly than any concurrency work, and why the [evidence track](../rfcs/platform.md#evidence-track--what-the-series-asserts-but-cannot-yet-show) is sequenced ahead of scale.
+Their own documentation corroborates the bet twice over. Factory recommends Agent Readiness Level 4 or above for the best Mission results and says that without an automated, scriptable way to exercise the application "the mission cannot reliably verify its own work" — a well-funded team stating publicly that autonomous work degrades on an unverifiable substrate, which is the commercial case for [RFC-94 target readiness](../rfcs/rfc-94-target-readiness.md) as a paid pre-engagement. And they publish open doubts about whether broad agent parallelism beats serial execution with targeted concurrency. Both point the same way: verification, not throughput, is often the binding constraint — which is why serial [RFC-97 native verification](../rfcs/rfc-97-native-verification.md) and [RFC-98 behavioural conservation](../rfcs/rfc-98-behavioural-conservation.md) underwrite fixed-price delivery more directly than speculative concurrency, and why the [active delivery order](../rfcs/platform.md#active-delivery-order) puts evidence before unmeasured scale.
 
 Source: factory.ai marketing and developer documentation as of Aug 12, 2026.
 
