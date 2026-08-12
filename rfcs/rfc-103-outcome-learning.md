@@ -4,7 +4,7 @@
 >
 > Patch ownership: this RFC amends RFC-88 D1 after RFC-88 lands by adding `outcome.yaml` to the detached change root and `.emery/change/outcome.yaml` to in-place mode. RFC-104 separately amends RFC-88's handoff and supplies additional outcome dimensions.
 >
-> Producers this RFC assumes: [RFC-92](rfc-92-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block; the blind eval harness supplies promotion evidence. Those two are required for the first cut to learn rather than merely archive. RFC-104 supplies definition coverage, system-model, migration-plan, and wave identities; [RFC-94](rfc-94-target-readiness.md) supplies per-target execution-readiness bands; [RFC-97](rfc-97-native-verification.md) supplies execution-assurance and oracle-assurance facts; and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions.
+> Producers this RFC assumes: [RFC-92](rfc-92-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block; the blind eval harness supplies promotion evidence. Those two are required for the first cut to learn rather than merely archive. RFC-104 supplies definition coverage, reviewed handoff and review-event identities, system-model, migration-plan, and wave identities; [RFC-94](rfc-94-target-readiness.md) supplies per-target execution-readiness bands; [RFC-97](rfc-97-native-verification.md) supplies execution-assurance and oracle-assurance facts; and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions.
 
 ## Intent
 
@@ -63,9 +63,11 @@ change: sha256:…
 inputs:
   plan: sha256:…
   definition:
+    handoff: sha256:…
+    review-event: sha256:…
     system-model: sha256:…
     migration-plan: sha256:…
-    wave: extract-orders
+    wave-id: extract-orders
   adapters:
     omnia: emery:omnia@1.4.0
   prompts:

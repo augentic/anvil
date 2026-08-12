@@ -1,6 +1,6 @@
 # RFC-96: Concurrent Execution
 
-> Status: Evidence-gated in the [Services Delivery Programme](platform.md) — accepted architecture, not default staffing. Start only when RFC-92/RFC-97 timing shows serial model work or refinement is a material programme bottleneck, or when a contracted engagement requires task-graph and domain-convergence semantics directly.
+> Status: Active scheduled work in the [Services Delivery Programme](platform.md), following stable RFC-88/91 contracts. Implement Phase A's work-item scheduler and read-heavy pool before Phase B's concurrent build and convergence; cap one remains the deterministic reference mode throughout.
 >
 > Owns:
 >

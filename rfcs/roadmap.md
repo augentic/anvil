@@ -2,7 +2,7 @@
 
 > Status: Draft
 
-The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-104](rfc-104-system-archaeology.md) owns the definition home, coverage-accounted system survey, architecture model and diagrams, and migration plan; those are core product work rather than roadmap opportunities. RFC-99 through RFC-102 are parked; RFC-96 is evidence-gated. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
+The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-104](rfc-104-system-archaeology.md) owns the definition home, coverage-accounted system survey, architecture model and diagrams, and migration plan; those are core product work rather than roadmap opportunities. RFC-96 is scheduled active work; RFC-99 through RFC-102 are parked. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
 
 ## Engagement-triggered
 
@@ -30,7 +30,7 @@ The [Services Delivery Programme](platform.md) is the active delivery spine; [ar
 **Trigger:** the first agent-driven run spends material time interpreting an ambiguous stop; an operator skips topology or proposal review because the artifacts are too large; or proposal review measurably dominates a slice's wall-clock. Not programme step one — parallel assurance beside the RFC-88 critical path.
 **Likely shape:** four read-only projections over existing authority:
 
-- an RFC-104 system view over coverage, as-is architecture, diagram projections, dispositions, transition states, and migration waves;
+- an RFC-104 system view over coverage, as-is architecture, diagram projections, dispositions, transition states, migration waves, and the current handoff's `system.wave.reviewed` status;
 - a decomposition tree over `plan.yaml` / `leads.md`, with per-domain provenance and [RFC-94](rfc-94-target-readiness.md) bands;
 - a diff of an inert amendment proposal's candidate lead and decomposition revisions against current authority, plus a retrospective view of which proposal was applied and under which RFC-93 actor/grant;
 - an exact next-action card on every refine/execute stop naming the verb, selectors, input digests, and artifact paths the caller must fix or supply.
