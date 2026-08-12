@@ -153,7 +153,7 @@ fn anchors_at_project_root() {
 }
 
 #[test]
-fn upgrade_project_dir_anchors() {
+fn upgrade_project_dir() {
     // Relative `--project-dir` joins the mounted (walked) project
     // root — the same base guest `with_root` uses against `.` — not
     // the invocation directory. Invoking from a subdirectory with
@@ -186,7 +186,7 @@ fn upgrade_project_dir_anchors() {
 }
 
 #[test]
-fn unparseable_argv_anchors_cwd() {
+fn unparseable_argv_anchors() {
     // Argv the grammar refuses still boots: the guest renders the
     // rejection, so the policy must stay total and anchor at the
     // working directory.
@@ -245,7 +245,7 @@ fn seed_project_dir_anchors() {
 }
 
 #[test]
-fn missing_seed_dir_degenerates() {
+fn missing_seed_dir() {
     // A typo'd component directory must not fail the boot-time preopen
     // open: the guest renders `adapter-component-missing` itself.
     let sandbox = Sandbox::new();
@@ -254,7 +254,7 @@ fn missing_seed_dir_degenerates() {
 }
 
 #[test]
-fn log_flags_keep_seed_projection() {
+fn log_flags_keep_seed() {
     // Omnia peels `--debug` / `--quiet` before the guest sees argv; the
     // policy sees raw process argv, so it must apply the same peel or
     // the seed grammar parse would fail and drop the anchoring.
@@ -273,7 +273,7 @@ fn log_flags_keep_seed_projection() {
 // pinned store misses go through the pull-on-miss install leg.
 
 #[tokio::test]
-async fn store_adapter_verify_and_load() {
+async fn store_adapter_verify_load() {
     let sandbox = Sandbox::new();
     let expected = sandbox.seed_store_adapter("mock", "1.0.0");
 
@@ -309,7 +309,7 @@ async fn cold_pin_offline_fails() {
 }
 
 #[tokio::test]
-async fn versions_resolve_distinctly() {
+async fn versions_resolve() {
     let sandbox = Sandbox::new();
     let one = sandbox.seed_store_adapter("mock", "1.0.0");
     let two = sandbox.seed_store_adapter("mock", "2.0.0");
@@ -428,7 +428,7 @@ fn component_bytes(tag: &str) -> Vec<u8> {
 }
 
 #[tokio::test]
-async fn cold_miss_install_provenance() {
+async fn cold_miss_install() {
     let sandbox = Sandbox::new();
     let server = TestRegistry::serve().await;
     let expected = component_bytes("mock 1.0.0");
@@ -549,7 +549,7 @@ async fn meta_orphan_installs() {
 }
 
 #[tokio::test]
-async fn installed_pin_reuses_offline() {
+async fn installed_pin_reuses() {
     let sandbox = Sandbox::new();
     let server = TestRegistry::serve().await;
     let expected = component_bytes("mock 1.0.0");
@@ -595,7 +595,7 @@ async fn bare_miss_installs_newest() {
 }
 
 #[tokio::test]
-async fn no_semver_tags_latest_none() {
+async fn semver_tags_latest_none() {
     let sandbox = Sandbox::new();
     let server = TestRegistry::serve().await;
     server.publish("mock", "latest", component_bytes("mock moving tag"));
@@ -682,7 +682,7 @@ async fn refresh_keeps_current() {
 }
 
 #[tokio::test]
-async fn refresh_heals_poisoned_store() {
+async fn refresh_heals_poisoned() {
     // An explicit update on an unverifiable equal-version entry
     // unlinks and reinstalls it rather than failing closed.
     let sandbox = Sandbox::new();
@@ -772,7 +772,7 @@ fn mcp_route_declines_others() {
 }
 
 #[tokio::test]
-async fn non_wasm_artifact_is_refused() {
+async fn non_wasm_artifact_refused() {
     let sandbox = Sandbox::new();
     let server = TestRegistry::serve().await;
     server.publish("mock", "1.0.0", b"#!/bin/sh\necho gotcha".to_vec());

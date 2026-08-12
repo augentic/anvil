@@ -17,7 +17,8 @@ use crate::snapshot::{CodePatch, SnapshotId};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildRecord {
-    /// Snapshot the build prepared from (recorded target-base pin).
+    /// Snapshot the build prepared from — the wave-open base
+    /// (RFC-91 D6).
     pub base: SnapshotId,
     /// Snapshot captured from the private workspace result tree.
     pub result: SnapshotId,

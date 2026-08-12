@@ -8,7 +8,7 @@ use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
 use diagnostics::{Artifact, Diagnostic};
 use error::Result;
 use project::config::Layout;
-use project::plan::{Plan, orphan_authority_override_keys};
+use project::plan::{Plan, orphan_authority_override};
 
 use super::catalog::catalog_drift;
 use super::decisions::decision_gates;
@@ -139,7 +139,7 @@ fn override_orphans(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>> {
     let plan = Plan::load(&plan_path)?;
     // Validation must not surface findings from other slices.
     let slice_entries: Vec<_> = plan.entries.iter().filter(|e| e.name == name).cloned().collect();
-    let findings = orphan_authority_override_keys(&slice_entries);
+    let findings = orphan_authority_override(&slice_entries);
     Ok(findings
         .into_iter()
         .map(|f| {

@@ -44,7 +44,7 @@ fn parent_keys_by_project() {
 }
 
 #[test]
-fn project_placement_resolved() {
+fn project_placement() {
     let locations = Locations::explicit(
         PathBuf::from("/store"),
         CachePlacement::Project(PathBuf::from("/cache")),
@@ -58,7 +58,7 @@ fn project_placement_resolved() {
 }
 
 #[test]
-fn with_root_preserves_placement() {
+fn root_preserves_placement() {
     let host = ExecutionPaths::new("/some/project/a", explicit());
     let moved = host.with_root("/some/project/b");
     assert_eq!(moved.project_root(), Path::new("/some/project/b"));
@@ -74,7 +74,7 @@ fn with_root_preserves_placement() {
 }
 
 #[test]
-fn guest_paths_bind_the_preopens() {
+fn guest_paths_bind_preopens() {
     let paths = ExecutionPaths::guest();
     assert_eq!(paths.project_root(), Path::new("."));
     assert_eq!(paths.locations().store_root(), Path::new(GUEST_STORE_MOUNT));

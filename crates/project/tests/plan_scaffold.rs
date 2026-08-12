@@ -20,7 +20,7 @@ fn fresh_scaffolds() {
 }
 
 #[test]
-fn existing_refused_without_force() {
+fn existing_refused_without() {
     let (_tmp, path) = tmp_plan();
     scaffold(&path, "demo", BTreeMap::new(), false).expect("fresh").save(&path).expect("save");
 

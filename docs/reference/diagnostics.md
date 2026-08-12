@@ -8,15 +8,17 @@ Where a code fires:
 - **Validate findings** arrive inside a `DiagnosticReport`; open `critical`/`important` violations exit 2 — see [Interpret validate findings](../how-to/interpret-validate-findings.md).
 - **Execute stops** render the `emery plan status` projection: the closed reason, a hint, and the literal resume command — see [`emery plan execute`](cli/plan.md#emery-plan-execute).
 
-## Execute stop reasons
+## Refine and execute stop reasons
 
-Closed set rendered when `emery plan execute` halts (exit 2, `plan-execute-stopped`). Re-running `emery plan execute` after fixing the cause resumes from the active entry.
+Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped`) or `emery plan execute` halts (exit 2, `plan-execute-stopped`). Re-running the stopped command after fixing the cause resumes the parked work.
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `refine-failed` | The active entry's refine phase failed (extract or synthesis); the slice stays `refining`. | Fix the source binding or amend the plan, then re-run execute. |
+| `plan-refine-stopped` | The refinement drain halted on the first failed refinement (extract or synthesis); prior successful manifests stay. | Fix the source binding or amend the plan, then re-run `emery plan refine` — fresh manifests are skipped. |
+| `refine-failed` | The awaited refinement last failed (extract or synthesis); the slice stays `refining`. | Fix the source binding or amend the plan, then re-run `emery plan refine`. |
+| `refinement-required` | Execute reached an entry without a fresh refinement manifest (`plan-refinement-required` on the envelope) — execute never refines. | Run `emery plan refine`, then re-run `emery plan execute`. |
 | `build-failed` | The target's build failed; the slice stays `refined`. | Read `failing-task` and `log-path` from the stop hint, fix, then re-run execute. |
-| `merge-conflict` | The baseline drifted since the slice was defined; merge preflight refused. | Fix the conflicting inputs and re-run execute — the loop re-refines the slice against the current baseline — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
+| `merge-conflict` | The baseline drifted since the slice was defined; merge preflight refused. | Fix the conflicting inputs, re-run `emery plan refine` (the manifest is stale against the moved baseline), then re-run execute — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
 | `merge-postflight-failed` | The target's postflight gate failed **after** the merge committed — the entry is already `done` and archived (non-rollback, sticky). | Inspect `.emery/archive/<date>-<slice>/merge/postflight.yaml`, repair the baseline, re-run execute to acknowledge. |
 | `merge-incomplete` | The merge landed but the entry's `done` stamp is missing (torn stamp). | Re-run `emery plan execute` — it heals the stamp. |
 | `slice-dropped` | The active entry's slice was dropped mid-plan. | Decide the entry's fate: re-plan it (`emery plan author --force` on a replaceable plan) or leave it dropped. |
@@ -75,17 +77,21 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `slice-spec-provenance-stale` | A kernel-rendered `ID:` / `Sources:` / `Status:` line was hand-edited. | Revert the edit; drive resolution through overrides and re-run execute — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
-| `slice-model-schema` | `model.yaml` fails its typed schema. | Re-run `emery plan execute` (the loop re-refines the slice). |
-| `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds. | Re-run `emery plan execute` after the plan amendment. |
-| `slice-model-target-drift` | The model's recorded target diverged from the bound project's. | Re-run `emery plan execute`. |
-| `slice-model-cross-ref-orphan` | A model cross-reference points at a requirement that no longer exists. | Re-run `emery plan execute`. |
-| `slice-model-claim-kind-mismatch` | A contributing claim's kind does not match its Evidence row. | Re-run `emery plan execute`. |
-| `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `emery plan execute`. |
-| `slice-base-drifted` / `slice-evidence-stale` | Review advisory: the slice's recorded `base.yaml` pins drifted from the current inputs. | No manual action — the next `emery plan execute` re-refines the slice under a new epoch. |
-| `slice-baseline-conflict` | Review advisory: the baseline drifted under a built slice since it was defined. | Fix inputs and re-run execute, or accept the merge-time conflict handling. |
+| `slice-spec-provenance-stale` | A kernel-rendered `ID:` / `Sources:` / `Status:` line was hand-edited. | Revert the edit; drive resolution through overrides and re-run `emery plan refine` — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
+| `slice-model-schema` | `model.yaml` fails its typed schema. | Re-run `emery plan refine` (the drain re-refines the slice). |
+| `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds. | Re-run `emery plan refine` after the plan amendment. |
+| `slice-model-target-drift` | The model's recorded target diverged from the bound project's. | Re-run `emery plan refine`. |
+| `slice-model-cross-ref-orphan` | A model cross-reference points at a requirement that no longer exists. | Re-run `emery plan refine`. |
+| `slice-model-claim-kind-mismatch` | A contributing claim's kind does not match its Evidence row. | Re-run `emery plan refine`. |
+| `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `emery plan refine`. |
+| `slice-refinement-missing` | Review advisory: the slice has no `refinement.yaml` manifest. | Run `emery plan refine` to generate and cover its specification bundle. |
+| `slice-refinement-stale` | Review advisory: a recorded refinement input or bundle artifact no longer matches the live file (one finding per drifted identity). | Re-run `emery plan refine` — execute never refines, and it refuses stale manifests with `plan-refinement-required`. |
+| `slice-refinement-input-missing` | Manifest assembly found a canonical bundle artifact (`proposal.md`, `design.md`, `tasks.md`, or a per-domain spec) absent; the drain stops on the slice. | Fix the refinement failure the stop detail names, then re-run `emery plan refine`. |
+| `slice-refinement-pin-missing` | A bound source has no closed content pin to record in the manifest. | Re-run `emery plan refine` — the drain closes pins during extraction; a persistent miss means the source binding is broken. |
+| `slice-refinement-source-unbound` | The slice binds a source key absent from `plan.yaml.sources`. | Fix the binding (`emery plan amend`) or bind the source, then re-run `emery plan refine`. |
+| `plan-projection-source-unbound` | A planning projection could not resolve an entry's source binding against `plan.yaml.sources`. | Fix the binding (`emery plan amend`), then re-run `emery plan refine`. |
+| `slice-baseline-conflict` | Review advisory: the baseline drifted under a built slice since it was defined. | Fix inputs and re-refine / re-run execute, or accept the merge-time conflict handling. |
 | `slice-disposition-drifted` | Review advisory: the deferred set a built slice's record consumed no longer matches the live dispositions (a deferral was retracted, lapsed, or added after the build). | No manual action — the next `emery plan execute` re-builds the slice under the current dispositions. |
-| `slice-wave-record-missing` | Review advisory: the slice's newest opened wave has no build record — the re-build it authorized failed. | No manual action — the next `emery plan execute` re-builds the slice before merge. |
 | `slice-authority-override-orphan-source` | An authority override names a source key the slice does not bind. | Fix the override: `emery plan amend <entry> --authority-override <kind>=<source>`. |
 | `slice-catalog-drift` | Evidence references a `component:` slug missing from (or rejected in) the Vectis catalog. | Review `.emery/design-system/components.yaml` — see [Component factoring](../explanation/components.md). |
 
@@ -95,8 +101,11 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | ---- | ------- | -------- |
 | `target-build-input-missing` | A `required` adapter-declared build input is absent from the slice tree. | Supply the input file (e.g. Vectis `tokens.yaml`) and re-run execute. |
 | `target-build-success-with-blocking-finding` | The target reported `status: success` but its report carries a blocking finding; the gate refuses. | Fix the finding the report names, then re-run execute. |
-| `plan-gaps-unresolved` | Open (undeferred) `[unknown]` / `[conflict]` requirements block the gap gate before build under the `strict` gap policy. | Resolve the gaps at their source and re-run execute, defer them durably with `emery plan defer <slice>/<req> --reason "<why>"`, or run under `--gap-policy defer`. |
-| `target-build-deferred-covered` | The build phase report's `covered[]` claims a requirement the request's `deferred[]` excluded from build scope; the phase machine halts the attempt before verification. | Deferred requirements are out of the build's obligations — fix the target build so it neither implements nor claims them, then re-run execute. |
+| `plan-refinement-required` | Execute reached an in-scope leaf without a fresh refinement manifest — checked before any epoch, workspace, or wave. | Run `emery plan refine`, then re-run `emery plan execute`. |
+| `target-build-refinement-missing` | The build phase found no refinement manifest for the claimed slice (a hard refusal, unlike the `slice-refinement-missing` review advisory). | Run `emery plan refine`, then re-run `emery plan execute`. |
+| `target-base-freeze-failed` | Freezing the product tree as the wave base at wave open failed. | Check the product tree is readable and re-run `emery plan execute`. |
+| `plan-gaps-unresolved` | Open `[conflict]` / unwaived `[unknown]` requirements block the gap gate before build. | Fix inputs and re-run `emery plan refine`, or defer named unknowns with `--waive <slice>/<req> --reason "<why>"` on execute. |
+| `plan-epoch-stale` | A covered refinement digest drifted (or its manifest disappeared) after the epoch opened. | Re-run `emery plan refine`, then `emery plan execute`. |
 | `merge-delta-headers-required` | A hand-authored flat requirement block was submitted against a non-empty baseline. | Use the delta format (`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`) — see [Artifact format](artifact-format.md#delta-spec-format-modified-domain). |
 | `plan-entry-not-found` | The merge phase found no plan entry matching the slice. | Add the entry (`emery plan add`) or check the slice name. |
 | `slice-merge-entry-not-in-progress` | The plan entry exists but is not claimed. | Re-run `emery plan execute` — the loop claims entries itself. |

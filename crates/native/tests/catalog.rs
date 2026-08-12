@@ -21,7 +21,7 @@ fn model(answers: &[&str]) -> DynModel {
 // The erased model forwards requests and clones share the backing
 // state: two clones drain one FIFO script in call order.
 #[tokio::test]
-async fn dyn_model_forwards_and_shares() {
+async fn dyn_model_forwards_shares() {
     let model = model(&["first", "second"]);
     let clone = model.clone();
 
@@ -63,7 +63,7 @@ mod validation {
     use super::*;
 
     #[test]
-    fn per_axis_duplicate_refused() {
+    fn per_axis_duplicate() {
         let err = Catalog::builder()
             .source::<Probe>()
             .source::<Probe>()
@@ -73,7 +73,7 @@ mod validation {
     }
 
     #[test]
-    fn dual_axis_identity_allowed() {
+    fn dual_axis_identity() {
         // Fixture's intentional dual-axis `mock` shape stays legal.
         Catalog::builder()
             .source::<Probe>()
@@ -93,7 +93,7 @@ mod validation {
     }
 
     #[test]
-    fn non_semver_version_refused() {
+    fn non_semver_version() {
         let err = Catalog::builder()
             .target::<BadVersion>()
             .build()

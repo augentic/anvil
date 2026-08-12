@@ -114,7 +114,7 @@ fn native_origin() -> project::adapter::Origin {
 }
 
 #[tokio::test]
-async fn regular_mode_component_free() {
+async fn regular_mode_component() {
     // A bare adapter name is an identity, not a file: init defers
     // component resolution to the injected resolver, so no `.wasm`
     // artifact is staged anywhere for this test.
@@ -217,7 +217,7 @@ async fn local_component_mirrored() {
 }
 
 #[tokio::test]
-async fn local_component_outside_mounts() {
+async fn local_component_outside() {
     // The shipped wasm deployment: the launcher mirrors the operator's
     // component into the project cache (stamping provenance) host-side
     // before the runtime starts, then the engine guest runs `init`

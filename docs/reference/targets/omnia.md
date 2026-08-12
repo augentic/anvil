@@ -6,7 +6,7 @@
 
 ## Operations
 
-Closed WIT target contract: `guidance`, `build`, `verify`, `repair`, `review`, `merge`. Core synthesis (the refine phase) writes the canonical artifacts; Omnia never writes them.
+Closed WIT target contract: `guidance`, `build`, `verify`, `repair`, `review`, `merge`. Core synthesis (the refinement stage, `emery plan refine`) writes the canonical artifacts; Omnia never writes them.
 
 | Operation | Owns |
 | --------- | ---- |

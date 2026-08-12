@@ -18,7 +18,7 @@ pub use self::append::{append_batch, append_for, append_one};
 pub use self::emit::{bracket, emit_best_effort};
 pub use self::event::{
     AuthorityOverrideAction, ClosedPlanCoverage, DeferralOrigin, DeferredMember, Event, EventKind,
-    FactEpochRef, IdentityMap, LeafSpecCoverage,
+    FactEpochRef, IdentityMap,
 };
 use crate::config::Layout;
 

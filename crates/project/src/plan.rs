@@ -15,6 +15,7 @@ pub mod gaps;
 pub mod io;
 pub mod model;
 pub mod pins;
+pub mod projection;
 pub mod propose;
 pub mod remove;
 pub mod scaffold;
@@ -34,6 +35,7 @@ pub use model::{
     SliceSourceBinding, SourceBinding, Status,
 };
 pub use pins::{close as close_source_pins, dir_cid, empty_cid, file_cid, source_cid, value_cid};
+pub use projection::{Projections, contributing_leads};
 pub use propose::{
     GateProse, ProjectRef, ProposalRequest, ProposalResponse, build_request, resolve_target,
     resolve_topology,
@@ -44,4 +46,4 @@ pub use status::{
     LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,
     plan_status_body,
 };
-pub use validate::{finding, orphan_authority_override_keys, reject_duplicate_source_keys};
+pub use validate::{finding, orphan_authority_override, reject_duplicate_source};

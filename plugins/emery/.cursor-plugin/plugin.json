@@ -1,8 +1,8 @@
 {
   "name": "emery",
   "displayName": "Emery Workflow",
-  "description": "Emery workflow skills: init, plan, execute, status, finalize.",
-  "version": "0.28.0",
+  "description": "Emery workflow skills: init, plan, refine, execute, status, finalize.",
+  "version": "0.29.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

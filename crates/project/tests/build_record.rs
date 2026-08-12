@@ -23,7 +23,7 @@ fn sample_report(slice: &str) -> BuildReport {
 }
 
 #[test]
-fn write_and_load_latest_round_trip() {
+fn write_load_latest_round() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = Layout::new(tmp.path());
     let slice_dir = layout.slice_dir("login-flow");
@@ -51,7 +51,7 @@ fn write_and_load_latest_round_trip() {
 }
 
 #[test]
-fn from_capture_dedups_deferred_digests() {
+fn capture_dedups_defer() {
     // Identical requirement bodies legally share one digest (RFC-86a
     // D2) — the record binds the unique, sorted set.
     let first = format!("sha256:{}", "a".repeat(64));
@@ -70,7 +70,7 @@ fn from_capture_dedups_deferred_digests() {
 }
 
 #[test]
-fn load_for_wave_selects_by_wave_not_mtime() {
+fn load_by_wave_id() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let slice_dir = Layout::new(tmp.path()).slice_dir("login-flow");
     std::fs::create_dir_all(&slice_dir).expect("slice dir");
@@ -116,7 +116,7 @@ fn load_for_wave_selects_by_wave_not_mtime() {
 }
 
 #[test]
-fn duplicate_records_for_one_wave_are_ambiguous() {
+fn dup_wave_ambiguous() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let slice_dir = Layout::new(tmp.path()).slice_dir("login-flow");
     std::fs::create_dir_all(&slice_dir).expect("slice dir");

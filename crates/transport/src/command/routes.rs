@@ -76,7 +76,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     ),
     NamespaceHelp::new(
         &["slice"],
-        "Read-only slice projections over `.emery/slices/` — the execute loop owns the refine → build → merge phases",
+        "Read-only slice projections over `.emery/slices/` — `plan refine` owns refinement; the execute loop owns the build → merge phases",
     ),
     NamespaceHelp::new(&["slice", "model"], "Read-only viewer over a slice's `model.yaml`"),
     NamespaceHelp::new(
@@ -168,8 +168,8 @@ where
         ["source", "extract"],
         source::ExtractArgs,
         ::slice::source::Extract,
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the execute loop's refine phase runs this step itself",
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the execute loop's refine phase runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself",
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
     );
     route!(
         ["target", "resolve"],
@@ -266,11 +266,18 @@ where
         "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nWhen the baseline carries deferred debt, `change.md` also renders the carried-debt inventory (the same backlog `emery debt` projects), so a corrective change is scoped with it in view. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
+        ["plan", "refine"],
+        plan::RefineArgs,
+        ::change::plan::handlers::Refine,
+        "Drain refinement for a closed plan: extract + synthesize every targeted in-scope leaf in dependency order, write per-slice refinement manifests, and stop before any code work",
+        "Drain refinement for a closed plan in the engine guest — the specification stage between `plan author` and `plan execute` (RFC-91).\n\nWalks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts, and atomically writes `refinement.yaml`. Fresh leaves are skipped, so re-running resumes missing or stale work; the drain stops on the first failed refinement (exit 2, `plan-refine-stopped`).\n\nRepeatable `--slice <name>` targets specific leaves plus the stale-or-missing predecessor closure they need. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs — inspect them with `emery plan gaps`. No target build operation, workspace, wave, or authorization epoch is created; the loop holds the create-exclusive `.emery/guest.lock` marker while it drains."
+    );
+    route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
-        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) with the effective gap policy, then advance → refine → build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--gap-policy <strict|defer>` one-epoch override",
-        "Run the drained execute loop in the engine guest.\n\nAt start appends `plan.execute.started` with typed `closed-plan` coverage (RFC-86 D6) — per-leaf `existing` spec digests or `refine-under-epoch`, plus the effective gap policy (RFC-86a D3: `--gap-policy` flag, else the `project.yaml` declaration, else `strict`). Then advance → refine → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows refuse with `plan-gaps-unresolved` under `strict` (defer them with `emery plan defer`). No `plan approve` / `plan refine` verbs. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) covering exact per-leaf refinement digests and the effective gap policy, then build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`). Optional `--gap-policy <strict|defer>` one-epoch override",
+        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests plus the effective gap policy (RFC-86a D3: `--gap-policy` flag, else the `project.yaml` declaration, else `strict`). Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows refuse with `plan-gaps-unresolved` under `strict` (defer them with `emery plan defer`). Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
@@ -338,6 +345,7 @@ convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than,
 convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
 convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
 convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
+convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice });
 convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput { gap_policy });
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override });
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });

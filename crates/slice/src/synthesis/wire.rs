@@ -175,6 +175,26 @@ pub struct SynthesisInputs {
     /// stays off the wire (no catalogue).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub baseline_decisions: Vec<Decision>,
+    /// Ordered predecessor refinement context (RFC-91 D3): each
+    /// predecessor's refinement digest and readable artifact root.
+    /// Change-local context only — never Source Evidence, and it does
+    /// not alter artifact authority. Empty stays off the wire.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub dependencies: Vec<DependencyContext>,
+}
+
+/// One predecessor's refinement context under
+/// [`SynthesisInputs::dependencies`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "kebab-case")]
+pub struct DependencyContext {
+    /// Predecessor slice name.
+    pub slice: String,
+    /// Predecessor refinement digest (`sha256:…`).
+    pub refinement: String,
+    /// Project-relative readable artifact root
+    /// (`.emery/slices/<predecessor>/`).
+    pub artifacts_root: String,
 }
 
 /// Advisory per-domain baseline id facts for the synthesis inputs envelope.
@@ -265,11 +285,13 @@ impl SourceInput {
 ///
 /// `sources` is one [`SourceInput`] per bound source;
 /// `guidance_brief` is the bound target's resolved guidance body, read
-/// by the refine orchestration so this function stays adapter-free.
+/// by the refine orchestration so this function stays adapter-free;
+/// `dependencies` is the ordered predecessor refinement context.
 #[must_use]
 pub fn inputs(
     slice: &str, sources: &[SourceInput], guidance_brief: &str, baseline: &[Surface],
     baseline_detail: &[DomainDetail], baseline_decisions: &[Decision],
+    dependencies: &[DependencyContext],
 ) -> SynthesisInputs {
     SynthesisInputs {
         version: SYNTHESIS_VERSION,
@@ -280,5 +302,6 @@ pub fn inputs(
         baseline: baseline.to_vec(),
         baseline_detail: baseline_detail.to_vec(),
         baseline_decisions: baseline_decisions.to_vec(),
+        dependencies: dependencies.to_vec(),
     }
 }

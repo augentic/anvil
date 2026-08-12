@@ -1,6 +1,6 @@
-//! Gap policy + epoch freshness before build (RFC-86a D1/D3): deferred
-//! rows leave build scope; open rows block under `strict` and are
-//! dispositioned at the gate under `defer`; drift is `plan-epoch-stale`.
+//! Gap policy + epoch freshness before build (RFC-86a/91): deferred
+//! rows leave build scope; open rows block under `strict` / mint under
+//! `defer`; covered refinement digest drift is `plan-epoch-stale`.
 
 use std::fmt::Write as _;
 
@@ -21,13 +21,12 @@ use project::plan::{Disposition, GapRow, GapsBody, Plan, collect_events, plan_ga
 /// predicate — the same rule `plan status` projects as Authorized.
 /// Under an effective `defer` policy the gate dispositions open rows
 /// itself: one `gap.deferred` fact per requirement (`origin: policy`,
-/// synthesized reason), then build proceeds (RFC-86a D3/D6). Minting
-/// is gate-time because `refine-under-epoch` rows do not exist earlier.
+/// synthesized reason), then build proceeds (RFC-86a D3/D6).
 ///
 /// # Errors
 ///
 /// - `plan-epoch-stale` — no covering `plan.execute.started`, plan /
-///   covered-spec digest drift, or an in-scope leaf absent from
+///   covered-refinement digest drift, or an in-scope leaf absent from
 ///   coverage.
 /// - `plan-gaps-unresolved` — an in-scope `[unknown]` / `[conflict]`
 ///   on `slice` whose disposition is `open`, under an effective

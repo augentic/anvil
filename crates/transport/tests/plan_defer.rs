@@ -121,7 +121,7 @@ async fn deferral_invalid_on_wire() {
 }
 
 #[tokio::test]
-async fn defer_and_retract_succeed_on_wire() {
+async fn defer_retract_ok() {
     let (_project, provider) = fixture().await;
 
     let (exit, stdout, stderr) =

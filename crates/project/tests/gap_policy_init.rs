@@ -18,7 +18,7 @@ async fn init(project: &Provider, input: InitInput) {
 }
 
 #[tokio::test]
-async fn absent_means_no_declaration() {
+async fn absent_no_declaration() {
     let project = Provider::bare();
     stage_cached_component(&project, "demo");
     init(
@@ -37,7 +37,7 @@ async fn absent_means_no_declaration() {
 }
 
 #[tokio::test]
-async fn declared_written_preserved_and_changed_on_upgrade() {
+async fn declare_upgrade_cycle() {
     let project = Provider::bare();
     stage_cached_component(&project, "demo");
     init(

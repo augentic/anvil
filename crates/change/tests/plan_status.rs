@@ -30,7 +30,7 @@ use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event as JournalEvent, EventKind,
-    LeafSpecCoverage, append_for,
+    append_for,
 };
 use support::{change, change_with_deps, plan_with_changes};
 
@@ -176,7 +176,7 @@ mod next_action {
         // start-execution hint — no approval footer.
         let project = Session::scripted("demo", Vec::new());
         let body = status(&project, &plan_with_changes(vec![change("a")])).await;
-        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:refine"));
         let mut out = Vec::new();
         project::handler::Render::render(&body, &mut out).expect("render");
         let text = String::from_utf8(out).expect("utf8");
@@ -250,7 +250,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn later_success_clears_failure() {
+    async fn later_ok_clears_fail() {
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", SliceArt::Refined);
         append(
@@ -275,7 +275,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn non_awaited_failure_ignored() {
+    async fn non_awaited_ignored() {
         // The slice already carries a built artifact; a stale build
         // failure must not pin the projection off merge.
         let project = Session::scripted("demo", Vec::new());
@@ -287,7 +287,7 @@ mod failure_overlay {
     }
 
     #[tokio::test]
-    async fn reclaim_shadows_old_failure() {
+    async fn reclaim_shadows_fail() {
         // A fresh `plan.entry.advanced` (re-claim after undo, or a new
         // plan reusing the slice name) is newer than the failure, so
         // dispatch falls back to the artifact phase.
@@ -388,7 +388,7 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::TargetMergeWavePostflightFailed {
+                EventKind::MergeWavePostflightFailed {
                     target: "demo".into(),
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -422,7 +422,7 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::TargetMergeWavePostflightFailed {
+                    EventKind::MergeWavePostflightFailed {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
@@ -432,7 +432,7 @@ mod postflight_debt {
                 ),
                 Event::event(
                     ts(20),
-                    EventKind::PlanMergePostflightAcknowledged {
+                    EventKind::PostflightAcknowledged {
                         slice_name: "a".into(),
                     },
                 ),
@@ -445,7 +445,7 @@ mod postflight_debt {
     }
 
     #[tokio::test]
-    async fn sticky_blocks_next_pending() {
+    async fn sticky_blocks_pending() {
         // Unacked postflight debt must not silently advance to the next
         // pending entry's refine.
         let project = Session::scripted("demo", Vec::new());
@@ -453,7 +453,7 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::TargetMergeWavePostflightFailed {
+                EventKind::MergeWavePostflightFailed {
                     target: "demo".into(),
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -477,7 +477,7 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::TargetMergeWavePostflightFailed {
+                    EventKind::MergeWavePostflightFailed {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
@@ -487,7 +487,7 @@ mod postflight_debt {
                 ),
                 Event::event(
                     ts(20),
-                    EventKind::PlanMergePostflightAcknowledged {
+                    EventKind::PostflightAcknowledged {
                         slice_name: "a".into(),
                     },
                 ),
@@ -503,7 +503,7 @@ mod re_entry {
     use super::*;
 
     #[tokio::test]
-    async fn merge_incomplete_done_stamp() {
+    async fn merge_incomplete_done() {
         let project = Session::scripted("demo", Vec::new());
         append(
             project.root(),
@@ -536,15 +536,15 @@ mod re_entry {
     }
 
     #[tokio::test]
-    async fn fresh_plan_resumes_execute() {
+    async fn fresh_plan_resumes_refine() {
         // A fresh plan projects the real next action but resumes with
-        // `/emery:execute` rather than a phase breakout — the loop, not
-        // a single phase, is the natural entry point.
+        // `/emery:refine` — the refinement drain is the natural entry
+        // point (RFC-91 D8).
         let project = Session::scripted("demo", Vec::new());
         let plan = plan_with_changes(vec![change("a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "refine a");
-        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:refine"));
     }
 
     #[tokio::test]
@@ -583,7 +583,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn refined_clean_is_ready_not_authorized() {
+    async fn ready_not_authorized() {
         // Clean gaps + refined → Ready. No plan.execute.started yet →
         // not Authorized. Resume stays at execute (D22 / D26).
         let project = Session::scripted("demo", Vec::new());
@@ -599,6 +599,8 @@ mod milestones {
 ",
         );
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(body.ready, "clean refined plan must be Ready");
         assert!(!body.authorized, "no epoch yet → not Authorized");
@@ -608,7 +610,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn open_unknowns_not_ready_review_gaps() {
+    async fn unknowns_review_gaps() {
         // Refined + open unknowns → not Ready; next-action is
         // review-gaps; resume points at per-req plan defer (D22 /
         // RFC-86a D3).
@@ -625,6 +627,8 @@ mod milestones {
 ",
         );
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert!(!body.authorized);
@@ -646,7 +650,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn open_conflict_resume_defers() {
+    async fn conflict_resume_defer() {
         // D6: `[conflict]` defers under the same exclusion semantics
         // as `[unknown]`, so the resume suggests the durable act for
         // open conflicts too (RFC-86a D7).
@@ -663,6 +667,8 @@ mod milestones {
 ",
         );
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert_eq!(body.next_action, "review-gaps");
@@ -674,7 +680,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn digest_less_legacy_rows_resume_execute() {
+    async fn legacy_resume_execute() {
         // A `spec.md`-fallback inventory (refined slice, model without
         // requirements) carries no requirement digests, so `plan defer`
         // refuses its rows — the resume must hint re-refining under
@@ -692,12 +698,14 @@ mod milestones {
         )
         .expect("spec.md");
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert_eq!(body.next_action, "review-gaps");
         assert_eq!(
             body.resume.as_deref(),
-            Some("emery plan execute"),
+            Some("emery plan refine"),
             "digest-less rows resume at re-refine, not plan defer"
         );
     }
@@ -728,7 +736,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn deferred_everything_resumes_execute() {
+    async fn all_deferred_execute() {
         // RFC-86a D7: next-actions compute over open findings only —
         // a fully-dispositioned plan projects the build dispatch and
         // resumes at execute, never review-gaps. Ready stays
@@ -758,6 +766,8 @@ mod milestones {
             ],
         );
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready, "deferrals never contribute to Ready (D22)");
         assert_eq!(body.action, NextActionKind::Build);
@@ -781,7 +791,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn open_rows_only_drive_review_gaps() {
+    async fn open_drives_review() {
         // A deferred row beside an open one: review-gaps stands, and
         // the resume names only the open selector (RFC-86a D7).
         let project = Session::scripted("demo", Vec::new());
@@ -803,6 +813,8 @@ mod milestones {
         );
         append(project.root(), &[gap_deferred(0, "a", "REQ-003", "reset path not evidenced")]);
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert_eq!(body.next_action, "review-gaps");
@@ -819,7 +831,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn divergence_alone_does_not_block_ready() {
+    async fn divergence_ready_ok() {
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -833,13 +845,15 @@ mod milestones {
 ",
         );
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(body.ready, "divergence is listed but does not block Ready");
         assert_eq!(body.next_action, "build a");
     }
 
     #[tokio::test]
-    async fn dropped_excluded_from_ready() {
+    async fn dropped_not_ready() {
         // Drop the gappy slice; the remaining refined sibling makes
         // the change Ready (D24).
         let project = Session::scripted("demo", Vec::new());
@@ -856,14 +870,20 @@ mod milestones {
 ",
         );
         let plan = plan_with_changes(vec![change("a"), change("b")]);
+        write_plan(&project, &plan);
+        if project.root().join(".emery/slices/b/model.yaml").is_file() {
+            support::stage_manifest(project.root(), "b");
+        }
         let body = status(&project, &plan).await;
         assert!(body.ready);
         assert!(body.gaps.rows.is_empty());
     }
 
     /// Stamp a `plan.execute.started` epoch covering the staged
-    /// `plan.yaml` with the given per-leaf coverage.
-    fn stamp_epoch(root: &std::path::Path, specs: BTreeMap<String, LeafSpecCoverage>) {
+    /// `plan.yaml` with the given per-leaf refinement digests.
+    fn stamp_epoch(
+        root: &std::path::Path, refinements: BTreeMap<String, project::snapshot::SnapshotId>,
+    ) {
         append(
             root,
             &[Event::event(
@@ -871,7 +891,7 @@ mod milestones {
                 EventKind::PlanExecuteStarted {
                     coverage: ClosedPlanCoverage::ClosedPlan {
                         plan_digest: live_plan_digest(root),
-                        specs,
+                        refinements,
                         gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
@@ -881,7 +901,7 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn epoch_fact_projects_authorized_without_ready() {
+    async fn epoch_auth_no_ready() {
         // A covering plan.execute.started → Authorized even while
         // unknowns keep Ready false (D22).
         let project = Session::scripted("demo", Vec::new());
@@ -898,51 +918,22 @@ mod milestones {
         );
         let plan = plan_with_changes(vec![change("a")]);
         write_plan(&project, &plan);
-        let mut specs = BTreeMap::new();
-        specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
-        stamp_epoch(project.root(), specs);
+        support::stage_manifest(project.root(), "a");
+        let mut refinements = BTreeMap::new();
+        refinements.insert("a".into(), support::manifest_digest(project.root(), "a"));
+        stamp_epoch(project.root(), refinements);
         let body = status(&project, &plan).await;
         assert!(!body.ready, "an epoch must not backfill Ready");
         assert!(body.authorized);
         let json = serde_json::to_string(&body).expect("json");
-        assert!(!json.contains("\"approved\""), "{json}");
+        assert!(!json.contains("approved"), "{json}");
     }
 
     #[tokio::test]
-    async fn drifted_plan_digest_clears_authorized() {
+    async fn plan_drift_clears_auth() {
         // An epoch whose plan digest no longer matches the live
         // `plan.yaml` does not authorize — same freshness rule as the
         // execute gap gate.
-        let project = Session::scripted("demo", Vec::new());
-        let plan = plan_with_changes(vec![change("a")]);
-        write_plan(&project, &plan);
-        let mut specs = BTreeMap::new();
-        specs.insert("a".into(), LeafSpecCoverage::RefineUnderEpoch);
-        append(
-            project.root(),
-            &[Event::event(
-                ts(0),
-                EventKind::PlanExecuteStarted {
-                    coverage: ClosedPlanCoverage::ClosedPlan {
-                        plan_digest:
-                            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-                                .into(),
-                        specs,
-                        gap_policy: GapPolicy::Strict,
-                    },
-                    discovery_digest: None,
-                },
-            )],
-        );
-        let body = status(&project, &plan).await;
-        assert!(!body.authorized, "drifted plan digest must not authorize");
-    }
-
-    #[tokio::test]
-    async fn covered_spec_drift_clears_authorized() {
-        // Mutating a covered spec tree after the epoch stamps clears
-        // Authorized while the old epoch remains in the union; build
-        // refuses `plan-epoch-stale` on the same rule.
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -955,26 +946,68 @@ mod milestones {
     sources: [intent]
 ",
         );
-        let specs_dir = project.root().join(".emery/slices/a/specs");
-        std::fs::create_dir_all(&specs_dir).expect("specs dir");
-        std::fs::write(specs_dir.join("spec.md"), "# a\n").expect("spec.md");
         let plan = plan_with_changes(vec![change("a")]);
         write_plan(&project, &plan);
-        let mut specs = BTreeMap::new();
-        specs.insert(
-            "a".into(),
-            LeafSpecCoverage::Existing {
-                digest: project::plan::dir_cid(&specs_dir).expect("specs cid").to_string(),
-            },
+        support::stage_manifest(project.root(), "a");
+        let mut refinements = BTreeMap::new();
+        refinements.insert("a".into(), support::manifest_digest(project.root(), "a"));
+        append(
+            project.root(),
+            &[Event::event(
+                ts(0),
+                EventKind::PlanExecuteStarted {
+                    coverage: ClosedPlanCoverage::ClosedPlan {
+                        plan_digest:
+                            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                                .into(),
+                        refinements,
+                        gap_policy: GapPolicy::Strict,
+                    },
+                    discovery_digest: None,
+                },
+            )],
         );
-        stamp_epoch(project.root(), specs);
+        let body = status(&project, &plan).await;
+        assert!(!body.authorized, "drifted plan digest must not authorize");
+    }
+
+    #[tokio::test]
+    async fn refine_drift_clears() {
+        // Mutating a covered refinement manifest after the epoch stamps
+        // clears Authorized while the old epoch remains in the union;
+        // build refuses `plan-epoch-stale` on the same rule.
+        let project = Session::scripted("demo", Vec::new());
+        write_model(
+            project.root(),
+            "a",
+            r"requirements:
+  - id: REQ-001
+    title: login works
+    statement: ''
+    status: agreed
+    sources: [intent]
+",
+        );
+        let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
+        let digest = support::manifest_digest(project.root(), "a");
+        let mut refinements = BTreeMap::new();
+        refinements.insert("a".into(), digest.clone());
+        stamp_epoch(project.root(), refinements);
 
         let fresh = status(&project, &plan).await;
         assert!(fresh.authorized, "covering epoch authorizes");
 
-        std::fs::write(specs_dir.join("spec.md"), "# a (drifted)\n").expect("mutate spec.md");
+        let path = project.root().join(".emery/slices/a/refinement.yaml");
+        let mut body = std::fs::read_to_string(&path).expect("manifest");
+        body.push_str(
+            "# drift
+",
+        );
+        std::fs::write(&path, body).expect("mutate manifest");
         let body = status(&project, &plan).await;
-        assert!(!body.authorized, "covered-spec drift clears Authorized");
+        assert!(!body.authorized, "covered-refinement drift clears Authorized");
 
         let err = change::orchestrate::enforce_before_build(
             Layout::new(project.root()),
@@ -984,12 +1017,13 @@ mod milestones {
         )
         .expect_err("stale epoch refuses build");
         assert_eq!(err.variant_str(), "plan-epoch-stale");
+        assert_ne!(support::manifest_digest(project.root(), "a"), digest);
     }
 
     #[tokio::test]
-    async fn merged_leaf_absence_is_not_drift() {
-        // Merge archives the slice tree; a done leaf's absent specs
-        // are completion under the epoch, not drift.
+    async fn merged_absent_ok() {
+        // Merge archives the slice tree; a done leaf's absent
+        // refinement is completion under the epoch, not drift.
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -1003,19 +1037,12 @@ mod milestones {
 ",
         );
         let slice_dir = project.root().join(".emery/slices/a");
-        let specs_dir = slice_dir.join("specs");
-        std::fs::create_dir_all(&specs_dir).expect("specs dir");
-        std::fs::write(specs_dir.join("spec.md"), "# a\n").expect("spec.md");
         let plan = plan_with_changes(vec![change("a")]);
         write_plan(&project, &plan);
-        let mut specs = BTreeMap::new();
-        specs.insert(
-            "a".into(),
-            LeafSpecCoverage::Existing {
-                digest: project::plan::dir_cid(&specs_dir).expect("specs cid").to_string(),
-            },
-        );
-        stamp_epoch(project.root(), specs);
+        support::stage_manifest(project.root(), "a");
+        let mut refinements = BTreeMap::new();
+        refinements.insert("a".into(), support::manifest_digest(project.root(), "a"));
+        stamp_epoch(project.root(), refinements);
         append(project.root(), &[archived(10, "a")]);
         std::fs::remove_dir_all(&slice_dir).expect("archive removes slice tree");
 
@@ -1025,14 +1052,14 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn fresh_unrefined_resume_execute() {
-        // D26: post-author resume stays /emery:execute; next-action
-        // may still name the refine phase.
+    async fn unrefined_resume() {
+        // RFC-91 D8: post-author resume stays /emery:refine; next-action
+        // names the refine phase.
         let project = Session::scripted("demo", Vec::new());
         let body = status(&project, &plan_with_changes(vec![change("a")])).await;
         assert!(!body.ready);
         assert!(!body.authorized);
         assert_eq!(body.next_action, "refine a");
-        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
+        assert_eq!(body.resume.as_deref(), Some("/emery:refine"));
     }
 }

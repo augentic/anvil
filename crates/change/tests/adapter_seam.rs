@@ -1,6 +1,7 @@
 //! Typed adapter failures crossing the seam: each mock failure
 //! profile surfaces at the public operation boundary — an author
-//! abort, a parked refine or build in the execute loop, or the
+//! abort, a parked `plan refine` drain (the typed `plan-refine-stopped`
+//! halt), a parked build or merge in the execute loop, or the
 //! outputs-exist gate — with the adapter's typed detail preserved.
 
 mod support;
@@ -34,8 +35,15 @@ async fn execute_err(session: &Session) -> String {
     .to_string()
 }
 
+async fn refine_err(session: &Session) -> String {
+    support::refine_slices(session, &[])
+        .await
+        .expect_err("the failing refinement parks the drain")
+        .to_string()
+}
+
 #[tokio::test]
-async fn survey_failure_aborts_author() {
+async fn survey_failure_aborts() {
     let session = Session::scripted("mock", Vec::new());
 
     let err = author(&session, "mock-fail-survey").await.expect_err("survey fails");
@@ -48,7 +56,7 @@ async fn survey_failure_aborts_author() {
 }
 
 #[tokio::test]
-async fn unknown_fails_before_scaffold() {
+async fn unknown_fails_scaffold() {
     let session = Session::scripted("mock", Vec::new());
 
     // Ensure runs over every binding before the plan scaffold write, so
@@ -92,7 +100,7 @@ async fn placeholder_pin_refused() {
 }
 
 #[tokio::test]
-async fn survey_ensures_pinned_binding() {
+async fn survey_ensures_pinned() {
     let session = Session::scripted("mock", Vec::new());
 
     // A pinned binding already on disk (the plan schema has carried
@@ -130,7 +138,7 @@ async fn survey_ensures_pinned_binding() {
 }
 
 #[tokio::test]
-async fn malformed_token_parse_refused() {
+async fn malformed_token_parse() {
     let session = Session::scripted("mock", Vec::new());
 
     // A non-semver `@` suffix is neither a bare name nor a first-party
@@ -145,7 +153,7 @@ mod bare_bindings {
     use super::*;
 
     #[tokio::test]
-    async fn bare_binding_stays_unversioned() {
+    async fn bare_binding_stays() {
         // Bindings persist as typed: a bare name carries no version
         // into `plan.yaml` — the deployment resolves it local-first
         // on every dispatch, and only an explicit `name@semver` pin
@@ -160,7 +168,7 @@ mod bare_bindings {
     }
 
     #[tokio::test]
-    async fn bare_bindings_stay_unversioned() {
+    async fn bare_bindings_stay() {
         // Uniform over the desugared binding map: neither bare
         // binding gains a version.
         let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
@@ -184,7 +192,7 @@ mod bare_bindings {
     }
 
     #[tokio::test]
-    async fn intent_sugar_unlinked_fails() {
+    async fn intent_sugar_unlinked() {
         // `--intent` desugars to a bare `intent` binding ensured
         // before the scaffold write; the native catalog links no
         // `intent` adapter, so ensure refuses with nothing on disk.
@@ -209,22 +217,26 @@ mod bare_bindings {
 }
 
 #[tokio::test]
-async fn extract_failure_parks_refine() {
+async fn extract_failure_parks() {
     let session = Session::scripted("mock", vec![mock::answers::greeting_grouping()]);
 
     author(&session, "mock-fail-extract").await.expect("survey succeeds for this profile");
-    let detail = execute_err(&session).await;
-    assert!(detail.contains("refine-failed"), "{detail}");
+    // Extraction runs inside the `plan refine` drain (RFC-91), so the
+    // adapter failure parks the drain with the typed stop.
+    let detail = refine_err(&session).await;
+    assert!(detail.contains("plan-refine-stopped"), "{detail}");
     assert!(detail.contains("mock extract failure"), "typed detail preserved: {detail}");
 }
 
 #[tokio::test]
-async fn guidance_failure_parks_refine() {
+async fn guidance_failure_parks() {
     let session = Session::scripted("mock-fail-guidance", vec![mock::answers::greeting_grouping()]);
 
     author(&session, "mock").await.expect("author succeeds");
-    let detail = execute_err(&session).await;
-    assert!(detail.contains("refine-failed"), "{detail}");
+    // Guidance is consumed by synthesis inside the `plan refine`
+    // drain, so its failure parks the drain, not the execute loop.
+    let detail = refine_err(&session).await;
+    assert!(detail.contains("plan-refine-stopped"), "{detail}");
     assert!(detail.contains("mock guidance failure"), "typed detail preserved: {detail}");
 }
 
@@ -236,6 +248,7 @@ async fn build_failure_parks() {
     );
 
     author(&session, "mock").await.expect("author succeeds");
+    support::refine_plan(&session).await;
     let detail = execute_err(&session).await;
     assert!(detail.contains("build-failed"), "{detail}");
     assert!(detail.contains("mock build failure"), "typed detail preserved: {detail}");
@@ -249,9 +262,10 @@ async fn merge_failure_parks_built() {
     );
 
     author(&session, "mock").await.expect("author succeeds");
-    // Refine and build succeed; the merge preflight dispatch itself
-    // errors (a typed seam failure, not a failed gate report), so the
-    // loop parks with the deterministic commit never attempted.
+    support::refine_plan(&session).await;
+    // Build succeeds; the merge preflight dispatch itself errors (a
+    // typed seam failure, not a failed gate report), so the loop parks
+    // with the deterministic commit never attempted.
     let detail = execute_err(&session).await;
     assert!(detail.contains("seam-dispatch-failed"), "{detail}");
     assert!(detail.contains("mock merge failure"), "typed detail preserved: {detail}");
@@ -275,6 +289,7 @@ async fn missing_output_aborts() {
     );
 
     author(&session, "mock").await.expect("author succeeds");
+    support::refine_plan(&session).await;
     // The mock reports success but never writes its declared
     // output, so the orchestrator's outputs-exist gate aborts.
     let detail = execute_err(&session).await;

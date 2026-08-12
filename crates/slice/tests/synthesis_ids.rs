@@ -50,7 +50,7 @@ fn draft(yaml: &str) -> SliceModel {
 }
 
 #[test]
-fn mints_slice_local_ids_ignoring_baseline_numbers() {
+fn mints_slice_local_ids() {
     let (_tmp, baseline) = stage_baseline(baseline_spec());
     let model = draft(
         r"
@@ -102,7 +102,7 @@ tasks:
 }
 
 #[test]
-fn modified_keeps_baseline_id_and_records_body_digest() {
+fn modified_keeps_baseline() {
     let (_tmp, baseline) = stage_baseline(baseline_spec());
     let body = "Sessions expire after 15 minutes of inactivity.\n\n\
 #### Scenario: Idle expiry\n\n\
@@ -144,7 +144,7 @@ tasks:
 }
 
 #[test]
-fn parallel_slices_may_mint_the_same_local_ids() {
+fn parallel_slices_mint() {
     let (_tmp, baseline) = stage_baseline(baseline_spec());
     let evidence =
         BTreeMap::from([(("docs".into(), "session.timeout".into()), ClaimKind::Requirement)]);
@@ -228,7 +228,7 @@ tasks:
 }
 
 #[test]
-fn additive_row_clears_baseline_fields() {
+fn additive_row_clears() {
     let (_tmp, baseline) = stage_baseline(baseline_spec());
     let model = draft(
         r"

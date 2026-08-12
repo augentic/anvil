@@ -17,7 +17,7 @@ use project::plan::{Plan, collect_events};
 use project::seam::Workspaces;
 use project::snapshot::SnapshotId;
 use serde::{Deserialize, Serialize};
-use slice::Base;
+use slice::refinement::Manifest;
 
 /// Wire input for `plan archive`.
 #[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -182,7 +182,7 @@ fn latest_deferrals(
 }
 
 /// Every snapshot pin recorded beneath one level of slice-shaped
-/// directories under `root`: `base.yaml` pins plus each
+/// directories under `root`: refinement-manifest input pins plus each
 /// `builds/<digest>.yaml` record's base and result snapshots. Roots
 /// that never reached the store are skipped by the sweep itself.
 fn collect_pins(root: &Path) -> Result<Vec<SnapshotId>, Error> {
@@ -203,11 +203,10 @@ fn collect_pins(root: &Path) -> Result<Vec<SnapshotId>, Error> {
         if !dir.is_dir() {
             continue;
         }
-        if Base::path(&dir).is_file() {
-            let base = Base::load(&dir)?;
-            pins.extend(base.sources.into_values());
-            pins.push(base.baseline_spec);
-            pins.push(base.target_base);
+        if Manifest::path(&dir).is_file() {
+            let manifest = Manifest::load(&dir)?;
+            pins.extend(manifest.inputs.sources.into_values());
+            pins.push(manifest.inputs.baseline_specs);
         }
         for record in BuildRecord::load_all(&dir)? {
             pins.push(record.base);

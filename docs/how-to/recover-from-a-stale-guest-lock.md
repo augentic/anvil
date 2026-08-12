@@ -18,7 +18,7 @@ Clear a leftover `.emery/guest.lock` marker after a driver session died without 
 <div class="when">
 <strong>When to use.</strong>
 
-Use this guide when `emery plan execute` exits with `guest-marker-held` (exit 2) but you are certain no other driver session is running — typically after a crashed terminal, a killed process, or a machine restart mid-execute.
+Use this guide when `emery plan refine` or `emery plan execute` exits with `guest-marker-held` (exit 2) but you are certain no other driver session is running — typically after a crashed terminal, a killed process, or a machine restart mid-run.
 </div>
 
 
@@ -26,9 +26,9 @@ Use this guide when `emery plan execute` exits with `guest-marker-held` (exit 2)
 
 <h2><span class="num">1</span> Understand the marker</h2>
 
-The `emery plan execute` loop creates and holds the `.emery/guest.lock` marker for the run's lifetime, so two driver loops cannot interleave writes. A second driver session refuses with `guest-marker-held`. Standalone [breakouts](../appendices/glossary.md#b) (`slice refine`, `slice build`, `slice merge`) do **not** take the marker — the slice lifecycle gates (only `refined` builds, only `built` merges) keep them safe.
+The guest-routed drivers (`emery plan refine`, `emery plan execute`) each create and hold the `.emery/guest.lock` marker for the run's lifetime, so two driver runs cannot interleave writes. A second driver session refuses with `guest-marker-held`.
 
-Because only the run that created the marker removes it, a driver that dies without cleanup leaves it behind, and every later `emery plan execute` refuses until it is removed.
+Because only the run that created the marker removes it, a driver that dies without cleanup leaves it behind, and every later `emery plan refine` / `emery plan execute` refuses until it is removed.
 </section>
 
 
@@ -36,13 +36,13 @@ Because only the run that created the marker removes it, a driver that dies with
 
 <h2><span class="num">2</span> Verify the holder is really gone</h2>
 
-Before touching the marker, confirm no execute session is still alive:
+Before touching the marker, confirm no driver session is still alive:
 
-1. Check your other terminals and agent sessions for a running `emery plan execute`.
+1. Check your other terminals and agent sessions for a running `emery plan refine` or `emery plan execute`.
 2. Check the process table:
 
 ```bash
-ps aux | rg 'emery plan execute' | rg -v rg
+ps aux | rg 'emery plan (refine|execute)' | rg -v rg
 ```
 
 If a live session shows up, do not remove the marker — wait for it to finish or stop it cleanly.

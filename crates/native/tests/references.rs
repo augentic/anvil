@@ -23,7 +23,7 @@ fn model() -> DynModel {
 }
 
 #[test]
-fn dual_axis_shelf_mounts_once() {
+fn dual_axis_shelf_mounts() {
     // One implementor registered on both axes (legal for linked impls)
     // shares one docs registry and must mount its `/mcp/<name>` shelf
     // once, not panic the merge.
@@ -44,7 +44,7 @@ fn dual_axis_shelf_mounts_once() {
 // operation carrying reference documents and routes the shelf URL into
 // the adapter context; shutdown awaits the server task.
 #[tokio::test]
-async fn grant_routing_and_shutdown() {
+async fn grant_routing_shutdown() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let catalog = Catalog::builder().source::<Reflect>().build().expect("valid catalog");
     let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Online);

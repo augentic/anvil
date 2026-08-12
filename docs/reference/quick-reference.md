@@ -7,7 +7,7 @@
 
 ![Default workflow poster](../assets/diagrams/quick-reference/workflow-poster.svg)
 
-<p class="pipeline-caption">init → plan → review → execute → finalize; re-run execute when it parks.</p>
+<p class="pipeline-caption">init → plan → review → refine → review → execute → finalize; re-run the parked stage when it stops.</p>
 </div>
 
 
@@ -23,7 +23,8 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/emery:init`             | One-time project setup                                                                         |
 | `/emery:plan`             | Survey sources, propose `slices[]`, exit for operator review                                 |
-| `/emery:execute`          | Drive the per-slice refine → build → merge loop (`emery plan execute` — opens the authorization epoch) |
+| `/emery:refine`           | Drain specification refinement over the closed plan, stop before code work (`emery plan refine`) |
+| `/emery:execute`          | Drive the per-slice build → merge loop (`emery plan execute` — opens the authorization epoch over the refinement digests) |
 | `/emery:status`           | Report where the plan stands and the literal next command (read-only)                          |
 | `/emery:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
 
@@ -70,12 +71,11 @@ emery plan add <entry> --sources <key>=<lead>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
 emery plan remove <entry>                                  # pre-execution deferral (replaceable plan only)
 emery plan drop <entry> [--reason "..."]               # abandon a refined slice without merging
-emery plan defer <slice>/<req> --reason "..."          # durably defer an open gap requirement (--retract reopens)
-emery plan execute [--gap-policy strict|defer]         # authorization epoch + drained loop
-emery plan status                                      # read-only next-action + Ready/Authorized + debt counts
-emery plan gaps                                        # typed gap inventory with open|deferred dispositions
-emery plan archive                                     # archive the drained plan (prints the carried-debt summary)
-emery debt                                             # baseline debt projection (carried unknown/conflict backlog)
+emery plan refine [--slice <slice>]...                 # specification drain: extract + synthesize + refinement.yaml per leaf
+emery plan execute [--waive <slice>/<req> --reason …]  # authorization epoch over refinement digests + drained build → merge loop
+emery plan status                                      # read-only next-action + Ready/Authorized
+emery plan gaps                                        # typed gap inventory
+emery plan archive
 
 # Slice projections (read-only)
 emery slice list                                       # every slice with status + target
@@ -112,9 +112,9 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .emery/
     ├── project.yaml      # project config (target, sources, emery-version)
-    ├── guest.lock        # lock held by a running plan execute (a second driver gets guest-marker-held)
+    ├── guest.lock        # lock held by a running plan refine / plan execute (a second driver gets guest-marker-held)
     ├── scratch/          # transient per-run working state (gitignored)
-    ├── slices/           # active slices (proposal/spec/design/tasks + evidence/ + base.yaml + builds/)
+    ├── slices/           # active slices (proposal/spec/design/tasks + evidence/ + refinement.yaml + builds/)
     ├── targets/          # one-member wave manifests
     ├── specs/            # merged baseline
     ├── events/           # per-writer fact logs (<writer>.jsonl)

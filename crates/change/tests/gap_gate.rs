@@ -18,10 +18,9 @@ use mock::session::Session;
 use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event, EventKind, LeafSpecCoverage,
-    append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event, EventKind, append_for, read_union,
 };
-use project::plan::{Disposition, Plan, dir_cid};
+use project::plan::{Disposition, Plan};
 use support::plan_with_changes;
 
 /// Single-project plan entry so execute's workspace routing refusal
@@ -124,7 +123,8 @@ async fn defer(session: &Session, slice: &str, req: &str, reason: &str) {
 }
 
 fn stamp_epoch(
-    root: &std::path::Path, plan_digest: &str, specs: BTreeMap<String, LeafSpecCoverage>,
+    root: &std::path::Path, plan_digest: &str,
+    refinements: BTreeMap<String, project::snapshot::SnapshotId>,
 ) {
     let ts = Timestamp::from_second(1_700_000_000).expect("timestamp");
     let event = Event::new(
@@ -132,7 +132,7 @@ fn stamp_epoch(
         EventKind::PlanExecuteStarted {
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
-                specs,
+                refinements,
                 gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
@@ -162,6 +162,7 @@ async fn conflict_blocks_build() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -190,6 +191,7 @@ async fn open_unknown_blocks_build() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -201,7 +203,7 @@ async fn open_unknown_blocks_build() {
 }
 
 #[tokio::test]
-async fn deferred_unknown_passes_gap_gate() {
+async fn deferred_unknown_ok() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -216,6 +218,7 @@ async fn deferred_unknown_passes_gap_gate() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
     defer(&session, "a", "REQ-003", "reset path deferred").await;
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
@@ -234,7 +237,7 @@ async fn deferred_unknown_passes_gap_gate() {
 }
 
 #[tokio::test]
-async fn deferred_conflict_passes_gap_gate() {
+async fn deferred_conflict_ok() {
     // D6: `[conflict]` defers under the same exclusion semantics —
     // build-over stays forbidden, exclusion proceeds.
     let session = Session::bare(Vec::new());
@@ -251,6 +254,7 @@ async fn deferred_conflict_passes_gap_gate() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
     defer(&session, "a", "REQ-001", "tie deferred to next change").await;
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
@@ -264,7 +268,7 @@ async fn deferred_conflict_passes_gap_gate() {
 }
 
 #[tokio::test]
-async fn deferral_covers_fresh_epoch_without_resupply() {
+async fn covers_without_resupply() {
     // Acceptance 2 / 9: the disposition is durable — a resume opens a
     // fresh epoch with no flags and the gate still proceeds; no path
     // demands re-supplying a decision already on the log.
@@ -282,6 +286,7 @@ async fn deferral_covers_fresh_epoch_without_resupply() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
     defer(&session, "a", "REQ-003", "reset path deferred").await;
 
     // First run fails later (no base pins) — not the behavior under test.
@@ -306,7 +311,7 @@ async fn deferral_covers_fresh_epoch_without_resupply() {
 }
 
 #[tokio::test]
-async fn retraction_reopens_the_gate() {
+async fn retract_reopens_gate() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -321,6 +326,7 @@ async fn retraction_reopens_the_gate() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
     defer(&session, "a", "REQ-003", "reset path deferred").await;
     run::<Defer, _, _>(
         session.provider(),
@@ -343,7 +349,7 @@ async fn retraction_reopens_the_gate() {
 }
 
 #[tokio::test]
-async fn digest_lapsed_deferral_blocks_again() {
+async fn lapsed_blocks_again() {
     // Acceptance 2: a re-refine that changes the requirement body
     // lapses the deferral — the new row is open and blocks under
     // strict.
@@ -361,6 +367,7 @@ async fn digest_lapsed_deferral_blocks_again() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
     defer(&session, "a", "REQ-003", "reset path deferred").await;
 
     // The requirement body changes (new evidence reshaped the gap):
@@ -384,7 +391,7 @@ async fn digest_lapsed_deferral_blocks_again() {
 }
 
 #[tokio::test]
-async fn defer_flag_mints_policy_fact_for_open_unknown() {
+async fn flag_mints_unknown() {
     // Acceptance 3: under an effective `defer` policy the gate
     // dispositions open rows itself — one `origin: policy` fact with
     // the synthesized epoch reason — and build proceeds.
@@ -402,6 +409,7 @@ async fn defer_flag_mints_policy_fact_for_open_unknown() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(
         session.provider(),
@@ -435,7 +443,7 @@ async fn defer_flag_mints_policy_fact_for_open_unknown() {
 }
 
 #[tokio::test]
-async fn defer_flag_mints_policy_fact_for_tied_conflict() {
+async fn flag_mints_conflict() {
     // D6: conflicts defer under the same gate-time policy minting —
     // build-over stays forbidden, exclusion proceeds.
     let session = Session::bare(Vec::new());
@@ -452,6 +460,7 @@ async fn defer_flag_mints_policy_fact_for_tied_conflict() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(
         session.provider(),
@@ -476,7 +485,7 @@ async fn defer_flag_mints_policy_fact_for_tied_conflict() {
 }
 
 #[tokio::test]
-async fn project_declaration_defers_without_flag() {
+async fn declare_defers_alone() {
     // Acceptance 4: a `project.yaml` `gap-policy: defer` declaration
     // alone makes the epoch defer — no flag supplied — and the
     // effective policy lands on the coverage payload.
@@ -494,6 +503,7 @@ async fn project_declaration_defers_without_flag() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -509,7 +519,7 @@ async fn project_declaration_defers_without_flag() {
 }
 
 #[tokio::test]
-async fn strict_flag_overrides_defer_declaration() {
+async fn strict_overrides_defer() {
     // Acceptance 4: `--gap-policy strict` overrides the `project.yaml`
     // declaration for one run — the gate blocks and mints nothing.
     let session = Session::bare(Vec::new());
@@ -526,6 +536,7 @@ async fn strict_flag_overrides_defer_declaration() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(
         session.provider(),
@@ -545,7 +556,7 @@ async fn strict_flag_overrides_defer_declaration() {
 }
 
 #[tokio::test]
-async fn divergence_alone_does_not_block() {
+async fn divergence_no_block() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -560,6 +571,7 @@ async fn divergence_alone_does_not_block() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -569,7 +581,7 @@ async fn divergence_alone_does_not_block() {
 }
 
 #[tokio::test]
-async fn concurrent_stale_epoch_refuses_build_via_execute() {
+async fn stale_epoch_refuses() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -584,6 +596,7 @@ async fn concurrent_stale_epoch_refuses_build_via_execute() {
 ",
     );
     write_plan(session.root(), &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(session.root(), "a");
 
     // A concurrent writer stamps an epoch *after* this run opens its
     // own (simulated with a later timestamp): the newest epoch governs
@@ -596,7 +609,7 @@ async fn concurrent_stale_epoch_refuses_build_via_execute() {
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest:
                     "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
-                specs: BTreeMap::new(),
+                refinements: BTreeMap::new(),
                 gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
@@ -612,7 +625,7 @@ async fn concurrent_stale_epoch_refuses_build_via_execute() {
 }
 
 #[tokio::test]
-async fn stale_existing_digest_refuses_build() {
+async fn stale_refine_refuses() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -628,24 +641,23 @@ async fn stale_existing_digest_refuses_build() {
     );
     let plan = plan_with_changes(vec![leaf("a")]);
     write_plan(session.root(), &plan);
+    support::stage_manifest(session.root(), "a");
 
     let layout = Layout::new(session.root());
     let plan_digest = live_plan_digest(session.root());
-    let mut specs = BTreeMap::new();
-    specs.insert(
+    let mut refinements = BTreeMap::new();
+    refinements.insert(
         "a".into(),
-        LeafSpecCoverage::Existing {
-            digest: "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
-                .into(),
-        },
+        project::snapshot::SnapshotId::parse(
+            "sha256:deadbeef00000000000000000000000000000000000000000000000000000000",
+        )
+        .expect("digest"),
     );
-    stamp_epoch(session.root(), &plan_digest, specs);
+    stamp_epoch(session.root(), &plan_digest, refinements);
 
-    // Live specs digest differs from the fabricated covering digest.
-    let live = dir_cid(&layout.slice_dir("a").join("specs")).expect("live specs cid");
+    let live = support::manifest_digest(session.root(), "a");
     assert!(
-        live.to_string()
-            != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
+        live.as_str() != "sha256:deadbeef00000000000000000000000000000000000000000000000000000000"
     );
 
     let err = enforce_before_build(
@@ -661,7 +673,7 @@ async fn stale_existing_digest_refuses_build() {
 }
 
 #[tokio::test]
-async fn stale_plan_digest_refuses_build() {
+async fn stale_plan_refuses() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(
@@ -677,15 +689,15 @@ async fn stale_plan_digest_refuses_build() {
     );
     let plan = plan_with_changes(vec![leaf("a")]);
     write_plan(session.root(), &plan);
+    support::stage_manifest(session.root(), "a");
 
     let layout = Layout::new(session.root());
-    let live_specs = dir_cid(&layout.slice_dir("a").join("specs")).expect("specs cid").to_string();
-    let mut specs = BTreeMap::new();
-    specs.insert("a".into(), LeafSpecCoverage::Existing { digest: live_specs });
+    let mut refinements = BTreeMap::new();
+    refinements.insert("a".into(), support::manifest_digest(session.root(), "a"));
     stamp_epoch(
         session.root(),
         "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-        specs,
+        refinements,
     );
 
     let err = enforce_before_build(

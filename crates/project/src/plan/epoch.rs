@@ -1,17 +1,15 @@
-//! Authorization-epoch freshness (RFC-86 D22 / S19).
-//!
-//! The newest `plan.execute.started` coverage vs the live `plan.yaml`
-//! and covered spec trees — shared by status Authorized and the gap gate.
+//! Authorization-epoch freshness (RFC-86 D22 / S19 / RFC-91 D5): newest
+//! `plan.execute.started` coverage vs live `plan.yaml` and covered
+//! refinement digests — shared by status Authorized and the gap gate.
 
-use diagnostics::digest::sha256_hex;
 use error::Error;
 
 use super::execution::project_ladders;
 use super::model::{Plan, Status};
-use super::pins::dir_cid;
 use super::scope::in_scope;
 use crate::config::Layout;
-use crate::journal::{ClosedPlanCoverage, Event, EventKind, LeafSpecCoverage};
+use crate::journal::{ClosedPlanCoverage, Event, EventKind};
+use crate::refinement;
 use crate::slice::SliceMetadata;
 
 /// The newest authorization epoch's relationship to the live artifacts.
@@ -24,7 +22,7 @@ pub enum EpochFreshness<'a> {
         /// Which covered artifact drifted, with epoch vs live digests.
         detail: String,
     },
-    /// The newest epoch covers the live plan and spec trees.
+    /// The newest epoch covers the live plan and refinement manifests.
     Fresh {
         /// The covering `closed-plan` coverage (leaves + gap policy).
         coverage: &'a ClosedPlanCoverage,
@@ -36,10 +34,10 @@ pub enum EpochFreshness<'a> {
 ///
 /// Fresh means the newest `plan.execute.started` coverage matches the
 /// live `plan.yaml` digest, every in-scope entry not yet projected
-/// `done` is in the per-leaf coverage, and every such `existing`
-/// leaf's specs tree still matches its covered digest. A `done` leaf
-/// is skipped: merge archives the slice tree, so its absence is
-/// completion under the epoch, not drift.
+/// `done` is in the per-leaf refinement coverage, and every such
+/// leaf's on-disk refinement digest still matches its covered digest.
+/// A `done` leaf is skipped: merge archives the slice tree, so its
+/// absence is completion under the epoch, not drift.
 ///
 /// # Errors
 ///
@@ -70,11 +68,12 @@ fn staleness(
     layout: Layout<'_>, plan: &Plan, events: &[Event], coverage: &ClosedPlanCoverage,
 ) -> Result<Option<String>, Error> {
     let ClosedPlanCoverage::ClosedPlan {
-        plan_digest, specs, ..
+        plan_digest,
+        refinements,
+        ..
     } = coverage;
 
-    let plan_bytes = std::fs::read(layout.plan_path())?;
-    let live_plan = format!("sha256:{}", sha256_hex(&plan_bytes));
+    let live_plan = Plan::file_digest(layout)?;
     if live_plan != *plan_digest {
         return Ok(Some(format!(
             "`plan.yaml` digest drifted (epoch {plan_digest}, live {live_plan}) — re-run \
@@ -93,25 +92,25 @@ fn staleness(
             continue;
         }
         let name = entry.name.as_str();
-        let Some(leaf) = specs.get(name) else {
+        let Some(covered) = refinements.get(name) else {
             return Ok(Some(format!(
-                "slice `{name}` is not in the covering epoch's per-leaf coverage — re-run \
-                 `emery plan execute`"
+                "slice `{name}` is not in the covering epoch's per-leaf refinement coverage — \
+                 re-run `emery plan execute`"
             )));
         };
-        match leaf {
-            LeafSpecCoverage::Existing { digest } => {
-                let live = dir_cid(&slice_dir.join("specs"))?.to_string();
-                if live != *digest {
-                    return Ok(Some(format!(
-                        "covered spec digest for `{name}` drifted (epoch {digest}, live {live}) — \
-                         re-run `emery plan execute`"
-                    )));
-                }
+        match refinement::file_digest(&slice_dir)? {
+            Some(live) if live == *covered => {}
+            Some(live) => {
+                return Ok(Some(format!(
+                    "covered refinement digest for `{name}` drifted (epoch {covered}, live \
+                     {live}) — re-run `emery plan refine`, then `emery plan execute`"
+                )));
             }
-            LeafSpecCoverage::RefineUnderEpoch => {
-                // Epoch authorized refine-before-build; the specs
-                // produced under this epoch are the covered artifact.
+            None => {
+                return Ok(Some(format!(
+                    "covered refinement manifest for `{name}` is missing — re-run `emery plan \
+                     refine`, then `emery plan execute`"
+                )));
             }
         }
     }

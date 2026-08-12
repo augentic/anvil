@@ -24,8 +24,8 @@ pub type EpochRef = FactEpochRef;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MemberInputs {
-    /// Content digest of the member's `specs/` tree (`sha256:…`).
-    pub spec: SnapshotId,
+    /// Refinement digest of the member's covered manifest (`sha256:…`).
+    pub refinement: SnapshotId,
 }
 
 /// One ordered member of a target wave.
@@ -48,7 +48,9 @@ pub struct Member {
 pub struct Wave {
     /// Target key (current project name in the in-place cut).
     pub target: String,
-    /// Pinned target-base tree identity consumed by the wave.
+    /// Target-base tree identity selected when the wave opened
+    /// (RFC-91 D6: the current product snapshot in closed in-place
+    /// execution).
     pub base: SnapshotId,
     /// Ordered member set — length must be 1 before open.
     pub members: Vec<Member>,
@@ -73,7 +75,7 @@ impl Wave {
     /// Build a one-member wave from the fields D9 requires.
     #[must_use]
     pub fn one_member(
-        target: impl Into<String>, base: SnapshotId, slice: SliceName, spec: SnapshotId,
+        target: impl Into<String>, base: SnapshotId, slice: SliceName, refinement: SnapshotId,
         depends_on: Vec<SliceName>, build_authorization: EpochRef,
     ) -> Self {
         Self {
@@ -81,7 +83,7 @@ impl Wave {
             base,
             members: vec![Member {
                 slice,
-                inputs: MemberInputs { spec },
+                inputs: MemberInputs { refinement },
             }],
             depends_on,
             build_authorization,

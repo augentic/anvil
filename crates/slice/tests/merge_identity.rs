@@ -170,7 +170,7 @@ tasks:
 }
 
 #[tokio::test]
-async fn wave_commit_assigns_baseline_ids_and_records_maps() {
+async fn wave_commit_assigns() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
@@ -220,7 +220,7 @@ async fn wave_commit_assigns_baseline_ids_and_records_maps() {
 /// `target.wave.opened` fact — a stale record with a newer mtime never
 /// shadows the authorized build.
 #[tokio::test]
-async fn stale_record_with_newer_mtime_is_not_merged() {
+async fn stale_mtime_not_merged() {
     let session = Session::scripted("mock", Vec::new());
     let layout = project::config::Layout::new(session.root());
     let snapshot = session.provider().freeze().await.expect("freeze");
@@ -293,7 +293,7 @@ async fn stale_record_with_newer_mtime_is_not_merged() {
 /// without requirement-id collision (each keeps slice-local `REQ-001`
 /// until wave commit assigns distinct baseline numbers).
 #[tokio::test]
-async fn two_slices_merge_without_req_collision() {
+async fn two_slices_merge_without() {
     let session = Session::scripted("mock", Vec::new());
     let root = session.root();
     fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline");
@@ -391,7 +391,7 @@ tasks:
 /// Stage a slice whose MODIFIED row finalizes to a baseline id equal to
 /// a *later* slice-local id: local `REQ-001` maps to baseline `REQ-002`
 /// while local `REQ-002` (ADDED) maps to `REQ-003`.
-fn stage_overlapping_id_slice(session: &Session) {
+fn stage_overlap_ids(session: &Session) {
     let root = session.root();
     let baseline = "### Requirement: User can log in\n\n\
          ID: REQ-001\n\n\
@@ -493,11 +493,11 @@ tasks:
 /// finalizes to baseline `REQ-002` and must survive the subsequent
 /// `REQ-002` → `REQ-003` substitution in `tasks.md`.
 #[tokio::test]
-async fn task_tokens_do_not_chain_into_later_mappings() {
+async fn task_tokens_no_chain() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, "login-flow", snapshot);
-    stage_overlapping_id_slice(&session);
+    stage_overlap_ids(&session);
 
     merge(&session, "login-flow").await.expect("merge succeeds");
 
@@ -512,7 +512,7 @@ async fn task_tokens_do_not_chain_into_later_mappings() {
 /// A domain-omitted `MODIFIED` row resolves the shared default domain at
 /// wave commit — the same domain synthesis digested it under.
 #[tokio::test]
-async fn domain_omitted_modified_merges_under_default_domain() {
+async fn omit_domain_default() {
     let session = Session::scripted("mock", Vec::new());
     let root = session.root();
     let snapshot = session.provider().freeze().await.expect("freeze");
@@ -583,7 +583,7 @@ tasks:
 /// A slice decision's `related:` REQ ids are finalized to baseline
 /// numbers before promotion, mirroring the `tasks.md` rewrite.
 #[tokio::test]
-async fn decision_related_ids_finalized_at_merge() {
+async fn related_ids_finalize() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
@@ -612,7 +612,7 @@ async fn decision_related_ids_finalized_at_merge() {
 }
 
 #[tokio::test]
-async fn drifted_modified_rejects_before_wave_committed() {
+async fn drifted_modified_rejects() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, "login-flow", snapshot);
@@ -660,12 +660,12 @@ async fn drifted_modified_rejects_before_wave_committed() {
 }
 
 #[tokio::test]
-async fn postflight_failure_keeps_wave_committed() {
+async fn postflight_failure_keeps() {
     let session = Session::scripted("mock", Vec::new());
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
     stage_built_slice(&session, wave_digest.as_str());
-    fs::write(session.root().join(mock::behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "")
+    fs::write(session.root().join(mock::behaviour::POSTFLIGHT_FAIL), "")
         .expect("postflight marker");
 
     let err = merge(&session, "login-flow").await.expect_err("postflight fails");
@@ -678,7 +678,7 @@ async fn postflight_failure_keeps_wave_committed() {
         "wave-committed before postflight"
     );
     assert!(
-        events.iter().any(|e| matches!(e.kind, EventKind::TargetMergeWavePostflightFailed { .. })),
+        events.iter().any(|e| matches!(e.kind, EventKind::MergeWavePostflightFailed { .. })),
         "wave-postflight-failed"
     );
     assert!(

@@ -57,7 +57,7 @@ pub fn file_cid(path: &str, bytes: &[u8]) -> SnapshotId {
 /// Absent or non-directory paths share the empty-tree identity so a
 /// greenfield baseline `specs/` (not yet created) pins stably. Digests
 /// match [`crate::workspace::Store::snapshot`] for ordinary directory
-/// trees — refine's `base.yaml` baseline-spec pin uses this.
+/// trees — the refinement manifest's `baseline-specs` pin uses this.
 ///
 /// # Errors
 ///
@@ -78,7 +78,7 @@ pub fn empty_cid() -> SnapshotId {
 /// Live content-addressed identity of one source binding.
 ///
 /// Same digest as [`close`] would stamp onto `binding.cid`. Used by
-/// pin-drift validation to compare `base.yaml` pins against the
+/// refinement freshness to compare recorded source pins against the
 /// current path/value tree without rewriting the plan.
 ///
 /// # Errors

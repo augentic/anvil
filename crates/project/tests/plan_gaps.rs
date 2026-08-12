@@ -99,7 +99,7 @@ fn retracted(second: i64, writer: &str, sequence: u64, slice: &str, digest: &str
 }
 
 #[test]
-fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
+fn multi_homed_lead() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
@@ -202,7 +202,7 @@ fn multi_homed_lead_annotates_rows_and_suggests_selectors() {
 }
 
 #[test]
-fn dropped_slice_excluded_from_inventory() {
+fn dropped_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
@@ -251,7 +251,7 @@ fn dropped_slice_excluded_from_inventory() {
 }
 
 #[test]
-fn unrefined_in_scope_slice_contributes_no_rows() {
+fn unrefined_scope_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
@@ -296,7 +296,7 @@ fn dispositions(body: &project::plan::GapsBody) -> Vec<(&str, Option<Disposition
 }
 
 #[test]
-fn deferral_covers_unknown_and_conflict_rows() {
+fn covers_gap_rows() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -344,7 +344,7 @@ fn retraction_reopens() {
 }
 
 #[test]
-fn digest_change_lapses_and_exact_body_return_revives() {
+fn digest_lapse_revive() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -388,7 +388,7 @@ fn digest_change_lapses_and_exact_body_return_revives() {
 }
 
 #[test]
-fn duplicate_facts_idempotent() {
+fn dup_facts_idempotent() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -405,7 +405,7 @@ fn duplicate_facts_idempotent() {
 }
 
 #[test]
-fn two_writer_union_projects_one_disposition() {
+fn two_writer_one_disp() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -438,7 +438,7 @@ fn render(body: &project::plan::GapsBody) -> String {
 }
 
 #[test]
-fn deferred_rows_carry_reason_and_origin() {
+fn rows_reason_origin() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -484,7 +484,7 @@ fn deferred_rows_carry_reason_and_origin() {
 }
 
 #[test]
-fn render_disposition_column_and_separated_deferred_sections() {
+fn render_disp_sections() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -523,7 +523,7 @@ fn render_disposition_column_and_separated_deferred_sections() {
 }
 
 #[test]
-fn rollup_spans_both_dispositions() {
+fn rollup_both_disps() {
     // D19 stays presentation-only over open and deferred rows alike:
     // deferring one of two multi-homed findings keeps the shared-lead
     // annotation and the rollup selectors intact.
@@ -564,7 +564,7 @@ fn rollup_spans_both_dispositions() {
 }
 
 #[test]
-fn debt_counts_break_out_conflicts() {
+fn debt_counts_conflict() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
@@ -602,7 +602,7 @@ fn debt_counts_break_out_conflicts() {
 }
 
 #[test]
-fn model_missing_statement_is_rejected() {
+fn missing_stmt_rejects() {
     // Parity with the strict typed model in `crates/slice`: a
     // `model.yaml` row without a `statement` is malformed, and the
     // inventory must refuse it rather than mint a deferral match key

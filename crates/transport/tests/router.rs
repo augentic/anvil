@@ -119,9 +119,9 @@ async fn detailed_help() {
         &["emery", "registry", "validate"][..],
         &["emery", "registry", "remove"][..],
         &["emery", "init", "--workspace"][..],
-        // RFC-86 D14 / D6 — never shipped.
+        // RFC-86 D14 / D6 — never shipped. (`plan refine` is a real
+        // verb since RFC-91 — asserted present below, not here.)
         &["emery", "plan", "approve"][..],
-        &["emery", "plan", "refine"][..],
         // Plan-centric surface cut — the slice-loop breakout verbs and
         // plan advance/undo are gone; `plan execute` owns the phases.
         &["emery", "slice", "refine"][..],
@@ -138,20 +138,24 @@ async fn detailed_help() {
     assert_eq!(plan_help.exit, 0);
     let plan_help = String::from_utf8_lossy(&plan_help.stdout);
     assert!(!plan_help.contains("approve"), "no plan approve subcommand: {plan_help}");
+    // `plan refine` is the RFC-91 refinement drain — a real subcommand.
+    assert!(
+        plan_help.lines().any(|line| line.trim_start().starts_with("refine")),
+        "plan help must list refine: {plan_help}"
+    );
     assert!(
         !plan_help.lines().any(|line| {
             let trimmed = line.trim_start();
             trimmed.starts_with("approve")
-                || trimmed.starts_with("refine")
                 || trimmed.starts_with("advance")
                 || trimmed.starts_with("undo")
         }),
-        "plan help must not list approve/refine/advance/undo: {plan_help}"
+        "plan help must not list approve/advance/undo: {plan_help}"
     );
 }
 
 #[tokio::test]
-async fn version_is_the_host_semver() {
+async fn version_host_semver() {
     // No adapter-train suffix: adapters version independently and
     // resolve local-first, so the binary reports only its own SemVer.
     let router = command_router(".");

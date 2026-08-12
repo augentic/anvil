@@ -65,7 +65,7 @@ mod parse {
     }
 
     #[test]
-    fn accepts_headingless_blocks() {
+    fn accepts_headingless() {
         let doc = Discovery::parse_lead_set(
             "\
 ### user-registration
@@ -199,7 +199,7 @@ mod merge {
     use super::*;
 
     #[test]
-    fn survey_replaces_same_id_block() {
+    fn survey_replaces_id_block() {
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("discovery.md");
         let mut doc = Discovery::parse(SAMPLE).expect("parse ok");

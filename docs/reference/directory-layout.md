@@ -31,7 +31,7 @@ contracts/                                  # Baseline API contracts
 ├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
 │       ├── metadata.yaml                  # Phase timestamps + target (managed by CLI; no stored status)
-│       ├── base.yaml                       # Refine-time source + baseline-spec + target-base pins
+│       ├── refinement.yaml                 # Refinement manifest: exact inputs + covered output bundle (RFC-91)
 │       ├── proposal.md                     # Why this slice exists
 │       ├── model.yaml                      # Structured synthesis model (inline provenance; spec.md is authoritative)
 │       ├── design.md                       # Technical design
@@ -86,9 +86,9 @@ $EMERY_HOME/cache/<project-id>/                 # (default home: ~/.emery)
 
 ### `slices/`
 
-Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the refine orchestration, which mints the directory (re-entry safe) immediately before per-source `extract`. `emery plan add` does not create the slice directory — before execution the slice tree is empty regardless of slice count.
+Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the `emery plan refine` drain, which mints the directory (re-entry safe) immediately before per-source `extract`. `emery plan add` does not create the slice directory — before refinement the slice tree is empty regardless of slice count.
 
-A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; the synthesis persist tail inside `emery plan execute`'s refine phase is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, refine-time `base.yaml` pins, content-addressed `builds/<digest>.yaml` records, and `metadata.yaml` for phase timestamps (lifecycle labels project from those plus artifacts/facts). Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
+A slice directory contains the canonical artifacts (`proposal.md`, `design.md`, `tasks.md`, plus per-domain `specs/<domain>/spec.md`), the structured `model.yaml` synthesis artifact (carries provenance inline on each requirement; the synthesis persist tail inside the `emery plan refine` drain is its only writer and `spec.md` remains the authoritative artifact — `model.yaml` is audit-only), the per-source `evidence/<source>.yaml` files, the `refinement.yaml` manifest (the canonical record of the refinement's exact inputs and complete output bundle — its content digest is the refinement digest `plan execute` covers), content-addressed `builds/<digest>.yaml` records, and `metadata.yaml` for phase timestamps (lifecycle labels project from those plus artifacts/facts). Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation alongside implementation code, not by core synthesis.
 
 ### `contracts/`
 

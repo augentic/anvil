@@ -24,7 +24,7 @@ fn grouped_under_headings(ctx: &BriefContext<'_>) -> RuleOutcome {
             detail: "tasks were not parsed".to_string(),
         };
     };
-    if primitives::tasks_grouped_under_headings(tasks) {
+    if primitives::tasks_grouped_headings(tasks) {
         RuleOutcome::Pass
     } else {
         RuleOutcome::Fail {

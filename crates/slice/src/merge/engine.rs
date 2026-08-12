@@ -9,7 +9,7 @@ use artifacts::spec::{
 use error::Error;
 use serde::Serialize;
 
-use crate::merge::count_requirement_headings;
+use crate::merge::count_requirement;
 
 /// Result of a successful [`merge`] call.
 ///
@@ -102,7 +102,7 @@ fn into_empty(delta: &str, delta_spec: &DeltaSpec) -> MergeResult {
     // `has_delta_headers` requires a full-line match; see
     // `delta_headers::full_line_match` in the spec crate.
     if !has_delta_headers(delta) {
-        let requirement_count = count_requirement_headings(delta);
+        let requirement_count = count_requirement(delta);
         return MergeResult {
             output: delta.to_string(),
             operations: vec![MergeOperation::CreatedBaseline { requirement_count }],

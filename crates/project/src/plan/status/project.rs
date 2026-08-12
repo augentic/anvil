@@ -1,5 +1,5 @@
 //! The status projection: plan topology + artifacts + the fact union
-//! → one [`StatusBody`] (RFC-86 D2 / D22 / D26).
+//! → one [`StatusBody`] (RFC-86 D2 / D22 / D26 / RFC-86a / RFC-91).
 
 use std::ops::ControlFlow;
 
@@ -14,9 +14,11 @@ use super::super::gaps::{Disposition, GapsBody, plan_gaps_body};
 use super::super::in_scope;
 use super::super::model::{Entry, Plan, Status};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
+use crate::build_record::BuildRecord;
 use crate::config::Layout;
 use crate::journal::{Event, EventKind};
 use crate::name::SliceName;
+use crate::refinement::{Freshness, Live};
 use crate::slice::SliceMetadata;
 
 /// Project the read-only `emery plan status` body.
@@ -43,8 +45,22 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
     let active =
         plan.entries.iter().find(|e| ladders.get(&e.name).copied() == Some(Status::InProgress));
 
+    // One freshness cache and lead inventory serve the resolution and
+    // the Ready milestone; an absent `discovery.md` degrades to an
+    // empty inventory (planning drift then reads as staleness).
+    let mut live = Live::new();
+    let inventory = load_inventory(layout)?;
+
     let resolution = match active {
-        Some(entry) => resolve_entry(plan, entry, layout, JournalOverlay::Apply, &events)?,
+        Some(entry) => resolve_entry(
+            plan,
+            entry,
+            layout,
+            JournalOverlay::Apply,
+            &events,
+            &inventory,
+            &mut live,
+        )?,
         None => {
             // Sticky postflight debt: after a non-rollback postflight
             // failure the entry is already `done`, so nothing is
@@ -53,9 +69,15 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
                 debt
             } else {
                 match next_eligible(plan, &ladders) {
-                    Some(entry) => {
-                        resolve_entry(plan, entry, layout, JournalOverlay::Skip, &events)?
-                    }
+                    Some(entry) => resolve_entry(
+                        plan,
+                        entry,
+                        layout,
+                        JournalOverlay::Skip,
+                        &events,
+                        &inventory,
+                        &mut live,
+                    )?,
                     None if ladders.values().all(|s| *s == Status::Done) => Resolution::drained(),
                     None => Resolution::stop(StopReason::Stuck),
                 }
@@ -63,7 +85,7 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         }
     };
     let gaps = plan_gaps_body(plan, layout, &events)?;
-    let all_refined = all_in_scope_refined(plan, layout)?;
+    let all_refined = all_in_scope_refined(plan, layout, &inventory, &mut live)?;
     let milestones = Milestones {
         all_refined,
         ready: all_refined && clean_gaps(&gaps),
@@ -87,7 +109,7 @@ struct Milestones {
 fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
     let mut resolution = None;
     scan_union(events, |event| match &event.kind {
-        EventKind::TargetMergeWavePostflightFailed {
+        EventKind::MergeWavePostflightFailed {
             slice_name, reason, ..
         } if plan.entries.iter().any(|e| e.name == *slice_name) => {
             let entry = plan.entries.iter().find(|e| e.name == *slice_name);
@@ -101,7 +123,7 @@ fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
             }
             ControlFlow::Break(())
         }
-        EventKind::PlanMergePostflightAcknowledged { slice_name }
+        EventKind::PostflightAcknowledged { slice_name }
             if plan.entries.iter().any(|e| e.name == *slice_name) =>
         {
             resolution = None;
@@ -127,25 +149,48 @@ fn clean_gaps(gaps: &GapsBody) -> bool {
         .any(|row| matches!(row.status, RequirementStatus::Unknown | RequirementStatus::Conflict))
 }
 
-/// Every in-scope entry has refined artifacts (model.yaml or spec.md).
-/// Empty in-scope set is vacuously refined.
-fn all_in_scope_refined(plan: &Plan, layout: Layout<'_>) -> Result<bool, Error> {
+/// Every in-scope entry counts as refined (RFC-91 D2): a FRESH
+/// refinement manifest, or — once a build record exists — manifest
+/// presence, because build promotion legitimately drifts bundle
+/// artifacts through `writable-artifacts[]` (the same carve-out
+/// execute's coverage assembly applies). Empty in-scope set is
+/// vacuously refined.
+fn all_in_scope_refined(
+    plan: &Plan, layout: Layout<'_>, inventory: &[artifacts::discovery::Lead], live: &mut Live,
+) -> Result<bool, Error> {
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
         let meta = SliceMetadata::load_optional(&slice_dir)?;
         if !in_scope(plan, entry, meta.as_ref()) {
             continue;
         }
-        if !crate::slice::has_spec_artifacts(&slice_dir) {
+        if BuildRecord::present(&slice_dir) {
+            if crate::slice::refinement_present(&slice_dir) {
+                continue;
+            }
             return Ok(false);
+        }
+        match crate::refinement::freshness_with(layout, plan, entry, inventory, live)? {
+            Freshness::Fresh { .. } => {}
+            Freshness::Missing | Freshness::Stale { .. } => return Ok(false),
         }
     }
     Ok(true)
 }
 
+/// The full `discovery.md` lead inventory; an absent file degrades to
+/// an empty set the way the freshness callers tolerate today.
+fn load_inventory(layout: Layout<'_>) -> Result<Vec<artifacts::discovery::Lead>, Error> {
+    let path = layout.discovery_path();
+    if !path.is_file() {
+        return Ok(Vec::new());
+    }
+    Ok(artifacts::discovery::Discovery::load(&path)?.leads().to_vec())
+}
+
 /// Authorized when the newest `plan.execute.started` epoch still
-/// covers the live plan / spec trees — the same freshness the execute
-/// gap gate enforces before build (RFC-86 D22).
+/// covers the live plan / refinement digests — the same freshness the
+/// execute gap gate enforces before build (RFC-86 D22 / RFC-91 D5).
 fn project_authorized(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Result<bool, Error> {
     let freshness = super::super::epoch::freshness(layout, plan, events)?;
     Ok(matches!(freshness, super::super::epoch::EpochFreshness::Fresh { .. }))
@@ -207,7 +252,7 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
         NextActionKind::Merge => Some(LoopStep::Merge),
         NextActionKind::ReviewGaps | NextActionKind::Drained => None,
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed => Some(LoopStep::Refine),
+            StopReason::RefineFailed | StopReason::RefinementRequired => Some(LoopStep::Refine),
             StopReason::BuildFailed => Some(LoopStep::Build),
             // `merge-incomplete` parks inside merge: the spec merge landed
             // but the per-entry `done` stamp has not. Postflight failure is
@@ -227,8 +272,8 @@ fn resume_point(
     gaps: &GapsBody,
 ) -> Option<String> {
     // A fresh plan (no entry has left projected `pending`) resumes
-    // through the execute loop, not a phase breakout. When open
-    // findings block, point at deferral / gap closure instead.
+    // through refine or execute depending on the projected action.
+    // When open findings block, point at deferral / gap closure.
     if ladders.values().all(|s| *s == Status::Pending)
         && matches!(
             resolution.action,
@@ -241,16 +286,17 @@ fn resume_point(
         return Some(fresh_plan_resume(gaps, resolution.action));
     }
     match resolution.action {
-        // Every phase resumes through the execute loop — there are no
-        // phase-breakout verbs (RFC-86 three-verb surface).
-        NextActionKind::Refine | NextActionKind::Build | NextActionKind::Merge => {
-            Some("emery plan execute".to_string())
-        }
+        // Refinement resumes through `plan refine` (RFC-91 D1/D8);
+        // build and merge resume through the execute loop.
+        NextActionKind::Refine => Some("emery plan refine".to_string()),
+        NextActionKind::Build | NextActionKind::Merge => Some("emery plan execute".to_string()),
         NextActionKind::ReviewGaps => Some(gap_resume(gaps)),
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed
-            | StopReason::BuildFailed
+            StopReason::RefineFailed | StopReason::RefinementRequired => {
+                Some("emery plan refine".to_string())
+            }
+            StopReason::BuildFailed
             | StopReason::MergeConflict
             | StopReason::MergePostflightFailed
             | StopReason::MergeIncomplete => Some("emery plan execute".to_string()),
@@ -259,14 +305,17 @@ fn resume_point(
     }
 }
 
-/// Post-author / all-pending resume (D26 / D22 / RFC-86a D7).
+/// Post-author / all-pending resume (RFC-91 D8 / RFC-86a D7).
 fn fresh_plan_resume(gaps: &GapsBody, action: NextActionKind) -> String {
     if action == NextActionKind::ReviewGaps || (gaps.has_open() && action == NextActionKind::Build)
     {
         return gap_resume(gaps);
     }
-    // Unrefined, Ready, or fully dispositioned: resume at execute
-    // (D26) — deferred debt never redirects the resume.
+    // Missing / stale refinement resumes at refine; Ready or
+    // fully-dispositioned resumes at execute (D8 / D26).
+    if action == NextActionKind::Refine {
+        return "/emery:refine".to_string();
+    }
     "/emery:execute".to_string()
 }
 
@@ -285,8 +334,8 @@ fn gap_resume(gaps: &GapsBody) -> String {
     if open.is_empty() {
         // Nothing open, or only digest-less `spec.md`-fallback rows,
         // which `plan defer` refuses (no deferral match key) — a
-        // re-refine under the epoch mints digest-bearing rows instead.
-        return "emery plan execute".to_string();
+        // re-refine mints digest-bearing rows instead.
+        return "emery plan refine".to_string();
     }
     let mut parts = vec!["emery plan defer".to_string()];
     for row in open {

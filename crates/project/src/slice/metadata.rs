@@ -229,6 +229,15 @@ impl SliceMetadata {
         }
     }
 
+    /// Alias for [`Self::load_optional`].
+    ///
+    /// # Errors
+    ///
+    /// As for [`Self::load_optional`].
+    pub fn load_opt(slice_dir: &Path) -> Result<Option<Self>, Error> {
+        Self::load_optional(slice_dir)
+    }
+
     /// Atomically write `metadata.yaml` to a slice directory,
     /// overwriting if present. Always trailing-newlined.
     ///

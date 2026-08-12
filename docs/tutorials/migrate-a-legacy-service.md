@@ -2,7 +2,7 @@
 <div class="eyebrow">Tutorial</div>
 <h1 class="hero-title">Migrate a legacy service</h1>
 
-Point Emery at an existing TypeScript codebase and drive it to an Omnia service: bind the code as a source, review the plan it surveys, then execute refine → build → merge per slice. Bring any TypeScript repository you own.
+Point Emery at an existing TypeScript codebase and drive it to an Omnia service: bind the code as a source, review the plan it surveys, refine and review the specs, then execute build → merge per slice. Bring any TypeScript repository you own.
 
 <div class="meta-row">
 
@@ -105,7 +105,7 @@ The source adapter's `survey` operation scans `legacy/` and emits slice-sized le
 Read `change.md`, `discovery.md`, and `plan.yaml`. For a migration, check that the slice breakdown matches how you think the service decomposes, and that `discovery.md`'s lead inventory reflects the legacy tree you expected it to survey — an empty survey usually means the source binding pointed at the wrong directory.
 
 > [!IMPORTANT]
-> **Review.** This pause is the operator review step. Running `emery plan execute` is your approval of the plan — `/emery:plan` never starts execution itself. To adjust scope first, see [Amend a plan before executing](../how-to/amend-a-plan.md).
+> **Review.** This pause is the topology review step — `/emery:plan` never runs refinement or execution itself. To adjust scope first, see [Amend a plan before executing](../how-to/amend-a-plan.md).
 
 At any point, `emery plan status` (or `/emery:status`) is the read-only "where am I / what next" probe — it prints the plan's state and the literal next command, and never writes anything.
 </div>
@@ -113,13 +113,27 @@ At any point, `emery plan status` (or `/emery:status`) is the read-only "where a
 
 <div class="tutorial-step" data-step="05">
 <div class="step-label">05</div>
+<h3 class="step-title">Refine</h3>
+
+```text
+/emery:refine
+```
+
+The drain refines every slice serially. During refinement, the adapter's `extract` operation produces evidence YAML from the legacy code; that evidence carries `authority: behaviour`, the lowest class, so your intent wins any disagreement — see [Legacy migration at scale](../explanation/legacy-migration.md). Each refined slice records its exact inputs and output bundle in `refinement.yaml`.
+
+When the drain completes, read the specs — this pause is the specification review step. For a migration, this is where you catch a legacy behavior the extraction misread before any code is generated; amend the plan or fix the source and re-run `emery plan refine` to re-refine the staled slices.
+</div>
+
+
+<div class="tutorial-step" data-step="06">
+<div class="step-label">06</div>
 <h3 class="step-title">Execute</h3>
 
 ```text
 /emery:execute
 ```
 
-Running execute is your approval; it drives each slice through **refine → build → merge** until every plan entry is done:
+Running execute is your authorization; it opens the epoch over the plan and refinement digests, then drives each slice through **build → merge** until every plan entry is done (execute never refines — a missing or stale manifest stops it with `plan-refinement-required`):
 
 <div class="pipeline">
 
@@ -130,14 +144,12 @@ Running execute is your approval; it drives each slice through **refine → buil
 </div>
 
 
-During refine, the adapter's `extract` operation produces evidence YAML from the legacy code; that evidence carries `authority: behaviour`, the lowest class, so your intent wins any disagreement — see [Legacy migration at scale](../explanation/legacy-migration.md).
-
 If execute stops, the stop card prints a `hint:` and a `resume:` command — fix the input it points at and re-run `emery plan execute`; the loop resumes at the parked phase. Abandon a slice with `emery plan drop <entry>`. Both `emery plan status` and `emery slice list` are read-only checks between steps.
 </div>
 
 
-<div class="tutorial-step" data-step="06">
-<div class="step-label">06</div>
+<div class="tutorial-step" data-step="07">
+<div class="step-label">07</div>
 <h3 class="step-title">Finalize</h3>
 
 Publish the generated work through your normal Git and review workflow first — Emery performs no Git or forge operations. Then confirm the plan is drained and close it:

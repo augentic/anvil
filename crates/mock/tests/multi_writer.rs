@@ -147,9 +147,20 @@ async fn refine(session: &Session, slice: &str) {
     let target = project::target_policy::resumed(layout, slice)
         .or_else(|_| project::target_policy::fresh(provider, paths, entry, slice, "refining"))
         .expect("target resolves");
-    slice::orchestrate::refine(caps, paths, ts(2), slice, &target)
-        .await
-        .unwrap_or_else(|err| panic!("refine {slice}: {err}"));
+    let config = ProjectConfig::load(layout.project_dir()).expect("config loads");
+    let adapter = project::target_policy::project_adapter(provider, &config, paths)
+        .expect("adapter resolves");
+    slice::orchestrate::refine(
+        caps,
+        paths,
+        ts(2),
+        slice,
+        &target,
+        Vec::new(),
+        &adapter.manifest.inputs,
+    )
+    .await
+    .unwrap_or_else(|err| panic!("refine {slice}: {err}"));
 }
 
 async fn author_adversarial(session: &Session) {
@@ -169,7 +180,7 @@ async fn author_adversarial(session: &Session) {
 /// Acceptance #2 happy path: disjoint claims on two copies, refine,
 /// lossless fact-tree union → both slices refined.
 #[tokio::test]
-async fn disjoint_refine_after_fact_union() {
+async fn disjoint_refine_fact() {
     let alice = Session::scripted(
         "mock",
         vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
@@ -253,7 +264,7 @@ async fn same_slice_claim_conflict() {
 /// Plan-wide single-active-entry is gone: bob may advance a sibling
 /// while alice's claim on another slice is still live (D23).
 #[tokio::test]
-async fn sibling_advance_while_peer_claimed() {
+async fn sibling_advance_peer() {
     let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
     author_adversarial(&session).await;
 

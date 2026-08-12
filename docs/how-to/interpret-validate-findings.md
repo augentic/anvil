@@ -73,9 +73,10 @@ See [emery plan validate](../reference/cli/plan.md#emery-plan-validate) for the 
 | `rule-id` | Meaning | Recovery |
 | --------- | ------- | -------- |
 | `slice-spec-provenance-stale` | A kernel-rendered `ID:` / `Sources:` / `Status:` line was hand-edited | Revert the edit; drive resolution through overrides and re-refine — see [Resolve spec conflicts](resolve-spec-conflicts.md) |
-| `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds | Re-run `emery plan execute` after the plan amendment — the drifted slice re-refines |
+| `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds | Re-run `emery plan refine` after the plan amendment — the drain re-refines the stale slice |
+| `slice-refinement-missing` / `slice-refinement-stale` | The slice has no refinement manifest, or a covered input / bundle artifact drifted | Run `emery plan refine` — execute never refines; these are non-blocking `review` findings |
 | `slice-authority-override-orphan-source` | An authority override names a source key the slice doesn't bind | Fix the override: `emery plan amend <entry> --authority-override <kind>=<source>` |
-| `slice-model-schema` | `model.yaml` fails its typed schema | Re-run `emery plan execute`; never hand-edit `model.yaml` |
+| `slice-model-schema` | `model.yaml` fails its typed schema | Re-run `emery plan refine`; never hand-edit `model.yaml` |
 
 The drift family (`slice-model-*`) shares one theme: `spec.md` and `model.yaml` must agree, and the fix is re-running the synthesis that writes both — not editing either by hand.
 </section>

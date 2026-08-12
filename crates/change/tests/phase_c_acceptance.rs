@@ -6,8 +6,8 @@
 //!
 //! - in-scope drop (D24 / #13)
 //! - coverage wire shape + stale epoch (#8)
-//! - Ready skipped when deferring; clear → Ready (D22 / #12)
-//! - post-author resume naming (D26 / #14)
+//! - Ready skipped when deferring; clear → Ready (D22 / #12 / RFC-86a)
+//! - post-author resume naming (RFC-91 D8 / #14)
 //! - one-member wave opened before build under execute (D9 / #15)
 
 mod support;
@@ -29,9 +29,8 @@ use mock::session::Session;
 use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, LeafSpecCoverage, append_for, read_union,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, append_for, read_union,
 };
-use project::plan::dir_cid;
 use support::plan_with_changes;
 
 fn leaf(name: &str) -> change::Entry {
@@ -63,7 +62,6 @@ fn write_refined_meta(root: &std::path::Path, slice: &str, model: &str, dropped:
         meta.push_str("dropped-at: \"2026-01-02T00:00:00Z\"\n");
     }
     fs::write(dir.join("metadata.yaml"), meta).expect("metadata");
-    // Specs tree so `dir_cid` is stable for Existing coverage stamps.
     fs::write(dir.join("specs").join(".keep"), "").expect("specs keep");
 }
 
@@ -109,7 +107,8 @@ fn live_plan_digest(root: &std::path::Path) -> String {
 }
 
 fn stamp_epoch(
-    root: &std::path::Path, plan_digest: &str, specs: BTreeMap<String, LeafSpecCoverage>,
+    root: &std::path::Path, plan_digest: &str,
+    refinements: BTreeMap<String, project::snapshot::SnapshotId>,
 ) {
     let ts = Timestamp::from_second(1_700_000_000).expect("timestamp");
     let event = Event::new(
@@ -117,7 +116,7 @@ fn stamp_epoch(
         EventKind::PlanExecuteStarted {
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
-                specs,
+                refinements,
                 gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
@@ -130,7 +129,7 @@ fn stamp_epoch(
 /// and the execute gap gate ignore the dropped entry while the sibling
 /// remains on the plan (no second `plan remove`).
 #[tokio::test]
-async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
+async fn dropped_slice_excluded() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     let root = session.root();
@@ -141,7 +140,6 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
         r"requirements:
   - id: REQ-009
     title: contradiction left behind
-    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -152,13 +150,14 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
         r"requirements:
   - id: REQ-001
     title: login works
-    statement: ''
     status: agreed
     sources: [intent]
 ",
     );
     let plan = plan_with_changes(vec![leaf("gappy"), leaf("clean")]);
     write_plan(root, &plan);
+    support::stage_manifest(root, "gappy");
+    support::stage_manifest(root, "clean");
 
     let before = run::<Gaps, _, _>(session.provider(), GapsInput {}).await.expect("gaps");
     assert_eq!(before.rows.len(), 1);
@@ -176,7 +175,6 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
         r"requirements:
   - id: REQ-009
     title: contradiction left behind
-    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -195,18 +193,11 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
     assert!(status.ready, "remaining clean sibling → Ready without plan remove");
     assert!(!serde_json::to_string(&status).expect("json").contains("approved"));
 
-    // Covering epoch over the surviving leaf; gap gate must not see
-    // the dropped conflict.
-    let mut specs = BTreeMap::new();
-    specs.insert(
-        "clean".into(),
-        LeafSpecCoverage::Existing {
-            digest: dir_cid(&Layout::new(root).slice_dir("clean").join("specs"))
-                .expect("specs cid")
-                .to_string(),
-        },
-    );
-    stamp_epoch(root, &live_plan_digest(root), specs);
+    // Covering epoch over the surviving leaf's refinement digest; the
+    // gap gate must not see the dropped conflict.
+    let mut refinements = BTreeMap::new();
+    refinements.insert("clean".into(), support::manifest_digest(root, "clean"));
+    stamp_epoch(root, &live_plan_digest(root), refinements);
     enforce_before_build(
         Layout::new(root),
         &plan,
@@ -220,7 +211,7 @@ async fn dropped_slice_excluded_from_gaps_ready_and_gap_gate() {
 /// then executing reaches Authorized without Ready; clearing unknowns
 /// then projects Ready (deferrals never backfill Ready).
 #[tokio::test]
-async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
+async fn deferral_reaches_ready() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     let root = session.root();
@@ -237,6 +228,7 @@ async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
 ",
     );
     write_plan(root, &plan_with_changes(vec![leaf("a")]));
+    support::stage_manifest(root, "a");
 
     let open = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
     assert!(!open.ready);
@@ -285,7 +277,7 @@ async fn deferral_skips_ready_clearing_unknowns_reaches_ready() {
 /// Acceptance #8 — `plan.execute.started` wire payload matches the
 /// closed `closed-plan` shape; covered-spec change is `plan-epoch-stale`.
 #[tokio::test]
-async fn coverage_wire_shape_and_stale_after_spec_change() {
+async fn coverage_wire_shape_stale() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     init_mock(&session).await;
@@ -302,11 +294,10 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
     .await
     .expect("author");
 
-    // Prefer shift-left: refine first so coverage stamps `existing`.
-    support::refine(&session, "greeting").await.expect("refine");
+    // The refinement drain writes the manifest coverage stamps.
+    support::refine_plan(&session).await;
 
-    let specs_before =
-        dir_cid(&root.join(".emery/slices/greeting/specs")).expect("specs").to_string();
+    let refinement_before = support::manifest_digest(&root, "greeting");
 
     run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -321,14 +312,17 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
         coverage["plan-digest"].as_str().is_some_and(|d| d.starts_with("sha256:")),
         "plan-digest: {coverage}"
     );
-    assert_eq!(coverage["specs"]["greeting"]["kind"], "existing");
-    assert_eq!(coverage["specs"]["greeting"]["digest"], specs_before);
+    // RFC-91 D5: coverage carries exact per-leaf refinement digests —
+    // no `existing` / `refine-under-epoch` spec coverage survives.
+    assert_eq!(coverage["refinements"]["greeting"], refinement_before.as_str());
     assert_eq!(coverage["gap-policy"], "strict", "effective policy on the wire: {coverage}");
+    assert!(!wire.to_string().contains("refine-under-epoch"), "{wire}");
     assert!(coverage.get("unknown-waivers").is_none(), "waiver field deleted: {coverage}");
+    assert!(coverage.get("specs").is_none(), "spec coverage deleted: {coverage}");
     assert!(!wire.to_string().contains("approved"));
     assert!(!root.join(".emery/approvals").exists());
 
-    // Covered-spec change against a live leaf → `plan-epoch-stale`
+    // Covered-refinement drift against a live leaf → `plan-epoch-stale`
     // (execute drained greeting into the archive above).
     let session2 = Session::bare(Vec::new());
     init_mock(&session2).await;
@@ -338,43 +332,40 @@ async fn coverage_wire_shape_and_stale_after_spec_change() {
         r"requirements:
   - id: REQ-001
     title: login works
-    statement: ''
     status: agreed
     sources: [intent]
 ",
     );
     let plan = plan_with_changes(vec![leaf("a")]);
     write_plan(session2.root(), &plan);
-    let digest =
-        dir_cid(&session2.root().join(".emery/slices/a/specs")).expect("specs").to_string();
-    let mut specs = BTreeMap::new();
-    specs.insert(
-        "a".into(),
-        LeafSpecCoverage::Existing {
-            digest: digest.clone(),
-        },
-    );
-    stamp_epoch(session2.root(), &live_plan_digest(session2.root()), specs);
-    fs::write(session2.root().join(".emery/slices/a/specs/extra.md"), "x\n").expect("drift");
+    support::stage_manifest(session2.root(), "a");
+    let digest = support::manifest_digest(session2.root(), "a");
+    let mut refinements = BTreeMap::new();
+    refinements.insert("a".into(), digest.clone());
+    stamp_epoch(session2.root(), &live_plan_digest(session2.root()), refinements);
+    // A hand edit changes the manifest's byte identity out from under
+    // the covering epoch.
+    let manifest_path = session2.root().join(".emery/slices/a/refinement.yaml");
+    let mut manifest = fs::read_to_string(&manifest_path).expect("manifest");
+    manifest.push_str("# drift\n");
+    fs::write(&manifest_path, manifest).expect("drift");
     let err = enforce_before_build(
         Layout::new(session2.root()),
         &plan,
         "a",
         Timestamp::from_second(1_700_000_100).expect("timestamp"),
     )
-    .expect_err("spec change → stale");
+    .expect_err("covered refinement drift → stale");
     assert_eq!(err.variant_str(), "plan-epoch-stale");
-    assert_ne!(
-        dir_cid(&session2.root().join(".emery/slices/a/specs")).expect("live").to_string(),
-        digest
-    );
+    assert_ne!(support::manifest_digest(session2.root(), "a"), digest);
 }
 
-/// Acceptance #14 / D26 — after a successful author (no refine yet),
-/// author hint and fresh-plan status resume name `emery plan execute` /
-/// `/emery:execute`; status may still suggest `slice refine`.
+/// RFC-91 D1/D8 — after a successful author (no refine yet), the
+/// author hint names the literal `emery plan refine` command and
+/// fresh-plan status resumes with `/emery:refine`; author stays
+/// topology-only.
 #[tokio::test]
-async fn post_author_resume_names_execute() {
+async fn post_author_resume_names() {
     let session = Session::bare(suite_answers());
     init_mock(&session).await;
 
@@ -391,22 +382,26 @@ async fn post_author_resume_names_execute() {
     .expect("author");
 
     assert!(
-        authored.hint.contains("emery plan execute"),
-        "author hint must name plan execute: {}",
+        authored.hint.contains("emery plan refine"),
+        "author hint must name plan refine: {}",
         authored.hint
     );
     assert!(
-        !authored.hint.contains("plan refine") && !authored.hint.contains("plan approve"),
-        "hint must not invent plan refine/approve: {}",
+        !authored.hint.contains("plan approve"),
+        "hint must not invent plan approve: {}",
         authored.hint
     );
     assert!(
         !session.root().join(".emery/slices/greeting/model.yaml").exists(),
         "author stays topology-only"
     );
+    assert!(
+        !session.root().join(".emery/slices/greeting/refinement.yaml").exists(),
+        "author writes no refinement manifest"
+    );
 
     let status = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
-    assert_eq!(status.resume.as_deref(), Some("/emery:execute"));
+    assert_eq!(status.resume.as_deref(), Some("/emery:refine"));
     assert_eq!(status.next_action, "refine greeting");
     assert!(!status.ready);
     assert!(!status.authorized);
@@ -416,14 +411,13 @@ async fn post_author_resume_names_execute() {
         String::from_utf8(out).expect("utf8")
     };
     assert!(!text.contains("approved"), "never project approved: {text}");
-    assert!(!text.contains("plan refine"), "{text}");
 }
 
 /// Acceptance #15 / D9 — under execute, one-member wave opens before
 /// build; merge projects wave-committed; postflight failure leaves the
 /// merge accepted (non-rollback).
 #[tokio::test]
-async fn wave_opened_before_build_under_execute_postflight_keeps_commit() {
+async fn wave_opened_build_execute() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     init_mock(&session).await;
@@ -439,22 +433,16 @@ async fn wave_opened_before_build_under_execute_postflight_keeps_commit() {
     )
     .await
     .expect("author");
+    support::refine_plan(&session).await;
 
-    // Happy wave ordering under execute (refine-under-epoch path).
+    // Happy wave ordering under execute (build → merge only).
     let drained = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
         .expect("execute drains");
     assert_eq!(drained.status, "drained");
     let ran: Vec<(&str, LoopStep)> =
         drained.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
-    assert_eq!(
-        ran,
-        [
-            ("greeting", LoopStep::Refine),
-            ("greeting", LoopStep::Build),
-            ("greeting", LoopStep::Merge),
-        ]
-    );
+    assert_eq!(ran, [("greeting", LoopStep::Build), ("greeting", LoopStep::Merge)]);
 
     let kinds = journal_kinds(&root);
     let opened = kinds.iter().position(|k| k == "target.wave.opened").expect("wave.opened");
@@ -481,7 +469,8 @@ async fn wave_opened_before_build_under_execute_postflight_keeps_commit() {
     )
     .await
     .expect("author");
-    fs::write(root.join(behaviour::FAIL_MERGE_POSTFLIGHT_MARKER), "").expect("marker");
+    support::refine_plan(&session).await;
+    fs::write(root.join(behaviour::POSTFLIGHT_FAIL), "").expect("marker");
 
     let err = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await

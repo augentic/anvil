@@ -1,9 +1,8 @@
-//! RFC-86 Acceptance #5–6 / D12 / D14 — shift-left preferred path and
-//! `refine-under-epoch` execute path.
-//!
-//! Preferred: author (topology only) → refine phase → gaps → execute
-//! (build/merge only, coverage `existing`). Under-epoch: execute opens
-//! with `refine-under-epoch`, refines, gap-gates, then builds.
+//! RFC-91 D1/D5 — the staged workflow: author (topology only) →
+//! `plan refine` (the specification drain) → gaps → execute
+//! (build/merge only, coverage over exact refinement digests).
+//! Execute over an unrefined leaf fails typed
+//! `plan-refinement-required` and never auto-refines.
 
 mod support;
 
@@ -12,8 +11,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::GapPolicy;
 use project::config::Layout;
-use project::journal::{DeferralOrigin, EventKind, LeafSpecCoverage, read_union};
-use project::plan::dir_cid;
+use project::journal::{DeferralOrigin, EventKind, read_union};
 
 fn suite_answers() -> Vec<String> {
     vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
@@ -66,21 +64,20 @@ async fn author(session: &Session) -> plan::handlers::AuthorBody {
     .expect("author")
 }
 
-/// Acceptance #5 preferred path: author does not refine; specs via a
-/// prior refine phase; execute with existing digests runs build/merge
-/// only.
+/// The staged path: author does not refine; specs and the refinement
+/// manifest arrive through the `plan refine` drain; execute covers the
+/// exact refinement digest and runs build/merge only.
 #[tokio::test]
-async fn shift_left_refine_then_execute_build_merge() {
+async fn shift_left_refine_execute() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     scaffold_init(&session).await;
 
     let authored = author(&session).await;
     assert_eq!(authored.slices, ["greeting"]);
-    assert!(authored.hint.contains("emery plan execute"), "{}", authored.hint);
     assert!(
-        !authored.hint.contains("plan refine"),
-        "resume must not invent plan refine: {}",
+        authored.hint.contains("emery plan refine"),
+        "author exits pointing at the refinement drain: {}",
         authored.hint
     );
 
@@ -88,7 +85,8 @@ async fn shift_left_refine_then_execute_build_merge() {
     let slice_dir = root.join(".emery/slices/greeting");
     assert!(!slice_dir.join("model.yaml").exists(), "author must not mint model.yaml");
     assert!(!slice_dir.join("spec.md").exists(), "author must not mint spec.md");
-    assert!(!slice_dir.join("base.yaml").exists(), "author must not write base.yaml");
+    assert!(!slice_dir.join("refinement.yaml").exists(), "author must not write the manifest");
+    assert!(!slice_dir.join("base.yaml").exists(), "base.yaml is deleted (RFC-91)");
     let journal = journal_text(&root);
     assert!(
         !journal.contains("slice.transition.refined")
@@ -97,10 +95,12 @@ async fn shift_left_refine_then_execute_build_merge() {
         "author must not refine: {journal}"
     );
 
-    support::refine(&session, "greeting").await.expect("refine phase mints specs");
+    let refined = support::refine_plan(&session).await;
+    assert_eq!(refined.refined, ["greeting"]);
 
-    assert!(slice_dir.join("model.yaml").is_file(), "specs via the refine phase");
-    assert!(slice_dir.join("base.yaml").is_file(), "pins at refine");
+    assert!(slice_dir.join("model.yaml").is_file(), "specs via the refine drain");
+    assert!(slice_dir.join("refinement.yaml").is_file(), "manifest at refine");
+    assert!(!slice_dir.join("base.yaml").exists(), "no base.yaml pin survives RFC-91");
 
     let gaps = run::<plan::handlers::Gaps, _, _>(session.provider(), plan::handlers::GapsInput {})
         .await
@@ -115,7 +115,7 @@ async fn shift_left_refine_then_execute_build_merge() {
     assert!(!status.authorized, "no epoch until execute");
 
     // Capture before execute — merge archives the slice tree.
-    let specs_digest = dir_cid(&slice_dir.join("specs")).expect("specs cid").to_string();
+    let refinement_digest = support::manifest_digest(&root, "greeting");
 
     let executed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
@@ -129,14 +129,15 @@ async fn shift_left_refine_then_execute_build_merge() {
     assert_eq!(
         ran,
         [("greeting", LoopStep::Build), ("greeting", LoopStep::Merge)],
-        "shift-left execute must not re-refine; got {ran:?}"
+        "execute must not re-refine; got {ran:?}"
     );
 
-    let project::journal::ClosedPlanCoverage::ClosedPlan { specs, .. } = started_coverage(&root);
+    let project::journal::ClosedPlanCoverage::ClosedPlan { refinements, .. } =
+        started_coverage(&root);
     assert_eq!(
-        specs.get("greeting"),
-        Some(&LeafSpecCoverage::Existing { digest: specs_digest }),
-        "preferred path stamps existing digests; got {specs:?}"
+        refinements.get("greeting"),
+        Some(&refinement_digest),
+        "coverage stamps the exact refinement digest; got {refinements:?}"
     );
 
     let journal = journal_text(&root);
@@ -146,67 +147,58 @@ async fn shift_left_refine_then_execute_build_merge() {
     assert!(!root.join(".emery/slices/greeting/build/patch.yaml").exists());
 }
 
-/// Acceptance #5 under-epoch path: execute authorizes refine for
-/// unspec'd leaves; refine → gap gate → build under that epoch.
+/// Execute over an unrefined leaf fails typed
+/// `plan-refinement-required` before any epoch, workspace, or wave —
+/// execute never refines (RFC-91 D5).
 #[tokio::test]
-async fn refine_under_epoch_then_gap_gate_build() {
+async fn unrefined_execute_fails() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     scaffold_init(&session).await;
     author(&session).await;
 
     assert!(
-        !root.join(".emery/slices/greeting/model.yaml").exists(),
-        "execute starts over unspec'd leaf"
+        !root.join(".emery/slices/greeting/refinement.yaml").exists(),
+        "execute starts over an unrefined leaf"
     );
 
+    let err = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect_err("execute refuses the unrefined leaf");
+    let detail = err.to_string();
+    assert!(detail.contains("plan-refinement-required"), "{detail}");
+    assert!(detail.contains("emery plan refine"), "points at the drain: {detail}");
+
+    // Nothing privileged happened: no epoch, no refinement, no wave.
+    let journal = journal_text(&root);
+    assert!(!journal.contains("plan.execute.started"), "no epoch: {journal}");
+    assert!(!journal.contains("slice.synthesize."), "execute never refines: {journal}");
+    assert!(!journal.contains("target.wave.opened"), "no wave: {journal}");
+    assert!(!root.join(".emery/slices/greeting/model.yaml").exists());
+
+    // The drain then execute is the recovery path.
+    support::refine_plan(&session).await;
     let executed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
     )
     .await
-    .expect("under-epoch execute drains");
+    .expect("refined plan drains");
     assert_eq!(executed.status, "drained");
-    let ran: Vec<(&str, LoopStep)> =
-        executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
-    assert_eq!(
-        ran,
-        [
-            ("greeting", LoopStep::Refine),
-            ("greeting", LoopStep::Build),
-            ("greeting", LoopStep::Merge),
-        ],
-        "under-epoch: refine before build; got {ran:?}"
-    );
-
-    let project::journal::ClosedPlanCoverage::ClosedPlan { specs, .. } = started_coverage(&root);
-    assert_eq!(
-        specs.get("greeting"),
-        Some(&LeafSpecCoverage::RefineUnderEpoch),
-        "unspec'd at execute start → refine-under-epoch; got {specs:?}"
-    );
-
-    // Gap gate ran before build (clean specs pass); wave + merge prove
-    // privileged work proceeded under the epoch.
-    let journal = journal_text(&root);
-    assert!(journal.contains("plan.execute.started"), "{journal}");
-    assert!(
-        journal.contains("slice.build.succeeded") || journal.contains("target.wave.opened"),
-        "{journal}"
-    );
-    assert!(journal.contains("target.merge.wave-committed"), "{journal}");
-    assert!(root.join(".emery/specs/greeting/spec.md").is_file());
 }
 
-/// RFC-86a acceptance #3: under `refine-under-epoch` the unknowns do
-/// not exist when execute starts; the `defer` policy dispositions them
-/// at the build gate (one `origin: policy` fact each, synthesized
-/// reason) and the loop proceeds through build and merge to drained.
+/// RFC-86a acceptance #3 under RFC-91 staging: refine mints the
+/// unknown; execute under `defer` dispositions it at the build gate
+/// (one `origin: policy` fact, synthesized reason) and drains
+/// build/merge — execute never auto-refines.
 #[tokio::test]
-async fn refine_under_epoch_defer_policy_mints_and_drains() {
+async fn refine_defer_drains() {
     let session = Session::bare(vec![
         mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synthesis(),
+        mock::answers::greeting_unknown_synth(),
     ]);
     let root = session.root().to_path_buf();
     scaffold_init(&session).await;
@@ -214,7 +206,12 @@ async fn refine_under_epoch_defer_policy_mints_and_drains() {
 
     assert!(
         !root.join(".emery/slices/greeting/model.yaml").exists(),
-        "execute starts over unspec'd leaf — the unknown is minted under the epoch"
+        "author is topology-only — the unknown arrives via refine"
+    );
+    support::refine_plan(&session).await;
+    assert!(
+        root.join(".emery/slices/greeting/model.yaml").is_file(),
+        "refine mints the unknown before execute"
     );
 
     let executed = run::<plan::handlers::Execute, _, _>(
@@ -230,12 +227,8 @@ async fn refine_under_epoch_defer_policy_mints_and_drains() {
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
     assert_eq!(
         ran,
-        [
-            ("greeting", LoopStep::Refine),
-            ("greeting", LoopStep::Build),
-            ("greeting", LoopStep::Merge),
-        ],
-        "defer never parks the loop; got {ran:?}"
+        [("greeting", LoopStep::Build), ("greeting", LoopStep::Merge)],
+        "execute must not re-refine; got {ran:?}"
     );
 
     // Exactly one gate-time policy fact for the minted unknown.
@@ -264,10 +257,12 @@ async fn refine_under_epoch_defer_policy_mints_and_drains() {
 
     // The effective policy rode the coverage payload.
     let project::journal::ClosedPlanCoverage::ClosedPlan {
-        gap_policy, specs, ..
+        gap_policy,
+        refinements,
+        ..
     } = started_coverage(&root);
     assert_eq!(gap_policy, GapPolicy::Defer);
-    assert_eq!(specs.get("greeting"), Some(&LeafSpecCoverage::RefineUnderEpoch));
+    assert!(refinements.contains_key("greeting"), "refinement digest covered: {refinements:?}");
 
     let journal = journal_text(&root);
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");

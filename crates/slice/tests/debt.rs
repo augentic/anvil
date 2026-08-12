@@ -66,7 +66,7 @@ fn stage_baseline(specs: &Path) {
 /// divergence rows are excluded, and a note-less gap row is listed
 /// without deferral detail.
 #[test]
-fn baseline_rows_carry_note_fields() {
+fn rows_carry_notes() {
     let dir = tempfile::tempdir().expect("tempdir");
     let specs = dir.path().join("specs");
     stage_baseline(&specs);
@@ -100,7 +100,7 @@ fn baseline_rows_carry_note_fields() {
 
 /// An empty (or absent) baseline projects cleanly.
 #[test]
-fn empty_baseline_projects_cleanly() {
+fn empty_baseline_ok() {
     let dir = tempfile::tempdir().expect("tempdir");
     let missing = slice::debt::baseline(&dir.path().join("specs"), ts()).expect("missing tree");
     assert!(missing.is_empty(), "{missing:?}");
@@ -113,7 +113,7 @@ fn empty_baseline_projects_cleanly() {
 /// A hand-mangled note degrades to a detail-less row instead of
 /// failing the read-only projection.
 #[test]
-fn mangled_note_degrades_to_no_detail() {
+fn mangled_note_empty() {
     let dir = tempfile::tempdir().expect("tempdir");
     let specs = dir.path().join("specs");
     fs::create_dir_all(specs.join("auth")).expect("mkdir domain");
@@ -136,7 +136,7 @@ fn mangled_note_degrades_to_no_detail() {
 /// render separately from unknowns (D6 visibility), each line carrying
 /// reason, origin, change, and age.
 #[tokio::test]
-async fn handler_renders_conflicts_separately() {
+async fn handler_splits_kinds() {
     let session = Session::scripted("mock", Vec::new());
     stage_baseline(&session.root().join(".emery/specs"));
 
@@ -173,7 +173,7 @@ async fn handler_renders_conflicts_separately() {
 /// The review-prose section `plan author` folds into `change.md` — the
 /// same inventory, markdown-framed, absent when the baseline is clean.
 #[test]
-fn markdown_section_renders_inventory() {
+fn md_renders_inventory() {
     assert!(slice::debt::markdown(&[]).is_none(), "a clean baseline renders no section");
 
     let dir = tempfile::tempdir().expect("tempdir");

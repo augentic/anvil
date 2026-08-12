@@ -11,7 +11,7 @@ use project::handler::{Anchor, Ctx};
 use project::journal;
 use project::plan::{
     Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, authority_override, entry_mut,
-    reject_duplicate_source_keys,
+    reject_duplicate_source,
 };
 use serde::{Deserialize, Serialize};
 
@@ -136,7 +136,7 @@ impl<P: Anchor> Operation<P> for Amend {
                 // `--add-source` mutates after `Plan::amend`'s validate-and-
                 // rollback gate, so re-gate duplicate keys here (a duplicate
                 // would silently overwrite `evidence/<source>.yaml` at refine).
-                reject_duplicate_source_keys(plan)?;
+                reject_duplicate_source(plan)?;
 
                 let override_journal = authority_override::mutate(
                     plan,

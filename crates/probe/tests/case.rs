@@ -29,7 +29,7 @@ mod config {
     use super::*;
 
     #[test]
-    fn workflow_defaults_to_execute() {
+    fn workflow_defaults_execute() {
         let case = case::parse(
             "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
              [sources]\nmain = \"mock:value:The greeting service.\"\n",
@@ -62,7 +62,7 @@ mod config {
     }
 
     #[test]
-    fn unknown_gap_policy_refused() {
+    fn unknown_policy_refused() {
         let err = case::parse(
             "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
              gap-policy = \"lenient\"\n\
@@ -103,7 +103,7 @@ mod config {
     }
 
     #[test]
-    fn workflow_requires_an_input() {
+    fn workflow_requires_input() {
         let err = case::parse("kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n")
             .expect_err("a workflow case without intent or sources refuses");
         assert!(format!("{err:#}").contains("intent"), "{err:#}");
@@ -124,7 +124,7 @@ mod config {
     }
 
     #[test]
-    fn empty_expect_entry_refused() {
+    fn empty_expect_entry() {
         let err = case::parse("kind = \"build\"\nslice = \"demo\"\nexpect = [\"  \"]\n")
             .expect_err("blank expect entry refuses");
         assert!(format!("{err:#}").contains("empty expect entry"), "{err:#}");
@@ -147,7 +147,7 @@ mod config {
     }
 
     #[test]
-    fn traversing_clone_dest_refused() {
+    fn traversing_clone_dest() {
         let err = case::parse(
             "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
              clone = { url = \"https://example.com/tree.git\", dest = \"../outside\" }\n\
@@ -169,7 +169,7 @@ mod config {
     }
 
     #[test]
-    fn fixture_with_clone_refused() {
+    fn fixture_clone_refused() {
         let err = case::parse(
             "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
              fixture = \"../shared\"\n\
@@ -210,7 +210,7 @@ mod expected {
     }
 
     #[test]
-    fn file_and_populated_dir_pass() {
+    fn file_populated_dir_pass() {
         let tmp = TempDir::new().expect("tempdir");
         fs::create_dir_all(tmp.path().join("contracts/nested")).expect("mkdir");
         fs::write(tmp.path().join("contracts/nested/api.yaml"), "openapi: 3.1.0\n").expect("write");
@@ -300,10 +300,21 @@ async fn refine_phase(root: &Path, model: &DynModel, slice_name: &str) {
     let entry = plan.entries.iter().find(|entry| entry.name == slice_name).expect("plan entry");
     let target = project::target_policy::fresh(&provider, &paths, entry, slice_name, "refining")
         .expect("target resolves");
+    let config = project::config::ProjectConfig::load(layout.project_dir()).expect("config loads");
+    let adapter = project::target_policy::project_adapter(&provider, &config, &paths)
+        .expect("adapter resolves");
     let caps = slice::orchestrate::Capabilities::provider(&provider);
-    slice::orchestrate::refine(caps, &paths, jiff::Timestamp::now(), slice_name, &target)
-        .await
-        .expect("refine phase");
+    slice::orchestrate::refine(
+        caps,
+        &paths,
+        jiff::Timestamp::now(),
+        slice_name,
+        &target,
+        Vec::new(),
+        &adapter.manifest.inputs,
+    )
+    .await
+    .expect("refine phase");
     provider.shutdown().await;
 }
 
@@ -454,7 +465,7 @@ async fn build_case_reaches_built() {
 }
 
 #[tokio::test]
-async fn until_plan_leaves_entries_pending() {
+async fn until_plan_leaves_entries() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -493,7 +504,7 @@ async fn until_plan_leaves_entries_pending() {
 // Acceptance 10 (RFC-86a D8): the runner's `plan execute` carries
 // `--gap-policy defer` by default, observed on the recorded epoch.
 #[tokio::test]
-async fn execute_defaults_to_defer_policy() {
+async fn defaults_to_defer() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -557,7 +568,7 @@ async fn case_pins_strict_policy() {
 }
 
 #[tokio::test]
-async fn clone_populates_cache_once() {
+async fn clone_populates_cache() {
     let tmp = TempDir::new().expect("tempdir");
     let upstream = tmp.path().join("upstream");
     stage_upstream_repo(&upstream);
@@ -638,7 +649,7 @@ async fn existing_sandbox_refuses() {
 }
 
 #[tokio::test]
-async fn missing_fixture_is_focused() {
+async fn missing_fixture_focused() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -665,7 +676,7 @@ async fn missing_fixture_is_focused() {
 // Guards against PathBuf-typed fixture handling: relative fixtures
 // resolve from the case directory.
 #[tokio::test]
-async fn relative_fixture_from_case_dir() {
+async fn relative_fixture_case_dir() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(

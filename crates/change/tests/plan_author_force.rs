@@ -58,7 +58,7 @@ fn assert_projected_pending(root: &std::path::Path) {
 }
 
 #[tokio::test]
-async fn existing_refused_without_force() {
+async fn existing_refused_without() {
     let session = Session::scripted("mock", vec![mock::answers::greeting_grouping()]);
     init(&session).await;
     author(&session, false).await.expect("first author");
@@ -69,7 +69,7 @@ async fn existing_refused_without_force() {
 }
 
 #[tokio::test]
-async fn force_replaces_replaceable() {
+async fn replaces_replaceable() {
     // Two author runs → two reconcile answers.
     let session = Session::scripted(
         "mock",

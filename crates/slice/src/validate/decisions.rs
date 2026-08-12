@@ -58,14 +58,14 @@ pub(super) fn decision_gates(layout: Layout<'_>, slice_dir: &Path) -> Result<Vec
         }
     }
 
-    findings.extend(decision_supersede_orphans(layout, &records, &slug_files)?);
+    findings.extend(decision_supersede(layout, &records, &slug_files)?);
     Ok(findings)
 }
 
 /// `decision-supersede-orphan` — every `supersedes:` target must resolve
 /// to a baseline `DEC-NNNN` (for a DEC reference) or to a baseline slug
 /// or sibling slice record (for a slug reference).
-fn decision_supersede_orphans(
+fn decision_supersede(
     layout: Layout<'_>, records: &[(String, DecisionRecord)],
     slug_files: &BTreeMap<String, Vec<String>>,
 ) -> Result<Vec<Diagnostic>> {

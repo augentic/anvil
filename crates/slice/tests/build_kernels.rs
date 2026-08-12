@@ -121,7 +121,7 @@ mod canonicalizer {
     /// A same-severity tie breaks on the lexicographically least
     /// id-less JSON of the stamped finding, independent of input order.
     #[test]
-    fn tie_break_is_order_independent() {
+    fn tie_break_order() {
         let first = finding("rule-a", Severity::Important, DiagnosticSource::ModelAssisted, None);
         let mut second = first.clone();
         second.title = "zzz later title".to_string();
@@ -176,7 +176,7 @@ mod canonicalizer {
     /// Byte-stability: every permutation of the same multiset yields
     /// the identical output sequence.
     #[test]
-    fn deterministic_across_permutations() {
+    fn deterministic_across() {
         let findings = vec![
             finding("r1", Severity::Critical, DiagnosticSource::ModelAssisted, None),
             finding(
@@ -284,7 +284,7 @@ mod phase_gate {
     /// A clean deterministic pass is a valid report even with no
     /// findings.
     #[test]
-    fn accepts_clean_deterministic_verify() {
+    fn accepts_clean() {
         let clean = report(PhaseSource::Deterministic, Vec::new());
         gate::accept(PhaseOperation::Verify, &clean).unwrap();
     }
@@ -305,7 +305,7 @@ mod phase_gate {
         }
 
         #[test]
-        fn deterministic_with_model_finding() {
+        fn deterministic_model() {
             expect_incoherent(
                 PhaseOperation::Verify,
                 &report(
@@ -316,7 +316,7 @@ mod phase_gate {
         }
 
         #[test]
-        fn model_with_deterministic_finding() {
+        fn model_deterministic() {
             expect_incoherent(
                 PhaseOperation::Verify,
                 &report(
@@ -329,7 +329,7 @@ mod phase_gate {
         /// A report mixing deterministic and model-assisted findings
         /// must claim `hybrid`.
         #[test]
-        fn mixed_findings_require_hybrid() {
+        fn mixed_findings_require() {
             let mixed = vec![
                 finding("det", Severity::Important, DiagnosticSource::Deterministic, None),
                 finding("model", Severity::Important, DiagnosticSource::ModelAssisted, None),
@@ -345,12 +345,12 @@ mod phase_gate {
         /// source states how the pass was produced, not that it
         /// found anything (RFC-90 D2).
         #[test]
-        fn hybrid_accepts_empty_findings() {
+        fn hybrid_accepts_empty() {
             gate::accept(PhaseOperation::Verify, &report(PhaseSource::Hybrid, Vec::new())).unwrap();
         }
 
         #[test]
-        fn finding_source_tool_rejected() {
+        fn finding_source_tool() {
             expect_incoherent(
                 PhaseOperation::Verify,
                 &report(
@@ -361,7 +361,7 @@ mod phase_gate {
         }
 
         #[test]
-        fn finding_source_human_rejected() {
+        fn finding_source_human() {
             expect_incoherent(
                 PhaseOperation::Verify,
                 &report(
@@ -373,7 +373,7 @@ mod phase_gate {
     }
 
     #[test]
-    fn rejects_non_build_output_declaration() {
+    fn rejects_non_build_output() {
         let mut with_outputs = report(PhaseSource::ModelAssisted, Vec::new());
         with_outputs.outputs = vec![BuildOutput {
             platform: Platform::Core,
@@ -399,7 +399,7 @@ mod phase_gate {
     }
 
     #[test]
-    fn rejects_dirty_not_applicable() {
+    fn rejects_dirty_applicable() {
         let mut blocking = report(
             PhaseSource::ModelAssisted,
             vec![finding("r", Severity::Critical, DiagnosticSource::ModelAssisted, None)],
@@ -455,7 +455,7 @@ mod phase_gate {
     }
 
     #[test]
-    fn rejects_verify_continuation() {
+    fn rejects_verify() {
         let mut mutating = report(PhaseSource::ModelAssisted, Vec::new());
         mutating.next_continuation = Some(vec![1]);
         let err = gate::accept(PhaseOperation::Verify, &mutating)
@@ -464,7 +464,7 @@ mod phase_gate {
     }
 
     #[test]
-    fn rejects_oversized_continuation() {
+    fn rejects_oversized() {
         let mut oversized = report(PhaseSource::ModelAssisted, Vec::new());
         oversized.next_continuation = Some(vec![0; gate::CONTINUATION_LIMIT + 1]);
         let err = gate::accept(PhaseOperation::Build, &oversized)
@@ -523,7 +523,7 @@ mod attempt_store {
     }
 
     #[test]
-    fn copy_request_preserves_bytes() {
+    fn copy_request_preserves() {
         let slice_dir = tempfile::tempdir().expect("tempdir");
         let build_dir = slice_dir.path().join("build");
         std::fs::create_dir_all(&build_dir).expect("build dir");
@@ -560,7 +560,7 @@ mod attempt_store {
     /// The persisted phase YAML never carries the continuation — it is
     /// `#[serde(skip)]` on the wire type.
     #[test]
-    fn phase_write_omits_continuation() {
+    fn phase_write_omits() {
         let slice_dir = tempfile::tempdir().expect("tempdir");
         let allocated = attempt::allocate(slice_dir.path()).expect("attempt");
         let mut phase_report = report(PhaseSource::ModelAssisted, Vec::new());
@@ -592,7 +592,7 @@ mod attempt_store {
     /// An attempt without a terminal `report.yaml` is abandoned
     /// evidence (RFC-90 D6); `write_terminal` supplies it.
     #[test]
-    fn terminal_report_terminates() {
+    fn report_terminates() {
         let slice_dir = tempfile::tempdir().expect("tempdir");
         let allocated = attempt::allocate(slice_dir.path()).expect("attempt");
         assert!(!allocated.dir.join("report.yaml").is_file());
@@ -604,20 +604,20 @@ mod attempt_store {
 }
 
 mod artifact_stage {
-    use project::adapter::{WritableArtifactDeclaration, WritableArtifactKind};
+    use project::adapter::{ArtifactDeclaration, WritableArtifactKind};
     use slice::build::stage::{ChangeKind, StageChange};
 
     use super::*;
 
-    fn file_grant(path: &str) -> WritableArtifactDeclaration {
-        WritableArtifactDeclaration {
+    fn file_grant(path: &str) -> ArtifactDeclaration {
+        ArtifactDeclaration {
             path: path.to_string(),
             kind: WritableArtifactKind::File,
         }
     }
 
-    fn tree_grant(path: &str) -> WritableArtifactDeclaration {
-        WritableArtifactDeclaration {
+    fn tree_grant(path: &str) -> ArtifactDeclaration {
+        ArtifactDeclaration {
             path: path.to_string(),
             kind: WritableArtifactKind::Tree,
         }
@@ -652,7 +652,7 @@ mod artifact_stage {
     /// Seeding mirrors the slice tree minus the engine-owned
     /// subtrees, and an untouched stage diffs empty.
     #[test]
-    fn seed_excludes_engine_owned() {
+    fn seed_excludes_engine() {
         let (_slice_dir, _attempt_dir, staged) = seeded();
 
         assert!(staged.root().join("tasks.md").is_file());
@@ -718,7 +718,7 @@ mod artifact_stage {
         }
 
         #[test]
-        fn file_grant_covers_exact_path_only() {
+        fn file_grant_covers_exact() {
             let grants = [file_grant("tasks.md")];
             stage::enforce_grants(&[change("tasks.md")], &grants).unwrap();
 
@@ -728,7 +728,7 @@ mod artifact_stage {
         }
 
         #[test]
-        fn tree_grant_covers_descendants() {
+        fn tree_grant_covers() {
             let grants = [tree_grant("contracts")];
             stage::enforce_grants(&[change("contracts")], &grants).unwrap();
             stage::enforce_grants(&[change("contracts/api.yaml")], &grants).unwrap();
@@ -785,7 +785,7 @@ mod artifact_stage {
 
     /// A bogus change path fails validation before any mutation.
     #[test]
-    fn promote_validates_before_mutating() {
+    fn promote_validates() {
         let (slice_dir, _attempt_dir, staged) = seeded();
         let bogus = [StageChange {
             path: "missing.txt".to_string(),
@@ -806,7 +806,7 @@ mod artifact_stage {
     /// the modified file is restored to its original bytes and no
     /// temporaries survive.
     #[test]
-    fn promote_rolls_back_on_commit_failure() {
+    fn promote_rolls_back_commit() {
         let (slice_dir, _attempt_dir, staged) = seeded();
         std::fs::write(staged.root().join("tasks.md"), b"- [x] task\n").expect("modify");
         std::fs::remove_file(staged.root().join("proposal.md")).expect("stage delete");

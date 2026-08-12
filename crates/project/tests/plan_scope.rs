@@ -82,7 +82,7 @@ fn seed_in_progress(root: &std::path::Path, plan_name: &str, slice: &str, second
 }
 
 #[test]
-fn multiple_in_progress_is_not_a_validate_finding() {
+fn multiple_progress() {
     let plan = plan(vec![entry("a"), entry("b")]);
     let findings = project::plan::doctor::doctor(&plan, None);
     assert!(
@@ -97,7 +97,7 @@ fn multiple_in_progress_is_not_a_validate_finding() {
 }
 
 #[test]
-fn in_scope_requires_plan_membership_and_not_dropped() {
+fn scope_requires_plan() {
     let plan = plan(vec![entry("orders")]);
     let on_plan = &plan.entries[0];
 
@@ -112,7 +112,7 @@ fn in_scope_requires_plan_membership_and_not_dropped() {
 }
 
 #[test]
-fn advance_starts_second_entry_while_another_is_in_progress() {
+fn advance_starts_second() {
     let session = Session::scripted("demo", Vec::new());
     let staged = plan(vec![entry("a"), entry("b")]);
     write_plan(session.root(), &staged);
@@ -137,7 +137,7 @@ fn advance_starts_second_entry_while_another_is_in_progress() {
 }
 
 #[test]
-fn advance_resumes_in_progress_when_no_pending_is_eligible() {
+fn advance_resumes_progress() {
     let session = Session::scripted("demo", Vec::new());
     let staged = plan(vec![
         entry("a"),

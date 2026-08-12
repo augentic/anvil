@@ -1,6 +1,6 @@
 //! The drained execute loop behind `emery plan execute`: advance,
-//! dispatch the entry's phase (refine / build / merge), repeat until
-//! the plan projects `drained` or a typed [`ExecuteOutcome::Stopped`].
+//! dispatch the entry's phase (build / merge), repeat until `drained`
+//! or a typed stop. Execute never refines (RFC-91 D5).
 
 use std::ops::ControlFlow;
 
@@ -127,11 +127,8 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             ControlFlow::Continue(Some(step)) => step,
         };
 
-        let Some(advanced) = (match resume {
-            Some(slice) => {
-                let target = project::target_policy::resumed(layout, &slice).ok();
-                Some(Advanced { slice, target })
-            }
+        let Some(slice) = (match resume {
+            Some(slice) => Some(slice),
             None => advance(caps.resolver, paths, now)?,
         }) else {
             // The status projection targeted a phase but the advance
@@ -145,11 +142,9 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                 phases,
             });
         };
-        let slice = advanced.slice.clone();
-
-        // Build staleness (RFC-86a D4): a built slice re-builds when
-        // its live deferred set drifted from its build record or the
-        // newest wave's re-build failed; the gap gate re-adjudicates.
+        // Build staleness (RFC-86a D4): rebuild when deferred set drifted
+        // from the build record or the newest wave's rebuild failed.
+        // Pin/source drift is refinement's (RFC-91); execute never re-refines.
         let step = if step == LoopStep::Merge
             && slice::dispositions_drifted(layout, &layout.slice_dir(&slice), &slice)?
         {
@@ -157,18 +152,6 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                 "deferred dispositions drifted for {slice} — re-building under this epoch"
             );
             LoopStep::Build
-        } else {
-            step
-        };
-
-        // Refine staleness (RFC-86 coverage): drifted `base.yaml` pins
-        // force a re-refine before build — including a build the
-        // disposition redirect above just scheduled; refine re-pins.
-        let step = if step == LoopStep::Build
-            && slice::pins_drifted(layout, &layout.slice_dir(&slice), &slice)?
-        {
-            tracing::info!("base.yaml pins drifted for {slice} — re-refining under this epoch");
-            LoopStep::Refine
         } else {
             step
         };
@@ -181,8 +164,7 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             let plan = Plan::load(&layout.plan_path())?;
             super::enforce_before_build(layout, &plan, &slice, now)?;
         }
-        let result =
-            run_phase(caps, paths, now, &adapter, step, &slice, advanced.target.as_deref()).await;
+        let result = run_phase(caps, paths, now, &adapter, step, &slice).await;
 
         match result {
             Ok(verification) => {
@@ -217,23 +199,12 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
 async fn run_phase<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     adapter: &project::adapter::ResolvedTarget, step: LoopStep, slice: &str,
-    advanced_target: Option<&str>,
 ) -> Result<Option<PhaseSource>, Error> {
     let layout = Layout::new(paths.project_root());
     let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
     match step {
         LoopStep::Refine => {
-            let target = advanced_target.ok_or_else(|| Error::Diag {
-                code: "slice-create-target-missing",
-                detail: format!(
-                    "no target resolved for slice `{slice}`; declare the project adapter (or fix \
-                     the bound project's topology) before executing"
-                ),
-            })?;
-            slice::orchestrate::refine(caps, paths, now, slice, target)
-                .instrument(span)
-                .await
-                .map(|_| None)
+            unreachable!("dispatch_status never yields Refine — execute never refines (RFC-91 D5)")
         }
         LoopStep::Build => {
             slice::orchestrate::build(caps.targets, layout, now, slice, &adapter.manifest)
@@ -276,12 +247,12 @@ fn dispatch_status(
             if status.stop.as_ref().map(|s| s.reason) == Some(StopReason::MergePostflightFailed) {
                 return acknowledge_postflight(layout, now, status, phases);
             }
-            // Journalled phase failures are retryable — re-running
-            // execute is the resume path, so re-dispatch the parked
-            // phase (a failure in *this* run exits via the `Err` arm).
+            // Journalled phase failures are retryable — re-dispatch the
+            // parked phase (this run's failures exit via the `Err`
+            // arm). A parked refine is not ours: execute never refines.
             match status.stop.as_ref().map(|s| s.reason) {
                 Some(StopReason::RefineFailed) => {
-                    return ControlFlow::Continue(Some(LoopStep::Refine));
+                    return ControlFlow::Break(refinement_required(status, phases));
                 }
                 Some(StopReason::BuildFailed) => {
                     return ControlFlow::Continue(Some(LoopStep::Build));
@@ -307,7 +278,9 @@ fn dispatch_status(
                 phases: phases.to_vec(),
             })
         }
-        NextActionKind::Refine => ControlFlow::Continue(Some(LoopStep::Refine)),
+        // Execute never refines (RFC-91 D5): a projected refine action
+        // is the typed refinement-required stop pointing at the drain.
+        NextActionKind::Refine => ControlFlow::Break(refinement_required(status, phases)),
         // ReviewGaps is status when open findings remain (RFC-86a D7).
         // The loop still attempts build; `enforce_before_build` refuses
         // open gaps under `strict`, mints policy deferrals under `defer`.
@@ -337,7 +310,7 @@ fn acknowledge_postflight(
     };
     let event = Event::new(
         now,
-        EventKind::PlanMergePostflightAcknowledged {
+        EventKind::PostflightAcknowledged {
             slice_name: slice.into(),
         },
     );
@@ -359,7 +332,7 @@ fn acknowledge_postflight(
 /// distinguished from other merge failures by the error discriminant.
 fn phase_stop_reason(step: LoopStep, err: &Error) -> StopReason {
     match step {
-        LoopStep::Refine => StopReason::RefineFailed,
+        LoopStep::Refine => StopReason::RefinementRequired,
         LoopStep::Build => StopReason::BuildFailed,
         LoopStep::Merge if err.variant_str() == "target-merge-postflight-failed" => {
             StopReason::MergePostflightFailed
@@ -368,36 +341,34 @@ fn phase_stop_reason(step: LoopStep, err: &Error) -> StopReason {
     }
 }
 
-/// One advanced entry: the slice to run and its best-effort resolved
-/// target (`name[@vN]`).
-struct Advanced {
-    slice: String,
-    target: Option<String>,
+/// The typed refinement-required stop: execute reached an entry
+/// without a fresh refinement manifest and never refines (RFC-91 D5).
+fn refinement_required(status: StatusBody, phases: &[PhaseRun]) -> ExecuteOutcome {
+    let detail = status.stop.and_then(|stop| stop.detail).or_else(|| {
+        status
+            .slice
+            .as_ref()
+            .map(|slice| format!("slice `{slice}` has no fresh refinement manifest"))
+    });
+    ExecuteOutcome::Stopped {
+        reason: StopReason::RefinementRequired,
+        detail,
+        hint: StopReason::RefinementRequired.hint(),
+        slice: status.slice,
+        phases: phases.to_vec(),
+    }
 }
 
 /// Advance the plan through the shared
 /// [`project::plan::advance_next`] kernel (see the module docs for
-/// why `require_held` does not apply in-loop). Returns `None` when
-/// nothing is runnable (drained / stuck — the status projection
-/// decides which).
+/// why `require_held` does not apply in-loop). Returns the claimed or
+/// active slice, or `None` when nothing is runnable (drained / stuck —
+/// the status projection decides which).
 fn advance(
     resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
-) -> Result<Option<Advanced>, Error> {
+) -> Result<Option<String>, Error> {
     let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
     let body = project::plan::advance_next(resolver, paths, now, &config)?;
-    // A fresh advance carries the resolved target; the active-entry
-    // return does not, so re-resolve from the slice's own metadata
-    // (only refine needs it — build/merge read `metadata.yaml`).
-    Ok(match (body.advanced, body.active) {
-        (Some(slice), _) => Some(Advanced {
-            slice,
-            target: body.target,
-        }),
-        (None, Some(slice)) => {
-            let target = project::target_policy::resumed(layout, &slice).ok();
-            Some(Advanced { slice, target })
-        }
-        (None, None) => None,
-    })
+    Ok(body.advanced.or(body.active))
 }

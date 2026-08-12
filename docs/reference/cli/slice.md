@@ -1,15 +1,15 @@
 # emery slice
 
-Read-only projections over individual slices. The `slice` noun group is inspection-only: refine, build, merge, and drop are phases of the [`emery plan execute`](plan.md#emery-plan-execute) loop (drop via [`emery plan drop`](plan.md#emery-plan-drop)), not standalone verbs.
+Read-only projections over individual slices. The `slice` noun group is inspection-only: refinement is the [`emery plan refine`](plan.md#emery-plan-refine) drain, build and merge are phases of the [`emery plan execute`](plan.md#emery-plan-execute) loop, and drop is [`emery plan drop`](plan.md#emery-plan-drop) — none are standalone per-slice verbs.
 
-Every verb takes the slice `<name>`. The CLI resolves the on-disk directory from the name internally (no `<slice-dir>` arg). Slice directories are minted by the execute loop's refine phase; lifecycle transitions are owned by the loop's orchestrations.
+Every verb takes the slice `<name>`. The CLI resolves the on-disk directory from the name internally (no `<slice-dir>` arg). Slice directories are minted by the `plan refine` drain; lifecycle transitions are owned by the plan orchestrations.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
 | [`list`](#emery-slice-list) | Read-only listing of every slice under `.emery/slices/` with its lifecycle status and target. |
-| [`validate`](#emery-slice-validate) | Run artifact validation, including pin-drift and baseline-conflict review advisories. |
+| [`validate`](#emery-slice-validate) | Run artifact validation, including refinement-freshness and baseline-conflict review advisories. |
 | [`model`](#emery-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#emery-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
 
@@ -38,7 +38,7 @@ Checks include:
 - **Structural checks** -- artifact files exist, conform to expected format, required sections present.
 - **Referential checks** -- specs referenced in the proposal exist, requirement IDs are unique and stable.
 - **Typed-model drift checks** (synthesized slices) -- load `model.yaml` and emit `slice-model-schema`, `slice-spec-provenance-stale`, `slice-model-target-drift`, `slice-model-source-orphan`, `slice-model-cross-ref-orphan`, `slice-model-claim-kind-mismatch`, and `slice-model-id-grammar`. Blocking findings gate the transition at exit 2. Every synthesized slice must carry `model.yaml`.
-- **Staleness review advisories** -- `slice-base-drifted` / `slice-evidence-stale` when the slice's recorded `base.yaml` pins no longer match the current inputs (the execute loop re-refines such slices under a new epoch), and `slice-baseline-conflict` when the baseline drifted under a built slice since it was defined. These are `review` findings: surfaced, never blocking.
+- **Refinement-freshness review advisories** -- `slice-refinement-missing` when the slice has no `refinement.yaml` manifest, `slice-refinement-stale` (one finding per drifted input or bundle artifact) when the recorded manifest no longer matches its live inputs and bundle (run `emery plan refine` to re-refine — execute never refines), and `slice-baseline-conflict` when the baseline drifted under a built slice since it was defined. These are `review` findings: surfaced, never blocking.
 - **Adapter checks** -- artifacts conform to the active adapter's rules.
 - **Composition checks** (Vectis only) -- structural validation of `composition.yaml` plus cross-artifact checks (field coverage, event coverage, ViewModel mapping, overlay trigger consistency, navigation graph consistency). See [Artifact Format > Composition](../artifact-format.md#composition-document-vectis-only) for the full checklist.
 
@@ -66,6 +66,6 @@ Reshapes the inline `model.yaml` data plus on-disk Evidence into the per-require
 
 ## See also
 
-- [emery plan](plan.md) -- the umbrella surface; `plan execute` drives the refine → build → merge phases per entry, `plan drop` abandons one entry's slice.
+- [emery plan](plan.md) -- the umbrella surface; `plan refine` drains refinement, `plan execute` drives the build → merge phases per entry, `plan drop` abandons one entry's slice.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata

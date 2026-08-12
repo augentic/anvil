@@ -101,7 +101,7 @@ pub enum WritableArtifactKind {
 /// declared grants, even when the phase omits it from `written`.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub struct WritableArtifactDeclaration {
+pub struct ArtifactDeclaration {
     /// Slice-relative path of the granted file or tree root.
     pub path: String,
     /// File or tree grant.
@@ -210,7 +210,7 @@ pub struct TargetAdapter {
     /// (RFC-90 D5). The build phase's staged-artifact gate rejects any
     /// change outside these grants. Empty when the target writes no
     /// slice artifacts.
-    pub writable_artifacts: Vec<WritableArtifactDeclaration>,
+    pub writable_artifacts: Vec<ArtifactDeclaration>,
 }
 
 /// A resolved [`SourceAdapter`] paired with its deployment-neutral

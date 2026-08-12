@@ -263,7 +263,7 @@ impl PhaseReport {
 
     /// Reject a phase report claiming coverage of a requirement the
     /// request excluded from build scope (RFC-86a D4) — the fail-fast
-    /// twin of [`BuildReport::enforce_deferred_not_covered`], run
+    /// twin of [`BuildReport::enforce_defer_uncovered`], run
     /// against the build round before further phases dispatch.
     ///
     /// # Errors
@@ -271,7 +271,7 @@ impl PhaseReport {
     /// Returns [`Error::Validation`] keyed on
     /// `target-build-deferred-covered` (exit code 2) naming every
     /// claimed deferred requirement.
-    pub fn enforce_deferred_not_covered(
+    pub fn enforce_defer_uncovered(
         &self, slice: &str, deferred: &[DeferredRequirement],
     ) -> Result<()> {
         deferred_not_covered(slice, &self.covered, deferred)
@@ -370,7 +370,7 @@ impl BuildReport {
     /// Returns [`Error::Validation`] keyed on
     /// `target-build-deferred-covered` (exit code 2) naming every
     /// claimed deferred requirement.
-    pub fn enforce_deferred_not_covered(&self, deferred: &[DeferredRequirement]) -> Result<()> {
+    pub fn enforce_defer_uncovered(&self, deferred: &[DeferredRequirement]) -> Result<()> {
         deferred_not_covered(&self.slice, &self.covered, deferred)
     }
 

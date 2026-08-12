@@ -12,7 +12,7 @@ use jiff::Timestamp;
 use super::parse::system_time_to_utc;
 use super::{BaselineConflict, PreviewEntry};
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
-use crate::merge::count_requirement_headings;
+use crate::merge::count_requirement;
 use crate::merge::engine::merge;
 use crate::merge::validate::validate_baseline;
 
@@ -140,7 +140,7 @@ fn merge_delta_spec(
     };
 
     if baseline_text.as_ref().is_some_and(|text| !text.trim().is_empty())
-        && count_requirement_headings(&delta_text) > 0
+        && count_requirement(&delta_text) > 0
         && !has_delta_headers(&delta_text)
         && result.operations.is_empty()
     {

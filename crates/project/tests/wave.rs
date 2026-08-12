@@ -34,14 +34,14 @@ fn sample(target: &str, slice: &str) -> Wave {
 }
 
 #[test]
-fn loads_prior_actor_build_authorization() {
+fn loads_prior_actor_build() {
     let yaml = "\
 target: demo
 base: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 members:
 - slice: login-flow
   inputs:
-    spec: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    refinement: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 build-authorization:
   actor: local
   sequence: 7
@@ -76,11 +76,11 @@ fn write_and_load_round_trip() {
     assert!(yaml.contains("build-authorization:"), "{yaml}");
     assert!(yaml.contains("depends-on:"), "{yaml}");
     assert!(yaml.contains("login-flow"), "{yaml}");
-    assert!(yaml.contains("spec:"), "{yaml}");
+    assert!(yaml.contains("refinement:"), "{yaml}");
 }
 
 #[test]
-fn open_appends_target_wave_opened() {
+fn open_appends_target_wave() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
     let wave = sample("demo", "login-flow");
@@ -106,7 +106,7 @@ fn open_appends_target_wave_opened() {
 }
 
 #[test]
-fn digest_filename_matches_canonical_bytes() {
+fn digest_filename_matches() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
     let wave = sample("demo", "orders-api");
@@ -121,7 +121,7 @@ fn digest_filename_matches_canonical_bytes() {
 }
 
 #[test]
-fn refuse_empty_and_multi_member() {
+fn refuse_empty_multi_member() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
 
@@ -137,7 +137,7 @@ fn refuse_empty_and_multi_member() {
 }
 
 #[test]
-fn write_once_identical_ok_divergent_conflict() {
+fn write_once_identical_ok() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
     let wave = sample("demo", "login-flow");

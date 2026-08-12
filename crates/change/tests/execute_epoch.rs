@@ -1,5 +1,6 @@
-//! RFC-86 S18 / RFC-86a D3: `plan.execute.started` at execute start
-//! with the effective gap policy on its `closed-plan` coverage.
+//! RFC-86 S18 / RFC-86a D3 / RFC-91 D5: `plan.execute.started` at
+//! execute start with exact per-leaf refinement digests and the
+//! effective gap policy on its `closed-plan` coverage.
 
 mod support;
 
@@ -11,7 +12,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::GapPolicy;
 use project::config::Layout;
-use project::journal::{ClosedPlanCoverage, EventKind, LeafSpecCoverage, read_union};
+use project::journal::{ClosedPlanCoverage, EventKind, read_union};
 use support::plan_with_changes;
 
 /// Single-project plan entry (`project: None`) so execute's workspace
@@ -74,10 +75,11 @@ fn write_model(root: &std::path::Path, slice: &str, yaml: &str) {
 }
 
 #[tokio::test]
-async fn execute_appends_closed_plan_epoch() {
+async fn appends_closed_epoch() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     scaffold_author(&session).await;
+    support::refine_plan(&session).await;
 
     run::<Execute, _, _>(session.provider(), ExecuteInput::default())
         .await
@@ -89,7 +91,7 @@ async fn execute_appends_closed_plan_epoch() {
         coverage:
             ClosedPlanCoverage::ClosedPlan {
                 plan_digest,
-                specs,
+                refinements,
                 gap_policy,
             },
         discovery_digest,
@@ -100,13 +102,9 @@ async fn execute_appends_closed_plan_epoch() {
     assert!(plan_digest.starts_with("sha256:"), "{plan_digest}");
     assert!(discovery_digest.is_none());
     assert_eq!(*gap_policy, GapPolicy::Strict, "no flag, no declaration → strict");
-    // At the moment the epoch is stamped, greeting has no specs yet
-    // (refine runs later in the same execute), so coverage is
-    // refine-under-epoch. Re-entry would see Existing after refine.
-    assert_eq!(
-        specs.get("greeting"),
-        Some(&LeafSpecCoverage::RefineUnderEpoch),
-        "unspec'd leaf at execute start → refine-under-epoch; got {specs:?}"
+    assert!(
+        refinements.contains_key("greeting"),
+        "covered leaf carries a refinement digest; got {refinements:?}"
     );
     assert!(started[0].sequence >= 1);
 
@@ -134,8 +132,8 @@ async fn init_declared(session: &Session, gap_policy: Option<GapPolicy>) {
     .expect("init");
 }
 
-/// The unknown-carrying single-slice fixture: refined `a`, one open
-/// `[unknown]`, single-entry plan.
+/// The unknown-carrying single-slice fixture: refined `a` with a
+/// staged refinement manifest, one open `[unknown]`, single-entry plan.
 fn write_unknown_fixture(root: &std::path::Path) {
     write_model(
         root,
@@ -149,6 +147,9 @@ fn write_unknown_fixture(root: &std::path::Path) {
 ",
     );
     write_plan(root, &plan_with_changes(vec![leaf("a")]));
+    // Execute requires a fresh manifest before it appends the epoch
+    // (RFC-91 D5).
+    support::stage_manifest(root, "a");
 }
 
 /// The effective policy on the sole `plan.execute.started` coverage.
@@ -166,13 +167,13 @@ fn started_policy(root: &std::path::Path) -> GapPolicy {
 }
 
 #[tokio::test]
-async fn gap_policy_flag_rides_epoch_coverage() {
+async fn flag_rides_coverage() {
     let session = Session::bare(Vec::new());
     init_declared(&session, None).await;
     write_unknown_fixture(session.root());
 
-    // Loop may stop after the epoch (open gap / missing pins) — the
-    // fact must still be recorded at start with the effective policy.
+    // Loop may stop after the epoch (open gap) — the fact must still
+    // be recorded at start with the effective policy.
     drop(
         run::<Execute, _, _>(
             session.provider(),
@@ -186,15 +187,15 @@ async fn gap_policy_flag_rides_epoch_coverage() {
     assert_eq!(started_policy(session.root()), GapPolicy::Defer, "flag rides the coverage");
     let started = started_events(session.root());
     let EventKind::PlanExecuteStarted {
-        coverage: ClosedPlanCoverage::ClosedPlan { specs, .. },
+        coverage: ClosedPlanCoverage::ClosedPlan { refinements, .. },
         ..
     } = &started[0].kind
     else {
         panic!("expected PlanExecuteStarted");
     };
     assert!(
-        matches!(specs.get("a"), Some(LeafSpecCoverage::Existing { .. })),
-        "refined leaf → existing digest; got {specs:?}"
+        refinements.contains_key("a"),
+        "refined leaf → covered refinement digest; got {refinements:?}"
     );
 
     let status = run::<change::plan::handlers::Status, _, _>(
@@ -208,7 +209,7 @@ async fn gap_policy_flag_rides_epoch_coverage() {
 }
 
 #[tokio::test]
-async fn project_declaration_resolves_without_flags() {
+async fn declaration_without_flag() {
     let session = Session::bare(Vec::new());
     init_declared(&session, Some(GapPolicy::Defer)).await;
     write_unknown_fixture(session.root());
@@ -223,7 +224,7 @@ async fn project_declaration_resolves_without_flags() {
 }
 
 #[tokio::test]
-async fn flag_overrides_declaration_for_one_epoch() {
+async fn flag_overrides_declare() {
     let session = Session::bare(Vec::new());
     init_declared(&session, Some(GapPolicy::Defer)).await;
     write_unknown_fixture(session.root());
@@ -246,9 +247,10 @@ async fn flag_overrides_declaration_for_one_epoch() {
 }
 
 #[tokio::test]
-async fn no_coverage_payload_carries_unknown_waivers() {
+async fn no_coverage_unknown() {
     // Acceptance 9 (hard cut): the coverage wire shape carries
-    // `gap-policy`, never the deleted `unknown-waivers` field.
+    // `gap-policy` + `refinements`, never the deleted `unknown-waivers`
+    // field or `refine-under-epoch` specs.
     let session = Session::bare(Vec::new());
     init_declared(&session, None).await;
     write_unknown_fixture(session.root());
@@ -259,5 +261,7 @@ async fn no_coverage_payload_carries_unknown_waivers() {
     let wire = serde_json::to_value(&started[0]).expect("serialize");
     let coverage = &wire["payload"]["coverage"];
     assert_eq!(coverage["gap-policy"], "strict");
+    assert!(coverage.get("refinements").is_some(), "RFC-91: {coverage}");
     assert!(coverage.get("unknown-waivers").is_none(), "hard cut: {coverage}");
+    assert!(coverage.get("specs").is_none(), "hard cut: {coverage}");
 }

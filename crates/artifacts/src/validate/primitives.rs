@@ -88,7 +88,7 @@ fn leading_hash_count(line: &str) -> usize {
     if rest.is_empty() || rest.starts_with(' ') || rest.starts_with('\t') { count } else { 0 }
 }
 
-pub fn all_requirements_have_scenarios(spec: &ParsedSpec) -> bool {
+pub fn all_requirements(spec: &ParsedSpec) -> bool {
     spec.requirements.iter().all(|r| !r.scenarios.is_empty())
 }
 
@@ -139,7 +139,7 @@ pub fn all_tasks_use_checkbox(tasks: &Progress, content: &str) -> bool {
     true
 }
 
-pub fn tasks_grouped_under_headings(tasks: &Progress) -> bool {
+pub fn tasks_grouped_headings(tasks: &Progress) -> bool {
     tasks.tasks.iter().all(|t| !t.group.is_empty())
 }
 
@@ -147,7 +147,7 @@ pub fn tasks_grouped_under_headings(tasks: &Progress) -> bool {
 /// `## Domains` section has a matching `specs/<name>/spec.md` on disk.
 /// If the section is absent or empty, returns `true` — the sibling
 /// `has-content-after-heading` rule is responsible for that case.
-pub fn proposal_deliverables_have_specs(proposal: &str, specs_dir: &Path) -> bool {
+pub fn proposal_deliverables(proposal: &str, specs_dir: &Path) -> bool {
     let entries = extract_deliverables(proposal, "## Domains");
     if entries.is_empty() {
         return true;
