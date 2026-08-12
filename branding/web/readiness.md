@@ -1,112 +1,89 @@
-# Know what you are committing to before critical delivery begins
+# Know what you're getting into before you start
 
-A readiness engagement turns “we need to build or replace this critical system” into an evidence-backed decision about what can responsibly happen next.
+A Readiness Engagement turns "we need to replace this system" into a clear, evidence-backed plan of action.
 
-It is a paid, bounded engagement. Its purpose is not to produce a generic assessment or a speculative target architecture. It establishes how well the system is understood, what evidence can support the change, which uncertainties affect delivery, and whether a credible first modernization wave can be defined.
+This is a short, paid engagement. We don't just hand you a generic assessment or a fluffy architecture diagram. We figure out exactly how well your system is understood, what evidence we have to work with, what the big risks are, and whether it's safe to start building.
 
 **Primary action:** Discuss a readiness engagement
 
-## Questions readiness answers
+## The questions we answer
 
-- What does the system appear to do today?
-- For a new system, what outcome, affected people, constraints, and consequences define responsible delivery?
-- Which behaviours are critical to users, operations, obligations, and connected systems?
-- Where do code, documentation, runtime behaviour, tests, and stakeholder accounts disagree?
-- Who has authority to resolve each material disagreement?
-- Which important behaviours have verification independent of the implementation team?
-- Which repositories, services, teams, vendors, and environments participate in the change?
-- What would make a first delivery wave coherent and reviewable?
-- Which unknowns must be resolved before pricing, and which can be carried explicitly?
-- Is modernization feasible under the organisation's security, data, model, and deployment constraints?
-- Which infrastructure capabilities are required, and which provider choices should remain replaceable?
+- What does the current system *actually* do?
+- For a new system, what are the exact goals, constraints, and risks?
+- Which features are critical to your users, your operations, and your compliance?
+- Where do the code, the docs, and your team's memories disagree?
+- Who has the authority to make the final call when there's a disagreement?
+- How will we test the new system to prove it works?
+- What are the unknowns that could blow up the budget?
+- Can we build this without getting locked into one cloud provider?
 
 ## What we do
 
-### Survey the context
+### 1. Map the landscape
+For an old system, we map out the code, the servers, the databases, and the teams involved. For a new system, we map out the goals, the stakeholders, and the constraints. We keep the scope tight and focused on the decisions you need to make right now.
 
-For an existing system, we establish the relevant system, repository, interface, environment, and ownership topology. For a new system, we establish the outcome, stakeholders, operating context, constraints, dependencies, and required capabilities. The survey is deliberately bounded by the decision the engagement needs to support.
+### 2. Gather the evidence
+We don't just ask people what the system does. We look at the code, the documentation, the tests, and the live servers. We keep all these sources separate so we can see exactly where they agree and where they conflict.
 
-### Recover behavioural evidence
+### 3. Check the testing safety net
+We figure out how we're going to prove the new system works. If there are massive gaps in your current testing, we flag them. We don't pretend everything is fine just to win the project.
 
-We inspect the evidence available: stated intent and policy for every system, plus source code, documentation, tests, interfaces, captures, and operational records where a system already exists. Different sources retain their identity so agreement and disagreement remain visible.
+### 4. Resolve the conflicts
+Old systems are full of weird rules and forgotten compromises. We find the people in your organization who have the authority to decide what stays, what goes, and what needs to change.
 
-### Assess verification readiness
+### 5. Define the first step
+We propose a clear, safe first phase of work. We outline the goals, the risks, the tests, and the budget. If the system is too messy to safely modernize right now, we will tell you that, too.
 
-We identify what can be checked mechanically, what depends on candidate-authored tests, and where stronger independent evidence is needed. A missing verification path is reported as a gap, not converted into confidence by prose.
+## What you get
 
-### Reconcile intent and authority
+At the end of the engagement, you receive:
+- A clear map of your system and its dependencies.
+- A list of critical behaviors and the evidence proving they exist.
+- A record of conflicts, unknowns, and decisions made.
+- A list of security, deployment, and testing risks.
+- A roadmap broken down into safe, deliverable steps.
+- A defined first phase of work, with clear acceptance criteria.
+- A commercial recommendation for what to do next.
 
-Observed behaviour may be essential, accidental, defective, or obsolete. We identify the stakeholders and policies able to decide what the modernized system should preserve.
+These are working documents, not a slide deck that gets thrown away when the real work starts.
 
-### Define the first wave
+## What we don't promise
 
-We propose a bounded outcome with explicit inputs, dependencies, acceptance conditions, known gaps, and commercial assumptions. If the evidence does not support a responsible wave, that is itself a useful finding.
+We don't promise to magically understand every line of a 20-year-old codebase in a few weeks. We don't pretend that old bugs are actually features. And we don't guarantee a fixed price for the entire project before we know what we're dealing with.
 
-## What you receive
+We reduce the uncertainty that matters, and we are honest about the risks that remain.
 
-The exact artifacts depend on the estate, but the engagement is designed to produce:
+## When you need this
 
-- a system and change topology;
-- an inventory of critical behaviours or intended outcomes and their supporting evidence;
-- a reviewable behavioural or requirements baseline for the proposed scope;
-- a record of conflicts, unknowns, decisions, and verification gaps;
-- repository, runtime, security, and delivery readiness findings;
-- a build or modernization roadmap expressed as bounded outcomes;
-- a defined first wave with assumptions and acceptance boundaries;
-- a commercial recommendation for the next stage.
+A Readiness Engagement is perfect when:
+- The board needs a credible plan before they approve the budget.
+- You need a clear scope before you hire a delivery partner.
+- Your team can't agree on what the current system actually does.
+- You have a hard deadline and need to know the safest way forward.
+- A previous attempt to rewrite the system failed.
+- You want to build a new system but want to make sure the foundation is solid before you speed up.
 
-These are working assets, not a presentation that becomes obsolete when delivery begins.
+## How it works
 
-## What readiness does not promise
+We usually need access to your code, your docs, your servers, and your experts. We agree on strict rules for data privacy, security, and AI usage before we look at anything.
 
-Definition and readiness do not settle every question about a new system or recover every fact about a large estate. They do not declare observed behaviour correct merely because it exists. They do not remove programme risk or guarantee a fixed price.
+We can start small. Looking at just one critical journey or service is often enough to prove the method and reveal the shape of the wider system.
 
-It reduces the uncertainty that matters to the next investment decision and preserves the remainder honestly.
+Before we start, we agree on:
+- The exact scope and the decisions we need to make.
+- Who we need to talk to on your team.
+- The rules for data privacy and AI tools.
+- The timeline, the outputs, and the cost.
 
-## Typical triggers
+You own all the outputs. You can use our plan to hire us, or you can hand it to another delivery partner.
 
-Readiness is useful when:
+## The final decision
 
-- the board or executive team needs a credible modernization decision;
-- procurement needs a defensible scope before approaching delivery partners;
-- a programme has produced plans but little confidence in acceptance;
-- estimates vary because teams disagree about what the current system does;
-- a deadline is approaching and the organisation needs to identify the safest first boundary;
-- a failed rewrite needs to be re-grounded in evidence;
-- a new critical system needs considered product, assurance, and infrastructure boundaries before implementation accelerates;
-- the organisation wants to assess whether AI-assisted delivery is appropriate under its governance constraints.
+At the end of the engagement, you will be able to make one of three clear decisions:
+1. Proceed with the first phase of modernization or building.
+2. Fix specific gaps (like missing tests or documentation) before starting the real work.
+3. Stop or rethink the project because it's too risky right now.
 
-## Starting conditions
+All three are better than starting a massive project based on guesses.
 
-We normally need access to a representative set of code, documentation, environments, operational knowledge, and stakeholders. We agree data handling, model access, confidentiality, and evidence-retention constraints before analysis begins.
-
-The engagement can start narrow. A single critical journey or service is often enough to test the method and reveal the shape of the wider estate.
-
-## Practical engagement shape
-
-Before commencement, the written scope establishes:
-
-- the decision readiness must support and the system boundary it will examine;
-- the evidence sources and environments Propellerhead may access;
-- the executive sponsor, technical lead, subject-matter experts, operators, and assurance stakeholders the client will make available;
-- review dates and who can decide material questions of intent;
-- what information may be processed by AI-assisted tools, through which approved deployment, and under what retention conditions;
-- outputs, duration, fee, and the treatment of assumptions or scope changes.
-
-No client material is submitted to a model merely because it is technically accessible. If the available model deployment cannot satisfy the agreed data, residency, or retention constraints, that material is excluded from model-assisted analysis; if the exclusion prevents a responsible result, the engagement does not proceed on the proposed basis.
-
-Readiness artifacts belong to the client and can be handed to another delivery partner. Tool-specific files may accompany them, but the decision record, findings, evidence inventory, and proposed boundaries must remain reviewable without adopting Emery.
-
-[Editorial decision required before publication: add a tested typical duration and price range rather than inventing one before the offer has been exercised.]
-
-## The decision at the end
-
-The outcome should support one of three honest decisions:
-
-1. proceed with a defined first build or modernization wave;
-2. perform specific remediation or evidence collection before delivery;
-3. stop or reframe the programme because the current boundary is not responsibly deliverable.
-
-All three are more valuable than beginning a rewrite on assumptions.
-
-**Action:** Bring us the system you cannot yet price with confidence
+**Action:** Bring us the system you can't confidently price yet.

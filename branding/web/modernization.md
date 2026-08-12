@@ -1,103 +1,96 @@
-# Modernize a critical system without rediscovering its contract in production
+# Modernize without breaking what works
 
-Most modernization programmes begin with a target architecture and a delivery plan. The highest-risk assumption is often left implicit: that the organisation already knows what the existing system must continue to do.
+Most modernization projects start with a shiny new architecture and a timeline. But they usually ignore the biggest risk: assuming the organization actually knows what the old system does.
 
-We begin by testing that assumption.
+We don't guess. 
 
-Propellerhead recovers the system's effective contract from the evidence available, turns uncertainty into explicit decisions and delivery boundaries, and modernizes the system in reviewable waves.
+Propellerhead figures out exactly how your current system works, turns the unknowns into clear decisions, and modernizes your software in safe, reviewable steps.
 
 **Primary action:** Start with readiness  
 **Secondary action:** Discuss a modernization programme
 
-## When modernization becomes unavoidable
+## When change is unavoidable
 
-The trigger may be:
+You usually have to modernize because of a trigger:
+- An old platform is losing support.
+- A vendor is jacking up prices or leaving the market.
+- A new regulation requires changes the old system can't handle.
+- The system is too fragile or expensive to keep running.
+- The people who built it are retiring.
+- A previous attempt to rewrite it failed.
 
-- an unsupported platform or dependency;
-- a vendor exit or licensing change;
-- a regulatory deadline;
-- unacceptable operating cost or fragility;
-- a security or resilience concern;
-- key people approaching departure;
-- a strategic product change the current system cannot support;
-- a previous rewrite that failed to reach acceptance.
+These triggers create urgency, but they don't create understanding. Rushing to write new code before you understand the old rules just transfers your legacy problems into a brand new system.
 
-These triggers create urgency. They do not create understanding. Beginning implementation before recovering the behavioural boundary transfers unresolved risk into the new system.
+## Why conventional rewrites fail
 
-## What conventional rewrites miss
+The documentation describes part of the system. The code describes another part. The tests might check the right things, or they might just be checking old assumptions. 
 
-Documentation describes part of the system. Code describes part of the system. Runtime behaviour describes what happens, but not always what should happen. Tests may protect important rules or merely reproduce old assumptions.
+The *real* rules of your business are scattered across all of these, plus the memories of the people who use the system every day.
 
-The real contract is distributed across all of them, along with operational practice and stakeholder intent.
+We gather all these sources and compare them. Where they disagree, we ask your team to make a decision. We don't claim to know everything perfectly on day one, but we give you a safe, defensible boundary to start work.
 
-We preserve those sources separately long enough to see where they agree, where authority can resolve a disagreement, and where uncertainty must remain visible. The result is not a claim of perfect knowledge. It is a defensible boundary for action.
+## What makes us different
 
-## What is different from conventional modernization
+Lots of firms do discovery and agile delivery. 
 
-Good modernization firms already perform discovery, use incremental replacement patterns, and deliver in stages. Our distinction is not a proprietary architecture pattern.
+Our difference is the unbroken chain of evidence. We keep the source of every requirement clear. We don't hide what we don't know. We review the exact specifications with you before we write code, and the finished product becomes the clear starting point for the next phase.
 
-It is continuity between discovery and acceptance: source accounts retain their identity, material decisions name their authority, unresolved gaps survive planning, reviewed specifications become exact delivery inputs, and the agreed result becomes the starting point for the next wave.
+We prove this with delivery evidence, not just consulting buzzwords.
 
-That record must be demonstrated in delivery evidence and client outcomes. Method language alone is not proof.
+## How we modernize
 
-## The modernization programme
+### 1. Establish the baseline
+We map out your system, its dependencies, and the critical journeys your users take. We tie every requirement back to its original source.
 
-### Establish the baseline
+### 2. Shape safe waves
+We break the project down into phases that can be built, tested, and accepted on their own. We don't just chop work into two-week sprints; we deliver complete, coherent outcomes.
 
-We identify the system and repository topology, critical journeys, interfaces, dependencies, operational constraints, and available verification evidence. Requirements remain connected to their sources.
+### 3. Review before we build
+Your team reviews the plans and specs before we write any code. We don't sweep unknowns under the rug or let an AI guess the requirements.
 
-### Shape bounded waves
+### 4. Build and verify
+Our senior engineers and AI tools build the system based on the reviewed specs. We test it against the rules we agreed on, not just against the code itself. 
 
-We decompose the programme into outcomes that can be specified, implemented, verified, and accepted coherently. Dependencies and shared constraints remain visible; arbitrary work packages do not become delivery boundaries merely because they fit a sprint.
+### 5. Accept and move forward
+The accepted work becomes the solid foundation for the next phase. Any deferred work is clearly tracked as technical debt, not forgotten.
 
-### Review before privileged work
+## What you get at the end of a wave
 
-Client stakeholders review the proposed topology and the refined specifications before implementation begins. Unknowns and conflicts are not silently converted into generated requirements.
+Depending on the project, a completed phase gives you:
+- Reviewed specifications tied to real evidence.
+- A clear record of decisions and who made them.
+- A list of known gaps or deferred work.
+- The new, working software.
+- Test results proving the software works as intended.
+- Updated documentation.
+- A solid baseline for the next change.
 
-### Build and verify
+You own the code, the evidence, and the deployment.
 
-Senior engineers and AI-assisted delivery agents implement against the reviewed artifacts. Verification combines the checks the estate and target can support with engineering review and operational acceptance evidence. Where independent fixtures or captures exist, the engagement states whether and how they are isolated from the candidate writer; absence remains a verification gap.
+## Don't hard-code your next legacy trap
 
-### Accept and carry forward
+When we use our Omnia runtime, we build your business logic (using WebAssembly) completely separate from your infrastructure. 
 
-Accepted specifications and decisions become the baseline for subsequent waves. Deferred gaps remain visible as debt rather than disappearing when a project board closes.
-
-## What a wave leaves behind
-
-Depending on the estate and target, a wave can leave:
-
-- reviewed behavioural specifications with source provenance;
-- explicit decisions and authority outcomes;
-- a record of known unknowns, conflicts, and deferrals;
-- target architecture and implementation artifacts;
-- verification results tied to the delivered candidate;
-- updated operational and client documentation;
-- an agreed baseline for the next change.
-
-The client owns its code, artifacts, evidence, and deployment.
-
-## Modernize without hard-coding the next infrastructure trap
-
-Where Omnia fits the target system, recovered domain behaviour is implemented in WebAssembly components that run in a fresh isolated instance for each invocation. Persistent state and external effects use typed infrastructure capabilities; the host runtime supplies concrete services for storage, messaging, identity, observability, and other effects.
-
-A supported backend can then be changed in the host without changing or recompiling guest application logic. Data migration and provider-specific operational qualities still require engineering, but the application's business behaviour is less entangled with today's infrastructure choice.
+This means you can swap out your cloud provider, database, or messaging system later without rewriting your core application. It makes your business logic much less tangled up in today's infrastructure choices.
 
 [Explore infrastructure portability](infrastructure-portability.md)
 
-## Commercial shape
+## How we price it
 
-Readiness establishes whether a responsible outcome boundary exists. Where the evidence and acceptance conditions support it, subsequent waves can be priced around the accepted outcome rather than around an open-ended allocation of people.
+Our initial "Readiness" engagement figures out if a safe modernization is possible. Once we have that evidence, we can often price subsequent phases based on the accepted outcome, rather than just billing you for hours.
 
-We do not manufacture fixed-price certainty before discovery. Unknowns that materially affect scope are exposed, resolved, deferred, or reflected in the commercial boundary.
+We don't invent fixed prices before we know what we're dealing with. If there are massive unknowns, we expose them and figure out how to handle them together.
 
 ## The role of AI
 
-AI can accelerate codebase research, synthesis, implementation, testing, and review. Open-source agents will make much of that capacity widely available. Neither proprietary nor open agents decide what the organisation meant, who has authority over a conflict, which consequences are acceptable, or whether a business-critical outcome is ready.
+AI helps us research old code, write new code, and test faster. Open-source AI tools are making this easier every day. 
 
-Our delivery system keeps AI-produced work subordinate to durable evidence, explicit lifecycle gates, considered human judgment, and accountability.
+But AI doesn't decide what your business rules should be. It doesn't resolve conflicts between departments. And it doesn't decide if a critical system is safe to launch. 
+
+Our process uses AI to do the heavy lifting, but keeps humans firmly in control of the decisions.
 
 ## A responsible first step
 
-If the system is not understood well enough to define the first wave, begin with readiness rather than a rewrite proposal.
+If you don't fully understand your old system, don't start by asking for a rewrite proposal. Start with a readiness engagement to figure out exactly what you're dealing with.
 
 [See the readiness engagement](readiness.md)

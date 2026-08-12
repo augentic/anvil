@@ -1,86 +1,79 @@
-# Build a new critical system deliberately
+# Build new systems right the first time
 
-Agent-assisted development can move from an idea to working code remarkably quickly. That is useful, but speed can hide decisions that the organisation will live with for years: whose needs define the system, what failure means, how acceptance will be judged, and which infrastructure choices become embedded in application logic.
+AI tools can turn an idea into working code incredibly fast. But speed can hide the decisions you'll have to live with for years: what happens when the system fails, how you'll test it, and which cloud provider you're accidentally locking yourself into.
 
-Propellerhead builds new critical systems with the same discipline we bring to modernization: explicit intent, considered decisions, bounded delivery, evidence proportionate to risk, and a durable basis for future change.
+Propellerhead builds new critical systems with the same discipline we use to fix old ones. We make sure the goals are clear, the decisions are deliberate, and the infrastructure is flexible.
 
 **Primary action:** Discuss a new critical system
 
-## Code is not the first irreversible decision
+## Code isn't the first decision
 
-Before implementation creates momentum around one answer, we work with the people accountable for the system to establish:
+Before the rush to write code locks you into a path, we sit down with the people accountable for the system to figure out:
 
-- the outcome and the people affected by it;
-- authoritative intent and material constraints;
-- important failure modes and operating conditions;
-- security, privacy, regulatory, and assurance obligations;
-- the decisions that need human judgment;
-- acceptance conditions and the evidence needed to support them;
-- required infrastructure capabilities without prematurely binding them to one provider.
+- What is the actual goal, and who does this affect?
+- What are the hard constraints and security rules?
+- What happens if the system fails?
+- How will we know it's good enough to launch?
+- What infrastructure do we need, and how do we avoid getting locked into one vendor?
 
-This is not a request to specify everything upfront. It is a way to identify the decisions that are expensive or dangerous to discover accidentally.
+We aren't asking you to write a 500-page spec upfront. We just want to identify the decisions that are too expensive to get wrong.
 
-## Reflection is productive work
+## Thinking is productive work
 
-Software systems embody judgments about users, organisations, risk, and the future. A useful delivery process creates time to examine those judgments while they can still change.
+Software is full of judgments about risk, users, and the future. A good process gives you time to look at those judgments before they become permanent.
 
-Our review points are working sessions, not approval theatre. Practitioners, client stakeholders, operators, and relevant assurance specialists inspect the proposed boundary and refined specifications, challenge assumptions, and record material decisions before implementation proceeds under the engagement's change controls.
+Our review points are working sessions, not red tape. Your team and our engineers look at the plans, challenge assumptions, and make the hard decisions *before* we start writing code. 
 
-The aim is neither exhaustive certainty nor continuous hesitation. It is the smallest responsible boundary that a team can build, verify, and learn from.
+The goal isn't to be 100% certain about everything. It's to define the smallest, safest piece of work we can build, test, and learn from.
 
-## Open-source agents change where value sits
+## AI changes how we work, not who is responsible
 
-Open-source models, coding agents, skills, and evaluation tools will make capable software production available to far more organisations. We see that as progress.
+Open-source AI tools are making it cheaper and easier to write code. We think that's great. 
 
-As implementation capacity becomes abundant, durable value moves toward:
+But as writing code gets cheaper, the real value of software engineering changes. The hard part is now:
+- Picking the right problem to solve.
+- Understanding the consequences of a design.
+- Testing the results independently.
+- Taking responsibility for what goes live.
+- Building it so the next team can easily understand and change it.
 
-- choosing worthwhile problems;
-- understanding context and consequences;
-- making coherent architectural and product decisions;
-- verifying results independently where risk warrants it;
-- accepting responsibility for what enters production;
-- leaving the system easier for the next team to understand and change.
+We use AI to research, write, and test faster. But we never use AI to replace human judgment or accountability.
 
-We use agents to widen research, implementation, testing, and review capacity. We do not use them to replace stakeholder authority or professional accountability.
+## Build in safe steps
 
-## Build in bounded waves
+We build in clear, bounded phases. Each phase establishes:
+- What we are building and why.
+- The decisions and evidence supporting it.
+- What we still don't know.
+- The infrastructure we need.
+- How we will test and accept the work.
 
-Each wave establishes:
+The finished phase becomes the solid foundation for the next one. Your system accumulates knowledge, not just code.
 
-- a coherent product and behavioural boundary;
-- the decisions and evidence supporting it;
-- explicit gaps and assumptions;
-- required infrastructure capabilities;
-- review and acceptance responsibilities;
-- verification appropriate to the consequence of failure.
+## Keep your options open with Omnia
 
-The agreed result becomes the basis for the next wave, so the system accumulates knowledge rather than only code.
+When we use our Omnia runtime, your business logic is compiled into WebAssembly. It runs completely separate from your infrastructure (like databases, messaging, or identity services).
 
-## Keep application logic portable with Omnia
+This means you can swap out your cloud provider or database later without rewriting your core application. 
 
-Where Omnia fits the system, business logic compiles to WebAssembly components that run in a fresh isolated instance for each invocation. Persistent state and external effects such as storage, messaging, identity, and observability are expressed through typed capabilities and supplied by the host runtime.
-
-This separates what the application does from which supported infrastructure service performs the work. A backend can be substituted in the host without changing or recompiling guest application logic.
-
-Portability is not automatic cloud migration. Data movement, service semantics, operational characteristics, and backend availability still require engineering. The benefit is a cleaner boundary: infrastructure change should demand less application rewrite.
+It doesn't make moving clouds effortless—you still have to move data and test the new setup—but it makes it much less painful. You aren't held hostage by today's infrastructure choices.
 
 [Explore infrastructure portability](infrastructure-portability.md)
 
-## A good fit
+## Is this for you?
 
-This approach is strongest when a new system:
+This approach is best when a new system:
+- Will be critical to your business or the public.
+- Needs to be maintained and understood for years.
+- Has strict security or regulatory rules.
+- Needs to run on your own infrastructure, or you want the freedom to change clouds later.
+- Will be handed off to different teams over time.
+- Would be a disaster if it was built wrong.
 
-- will become operationally, commercially, or societally important;
-- must remain understandable over a long life;
-- has material security, regulatory, or assurance obligations;
-- needs to run under client-controlled or changing infrastructure;
-- will evolve across products, teams, and integration boundaries;
-- would be expensive to rediscover after its original team has moved on.
+If you just need a quick prototype or a simple internal tool, you don't need this level of rigor. We are built for the systems you can't afford to get wrong.
 
-Straightforward, reversible products do not need this weight. The method should match the consequence of getting the system wrong.
+## Start with the goals, not the code
 
-## Start with definition, not generated code
-
-Bring us the outcome, the people it affects, the constraints already known, and the decisions that feel difficult. We will determine the smallest responsible first wave.
+Bring us the outcome you want, the constraints you know about, and the decisions that are keeping you up at night. We'll help you figure out the safest first step.
 
 [Start a conversation](contact.md)

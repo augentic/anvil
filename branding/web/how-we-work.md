@@ -1,120 +1,84 @@
-# Delivery built around evidence, decisions, and acceptance
+# How we deliver
 
-Modernization fails when activity is mistaken for progress: more tickets, more generated code, and more parallel teams without a shared account of what the result must preserve.
+Software projects fail when people mistake activity for progress. Writing more tickets, generating more code, and adding more developers doesn't help if nobody agrees on what the system is actually supposed to do.
 
-Our method keeps discovery, decision-making, implementation, verification, and acceptance connected.
+Our method connects the dots between discovering the rules, making decisions, writing the code, and proving it works.
 
-## Human judgment creates the value
+## Human judgment is the real value
 
-Software delivery is not a contest to turn instructions into the largest volume of code. People decide which problem is worth solving, whose needs and constraints count, which trade-offs are responsible, and whether the result is good enough to enter the world.
+Software delivery isn't a race to write the most lines of code. It's about deciding which problems are worth solving, understanding the constraints, making smart trade-offs, and deciding when the result is good enough to launch.
 
-We make reflection part of the delivery rhythm. Review points give practitioners and accountable stakeholders time to challenge assumptions and consider consequences while decisions remain reversible. This is not approval theatre or resistance to automation. It is the work that makes automation useful.
+We build reflection into our delivery rhythm. Our review points give your team the time to challenge assumptions and think through consequences *before* we start building. This isn't red tape; it's the most important part of the job.
 
-## Start with evidence, not a preferred answer
+## Start with evidence, not guesses
 
-We gather distinct accounts of the system from intent, documentation, source code, interfaces, tests, runtime observations, and the people who operate it.
+We gather information from everywhere: the code, the docs, the tests, the live servers, and the people who use the system. 
 
-We do not merge those accounts prematurely. Provenance matters because two identical-looking requirements have different reliability when one comes from a current regulation and the other from an inference about old code.
+We don't mash all this information together. We keep the sources separate so we can see exactly where they agree and where they conflict. A rule found in a legal document is much more reliable than a rule we guessed by reading old code.
 
 ## Keep uncertainty visible
 
-Unknowns and conflicts are legitimate findings. Concealing them makes a plan look complete while moving risk into implementation and production.
+Not knowing something is a valid finding. Hiding unknowns just to make a project plan look good is dangerous. 
 
-Each material gap is resolved by appropriate authority, deferred with its consequence understood, or left outside the delivery boundary. It does not disappear because an agent can generate plausible text.
+When we find a gap or a conflict, we ask the right person on your team to make a decision. If we can't resolve it, we document it as a known risk. We don't let AI guess the answer.
 
-## Separate observed behaviour from intended behaviour
+## Deliver in safe, bounded waves
 
-A running system is powerful evidence, but it is not automatically the specification. Existing behaviour may encode a contractual obligation, an undocumented user dependency, a defect, or an obsolete compromise.
+We break massive projects down into phases that can be reviewed and accepted on their own. Each phase has:
+- A clear goal.
+- Known evidence and requirements.
+- Visible risks and dependencies.
+- Clear tests for success.
+- A finished product that becomes the foundation for the next phase.
 
-We preserve what was observed and record who decided what should happen next.
+We base these phases on the actual architecture of the system, not just what fits into a two-week sprint.
 
-## Deliver bounded outcomes
+## Review before we build
 
-Large programmes are shaped into waves that can be reviewed and accepted coherently. Each wave has:
+Before we write any code, we have two major review points:
+1. **The Plan:** We review the proposed boundaries of the project to make sure we're solving the right problem.
+2. **The Specs:** We review the exact requirements and evidence to make sure we haven't missed anything.
 
-- an explicit behavioural boundary;
-- known source evidence;
-- identified dependencies and affected systems;
-- visible gaps and deferrals;
-- agreed verification and acceptance conditions;
-- a durable result that becomes input to the next wave.
+We only start building when everyone agrees on the plan. 
 
-The boundary follows the system and the outcome, not an arbitrary allocation of people or calendar time.
+## AI helps, but humans are accountable
 
-## Review before implementation
+We use AI to research code, write tests, and speed up development. But AI doesn't decide what your business rules should be, it doesn't resolve arguments, and it doesn't sign off on a launch.
 
-Our modernization engagements define two review points before privileged delivery work:
+Propellerhead is accountable for the delivery. Your team is accountable for the business goals. AI is just a tool we use to get there faster.
 
-1. review the proposed topology — whether the programme has been divided at the right boundaries;
-2. review the refined specifications — whether the proposed outcome reflects the evidence and decisions.
+## Test the code, not the coder's confidence
 
-For this service, implementation begins only after the approvals required by the engagement's change-control agreement. Emery exposes the review seams and binds execution to refined inputs; the agreement defines who must review, what constitutes approval, and how that approval is recorded.
+Testing is only useful if it's independent. If a developer writes a test just to prove their own code works, that's helpful, but it's not enough for a critical system.
 
-## Use automation without delegating accountability
-
-We use deterministic tooling where the answer can be computed and AI-assisted agents where research, synthesis, implementation, or review needs judgment.
-
-Agents may perform work. They do not become the source of business authority, silently close evidence gaps, or decide whether a critical outcome is acceptable.
-
-Propellerhead remains accountable for delivery. Client stakeholders remain accountable for business intent and acceptance.
-
-We expect open-source models, agents, skills, and evaluation tools to make capable coding assistance broadly available. We welcome that democratisation. Our differentiation cannot be access to an agent; it must be the quality of judgment, context, delivery discipline, verification, and accountability around it.
-
-## Verify the candidate, not the confidence of its author
-
-Verification is strongest when the writer cannot alter the evidence that judges the result. Depending on what the estate currently supports, the verification plan can combine:
-
-- existing and newly authored automated tests;
-- contract, schema, build, and static verification;
-- target-specific engineering review;
-- independent fixtures or captures where they can be isolated from the candidate writer;
-- operational acceptance evidence.
-
-We describe the assurance actually earned. Candidate-authored tests are useful but do not become independent evidence merely because they pass. Where independent protection is not available, we report the gap rather than imply it.
+We use a mix of automated tests, security scans, engineering reviews, and operational checks. We are honest about what we've proven and what we haven't. If a critical feature doesn't have an independent test, we flag it as a risk.
 
 ## Preserve a living baseline
 
-Agreed specifications, decisions, verification records, and remaining debt continue with the product. The next change starts from that baseline instead of reconstructing the estate from chat logs, tickets, and memory.
+When a phase is finished, the specs, the decisions, and the tests live on with the product. The next time you need to change the system, you start from this clear baseline instead of digging through old emails and Jira tickets.
 
-## Preserve infrastructure options
+## Keep your infrastructure options open
 
-Where Omnia is appropriate, application logic runs as WebAssembly components in a fresh isolated instance for each invocation. Persistent state and external effects use typed capabilities; the host supplies concrete infrastructure backends.
+When we build applications using our Omnia runtime, your business logic is compiled into WebAssembly. It runs completely separate from your infrastructure (like databases, messaging, or identity services).
 
-This lets a supported backend change without changing or recompiling guest application logic. It does not automate data migration or guarantee identical service behaviour, but it reduces infrastructure coupling and keeps deployment choices explicit.
+This means you can swap out your cloud provider or database later without rewriting your core application. It keeps your options open and prevents vendor lock-in.
 
 [Explore infrastructure portability](infrastructure-portability.md)
 
-## Clients retain control
+## You stay in control
 
-The client owns its code, specifications, evidence, decisions, and deployment. Publication remains part of the client's normal Git, review, release, and governance process.
+You own your code, your specs, your evidence, and your deployment. We integrate with your existing security and release processes.
 
-We aim for continuity without lock-in: staying with Propellerhead should be valuable because the practice and accumulated understanding improve delivery, not because the client is technically prevented from leaving.
+We want you to stay with us because our process makes your life easier, not because you're technically locked in and can't leave.
 
 ## The practical rhythm
 
-### Plan
-
-Survey the sources, identify the change topology, and propose bounded outcomes.
-
-### Review
-
-Confirm that the topology reflects the system and the programme's intent.
-
-### Refine
-
-Extract evidence, reconcile sources, expose gaps, and produce reviewable specifications and delivery tasks.
-
-### Review again
-
-Confirm what will be built and what uncertainty remains.
-
-### Execute
-
-Authorize the exact refined inputs, then build, verify, repair, review, and merge within the agreed boundary.
-
-### Accept and continue
-
-Publish through the client's normal controls, preserve the agreed baseline, and use it for the next wave.
+1. **Plan:** We survey the system and propose the phases.
+2. **Review:** You confirm we're tackling the right problems.
+3. **Refine:** We extract the evidence, expose the gaps, and write the specs.
+4. **Review again:** You confirm exactly what will be built.
+5. **Execute:** We build, test, and review the code.
+6. **Accept:** We publish the result through your normal controls, and it becomes the baseline for the next phase.
 
 [Explore modernization](modernization.md)  
 [Explore continuous assurance](continuous-assurance.md)
