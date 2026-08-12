@@ -16,6 +16,14 @@ without human pauses when every exact artifact, gap, protected oracle, native ve
 
 Autonomy means policy-gated progression, not model authority. The model cannot choose its policy, waive a gap, broaden scope, lower assurance, reset a budget, or decide that its own output may merge.
 
+### Scope: the engine's run, not the operator's verbs
+
+This RFC governs what the **engine** may do inside one unattended run. It does not govern what an external **operator** asks for between runs, and the distinction matters because the operator need not be a person: nothing in the CLI requires one, and an autonomous driver can issue `plan defer`, `plan drop`, `plan amend --authority-override`, or `--force` exactly as a human can.
+
+Those verbs are deliberately **out of autonomy-policy scope**. Bringing them in would make the policy a permission surface over the operator's own interface, which [RFC-86a](rfc-86a-gap-deferral.md) rejected when it replaced per-epoch waiver permission with durable dispositions, and which [RFC-86](rfc-86-change-facts.md) rejected again in refusing a countersign gate. The policy constrains artifacts, assurance, budgets, and admission — properties of *results*, which hold regardless of who called.
+
+What closes the loop is attribution, not restriction: [RFC-103](rfc-103-operator-attribution.md) records the acting operator's class and attestation on every fact, so an autonomous driver's dispositions are legible as such in review. An agent may drive the engine; an agent may not be the engine, and it may not extend its own grant by driving harder.
+
 ## Prerequisite boundary
 
 RFC-99 may run unattended only through `built`. Its candidate frontiers are non-authoritative.
@@ -267,3 +275,4 @@ RFC-95 forge publication remains a separate operator act. This RFC may create lo
 - **Use historical success as current assurance.** Every commit proves its own exact protected and host checks.
 - **Publish to the forge automatically.** Accepted local state and external publication retain separate authority and recovery domains.
 - **Mutate policy from runtime learning.** RFC-93 promotion creates a future generation; active runs remain pinned.
+- **Extend the policy to gate operator verbs.** An autonomous driver issuing `defer` / `drop` / `amend` / `--force` is an operator act, not a run phase; restricting it here would rebuild the permission surface RFC-86a removed. [RFC-103](rfc-103-operator-attribution.md) attributes those acts instead.

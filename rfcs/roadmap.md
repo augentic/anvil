@@ -2,7 +2,7 @@
 
 > Status: Draft
 
-The [platform RFC chain](platform.md) is the current delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-101 Platform Readiness](rfc-101-platform-readiness.md) is the hosted/fleet readiness spine that follows RFC-100, and the [evidence track](platform.md#evidence-track--readiness-conservation-and-economics) (RFC-92, RFC-94, RFC-98) closes the gaps between what the series asserts and what it can demonstrate. This file lists only distinct follow-ons that remain useful after those series. Each starts when its trigger is observed, not merely when its prerequisites exist.
+The [platform RFC chain](platform.md) is the current delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-101 Platform Readiness](rfc-101-platform-readiness.md) is the hosted/fleet readiness spine that follows RFC-100, and the [evidence track](platform.md#evidence-track--what-the-series-asserts-but-cannot-yet-show) (RFC-92, RFC-94, RFC-98, RFC-103) closes the gaps between what the series asserts and what it can demonstrate. This file lists only distinct follow-ons that remain useful after those series. Each starts when its trigger is observed, not merely when its prerequisites exist.
 
 ## After the platform
 
@@ -46,14 +46,16 @@ The [platform RFC chain](platform.md) is the current delivery spine; [architectu
 ### RM-24: Topology review projections
 
 **Goal:** Keep the post-authoring topology review genuinely reviewable at platform scale.
-**Trigger:** the first change where operators skip topology review because the artifact is too large to read — likely the first deep RFC-88 recursive decomposition across several repositories.
+**Trigger:** the first change where operators skip topology review because the artifact is too large to read — likely the first deep RFC-88 recursive decomposition across several repositories. Reaching this trigger through agent-driven operation counts and arrives sooner, since a driver never finds an artifact too large.
 **Likely shape:** read-only projections over `plan.yaml` and `discovery.md` (a decomposition tree, per-domain provenance, [RFC-94](rfc-94-target-readiness.md) bands in place). Deliberately not an editing surface and not a dashboard: amendment stays on `emery plan amend`, and the single-writer contract is what makes the review meaningful.
+**Why it is not only ergonomics:** the operator need not be a person ([Operator identity](platform.md#operator-identity-an-agent-may-drive-the-engine)). When a driver authors and proceeds without pausing, this projection is no longer the operator's convenience — it is the only place a human sees the topology an agent accepted. Read with [RFC-103](rfc-103-operator-attribution.md) attribution, that makes it an assurance surface, which raises its priority above the "too large to read" trigger alone.
 
 ### RM-27: Amendment-proposal review ergonomics
 
-**Goal:** Make reviewing and applying an inert amendment proposal fast, because operator time is the expensive input in a services engagement and every recovery path in this architecture routes through one.
-**Trigger:** the first change where a boundary escalation or ownership fan-in proposal is applied without being properly read, or where proposal review measurably dominates a slice's wall-clock.
+**Goal:** Make reviewing and applying an inert amendment proposal fast, and make an applied proposal legible after the fact — operator time is the expensive input in a services engagement, and every recovery path in this architecture routes through a proposal.
+**Trigger:** the first change where a boundary escalation or ownership fan-in proposal is applied without being properly read, or where proposal review measurably dominates a slice's wall-clock. An agent operator applying a proposal is the same trigger arriving without the warning sign, since nothing about it looks slow.
 **Likely shape:** a read-only diff projection over a proposal's candidate lead-catalog and decomposition revisions against the current ones, plus a `plan status` projection that names the parked proposal and what applying it would change. The primitive is already right — RFC-88 keeps proposals inert and `plan amend` is the single writer. This is presentation only, and it must stay presentation only: the value of stop → inspect → fix inputs → re-run comes from the operator actually reading the proposal, so nothing here may add an "apply all" path or let a proposal apply itself.
+**Why it is not only ergonomics:** proposals are where recovery decisions are made, and an autonomous driver can apply one as readily as a person can — the engine records the act but gates nothing ([RFC-103](rfc-103-operator-attribution.md) D6). A retrospective projection of *which* proposals were applied and by which actor class is therefore the human's audit surface over agent-driven recovery, not a convenience. That argues for building the after-the-fact view alongside the before-the-fact diff rather than deferring it.
 
 ### RM-25: Target runtime harness declaration
 

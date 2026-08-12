@@ -18,7 +18,7 @@ Do all of it with one Emery: the same binary, verbs, artifacts, and lifecycle on
 
 **Remaining:** Product detach (RFC-88/95), progressive refinement (RFC-99 Phase A), concurrent candidate execution (RFC-96/99 Phase B), trustworthy verification (RFC-97), and governed learning/autonomy (RFC-93/102).
 
-**Assumed but unmeasured:** three properties the series depends on are asserted rather than assessed. Whether a given target can support the loop at all is assumed at authoring time and discovered at build time ([RFC-94](rfc-94-target-readiness.md)). Whether a migration preserved the behaviour it recovered is reviewed rather than replayed, even though the `captures` corpus that recorded it is retained ([RFC-98](rfc-98-behavioural-conservation.md)). And what the loop costs per slice is unattributed, which leaves RFC-93's `cost` field structurally empty ([RFC-92](rfc-92-operation-model-policy.md)). Each is small, independent of the scale track, and answerable on the implemented substrate.
+**Assumed but unmeasured:** four properties the series depends on are asserted rather than assessed. Whether a given target can support the loop at all is assumed at authoring time and discovered at build time ([RFC-94](rfc-94-target-readiness.md)). Whether a migration preserved the behaviour it recovered is reviewed rather than replayed, even though the `captures` corpus that recorded it is retained ([RFC-98](rfc-98-behavioural-conservation.md)). What the loop costs per slice is unattributed, which leaves RFC-93's `cost` field structurally empty ([RFC-92](rfc-92-operation-model-policy.md)). And *who acted* is assumed to be a person and never recorded, which an agent-driven run makes unrecoverable ([RFC-103](rfc-103-operator-attribution.md)). Each is small, independent of the scale track, and answerable on the implemented substrate.
 
 ### Dependency map
 
@@ -26,6 +26,7 @@ Do all of it with one Emery: the same binary, verbs, artifacts, and lifecycle on
 flowchart TD
     R86[RFC-86] --> R87[RFC-87]
     R86 --> R92[RFC-92]
+    R86 --> R103[RFC-103]
     R87 --> R88[RFC-88]
     R87 --> R90[RFC-90]
     R88 --> R94[RFC-94]
@@ -54,11 +55,12 @@ flowchart TD
     R97 -. enriches .-> R93
     R98 -. enriches .-> R93
     R99 -. enriches .-> R93
+    R103 -. attributes .-> R102
 
     classDef implemented fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef evidence fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:2px
     class R86,R87,R90,R91 implemented
-    class R94,R98,R92 evidence
+    class R94,R98,R92,R103 evidence
 ```
 
 Amber nodes are the evidence track: each closes a gap between what the series asserts and what it can demonstrate, and none of them blocks the scale track.
@@ -112,6 +114,8 @@ Six records answer different questions to decouple state from lifecycle:
 - **Build and domain facts**: Record the exact inputs and results consumed.
 - **Commit admission**: Records why one closed wave may advance the accepted CID.
 
+Each answers *what was authorized over which inputs*, and none answers *who asked* — the journal writer is a claim-ownership and log-partitioning key, not an identity. [RFC-103](rfc-103-operator-attribution.md) adds the acting operator's class and attestation as a field on every fact, which matters because the operator need not be a person (see [Operator identity](#operator-identity-an-agent-may-drive-the-engine)).
+
 
 
 ## The series
@@ -119,6 +123,10 @@ Six records answer different questions to decouple state from lifecycle:
 The tables list each RFC's hard dependencies and what it delivers. **RFC numbers are the delivery sequence.** Numbers ascend in dependency order, with work that can start on the implemented substrate pulled forward, so a lower number is either already landed or unblocked earlier. The sequence is not a serial queue — several tracks proceed concurrently, as [Working in parallel](#working-in-parallel) sets out — but no RFC depends on a higher-numbered one.
 
 Numbers 86 through 91 are frozen history and do not follow that rule: [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-refinement-stage.md) are **implemented** — the fact and workspace stem plus the engine-owned build phase machine and the serial refinement stage — and [RFC-88](rfc-88-detached-changes.md) is the contract under implementation now. Those five are cited across the WIT wire contract, engine crates, and the adapter repository, so they keep the numbers those citations name. Everything from 92 up is unstarted and numbered by sequence.
+
+**Letter suffixes are closed.** [RFC-86a](rfc-86a-gap-deferral.md) (gap deferral) is a fix-up that shares RFC-86's number because it was cut alongside it. Now that 86–91 are frozen — implemented or under implementation, and cited across the WIT contract, engine crates, and the adapter repository — no further suffix is added there: attaching a new draft to a landed number would blur what "implemented" means. Amending a landed RFC does not require sharing its number, which [RFC-102](rfc-102-policy-gated-autonomy.md) already demonstrates by amending RFC-88 D7 / D8 from its own number.
+
+**A high number is not always a late one.** Numbers assigned after the renumber append rather than insert, because 92 upward are cited outside this directory and re-cutting them costs more than the ordering signal is worth. [RFC-103](rfc-103-operator-attribution.md) (operator attribution) is the case in point: it depends only on implemented RFC-86 and is unblocked today. Where a number and a dependency disagree, the **Depends on** column is authoritative — the ascending-order rule guarantees only that no RFC depends on a higher-numbered one, which RFC-103 satisfies.
 
 **89 is permanently vacant.** It named Publication Sets, which is now [RFC-95](rfc-95-publication-sets.md). Do not reuse the number: git history and pre-renumber commits still associate it with publication work, and the same rule applies to any number retired below 86.
 
@@ -162,7 +170,7 @@ The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / 
 | [RFC-102](rfc-102-policy-gated-autonomy.md) | Policy-Gated Autonomy        | Unattended merge under promoted policy, exact commit admission.         | 99B, 97, 93                   |
 
 
-### Evidence track — readiness, conservation, and economics
+### Evidence track — what the series asserts but cannot yet show
 
 
 | RFC                                          | Title                     | Delivers                                                                                          | Depends on                |
@@ -170,6 +178,7 @@ The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / 
 | [RFC-92](rfc-92-operation-model-policy.md)   | Operation Model Policy    | Per-operation model routes on the pinned capability profile, usage facts, cost attribution.        | implemented 86, 90        |
 | [RFC-94](rfc-94-target-readiness.md)         | Target Readiness Profiles | Discovery-time target assessment over a closed dimension set; band-gated execution-policy eligibility. | 88 (enriches 93, 102)     |
 | [RFC-98](rfc-98-behavioural-conservation.md) | Behavioural Conservation  | The `captures` corpus as a protected replay oracle, the `conserve` profile, per-requirement conservation coverage. | 97 (enabled by 94)        |
+| [RFC-103](rfc-103-operator-attribution.md)   | Operator Attribution      | The actor record on every fact — closed actor class, declared driver identity, honest attestation level, and the projections that surface it. | implemented 86 (informs 102) |
 
 **Two things are called readiness.** [RFC-101](rfc-101-platform-readiness.md) *platform* readiness is about Emery's own deployment: whether a fleet can host tenanted, capability-scoped workers. [RFC-94](rfc-94-target-readiness.md) *target* readiness is about the client's estate: whether a pinned repository can support the loop. They share a word and nothing else, and neither depends on the other.
 
@@ -208,7 +217,7 @@ With the foundational substrate (86/87/90) landed, independent tracks can procee
 
 *Note:* Collision points exist in the merge orchestration (which RFC-88 significantly impacts). Sequence these integrations explicitly rather than attempting to merge parallel structural changes.
 
-The evidence track ascends in the order it becomes cheapest, and two of its three members are genuinely independent of the scale track: RFC-92 touches the implemented substrate and nothing else, and RFC-94 needs only RFC-88 discovery. Both can land while concurrency work proceeds, and both change what the scale track's results *mean* — which is the argument for not deferring them behind it.
+The evidence track ascends in the order it becomes cheapest, and three of its four members are genuinely independent of the scale track: RFC-92 and RFC-103 touch the implemented substrate and nothing else, and RFC-94 needs only RFC-88 discovery. All three can land while concurrency work proceeds, and all three change what the scale track's results *mean* — which is the argument for not deferring them behind it.
 
 **RFC-98 is the exception, and the dependency is worth revisiting.** Conservation needs RFC-97's protected-oracle machinery, and RFC-97 as written depends on RFC-96, so the most valuable assurance instrument for legacy work currently sits behind the concurrent scheduler. RFC-97 cites RFC-96 for three things: immutable candidate composition, fresh verification workspaces, and the `frontier-domain` / `complete-domain` verification contexts. The first two are RFC-87, which is implemented; only the domain contexts and D11's protected-input closure genuinely need concurrency. A serial-first cut restricted to `slice-attempt` context would therefore depend on 87 and 90 alone and would carry conservation with it.
 
@@ -299,11 +308,23 @@ Unchanged and orthogonal — not part of this arc, not blocked by it:
 - **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** — optional cost lever.
 - **[RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md)** — content-triggered vectis work.
 
+## Operator identity: an agent may drive the engine
+
+The engine is a deterministic state machine over a fact log, and the operator sits outside it as a caller. Operator identity is therefore **orthogonal to the architecture**: substituting an autonomous driver for a person is a change at the call site, not a change to the design. This is already true in practice — there are no TTY prompts anywhere, `--force` is a flag rather than a confirmation, `--format json` is global, `plan status` projects a closed next-action enum, and the eval case runner drives a full change end to end with no human gesture.
+
+The principle is one line: **an agent may drive the engine; an agent may not be the engine.**
+
+Two consequences follow, and they are the reason the distinction is worth stating rather than assuming.
+
+The first is that the substitution is safe, because the engine does not trust its caller. Authority comes from digests, gates, and the fact log — never from who invoked a command or what they intended. An agent operator cannot skip the gap gate, forge epoch coverage, write product code into the operator's checkout, or self-approve, because there is no approve verb and every disposition is a digest-bound fact carrying a reason. The audit trail is invariant under operator substitution, which is precisely what an agent-orchestrated design cannot offer: there, replacing the human changes what is knowable, because the orchestrator's reasoning is in-context and unreplayable.
+
+The second is that invariance cuts both ways. A trail that is identical whoever produced it cannot say who produced it, and the engine's guarantee is legibility rather than prevention — an agent operator can defer, drop, override authority, and force, all journaled and none blocked. [RFC-103](rfc-103-operator-attribution.md) closes that by attributing the act; [RFC-102](rfc-102-policy-gated-autonomy.md) keeps operator verbs out of policy scope for the same reason RFC-86a removed per-epoch waivers. As the operator becomes an agent, the read-only projections stop being the operator's dashboard and become the human's audit surface over the agent operator — which is what moves [RM-24 and RM-27](roadmap.md) from ergonomics to assurance.
+
 ## Deliberately rejected
 
 These are recorded because they are perennial suggestions, each plausible on its own terms, and because the reasoning against them is not obvious from any single RFC. Rejection here is a decision, not an omission; reopening one needs an argument against the reason given, not a restatement of the benefit.
 
-- **An agent as the orchestration layer.** The most common shape in comparable products: the thing that plans and schedules is itself conversational, so a stuck run is unstuck by telling it that it seems stuck. It is genuinely more forgiving to operate. It is also incompatible with everything the fact substrate buys — a projectable state model, digest-bound authorization, and replay. The ability to converse with a stalled orchestrator is a symptom of having no projection to read, not a capability Emery lacks. Recovery stays: stop, read the typed reason, fix the inputs, re-run the stage.
+- **An agent as the orchestration layer.** The most common shape in comparable products: the thing that plans and schedules is itself conversational, so a stuck run is unstuck by telling it that it seems stuck. It is genuinely more forgiving to operate. It is also incompatible with everything the fact substrate buys — a projectable state model, digest-bound authorization, and replay. The ability to converse with a stalled orchestrator is a symptom of having no projection to read, not a capability Emery lacks. Recovery stays: stop, read the typed reason, fix the inputs, re-run the stage. This rejects an agent *inside* the orchestrator, not an agent *driving* it — the permitted form is [Operator identity](#operator-identity-an-agent-may-drive-the-engine) above.
 - **Loosening determinism to buy orchestrator flexibility.** The general form of the above, and the one most likely to arrive disguised as a small exception — an unrecorded retry, an in-run model upgrade, a silently widened budget. Each one converts the epoch's coverage from a description of what was authorized into an approximation of it. [RFC-92](rfc-92-operation-model-policy.md) D5 works through the concrete case.
 - **An SDLC-wide automation surface.** Triage, release gates, incident response, coverage dashboards. This is a product-company play: it exists to make a platform sticky across many customers, which is not what Emery is for. It also fails the trace test — none of it delivers an engagement.
 - **Managed persistent cloud compute for agents.** Emery ships as a single binary with a fact log and runs on the operator's node or a client's own infrastructure. Owning long-lived remote machines adds a tenancy, billing, and data-residency surface that directly undercuts the deployment posture regulated clients buy. [RFC-101](rfc-101-platform-readiness.md) covers fleet execution without Emery owning the fleet.
