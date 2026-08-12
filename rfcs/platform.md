@@ -38,7 +38,7 @@ None requires streaming, distribution, a hosted fleet, or autonomous merge.
 
 ## Active dependency map
 
-Only hard dependencies appear here. Enrichment relationships belong in prose and outcome schemas, not in the graph. Green = done.
+Only hard dependencies appear here. Enrichment relationships belong in prose and outcome schemas, not in the graph. Green = done; amber = critical path.
 
 ```mermaid
 flowchart TD
@@ -63,7 +63,9 @@ flowchart TD
     R92 --> R103
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
+    classDef critical fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:3px
     class R86,R87,R90,R91 done
+    class R104,R88,R94,R95,R96,R97,R98 critical
 ```
 
 RFC-92 patches the model-capability profile shape owned by RFC-88, but it does not wait for RFC-88 to finish: routes and usage facts land on the implemented substrate and fold into the profile when that cut lands.
