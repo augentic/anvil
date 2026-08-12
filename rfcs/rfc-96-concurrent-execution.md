@@ -1,4 +1,4 @@
-# RFC-92: Concurrent Execution
+# RFC-96: Concurrent Execution
 
 > Status: Draft — step 7 of the platform-migration series, on the scale track ([platform.md](platform.md))
 >
@@ -22,7 +22,7 @@
 >
 > Extends RFC-88 D8. Target decomposition becomes another author of inert amendment proposals alongside ownership recovery and refinement boundary escalation.
 >
-> [RFC-93](rfc-93-distributed-execution.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
+> [RFC-100](rfc-100-distributed-execution.md) may place these tasks on remote nodes without changing their requests, ownership, workspaces, or code-patch semantics. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook.
 
 ## Intent
 
@@ -186,7 +186,7 @@ Each task-scoped `build` or `repair` returns an RFC-90 phase report. The engine 
 
 The report's ordinal also emits RFC-90's `slice.build.phase-completed` event. Tasks have no independent terminal report. The engine aggregates their reports into the attempt's one terminal result.
 
-On terminal success, that aggregated result feeds one RFC-86 `BuildRecord` at `builds/<digest>.yaml` for the slice attempt — base/result/`touched` of the composed candidate, its authorization-anchor digest, and the terminal report. Closed execution uses the open wave anchor; RFC-94 progressive execution later adds the candidate-batch variant. Tasks never mint their own `BuildRecord`, wave, candidate batch, or merge fact.
+On terminal success, that aggregated result feeds one RFC-86 `BuildRecord` at `builds/<digest>.yaml` for the slice attempt — base/result/`touched` of the composed candidate, its authorization-anchor digest, and the terminal report. Closed execution uses the open wave anchor; RFC-99 progressive execution later adds the candidate-batch variant. Tasks never mint their own `BuildRecord`, wave, candidate batch, or merge fact.
 
 The validated graph record is independent of any attempt. Its key is the decomposition operation key.
 
@@ -290,7 +290,7 @@ An adapter may also assemble a candidate graph from deterministic target metadat
 
 The engine lowers RFC-88's slice ownership envelope into RFC-90's exact `file | tree` grammar. Task grants contain no globs and must remain within that envelope.
 
-The leaf may carry `protected-verification-inputs[]` in the same exact `file | tree` grammar and `protected-oracles[] { id, digest }` for external material. Target metadata may nominate target- and platform-specific defaults during plan authoring, but the metadata has no authority by itself: protection becomes effective only through the exact RFC-88 decomposition revision covered by the current build admission. RFC-91 closed execution supplies operator authorization; RFC-94 may supply policy admission for an unattended candidate build. The later `target.decompose` task-graph operation receives those closed sets and cannot add, remove, or widen them. The engine rejects overlap between any build or repair grant and an in-tree protected input. A target cannot freeze a path or introduce an oracle after admission.
+The leaf may carry `protected-verification-inputs[]` in the same exact `file | tree` grammar and `protected-oracles[] { id, digest }` for external material. Target metadata may nominate target- and platform-specific defaults during plan authoring, but the metadata has no authority by itself: protection becomes effective only through the exact RFC-88 decomposition revision covered by the current build admission. RFC-91 closed execution supplies operator authorization; RFC-99 may supply policy admission for an unattended candidate build. The later `target.decompose` task-graph operation receives those closed sets and cannot add, remove, or widen them. The engine rejects overlap between any build or repair grant and an in-tree protected input. A target cannot freeze a path or introduce an oracle after admission.
 
 Protected inputs are materialized read-only into every task and candidate-wide verification workspace. Captured writes remain authoritative, and any operation that changes a protected path fails the attempt with a typed ownership finding. Digest-verified oracle material is mounted read-only outside the candidate tree under its covered logical id.
 
@@ -326,7 +326,7 @@ The shipped default cap is four. Cap-one/four equivalence is an acceptance gate,
 
 The first implementation uses the project model for every operation. Retained telemetry records the effective route and model identity when the backend exposes them, but the scheduler does not choose a model from price or task labels. The per-task model-selection hook remains inert until comparative evaluation shows a stable benefit; RFC-18 or another follow-on may activate it without changing task, ownership, or lifecycle semantics. Capability profiles continue to size work for a model class and are not overloaded with provider routing policy.
 
-Workers never share a writable tree, live handle, MCP state, or prompt state. RFC-93 owns remote placement.
+Workers never share a writable tree, live handle, MCP state, or prompt state. RFC-100 owns remote placement.
 
 This replaces RFC-90 D5's one physical workspace for the complete loop. A build attempt instead has one logical candidate:
 
@@ -367,7 +367,7 @@ The cap is per source report, not per worker. Findings omitted from the brief re
 
 The engine captures and composes the repair patches. It then verifies the next complete candidate.
 
-A task continuation cannot cross task, attempt, or graph identity. Verification is model-assisted evidence, not deterministic proof or a security boundary. A check over candidate-writable tests is self-consistency evidence. A check over protected inputs is stronger only to the extent that the report identifies those inputs and the engine enforced their write exclusion; RFC-95 defines host-attested profile assurance.
+A task continuation cannot cross task, attempt, or graph identity. Verification is model-assisted evidence, not deterministic proof or a security boundary. A check over candidate-writable tests is self-consistency evidence. A check over protected inputs is stronger only to the extent that the report identifies those inputs and the engine enforced their write exclusion; RFC-97 defines host-attested profile assurance.
 
 Some blocking findings cannot be routed:
 
@@ -482,13 +482,13 @@ Readiness remains phase-relative:
 - build requires an exact admission-covered refinement manifest, a passing gap policy, and accepted predecessors;
 - merge requires a successful build record, passing gates, and a current accepted frontier.
 
-RFC-94 progressive candidate mode amends only build readiness: a direct predecessor may be an exact successful `BuildRecord` under the same parent run, and the work-item digest then covers that result plus the current target candidate-frontier digest. Merge readiness is unchanged.
+RFC-99 progressive candidate mode amends only build readiness: a direct predecessor may be an exact successful `BuildRecord` under the same parent run, and the work-item digest then covers that result plus the current target candidate-frontier digest. Merge readiness is unchanged.
 
 Unlike RFC-91's serial refinement drain and the landed execute cursor, this scheduler may hold multiple entries and phases in progress. Selection is canonical by target, topological layer, plan order, slice, and phase before the pool cap truncates the ready set.
 
 A local operation claim names the parent work-item identity plus the concrete operation, attempt, and task identity where applicable. It prevents duplicate execution of that operation, not sibling operations, later phases, or changed inputs for the slice, and is released on success, terminal failure, cancellation, or retraction. Task workers remain subordinate to one slice-build work item and gain no slice lifecycle or merge authority.
 
-RFC-93 transports the same work-item identity through durable offers, lease-backed claims, ownership generations, and stale-result rejection. It does not redefine local readiness or selection.
+RFC-100 transports the same work-item identity through durable offers, lease-backed claims, ownership generations, and stale-result rejection. It does not redefine local readiness or selection.
 
 ```mermaid
 flowchart LR
@@ -536,7 +536,7 @@ A multi-target `complete` round only aggregates ordered child verdicts and depen
 
 A frontier failure blocks the current frozen wave.
 
-A complete-round failure preserves accepted waves. It blocks dependants and drain until an operator-authorized repair or fan-in leaf advances a new epoch. RFC-98 policy-gated autonomy treats a blocking post-acceptance complete round as a hard stop; it cannot apply standing recovery after accepted-state mutation.
+A complete-round failure preserves accepted waves. It blocks dependants and drain until an operator-authorized repair or fan-in leaf advances a new epoch. RFC-102 policy-gated autonomy treats a blocking post-acceptance complete round as a hard stop; it cannot apply standing recovery after accepted-state mutation.
 
 ### D12 — Domain rounds are durable and target waves accept atomically
 
@@ -597,11 +597,11 @@ Land `(slice, phase, input-digest)` identity, deterministic ready-frontier proje
 
 Phase A keeps complete-plan publication and one-member target waves. It adds no target operation and does not require task graphs, code-patch composition, domain rounds, or multi-member commit.
 
-RFC-94 progressive refinement may depend on this phase rather than completed RFC-92. Its branch publications add ready refinement items to the same pool; they do not create a second scheduler.
+RFC-99 progressive refinement may depend on this phase rather than completed RFC-96. Its branch publications add ready refinement items to the same pool; they do not create a second scheduler.
 
 ### Phase B — Concurrent build and convergence
 
-Add `target.decompose`, task graphs, protected inputs and oracles, isolated writers, code-patch composition, task-scoped repair, domain rounds, and multi-member waves. This phase completes the RFC and unlocks RFC-94 progressive build.
+Add `target.decompose`, task graphs, protected inputs and oracles, isolated writers, code-patch composition, task-scoped repair, domain rounds, and multi-member waves. This phase completes the RFC and unlocks RFC-99 progressive build.
 
 Cap one remains the reference path in both phases. Phase B cannot replace Phase A's identities, selection order, cancellation, or claim semantics.
 
@@ -627,11 +627,11 @@ Cap one remains the reference path in both phases. Phase B cannot replace Phase 
 7. **Synthesis staging.** Synthesis loads nonessential playbook prose from the engine shelf. Its answer returns no artifact bodies. The engine promotes its staged tree only after validation.
 8. **Concurrent discovery and refinement feedback.** Concurrent survey and extract preserve canonical order. Two independent refinement work items may run concurrently and produce the same canonically ordered manifests and status projection as cap one. A refinement boundary escalation runs focused surveys and affected-domain decomposition concurrently, then produces one byte-stable inert proposal without promoting slice artifacts. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
 9. **Domain restart.** Independent leaves pass both same-target domain gates. Each operation key and record bind the canonical protected-input closure. On restart, the engine reuses each digest-bound record and candidate without repeating composition or verification.
-10. **Atomic waves.** Two same-base leaves merge under one wave commit only after both complete. Retry preserves membership. Amendment retracts the uncommitted wave. Replay is idempotent. Dependencies use accepted bases. Complete-round failure blocks drain and RFC-89 sealing without rolling back accepted waves.
+10. **Atomic waves.** Two same-base leaves merge under one wave commit only after both complete. Retry preserves membership. Amendment retracts the uncommitted wave. Replay is idempotent. Dependencies use accepted bases. Complete-round failure blocks drain and RFC-95 sealing without rolling back accepted waves.
 11. **Quality gates.** `cargo make ci` passes in every touched repository. D8 goldens regenerate. The `omnia-r9k` and `orders-contracts` live grades do not regress.
 12. **Harness economics.** Cap-one and cap-four live fixtures use the same source set, model configuration, time budget, and blind acceptance set. The acceptance set is unavailable to every workflow model call and does not affect lifecycle. Results report D13's accepted-outcome, induced-worker-cost, graph-stability, amendment, and contention projections when their raw observations exist; missing provider usage stays unknown.
 13. **Phase scheduling and claims.** Refine, build, and merge work may be in progress on different slices simultaneously. Status and selection do not depend on a singular active entry. Duplicate local claims on one fenced operation fail; a changed parent input creates a distinct work-item identity; every terminal, cancelled, or retracted operation releases its claim.
-14. **Phase-A independence.** Concurrent survey, extract, refinement, cancellation, and cap-one/cap-four equivalence pass while target decomposition, composition, domain rounds, and multi-member waves remain disabled. RFC-94 can publish a closed branch into that scheduler without activating build authority.
+14. **Phase-A independence.** Concurrent survey, extract, refinement, cancellation, and cap-one/cap-four equivalence pass while target decomposition, composition, domain rounds, and multi-member waves remain disabled. RFC-99 can publish a closed branch into that scheduler without activating build authority.
 
 ## Rejected alternatives
 
@@ -644,4 +644,4 @@ Cap one remains the reference path in both phases. Phase B cannot replace Phase 
 - **Add task phase operations, writer commands, or full repair prompts.** RFC-90 already owns verification and repair. Another loop would duplicate vocabulary and payload.
 - **Partition synthesis.** Cross-domain reconciliation is the reason for the model call. D7–D8 reduce payload without changing that call.
 - **Require task graphs from every target.** Only Omnia has evidence for non-singleton decomposition.
-- **Add remote workers now.** RFC-93 owns placement after the single-node contract settles.
+- **Add remote workers now.** RFC-100 owns placement after the single-node contract settles.

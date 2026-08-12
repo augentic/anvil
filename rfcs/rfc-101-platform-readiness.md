@@ -1,20 +1,20 @@
-# RFC-96: Platform Readiness
+# RFC-101: Platform Readiness
 
-> Status: Draft — planning spine for the hosted / fleet readiness track that follows the RFC-86…RFC-94 platform-migration series ([platform.md](platform.md))
+> Status: Draft — planning spine for the hosted / fleet readiness track that follows the platform-migration critical path ([platform.md](platform.md))
 >
-> Owns: the gap taxonomy between today's desktop-shaped deployment and a multi-tenant hosted fleet; the four storage/locality classes every host concern must land in; adapter and change-home readiness; worker capability profiles; model, secret, and operator-ingress host policy; multi-tenancy of deployment roots; and the landing sequence that makes RFC-93's distributed contract operable without inventing a second Emery.
+> Owns: the gap taxonomy between today's desktop-shaped deployment and a multi-tenant hosted fleet; the four storage/locality classes every host concern must land in; adapter and change-home readiness; worker capability profiles; model, secret, and operator-ingress host policy; multi-tenancy of deployment roots; and the landing sequence that makes RFC-100's distributed contract operable without inventing a second Emery.
 >
-> Does not own: workflow lifecycle, claim/ownership/convergence semantics ([RFC-93](rfc-93-distributed-execution.md)), native verification profiles ([RFC-95](rfc-95-native-verification.md)), forge publication providers ([roadmap.md](roadmap.md) RM-17), or scheduling heuristics beyond the minimum needed for capability-scoped claims.
+> Does not own: workflow lifecycle, claim/ownership/convergence semantics ([RFC-100](rfc-100-distributed-execution.md)), native verification profiles ([RFC-97](rfc-97-native-verification.md)), forge publication providers ([roadmap.md](roadmap.md) RM-17), or scheduling heuristics beyond the minimum needed for capability-scoped claims.
 >
-> Depends on completed [RFC-86](rfc-86-change-facts.md) and [RFC-87](rfc-87-working-trees.md); consumes the contracts of [RFC-88](rfc-88-detached-changes.md)…[RFC-93](rfc-93-distributed-execution.md) as they land. [RFC-95](rfc-95-native-verification.md) joins the sequence where native toolchain attestation becomes a worker capability.
+> Depends on completed [RFC-86](rfc-86-change-facts.md) and [RFC-87](rfc-87-working-trees.md); consumes the contracts of [RFC-88](rfc-88-detached-changes.md)…[RFC-100](rfc-100-distributed-execution.md) as they land. [RFC-97](rfc-97-native-verification.md) joins the sequence where native toolchain attestation becomes a worker capability.
 >
-> Runtime dependency: Omnia backend conformance named by RFC-93 D10 (create-only documentstore, native keyvalue compare-exchange, digest-safe blobstore namespaces, durable HTTP-trigger supervision). Where a required guarantee is missing, improve the Omnia capability rather than add an Emery-specific transport API.
+> Runtime dependency: Omnia backend conformance named by RFC-100 D10 (create-only documentstore, native keyvalue compare-exchange, digest-safe blobstore namespaces, durable HTTP-trigger supervision). Where a required guarantee is missing, improve the Omnia capability rather than add an Emery-specific transport API.
 
 ## Intent
 
 *Make the desktop the degenerate hosted deployment — same binary, same guests, same lifecycle — by retiring every `$HOME`-shaped authority that a fleet cannot share.*
 
-Emery already runs as one Omnia runtime with an embedded engine guest ([architecture.md](architecture.md)). Snapshots already speak `wasi:blobstore` locally. RFC-93 distributes facts, claims, and values without a shared filesystem. What remains is the host surface that still assumes one operator machine: adapter install under `$EMERY_HOME`, bare-name local-first resolution, a writable project preopen as the change home, process-local MCP and Cursor model credentials, homogeneous toolchains, and a single-tenant home for store / cache / snapshots / workspaces.
+Emery already runs as one Omnia runtime with an embedded engine guest ([architecture.md](architecture.md)). Snapshots already speak `wasi:blobstore` locally. RFC-100 distributes facts, claims, and values without a shared filesystem. What remains is the host surface that still assumes one operator machine: adapter install under `$EMERY_HOME`, bare-name local-first resolution, a writable project preopen as the change home, process-local MCP and Cursor model credentials, homogeneous toolchains, and a single-tenant home for store / cache / snapshots / workspaces.
 
 This RFC does not redefine execution. It classifies every remaining host concern, decides which Omnia capability or host-policy surface owns it, and sequences the work so a hosted attachment can claim, materialize, build, verify, and resume without reading the operator's laptop.
 
@@ -24,7 +24,7 @@ Every desktop assumption maps to exactly one class:
 
 | Class | Role | Crosses nodes as | Examples today |
 | ----- | ---- | ---------------- | -------------- |
-| **Value** | Self-certifying immutable bytes | Content digest | Snapshot objects (already `wasi:blobstore`); adapter component bytes + digest sidecars; verification attestations (RFC-95) |
+| **Value** | Self-certifying immutable bytes | Content digest | Snapshot objects (already `wasi:blobstore`); adapter component bytes + digest sidecars; verification attestations (RFC-97) |
 | **Coordination** | Authority-bearing linearizable state | Hosted CAS / ordered docs | Writer events; slice ownership; operation claims; resolved adapter locks for a fleet execute |
 | **Node-local ephemeral** | Disposable execution machinery | Never | Private workspaces; scratch lanes; warm toolchain / verification-lineage caches; MCP loopback; `guest.lock` stand-ins |
 | **Host policy** | Credentials, tenancy, sandbox, ingress | Never enters guests, change homes, or journals | GHCR / model / forge identities; profile→command maps; network allowlists; HTTP AuthN/Z; tenant root isolation |
@@ -70,7 +70,7 @@ flowchart TB
 
 - One binary, guest-selected behaviour; deployment differences live in providers and the launcher ([architecture.md](architecture.md)).
 - Per-writer facts and projected status ([RFC-86](rfc-86-change-facts.md)); private `prepare` / `capture` / `discard` ([RFC-87](rfc-87-working-trees.md)).
-- Claim-based placement, coordination/value split, hosted attach/resume ([RFC-93](rfc-93-distributed-execution.md)).
+- Claim-based placement, coordination/value split, hosted attach/resume ([RFC-100](rfc-100-distributed-execution.md)).
 - Adapters remain locally resolved on the claiming node; live workspace paths, WIT resources, and filesystem mounts never cross the wire.
 - Backend endpoints, credentials, bucket names, and tenant roots remain native host policy.
 
@@ -94,9 +94,9 @@ Custom / seeded components (`adapter add`) become a tenant-scoped value admissio
 
 ### D3 — Change homes are host-allocated; journals are not files
 
-Hosted ingress allocates the change home server-side (RFC-93 D9). The operator never supplies a client-local path that is meaningful only on their machine.
+Hosted ingress allocates the change home server-side (RFC-100 D9). The operator never supplies a client-local path that is meaningful only on their machine.
 
-Writer events use `wasi:documentstore` as RFC-93 requires. Local `.emery/events/<writer>.jsonl` remains the desktop backend binding of that contract, not the cloud shape. Process-exclusive markers such as `guest.lock` become lease/claim fencing on the coordination plane; they are not ported as create-exclusive files across attachments.
+Writer events use `wasi:documentstore` as RFC-100 requires. Local `.emery/events/<writer>.jsonl` remains the desktop backend binding of that contract, not the cloud shape. Process-exclusive markers such as `guest.lock` become lease/claim fencing on the coordination plane; they are not ported as create-exclusive files across attachments.
 
 Scratch lanes stay node-local ephemeral with aggressive GC and zero authority.
 
@@ -108,11 +108,11 @@ Snapshot and adapter objects may live in a shared blobstore. `prepare` still mat
 - separation of **node-local workspace GC** from **shared object GC** rooted by live claims, open attachments, and unpublished CIDs;
 - transfer economics behind the value capability (central store and optional peer verified streaming), without changing guest contracts.
 
-`emery:exec-bits` remains required wherever native tools execute inside a materialized tree (RFC-95). Blobstore does not replace a materialization root.
+`emery:exec-bits` remains required wherever native tools execute inside a materialized tree (RFC-97). Blobstore does not replace a materialization root.
 
 ### D5 — Workers advertise capability profiles; offers are capability-scoped
 
-A worker joins the fleet with a host-declared **capability profile**: platforms, toolchains, RFC-95 verification profiles, resource class, and egress class. Operation offers announce only on matching capability topics (RFC-93 D7). A node that cannot satisfy the profile must not claim; preflight `unavailable` (RFC-95) is a scheduling signal before model spend, not a late surprise.
+A worker joins the fleet with a host-declared **capability profile**: platforms, toolchains, RFC-97 verification profiles, resource class, and egress class. Operation offers announce only on matching capability topics (RFC-100 D7). A node that cannot satisfy the profile must not claim; preflight `unavailable` (RFC-97) is a scheduling signal before model spend, not a late surprise.
 
 Homogeneous “this laptop can do Vectis iOS and Omnia” is the desktop degenerate case of one profile that happens to include everything installed.
 
@@ -126,7 +126,7 @@ Three secret classes stay host-only and never enter change homes, events, or ada
 | ----- | ------------- | ------------- |
 | Adapter registry | operator / anonymous GHCR pull | workload identity, optional mirror, air-gap allowlist |
 | Model provider | `CURSOR_API_KEY` / agent session | per-tenant credentials, budget envelopes, cancellation |
-| Forge | operator git credentials | app install / scoped tokens for discovery and RFC-89 publication |
+| Forge | operator git credentials | app install / scoped tokens for discovery and RFC-95 publication |
 
 Source material that is not yet in the value plane (private repos, large binaries, design assets) enters through an authorized host ingest that produces digest-named objects.
 
@@ -146,36 +146,36 @@ Shared value namespaces may serve many tenants only when object names are digest
 
 ### D9 — Scheduling policy stays outside workflow authority
 
-RFC-93's first-claim-wins with capability topics remains the execution contract. Product-level fair-share, priority, sticky warm-cache placement, and hard spend caps are host/scheduler policy. They may influence which eligible node claims first; they must not alter ownership generations, result digests, or lifecycle projection. Telemetry (judgment vs claim-wait vs transfer vs publish latency; model route and cost when reported) stays observational per RFC-93 evaluation and RFC-95 D9.
+RFC-100's first-claim-wins with capability topics remains the execution contract. Product-level fair-share, priority, sticky warm-cache placement, and hard spend caps are host/scheduler policy. They may influence which eligible node claims first; they must not alter ownership generations, result digests, or lifecycle projection. Telemetry (judgment vs claim-wait vs transfer vs publish latency; model route and cost when reported) stays observational per RFC-100 evaluation and RFC-97 D9.
 
 ### D10 — Omnia conformance gates fleet mode
 
-A deployment may open a distributed session only when its bound documentstore, keyvalue, and blobstore backends prove the RFC-93 D10 contract. Lossy, racy, or process-local development defaults remain desktop-only. Messaging stays wake-up-weak. This RFC tracks the Emery-side refusal and the desktop↔fleet matrix; Omnia owns the backend implementations.
+A deployment may open a distributed session only when its bound documentstore, keyvalue, and blobstore backends prove the RFC-100 D10 contract. Lossy, racy, or process-local development defaults remain desktop-only. Messaging stays wake-up-weak. This RFC tracks the Emery-side refusal and the desktop↔fleet matrix; Omnia owns the backend implementations.
 
 ## Sequencing
 
-Product-ownership order after the RFC-86…RFC-94 stem. Steps may staff in parallel where noted; acceptance of a later step must not redefine an earlier contract.
+Delivery order after the RFC-86…RFC-91 stem. Steps may staff in parallel where noted; acceptance of a later step must not redefine an earlier contract.
 
 ```text
-RFC-86…RFC-87   (landed stem)
-RFC-88…RFC-92   (local product + scale — in flight)
-RFC-93          (distributed contract)
+RFC-86…RFC-91     (landed stem)
+RFC-88, 95, 96    (local product + scale — in flight)
+RFC-100           (distributed contract)
        │
        ▼
-RFC-96 Phase A ──► Phase B ──► Phase C ──► Phase D ──► Phase E
+RFC-101 Phase A ──► Phase B ──► Phase C ──► Phase D ──► Phase E
        │              │           │           │           │
        │              │           │           │           └─ multi-tenant ops
        │              │           │           └─ model · secrets · ingress
-       │              │           └─ worker capabilities · RFC-95 join
+       │              │           └─ worker capabilities · RFC-97 join
        │              └─ adapter values + fleet locks
        └─ Omnia conformance · change-home / journal bindings
 ```
 
 | Phase | Name | Delivers | Depends on | Parallel with |
 | ----- | ---- | -------- | ---------- | ------------- |
-| **A** | Conformance & homes | Refuse non-conforming backends for `--distributed` / hosted execute; host-allocated change homes; documentstore-backed writer log binding; replace `guest.lock` exclusivity with coordination-plane fencing for hosted attachments | RFC-93 contract; Omnia backend work | RFC-88/89 completion |
-| **B** | Adapter values & locks | Adapter store/cache as blobstore values; verify-on-read admission on every worker; fleet resolved-adapter lock on the execute epoch; bare-name newest-local confined to desktop; tenant-scoped custom component admission | Phase A; existing launcher install/digest path | RFC-89 |
-| **C** | Worker capabilities | Host capability profiles; capability-scoped offer topics as the only fleet placement path; materialization/fetch SLOs; workspace vs shared-object GC split; RFC-95 profile preflight as claim eligibility | Phase B; RFC-95 profile registry (may land stub `unavailable` first) | RFC-95 implementation |
+| **A** | Conformance & homes | Refuse non-conforming backends for `--distributed` / hosted execute; host-allocated change homes; documentstore-backed writer log binding; replace `guest.lock` exclusivity with coordination-plane fencing for hosted attachments | RFC-100 contract; Omnia backend work | RFC-88/95 completion |
+| **B** | Adapter values & locks | Adapter store/cache as blobstore values; verify-on-read admission on every worker; fleet resolved-adapter lock on the execute epoch; bare-name newest-local confined to desktop; tenant-scoped custom component admission | Phase A; existing launcher install/digest path | RFC-95 |
+| **C** | Worker capabilities | Host capability profiles; capability-scoped offer topics as the only fleet placement path; materialization/fetch SLOs; workspace vs shared-object GC split; RFC-97 profile preflight as claim eligibility | Phase B; RFC-97 profile registry (may land stub `unavailable` first) | RFC-97 implementation |
 | **D** | Hosted judgment & ingress | Non-Cursor model backend binding with quotas; host-mediated MCP/reference grants; AuthN/Z on submit/status/follow/detach; non-interactive confirmation gates; secret classes host-only | Phase A (ingress), Phase C (for verify-backed builds) | RM-17 forge providers |
 | **E** | Tenancy & operations | Tenant/org isolation of policy and caches; attachment/change quotas; redaction and retention for tool/model telemetry; eval matrix: desktop degenerate ≡ two-node ≡ hosted attachment on the same fixtures | Phases A–D | Roadmap evidence triggers |
 
@@ -186,12 +186,12 @@ RFC-96 Phase A ──► Phase B ──► Phase C ──► Phase D ──► P
 | Omnia backends | Platform / Omnia | A (blocker) | CAS, create-only docs, durable ordered replay — without this, Phases B–E are desktop theater |
 | Launcher / locations | Emery deployment | A → B → E | Collapse `$EMERY_HOME` assumptions into class-tagged roots |
 | Adapter admission | Emery deployment | B | Lock format rides execute-epoch facts; guests unchanged |
-| Worker runtime | Emery + RFC-95 | C | Capability ads, materialization, sandbox |
+| Worker runtime | Emery + RFC-97 | C | Capability ads, materialization, sandbox |
 | Control plane | Emery host | D → E | HTTP attachment, AuthN/Z, budgets |
 
 ### Explicit non-goals in the first cut
 
-- Push placement / central scheduler inventory (rejected by RFC-93).
+- Push placement / central scheduler inventory (rejected by RFC-100).
 - Shared writable product trees or network filesystems as coordination.
 - Making Cursor plugins or `/emery:*` skills the hosted API.
 - Third-party adapter ecosystem operating model ([roadmap.md](roadmap.md) RM-21) — readiness here is first-party + tenant-seeded components only.
@@ -217,7 +217,7 @@ RFC-96 Phase A ──► Phase B ──► Phase C ──► Phase D ──► P
 
 - Define the host capability-profile record and its topic encoding; require it on worker start.
 - Implement closure fetch + verify + prepare path metrics; separate ephemeral workspace GC from shared object sweep roots.
-- Integrate RFC-95 preflight: missing toolchain/profile → typed `unavailable`, no claim (or immediate claim release) before judgment spend.
+- Integrate RFC-97 preflight: missing toolchain/profile → typed `unavailable`, no claim (or immediate claim release) before judgment spend.
 
 ### Phase D
 
@@ -229,7 +229,7 @@ RFC-96 Phase A ──► Phase B ──► Phase C ──► Phase D ──► P
 ### Phase E
 
 - Introduce tenant keys in host policy and cache admission; prove cross-tenant cache negative tests.
-- Retain RFC-93/95 latency and usage projections with redaction.
+- Retain RFC-100/97 latency and usage projections with redaction.
 - Ship a readiness matrix job: same fixtures on desktop, two-node distributed, and hosted attachment — equal target-wave CIDs and slice statuses given equal accepted facts.
 
 ## Acceptance criteria
@@ -249,15 +249,15 @@ RFC-96 Phase A ──► Phase B ──► Phase C ──► Phase D ──► P
 | Document | Boundary |
 | -------- | -------- |
 | [platform.md](platform.md) / RFC-86…94 | Product and scale semantics; this RFC makes the host/fleet operable |
-| [RFC-93](rfc-93-distributed-execution.md) | Owns claims, fencing, attach/resume, coordination/value split — readiness implements host bindings and conformance gates |
-| [RFC-95](rfc-95-native-verification.md) | Owns profile execution and attestations — readiness places them on capability-scoped workers and attestation value transport |
+| [RFC-100](rfc-100-distributed-execution.md) | Owns claims, fencing, attach/resume, coordination/value split — readiness implements host bindings and conformance gates |
+| [RFC-97](rfc-97-native-verification.md) | Owns profile execution and attestations — readiness places them on capability-scoped workers and attestation value transport |
 | [architecture.md](architecture.md) | Standing Omnia boundary — readiness is how desktop→cloud stays a backend swap |
 | [roadmap.md](roadmap.md) RM-17 / RM-21 | Forge providers and third-party adapter ecosystem — triggered separately |
 
 ## Rejected alternatives
 
-- **“Just put `$EMERY_HOME` on a network volume.”** Couples failure domains, invites shared-writable authority, and fights RFC-87/92's snapshot model.
+- **“Just put `$EMERY_HOME` on a network volume.”** Couples failure domains, invites shared-writable authority, and fights RFC-87/96's snapshot model.
 - **Central adapter push into every worker image.** Useful as a cache hint; cannot replace digest-locked admission or verify-on-read.
 - **Fleet-wide bare-name newest.** Nondeterministic across workers; breaks epoch reproducibility.
-- **Emery-specific distributed filesystem or custom RPC bus.** Violates the Omnia capability rule already set by RFC-93 D1/D10.
+- **Emery-specific distributed filesystem or custom RPC bus.** Violates the Omnia capability rule already set by RFC-100 D1/D10.
 - **Scheduler as workflow authority.** Placement may be biased by host policy; ownership, digests, and lifecycle stay with facts and claims.

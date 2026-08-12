@@ -2,7 +2,7 @@
 
 > Status: Implemented — step 2 of the platform-migration series ([platform.md](platform.md)). [RFC-86](rfc-86-change-facts.md) Phase B retired the interim build-time ambient freeze and slice-local `build/patch.yaml`; recorded `base.yaml` pins and content-addressed `builds/<digest>.yaml` records are the authority. The remaining interim is merge-time `apply` (deleted by [RFC-88](rfc-88-detached-changes.md)). RFC-88 also proposes amendments: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 admit the project repository's durable state into the tree, and plan/discovery artifacts name the tree identity a **CID** (`SnapshotId` is that value).
 >
-> Deployment note (post-implementation): the workspace kernel (`project::workspace`) is wasm-clean engine library code, not a host capability. The former five-op `emery:workspaces` WIT import is deleted; the shipped deployment's guest runs the kernel in-guest — tree I/O over its filesystem preopens, snapshot objects through the standard `wasi:blobstore` import (the omnia-backends filesystem backend at the snapshots root), and executable bits through the two-function `emery:exec-bits` capability (`wasi:filesystem` carries no permission bits). The host contract shrank from workflow semantics to blob storage plus exec bits; native deployments call the same kernel in-process. Digest identity is deployment-independent by the canonical manifest encoding. The blobstore backend is filesystem-backed, not in-memory, because snapshot objects must survive across separate CLI invocations — every `emery` run is a fresh process, and a stopped `emery plan execute` resumes in a later process against the pins its refine phase recorded (`base.yaml`, `builds/<digest>.yaml`, plan CIDs); RFC-89/92/93 then consume the same snapshots for publication, distribution, and transport. Snapshot lifetime is scoped to the change: `plan archive` is the collection point that sweeps objects whose GC roots belong only to the archived plan (D2).
+> Deployment note (post-implementation): the workspace kernel (`project::workspace`) is wasm-clean engine library code, not a host capability. The former five-op `emery:workspaces` WIT import is deleted; the shipped deployment's guest runs the kernel in-guest — tree I/O over its filesystem preopens, snapshot objects through the standard `wasi:blobstore` import (the omnia-backends filesystem backend at the snapshots root), and executable bits through the two-function `emery:exec-bits` capability (`wasi:filesystem` carries no permission bits). The host contract shrank from workflow semantics to blob storage plus exec bits; native deployments call the same kernel in-process. Digest identity is deployment-independent by the canonical manifest encoding. The blobstore backend is filesystem-backed, not in-memory, because snapshot objects must survive across separate CLI invocations — every `emery` run is a fresh process, and a stopped `emery plan execute` resumes in a later process against the pins its refine phase recorded (`base.yaml`, `builds/<digest>.yaml`, plan CIDs); RFC-95/96/100 then consume the same snapshots for publication, distribution, and transport. Snapshot lifetime is scoped to the change: `plan archive` is the collection point that sweeps objects whose GC roots belong only to the archived plan (D2).
 >
 > Owns: materializing an immutable code snapshot into a private workspace, granting separate read-only artifact access, capturing the resulting code snapshot and touched paths, and discarding the workspace.
 >
@@ -75,7 +75,7 @@ For Git repositories, the local provider may use Git's object database and workt
 
 The code patch contains the base snapshot id, result snapshot id, and derived touched paths. Binary files, deletes, modes, and symlinks are properties of the two trees; RFC-87 defines no binary-patch serialization.
 
-[RFC-92](rfc-92-concurrent-execution.md) owns deterministic composition of same-base results. [RFC-93](rfc-93-distributed-execution.md) owns transport of the referenced snapshot objects.
+[RFC-96](rfc-96-concurrent-execution.md) owns deterministic composition of same-base results. [RFC-100](rfc-100-distributed-execution.md) owns transport of the referenced snapshot objects.
 
 ### D4 — Code and change artifacts stay separate
 
@@ -99,13 +99,13 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-92](rfc-92-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-93](rfc-93-distributed-execution.md) supplies placement, fencing, and transport. [RFC-89](rfc-89-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-96](rfc-96-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-100](rfc-100-distributed-execution.md) supplies placement, fencing, and transport. [RFC-95](rfc-95-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 
 ### D8 — Hard cut
 
-`WorkingTree::live()`, operator-checkout writes, persistent holds, tree recovery, dirty-tree lifecycle states, stored patch blobs, and workspace-layer branch commits are removed rather than adapted. Callers use `prepare` / `capture` / `discard`; RFC-89 owns the one final project seal.
+`WorkingTree::live()`, operator-checkout writes, persistent holds, tree recovery, dirty-tree lifecycle states, stored patch blobs, and workspace-layer branch commits are removed rather than adapted. Callers use `prepare` / `capture` / `discard`; RFC-95 owns the one final project seal.
 
 The interim `apply`, which writes an accepted patch's touched paths onto an ambient product tree, is a stand-in for that completion. [RFC-88](rfc-88-detached-changes.md) deletes it: once the baseline folds inside a workspace, the accepted project snapshot is the whole result and there is nothing left to write back.
 

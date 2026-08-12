@@ -61,6 +61,30 @@ Plan *entries* are written via `emery plan author` (default), `emery plan add`, 
 
 The change lifecycle (`/emery:plan`, `/emery:refine`, `/emery:execute`, `/emery:finalize`) has no umbrella that drives all of them in one shot. The pause between `/emery:plan` and refine is the topology-review seam and the pause between `/emery:refine` and execute is the specification-review seam — `/emery:plan` never chains into refinement or execution, so starting each stage is always the operator's own act (an automation runner may invoke them back to back; the seams are opportunities for review, not attestations). Each skill is idempotent on re-entry; halts surface verbatim and resume by re-running the same skill.
 
+## Drive-loop contract
+
+The operator is not required to be a person. No verb reads stdin, prompts on a TTY, or opens an editor; `--force` on `plan author` / `plan archive` is a flag gate rather than an interactive confirmation; `--format json` (env `EMERY_FORMAT`) is global; and `emery plan status` projects a closed next-action set. An automated caller can therefore drive the whole loop, and the eval case runner already does.
+
+That makes the following a **wire contract**, on the same footing as the exit-code table and the `error` discriminants: it changes through a deliberate wire-contract change, never by silent reshaping.
+
+| Surface | Closed set | Source of truth |
+|---|---|---|
+| `plan status` `action` | `refine`, `build`, `merge`, `review-gaps`, `stop`, `drained` | `NextActionKind` in `crates/project/src/plan/status.rs` |
+| `plan status` `stop.reason` | `refine-failed`, `refinement-required`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck` | `StopReason`, same module |
+| `plan status` `resume` | literal command string, or absent when no single command resumes | `StatusBody::resume` |
+| Failure discriminant | kebab-case `error` on the flat body | [JSON envelope](#json-envelope) |
+| Failure class | four-slot table | [Exit codes](#exit-codes) |
+
+Three properties a driver must not rediscover the hard way:
+
+- **`review-gaps` is not a verb.** It is the one `action` with no matching command: it signals open findings, and the caller dispatches `emery plan execute` anyway, where the gap gate either blocks under `strict` or mints `origin: policy` deferrals under `defer`. Read `resume` for the intended act (commonly `emery plan defer … --reason`).
+- **`stop` is not a verb either.** Branch on `stop.reason` and follow `resume`; a `stuck` or `slice-dropped` stop carries no `resume` and needs plan curation (`emery plan {amend, remove, drop}`) before the loop can continue.
+- **A stop already carries the status card.** `plan refine` and `plan execute` stops exit 2 with the `plan-refine-stopped` / `plan-execute-stopped` envelope on stderr *and* the canonical stop card on stdout, so a driver parses the card it already has rather than issuing a follow-up `plan status`.
+
+Do not build a separate driver for the phases themselves. `emery plan execute` is already the drain — it claims, builds, and merges per entry until the plan projects `drained` or a stop halts it. What an external caller adds is recovery judgment between runs, so the loop is thin: run the stage, read the stop card, fix inputs or curate entries, re-run. Putting that loop in a skill body would violate the ultrathin invoke-and-relay rule; it belongs in the caller.
+
+Concurrency is bounded per project, not per caller: `plan refine` and `plan execute` hold a create-exclusive `.emery/guest.lock`, so a second concurrent driver on the same project fails with `guest-marker-held` (exit 2) rather than interleaving.
+
 ## Contracts validation surface
 
 The contracts target adapter's `build` brief carries author / import / verify intents for OpenAPI, AsyncAPI, and JSON Schema as format sub-flows. Each sub-flow dispatches to sibling references under `targets/contracts/prose/references/<format>/` in the adapters repo: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency plus merge-time baseline validation in cross-project mode). The brief id, the `contracts@1.0.0` adapter, and the `contracts/` baseline directory keep their original names.

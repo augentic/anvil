@@ -301,12 +301,13 @@ async fn orphan_wave_stays_stale() {
     );
 }
 
-/// A slice parked at merge with BOTH drifted refinement inputs and
-/// drifted dispositions stops typed `plan-refinement-required`
-/// (RFC-91 D5): execute never re-refines; the operator drains
-/// `emery plan refine` before a resume can rebuild.
+/// A slice parked at merge with BOTH a hand-edited refinement
+/// manifest and drifted dispositions still rebuilds under the
+/// disposition redirect (RFC-91 D5): a built leaf's covered digest is
+/// the on-disk manifest at resume — execute never re-refines, and pin
+/// freshness is not re-litigated past build.
 #[tokio::test]
-async fn drift_stops_for_refine() {
+async fn built_skips_pin_drift() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -333,20 +334,22 @@ async fn drift_stops_for_refine() {
     manifest.inputs.sources.insert("gone".into(), project::plan::value_cid("orphan pin"));
     manifest.write(&slice_dir).expect("plant orphan pin");
 
-    // Resume refuses: stale refinement wins over the disposition
-    // redirect — execute never re-refines in-loop.
-    let err = run::<plan::handlers::Execute, _, _>(
+    // Resume rebuilds under the disposition redirect — the orphan pin
+    // does not force a refine stop once a build record is present.
+    let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput {
             gap_policy: Some(GapPolicy::Defer),
         },
     )
     .await
-    .expect_err("stale refinement stops execute");
-    let detail = err.to_string();
-    assert!(
-        detail.contains("plan-refinement-required") || detail.contains("refinement"),
-        "{detail}"
+    .expect("disposition drift rebuilds; pin drift on a built leaf is ignored");
+    assert_eq!(drained.status, "drained");
+    let steps: Vec<LoopStep> = drained.phases.iter().map(|phase| phase.step).collect();
+    assert_eq!(
+        steps,
+        [LoopStep::Build, LoopStep::Merge],
+        "execute never re-refines a built leaf; got {steps:?}"
     );
 }
 

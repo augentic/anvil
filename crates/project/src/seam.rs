@@ -252,7 +252,7 @@ pub trait Workspaces: Send + Sync {
     /// digest.
     fn discard(&self, id: String) -> impl Future<Output = Result<(), Error>> + Send;
 
-    /// Interim code delivery (pre-RFC-89): write `patch`'s touched
+    /// Interim code delivery (pre-RFC-95): write `patch`'s touched
     /// paths from its result snapshot onto the product tree, leaving
     /// everything else untouched. Deleted when publication sets own
     /// the final seal.

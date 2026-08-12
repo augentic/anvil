@@ -1,4 +1,4 @@
-# RFC-93: Distributed Execution
+# RFC-100: Distributed Execution
 
 > Status: Draft — step 8 of the platform-migration series, scale track ([platform.md](platform.md))
 >
@@ -6,9 +6,9 @@
 >
 > Does not own: scheduling policy, result convergence, merge semantics, workflow authority, or lifecycle.
 >
-> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), [RFC-91](rfc-91-refinement-stage.md), and [RFC-92](rfc-92-concurrent-execution.md). RFC-92 owns `(slice, phase, input-digest)` readiness and local operation claims; this RFC distributes those identities through offers, leases, ownership generations, and stale-result rejection.
+> Depends on completed [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-88](rfc-88-detached-changes.md), [RFC-90](rfc-90-build-verification.md), [RFC-91](rfc-91-refinement-stage.md), and [RFC-96](rfc-96-concurrent-execution.md). RFC-96 owns `(slice, phase, input-digest)` readiness and local operation claims; this RFC distributes those identities through offers, leases, ownership generations, and stale-result rejection.
 >
-> Related: [RFC-89](rfc-89-publication-sets.md) binds publication across repositories after this RFC's distributed execution.
+> Related: [RFC-95](rfc-95-publication-sets.md) binds publication across repositories after this RFC's distributed execution.
 >
 > Runtime dependency: Omnia bindings for `wasi:documentstore`, native `wasi:keyvalue` atomics, `wasi:blobstore`, `wasi:messaging` wake-up announcements, and durable asynchronous trigger supervision. Where an interface or backend lacks a required guarantee, this RFC requires improving the general Omnia capability rather than adding an Emery-specific transport API.
 >
@@ -34,7 +34,7 @@ This RFC distributes the existing contract:
 
 - Each journal writer appends only to its own event log. Emery combines these logs to calculate status.
 - An ownership record identifies which writer owns a slice and which ownership generation is current.
-- RFC-92 identifies each ready operation by `(slice, phase, input-digest)` and prevents duplicate local execution with an operation-scoped claim.
+- RFC-96 identifies each ready operation by `(slice, phase, input-digest)` and prevents duplicate local execution with an operation-scoped claim.
 - Every code-writing worker starts with immutable inputs in a fresh private workspace and returns an immutable result. Verification and review receive fresh materializations of the current candidate. Their incidental writes are recorded for inspection and discarded; acceptance uses the candidate snapshot.
 - Slices may run concurrently, with results combining upward from slice leaves through the recorded domain hierarchy.
 - Emery groups slices for the same target repository into a **target wave** and commits all their results together. If any result cannot be accepted, none are committed.
@@ -65,7 +65,7 @@ Once the execute operation starts, offers, claims, writer logs, slice-ownership 
 
 1. The operator invokes the distributed execute operation against an authored change home, either through the attached CLI or authenticated HTTP control surface.
 2. Emery records `plan.execute.started`, opens the change's distributed session through the configured Omnia capabilities, and registers a writer ID for the local engine runtime.
-3. The RFC-92 execution loop identifies slices whose dependencies and workflow gates are satisfied. Before offering any operation for a slice, an attached Emery runtime must atomically acquire slice execution ownership.
+3. The RFC-96 execution loop identifies slices whose dependencies and workflow gates are satisfied. Before offering any operation for a slice, an attached Emery runtime must atomically acquire slice execution ownership.
 4. For each ready operation, the slice owner durably publishes an **operation offer** — the guest identity to invoke, the content-addressed input tree identity, the access manifest, capability requirements, the authorization epoch, the owner's writer ID, and the current ownership generation — then announces it on a capability-scoped `wasi:messaging` topic. Eligible nodes race to claim the offer through a linearizable compare-exchange; the first successful claim wins.
 5. The claiming node fetches the input closure through the value plane, verifies it, prepares a fresh private workspace through its local workspace capability, and invokes its locally resolved adapter guest. When a writing operation finishes, capture freezes the resulting repository tree into an immutable snapshot and verifies every object needed to reconstruct it before the node publishes the result record under the offer's identity.
 6. Other nodes follow the writer logs and fetch referenced records or snapshot values as needed. A node may use a result only after every dependency is present and digest-verified.
@@ -156,11 +156,11 @@ An expired ownership record marks its owner as possibly unavailable. Operator-au
 
 To recover, the slice’s latest code state is reconstructed—either its immutable base or its latest published result—and digest verified. Slice ownership is then incremented in one atomic operation. Events, results, and releases carrying an older generation are rejected and cannot affect workflow state.
 
-An operation claim is subordinate to slice ownership, names RFC-92's parent `(slice, phase, input-digest)` work item plus its concrete operation identity, and carries the offer's generation. Recovery invalidates outstanding claims along with everything else minted under the old generation. Claim fencing protects each fresh private workspace, while task grants partition path ownership within a worker pool.
+An operation claim is subordinate to slice ownership, names RFC-96's parent `(slice, phase, input-digest)` work item plus its concrete operation identity, and carries the offer's generation. Recovery invalidates outstanding claims along with everything else minted under the old generation. Claim fencing protects each fresh private workspace, while task grants partition path ownership within a worker pool.
 
 ### D4 — Claims preserve execution semantics
 
-RFC-92's execution rules define phase-work-item identity, slice eligibility, domain readiness, composition, verification, and target-wave membership. Distributed claims select where an already-eligible item runs while preserving the recorded hierarchy and acceptance policy.
+RFC-96's execution rules define phase-work-item identity, slice eligibility, domain readiness, composition, verification, and target-wave membership. Distributed claims select where an already-eligible item runs while preserving the recorded hierarchy and acceptance policy.
 
 The slice owner controls what is offered and remains the sole acceptor of results. A claiming node receives a validated operation, task grant, and immutable inputs through the offer. Every result produced under that ownership carries its authorization epoch, writer ID, ownership generation, and complete input identity. Emery rejects a result if its slice identity or its lead-catalog, decomposition, model-capability-profile, wave, dependency-frontier, refinement-manifest, or base digest does not match the current operation.
 

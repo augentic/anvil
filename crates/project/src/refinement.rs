@@ -49,7 +49,7 @@ pub struct Inputs {
     /// RFC-88 profile identity — the canonical empty digest
     /// ([`empty_digest`]) until profiles land.
     pub profile: SnapshotId,
-    /// RFC-97 advisory-observation identity — the canonical empty
+    /// RFC-93 advisory-observation identity — the canonical empty
     /// digest ([`empty_digest`]) until observations land.
     pub observations: SnapshotId,
     /// Digest of the target guidance text consumed by synthesis.
@@ -171,7 +171,7 @@ pub fn file_digest(slice_dir: &Path) -> Result<Option<SnapshotId>, Error> {
 }
 
 /// Canonical empty digest for `profile` and `observations`: the
-/// SHA-256 of zero bytes, until RFC-88 profiles / RFC-97 observations
+/// SHA-256 of zero bytes, until RFC-88 profiles / RFC-93 observations
 /// define their own canonical encodings.
 #[must_use]
 pub fn empty_digest() -> SnapshotId {

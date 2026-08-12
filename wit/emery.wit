@@ -238,7 +238,7 @@ interface target {
   /// Required report-level assurance claim: how a phase's result was
   /// produced, even when `findings` is empty. `tool` is reserved on
   /// the wire but rejected by the RFC-90 engine gate until a trusted
-  /// host-tool execution seam exists (RFC-95).
+  /// host-tool execution seam exists (RFC-97).
   enum phase-source {
     /// No model or external tool contributed to the phase result.
     deterministic,

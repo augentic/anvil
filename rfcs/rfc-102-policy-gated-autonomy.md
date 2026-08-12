@@ -1,8 +1,8 @@
-# RFC-98: Policy-Gated Autonomy
+# RFC-102: Policy-Gated Autonomy
 
-> Status: Draft — autonomy follow-on to [RFC-94](future/rfc-94-streaming-execution.md) Phase B, [RFC-95](rfc-95-native-verification.md), and [RFC-97](rfc-97-outcome-learning.md). Owns unattended accepted-CID mutation, promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-89](rfc-89-publication-sets.md).
+> Status: Draft — autonomy follow-on to [RFC-99](future/rfc-99-streaming-execution.md) Phase B, [RFC-97](rfc-97-native-verification.md), and [RFC-93](rfc-93-outcome-learning.md). Owns unattended accepted-CID mutation, promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](rfc-95-publication-sets.md).
 >
-> Patch ownership: this RFC amends RFC-88 D7 / D8 after RFC-88 lands by adding policy-gated commit authorization beside closed `plan execute`; it does not revise RFC-88. It extends RFC-89's seal gate without granting forge publication.
+> Patch ownership: this RFC amends RFC-88 D7 / D8 after RFC-88 lands by adding policy-gated commit authorization beside closed `plan execute`; it does not revise RFC-88. It extends RFC-95's seal gate without granting forge publication.
 
 ## Intent
 
@@ -16,9 +16,17 @@ without human pauses when every exact artifact, gap, protected oracle, native ve
 
 Autonomy means policy-gated progression, not model authority. The model cannot choose its policy, waive a gap, broaden scope, lower assurance, reset a budget, or decide that its own output may merge.
 
+### Scope: the engine's run, not the operator's verbs
+
+This RFC governs what the **engine** may do inside one unattended run. It does not govern what an external **operator** asks for between runs, and the distinction matters because the operator need not be a person: nothing in the CLI requires one, and an autonomous driver can issue `plan defer`, `plan drop`, `plan amend --authority-override`, or `--force` exactly as a human can.
+
+Those verbs are deliberately **out of autonomy-policy scope**. Bringing them in would make the policy a permission surface over the operator's own interface, which [RFC-86a](rfc-86a-gap-deferral.md) rejected when it replaced per-epoch waiver permission with durable dispositions, and which [RFC-86](rfc-86-change-facts.md) rejected again in refusing a countersign gate. The policy constrains artifacts, assurance, budgets, and admission — properties of *results*, which hold regardless of who called.
+
+What closes the loop is attribution, not restriction: [RFC-103](rfc-103-operator-attribution.md) records the acting operator's class and attestation on every fact, so an autonomous driver's dispositions are legible as such in review. An agent may drive the engine; an agent may not be the engine, and it may not extend its own grant by driving harder.
+
 ## Prerequisite boundary
 
-RFC-94 may run unattended only through `built`. Its candidate frontiers are non-authoritative.
+RFC-99 may run unattended only through `built`. Its candidate frontiers are non-authoritative.
 
 This RFC extends the runner:
 
@@ -29,22 +37,22 @@ emery plan run --publication progressive --through merged --policy <profile>
 The command may progressively author, refine, and build before final closure. Entering its first commit-capable phase is unavailable unless the deployment resolves:
 
 - a promoted autonomy-policy generation;
-- every required RFC-95 host-verification profile;
+- every required RFC-97 host-verification profile;
 - every protected input and oracle required by that policy;
 - the RFC-88 final planning closure and current accepted target state.
 
 Missing capability fails closed. There is no fallback to model-only merge when policy requires stronger assurance.
 
-Single-node autonomy does not wait on distribution. Multi-node or multi-tenant autonomy additionally requires RFC-93 distributed execution and RFC-96 deployment, policy-registry, secret, and tenancy conformance.
+Single-node autonomy does not wait on distribution. Multi-node or multi-tenant autonomy additionally requires RFC-100 distributed execution and RFC-101 deployment, policy-registry, secret, and tenancy conformance.
 
 ## Terms
 
 - An **autonomy policy** is a closed, versioned, deployment-owned profile governing one unattended run class.
 - A **risk class** is one of `low | moderate | high | critical`; it selects one closed assurance and recovery profile for a target or slice.
 - A **commit admission** is the exact fact authorizing one closed target wave to mutate the accepted CID.
-- A **standing amendment rule** is a narrow, pre-authorized deterministic predicate over one inert RFC-88/RFC-92 amendment proposal.
+- A **standing amendment rule** is a narrow, pre-authorized deterministic predicate over one inert RFC-88/RFC-96 amendment proposal.
 - A **recovery ladder** is the ordered bounded set of actions the engine may try before stopping.
-- A **policy generation** is a promoted RFC-97 version; changing it starts a new run grant.
+- A **policy generation** is a promoted RFC-93 version; changing it starts a new run grant.
 
 ## Autonomy policy
 
@@ -85,7 +93,7 @@ Every referenced risk class must have one profile. The compiler selects the exac
 
 Projects, source artifacts, adapters, prompts, and models cannot write or redirect the policy registry. Deployment policy resolves the profile before the engine starts and returns its immutable generation and digest.
 
-The policy resolver has closed `run | autonomy` kinds. RFC-94 `--through built` accepts a run policy. `--through merged` requires an autonomy policy promoted through RFC-97; the same CLI flag cannot silently upgrade one kind to the other.
+The policy resolver has closed `run | autonomy` kinds. RFC-99 `--through built` accepts a run policy. `--through merged` requires an autonomy policy promoted through RFC-93; the same CLI flag cannot silently upgrade one kind to the other.
 
 ## Admission rules
 
@@ -104,13 +112,13 @@ No autonomy policy can waive unknowns or conflicts. A policy may require `agreed
 
 ### Build
 
-Build admission reuses RFC-94 member admission and candidate frontiers. Every result remains non-authoritative until commit admission.
+Build admission reuses RFC-99 member admission and candidate frontiers. Every result remains non-authoritative until commit admission.
 
 The selected risk class's minimum assurance is one of:
 
 - `model-assisted` — candidate self-consistency only;
 - `protected` — at least one read-only protected input or oracle contributed to every required check;
-- `host-attested` — every required RFC-95 profile produced a valid host attestation;
+- `host-attested` — every required RFC-97 profile produced a valid host attestation;
 - `mixed` — the closed required combination.
 
 Operator output and facts carry the actual assurance. A stronger label is never inferred from policy intent.
@@ -135,7 +143,7 @@ The journal fact is `target.wave.commit-admitted`. Any changed input makes it st
 
 Target-wave merge and postflight retain RFC-88/RFC-90 semantics. A postflight failure remains non-rollback and stops the autonomous run for operator acknowledgement.
 
-A blocking RFC-92 target-domain complete round after an accepted wave is also a hard stop. The autonomous run cannot repair or amend already accepted state under the same grant.
+A blocking RFC-96 target-domain complete round after an accepted wave is also a hard stop. The autonomous run cannot repair or amend already accepted state under the same grant.
 
 ## Recovery ladder
 
@@ -143,19 +151,19 @@ The engine attempts only the compiled sequence:
 
 1. bounded judgment-answer repair;
 2. RFC-90 verification repair and review remediation;
-3. one validated task-graph replacement for an RFC-92 graph-attributable failure;
+3. one validated task-graph replacement for an RFC-96 graph-attributable failure;
 4. one standing-rule amendment application when explicitly allowed, followed by ordinary refinement and build of the new planning revision;
 5. stop with retained evidence.
 
 Each rung has a separate counter. Success at one rung does not reset another.
 
-A policy may lower RFC-90's verification and review budgets and standing amendment applications. Judgment-answer repair remains the fixed engine `MAX_REPAIRS`; graph replacement remains RFC-92's fixed two-round limit. Neither is policy-increasable.
+A policy may lower RFC-90's verification and review budgets and standing amendment applications. Judgment-answer repair remains the fixed engine `MAX_REPAIRS`; graph replacement remains RFC-96's fixed two-round limit. Neither is policy-increasable.
 
 A retry always creates a new attempt or revision with a new input digest. The engine never edits a successful record in place.
 
 ## Standing amendments
 
-RFC-88 and RFC-92 amendment proposals remain inert by default. A standing rule may apply a proposal automatically only when deterministic validation proves:
+RFC-88 and RFC-96 amendment proposals remain inert by default. A standing rule may apply a proposal automatically only when deterministic validation proves:
 
 - the proposal kind is explicitly allowed;
 - source, target, product, and protected-oracle scope do not expand;
@@ -188,7 +196,7 @@ Legacy migrations should prefer externally grounded checks. A policy may require
 - capture replay digests projected from `kind: example` Evidence;
 - imported API or schema contracts;
 - baseline tests mounted read-only;
-- target-specific RFC-95 `build`, `test`, static-analysis, or platform-build profiles.
+- target-specific RFC-97 `build`, `test`, static-analysis, or platform-build profiles.
 
 The build agent may see protected inputs needed for repair, but cannot change them. Blind acceptance sets remain evaluation-only and unavailable to the production run.
 
@@ -196,7 +204,7 @@ Passing candidate-authored tests alone is model-assisted assurance and cannot sa
 
 ## Policy learning and promotion
 
-RFC-97 may propose a new autonomy-policy generation from outcome records. Promotion requires:
+RFC-93 may propose a new autonomy-policy generation from outcome records. Promotion requires:
 
 - deterministic schema and scope validation;
 - current-versus-candidate integration and replay runs;
@@ -219,7 +227,7 @@ An autonomous run projects success only when:
 - required project seals exist;
 - no postflight acknowledgement or policy stop remains.
 
-RFC-89 forge publication remains a separate operator act. This RFC may create local seals but cannot push branches, open pull requests, merge pull requests, or delete the change home.
+RFC-95 forge publication remains a separate operator act. This RFC may create local seals but cannot push branches, open pull requests, merge pull requests, or delete the change home.
 
 ## Failure and restart
 
@@ -232,14 +240,14 @@ RFC-89 forge publication remains a separate operator act. This RFC may create lo
 
 ## Implementation requirements
 
-- Extend RFC-94 `plan run` with `--through merged` only when an autonomy policy resolves.
+- Extend RFC-99 `plan run` with `--through merged` only when an autonomy policy resolves.
 - Add the closed autonomy-policy DTO, provider capability, generation identity, and fail-closed resolver.
 - Add exact `target.wave.commit-admitted` facts and preflight revalidation.
 - Add recovery-ladder counters and typed terminal reasons.
 - Add standing amendment rules over the existing compare-and-set amendment kernel.
 - Project capture replay and contract Evidence into protected-oracle requirements without changing Evidence authority.
-- Resolve and enforce RFC-95 host profiles before commit admission.
-- Emit RFC-97 outcome fields for admissions, recovery, assurance, and policy generation.
+- Resolve and enforce RFC-97 host profiles before commit admission.
+- Emit RFC-93 outcome fields for admissions, recovery, assurance, and policy generation.
 - Keep forge publication, policy promotion, and policy registry mutation outside the engine run.
 
 ## Acceptance criteria
@@ -247,7 +255,7 @@ RFC-89 forge publication remains a separate operator act. This RFC may create lo
 1. A clean fixture reaches merged from one `plan run` gesture with no human pause, no gap waiver, and exact policy, member, and commit admissions.
 2. The same fixture under cap one and cap four produces the same accepted target CIDs and requirement identities.
 3. A conflict, unknown, missing protected oracle, missing host profile, stale attestation, or weaker actual assurance stops before commit admission.
-4. A three-leaf dependency chain builds through RFC-94 candidate frontiers and commits in topological waves against current accepted CIDs.
+4. A three-leaf dependency chain builds through RFC-99 candidate frontiers and commits in topological waves against current accepted CIDs.
 5. A permitted boundary split applies once by compare-and-set; scope widening or a second application stops.
 6. An authority override, unknown waiver, protected-input removal, adapter/model/policy change, or forge action can never be standing-authorized.
 7. Exhausting any recovery budget stops; success elsewhere never resets its counter.
@@ -266,4 +274,5 @@ RFC-89 forge publication remains a separate operator act. This RFC may create lo
 - **Apply every valid amendment automatically.** Structural validity does not imply policy authority.
 - **Use historical success as current assurance.** Every commit proves its own exact protected and host checks.
 - **Publish to the forge automatically.** Accepted local state and external publication retain separate authority and recovery domains.
-- **Mutate policy from runtime learning.** RFC-97 promotion creates a future generation; active runs remain pinned.
+- **Mutate policy from runtime learning.** RFC-93 promotion creates a future generation; active runs remain pinned.
+- **Extend the policy to gate operator verbs.** An autonomous driver issuing `defer` / `drop` / `amend` / `--force` is an operator act, not a run phase; restricting it here would rebuild the permission surface RFC-86a removed. [RFC-103](rfc-103-operator-attribution.md) attributes those acts instead.

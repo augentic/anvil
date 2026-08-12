@@ -293,8 +293,10 @@ mod failure_overlay {
         // dispatch falls back to the artifact phase.
         let project = Session::scripted("demo", Vec::new());
         write_slice(project.root(), "a", SliceArt::Refined);
-        append(project.root(), &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
         let plan = plan_with_changes(vec![change("a")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "a");
+        append(project.root(), &[build_failed(0, "a", "old plan"), advanced(10, "test", "a")]);
         let body = status(&project, &plan).await;
         assert_eq!(body.next_action, "build a");
     }
