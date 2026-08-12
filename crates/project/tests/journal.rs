@@ -8,7 +8,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{
-    DEFAULT_WRITER, DeferralOrigin, Event, EventKind, FactEpochRef, append_for, append_one, claim,
+    DEFAULT_WRITER, Event, EventKind, FactEpochRef, append_for, append_one, claim,
     emit_best_effort, handlers, read_union,
 };
 
@@ -78,8 +78,8 @@ fn reads_prior_actor_wire() {
 
 #[test]
 fn deferral_round_trip() {
-    // RFC-86a D2: dotted-kebab wire ids and kebab-case payload keys on
-    // the two deferral facts, stable through serde and the file union.
+    // RFC-86a D2: dotted-kebab wire id and kebab-case payload keys on
+    // the deferral fact, stable through serde and the file union.
     let deferred = Event {
         timestamp: ts(0),
         writer: "alice".into(),
@@ -89,46 +89,21 @@ fn deferral_round_trip() {
             req: "REQ-003".into(),
             requirement_digest: "sha256:abc123".into(),
             reason: "reset path deferred to next change".into(),
-            origin: DeferralOrigin::Operator,
         },
     };
     let wire = serde_json::to_string(&deferred).expect("serialize");
     assert!(wire.contains(r#""event":"gap.deferred""#), "{wire}");
     assert!(wire.contains(r#""slice":"auth-login""#), "{wire}");
     assert!(wire.contains(r#""requirement-digest":"sha256:abc123""#), "{wire}");
-    assert!(wire.contains(r#""origin":"operator""#), "{wire}");
     assert_eq!(serde_json::from_str::<Event>(&wire).expect("parse"), deferred);
-
-    let retracted = Event {
-        timestamp: ts(1),
-        writer: "alice".into(),
-        sequence: 2,
-        kind: EventKind::GapDeferralRetracted {
-            slice: "auth-login".into(),
-            req: "REQ-003".into(),
-            requirement_digest: "sha256:abc123".into(),
-            reason: "new evidence arrived".into(),
-            origin: DeferralOrigin::Operator,
-        },
-    };
-    let wire = serde_json::to_string(&retracted).expect("serialize");
-    assert!(wire.contains(r#""event":"gap.deferral-retracted""#), "{wire}");
-    assert_eq!(serde_json::from_str::<Event>(&wire).expect("parse"), retracted);
-
-    assert_eq!(
-        serde_json::to_value(DeferralOrigin::Policy).expect("origin"),
-        serde_json::Value::String("policy".into())
-    );
 
     // Through the per-writer file and back into the union.
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
     append_for(layout, "alice", std::slice::from_ref(&deferred)).expect("append deferred");
-    append_for(layout, "alice", std::slice::from_ref(&retracted)).expect("append retracted");
     let events = read_union(layout).expect("union");
-    assert_eq!(events.len(), 2);
+    assert_eq!(events.len(), 1);
     assert_eq!(events[0].kind, deferred.kind);
-    assert_eq!(events[1].kind, retracted.kind);
 }
 
 #[test]

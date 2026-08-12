@@ -40,7 +40,6 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 | `plan-remove-plan-not-replaceable` | `emery plan remove` requires a fully pending plan (every entry `pending`). | Removal is a pre-execution action only; after execution starts, drop the entry's slice with `emery plan drop`. |
 | `plan-drop-no-slice` | `emery plan drop` found no slice tree for the entry (never refined). | Curate the entry with `emery plan remove` instead. |
 | `plan-remove-entry-referenced` | Another entry lists the removal target in `depends-on`. | Amend the dependent entry's `--depends-on` first. |
-| `plan-deferral-invalid` | `emery plan defer` named an unknown selector, omitted `--reason` on defer, targeted a row without gap status, or retracted a non-live deferral (exit 2). | Name open `[unknown]` / `[conflict]` rows from `emery plan gaps` as `<slice>/<req>` with `--reason`; `--retract` must name a live deferral. |
 | `plan-has-outstanding-work` | `emery plan archive` refused: the plan still has non-terminal entries (exit 1). | Drain the plan (merge or drop every entry) before archiving. |
 
 ## Plan reconcile (inside `emery plan author`)
@@ -91,7 +90,8 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `slice-refinement-source-unbound` | The slice binds a source key absent from `plan.yaml.sources`. | Fix the binding (`emery plan amend`) or bind the source, then re-run `emery plan refine`. |
 | `plan-projection-source-unbound` | A planning projection could not resolve an entry's source binding against `plan.yaml.sources`. | Fix the binding (`emery plan amend`), then re-run `emery plan refine`. |
 | `slice-baseline-conflict` | Review advisory: the baseline drifted under a built slice since it was defined. | Fix inputs and re-refine / re-run execute, or accept the merge-time conflict handling. |
-| `slice-disposition-drifted` | Review advisory: the deferred set a built slice's record consumed no longer matches the live dispositions (a deferral was retracted, lapsed, or added after the build). | No manual action — the next `emery plan execute` re-builds the slice under the current dispositions. |
+| `slice-disposition-drifted` | Review advisory: the deferred set a built slice's record consumed no longer matches the live dispositions (a deferral lapsed or was added after the build). | No manual action — the next `emery plan execute` re-builds the slice under the current dispositions. |
+| `slice-wave-record-missing` | Review advisory: the slice's newest opened wave has no build record — the re-build it authorized failed. | No manual action — the next `emery plan execute` re-builds the slice before merge. |
 | `slice-authority-override-orphan-source` | An authority override names a source key the slice does not bind. | Fix the override: `emery plan amend <entry> --authority-override <kind>=<source>`. |
 | `slice-catalog-drift` | Evidence references a `component:` slug missing from (or rejected in) the Vectis catalog. | Review `.emery/design-system/components.yaml` — see [Component factoring](../explanation/components.md). |
 
@@ -99,12 +99,13 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
+| `plan-gap-digest-missing` | An open `[unknown]` / `[conflict]` row carries no requirement digest (a legacy `spec.md`-fallback inventory), so no deferral fact can take it out of build scope; the gap gate refuses rather than building over it. | Re-run `emery plan refine` — refinement rewrites `model.yaml` and mints the digests deferrals match on, then re-run `emery plan execute`. |
 | `target-build-input-missing` | A `required` adapter-declared build input is absent from the slice tree. | Supply the input file (e.g. Vectis `tokens.yaml`) and re-run execute. |
 | `target-build-success-with-blocking-finding` | The target reported `status: success` but its report carries a blocking finding; the gate refuses. | Fix the finding the report names, then re-run execute. |
+| `target-build-deferred-covered` | The build phase report's `covered[]` claims a requirement the request's `deferred[]` excluded from build scope; the phase machine halts the attempt before verification. | Deferred requirements are out of the build's obligations — fix the target build so it neither implements nor claims them, then re-run execute. |
 | `plan-refinement-required` | Execute reached an in-scope leaf without a fresh refinement manifest — checked before any epoch, workspace, or wave. | Run `emery plan refine`, then re-run `emery plan execute`. |
 | `target-build-refinement-missing` | The build phase found no refinement manifest for the claimed slice (a hard refusal, unlike the `slice-refinement-missing` review advisory). | Run `emery plan refine`, then re-run `emery plan execute`. |
 | `target-base-freeze-failed` | Freezing the product tree as the wave base at wave open failed. | Check the product tree is readable and re-run `emery plan execute`. |
-| `plan-gaps-unresolved` | Open `[conflict]` / unwaived `[unknown]` requirements block the gap gate before build. | Fix inputs and re-run `emery plan refine`, or defer named unknowns with `--waive <slice>/<req> --reason "<why>"` on execute. |
 | `plan-epoch-stale` | A covered refinement digest drifted (or its manifest disappeared) after the epoch opened. | Re-run `emery plan refine`, then `emery plan execute`. |
 | `merge-delta-headers-required` | A hand-authored flat requirement block was submitted against a non-empty baseline. | Use the delta format (`## ADDED / MODIFIED / REMOVED / RENAMED Requirements`) — see [Artifact format](artifact-format.md#delta-spec-format-modified-domain). |
 | `plan-entry-not-found` | The merge phase found no plan entry matching the slice. | Add the entry (`emery plan add`) or check the slice name. |

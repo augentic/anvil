@@ -11,7 +11,6 @@ pub use atomic::{AtomicYaml, Mutation, with_state};
 use error::Error;
 use serde::{Deserialize, Serialize};
 
-use crate::gap_policy::GapPolicy;
 use crate::platform::Platform;
 
 /// In-memory representation of `.emery/project.yaml`.
@@ -57,13 +56,6 @@ pub struct ProjectConfig {
     /// non-empty and must include `Platform::Core`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub platforms: Vec<Platform>,
-
-    /// Declared gap policy (`strict | defer`) — the build gate's
-    /// posture toward open gap rows. Absent means `strict`. Written
-    /// by `emery init --gap-policy` and preserved by `init --upgrade`;
-    /// CLI-written only, never hand-edited (RFC-86a D3).
-    #[serde(rename = "gap-policy", default, skip_serializing_if = "Option::is_none")]
-    pub gap_policy: Option<GapPolicy>,
 }
 impl ProjectConfig {
     /// Load `.emery/project.yaml` from `project_dir`.

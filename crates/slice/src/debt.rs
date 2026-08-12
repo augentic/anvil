@@ -10,12 +10,11 @@ use error::Error;
 use jiff::Timestamp;
 use jiff::civil::Date;
 use jiff::tz::TimeZone;
-use project::journal::DeferralOrigin;
 use serde::Serialize;
 
 /// Line prefix of the self-describing baseline debt note. The tail is
-/// `origin: <o>; change: <c>; date: <YYYY-MM-DD>; reason: <free text>`
-/// — reason last, so free text never confuses the fixed-key parse.
+/// `change: <c>; date: <YYYY-MM-DD>; reason: <free text>` — reason
+/// last, so free text never confuses the fixed-key parse.
 pub const NOTE_PREFIX: &str = "Note: deferred — ";
 
 /// One carried gap-status requirement in the baseline backlog.
@@ -43,10 +42,8 @@ pub struct DebtRow {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct DebtNote {
-    /// Covering deferral's reason (operator or synthesized policy text).
+    /// Covering deferral's synthesized gate-time reason.
     pub reason: String,
-    /// Which surface dispositioned the requirement.
-    pub origin: DeferralOrigin,
     /// Originating change (`plan.yaml.name` at merge time).
     pub change: String,
     /// Deferral date as stamped (`YYYY-MM-DD`).
@@ -101,11 +98,9 @@ pub fn baseline(specs_dir: &Path, now: Timestamp) -> Result<Vec<DebtRow>, Error>
 /// never fails on operator-edited prose.
 fn parse_note(req: &Requirement, today: Date) -> Option<DebtNote> {
     req.body.lines().rev().find_map(|line| {
-        let rest = line.trim().strip_prefix(NOTE_PREFIX)?.strip_prefix("origin: ")?;
-        let (origin, rest) = rest.split_once("; change: ")?;
+        let rest = line.trim().strip_prefix(NOTE_PREFIX)?.strip_prefix("change: ")?;
         let (change, rest) = rest.split_once("; date: ")?;
         let (date, reason) = rest.split_once("; reason: ")?;
-        let origin: DeferralOrigin = origin.parse().ok()?;
         let deferred: Date = date.parse().ok()?;
         // Clamp future-dated notes (clock skew) to zero age rather
         // than dropping the provenance detail.
@@ -115,7 +110,6 @@ fn parse_note(req: &Requirement, today: Date) -> Option<DebtNote> {
             .and_then(|span| u64::try_from(span.get_days().max(0)).ok())?;
         Some(DebtNote {
             reason: reason.to_string(),
-            origin,
             change: change.to_string(),
             deferred_on: date.to_string(),
             age_days,
@@ -166,8 +160,8 @@ impl DebtRow {
             Some(note) => {
                 let noun = if note.age_days == 1 { "day" } else { "days" };
                 format!(
-                    "{head} — {} ({}, change {}, {} {noun})",
-                    note.reason, note.origin, note.change, note.age_days
+                    "{head} — {} (change {}, {} {noun})",
+                    note.reason, note.change, note.age_days
                 )
             }
             None => head,

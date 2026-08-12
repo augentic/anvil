@@ -72,10 +72,11 @@ emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --diver
 emery plan remove <entry>                                  # pre-execution deferral (replaceable plan only)
 emery plan drop <entry> [--reason "..."]               # abandon a refined slice without merging
 emery plan refine [--slice <slice>]...                 # specification drain: extract + synthesize + refinement.yaml per leaf
-emery plan execute [--waive <slice>/<req> --reason …]  # authorization epoch over refinement digests + drained build → merge loop
-emery plan status                                      # read-only next-action + Ready/Authorized
-emery plan gaps                                        # typed gap inventory
-emery plan archive
+emery plan execute                                     # authorization epoch over refinement digests + drained build → merge loop
+emery plan status                                      # read-only next-action + Ready/Authorized + debt counts
+emery plan gaps                                        # typed gap inventory with open|deferred dispositions
+emery plan archive                                     # archive the drained plan (prints the carried-debt summary)
+emery debt                                             # baseline debt projection (carried unknown/conflict backlog)
 
 # Slice projections (read-only)
 emery slice list                                       # every slice with status + target

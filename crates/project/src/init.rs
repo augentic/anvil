@@ -14,7 +14,6 @@ use context::Skip;
 use error::Error;
 
 use crate::adapter::{AdapterSelector, PlatformsSurface, ResolvedTarget};
-use crate::gap_policy::GapPolicy;
 use crate::handler::ExecutionPaths;
 use crate::platform::Platform;
 
@@ -51,18 +50,12 @@ pub(crate) struct InitOptions<'a> {
     /// operator did not pass `--platforms`. When the resolved target
     /// adapter declares `platforms.required`, this must be `Some`.
     pub platforms: Option<&'a [Platform]>,
-    /// Gap policy to declare on `project.yaml` (`gap-policy:`).
-    /// `None` means the operator did not pass `--gap-policy`: a fresh
-    /// init writes no declaration (absent means strict) and
-    /// `--upgrade` preserves the recorded value. Inert until the
-    /// execute gate consumes it (RFC-86a D3).
-    pub gap_policy: Option<GapPolicy>,
     /// When `true`, run the re-entry **upgrade** path instead of a
     /// fresh scaffold: bump `project.yaml.emery` to the running
     /// binary's version over an already-populated `.emery/`, preserving
     /// every other field and every operator artifact. Mutually
     /// exclusive with the `<adapter>` positional, `--name`, and
-    /// `--description`; `--platforms` and `--gap-policy` stay legal.
+    /// `--description`; `--platforms` stays legal.
     pub upgrade: bool,
 }
 

@@ -10,7 +10,6 @@ use artifacts::spec::{REQ_HEADING, REQ_ID_PREFIX};
 use error::Error;
 use jiff::Timestamp;
 use project::config::Layout;
-use project::journal::DeferralOrigin;
 use project::plan::{Disposition, Plan, collect_events, plan_gaps_body};
 
 use crate::debt::NOTE_PREFIX;
@@ -34,10 +33,8 @@ pub struct CarriedDebt {
     pub status: RequirementStatus,
     /// Canonical requirement-body digest — the deferral match key.
     pub requirement_digest: String,
-    /// Covering fact's reason (operator or synthesized policy text).
+    /// Covering fact's synthesized gate-time reason.
     pub reason: String,
-    /// Which surface dispositioned the requirement.
-    pub origin: DeferralOrigin,
     /// When the covering fact was appended — the deferral date.
     pub deferred_at: Timestamp,
 }
@@ -48,14 +45,11 @@ impl CarriedDebt {
     #[must_use]
     pub fn note_line(&self, change: &str) -> String {
         let date = self.deferred_at.strftime("%Y-%m-%d");
-        // The reason is single-line by construction (`plan defer`
-        // rejects newlines), but the note must stay one parseable
-        // line regardless — collapse residual whitespace runs.
+        // The synthesized reason is single-line by construction, but
+        // the note must stay one parseable line regardless — collapse
+        // residual whitespace runs.
         let reason = self.reason.split_whitespace().collect::<Vec<_>>().join(" ");
-        format!(
-            "{NOTE_PREFIX}origin: {}; change: {change}; date: {date}; reason: {reason}",
-            self.origin
-        )
+        format!("{NOTE_PREFIX}change: {change}; date: {date}; reason: {reason}")
     }
 }
 
@@ -90,7 +84,6 @@ pub fn carried(layout: Layout<'_>, slice: &str) -> Result<SliceDebt, Error> {
                 status: row.status,
                 requirement_digest,
                 reason: deferral.reason,
-                origin: deferral.origin,
                 deferred_at: deferral.deferred_at,
             })
         })
@@ -236,7 +229,6 @@ mod tests {
                     status: RequirementStatus::Unknown,
                     requirement_digest: "d1".into(),
                     reason: "blocked; reason: awaiting upstream;\ndate: slips to Q3".into(),
-                    origin: DeferralOrigin::Operator,
                     deferred_at: ts(),
                 },
                 CarriedDebt {
@@ -244,7 +236,6 @@ mod tests {
                     status: RequirementStatus::Conflict,
                     requirement_digest: "d2".into(),
                     reason: "TTL owner decides next change".into(),
-                    origin: DeferralOrigin::Policy,
                     deferred_at: ts(),
                 },
             ],
@@ -257,11 +248,10 @@ mod tests {
         let unknown = &rows[0];
         assert_eq!(unknown.req, "REQ-001");
         assert_eq!(unknown.status, RequirementStatus::Unknown);
-        let note = unknown.deferral.as_ref().expect("operator note");
+        let note = unknown.deferral.as_ref().expect("deferral note");
         // The embedded delimiters survive; the newline collapsed to a
         // space.
         assert_eq!(note.reason, "blocked; reason: awaiting upstream; date: slips to Q3");
-        assert_eq!(note.origin, DeferralOrigin::Operator);
         assert_eq!(note.change, "demo");
         assert_eq!(note.deferred_on, "2023-11-14");
         assert_eq!(note.age_days, 0);
@@ -269,9 +259,8 @@ mod tests {
         let conflict = &rows[1];
         assert_eq!(conflict.req, "REQ-002");
         assert_eq!(conflict.status, RequirementStatus::Conflict);
-        let note = conflict.deferral.as_ref().expect("policy note");
+        let note = conflict.deferral.as_ref().expect("deferral note");
         assert_eq!(note.reason, "TTL owner decides next change");
-        assert_eq!(note.origin, DeferralOrigin::Policy);
 
         // Both conflict arms survive annotation.
         let annotated = fs::read_to_string(specs.join("spec.md")).expect("annotated spec");

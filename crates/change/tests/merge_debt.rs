@@ -12,11 +12,9 @@ use artifacts::spec::provenance::RequirementStatus;
 use change::plan;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    DEFAULT_WRITER, DeferralOrigin, DeferredMember, Event, EventKind, FactEpochRef, append_for,
-    read_union,
+    DEFAULT_WRITER, DeferredMember, Event, EventKind, FactEpochRef, append_for, read_union,
 };
 
 /// The minimal profile whose refine mints one `[unknown]` row
@@ -49,10 +47,10 @@ async fn scaffold(session: &Session) {
     .expect("author");
 }
 
-async fn execute(session: &Session, gap_policy: Option<GapPolicy>) {
+async fn execute(session: &Session) {
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput { gap_policy },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect("execute drains");
@@ -80,30 +78,28 @@ fn render_archive(body: &plan::handlers::ArchiveBody) -> String {
     String::from_utf8(out).expect("utf8")
 }
 
-/// Acceptance 6, policy path: the deferred unknown drains through
+/// Acceptance 6: the deferred unknown drains through
 /// merge; the baseline debt row is self-describing; the wave fact
 /// names the accepted debt; the unforced archive succeeds and renders
 /// the summary.
 #[tokio::test]
-async fn policy_debt_conserved() {
+async fn gate_debt_conserved() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
-    execute(&session, Some(GapPolicy::Defer)).await;
+    support::refine(&session, "greeting").await.expect("refine");
+    execute(&session).await;
 
     // The folded baseline row: status preserved, final baseline id,
-    // and the appended self-describing note (origin, change, date,
-    // reason — reason last so free text stays parseable).
+    // and the appended self-describing note (change, date, reason —
+    // reason last so free text stays parseable).
     let baseline =
         fs::read_to_string(root.join(".emery/specs/greeting/spec.md")).expect("merged baseline");
     assert!(baseline.contains("greeting error handling [unknown]"), "{baseline}");
     assert!(baseline.contains("Status: unknown"), "{baseline}");
     assert!(baseline.contains("ID: REQ-001"), "{baseline}");
-    assert!(
-        baseline.contains("Note: deferred — origin: policy; change: demo; date: "),
-        "{baseline}"
-    );
-    assert!(baseline.contains("; reason: deferred by gap-policy under epoch "), "{baseline}");
+    assert!(baseline.contains("Note: deferred — change: demo; date: "), "{baseline}");
+    assert!(baseline.contains("; reason: deferred at the build gate under epoch "), "{baseline}");
 
     // The wave-commit fact snapshots exactly the debt it accepted,
     // digest-bound to the covering deferral fact.
@@ -137,45 +133,53 @@ async fn policy_debt_conserved() {
     assert_eq!(row.req, "REQ-001");
     assert_eq!(row.status, RequirementStatus::Unknown);
     let detail = row.deferral.as_ref().expect("covering deferral detail");
-    assert_eq!(detail.origin, DeferralOrigin::Policy);
-    assert!(detail.reason.starts_with("deferred by gap-policy under epoch "), "{}", detail.reason);
+    assert!(
+        detail.reason.starts_with("deferred at the build gate under epoch "),
+        "{}",
+        detail.reason
+    );
     let text = render_archive(&archived);
     assert!(text.contains("carried debt (1 deferred):"), "{text}");
     assert!(text.contains("unknown:"), "{text}");
-    assert!(text.contains("greeting/REQ-001 — deferred by gap-policy under epoch "), "{text}");
+    assert!(text.contains("greeting/REQ-001 — deferred at the build gate under epoch "), "{text}");
 }
 
-/// Acceptance 6, operator path: the note carries the operator's
-/// reason and origin.
+/// Acceptance 6, pre-covered path: a durable deferral fact minted
+/// before execute covers the gate, and the note folds its reason —
+/// not a fresh gate-time synthesis.
 #[tokio::test]
-async fn note_reason_origin() {
+async fn note_carries_reason() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
-    run::<plan::handlers::Defer, _, _>(
-        session.provider(),
-        plan::handlers::DeferInput {
-            selectors: vec![plan::handlers::DeferSelector {
-                slice: "greeting".into(),
-                req: "REQ-001".into(),
-            }],
-            reason: Some("carried to the next change".to_string()),
-            retract: false,
-        },
-    )
-    .await
-    .expect("defer");
 
-    // Strict default: the durable deferral covers the gate.
-    execute(&session, None).await;
+    // A pre-existing deferral fact minted before execute.
+    let gaps = run::<plan::handlers::Gaps, _, _>(session.provider(), plan::handlers::GapsInput {})
+        .await
+        .expect("gaps");
+    let row = gaps
+        .rows
+        .iter()
+        .find(|row| row.slice == "greeting" && row.req == "REQ-001")
+        .expect("greeting/REQ-001 gap row");
+    let fact = Event::new(
+        jiff::Timestamp::now(),
+        EventKind::GapDeferred {
+            slice: "greeting".into(),
+            req: "REQ-001".into(),
+            requirement_digest: row.requirement_digest.clone().expect("digest-bearing row"),
+            reason: "carried to the next change".into(),
+        },
+    );
+    append_for(Layout::new(&root), DEFAULT_WRITER, &[fact]).expect("append deferral");
+
+    // The durable deferral covers the gate — no new mint.
+    execute(&session).await;
 
     let baseline =
         fs::read_to_string(root.join(".emery/specs/greeting/spec.md")).expect("merged baseline");
-    assert!(
-        baseline.contains("Note: deferred — origin: operator; change: demo; date: "),
-        "{baseline}"
-    );
+    assert!(baseline.contains("Note: deferred — change: demo; date: "), "{baseline}");
     assert!(baseline.contains("; reason: carried to the next change"), "{baseline}");
     let deferred = wave_deferred(&root, "greeting");
     assert_eq!(deferred.len(), 1, "{deferred:?}");
@@ -183,7 +187,7 @@ async fn note_reason_origin() {
 
 /// Acceptance 7 (RFC-86a D9): after a debt-carrying merge, `emery
 /// debt` reads the baseline alone and lists the carried row with every
-/// note field — reason, origin, originating change, and age — and the
+/// note field — reason, originating change, and age — and the
 /// next `plan author` renders the same inventory into the `change.md`
 /// review prose it authors.
 #[tokio::test]
@@ -198,7 +202,8 @@ async fn debt_after_merge() {
     ]);
     let root = session.root().to_path_buf();
     scaffold(&session).await;
-    execute(&session, Some(GapPolicy::Defer)).await;
+    support::refine(&session, "greeting").await.expect("refine");
+    execute(&session).await;
 
     // The projection reads the merged baseline note, never fact logs.
     let debt =
@@ -211,9 +216,8 @@ async fn debt_after_merge() {
     assert_eq!(row.req, "REQ-001");
     assert_eq!(row.status, RequirementStatus::Unknown);
     let note = row.deferral.as_ref().expect("self-describing note");
-    assert_eq!(note.origin, DeferralOrigin::Policy);
     assert_eq!(note.change, "demo");
-    assert!(note.reason.starts_with("deferred by gap-policy under epoch "), "{}", note.reason);
+    assert!(note.reason.starts_with("deferred at the build gate under epoch "), "{}", note.reason);
     assert!(note.age_days <= 1, "the deferral happened just now: {note:?}");
 
     // Close the change, then author the corrective one: the review
@@ -240,10 +244,10 @@ async fn debt_after_merge() {
     assert!(brief.contains("## Carried debt"), "{brief}");
     assert!(brief.contains("Unknowns:"), "{brief}");
     assert!(
-        brief.contains("- greeting/REQ-001 greeting error handling — deferred by gap-policy"),
+        brief.contains("- greeting/REQ-001 greeting error handling — deferred at the build gate"),
         "{brief}"
     );
-    assert!(brief.contains("(policy, change demo, "), "{brief}");
+    assert!(brief.contains("(change demo, "), "{brief}");
 }
 
 /// D6 visibility at the boundary: the archive summary renders
@@ -276,7 +280,6 @@ async fn archive_splits_kinds() {
                 req: req.into(),
                 requirement_digest: digest.into(),
                 reason: reason.into(),
-                origin: DeferralOrigin::Operator,
             },
         )
     };

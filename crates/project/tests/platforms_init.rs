@@ -23,7 +23,6 @@ async fn vectis_platform() {
                 name: Some("demo".to_string()),
                 description: None,
                 platforms: platforms.map(ToString::to_string),
-                gap_policy: None,
                 upgrade: false,
             },
         )

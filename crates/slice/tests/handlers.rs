@@ -134,7 +134,6 @@ mod init {
                 name: Some("demo-project".into()),
                 description: None,
                 platforms: None,
-                gap_policy: None,
                 upgrade: false,
             },
         )

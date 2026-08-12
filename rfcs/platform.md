@@ -132,7 +132,7 @@ Numbers 86 through 91 are frozen history and do not follow that rule: [RFC-86](r
 
 The remaining workspace stand-in is merge-time `apply` (deleted by RFC-88). RFC-88's recursive authoring contract remains the product branch; RFC-91 adds the serial review boundary and wave-time base, RFC-96 owns concurrent phase scheduling, RFC-99 pipelines closed branches through that scheduler, and RFC-100 optionally distributes it. Every RFC owns an independently testable delivery; later steps extend rather than predeclare its wire contract.
 
-The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / D17 as amended by [RFC-86a](rfc-86a-gap-deferral.md): starting `emery plan execute` appends `plan.execute.started` with typed coverage carrying the effective gap policy; there is no separate `approve` verb, no projected `approved` rung, and no silent skip of gaps — open rows block under `strict`, and every deferral is a durable, journaled `gap.deferred` fact. RFC-91 preserves that event, replaces spec-only coverage with complete refinement-manifest digests, and removes `refine-under-epoch`; `plan refine` creates no code-work grant. RFC-99 adds progressive run and member admission for unattended candidate work. RFC-102 alone extends policy admission to accepted-CID mutation.
+The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / D17 as amended by [RFC-86a](rfc-86a-gap-deferral.md): starting `emery plan execute` appends `plan.execute.started` with typed coverage; there is no separate `approve` verb, no projected `approved` rung, and no silent skip of gaps — every open row is auto-deferred at the build gate as a durable, journaled `gap.deferred` fact (the `strict | defer` policy knob and the `plan defer` verb were deleted after RFC-86a landed). RFC-91 preserves that event, replaces spec-only coverage with complete refinement-manifest digests, and removes `refine-under-epoch`; `plan refine` creates no code-work grant. RFC-99 adds progressive run and member admission for unattended candidate work. RFC-102 alone extends policy admission to accepted-CID mutation.
 
 ### Product critical path — migrate and change a platform
 
@@ -252,8 +252,8 @@ emery plan refine     →  serially extract and synthesize every leaf in topolog
                          persist complete refinement manifests; stop before product code
 operator may review   →  read specs and gaps; correct inputs and re-refine as needed
 emery plan execute    →  cover the exact refinement manifests;
-                         enforce gap/status gates before build (open gaps block under
-                         strict; durable deferrals via plan defer / --gap-policy — RFC-86a);
+                         enforce gap/status gates before build (open gaps auto-defer at
+                         the gate as durable gap.deferred facts — RFC-86a as amended);
                          prepare private workspaces on demand (RFC-87); execute leaves;
                          commit target waves (RFC-88);
                          converge domains and extend waves across ready leaves (RFC-96);
@@ -318,7 +318,7 @@ Two consequences follow, and they are the reason the distinction is worth statin
 
 The first is that the substitution is safe, because the engine does not trust its caller. Authority comes from digests, gates, and the fact log — never from who invoked a command or what they intended. An agent operator cannot skip the gap gate, forge epoch coverage, write product code into the operator's checkout, or self-approve, because there is no approve verb and every disposition is a digest-bound fact carrying a reason. The audit trail is invariant under operator substitution, which is precisely what an agent-orchestrated design cannot offer: there, replacing the human changes what is knowable, because the orchestrator's reasoning is in-context and unreplayable.
 
-The second is that invariance cuts both ways. A trail that is identical whoever produced it cannot say who produced it, and the engine's guarantee is legibility rather than prevention — an agent operator can defer, drop, override authority, and force, all journaled and none blocked. [RFC-103](rfc-103-operator-attribution.md) closes that by attributing the act; [RFC-102](rfc-102-policy-gated-autonomy.md) keeps operator verbs out of policy scope for the same reason RFC-86a removed per-epoch waivers. As the operator becomes an agent, the read-only projections stop being the operator's dashboard and become the human's audit surface over the agent operator — which is what moves [RM-24 and RM-27](roadmap.md) from ergonomics to assurance.
+The second is that invariance cuts both ways. A trail that is identical whoever produced it cannot say who produced it, and the engine's guarantee is legibility rather than prevention — an agent operator can drop, override authority, and force — and every gap it leaves open is auto-deferred at the build gate — all journaled and none blocked. [RFC-103](rfc-103-operator-attribution.md) closes that by attributing the act; [RFC-102](rfc-102-policy-gated-autonomy.md) keeps operator verbs out of policy scope for the same reason RFC-86a removed per-epoch waivers. As the operator becomes an agent, the read-only projections stop being the operator's dashboard and become the human's audit surface over the agent operator — which is what moves [RM-24 and RM-27](roadmap.md) from ergonomics to assurance.
 
 ## Deliberately rejected
 

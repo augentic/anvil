@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use super::{EnsuredAdapter, InitOptions, InitResult, init};
 use crate::adapter::{AdapterSelector, ComponentMeta, Resolver};
 use crate::config::{Layout, ProjectConfig};
-use crate::gap_policy::GapPolicy;
 use crate::handler::{Anchor, ExecutionPaths, Render};
 use crate::platform::parse_platforms_csv;
 
@@ -33,11 +32,6 @@ pub struct InitInput {
     /// Raw `--platforms` CSV.
     #[serde(default)]
     pub platforms: Option<String>,
-    /// Gap policy (`strict | defer`) to declare on
-    /// `project.yaml.gap-policy`; absent means no declaration
-    /// (strict).
-    #[serde(default)]
-    pub gap_policy: Option<GapPolicy>,
     /// Run the re-entry upgrade path over an existing project.
     #[serde(default)]
     pub upgrade: bool,
@@ -61,7 +55,6 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
             name,
             description,
             platforms,
-            gap_policy,
             upgrade,
         } = input;
         let paths = context.provider.paths();
@@ -108,7 +101,6 @@ impl<P: Anchor + Resolver> Operation<P> for Init {
             name: name.as_deref(),
             description: description.as_deref(),
             platforms: parsed_platforms.as_deref(),
-            gap_policy,
             upgrade,
         };
         let result = init(context.provider, opts)?;

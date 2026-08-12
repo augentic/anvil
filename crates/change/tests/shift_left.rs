@@ -9,9 +9,8 @@ mod support;
 use change::{LoopStep, plan};
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
-use project::journal::{DeferralOrigin, EventKind, read_union};
+use project::journal::{EventKind, read_union};
 
 fn suite_answers() -> Vec<String> {
     vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
@@ -191,11 +190,11 @@ async fn unrefined_execute_fails() {
 }
 
 /// RFC-86a acceptance #3 under RFC-91 staging: refine mints the
-/// unknown; execute under `defer` dispositions it at the build gate
-/// (one `origin: policy` fact, synthesized reason) and drains
-/// build/merge — execute never auto-refines.
+/// unknown; the execute gap gate dispositions it itself (one
+/// `gap.deferred` fact, synthesized reason) and drains build/merge —
+/// execute never auto-refines and open gaps never park the loop.
 #[tokio::test]
-async fn refine_defer_drains() {
+async fn refine_gate_mints_drains() {
     let session = Session::bare(vec![
         mock::answers::greeting_grouping(),
         mock::answers::greeting_unknown_synth(),
@@ -216,52 +215,41 @@ async fn refine_defer_drains() {
 
     let executed = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
-    .expect("defer policy drains over the minted unknown");
+    .expect("the gate defers the minted unknown and drains");
     assert_eq!(executed.status, "drained");
     let ran: Vec<(&str, LoopStep)> =
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
     assert_eq!(
         ran,
         [("greeting", LoopStep::Build), ("greeting", LoopStep::Merge)],
-        "execute must not re-refine; got {ran:?}"
+        "execute must not re-refine and open gaps never park the loop; got {ran:?}"
     );
 
-    // Exactly one gate-time policy fact for the minted unknown.
+    // Exactly one gate-time deferral fact for the minted unknown.
     let deferrals: Vec<_> = read_union(Layout::new(&root))
         .expect("union")
         .into_iter()
         .filter_map(|event| match event.kind {
             EventKind::GapDeferred {
-                slice,
-                req,
-                reason,
-                origin: DeferralOrigin::Policy,
-                ..
+                slice, req, reason, ..
             } => Some((slice.as_str().to_string(), req, reason)),
             _ => None,
         })
         .collect();
-    assert_eq!(deferrals.len(), 1, "one policy fact per open row: {deferrals:?}");
+    assert_eq!(deferrals.len(), 1, "one gate-time fact per open row: {deferrals:?}");
     let (slice, req, reason) = &deferrals[0];
     assert_eq!(slice, "greeting");
     assert_eq!(req, "REQ-001");
     assert!(
-        reason.starts_with("deferred by gap-policy under epoch "),
-        "synthesized policy reason: {reason}"
+        reason.starts_with("deferred at the build gate under epoch "),
+        "synthesized gate reason: {reason}"
     );
 
-    // The effective policy rode the coverage payload.
-    let project::journal::ClosedPlanCoverage::ClosedPlan {
-        gap_policy,
-        refinements,
-        ..
-    } = started_coverage(&root);
-    assert_eq!(gap_policy, GapPolicy::Defer);
+    let project::journal::ClosedPlanCoverage::ClosedPlan { refinements, .. } =
+        started_coverage(&root);
     assert!(refinements.contains_key("greeting"), "refinement digest covered: {refinements:?}");
 
     let journal = journal_text(&root);

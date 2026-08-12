@@ -26,11 +26,9 @@ use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
-    ClosedPlanCoverage, DEFAULT_WRITER, DeferralOrigin, Event as JournalEvent, EventKind,
-    append_for,
+    ClosedPlanCoverage, DEFAULT_WRITER, Event as JournalEvent, EventKind, append_for,
 };
 use support::{change, change_with_deps, plan_with_changes};
 
@@ -612,10 +610,10 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn unknowns_review_gaps() {
-        // Refined + open unknowns → not Ready; next-action is
-        // review-gaps; resume points at per-req plan defer (D22 /
-        // RFC-86a D3).
+    async fn open_unknowns_build() {
+        // Refined + open unknowns → not Ready, but nothing blocks:
+        // the projection keeps the build dispatch and resumes at the
+        // execute loop, which defers open gaps at the gate.
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -634,15 +632,9 @@ mod milestones {
         let body = status(&project, &plan).await;
         assert!(!body.ready);
         assert!(!body.authorized);
-        assert_eq!(body.action, NextActionKind::ReviewGaps);
-        assert_eq!(body.next_action, "review-gaps");
-        let resume = body.resume.as_deref().expect("resume");
-        assert!(
-            resume.contains("emery plan defer")
-                && resume.contains("a/REQ-003")
-                && resume.contains("--reason"),
-            "resume must suggest the durable defer act, got: {resume}"
-        );
+        assert_eq!(body.action, NextActionKind::Build);
+        assert_eq!(body.next_action, "build a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
         let mut out = Vec::new();
         project::handler::Render::render(&body, &mut out).expect("render");
         let text = String::from_utf8(out).expect("utf8");
@@ -652,10 +644,10 @@ mod milestones {
     }
 
     #[tokio::test]
-    async fn conflict_resume_defer() {
-        // D6: `[conflict]` defers under the same exclusion semantics
-        // as `[unknown]`, so the resume suggests the durable act for
-        // open conflicts too (RFC-86a D7).
+    async fn open_conflict_build() {
+        // D6: `[conflict]` blocks Ready under the same semantics as
+        // `[unknown]`, and dispatches build the same way — the gate
+        // defers open conflicts too.
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -673,20 +665,15 @@ mod milestones {
         support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready);
-        assert_eq!(body.next_action, "review-gaps");
-        let resume = body.resume.as_deref().expect("resume");
-        assert!(
-            resume.contains("emery plan defer") && resume.contains("a/REQ-002"),
-            "open conflicts are deferrable (D6), got: {resume}"
-        );
+        assert_eq!(body.next_action, "build a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
     }
 
     #[tokio::test]
     async fn legacy_resume_execute() {
         // A `spec.md`-fallback inventory (refined slice, model without
-        // requirements) carries no requirement digests, so `plan defer`
-        // refuses its rows — the resume must hint re-refining under
-        // the epoch instead of a defer command that cannot succeed.
+        // requirements) carries no requirement digests. It still
+        // blocks Ready and dispatches build like any open row.
         let project = Session::scripted("demo", Vec::new());
         write_model(project.root(), "a", "requirements: []\n");
         let specs = project.root().join(".emery/slices/a/specs/auth");
@@ -704,12 +691,8 @@ mod milestones {
         support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready);
-        assert_eq!(body.next_action, "review-gaps");
-        assert_eq!(
-            body.resume.as_deref(),
-            Some("emery plan refine"),
-            "digest-less rows resume at re-refine, not plan defer"
-        );
+        assert_eq!(body.next_action, "build a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
     }
 
     /// Canonical digest of a title-only requirement body — the shape
@@ -732,17 +715,15 @@ mod milestones {
                 req: req.into(),
                 requirement_digest: title_digest(title),
                 reason: "carried to next change".into(),
-                origin: DeferralOrigin::Operator,
             },
         )
     }
 
     #[tokio::test]
     async fn all_deferred_execute() {
-        // RFC-86a D7: next-actions compute over open findings only —
-        // a fully-dispositioned plan projects the build dispatch and
-        // resumes at execute, never review-gaps. Ready stays
-        // clean-only: the carried debt keeps it false.
+        // A fully-dispositioned plan projects the build dispatch and
+        // resumes at execute. Ready stays clean-only: the carried
+        // debt keeps it false (D22).
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -789,13 +770,13 @@ mod milestones {
             text.contains("debt: 2 deferred gaps (1 unknown, 1 conflict)"),
             "debt line with conflicts broken out, got:\n{text}"
         );
-        assert!(!text.contains("review-gaps"), "never review-gaps when fully deferred:\n{text}");
     }
 
     #[tokio::test]
-    async fn open_drives_review() {
-        // A deferred row beside an open one: review-gaps stands, and
-        // the resume names only the open selector (RFC-86a D7).
+    async fn open_beside_deferred() {
+        // A deferred row beside an open one: the open row blocks
+        // Ready but not the build dispatch; only the deferred row
+        // counts as debt.
         let project = Session::scripted("demo", Vec::new());
         write_model(
             project.root(),
@@ -819,7 +800,8 @@ mod milestones {
         support::stage_manifest(project.root(), "a");
         let body = status(&project, &plan).await;
         assert!(!body.ready);
-        assert_eq!(body.next_action, "review-gaps");
+        assert_eq!(body.next_action, "build a");
+        assert_eq!(body.resume.as_deref(), Some("/emery:execute"));
         assert_eq!(
             body.debt,
             DebtCounts {
@@ -827,9 +809,6 @@ mod milestones {
                 conflict: 0,
             }
         );
-        let resume = body.resume.as_deref().expect("resume");
-        assert!(resume.contains("a/REQ-005"), "open row in the defer resume: {resume}");
-        assert!(!resume.contains("a/REQ-003"), "deferred row needs no re-supply: {resume}");
     }
 
     #[tokio::test]
@@ -894,7 +873,6 @@ mod milestones {
                     coverage: ClosedPlanCoverage::ClosedPlan {
                         plan_digest: live_plan_digest(root),
                         refinements,
-                        gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
                 },
@@ -963,7 +941,6 @@ mod milestones {
                             "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                                 .into(),
                         refinements,
-                        gap_policy: GapPolicy::Strict,
                     },
                     discovery_digest: None,
                 },

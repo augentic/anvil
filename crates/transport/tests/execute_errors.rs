@@ -1,21 +1,18 @@
-//! Wire-contract coverage for the RFC-86 execute validation codes:
-//! argv through the command router → exit 2 with the kebab-case
-//! discriminant on the JSON `error` envelope (`plan-gaps-unresolved`,
-//! `plan-epoch-stale`), plus the RFC-86a waiver hard cut (`--waive`
-//! is unknown argv; `--gap-policy` is the closed override).
+//! Wire-contract coverage for the execute validation codes: argv
+//! through the command router → the kebab-case discriminant on the
+//! JSON `error` envelope (`plan-refinement-required` — execute never
+//! refines), plus the hard cuts: `--waive` (RFC-86a) and
+//! `--gap-policy` (gap policy deleted) are unknown argv.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use jiff::Timestamp;
 use mock::invoke::run;
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
 use omnia_testkit::model::Harness;
-use project::GapPolicy;
 use project::config::Layout;
-use project::journal::{ClosedPlanCoverage, Event, EventKind, append_for};
 use project::plan::{AuthorityOverride, Entry, Plan};
 use tempfile::TempDir;
 
@@ -34,8 +31,8 @@ fn provider(root: impl Into<PathBuf>) -> Provider {
 }
 
 /// Project scaffolded on the mock adapter with one refined slice `a`
-/// carrying `model` and a single-entry plan, so `plan execute` reaches
-/// the build gate.
+/// carrying `model` and a single-entry plan — but no refinement
+/// manifest, so `plan execute` refuses at coverage assembly.
 async fn fixture(model: &str) -> (TempDir, Provider) {
     let project = tempfile::tempdir().expect("tempdir");
     let provider = provider(project.path());
@@ -118,57 +115,26 @@ async fn waive_is_unknown_argv() {
 }
 
 #[tokio::test]
-async fn rejects_unknown_policy() {
+async fn gap_policy_unknown_argv() {
+    // Gap-policy hard cut: the knob is deleted, so `--gap-policy`
+    // fails at the grammar (usage error, exit 2) before any dispatch.
     let (_project, provider) = fixture(CONFLICT_MODEL).await;
     let router =
         transport::command::router(Invoker::new("emery", provider.clone())).expect("router");
-    let response = router.execute(["emery", "plan", "execute", "--gap-policy", "sometimes"]).await;
+    let response = router.execute(["emery", "plan", "execute", "--gap-policy", "defer"]).await;
     assert_eq!(response.exit, 2);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("--gap-policy"), "clap names the offending flag: {stderr}");
+    assert!(stderr.contains("--gap-policy"), "clap names the unknown flag: {stderr}");
 }
 
 #[tokio::test]
-async fn gaps_unresolved_on_wire() {
+async fn refine_required_on_wire() {
+    // RFC-91 D5: execute never refines — a leaf without a fresh
+    // refinement manifest refuses typed before any epoch append,
+    // pointing at `emery plan refine`.
     let (_project, provider) = fixture(CONFLICT_MODEL).await;
 
     let (exit, envelope) = execute_json(&provider, &[]).await;
-    assert_eq!(exit, 2);
-    assert_eq!(envelope["error"], "plan-gaps-unresolved");
-    assert_eq!(envelope["exit-code"], 2);
-}
-
-#[tokio::test]
-async fn epoch_stale_on_wire() {
-    let (project, provider) = fixture(
-        r"requirements:
-  - id: REQ-001
-    title: login works
-    statement: ''
-    status: agreed
-    sources: [intent]
-",
-    )
-    .await;
-
-    // A concurrent writer's later epoch (simulated with a future
-    // timestamp) is the newest and no longer covers the live plan.
-    let peer_epoch = Event::new(
-        Timestamp::from_second(4_102_444_800).expect("timestamp"),
-        EventKind::PlanExecuteStarted {
-            coverage: ClosedPlanCoverage::ClosedPlan {
-                plan_digest:
-                    "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
-                refinements: BTreeMap::new(),
-                gap_policy: GapPolicy::Strict,
-            },
-            discovery_digest: None,
-        },
-    );
-    append_for(Layout::new(project.path()), "peer", &[peer_epoch]).expect("peer epoch");
-
-    let (exit, envelope) = execute_json(&provider, &[]).await;
-    assert_eq!(exit, 2);
-    assert_eq!(envelope["error"], "plan-epoch-stale");
-    assert_eq!(envelope["exit-code"], 2);
+    assert_eq!(envelope["error"], "plan-refinement-required");
+    assert_eq!(exit, envelope["exit-code"], "envelope exit matches the process exit");
 }

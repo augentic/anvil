@@ -152,11 +152,7 @@ async fn run_workflow(
         return Ok(());
     }
 
-    // Unattended composition (RFC-86a D8): the case's gap policy
-    // (default `defer`) rides the epoch so honest `[unknown]` rows
-    // never park the loop on an operator gesture.
-    let policy = case.gap_policy.to_string();
-    invoke(root, model, catalog, &["plan", "execute", "--gap-policy", &policy]).await?;
+    invoke(root, model, catalog, &["plan", "execute"]).await?;
 
     let plan = sandbox::read_plan(root)?;
     let events = project::plan::collect_events(Layout::new(root))?;

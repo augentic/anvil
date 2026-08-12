@@ -50,7 +50,6 @@ async fn target_seed_bare_init() {
             name: Some("demo-project".into()),
             description: None,
             platforms: None,
-            gap_policy: None,
             upgrade: false,
         },
     )

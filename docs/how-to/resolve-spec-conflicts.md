@@ -39,7 +39,7 @@ Authority order: `intent` > `documentation` > `behaviour` (canonical: [Authority
 
 ## Resolve a conflict
 
-A `[conflict]` is a tie at the top authority class, so no source automatically wins. The slice still reaches `refined`; reconcile before executing — `emery plan execute` refuses undealt conflicts at the gap gate, and `[conflict]` is never waiveable.
+A `[conflict]` is a tie at the top authority class, so no source automatically wins. The slice still reaches `refined`; reconcile before executing — an undealt conflict is auto-deferred at the build gate (the requirement leaves build scope and is conserved as debt), and building *over* a `[conflict]` is never allowed.
 
 1. Read both contributing Evidence files under `evidence/`.
 2. Decide which source should win (or that a misleading source should be dropped), then drive the inputs:

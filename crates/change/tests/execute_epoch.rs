@@ -1,6 +1,6 @@
-//! RFC-86 S18 / RFC-86a D3 / RFC-91 D5: `plan.execute.started` at
-//! execute start with exact per-leaf refinement digests and the
-//! effective gap policy on its `closed-plan` coverage.
+//! RFC-86 S18 / RFC-91 D5: `plan.execute.started` at execute start
+//! with exact per-leaf refinement digests on its typed `closed-plan`
+//! coverage.
 
 mod support;
 
@@ -10,7 +10,6 @@ use change::Plan;
 use change::plan::handlers::{Execute, ExecuteInput};
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{ClosedPlanCoverage, EventKind, read_union};
 use support::plan_with_changes;
@@ -92,7 +91,6 @@ async fn appends_closed_epoch() {
             ClosedPlanCoverage::ClosedPlan {
                 plan_digest,
                 refinements,
-                gap_policy,
             },
         discovery_digest,
     } = &started[0].kind
@@ -101,7 +99,6 @@ async fn appends_closed_epoch() {
     };
     assert!(plan_digest.starts_with("sha256:"), "{plan_digest}");
     assert!(discovery_digest.is_none());
-    assert_eq!(*gap_policy, GapPolicy::Strict, "no flag, no declaration → strict");
     assert!(
         refinements.contains_key("greeting"),
         "covered leaf carries a refinement digest; got {refinements:?}"
@@ -117,14 +114,13 @@ async fn appends_closed_epoch() {
     assert!(status.authorized, "epoch projects Authorized");
 }
 
-/// Init the mock adapter with an optional `gap-policy` declaration.
-async fn init_declared(session: &Session, gap_policy: Option<GapPolicy>) {
+/// Init the mock adapter.
+async fn init_mock(session: &Session) {
     run::<project::init::handlers::Init, _, _>(
         session.provider(),
         project::init::handlers::InitInput {
             adapter: Some("mock".to_string()),
             name: Some("demo".to_string()),
-            gap_policy,
             ..Default::default()
         },
     )
@@ -152,40 +148,18 @@ fn write_unknown_fixture(root: &std::path::Path) {
     support::stage_manifest(root, "a");
 }
 
-/// The effective policy on the sole `plan.execute.started` coverage.
-fn started_policy(root: &std::path::Path) -> GapPolicy {
-    let started = started_events(root);
-    assert_eq!(started.len(), 1, "exactly one plan.execute.started");
-    let EventKind::PlanExecuteStarted {
-        coverage: ClosedPlanCoverage::ClosedPlan { gap_policy, .. },
-        ..
-    } = &started[0].kind
-    else {
-        panic!("expected PlanExecuteStarted");
-    };
-    *gap_policy
-}
-
 #[tokio::test]
-async fn flag_rides_coverage() {
+async fn refined_leaf_covered() {
     let session = Session::bare(Vec::new());
-    init_declared(&session, None).await;
+    init_mock(&session).await;
     write_unknown_fixture(session.root());
 
     // Loop may stop after the epoch (open gap) — the fact must still
-    // be recorded at start with the effective policy.
-    drop(
-        run::<Execute, _, _>(
-            session.provider(),
-            ExecuteInput {
-                gap_policy: Some(GapPolicy::Defer),
-            },
-        )
-        .await,
-    );
+    // be recorded at start.
+    drop(run::<Execute, _, _>(session.provider(), ExecuteInput::default()).await);
 
-    assert_eq!(started_policy(session.root()), GapPolicy::Defer, "flag rides the coverage");
     let started = started_events(session.root());
+    assert_eq!(started.len(), 1, "exactly one plan.execute.started");
     let EventKind::PlanExecuteStarted {
         coverage: ClosedPlanCoverage::ClosedPlan { refinements, .. },
         ..
@@ -209,50 +183,12 @@ async fn flag_rides_coverage() {
 }
 
 #[tokio::test]
-async fn declaration_without_flag() {
+async fn coverage_payload_hard_cut() {
+    // Hard cut: the coverage wire shape carries `refinements`, never
+    // the deleted `unknown-waivers` / `gap-policy` fields or the
+    // deleted `refine-under-epoch` specs.
     let session = Session::bare(Vec::new());
-    init_declared(&session, Some(GapPolicy::Defer)).await;
-    write_unknown_fixture(session.root());
-
-    drop(run::<Execute, _, _>(session.provider(), ExecuteInput::default()).await);
-
-    assert_eq!(
-        started_policy(session.root()),
-        GapPolicy::Defer,
-        "the project.yaml declaration is the effective policy when no flag is passed"
-    );
-}
-
-#[tokio::test]
-async fn flag_overrides_declare() {
-    let session = Session::bare(Vec::new());
-    init_declared(&session, Some(GapPolicy::Defer)).await;
-    write_unknown_fixture(session.root());
-
-    drop(
-        run::<Execute, _, _>(
-            session.provider(),
-            ExecuteInput {
-                gap_policy: Some(GapPolicy::Strict),
-            },
-        )
-        .await,
-    );
-
-    assert_eq!(
-        started_policy(session.root()),
-        GapPolicy::Strict,
-        "the per-epoch flag overrides the declaration"
-    );
-}
-
-#[tokio::test]
-async fn no_coverage_unknown() {
-    // Acceptance 9 (hard cut): the coverage wire shape carries
-    // `gap-policy` + `refinements`, never the deleted `unknown-waivers`
-    // field or `refine-under-epoch` specs.
-    let session = Session::bare(Vec::new());
-    init_declared(&session, None).await;
+    init_mock(&session).await;
     write_unknown_fixture(session.root());
 
     drop(run::<Execute, _, _>(session.provider(), ExecuteInput::default()).await);
@@ -260,8 +196,8 @@ async fn no_coverage_unknown() {
     let started = started_events(session.root());
     let wire = serde_json::to_value(&started[0]).expect("serialize");
     let coverage = &wire["payload"]["coverage"];
-    assert_eq!(coverage["gap-policy"], "strict");
     assert!(coverage.get("refinements").is_some(), "RFC-91: {coverage}");
+    assert!(coverage.get("gap-policy").is_none(), "hard cut: {coverage}");
     assert!(coverage.get("unknown-waivers").is_none(), "hard cut: {coverage}");
     assert!(coverage.get("specs").is_none(), "hard cut: {coverage}");
 }

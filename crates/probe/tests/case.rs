@@ -10,7 +10,6 @@ use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use omnia_testkit::model::Harness;
 use probe::ModelFactory;
 use probe::case::{self, Case, WorkflowUntil};
-use project::GapPolicy;
 use project::plan::Status;
 use project::slice::SliceMetadata;
 use tempfile::TempDir;
@@ -40,36 +39,19 @@ mod config {
         };
         assert_eq!(workflow.until, WorkflowUntil::Execute);
         assert!(workflow.fixture.is_none());
-        assert_eq!(
-            workflow.gap_policy,
-            GapPolicy::Defer,
-            "unattended default: execute runs under `--gap-policy defer` (RFC-86a D8)"
-        );
     }
 
     #[test]
-    fn gap_policy_strict_pins() {
-        let case = case::parse(
+    fn gap_policy_key_refused() {
+        // Hard cut: the deleted `gap-policy` key is unknown argv for a
+        // workflow case, not a silently tolerated no-op.
+        let err = case::parse(
             "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
              gap-policy = \"strict\"\n\
              [sources]\nmain = \"mock:value:The greeting service.\"\n",
         )
-        .expect("a workflow case pinning strict parses");
-        let Case::Workflow(workflow) = case else {
-            panic!("workflow kind parses to a workflow case");
-        };
-        assert_eq!(workflow.gap_policy, GapPolicy::Strict);
-    }
-
-    #[test]
-    fn unknown_policy_refused() {
-        let err = case::parse(
-            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
-             gap-policy = \"lenient\"\n\
-             [sources]\nmain = \"mock:value:The greeting service.\"\n",
-        )
-        .expect_err("an unknown gap-policy value refuses");
-        assert!(format!("{err:#}").contains("lenient"), "{err:#}");
+        .expect_err("the deleted gap-policy key refuses");
+        assert!(format!("{err:#}").contains("gap-policy"), "{err:#}");
     }
 
     #[test]
@@ -370,26 +352,6 @@ fn stage_case(cases: &Path, id: &str, body: &str) {
     fs::write(dir.join("case.toml"), body).expect("write case.toml");
 }
 
-// The effective gap policy recorded on the sandbox's sole
-// `plan.execute.started` coverage.
-fn started_policy(root: &Path) -> GapPolicy {
-    use project::journal::{ClosedPlanCoverage, EventKind, read_union};
-    let started: Vec<_> = read_union(project::config::Layout::new(root))
-        .expect("journal union")
-        .into_iter()
-        .filter(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }))
-        .collect();
-    assert_eq!(started.len(), 1, "exactly one plan.execute.started");
-    let EventKind::PlanExecuteStarted {
-        coverage: ClosedPlanCoverage::ClosedPlan { gap_policy, .. },
-        ..
-    } = &started[0].kind
-    else {
-        panic!("expected closed-plan coverage");
-    };
-    *gap_policy
-}
-
 fn journal(root: &Path) -> String {
     let dir = root.join(".emery/events");
     let Ok(entries) = fs::read_dir(&dir) else {
@@ -499,72 +461,6 @@ async fn until_plan_leaves_entries() {
         "no entry advanced: ladders={ladders:?}"
     );
     assert!(!journal(&root).contains("plan.entry.advanced"), "no entry advanced before execution");
-}
-
-// Acceptance 10 (RFC-86a D8): the runner's `plan execute` carries
-// `--gap-policy defer` by default, observed on the recorded epoch.
-#[tokio::test]
-async fn defaults_to_defer() {
-    let tmp = TempDir::new().expect("tempdir");
-    let cases = tmp.path().join("cases");
-    stage_case(
-        &cases,
-        "greeting",
-        "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
-         [sources]\nmain = \"mock:value:The greeting service.\"\n",
-    );
-
-    let sandbox = tmp.path().join("sandbox");
-    case::run(
-        &cases,
-        &sandbox,
-        Some("greeting"),
-        None,
-        false,
-        &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]),
-    )
-    .await
-    .expect("the drained workflow case passes");
-
-    assert_eq!(
-        started_policy(&sandbox.join("greeting")),
-        GapPolicy::Defer,
-        "the runner's default `--gap-policy defer` rides the epoch coverage"
-    );
-}
-
-// A case pinning `gap-policy = "strict"` overrides the runner default.
-#[tokio::test]
-async fn case_pins_strict_policy() {
-    let tmp = TempDir::new().expect("tempdir");
-    let cases = tmp.path().join("cases");
-    stage_case(
-        &cases,
-        "greeting",
-        "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n\
-         gap-policy = \"strict\"\n\
-         [sources]\nmain = \"mock:value:The greeting service.\"\n",
-    );
-
-    let sandbox = tmp.path().join("sandbox");
-    case::run(
-        &cases,
-        &sandbox,
-        Some("greeting"),
-        None,
-        false,
-        &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]),
-    )
-    .await
-    .expect("a clean strict-pinned workflow case passes");
-
-    assert_eq!(
-        started_policy(&sandbox.join("greeting")),
-        GapPolicy::Strict,
-        "the case's pinned strict policy overrides the runner default"
-    );
 }
 
 #[tokio::test]

@@ -7,7 +7,6 @@ use std::ops::ControlFlow;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use project::GapPolicy;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
@@ -84,14 +83,10 @@ pub enum ExecuteOutcome {
 ///   [`ExecuteOutcome::Stopped`].
 pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
-    gap_policy: Option<GapPolicy>,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     let config = ProjectConfig::load(layout.project_dir())?;
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
-    // Effective gap policy for this epoch (RFC-86a D3): per-epoch
-    // flag, else the `project.yaml` declaration, else `strict`.
-    let gap_policy = gap_policy.or(config.gap_policy).unwrap_or_default();
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
     // A drained plan is a read-only no-op: opening a fresh
@@ -105,8 +100,8 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     }
     // Every non-drained execute path (including resume) appends
     // `plan.execute.started` at start with typed `closed-plan`
-    // coverage carrying the effective gap policy.
-    super::epoch::append_started(layout, &plan, now, gap_policy)?;
+    // coverage.
+    super::epoch::append_started(layout, &plan, now)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {
@@ -157,9 +152,9 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
         };
 
         tracing::info!("{step} {slice} [entry {entry}/{total}] …");
-        // Gap policy + epoch freshness gate build before the target
-        // orchestration (`plan-gaps-unresolved` / `plan-epoch-stale`);
-        // under `defer` the gate mints policy deferrals instead (D3/D6).
+        // Epoch freshness gates build before the target orchestration
+        // (`plan-epoch-stale`); open gaps are dispositioned at the
+        // gate itself (gate-time deferrals) and never block.
         if step == LoopStep::Build {
             let plan = Plan::load(&layout.plan_path())?;
             super::enforce_before_build(layout, &plan, &slice, now)?;
@@ -281,12 +276,7 @@ fn dispatch_status(
         // Execute never refines (RFC-91 D5): a projected refine action
         // is the typed refinement-required stop pointing at the drain.
         NextActionKind::Refine => ControlFlow::Break(refinement_required(status, phases)),
-        // ReviewGaps is status when open findings remain (RFC-86a D7).
-        // The loop still attempts build; `enforce_before_build` refuses
-        // open gaps under `strict`, mints policy deferrals under `defer`.
-        NextActionKind::Build | NextActionKind::ReviewGaps => {
-            ControlFlow::Continue(Some(LoopStep::Build))
-        }
+        NextActionKind::Build => ControlFlow::Continue(Some(LoopStep::Build)),
         NextActionKind::Merge => ControlFlow::Continue(Some(LoopStep::Merge)),
     }
 }

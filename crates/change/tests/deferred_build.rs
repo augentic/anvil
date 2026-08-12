@@ -12,9 +12,9 @@ use diagnostics::DiagnosticKind;
 use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::build_record::BuildRecord;
 use project::config::Layout;
+use project::journal::{DEFAULT_WRITER, Event, EventKind, append_for};
 use project::seam::wire::BuildRequest;
 
 /// The minimal profile whose refine mints one `[unknown]` row
@@ -47,20 +47,44 @@ async fn scaffold(session: &Session) {
     .expect("author");
 }
 
-async fn defer_req(session: &Session, retract: bool) {
-    run::<plan::handlers::Defer, _, _>(
-        session.provider(),
-        plan::handlers::DeferInput {
-            selectors: vec![plan::handlers::DeferSelector {
-                slice: "greeting".into(),
-                req: "REQ-001".into(),
-            }],
-            reason: (!retract).then(|| "carried to the next change".to_string()),
-            retract,
+/// Cover `greeting/REQ-001` with a pre-existing durable deferral fact
+/// — standing in for an earlier gate-time mint, now that the operator
+/// `plan defer` verb is gone (`support::build` drives the build
+/// orchestration directly, below the execute loop's gap gate).
+async fn defer_req(session: &Session) {
+    let gaps = run::<plan::handlers::Gaps, _, _>(session.provider(), plan::handlers::GapsInput {})
+        .await
+        .expect("gaps");
+    let row = gaps
+        .rows
+        .iter()
+        .find(|row| row.slice == "greeting" && row.req == "REQ-001")
+        .expect("greeting/REQ-001 gap row");
+    let event = Event::new(
+        jiff::Timestamp::now(),
+        EventKind::GapDeferred {
+            slice: "greeting".into(),
+            req: "REQ-001".into(),
+            requirement_digest: row.requirement_digest.clone().expect("digest-bearing row"),
+            reason: "carried to the next change".into(),
         },
-    )
-    .await
-    .expect("defer");
+    );
+    append_for(Layout::new(session.root()), DEFAULT_WRITER, &[event]).expect("append deferral");
+}
+
+/// Reshape the unknown requirement's body in `model.yaml` so the
+/// covering deferral lapses (its recorded digest disappears from the
+/// live model) — the disposition-drift trigger now that retraction is
+/// gone.
+fn lapse_deferral(root: &std::path::Path) {
+    let path = Layout::new(root).slice_dir("greeting").join("model.yaml");
+    let text = fs::read_to_string(&path).expect("model.yaml");
+    let reshaped = text.replace(
+        "The greeting service handles errors",
+        "The greeting service handles errors differently",
+    );
+    assert_ne!(reshaped, text, "the unknown row's statement is present to reshape");
+    fs::write(&path, reshaped).expect("rewrite model.yaml");
 }
 
 fn review_ids(body: &project::handler::ReportBody) -> Vec<String> {
@@ -93,7 +117,7 @@ async fn binds_deferred_set() {
     let root = session.root().to_path_buf();
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
-    defer_req(&session, false).await;
+    defer_req(&session).await;
 
     support::build(&session, "greeting").await.expect("build under deferral");
 
@@ -137,7 +161,7 @@ async fn covered_deferred_refuses() {
     let root = session.root().to_path_buf();
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
-    defer_req(&session, false).await;
+    defer_req(&session).await;
 
     fs::write(root.join(behaviour::CLAIM_COVERED_MARKER), "REQ-001").expect("marker");
 
@@ -181,26 +205,27 @@ async fn covered_without_deferral() {
     support::build(&session, "greeting").await.expect("build with a non-deferred claim");
 }
 
-/// Retracting a deferral after build drifts the record: the probe
-/// flips and validate carries the `slice-disposition-drifted` review.
+/// Lapsing a deferral after build (a reshaped requirement body)
+/// drifts the record: the probe flips and validate carries the
+/// `slice-disposition-drifted` review.
 #[tokio::test]
-async fn retract_drifts_build() {
+async fn lapse_drifts_build() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
-    defer_req(&session, false).await;
+    defer_req(&session).await;
     support::build(&session, "greeting").await.expect("build under deferral");
 
     let layout = Layout::new(&root);
     let slice_dir = layout.slice_dir("greeting");
     assert!(!slice::dispositions_drifted(layout, &slice_dir, "greeting").expect("probe"));
 
-    defer_req(&session, true).await;
+    lapse_deferral(&root);
 
     assert!(
         slice::dispositions_drifted(layout, &slice_dir, "greeting").expect("probe"),
-        "retraction reopens the row — the built record is stale"
+        "the lapsed deferral leaves the row open — the built record is stale"
     );
     let body = run::<slice::handlers::Validate, _, _>(
         session.provider(),
@@ -239,28 +264,24 @@ async fn orphan_wave_stays_stale() {
     support::refine(&session, "greeting").await.expect("refine");
 
     // Park the loop between build and merge: the build succeeded and
-    // its record consumes the policy-minted deferral.
+    // its record consumes the gate-minted deferral.
     fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");
     run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("parked at merge preflight");
     fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
 
-    // Retract the deferral (drift) and make the redirected re-build
+    // Lapse the deferral (drift) and make the redirected re-build
     // fail: the loop opens a new wave, the build dies, no record
     // consumes it.
-    defer_req(&session, true).await;
+    lapse_deferral(&root);
     fs::write(root.join(behaviour::FAIL_BUILD_MARKER), "").expect("marker");
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("redirected re-build fails");
@@ -286,9 +307,7 @@ async fn orphan_wave_stays_stale() {
     // then merge against the fresh wave's record.
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect("resume re-builds the orphan wave and drains");
@@ -313,21 +332,20 @@ async fn built_skips_pin_drift() {
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
 
-    // Park the loop between build and merge under the defer policy.
+    // Park the loop between build and merge.
     fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");
     run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("parked at merge preflight");
     fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
 
-    // Drift both probes: retract the deferral (disposition drift) and
-    // plant an orphan source pin on the refinement manifest.
-    defer_req(&session, true).await;
+    // Drift both probes: lapse the gate-minted deferral (disposition
+    // drift) and plant an orphan source pin on the refinement
+    // manifest.
+    lapse_deferral(&root);
     let slice_dir = Layout::new(&root).slice_dir("greeting");
     let mut manifest =
         slice::refinement::Manifest::load(&slice_dir).expect("refinement.yaml after refine");
@@ -338,9 +356,7 @@ async fn built_skips_pin_drift() {
     // does not force a refine stop once a build record is present.
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect("disposition drift rebuilds; pin drift on a built leaf is ignored");
@@ -353,11 +369,11 @@ async fn built_skips_pin_drift() {
     );
 }
 
-/// Loop staleness: a retraction between build and merge sends the
-/// slice back through the build gate — strict re-adjudicates the
-/// reopened row, defer re-mints, re-builds, and drains.
+/// Loop staleness: a deferral lapse between build and merge sends the
+/// slice back through the build gate — the gate re-mints the
+/// reopened row's disposition, re-builds, and drains.
 #[tokio::test]
-async fn rebuild_after_retract() {
+async fn rebuild_after_lapse() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -367,45 +383,31 @@ async fn rebuild_after_retract() {
     fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("parked at merge preflight");
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
     fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
 
-    // Retract the policy-minted deferral: the parked build is stale.
-    defer_req(&session, true).await;
+    // Lapse the gate-minted deferral: the parked build is stale.
+    lapse_deferral(&root);
     let layout = Layout::new(&root);
     assert!(
         slice::dispositions_drifted(layout, &layout.slice_dir("greeting"), "greeting")
             .expect("probe"),
-        "retraction drifts the parked build"
+        "the lapse drifts the parked build"
     );
 
-    // A strict resume goes back through the build gate instead of
-    // merging the stale record — the reopened row refuses the build.
-    let err = run::<plan::handlers::Execute, _, _>(
-        session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Strict),
-        },
-    )
-    .await
-    .expect_err("strict resume re-adjudicates the reopened row");
-    assert!(err.to_string().contains("plan-gaps-unresolved"), "{err}");
-
-    // A defer resume re-mints the disposition, re-builds, and drains.
+    // The resume goes back through the build gate instead of merging
+    // the stale record — the gate re-mints the reopened row's
+    // disposition, re-builds, and drains.
     let drained = run::<plan::handlers::Execute, _, _>(
         session.provider(),
-        plan::handlers::ExecuteInput {
-            gap_policy: Some(GapPolicy::Defer),
-        },
+        plan::handlers::ExecuteInput::default(),
     )
     .await
-    .expect("defer resume rebuilds and drains");
+    .expect("resume rebuilds and drains");
     assert_eq!(drained.status, "drained");
     let steps: Vec<(&str, LoopStep)> =
         drained.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();

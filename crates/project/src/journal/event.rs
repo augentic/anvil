@@ -8,7 +8,6 @@ use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::operation::SourceOperation;
-use crate::gap_policy::GapPolicy;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
 
@@ -503,8 +502,7 @@ pub enum EventKind {
     },
     /// `emery plan execute` opened an authorization epoch at start
     /// (RFC-86 D6 / D22). Presence projects the Authorized milestone.
-    /// The effective gap policy rides the coverage payload
-    /// (RFC-86a D3). Never named `plan.approved`.
+    /// Never named `plan.approved`.
     #[serde(rename = "plan.execute.started", rename_all = "kebab-case")]
     PlanExecuteStarted {
         /// Typed `closed-plan` coverage over the reviewed plan.
@@ -526,51 +524,9 @@ pub enum EventKind {
         req: String,
         /// Canonical requirement-body digest (`sha256:<hex>`).
         requirement_digest: String,
-        /// Operator reason, or the synthesized policy reason.
+        /// The synthesized gate-time reason.
         reason: String,
-        /// Which surface dispositioned the requirement.
-        origin: DeferralOrigin,
     },
-    /// An explicit retraction reopened a live deferral (RFC-86a
-    /// D2 / D3). Same match key as [`Self::GapDeferred`]; the latest
-    /// fact per `(slice, requirement-digest)` wins under projection.
-    #[serde(rename = "gap.deferral-retracted", rename_all = "kebab-case")]
-    GapDeferralRetracted {
-        /// Slice that owns the requirement — scopes the digest join.
-        slice: SliceName,
-        /// Advisory `REQ-NNN` id at retraction time.
-        req: String,
-        /// Canonical requirement-body digest (`sha256:<hex>`).
-        requirement_digest: String,
-        /// Operator reason for reopening the gap.
-        reason: String,
-        /// Which surface retracted the deferral.
-        origin: DeferralOrigin,
-    },
-}
-
-/// Closed origin on gap deferral facts (RFC-86a D2 / D3).
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-    strum::Display,
-    strum::EnumString,
-)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum DeferralOrigin {
-    /// The explicit `emery plan defer` operator act.
-    Operator,
-    /// Gate-time minting under an effective `defer` gap policy.
-    Policy,
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`].
@@ -581,8 +537,8 @@ pub enum DeferralOrigin {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum ClosedPlanCoverage {
-    /// One reviewed plan digest with exact per-leaf refinement digests
-    /// and the effective gap policy.
+    /// One reviewed plan digest with exact per-leaf refinement
+    /// digests.
     ClosedPlan {
         /// Content digest of the reviewed `plan.yaml`.
         #[serde(rename = "plan-digest")]
@@ -590,11 +546,6 @@ pub enum ClosedPlanCoverage {
         /// Sorted per-leaf refinement digests (`sha256:…` of each
         /// leaf's covered `refinement.yaml`).
         refinements: std::collections::BTreeMap<String, crate::snapshot::SnapshotId>,
-        /// The **effective** gap policy this epoch runs under —
-        /// per-epoch `--gap-policy` flag, else the `project.yaml`
-        /// declaration, else `strict` (RFC-86a D3).
-        #[serde(rename = "gap-policy")]
-        gap_policy: GapPolicy,
     },
 }
 

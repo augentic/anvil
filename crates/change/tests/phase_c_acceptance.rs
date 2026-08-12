@@ -17,8 +17,7 @@ use std::fs;
 
 use change::orchestrate::enforce_before_build;
 use change::plan::handlers::{
-    Author, AuthorInput, Defer, DeferInput, DeferSelector, Execute, ExecuteInput, Gaps, GapsInput,
-    Status, StatusInput,
+    Author, AuthorInput, Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput,
 };
 use change::{LoopStep, Plan};
 use diagnostics::digest::sha256_hex;
@@ -26,7 +25,6 @@ use jiff::Timestamp;
 use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
-use project::GapPolicy;
 use project::config::Layout;
 use project::journal::{
     ClosedPlanCoverage, DEFAULT_WRITER, Event, EventKind, append_for, read_union,
@@ -117,7 +115,6 @@ fn stamp_epoch(
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest: plan_digest.into(),
                 refinements,
-                gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,
         },
@@ -140,6 +137,7 @@ async fn dropped_slice_excluded() {
         r"requirements:
   - id: REQ-009
     title: contradiction left behind
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -150,6 +148,7 @@ async fn dropped_slice_excluded() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",
@@ -175,6 +174,7 @@ async fn dropped_slice_excluded() {
         r"requirements:
   - id: REQ-009
     title: contradiction left behind
+    statement: ''
     status: conflict
     sources: [intent]
 ",
@@ -207,9 +207,10 @@ async fn dropped_slice_excluded() {
     .expect("gap gate ignores dropped sibling conflict");
 }
 
-/// Acceptance #12 / D22 — open unknowns keep Ready false; deferring
-/// then executing reaches Authorized without Ready; clearing unknowns
-/// then projects Ready (deferrals never backfill Ready).
+/// Acceptance #12 / D22 — open unknowns keep Ready false; executing
+/// (the gate defers the unknown) reaches Authorized without Ready;
+/// clearing unknowns then projects Ready (deferrals never backfill
+/// Ready).
 #[tokio::test]
 async fn deferral_reaches_ready() {
     let session = Session::bare(Vec::new());
@@ -234,21 +235,9 @@ async fn deferral_reaches_ready() {
     assert!(!open.ready);
     assert!(!open.authorized);
 
-    // Durable deferral, then execute; build may fail later without
-    // pins — ignore the post-gate outcome and inspect milestones.
-    run::<Defer, _, _>(
-        session.provider(),
-        DeferInput {
-            selectors: vec![DeferSelector {
-                slice: "a".into(),
-                req: "REQ-003".into(),
-            }],
-            reason: Some("reset path deferred".into()),
-            retract: false,
-        },
-    )
-    .await
-    .expect("plan defer");
+    // Execute: the gate defers the unknown itself; build may fail
+    // later without pins — ignore the post-gate outcome and inspect
+    // milestones.
     drop(run::<Execute, _, _>(session.provider(), ExecuteInput::default()).await);
 
     let deferred = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
@@ -257,8 +246,9 @@ async fn deferral_reaches_ready() {
     assert!(!root.join(".emery/approvals").exists(), "no approvals/ tree");
     assert!(!serde_json::to_string(&deferred).expect("json").contains("approved"));
 
-    // Clear the unknown on disk — Ready becomes true while the prior
-    // epoch may still project Authorized (fresh execute is a separate act).
+    // Clear the unknown on disk and re-stage the manifest over the
+    // reshaped model — Ready becomes true while the prior epoch may
+    // still project Authorized (fresh execute is a separate act).
     write_refined(
         root,
         "a",
@@ -270,6 +260,7 @@ async fn deferral_reaches_ready() {
     sources: [intent]
 ",
     );
+    support::stage_manifest(root, "a");
     let cleared = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
     assert!(cleared.ready, "clearing unknowns projects Ready before a clean execute");
 }
@@ -315,7 +306,7 @@ async fn coverage_wire_shape_stale() {
     // RFC-91 D5: coverage carries exact per-leaf refinement digests —
     // no `existing` / `refine-under-epoch` spec coverage survives.
     assert_eq!(coverage["refinements"]["greeting"], refinement_before.as_str());
-    assert_eq!(coverage["gap-policy"], "strict", "effective policy on the wire: {coverage}");
+    assert!(coverage.get("gap-policy").is_none(), "gap-policy field deleted: {coverage}");
     assert!(!wire.to_string().contains("refine-under-epoch"), "{wire}");
     assert!(coverage.get("unknown-waivers").is_none(), "waiver field deleted: {coverage}");
     assert!(coverage.get("specs").is_none(), "spec coverage deleted: {coverage}");
@@ -332,6 +323,7 @@ async fn coverage_wire_shape_stale() {
         r"requirements:
   - id: REQ-001
     title: login works
+    statement: ''
     status: agreed
     sources: [intent]
 ",

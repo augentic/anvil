@@ -24,8 +24,8 @@ pub struct DebtInput {}
 ///
 /// Read-only projection over `.emery/specs/`: emits no journal event
 /// and writes nothing. Never joins archived fact logs — every row's
-/// reason, origin, originating change, and age come from the
-/// self-describing note the merge fold appended (RFC-86a D5).
+/// reason, originating change, and age come from the self-describing
+/// note the merge fold appended (RFC-86a D5).
 #[derive(Clone, Copy, Debug)]
 pub struct Debt;
 

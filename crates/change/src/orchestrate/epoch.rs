@@ -1,12 +1,11 @@
 //! Authorization-epoch open at `plan execute` start: assembles typed
-//! `closed-plan` coverage (per-leaf refinement digests + effective gap
-//! policy) and appends `plan.execute.started` (RFC-86/86a/91).
+//! `closed-plan` coverage (per-leaf refinement digests) and appends
+//! `plan.execute.started` (RFC-86/86a/91).
 
 use std::collections::BTreeMap;
 
 use error::Error;
 use jiff::Timestamp;
-use project::GapPolicy;
 use project::build_record::BuildRecord;
 use project::config::Layout;
 use project::journal::{self, ClosedPlanCoverage, Event, EventKind};
@@ -16,7 +15,7 @@ use slice::refinement::{self, Freshness, Live};
 
 use crate::plan::wire::load_discovery;
 
-/// Append `plan.execute.started` carrying the effective `gap_policy`.
+/// Append `plan.execute.started` with typed `closed-plan` coverage.
 ///
 /// # Errors
 ///
@@ -24,10 +23,8 @@ use crate::plan::wire::load_discovery;
 /// or stale refinement manifest fails typed as
 /// `plan-refinement-required` before any epoch append — execute never
 /// refines (RFC-91 D5).
-pub(super) fn append_started(
-    layout: Layout<'_>, plan: &Plan, now: Timestamp, gap_policy: GapPolicy,
-) -> Result<(), Error> {
-    let coverage = assemble_coverage(layout, plan, gap_policy)?;
+pub(super) fn append_started(layout: Layout<'_>, plan: &Plan, now: Timestamp) -> Result<(), Error> {
+    let coverage = assemble_coverage(layout, plan)?;
     let event = Event::new(
         now,
         EventKind::PlanExecuteStarted {
@@ -46,9 +43,7 @@ pub(super) fn append_started(
 /// build are not re-litigated: a merged leaf (projected `done`)
 /// contributes nothing, and a built leaf parked at merge carries the
 /// manifest digest its wave bound at build time (resume path).
-fn assemble_coverage(
-    layout: Layout<'_>, plan: &Plan, gap_policy: GapPolicy,
-) -> Result<ClosedPlanCoverage, Error> {
+fn assemble_coverage(layout: Layout<'_>, plan: &Plan) -> Result<ClosedPlanCoverage, Error> {
     let plan_digest = Plan::file_digest(layout)?;
 
     let discovery = load_discovery(layout)?;
@@ -102,7 +97,6 @@ fn assemble_coverage(
     Ok(ClosedPlanCoverage::ClosedPlan {
         plan_digest,
         refinements,
-        gap_policy,
     })
 }
 

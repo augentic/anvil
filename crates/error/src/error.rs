@@ -150,12 +150,6 @@ impl Error {
                 "plan-epoch-stale" => Some(
                     "re-run `emery plan execute` — it opens a fresh epoch over the current plan and specs; durable deferrals carry over, nothing needs re-supplying",
                 ),
-                "plan-gaps-unresolved" => Some(
-                    "resolve open gaps at their source and re-run `emery plan execute`, or defer them durably with `emery plan defer <slice>/<req> --reason \"<why>\"` (or run under `--gap-policy defer`)\nsee: docs/reference/diagnostics.md",
-                ),
-                "plan-deferral-invalid" => Some(
-                    "defer names open `[unknown]` / `[conflict]` rows from `emery plan gaps` as `<slice>/<req>` and requires `--reason`; `--retract` must name a live deferral",
-                ),
                 "guest-marker-held" => Some(
                     "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
                 ),
