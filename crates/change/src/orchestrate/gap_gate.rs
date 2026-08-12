@@ -107,8 +107,8 @@ fn digest_missing(rows: &[&GapRow]) -> Error {
         "plan-gap-digest-missing",
         "open gap rows carry no requirement digest — no deferral fact can cover them",
         format!(
-            "{}; re-run `emery plan execute` — the refine phase rewrites `model.yaml` and mints \
-             the digests deferrals match on",
+            "{}; run `emery plan refine` — refinement rewrites `model.yaml` and mints the \
+             digests deferrals match on — then re-run `emery plan execute`",
             named.join(", ")
         ),
     )
