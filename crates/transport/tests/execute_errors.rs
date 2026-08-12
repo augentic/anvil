@@ -159,7 +159,7 @@ async fn epoch_stale_on_wire() {
             coverage: ClosedPlanCoverage::ClosedPlan {
                 plan_digest:
                     "sha256:0000000000000000000000000000000000000000000000000000000000000000".into(),
-                specs: BTreeMap::new(),
+                refinements: BTreeMap::new(),
                 gap_policy: GapPolicy::Strict,
             },
             discovery_digest: None,

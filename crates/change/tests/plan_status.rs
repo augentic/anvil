@@ -388,7 +388,7 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::TargetMergeWavePostflightFailed {
+                EventKind::MergeWavePostflightFailed {
                     target: "demo".into(),
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -422,7 +422,7 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::TargetMergeWavePostflightFailed {
+                    EventKind::MergeWavePostflightFailed {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
@@ -432,7 +432,7 @@ mod postflight_debt {
                 ),
                 Event::event(
                     ts(20),
-                    EventKind::PlanMergePostflightAcknowledged {
+                    EventKind::PostflightAcknowledged {
                         slice_name: "a".into(),
                     },
                 ),
@@ -453,7 +453,7 @@ mod postflight_debt {
             project.root(),
             &[Event::event(
                 ts(10),
-                EventKind::TargetMergeWavePostflightFailed {
+                EventKind::MergeWavePostflightFailed {
                     target: "demo".into(),
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -477,7 +477,7 @@ mod postflight_debt {
             &[
                 Event::event(
                     ts(10),
-                    EventKind::TargetMergeWavePostflightFailed {
+                    EventKind::MergeWavePostflightFailed {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
@@ -487,7 +487,7 @@ mod postflight_debt {
                 ),
                 Event::event(
                     ts(20),
-                    EventKind::PlanMergePostflightAcknowledged {
+                    EventKind::PostflightAcknowledged {
                         slice_name: "a".into(),
                     },
                 ),
@@ -926,7 +926,7 @@ mod milestones {
         assert!(!body.ready, "an epoch must not backfill Ready");
         assert!(body.authorized);
         let json = serde_json::to_string(&body).expect("json");
-        assert!(!json.contains(""approved""), "{json}");
+        assert!(!json.contains("approved"), "{json}");
     }
 
     #[tokio::test]
