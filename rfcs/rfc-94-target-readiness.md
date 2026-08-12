@@ -115,8 +115,8 @@ Authoring is how an operator learns an unfamiliar estate. Blocking it on readine
 | `unready` | Authoring and refinement only | `plan execute` refuses; the plan is still a legitimate deliverable |
 | `assisted` | Reviewed policy | Supervision is required; auto-deferred gaps remain explicit debt |
 | `reviewed` | [Reviewed services workflow](platform.md#reviewed-services-workflow) | The ordinary supervised loop |
-| `progressive` | Adds progressive specs-only (policy 2) | Specification work may run ahead of review |
-| `unattended` | Adds unattended candidate build (policy 3) | Candidate build only; the accepted CID is untouched |
+| `progressive` | Adds the progressive specs-only policy defined by parked [RFC-99](rfc-99-streaming-execution.md) | Specification work may run ahead of review |
+| `unattended` | Adds the unattended candidate-build policy defined by parked [RFC-99](rfc-99-streaming-execution.md) | Candidate build only; the accepted CID is untouched |
 
 Readiness never grants merge authority. [RFC-102](rfc-102-policy-gated-autonomy.md) policy-gated autonomy requires its own promoted policy, protected assurance, and commit admission on top of an `unattended` band; a high band is necessary and never sufficient.
 

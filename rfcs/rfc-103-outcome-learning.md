@@ -1,10 +1,10 @@
 # RFC-103: Outcome Learning
 
-> Status: Draft — evidence and promotion track designed over implemented [RFC-90](rfc-90-build-verification.md), with its first useful delivery following [RFC-92](rfc-92-operation-model-policy.md) usage facts and the existing blind eval harness; extended by [RFC-94](rfc-94-target-readiness.md), [RFC-97](rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md), and [RFC-96](rfc-96-concurrent-execution.md). Parked [RFC-99](future/rfc-99-streaming-execution.md) may add progressive-execution dimensions if it is reopened. Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
+> Status: Draft — evidence and promotion track designed over implemented [RFC-90](rfc-90-build-verification.md), with its first useful delivery following [RFC-92](rfc-92-model-policy.md) usage facts and the existing blind eval harness; extended by [RFC-94](rfc-94-target-readiness.md), [RFC-97](rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md), and [RFC-96](rfc-96-concurrent-execution.md). Parked [RFC-99](rfc-99-streaming-execution.md) may add progressive-execution dimensions if it is reopened. Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
 >
 > Patch ownership: this RFC amends RFC-88 D1 after RFC-88 lands by adding `outcome.yaml` to the detached change root and `.emery/change/outcome.yaml` to in-place mode. RFC-88 remains unchanged.
 >
-> Producers this RFC assumes: [RFC-92](rfc-92-operation-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block; the blind eval harness supplies promotion evidence. Those two are required for the first cut to learn rather than merely archive. [RFC-94](rfc-94-target-readiness.md) supplies per-target readiness bands, [RFC-97](rfc-97-native-verification.md) supplies execution-assurance and oracle-assurance facts, and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions.
+> Producers this RFC assumes: [RFC-92](rfc-92-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block; the blind eval harness supplies promotion evidence. Those two are required for the first cut to learn rather than merely archive. [RFC-94](rfc-94-target-readiness.md) supplies per-target readiness bands, [RFC-97](rfc-97-native-verification.md) supplies execution-assurance and oracle-assurance facts, and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions.
 
 ## Intent
 
@@ -215,7 +215,7 @@ Future runs record the selected version. Existing runs remain pinned.
 
 ## Relation to automatic execution
 
-[RFC-99](future/rfc-99-streaming-execution.md) records progressive-run outcomes and policy identity. [RFC-102](rfc-102-policy-gated-autonomy.md) may select only promoted policy generations.
+[RFC-99](rfc-99-streaming-execution.md) records progressive-run outcomes and policy identity. [RFC-102](rfc-102-policy-gated-autonomy.md) may select only promoted policy generations.
 
 Outcome learning never authorizes build or merge. A good historical success rate cannot:
 

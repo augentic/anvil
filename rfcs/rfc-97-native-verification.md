@@ -1,6 +1,6 @@
 # RFC-97: Native Verification Profiles
 
-> Status: Future draft — deterministic native-verification follow-on delivered first for serial slice attempts, then extended to concurrent domain contexts
+> Status: Active — evidence track of the [Services Delivery Programme](platform.md); deterministic native verification delivered first for serial slice attempts (Phase A), then extended to concurrent domain contexts (Phase B)
 >
 > Owns: closed host verification profiles, native execution and sandbox policy, canonical tool diagnostics, protected-oracle assurance, report comparison primitives, one explicit bounded host-mechanical-repair phase, verification-lineage caches, and per-profile telemetry.
 >

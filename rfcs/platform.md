@@ -24,7 +24,7 @@ The north-star architecture remains capable of scaling beyond one node and one r
 
 **Current evidence gap:** four properties material to services delivery are asserted rather than demonstrated:
 
-- What model route and spend produced an operation is unrecorded ([RFC-92](rfc-92-operation-model-policy.md)).
+- What model route and spend produced an operation is unrecorded ([RFC-92](rfc-92-model-policy.md)).
 - Who requested an act and which host grant admitted it is unrecoverable ([RFC-93](rfc-93-operator-boundary.md)).
 - Whether a target can support the promised loop is discovered too late ([RFC-94](rfc-94-target-readiness.md)).
 - Whether a migration preserved recovered behaviour is model-reviewed rather than replayed against a protected oracle ([RFC-97](rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md)).
@@ -33,18 +33,19 @@ None requires streaming, distribution, a hosted fleet, or autonomous merge.
 
 ## Active dependency map
 
-Only hard active dependencies appear here. Enrichment relationships belong in prose and outcome schemas, not in the graph.
+Only hard active dependencies appear here. Enrichment relationships belong in prose and outcome schemas, not in the graph. Green = done; uncoloured = not done.
 
 ```mermaid
 flowchart TD
-    R86[RFC-86 implemented] --> R87[RFC-87 implemented]
-    R86 --> R92[RFC-92 model policy]
+    R86[RFC-86 done] --> R87[RFC-87 done]
     R86 --> R93[RFC-93 operator boundary]
     R87 --> R88[RFC-88 detached changes]
-    R87 --> R90[RFC-90 implemented]
-    R90 --> R91[RFC-91 implemented]
+    R87 --> R90[RFC-90 done]
+    R90 --> R91[RFC-91 done]
     R87 -->|Phase A| R97[RFC-97 native verification]
     R90 -->|Phase A| R97
+    R88 --> R92[RFC-92 model policy]
+    R90 --> R92
     R88 --> R94[RFC-94 target readiness]
     R88 --> R95[RFC-95 publication sets]
     R88 --> R96[RFC-96 concurrent execution]
@@ -54,14 +55,8 @@ flowchart TD
     R90 --> R103[RFC-103 outcome learning]
     R92 --> R103
 
-    classDef implemented fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
-    classDef evidence fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:2px
-    classDef product fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
-    classDef scale fill:#f3e8ff,stroke:#7e22ce,color:#581c87,stroke-width:2px
-    class R86,R87,R90,R91 implemented
-    class R92,R93,R94,R97,R98,R103 evidence
-    class R88,R95 product
-    class R96 scale
+    classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
+    class R86,R87,R90,R91 done
 ```
 
 ## Programme states
@@ -81,12 +76,11 @@ An RFC number is a stable design identity, not a promise that every lower number
 
 Start on the implemented substrate:
 
-- [RFC-92 Operation Model Policy](rfc-92-operation-model-policy.md) — pinned per-operation routes, bounded engine-triggered escalation, usage facts, and cost attribution.
 - [RFC-93 Operator Boundary](rfc-93-operator-boundary.md) — actor attribution plus host-enforced operator grants before guest dispatch.
 - [RM-26 Client-controlled model endpoint](roadmap.md#rm-26-client-controlled-model-endpoint) — trace before quoting regulated work.
 - [RM-24 Operator control surface](roadmap.md#rm-24-operator-control-surface) — make topology, proposals, and every parked state reviewable and actionable without in-engine conversation.
 
-These make current engagements measurable, attributable, and operable. They do not wait for RFC-88 or any scale work.
+These make current engagements attributable and operable. They do not wait for RFC-88 or any scale work.
 
 ### 2. Finish the single-node programme loop
 
@@ -98,6 +92,8 @@ These make current engagements measurable, attributable, and operable. They do n
 4. capability-profile-bound conflict-domain decomposition and refinement feedback.
 
 The complete RFC remains the contract. The cuts control implementation risk; they are not partial public lifecycle variants. Complete-tree publication stays the reference policy.
+
+[RFC-92 Model Policy](rfc-92-model-policy.md) follows RFC-88, whose model-capability profile it extends with a routes table: pinned per-operation routes, bounded engine-triggered escalation, usage facts, and cost attribution. It makes engagements measurable before concurrency or learning work is justified.
 
 [RFC-95 Publication Sets](rfc-95-publication-sets.md) follows RFC-88 member derivation and supplies local project seals, publication identity, ordered landing, and archive verification. Forge writes remain operator-owned; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts only when manual publication is a measured bottleneck.
 
@@ -141,7 +137,7 @@ RFC-97 Phase B remains attached to RFC-96 exactly as specified in RFC-97. Parkin
 
 The services trace test resolves the ordering:
 
-1. **Measure before optimizing.** RFC-92 establishes cost and elapsed-time facts before concurrency is justified.
+1. **Measure before optimizing.** RFC-92 establishes cost and elapsed-time facts on the finished single-node loop before concurrency is justified.
 2. **Attribute and authorize before agent driving expands.** RFC-93 cannot wait for unattended merge; an outer agent can invoke ordinary operator verbs today.
 3. **Finish the engagement-shaped product loop.** RFC-88/95 deliver multi-repository change and handoff without requiring fleet infrastructure.
 4. **Earn the assurance claim.** RFC-97/98 turn “model-reviewed” into host-attested execution against protected behavioural evidence.
@@ -188,7 +184,7 @@ operator publishes    → push sealed branches; open and merge PRs
 emery plan archive    → verify publication, project outcome, archive
 ```
 
-That is the implemented rhythm; verification is currently model-assisted. RFC-94 adds readiness admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the four stages.
+The four stages are implemented today, with two qualifications: verification is currently model-assisted, and the flow shown for `plan author` (estate discovery and pinning) and the publication legs (sealed branches, `plan archive` publication verification) land with RFC-88 and RFC-95 respectively. RFC-94 adds readiness admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the four stages.
 
 An automation may invoke stages back to back. Review seams are opportunities, not inferred attestations. RFC-93 governs whether the caller may request each act; the engine applies identical artifact and result gates whoever called.
 
@@ -240,7 +236,7 @@ As the operator becomes an agent, read-only topology, proposal, gap, and stop pr
 - **Validation may discover legitimate new work.** RFC-96 supports bounded graph replacement; RFC-88 keeps structural amendments inert and reviewable. Free-form in-context re-planning never gains authority directly.
 - **Recovery must be actionable.** Typed stops name the exact next verb, inputs, and proposal diff; re-running the stopped stage remains the resume path.
 
-The commercial interpretation lives in [brand/strategy.md](../brand/strategy.md); the comparative research record lives in [factory-evaluation.md](factory-evaluation.md).
+The commercial interpretation lives in [brand/strategy.md](../brand/strategy.md); the comparative competitive read lives in [strategy.md § The wedge is contested](../brand/strategy.md#the-wedge-is-contested--the-differentiator-still-holds).
 
 ## Deliberately rejected
 

@@ -40,7 +40,7 @@ The actor record therefore says who acted, under what declaration, and how much 
 ## Terms
 
 - An **actor record** is the class, driver identity, and attestation level inherited by every fact emitted under one invocation.
-- An **operator act** is one member of the closed host-visible command set derived from the typed CLI router, such as `plan.author`, `plan.refine`, `plan.execute`, `plan.drop`, or `plan.amend-authority`.
+- An **operator act** is one member of the closed host-visible command set derived from the typed CLI router, such as `plan.author`, `plan.refine`, `plan.execute`, `plan.drop`, or `plan.amend-authority`. A forced variant is a distinct act: a verb invoked with `--force` derives its own act key, so a grant may admit the plain form without the forced one.
 - An **operator grant** is immutable deployment policy binding a principal or local process class to allowed acts, product/target/change scope, expiry, and optional external-approval requirements.
 - A **grant record** is the grant id and digest carried beside the actor record on every resulting fact.
 - An **external approval attestation** is an opaque host-verified value satisfying one grant condition. It is authorization evidence, not a workflow approval state.
@@ -174,4 +174,4 @@ Pre-RFC facts project an explicit unknown grant. They are not retroactively trea
 - **Actor-class authorization.** No `human | agent` value grants or withholds capability (D6).
 - **User identity or PII.** The identity is an opaque driver label, not a person's name, email, or account. A deployment that wants a human name is choosing to put it there.
 - **Four-eyes review.** Unchanged from RFC-86: collaboration is social review of the fact log, which this RFC makes possible rather than automates.
-- **Per-keystroke or per-model-call provenance.** The unit is the fact. Model-call accounting belongs to [RFC-92](rfc-92-operation-model-policy.md).
+- **Per-keystroke or per-model-call provenance.** The unit is the fact. Model-call accounting belongs to [RFC-92](rfc-92-model-policy.md).

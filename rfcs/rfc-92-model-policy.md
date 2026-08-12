@@ -1,6 +1,6 @@
-# RFC-92: Operation Model Policy
+# RFC-92: Model Policy
 
-> Status: Draft — model-economics track over implemented [RFC-86](rfc-86-change-facts.md) and [RFC-90](rfc-90-build-verification.md)
+> Status: Draft — model-economics track following [RFC-88](rfc-88-detached-changes.md), over implemented [RFC-86](rfc-86-change-facts.md) and [RFC-90](rfc-90-build-verification.md)
 >
 > Owns: the closed operation-key set for model routing, the per-operation route and bounded escalation table on the pinned capability profile, deployment binding of route names to providers, the model-usage fact, and cost attribution projections.
 >
@@ -74,7 +74,7 @@ The closed operation-key set derives from the existing typed enums plus the engi
 | Target | `target.guidance`, `target.build`, `target.verify`, `target.repair`, `target.review`, `target.merge` |
 | Engine | `engine.topology`, `engine.propose`, `engine.decompose`, `engine.synthesize`, `engine.boundary`, `engine.readiness` |
 
-An absent key falls to `default`. The shorthand scalar `target.review: frontier` is canonicalized to `{ start: frontier }` with no escalation. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is simply never consulted; a route policy is a binding, not a requirement to invoke.
+An absent key falls to `default`. The shorthand scalar `target.review: frontier` is canonicalized to `{ start: frontier }` with no escalation. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is simply never consulted; a route policy is a binding, not a requirement to invoke. The set is closed per programme state, not forever: [RFC-96](rfc-96-concurrent-execution.md)'s `target.decompose` operation joins it when that RFC lands.
 
 That closed key set is also Emery's form of **model specialization by role**: survey, extract, synthesize, build, verify, and review may bind different tiers without introducing an orchestrator-agent model. Comparable products pair a strong planning model with cheaper workers and skeptical validators; the analogue here is the pinned route table over operation keys, not a conversational scheduler that chooses models mid-run ([platform.md § Absorbed lessons](platform.md#lessons-absorbed-from-comparable-systems)).
 
@@ -126,7 +126,7 @@ The projection joins usage facts to the units an engagement is priced in. Slice,
 
 A run never invents or edits a route policy. It starts each operation on the profile's selected route and may advance only through that policy's ordered escalation ladder when a closed engine trigger is present.
 
-The initial closed triggers are `answer-repair-exhausted`, `context-limit-refusal`, and RFC-97's `unchanged-failure-set`. Each names an engine fact or typed provider outcome; no model, adapter, prompt, readiness judgment, token total, elapsed-time threshold, or free-form classifier may select it. A trigger either advances to the next declared route for that operation or stops when no declared step remains. Every dispatch records the route step and triggering fact.
+The initial closed triggers are `answer-repair-exhausted`, `context-limit-refusal`, and RFC-97's `unchanged-failure-set`. Each names an engine fact or typed provider outcome; no model, adapter, prompt, readiness judgment, token total, elapsed-time threshold, or free-form classifier may select it. A trigger either advances to the next declared route for that operation or stops when no declared step remains. Every dispatch records the route step and triggering fact. `unchanged-failure-set` has no producer until [RFC-97](rfc-97-native-verification.md) Phase A lands — the trigger is declared in the closed set but simply never fires before then.
 
 This is a deliberate divergence from opaque adaptive routing. An unrecorded router that quietly upgrades a model makes epoch coverage a partial description of what was authorized. A pinned economy → balanced → frontier ladder remains fully described by the covered profile, and its fact-triggered transitions are comparable across runs even though model outputs are not deterministic.
 
