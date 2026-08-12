@@ -1,6 +1,6 @@
 # Platform-Scale Migration
 
-> Status: Planning spine for the RFC-86…RFC-94 platform series and the post-series verification, fleet, learning, and autonomy tracks ([RFC-95](rfc-95-native-verification.md) through [RFC-98](rfc-98-policy-gated-autonomy.md)). Each RFC owns its decisions; this document owns sequence and fit.
+> Status: Planning spine for the RFC-86…RFC-102 platform series — the implemented 86–91 stem, the product and scale tracks, and the economics, learning, readiness, verification, conservation, fleet, and autonomy tracks interleaved with them in delivery order. Each RFC owns its decisions; this document owns sequence and fit.
 >
 > Audience: contributors starting work on the series; operators evaluating what Emery is becoming
 
@@ -16,37 +16,52 @@ Do all of it with one Emery: the same binary, verbs, artifacts, and lifecycle on
 
 **Implemented:** RFC-86 (Change Facts), RFC-87 (Private Workspaces), RFC-90 (Build Verification), and RFC-91 (Refinement Stage). The engine now runs a fact-based workflow over private workspaces with an engine-owned build phase machine and a standalone refinement stage between plan authoring and execution.
 
-**Remaining:** Product detach (RFC-88/89), progressive refinement (RFC-94 Phase A), concurrent candidate execution (RFC-92/94 Phase B), trustworthy verification (RFC-95), and governed learning/autonomy (RFC-97/98).
+**Remaining:** Product detach (RFC-88/95), progressive refinement (RFC-99 Phase A), concurrent candidate execution (RFC-96/99 Phase B), trustworthy verification (RFC-97), and governed learning/autonomy (RFC-93/102).
+
+**Assumed but unmeasured:** three properties the series depends on are asserted rather than assessed. Whether a given target can support the loop at all is assumed at authoring time and discovered at build time ([RFC-94](rfc-94-target-readiness.md)). Whether a migration preserved the behaviour it recovered is reviewed rather than replayed, even though the `captures` corpus that recorded it is retained ([RFC-98](rfc-98-behavioural-conservation.md)). And what the loop costs per slice is unattributed, which leaves RFC-93's `cost` field structurally empty ([RFC-92](rfc-92-operation-model-policy.md)). Each is small, independent of the scale track, and answerable on the implemented substrate.
 
 ### Dependency map
 
 ```mermaid
 flowchart TD
     R86[RFC-86] --> R87[RFC-87]
+    R86 --> R92[RFC-92]
     R87 --> R88[RFC-88]
     R87 --> R90[RFC-90]
-    R88 --> R89[RFC-89]
-    R88 --> R92[RFC-92]
-    R90 --> R91[RFC-91]
-    R91 --> R92
-    R92 --> R93[RFC-93]
     R88 --> R94[RFC-94]
-    R91 --> R94
-    R92 -->|Phase A then B| R94
-    R92 --> R95[RFC-95]
-    R90 --> R97[RFC-97]
-    R93 --> R96[RFC-96]
-    R95 --> R96
-    R94 -->|Phase B| R98[RFC-98]
-    R95 --> R98
-    R97 --> R98
-    R92 -. enriches .-> R97
-    R94 -. enriches .-> R97
-    R95 -. enriches .-> R97
+    R88 --> R95[RFC-95]
+    R88 --> R96[RFC-96]
+    R88 --> R99[RFC-99]
+    R90 --> R91[RFC-91]
+    R90 --> R93[RFC-93]
+    R91 --> R96
+    R91 --> R99
+    R96 --> R97[RFC-97]
+    R96 -->|Phase A then B| R99
+    R96 --> R100[RFC-100]
+    R97 --> R98[RFC-98]
+    R97 --> R101[RFC-101]
+    R97 --> R102[RFC-102]
+    R99 -->|Phase B| R102
+    R100 --> R101
+    R93 --> R102
+    R94 --> R102
+
+    R92 -. supplies cost .-> R93
+    R94 -. enables .-> R98
+    R94 -. enriches .-> R93
+    R96 -. enriches .-> R93
+    R97 -. enriches .-> R93
+    R98 -. enriches .-> R93
+    R99 -. enriches .-> R93
 
     classDef implemented fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
+    classDef evidence fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:2px
     class R86,R87,R90,R91 implemented
+    class R94,R98,R92 evidence
 ```
+
+Amber nodes are the evidence track: each closes a gap between what the series asserts and what it can demonstrate, and none of them blocks the scale track.
 
 
 
@@ -69,11 +84,11 @@ The architecture makes eight shifts to enable platform scale:
 1. **State becomes facts.** A change is a self-contained, version-control-neutral fact tree. Workflow status is projected from those facts, so a hosted service never becomes lifecycle authority.
 2. **Trees become values.** Every operation starts from an immutable snapshot in a private workspace and captures another snapshot. A code patch is the relation between the two; no shared working directory crosses an operation.
 3. **Location becomes disposable.** Plan authoring can begin in an empty directory, discover the participating repositories, and record their exact revisions. Execution creates private workspaces on demand. Archive leaves only merged baselines and forge history.
-4. **Build repair becomes engine-owned.** Generation, model-assisted verification, repair, and review become separate target WIT operations in a bounded engine loop rather than retries hidden in adapter prose. [RFC-95](rfc-95-native-verification.md) follows with deterministic native verification on the trusted host.
+4. **Build repair becomes engine-owned.** Generation, model-assisted verification, repair, and review become separate target WIT operations in a bounded engine loop rather than retries hidden in adapter prose. [RFC-97](rfc-97-native-verification.md) follows with deterministic native verification on the trusted host.
 5. **Model work becomes explicit.** Plan authoring surveys the pinned source set and recursively partitions it until every terminal scope is a buildable slice. During the singular slice build, `target.decompose` proposes one complete task graph and the engine validates it before dispatch.
-6. **Refinement becomes a fenced stage.** [RFC-91](rfc-91-refinement-stage.md) adds serial plan-wide refinement, covers complete reviewable refinement bundles, and moves target-base selection to wave open. [RFC-92](rfc-92-concurrent-execution.md) turns the serial loops into `(slice, phase, input-digest)` work items and concurrent frontiers.
-7. **Progress is a policy, not another workflow.** [RFC-94](future/rfc-94-streaming-execution.md) publishes closed branches, progressively refines them, and optionally builds non-authoritative candidate frontiers. Manual review remains available; unattended build uses exact policy admission; accepted-CID mutation remains separate.
-8. **Learning is offline and versioned.** [RFC-97](rfc-97-outcome-learning.md) turns retained outcomes into inert proposals and promoted future versions. [RFC-98](rfc-98-policy-gated-autonomy.md) permits unattended merge only under a pinned policy, protected evidence, native verification, exact commit admission, and bounded recovery.
+6. **Refinement becomes a fenced stage.** [RFC-91](rfc-91-refinement-stage.md) adds serial plan-wide refinement, covers complete reviewable refinement bundles, and moves target-base selection to wave open. [RFC-96](rfc-96-concurrent-execution.md) turns the serial loops into `(slice, phase, input-digest)` work items and concurrent frontiers.
+7. **Progress is a policy, not another workflow.** [RFC-99](future/rfc-99-streaming-execution.md) publishes closed branches, progressively refines them, and optionally builds non-authoritative candidate frontiers. Manual review remains available; unattended build uses exact policy admission; accepted-CID mutation remains separate.
+8. **Learning is offline and versioned.** [RFC-93](rfc-93-outcome-learning.md) turns retained outcomes into inert proposals and promoted future versions. [RFC-102](rfc-102-policy-gated-autonomy.md) permits unattended merge only under a pinned policy, protected evidence, native verification, exact commit admission, and bounded recovery.
 
 ### Scaling invariant
 
@@ -101,31 +116,37 @@ Six records answer different questions to decouple state from lifecycle:
 
 ## The series
 
-The tables list each RFC's hard dependencies and what it delivers. Step numbers are a **product-ownership / reading order** (fact substrate → workspace stem → product path, then scale), not a claim about landing chronology and not a single serial queue. [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md) are **implemented**: the fact and workspace stem plus the engine-owned build phase machine. The remaining workspace stand-in is merge-time `apply` (deleted by [RFC-88](rfc-88-detached-changes.md)). RFC-88's recursive authoring contract remains the product branch; RFC-91 adds the serial review boundary and wave-time base, RFC-92 owns concurrent phase scheduling, RFC-94 pipelines closed branches through that scheduler, and RFC-93 optionally distributes it — see [Working in parallel](#working-in-parallel). Every RFC owns an independently testable delivery; later steps extend rather than predeclare its wire contract.
+The tables list each RFC's hard dependencies and what it delivers. **RFC numbers are the delivery sequence.** Numbers ascend in dependency order, with work that can start on the implemented substrate pulled forward, so a lower number is either already landed or unblocked earlier. The sequence is not a serial queue — several tracks proceed concurrently, as [Working in parallel](#working-in-parallel) sets out — but no RFC depends on a higher-numbered one.
 
-The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / D17 as amended by [RFC-86a](rfc-86a-gap-deferral.md): starting `emery plan execute` appends `plan.execute.started` with typed coverage carrying the effective gap policy; there is no separate `approve` verb, no projected `approved` rung, and no silent skip of gaps — open rows block under `strict`, and every deferral is a durable, journaled `gap.deferred` fact. RFC-91 preserves that event, replaces spec-only coverage with complete refinement-manifest digests, and removes `refine-under-epoch`; `plan refine` creates no code-work grant. RFC-94 adds progressive run and member admission for unattended candidate work. RFC-98 alone extends policy admission to accepted-CID mutation.
+Numbers 86 through 91 are frozen history and do not follow that rule: [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-refinement-stage.md) are **implemented** — the fact and workspace stem plus the engine-owned build phase machine and the serial refinement stage — and [RFC-88](rfc-88-detached-changes.md) is the contract under implementation now. Those five are cited across the WIT wire contract, engine crates, and the adapter repository, so they keep the numbers those citations name. Everything from 92 up is unstarted and numbered by sequence.
+
+**89 is permanently vacant.** It named Publication Sets, which is now [RFC-95](rfc-95-publication-sets.md). Do not reuse the number: git history and pre-renumber commits still associate it with publication work, and the same rule applies to any number retired below 86.
+
+The remaining workspace stand-in is merge-time `apply` (deleted by RFC-88). RFC-88's recursive authoring contract remains the product branch; RFC-91 adds the serial review boundary and wave-time base, RFC-96 owns concurrent phase scheduling, RFC-99 pipelines closed branches through that scheduler, and RFC-100 optionally distributes it. Every RFC owns an independently testable delivery; later steps extend rather than predeclare its wire contract.
+
+The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / D17 as amended by [RFC-86a](rfc-86a-gap-deferral.md): starting `emery plan execute` appends `plan.execute.started` with typed coverage carrying the effective gap policy; there is no separate `approve` verb, no projected `approved` rung, and no silent skip of gaps — open rows block under `strict`, and every deferral is a durable, journaled `gap.deferred` fact. RFC-91 preserves that event, replaces spec-only coverage with complete refinement-manifest digests, and removes `refine-under-epoch`; `plan refine` creates no code-work grant. RFC-99 adds progressive run and member admission for unattended candidate work. RFC-102 alone extends policy admission to accepted-CID mutation.
 
 ### Product critical path — migrate and change a platform
 
 
-| Step | RFC                                  | Title              | Delivers                                                                                                                                                                                                                                                                                       | Depends on                                      |
-| ---- | ------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 1    | [RFC-86](rfc-86-change-facts.md)     | Change Facts       | The substrate: the change as a version-control-neutral fact tree, projected status, per-writer event logs, explicit execution-authorization epochs, pinned per-leaf inputs, immutable one-member target-wave commit, merge-finalized requirement identity, desktop as the degenerate deployment | —                                               |
-| 2    | [RFC-87](rfc-87-working-trees.md)    | Private Workspaces | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                                                             | implemented 86 pin/epoch/wave facts; interim `apply` until 88 |
-| 3    | [RFC-88](rfc-88-detached-changes.md) | Detached Changes   | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, capability-profile-bound conflict-domain decomposition, refinement feedback through focused child leads, a buildable leaf projection, and operation-local workspaces | implemented 86; implemented 87                  |
-| 4    | [RFC-89](rfc-89-publication-sets.md) | Publication Sets   | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                                                              | 88 (member derivation)                          |
+| RFC                                  | Title              | Delivers                                                                                                                                                                                                                                                                                       | Depends on                                      |
+| ------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| [RFC-86](rfc-86-change-facts.md)     | Change Facts       | The substrate: the change as a version-control-neutral fact tree, projected status, per-writer event logs, explicit execution-authorization epochs, pinned per-leaf inputs, immutable one-member target-wave commit, merge-finalized requirement identity, desktop as the degenerate deployment | —                                               |
+| [RFC-87](rfc-87-working-trees.md)    | Private Workspaces | Immutable snapshots, disposable private workspaces, `prepare` / `capture` / `discard`, code patches as base/result relations, and separate writable-code/read-only-artifact access                                                                                                             | implemented 86 pin/epoch/wave facts; interim `apply` until 88 |
+| [RFC-88](rfc-88-detached-changes.md) | Detached Changes   | Complete single-node migrate/change loop: generated source identities, deterministic selection, an ordinary directory as the disposable change home, GitHub discovery, capability-profile-bound conflict-domain decomposition, refinement feedback through focused child leads, a buildable leaf projection, and operation-local workspaces | implemented 86; implemented 87                  |
+| [RFC-95](rfc-95-publication-sets.md) | Publication Sets   | Project seal: each final project snapshot becomes one local commit; publication identity binds those commits, branches, and PRs across repositories with ordered landing and archive verification                                                                                              | 88 (member derivation)                          |
 
 
 ### Scale track — staged and concurrent execution
 
 
-| Step | RFC                                            | Title                 | Delivers                                                                                       | Depends on            |
-| ---- | ---------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- | --------------------- |
-| 5    | [RFC-90](rfc-90-build-verification.md)         | Build Verification    | **Implemented:** Engine-owned build loop, bounded repair policy, durable reports.              | 87                    |
-| 6    | [RFC-91](rfc-91-refinement-stage.md)           | Refinement Stage      | **Implemented:** Serial plan-wide refinement (`plan refine`), reviewable refinement manifests, wave-time target bases, execute-time coverage. | 90                    |
-| 7    | [RFC-92](rfc-92-concurrent-execution.md)       | Concurrent Execution  | Work item scheduling, concurrent frontiers, bottom-up convergence, multi-member target waves.  | 88, 91                |
-| 8    | [RFC-93](rfc-93-distributed-execution.md)      | Distributed Execution | Distribution of completed RFC-92 model between nodes via operation offers and remote pools.    | 92                    |
-| 9    | [RFC-94](future/rfc-94-streaming-execution.md) | Streaming Execution   | Phase A: publish/refine closed branches. Phase B: unattended candidate build, deferred commit. | A: 88, 91, 92A B: 92B |
+| RFC                                            | Title                 | Delivers                                                                                       | Depends on            |
+| ---------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------- | --------------------- |
+| [RFC-90](rfc-90-build-verification.md)         | Build Verification    | **Implemented:** Engine-owned build loop, bounded repair policy, durable reports.              | 87                    |
+| [RFC-91](rfc-91-refinement-stage.md)           | Refinement Stage      | **Implemented:** Serial plan-wide refinement (`plan refine`), reviewable refinement manifests, wave-time target bases, execute-time coverage. | 90                    |
+| [RFC-96](rfc-96-concurrent-execution.md)       | Concurrent Execution  | Work item scheduling, concurrent frontiers, bottom-up convergence, multi-member target waves.  | 88, 91                |
+| [RFC-99](future/rfc-99-streaming-execution.md) | Streaming Execution   | Phase A: publish/refine closed branches. Phase B: unattended candidate build, deferred commit. | A: 88, 91, 96A; B: 96B |
+| [RFC-100](rfc-100-distributed-execution.md)    | Distributed Execution | Distribution of completed RFC-96 model between nodes via operation offers and remote pools.    | 96                    |
 
 
 
@@ -133,26 +154,41 @@ The landed authorization contract follows [RFC-86](rfc-86-change-facts.md) D6 / 
 ### Verification, learning, and autonomy follow-ons
 
 
-| RFC                                       | Title                        | Delivers                                                                | Depends on                  |
-| ----------------------------------------- | ---------------------------- | ----------------------------------------------------------------------- | --------------------------- |
-| [RFC-95](rfc-95-native-verification.md)   | Native Verification Profiles | Host-attested semantic checks, denied-by-default tool execution.        | 90, 92                      |
-| [RFC-96](rfc-96-platform-readiness.md)    | Platform Readiness           | Hosted/fleet conformance, tenancy, capability-scoped workers.           | 93, 95                      |
-| [RFC-97](rfc-97-outcome-learning.md)      | Outcome Learning             | Outcome records, inert improvement proposals, promoted future versions. | 90 (enriched by 92, 94, 95) |
-| [RFC-98](rfc-98-policy-gated-autonomy.md) | Policy-Gated Autonomy        | Unattended merge under promoted policy, exact commit admission.         | 94B, 95, 97                 |
+| RFC                                         | Title                        | Delivers                                                                | Depends on                    |
+| ------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------- | ----------------------------- |
+| [RFC-93](rfc-93-outcome-learning.md)        | Outcome Learning             | Outcome records, inert improvement proposals, promoted future versions. | implemented 90 (enriched by 96, 99, 97) |
+| [RFC-97](rfc-97-native-verification.md)     | Native Verification Profiles | Host-attested semantic checks, denied-by-default tool execution.        | 90, 96                        |
+| [RFC-101](rfc-101-platform-readiness.md)    | Platform Readiness           | Hosted/fleet conformance, tenancy, capability-scoped workers.           | 100, 97                       |
+| [RFC-102](rfc-102-policy-gated-autonomy.md) | Policy-Gated Autonomy        | Unattended merge under promoted policy, exact commit admission.         | 99B, 97, 93                   |
+
+
+### Evidence track — readiness, conservation, and economics
+
+
+| RFC                                          | Title                     | Delivers                                                                                          | Depends on                |
+| -------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------- |
+| [RFC-92](rfc-92-operation-model-policy.md)   | Operation Model Policy    | Per-operation model routes on the pinned capability profile, usage facts, cost attribution.        | implemented 86, 90        |
+| [RFC-94](rfc-94-target-readiness.md)         | Target Readiness Profiles | Discovery-time target assessment over a closed dimension set; band-gated execution-policy eligibility. | 88 (enriches 93, 102)     |
+| [RFC-98](rfc-98-behavioural-conservation.md) | Behavioural Conservation  | The `captures` corpus as a protected replay oracle, the `conserve` profile, per-requirement conservation coverage. | 97 (enabled by 94)        |
+
+**Two things are called readiness.** [RFC-101](rfc-101-platform-readiness.md) *platform* readiness is about Emery's own deployment: whether a fleet can host tenanted, capability-scoped workers. [RFC-94](rfc-94-target-readiness.md) *target* readiness is about the client's estate: whether a pinned repository can support the loop. They share a word and nothing else, and neither depends on the other.
 
 
 
-- **Implemented and in-flight RFCs stay frozen.** RFC-86 and RFC-90 are implemented substrates, and RFC-88 is the current implementation contract. RFC-91, RFC-94, RFC-97, and RFC-98 carry their changes as explicit forward patches; they do not revise those predecessor texts.
-- **RFC-86 is product-ownership step 1 and is implemented** — the fact substrate every later step consumes (projected status, per-writer logs, `plan.execute.started`, recorded pins, one-member waves, `builds/<digest>.yaml`). Product acceptance closeout (S23) is complete. It deleted the mechanics later steps would otherwise have synchronized (stored status, the single journal file, synthesis-time identity, unrecorded execute starts) and delivered the shift-left refine / gap-gate flow.
+- **Implemented and in-flight RFCs stay frozen.** RFC-86 and RFC-90 are implemented substrates, and RFC-88 is the current implementation contract. RFC-91, RFC-99, RFC-93, and RFC-102 carry their changes as explicit forward patches; they do not revise those predecessor texts.
+- **RFC-86 is the base of the series and is implemented** — the fact substrate every later step consumes (projected status, per-writer logs, `plan.execute.started`, recorded pins, one-member waves, `builds/<digest>.yaml`). Product acceptance closeout (S23) is complete. It deleted the mechanics later steps would otherwise have synchronized (stored status, the single journal file, synthesis-time identity, unrecorded execute starts) and delivered the shift-left refine / gap-gate flow.
 - **RFC-87 is the shared workspace stem and has already landed.** Phase B retired build-time ambient freeze and `build/patch.yaml` against the `SnapshotId` / `prepare` / `capture` / `discard` contract. The remaining interim is merge-time `apply` (RFC-88 deletes it). Do not re-litigate whether workspaces “depend on finished 86.”
-- **After the stem, the series is a braid, not two independent pipelines:** RFC-90's engine-owned build verification and repair orchestration is implemented; RFC-88 settles recursive authoring, while RFC-91 follows the 86/87/90 substrate with a serial specs-first stage, complete refinement coverage, and wave-time target bases. RFC-92 joins 88, 90, and 91 in two deliveries: Phase A replaces serial model-work cursors with a bounded scheduler and pool; Phase B adds target task graphs, composition, convergence, and waves. RFC-93 distributes the completed local model. RFC-89 publication and RFC-93 multi-node execution remain orthogonal.
+- **After the stem, the series is a braid, not two independent pipelines:** RFC-90's engine-owned build verification and repair orchestration is implemented; RFC-88 settles recursive authoring, while RFC-91 follows the 86/87/90 substrate with a serial specs-first stage, complete refinement coverage, and wave-time target bases. RFC-96 joins 88, 90, and 91 in two deliveries: Phase A replaces serial model-work cursors with a bounded scheduler and pool; Phase B adds target task graphs, composition, convergence, and waves. RFC-100 distributes the completed local model. RFC-95 publication and RFC-100 multi-node execution remain orthogonal.
 - **RFC-91 is the staged-refinement prerequisite.** It owns the complete-plan review seam and exact manifest contract. It adds no approval state, so an automation may invoke refine and execute back to back over the same artifacts.
-- **RFC-92 Phase A is an early reusable substrate.** It owns work-item identity, cancellation, the bounded pool, and concurrent survey/extract/refine before target decomposition or multi-member waves land.
-- **RFC-94 is phased.** Phase A combines RFC-88 branch revisions, RFC-91 manifests, and RFC-92A to refine while authoring continues without code authority. Phase B waits for completed RFC-92 and adds policy-admitted candidate build, candidate dependency frontiers, and deferred commit. Neither phase waits on RFC-93.
-- **RFC-95 is the native-verification follow-on.** It depends on 87, 90, and 92, may land beside 93/94, and supplies the host-attested assurance RFC-98 requires.
-- **RFC-96 is the hosted/fleet readiness spine.** It consumes RFC-93 and worker capabilities including RFC-95; its own phase table remains authoritative.
-- **RFC-97 can start from implemented RFC-90.** Outcome projection and diagnostic recurrence need no concurrent or hosted runtime; RFC-92, RFC-94, and RFC-95 enrich the same record as they land.
-- **RFC-98 is last on the autonomy path.** It requires progressive candidates, host/protected verification, and promoted policy generations. It extends `plan run` through merge but leaves forge publication to RFC-89 and the operator.
+- **RFC-96 Phase A is an early reusable substrate.** It owns work-item identity, cancellation, the bounded pool, and concurrent survey/extract/refine before target decomposition or multi-member waves land.
+- **RFC-99 is phased.** Phase A combines RFC-88 branch revisions, RFC-91 manifests, and RFC-96A to refine while authoring continues without code authority. Phase B waits for completed RFC-96 and adds policy-admitted candidate build, candidate dependency frontiers, and deferred commit. Neither phase waits on RFC-100.
+- **RFC-97 is the native-verification follow-on.** It depends on 87, 90, and 96, may land beside 99/100, and supplies the host-attested assurance RFC-102 requires.
+- **RFC-101 is the hosted/fleet readiness spine.** It consumes RFC-100 and worker capabilities including RFC-97; its own phase table remains authoritative.
+- **RFC-93 can start from implemented RFC-90.** Outcome projection and diagnostic recurrence need no concurrent or hosted runtime; RFC-96, RFC-99, and RFC-97 enrich the same record as they land.
+- **RFC-102 is last on the autonomy path.** It requires progressive candidates, host/protected verification, and promoted policy generations. It extends `plan run` through merge but leaves forge publication to RFC-95 and the operator.
+- **RFC-94 decides which policy a target is eligible for.** The four orchestration policies below are offered uniformly today, which means an unattended policy can be pointed at a target with nothing to verify against. Readiness moves that judgment from the operator's intuition to a recorded, digest-bound assessment of the pinned CID, checked before the epoch opens. It follows RFC-88 discovery and blocks nothing else.
+- **RFC-98 supplies the assurance the migration case actually rests on.** RFC-97 can attest that a candidate passes its own checks; it cannot attest that the candidate still behaves like the system it replaced. The `captures` corpus is already retained and is the only input in a change that no writer can reach, which makes it the protected oracle the estate actually has. It follows RFC-97 and is worth more on a low-readiness estate than another concurrency increment.
+- **RFC-92 can start on the implemented substrate.** RFC-93 already declares a `cost` field it cannot populate and a `model-route-change` proposal kind for an object no RFC defines. Routes and usage facts need neither concurrency nor a hosted runtime, and once they exist every later RFC's telemetry gains a spend dimension for free.
 
 ## Working in parallel
 
@@ -161,15 +197,30 @@ With the foundational substrate (86/87/90) landed, independent tracks can procee
 
 | Track                          | Sequence  | Status                             |
 | ------------------------------ | --------- | ---------------------------------- |
-| **Location / product**         | 88 → 89   | Ready to start                     |
-| **Refinement**                 | 91        | Ready to start                     |
-| **Concurrency / distribution** | 92 → 93   | 92A can start when 88/91 stabilize |
-| **Progressive execution**      | 94A → 94B | 94A follows 88/91/92A              |
-| **Learning / autonomy**        | 97 → 98   | 97 can start now                   |
-| **Verification & Readiness**   | 95, 96    | Follows 92 / 93 respectively       |
+| **Location / product**         | 88 → 95   | Ready to start                     |
+| **Refinement**                 | 91        | Implemented                        |
+| **Concurrency / distribution** | 96 → 100  | 96A can start when 88/91 stabilize |
+| **Progressive execution**      | 99A → 99B | 99A follows 88/91/96A              |
+| **Learning / autonomy**        | 93 → 102  | 93 can start now                   |
+| **Verification & fleet**       | 97, 101   | Follows 96 / 100 respectively      |
+| **Evidence**                   | 92, 94, 98 | 92 can start now; 94 follows 88; 98 follows 97 |
 
 
 *Note:* Collision points exist in the merge orchestration (which RFC-88 significantly impacts). Sequence these integrations explicitly rather than attempting to merge parallel structural changes.
+
+The evidence track ascends in the order it becomes cheapest. RFC-92 touches the implemented substrate and nothing else. RFC-94 needs only RFC-88 discovery. RFC-98 needs RFC-97's protected-oracle machinery. None of the three is on the scale track's critical path, and all three change what the scale track's results *mean* — which is the argument for not deferring them behind it.
+
+## Evidence and iteration posture
+
+Several RFCs in this series cite this section for how their claims should be judged. The posture is one rule with three consequences.
+
+**Prefer a measurement to an assumption whenever the measurement is cheap.** The architecture is unusually well placed to measure itself: every operation is typed, every input is digest-bound, and every result is a durable fact. That makes it tempting to treat internal coherence as evidence. It is not. A design that is consistent with the rest of the series can still be wrong about the estate it will meet.
+
+- **Scale is justified by measurement, not by assumption.** RFC-96 and RFC-100 buy throughput, and throughput is only valuable if model-work latency is the binding constraint. On a target with a slow build, an unreliable environment, or heavy repair rounds, it is not; concurrency then multiplies spend without moving the completion date. RFC-92's usage facts and RFC-97 D9's per-profile timing make that question answerable before the concurrency work is committed rather than after.
+- **Assurance is claimed at the level it was earned.** `assurance: candidate`, `protected`, and `mixed` exist so that a passing check cannot be quoted as more than it is. The same discipline applies to prose: an RFC that says a change is "verified" should name which profile, over which oracle, at which assurance. RFC-98 exists because the honest answer for most legacy work today is "model-reviewed", and that is not the same claim.
+- **A number that looks measured must be measured.** RFC-92 D3 records `unknown` rather than a locally estimated cost for this reason, and RFC-94 D6 sends its weighting hypothesis to RFC-93 rather than defending it in prose. Where the series states a threshold, budget, or weight, treat it as a starting value with a route to being revised by outcome records — not as a settled constant.
+
+Iteration follows the same rule. Land the smallest thing that produces a fact, read the facts, and let RFC-93's offline loop propose the next value. The alternative — tuning constants from intuition and recording nothing — is the failure this architecture was built to avoid, and it is entirely possible to commit it one layer up, in the RFCs themselves.
 
 ## Orchestration policies
 
@@ -192,10 +243,10 @@ emery plan execute    →  cover the exact refinement manifests;
                          strict; durable deferrals via plan defer / --gap-policy — RFC-86a);
                          prepare private workspaces on demand (RFC-87); execute leaves;
                          commit target waves (RFC-88);
-                         converge domains and extend waves across ready leaves (RFC-92);
-                         seal each drained target's final CID (RFC-89)
+                         converge domains and extend waves across ready leaves (RFC-96);
+                         seal each drained target's final CID (RFC-95)
 operator publishes    →  push sealed branches; open and merge PRs
-emery plan archive    →  verify the publication set (RFC-89); archive
+emery plan archive    →  verify the publication set (RFC-95); archive
 rm -rf <dir>
 ```
 

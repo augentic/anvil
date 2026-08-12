@@ -33,7 +33,7 @@ pub const CONTINUATION_LIMIT: usize = 1024 * 1024;
 /// Returns [`Error::Diag`] keyed on the `target-phase-*` family:
 ///
 /// - `target-phase-source-tool` — report source `tool` is rejected
-///   until a trusted host-tool execution seam exists (RFC-95);
+///   until a trusted host-tool execution seam exists (RFC-97);
 /// - `target-phase-source-incoherent` — the report-level source does
 ///   not cover its finding sources: `deterministic` admits only
 ///   deterministic findings, `model-assisted` only model-assisted
@@ -59,7 +59,7 @@ pub fn accept(operation: PhaseOperation, report: &PhaseReport) -> Result<()> {
             code: "target-phase-source-tool",
             detail: format!(
                 "the `{operation}` report claims source `tool`, which is rejected until a \
-                 trusted host-tool execution seam exists (RFC-95)"
+                 trusted host-tool execution seam exists (RFC-97)"
             ),
         });
     }
