@@ -163,6 +163,18 @@ AI-accelerated delivery is already noise. **AI delivery with an audit trail** �
 
 The beachhead already exists: two central-government clients and one local-government client are on the books today. Year 1 is not about winning government logos — it is about converting existing relationships into the first fixed-price modernization anchors and the public case studies that carry the audit story into Australia.
 
+### The wedge is contested — the differentiator still holds
+
+[Factory](https://factory.ai) is the closest well-capitalized analog and is aiming at the same market. They maintain a benchmark called **Legacy-Bench** for "AI agents working on legacy software" and name brownfield migration — "modernizing existing codebases, swapping frameworks, or restructuring large projects while preserving existing behavior" — as a headline use case. Their differentiator is speed and cost: their model router claims 43% aggregate savings and a median session at 81% below top-tier rates.
+
+Two consequences. First, **"we do legacy modernization with AI" has stopped being differentiating on its own** — that window has closed, and positioning that leans on it will be met with a cheaper, faster competitor. Lead with the audit trail, not the automation.
+
+Second, **the audit story remains structurally defensible**, which is the more important half. Factory made the opposite architectural bet: their orchestration layer is itself an agent, session-based and conversational. That design has no substrate to hang evidence claims, authority resolution, `[unknown]` / `[conflict]` gaps, digest-bound deferrals, or requirement-to-source traceability on. They cannot easily produce the artifact this strategy sells, and reaching it would mean rebuilding their foundation rather than adding a feature.
+
+Their own documentation corroborates the bet twice over. Their autonomous multi-step mode is gated on a high repository-readiness level because, in their words, without it "the mission cannot reliably verify its own work" — a well-funded team stating publicly that autonomous work fails on an unverifiable substrate, which is the commercial case for [RFC-94 target readiness](../rfcs/rfc-94-target-readiness.md) as a paid pre-engagement. And they publish open doubts about whether running agents in parallel beats sequential execution at all. Both point the same way: verification, not throughput, is the binding constraint — which is why [RFC-98 behavioural conservation](../rfcs/rfc-98-behavioural-conservation.md) underwrites fixed-price delivery more directly than any concurrency work, and why the [evidence track](../rfcs/platform.md#evidence-track--readiness-conservation-and-economics) is sequenced ahead of scale.
+
+Source: factory.ai marketing and developer documentation as of Aug 12, 2026.
+
 ### Geography and M&A
 
 NZ is the proving ground; the $50m lives in Australia (5–6x the market, same timezone, trans-Tasman procurement familiarity). AU entity plus a senior local face in year one, anchored by a lighthouse deal won from NZ. From a $10m base, strong organic growth (40–50% CAGR) reaches ~$27–34m — well short of $50m. The gap closes either with one or two more concurrent modernization programs than the organic plan assumes, or by acquiring a small AU/NZ consultancy (0.5–1x revenue) in year 2–3 and retooling it onto the platform; the open-source flip is what makes acquired engineers onboardable. M&A is the contingency lever, not the plan's foundation.

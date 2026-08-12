@@ -49,9 +49,22 @@ The [platform RFC chain](platform.md) is the current delivery spine; [architectu
 **Trigger:** the first change where operators skip topology review because the artifact is too large to read — likely the first deep RFC-88 recursive decomposition across several repositories.
 **Likely shape:** read-only projections over `plan.yaml` and `discovery.md` (a decomposition tree, per-domain provenance, [RFC-94](rfc-94-target-readiness.md) bands in place). Deliberately not an editing surface and not a dashboard: amendment stays on `emery plan amend`, and the single-writer contract is what makes the review meaningful.
 
+### RM-27: Amendment-proposal review ergonomics
+
+**Goal:** Make reviewing and applying an inert amendment proposal fast, because operator time is the expensive input in a services engagement and every recovery path in this architecture routes through one.
+**Trigger:** the first change where a boundary escalation or ownership fan-in proposal is applied without being properly read, or where proposal review measurably dominates a slice's wall-clock.
+**Likely shape:** a read-only diff projection over a proposal's candidate lead-catalog and decomposition revisions against the current ones, plus a `plan status` projection that names the parked proposal and what applying it would change. The primitive is already right — RFC-88 keeps proposals inert and `plan amend` is the single writer. This is presentation only, and it must stay presentation only: the value of stop → inspect → fix inputs → re-run comes from the operator actually reading the proposal, so nothing here may add an "apply all" path or let a proposal apply itself.
+
 ### RM-25: Target runtime harness declaration
 
 **Goal:** Let a target adapter declare how the system it builds is started, driven, and observed, so [RFC-94](rfc-94-target-readiness.md) can assess `behavioural-observability` against something concrete and [RFC-98](rfc-98-behavioural-conservation.md) replay drivers can bind per target.
 **Trigger:** RFC-98 lands and its second replay driver needs a per-target hook rather than a deployment-wide default.
 **Likely shape:** declarative target metadata — launch command, readiness signal, drive surface, observation sink — resolved by deployment policy into a driver. Declarative only: no adapter-supplied command crosses WIT, on [RFC-97](rfc-97-native-verification.md) D3's rule.
+
+### RM-26: Client-controlled model endpoint
+
+**Goal:** Establish whether model traffic can be routed through a client-owned gateway, proxy, or self-hosted endpoint end to end, and close the gap if it cannot.
+**Trigger:** before quoting any engagement in a regulated sector — government, banking, insurance, health — not after. This is the one item on this list that is a potential engagement blocker rather than an improvement, so the investigation precedes the commitment.
+**Open question first:** [RFC-92](rfc-92-operation-model-policy.md) D2 already places provider, endpoint, and credential binding in deployment policy rather than in change artifacts, so the design admits a client endpoint. What is unverified is the running deployment: model calls resolve through the Cursor-backed provider, and nobody has traced whether an alternative endpoint, an outbound proxy, or a custom CA is supported through that path. Trace it before designing anything.
+**Likely shape, if the gap is real:** deployment-policy endpoint binding beside RFC-92's route table, standard proxy environment handling, and custom CA trust — all host-side, none of it visible to the engine guest or to any adapter. Data residency and egress posture are deployment concerns for the same reason credentials are.
 

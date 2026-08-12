@@ -208,7 +208,11 @@ With the foundational substrate (86/87/90) landed, independent tracks can procee
 
 *Note:* Collision points exist in the merge orchestration (which RFC-88 significantly impacts). Sequence these integrations explicitly rather than attempting to merge parallel structural changes.
 
-The evidence track ascends in the order it becomes cheapest. RFC-92 touches the implemented substrate and nothing else. RFC-94 needs only RFC-88 discovery. RFC-98 needs RFC-97's protected-oracle machinery. None of the three is on the scale track's critical path, and all three change what the scale track's results *mean* — which is the argument for not deferring them behind it.
+The evidence track ascends in the order it becomes cheapest, and two of its three members are genuinely independent of the scale track: RFC-92 touches the implemented substrate and nothing else, and RFC-94 needs only RFC-88 discovery. Both can land while concurrency work proceeds, and both change what the scale track's results *mean* — which is the argument for not deferring them behind it.
+
+**RFC-98 is the exception, and the dependency is worth revisiting.** Conservation needs RFC-97's protected-oracle machinery, and RFC-97 as written depends on RFC-96, so the most valuable assurance instrument for legacy work currently sits behind the concurrent scheduler. RFC-97 cites RFC-96 for three things: immutable candidate composition, fresh verification workspaces, and the `frontier-domain` / `complete-domain` verification contexts. The first two are RFC-87, which is implemented; only the domain contexts and D11's protected-input closure genuinely need concurrency. A serial-first cut restricted to `slice-attempt` context would therefore depend on 87 and 90 alone and would carry conservation with it.
+
+That split is **not** decided here and RFC-97's stated dependency stands. It is recorded because the alternative is rediscovering the question after committing to the scale track, and because the sequencing argument in [Evidence and iteration posture](#evidence-and-iteration-posture) applies to this series' own claims as much as to the estate's.
 
 ## Evidence and iteration posture
 
@@ -294,4 +298,15 @@ Unchanged and orthogonal — not part of this arc, not blocked by it:
 - **[Release process](../docs/release.md)** — operational policy for releasing Emery.
 - **[RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md)** — optional cost lever.
 - **[RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md)** — content-triggered vectis work.
+
+## Deliberately rejected
+
+These are recorded because they are perennial suggestions, each plausible on its own terms, and because the reasoning against them is not obvious from any single RFC. Rejection here is a decision, not an omission; reopening one needs an argument against the reason given, not a restatement of the benefit.
+
+- **An agent as the orchestration layer.** The most common shape in comparable products: the thing that plans and schedules is itself conversational, so a stuck run is unstuck by telling it that it seems stuck. It is genuinely more forgiving to operate. It is also incompatible with everything the fact substrate buys — a projectable state model, digest-bound authorization, and replay. The ability to converse with a stalled orchestrator is a symptom of having no projection to read, not a capability Emery lacks. Recovery stays: stop, read the typed reason, fix the inputs, re-run the stage.
+- **Loosening determinism to buy orchestrator flexibility.** The general form of the above, and the one most likely to arrive disguised as a small exception — an unrecorded retry, an in-run model upgrade, a silently widened budget. Each one converts the epoch's coverage from a description of what was authorized into an approximation of it. [RFC-92](rfc-92-operation-model-policy.md) D5 works through the concrete case.
+- **An SDLC-wide automation surface.** Triage, release gates, incident response, coverage dashboards. This is a product-company play: it exists to make a platform sticky across many customers, which is not what Emery is for. It also fails the trace test — none of it delivers an engagement.
+- **Managed persistent cloud compute for agents.** Emery ships as a single binary with a fact log and runs on the operator's node or a client's own infrastructure. Owning long-lived remote machines adds a tenancy, billing, and data-residency surface that directly undercuts the deployment posture regulated clients buy. [RFC-101](rfc-101-platform-readiness.md) covers fleet execution without Emery owning the fleet.
+- **An adapter marketplace.** Distribution, discovery, ratings, and trust for third-party adapters. The versioned `emery:adapter` WIT contract is the right seam and it already exists; the marketplace around it is deferred to [RM-21](roadmap.md) and starts at the first external author, not before.
+- **A generic repository maturity score.** Rejected in [RFC-94](rfc-94-target-readiness.md) rather than here, but it belongs on this list: scoring organisational practice measures something other than whether this engine can build this tree.
 
