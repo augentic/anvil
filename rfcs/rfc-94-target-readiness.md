@@ -1,12 +1,12 @@
-# RFC-94: Target Readiness Profiles
+# RFC-94: Target Execution Readiness Profiles
 
-> Status: Active evidence track in the [Services Delivery Programme](platform.md), following RFC-88 discovery
+> Status: Active evidence track in the [Services Delivery Programme](platform.md), following RFC-88 delivery binding
 >
-> Owns: the closed target-readiness dimension set, the versioned readiness profile, discovery-time assessment and its record, the readiness band, execution-policy eligibility, and the remediation projection.
+> Owns: the closed target-execution-readiness dimension set, the versioned readiness profile, binding-time assessment and its record, the readiness band, execution-policy eligibility, and the remediation projection.
 >
-> Depends on [RFC-88](rfc-88-detached-changes.md) for discovery, pinned target CIDs, and the model-capability-profile shape this RFC mirrors. Consumed by [RFC-97](rfc-97-native-verification.md) preflight, [RFC-98](rfc-98-behavioural-conservation.md) corpus expectations, and [RFC-102](rfc-102-policy-gated-autonomy.md) admission.
+> Depends on [RFC-88](rfc-88-detached-changes.md) for delivery binding, pinned target CIDs, and the model-capability-profile shape this RFC mirrors. [RFC-104](rfc-104-system-archaeology.md) separately owns definition coverage, system understanding, architecture, and migration readiness. Consumed by [RFC-97](rfc-97-native-verification.md) preflight, [RFC-98](rfc-98-behavioural-conservation.md) corpus expectations, and [RFC-102](rfc-102-policy-gated-autonomy.md) admission.
 >
-> Patch ownership: this RFC amends RFC-88 D5 by adding a readiness record to each `discovery.yaml` target row and RFC-88 D8 by adding the readiness digest to closed-plan coverage. RFC-88 remains unchanged.
+> Patch ownership: this RFC amends RFC-88 D5 by adding an execution-readiness record to each `discovery.yaml` target row and RFC-88 D8 by adding its authority digest to closed-plan coverage. RFC-104 separately amends RFC-88's handoff and binding contract.
 >
 > Evidence posture: [platform evaluation](platform.md#evidence-and-iteration-posture).
 
@@ -16,7 +16,9 @@
 
 RFC-88 pins targets and scores the *scope* of work against a model-capability profile. Nothing scores the *target*. The engine discovers that a repository has no runnable checks, no reproducible build, or no way to exercise the running system when the RFC-90 build phase machine fails on it — after the epoch is open, the workspace is prepared, the wave is open, and the model spend is committed.
 
-Emery's loop consumes specific, assessable target properties. A pinned CID is enough to assess them. This RFC assesses them once, at discovery, records the result as a fact, and uses it to decide which execution policies the target is eligible for.
+Emery's loop consumes specific, assessable target properties. A pinned CID is enough to assess them. This RFC assesses them once, at delivery binding, records the result as a fact, and uses it to decide which execution policies the target is eligible for.
+
+This is deliberately narrower than the paid definition and readiness engagement. RFC-104 asks whether the system is understood well enough, the architecture and state risks are visible, and a responsible migration wave can be selected. RFC-94 asks only whether the exact repositories selected for that wave can support Emery's build and verification mechanics.
 
 ## Problem
 
@@ -26,7 +28,7 @@ Two failures follow from the missing assessment.
 
 **Policy eligibility is otherwise ungrounded.** The active reviewed workflow and the progressive/unattended options preserved in the [parked programme](platform.md#parked-programme) need one common answer to whether a target can support them. An unattended candidate policy on a target with no attestable verification surface produces confident, unverifiable output — precisely the outcome the audit posture exists to prevent. The gate belongs on the target, not on the operator's judgment about the target.
 
-Readiness is also the honest answer to a delivery question. Most estates Emery is pointed at were built before any of this existed. Knowing which dimension blocks which policy, before quoting the work, converts an unbounded risk into a scoped one.
+Execution readiness is one input to the delivery quote produced after definition. Most estates Emery is pointed at were built before any of this existed. Knowing which target property blocks which policy prevents a reviewed wave from entering an execution mode it cannot support; it does not substitute for archaeology or migration planning.
 
 ## Terms
 
@@ -39,13 +41,13 @@ Readiness is also the honest answer to a delivery question. Most estates Emery i
 
 ## Decisions
 
-### D1 — Readiness is a discovery-time property of a pinned target
+### D1 — Execution readiness is a binding-time property of a pinned target
 
-Discovery already resolves each target to an exact `locator` and `cid` (RFC-88 D5). The readiness assessment runs inside RFC-88 D3's Discover-topology phase against that immutable tree, under the same D9 read budgets, and writes its result into the target's `discovery.yaml` row.
+RFC-88 binding resolves each reviewed target to an exact `locator` and `cid` (RFC-88 D5). The readiness assessment runs inside RFC-88 D3's Bind-reviewed-wave phase against that immutable tree, under the same D9 read budgets, and writes its result into the target's `discovery.yaml` row.
 
-Readiness is never assessed against an ambient checkout, a working tree, or a live service. It is a property of the value the change pinned, so it is reproducible, and re-running discovery on a moved branch produces a new assessment bound to a new CID rather than silently drifting.
+Readiness is never assessed against an ambient checkout, a working tree, or a live service. It is a property of the value the change pinned, so it is reproducible, and re-binding a moved branch produces a new assessment bound to a new CID rather than silently drifting.
 
-Target discovery and source selection are independent (RFC-88 D5), and only targets are assessed: readiness describes where Emery writes, not what it reads. A repository that appears as both resolves to one CID by content addressing and therefore carries one assessment.
+Target binding and source selection are independent (RFC-88 D5), and only targets are assessed: execution readiness describes where Emery writes, not what RFC-104 surveyed. A repository that appears as both resolves to one CID by content addressing and therefore carries one assessment.
 
 ### D2 — The dimension set is closed and derived from what the loop consumes
 
@@ -57,8 +59,8 @@ Each dimension exists because a named part of Emery consumes it. A property no o
 | `verification-attestability` | Are there automated checks a host can run and attest, and do they reach the behaviour under change? | RFC-90 verify / repair; RFC-97 `test` and `ci` profiles |
 | `environment-reproducibility` | Can a workspace be materialized without hidden host state, manual setup, or ambient credentials? | RFC-87 prepare; RFC-100 worker placement |
 | `behavioural-observability` | Can the running system be started, driven, and observed programmatically, with output durable enough to read back? | `captures` source adapter; RFC-98 replay |
-| `boundary-legibility` | Are ownership and module boundaries clear enough to partition without ambiguous overlap? | RFC-88 decomposition; ownership envelopes |
-| `intent-recoverability` | Do documentation, tests, contracts, or runtime captures carry enough recoverable intent to synthesize requirements? | Source adapters; synthesis; authority resolution |
+
+System-boundary legibility, intent recoverability, evidence coverage, state understanding, and migration coherence belong to RFC-104. They are properties of the reviewed definition and wave, not of one repository's ability to execute Emery's target loop.
 
 The engine evaluates the profile's deterministic file, configuration, graph, and schema predicates directly. A deployment-owned host probe evaluates a criterion only when answering it requires an approved command or runtime exercise; its normalized result and policy digest become criterion evidence on the RFC-97 attestation pattern. `unavailable` never passes a criterion.
 
@@ -85,28 +87,26 @@ weights:
   verification-attestability: 4
   environment-reproducibility: 2
   behavioural-observability: 3
-  boundary-legibility: 2
-  intent-recoverability: 2
 bands:
   assisted:
-    threshold: 30
+    threshold: 25
     floors: { build-determinism: 2 }
   reviewed:
-    threshold: 60
+    threshold: 50
     floors: { build-determinism: 4, verification-attestability: 3, environment-reproducibility: 3 }
   progressive:
-    threshold: 85
-    floors: { build-determinism: 6, verification-attestability: 5, environment-reproducibility: 5, boundary-legibility: 5 }
+    threshold: 70
+    floors: { build-determinism: 6, verification-attestability: 5, environment-reproducibility: 5 }
   unattended:
-    threshold: 110
-    floors: { build-determinism: 7, verification-attestability: 7, environment-reproducibility: 7, behavioural-observability: 6, boundary-legibility: 6 }
+    threshold: 90
+    floors: { build-determinism: 7, verification-attestability: 7, environment-reproducibility: 7, behavioural-observability: 6 }
 ```
 
 A target that clears no band's threshold and floors is `unready`. Profiles are deployment data on the RFC-97 profile-policy shape: the engine owns criterion evaluation and arithmetic, the deployment owns the closed predicate registry and numbers, and no project file, prompt, model answer, or source Evidence may edit either.
 
 ### D4 — The band gates execution policy, never slice authoring
 
-Authoring is how an operator learns an unfamiliar estate. Blocking it on readiness would deny the operator the survey that explains why readiness is low.
+RFC-104 is how an operator learns an unfamiliar estate. RFC-88 authoring may still expose target-specific delivery detail after the wave is selected. Blocking authoring on execution readiness would deny the operator the plan that explains the exact remediation needed.
 
 `emery plan author` therefore records readiness and continues. The band binds at `emery plan execute`, which refuses a policy the target is not eligible for, typed `target-readiness-insufficient`, naming the target, band, and the exact dimensions below their floors.
 
@@ -124,11 +124,11 @@ A change spanning several targets takes the **lowest** band across the targets i
 
 ### D5 — Remediation is projected, never applied
 
-`emery target readiness <target>` is a read-only projection: criterion results and evidence, the assessment, the band, the blocking dimensions, and one `diagnostics::Diagnostic` per gap with its actual `deterministic | tool | model-assisted | hybrid` source and `kind: review`. Findings carry the dimension, observed evidence, blocked band, affected target, and a closed remediation-intent kind such as `add-check`, `pin-dependency`, `make-environment-reproducible`, `add-runtime-harness`, `clarify-boundary`, or `add-intent-source`.
+`emery target readiness <target>` is a read-only projection: criterion results and evidence, the assessment, the band, the blocking dimensions, and one `diagnostics::Diagnostic` per gap with its actual `deterministic | tool | model-assisted | hybrid` source and `kind: review`. Findings carry the dimension, observed evidence, blocked band, affected target, and a closed remediation-intent kind such as `add-check`, `pin-dependency`, `make-environment-reproducible`, or `add-runtime-harness`.
 
 There is no fix verb. Raising a dimension means changing the target — adding a check, pinning a dependency, making the app scriptable — and that is ordinary product work that belongs in a slice under an epoch, with a spec, a review, and a merge fact, exactly like every other change Emery makes. A privileged unreviewed write into a client repository, performed before any authorization epoch exists, is the one shape this architecture refuses everywhere else; readiness is not the place to introduce it.
 
-An operator or outer agent who wants remediation authors a change whose intent is the readiness findings. Findings are diagnostics, not source-adapter leads; `plan author` still obtains leads through ordinary bound sources. A future source adapter may consume the readiness projection and emit leads without changing this RFC's authority. The resulting slices raise dimensions, the next discovery re-assesses against the new CID, and RFC-103 outcome records make the before/after measurable.
+An operator or outer agent who wants remediation authors a change whose intent is the readiness findings. Findings are diagnostics, not source-adapter leads; `plan author` still obtains leads through ordinary bound sources. A future source adapter may consume the readiness projection and emit leads without changing this RFC's authority. The resulting slices raise dimensions, the next binding re-assesses against the new CID, and RFC-103 outcome records make the before/after measurable.
 
 ### D6 — Readiness binds into coverage and outcome records
 
@@ -149,15 +149,13 @@ targets:
         verification-attestability: 4
         environment-reproducibility: 6
         behavioural-observability: 2
-        boundary-legibility: 6
-        intent-recoverability: 5
-      score: 77
+      score: 55
       band: reviewed
       authority-digest: sha256:…
       advisory-digest: sha256:…
 ```
 
-That target reaches `reviewed` on both tests and stops there on both: 77 is below `progressive`'s threshold of 85, and `verification-attestability: 4` is below its floor of 5. Its `behavioural-observability: 2` is also why RFC-98 replay is not yet viable against it, which is the single most useful thing a remediation change could fix.
+That target reaches `reviewed` and stops there: 55 is below `progressive`'s threshold of 70, and `verification-attestability: 4` is below its floor of 5. Its `behavioural-observability: 2` is also why RFC-98 replay is not yet viable against it, which is the single most useful thing a remediation change could fix.
 
 `discovery.yaml` also records the resolved profile's closed body beside its id and digest, on RFC-88 D3's rule for model-capability profiles, so an archived change explains its own bands without the deployment registry that produced them.
 
@@ -169,7 +167,7 @@ RFC-103 outcome records carry the band and dimensions of every touched target, s
 
 - Add the closed `ReadinessDimension`, `ReadinessCriterion`, `CriterionOutcome`, `ReadinessProfile`, `ReadinessAssessment`, and `ReadinessBand` DTOs to `crates/project`, rejecting unknown fields, with canonical digests independent of YAML formatting.
 - Ship the first-party readiness profile and criterion registry in the deployment-provider layer beside RFC-97's profile policies. Engine crates own portable structural evaluators but carry no target-specific command, concrete weight, or floor constant; command-shaped probes run only through host policy.
-- Extend RFC-88's Discover-topology phase with deterministic criterion evaluation, approved host probes, and one advisory readiness judgment per target under the existing D9 read and concurrency budgets. The judgment returns findings and rationale only; criterion outcomes, dimension scores, and band computation are deterministic engine projections.
+- Extend RFC-88's Bind-reviewed-wave phase with deterministic criterion evaluation, approved host probes, and one advisory readiness judgment per target under the existing D9 read and concurrency budgets. The judgment returns findings and rationale only; criterion outcomes, dimension scores, and band computation are deterministic engine projections.
 - Extend `discovery.yaml` with the complete readiness record, criterion-evidence digest, authority digest, and advisory digest; copy only band and authority digest to `plan.yaml`. Validation rejects hand-edited criterion outcomes or scores, bands inconsistent with the profile, unattested evidence satisfying an unattended floor, authority digests that include advisory prose, and assessments bound to a stale CID.
 - Add the band eligibility gate to `emery plan execute` ahead of epoch creation, typed `target-readiness-insufficient`, and take the minimum band across written targets.
 - Add read-only `emery target readiness` projecting criterion evidence and per-dimension findings with closed remediation-intent kinds through the existing `diagnostics` substrate. Add no second finding identity and no fix verb.
@@ -178,10 +176,10 @@ RFC-103 outcome records carry the band and dimensions of every touched target, s
 
 ## Acceptance criteria
 
-1. Discovery assesses every pinned target against a versioned profile and records criterion outcomes and evidence, advisory findings, dimensions, score, band, authority digest, and advisory digest in `discovery.yaml`. Two runs over the same CID, profile, toolchain, and normalized host outputs produce byte-identical criterion results, scores, bands, and authority digests even when advisory model prose and its digest differ.
+1. Delivery binding assesses every pinned target against a versioned profile and records criterion outcomes and evidence, advisory findings, dimensions, score, band, authority digest, and advisory digest in `discovery.yaml`. Two runs over the same CID, profile, toolchain, and normalized host outputs produce byte-identical criterion results, scores, bands, and authority digests even when advisory model prose and its digest differ.
 2. A target whose weighted sum clears a band threshold but whose `verification-attestability` is below that band's floor does not reach the band. The refusal names the dimension.
 3. `plan author` and `plan refine` complete normally on an `unready` target. `plan execute` refuses before opening an epoch, workspace, or wave, typed `target-readiness-insufficient`.
-4. A change writing to two targets takes the lower band; raising the weaker target's readiness and re-discovering raises the change's eligibility.
+4. A change writing to two targets takes the lower band; raising the weaker target's readiness and re-binding raises the change's eligibility.
 5. Changing the readiness profile creates a new digest, invalidates the prior closed-plan epoch, and requires a fresh execute.
 6. `emery target readiness` emits one diagnostic per gap with its blocked band, affected target, evidence source, and remediation-intent kind, and exposes no verb that writes into the target.
 7. An assessment bound to a superseded CID fails validation rather than being reused.
@@ -194,5 +192,5 @@ RFC-103 outcome records carry the band and dimensions of every touched target, s
 - **Let the judgment return criterion outcomes, scores, or the band.** The same target would become eligible for different policies under model variance. Advisory judgment explains and recommends; deterministic or host-attested evidence grants eligibility.
 - **A `readiness fix` verb.** Privileged, unreviewed writes into a client repository before any authorization epoch exists, with no spec, no gap gate, and no merge fact. Remediation is ordinary slice work.
 - **Readiness as a lint over the operator's checkout.** Readiness must be reproducible and archivable, so it is a property of a pinned CID, not of an ambient tree.
-- **Blocking authoring below a band.** Authoring is the cheapest way to learn why readiness is low; only privileged work needs the gate.
+- **Blocking authoring below a band.** Definition and authoring are how the operator learns what target remediation the reviewed wave needs; only privileged work needs the gate.
 - **Per-slice readiness.** Readiness describes the target's capacity to be built and verified, which does not vary by slice. Scope difficulty is already the model-capability profile's job.

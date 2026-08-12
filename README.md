@@ -4,9 +4,9 @@
 [License: MIT OR Apache-2.0](#license)
 [Docs](https://emery.augentic.io/)
 
-Spec-driven development in [Cursor](https://cursor.com): plan a change, refine every slice's specification, review it, then `build → merge` each slice from durable artifacts — not chat history.
+Emery is an evidence-backed delivery engine for software change. It reconciles intent, documentation, existing code, and captured behaviour into reviewable specifications, then drives implementation and verification from those durable artifacts — not chat history.
 
-Emery uses **Source Adapters** (like `intent` or `typescript`) to ingest requirements and **Target Adapters** (like `contracts` or `omnia`) to generate outputs.
+Operators use Emery from [Cursor](https://cursor.com) or the CLI. **Source Adapters** (like `intent` or `typescript`) recover requirements and behaviour; **Target Adapters** (like `contracts` or `omnia`) build and verify outputs through a reviewed `plan → refine → execute → finalize` rhythm.
 
 ## Quick start
 

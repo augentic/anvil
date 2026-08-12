@@ -1,6 +1,6 @@
 # RFC-96: Concurrent Execution
 
-> Status: Evidence-gated in the [Services Delivery Programme](platform.md) — accepted architecture, not default staffing. Start only when RFC-92/RFC-97 timing shows serial model work or refinement is a material programme bottleneck, or when a contracted engagement requires task-graph and domain-convergence semantics directly.
+> Status: Active scheduled work in the [Services Delivery Programme](platform.md), following stable RFC-88/91 contracts. Implement Phase A's work-item scheduler and read-heavy pool before Phase B's concurrent build and convergence; cap one remains the deterministic reference mode throughout.
 >
 > Owns:
 >
@@ -456,7 +456,7 @@ A validated boundary escalation promotes no synthesis artifacts and performs no 
 
 All affected leads and candidate domain revisions join into one RFC-88 amendment proposal. Completion order cannot change its content. Cancellation reaps every focused survey and decomposition call if proposal assembly fails.
 
-RFC-88's Discover-topology host reads retain their separate budget.
+RFC-104's system-discovery reads and RFC-88's exact delivery-binding reads retain their separate budgets.
 
 ### D10 — Recursive plan decomposition is bounded engine orchestration
 
@@ -625,7 +625,7 @@ Cap one remains the reference path in both phases. Phase B cannot replace Phase 
 5. **Private composition.** The engine composes only same-base, disjoint patches. Every target operation receives a fresh private materialization of the candidate. Targets never receive workspace lifecycle operations. Failure exposes no authoritative workspace or staged-artifact change.
 6. **Concurrent target tasks.** With the pool cap set to four, two target tasks run concurrently in isolated workspaces. Cancellation reaps both. Caps of one and four produce the same ordered composition and one slice-wide result.
 7. **Synthesis staging.** Synthesis loads nonessential playbook prose from the engine shelf. Its answer returns no artifact bodies. The engine promotes its staged tree only after validation.
-8. **Concurrent discovery and refinement feedback.** Concurrent survey and extract preserve canonical order. Two independent refinement work items may run concurrently and produce the same canonically ordered manifests and status projection as cap one. A refinement boundary escalation runs focused surveys and affected-domain decomposition concurrently, then produces one byte-stable inert proposal without promoting slice artifacts. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
+8. **Concurrent survey and refinement feedback.** Concurrent RFC-104 system survey/extract and RFC-88 focused delivery survey preserve canonical order within their separate artifacts and budgets. Two independent refinement work items may run concurrently and produce the same canonically ordered manifests and status projection as cap one. A refinement boundary escalation runs focused surveys and affected-domain decomposition concurrently, then produces one byte-stable inert proposal without promoting slice artifacts. Three-level plan decomposition evaluates independent nodes concurrently and publishes no partial plan.
 9. **Domain restart.** Independent leaves pass both same-target domain gates. Each operation key and record bind the canonical protected-input closure. On restart, the engine reuses each digest-bound record and candidate without repeating composition or verification.
 10. **Atomic waves.** Two same-base leaves merge under one wave commit only after both complete. Retry preserves membership. Amendment retracts the uncommitted wave. Replay is idempotent. Dependencies use accepted bases. Complete-round failure blocks drain and RFC-95 sealing without rolling back accepted waves.
 11. **Quality gates.** `cargo make ci` passes in every touched repository. D8 goldens regenerate. The `omnia-r9k` and `orders-contracts` live grades do not regress.

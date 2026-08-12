@@ -1,6 +1,6 @@
 # RFC-102: Policy-Gated Autonomy
 
-> Status: **Parked.** Reopen only after RFC-99 Phase B, RFC-97 Phase B, RFC-103 outcome promotion, RFC-94 readiness, and RFC-93 operator grants have landed **and** a client engagement requires unattended accepted-state mutation. Owns promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](rfc-95-publication-sets.md).
+> Status: **Parked.** Reopen only after RFC-99 Phase B, RFC-97 Phase B, RFC-103 outcome promotion, RFC-94 target execution readiness, and RFC-93 operator grants have landed **and** a client engagement requires unattended accepted-state mutation. Owns promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](rfc-95-publication-sets.md).
 >
 > Patch ownership: this RFC amends RFC-88 D7 / D8 after RFC-88 lands by adding policy-gated commit authorization beside closed `plan execute`; it does not revise RFC-88. It extends RFC-95's seal gate without granting forge publication.
 
@@ -110,7 +110,7 @@ Before the first commit-capable phase, unattended progression requires:
 
 - final RFC-88 closure with no open or superseded branch in the leaf projection;
 - exact source, target, adapter, model, and profile identities within policy scope;
-- current RFC-94 readiness authority digests whose bands admit the selected autonomy policy;
+- current RFC-94 target-execution-readiness authority digests whose bands admit the selected autonomy policy;
 - fresh RFC-91 refinement manifests for every in-scope leaf;
 - no `[conflict]` or `[unknown]`;
 - every divergence resolved by deterministic authority with complete provenance;
@@ -251,7 +251,7 @@ RFC-95 forge publication remains a separate operator act. This RFC may create lo
 - Extend RFC-99 `plan run` with `--through merged` only when an autonomy policy resolves.
 - Add the closed autonomy-policy DTO, provider capability, generation identity, and fail-closed resolver.
 - Consume RFC-93's actor and operator-grant records when resolving the immutable policy bundle; this RFC adds no second caller-authorization path.
-- Add exact `target.wave.commit-admitted` facts and preflight revalidation, including current RFC-94 readiness authority per written target.
+- Add exact `target.wave.commit-admitted` facts and preflight revalidation, including current RFC-94 target-execution-readiness authority per written target.
 - Add recovery-ladder counters and typed terminal reasons.
 - Add standing amendment rules over the existing compare-and-set amendment kernel.
 - Project capture replay and contract Evidence into protected-oracle requirements without changing Evidence authority.

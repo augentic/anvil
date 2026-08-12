@@ -2,7 +2,7 @@
 
 > Status: Draft
 
-The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. RFC-99 through RFC-102 are parked; RFC-96 is evidence-gated. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
+The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-104](rfc-104-system-archaeology.md) owns the definition home, coverage-accounted system survey, architecture model and diagrams, and migration plan; those are core product work rather than roadmap opportunities. RFC-96 is scheduled active work; RFC-99 through RFC-102 are parked. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
 
 ## Engagement-triggered
 
@@ -28,9 +28,10 @@ The [Services Delivery Programme](platform.md) is the active delivery spine; [ar
 
 **Goal:** Make topology, recovery proposals, and typed stops reviewable by a person and directly actionable by an outer agent without putting a model inside the scheduler.
 **Trigger:** the first agent-driven run spends material time interpreting an ambiguous stop; an operator skips topology or proposal review because the artifacts are too large; or proposal review measurably dominates a slice's wall-clock. Not programme step one — parallel assurance beside the RFC-88 critical path.
-**Likely shape:** three read-only projections over existing authority:
+**Likely shape:** four read-only projections over existing authority:
 
-- a decomposition tree over `plan.yaml` / `discovery.md`, with per-domain provenance and [RFC-94](rfc-94-target-readiness.md) bands;
+- an RFC-104 system view over coverage, as-is architecture, diagram projections, dispositions, transition states, migration waves, and the current handoff's `system.wave.reviewed` status;
+- a decomposition tree over `plan.yaml` / `leads.md`, with per-domain provenance and [RFC-94](rfc-94-target-readiness.md) bands;
 - a diff of an inert amendment proposal's candidate lead and decomposition revisions against current authority, plus a retrospective view of which proposal was applied and under which RFC-93 actor/grant;
 - an exact next-action card on every refine/execute stop naming the verb, selectors, input digests, and artifact paths the caller must fix or supply.
 
@@ -42,7 +43,7 @@ Amendment stays on `emery plan amend`; the projections never apply work, add an 
 
 **Goal:** Account for breaking producer changes with consumer follow-up before publication.
 **Trigger:** RFC-88/95 are landed and a real multi-repository contract change demonstrates that publication order plus adapter findings are insufficient.
-**Likely shape:** adapter-owned compatibility classification feeding an engine `plan impact` projection and a merge/finalize gate.
+**Likely shape:** RFC-104 already owns discovery and architecture of cross-repository dependencies. This item adds adapter-owned compatibility classification over a selected wave, feeding an engine `plan impact` projection and a merge/finalize gate; it does not postpone system dependency recovery until publication.
 
 ### RM-21: Adapter ecosystem operating model
 
@@ -56,11 +57,11 @@ Amendment stays on `emery plan amend`; the projections never apply work, add an 
 **Trigger:** a build operation demonstrably degrades because its parent and phase prompts crowd out slice artifacts, or a target's prose corpus grows past the point where review can hold the caps.
 **Likely shape:** adapter metadata declares a per-operation prose budget; the embed-time walker measures the loaded set against it and fails the component build on overrun. The references server already serves on demand, so this measures what is *loaded*, not what is embedded. No runtime trimming — a budget the engine can silently satisfy by dropping prose is not a budget.
 
-### RM-23: Specification write-back
+### RM-23: Baseline write-back
 
-**Goal:** Close the loop between the specification Emery recovers and the documentation the client keeps, so a delivered change leaves the estate's own documentation current rather than newly stale.
-**Trigger:** a client engagement where the `documentation` source adapter reads material that a prior Emery change invalidated.
-**Likely shape:** a documentation *target* adapter whose build operation writes back agreed requirements and decisions. Adapter names are unique across axes, so it cannot reuse the `documentation` name. Authority ordering is the hard part and must not invert: `spec.md` remains authoritative, write-back is a projection of it, and the next survey must not treat Emery's own output as independent corroboration of Emery's own conclusions.
+**Goal:** Close the loop between accepted specifications, RFC-104 architecture, and the documentation the client keeps, so a delivered wave leaves the estate's own behavioural and architectural records current rather than newly stale.
+**Trigger:** a client engagement where the `documentation` source adapter reads material that a prior Emery wave invalidated, or where RFC-104 projections must be published into an established client architecture repository.
+**Likely shape:** a documentation *target* adapter whose build operation writes back agreed requirements, decisions, architecture documents, and diagram projections from their exact authority digests. Adapter names are unique across axes, so it cannot reuse the `documentation` name. Authority ordering is the hard part and must not invert: `spec.md` and RFC-104's system model remain authoritative, write-back is a projection of them, and the next survey must not treat Emery's own output as independent corroboration of Emery's own conclusions.
 
 ### RM-25: Target runtime harness declaration
 
