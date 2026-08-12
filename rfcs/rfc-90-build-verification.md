@@ -1,6 +1,6 @@
 # RFC-90: Build Verification
 
-> Status: Implemented — step 5 of the platform-migration series, scale track ([platform.md](platform.md))
+> Status: Implemented foundation of the [Services Delivery Programme](platform.md)
 >
 > Owns: the engine-owned build phase machine, separate `target.build` / `target.repair` / `target.verify` / `target.review` WIT operations, bounded verification and repair rounds, typed intermediate reports, and removal of repair-loop control from adapter prose.
 >
@@ -33,6 +33,8 @@ build → verify ⇄ repair → review ⇄ repair → complete
 ```
 
 The target adapter still owns specialist behavior: generation prompts, platform-specific checks, repair instructions, and engineering-standards review. Each adapter invocation is exactly one WIT operation — `build`, `verify`, `repair`, or `review` — and returns a typed **phase report**. The engine persists the report, decides the next operation, enforces repair budgets, and assembles the final build report.
+
+That separation is also the answer to **self-evaluation bias**: an agent that implemented a change is worse at judging that change than a fresh pass with a different incentive. `build` and `repair` produce candidates; `verify` and `review` evaluate them; a returned `repair` report never selects the next operation; and the engine—not the implementer—assembles terminal success. Emery reaches that incentive split with fresh phase dispatches under a deterministic machine ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)).
 
 Verification in this RFC remains **model-assisted**. During a `verify` call, the target's agent runs its declared commands inside the lent workspace and returns findings. Moving orchestration into the engine makes the loop bounded and observable; it does not make command selection, execution, or findings deterministic or trustworthy.
 
@@ -277,6 +279,7 @@ RFC-97 runs tools in the trusted native deployment below the component boundary 
 - **One** `build` **method with a** `build-phase` **enum** — collapses generation, repair, verification, and standards review behind a stage parameter. Rejected so `verify` and `review` stay distinct product surfaces (different prompts, budgets, and later execution trust) and RFC-96 can call `verify` alone without a phase discriminator.
 - **A** `build-scope` **(**`slice` **|** `domain`**) parameter on** `verify` — adapter check behavior does not branch on scope; domain identity belongs in engine-side round records. Deferred until something in the adapter needs it.
 - **Let adapters define arbitrary operation names or next actions** — fragments workflow policy and allows an adapter response to control orchestration.
+- **Let the implementer judge terminal success in the same trajectory** — collapses the implementer / validator incentive split that D1 encodes; a `build` or `repair` that also decides whether the attempt passed recreates the self-evaluation bias this RFC removes from adapter prose.
 - **Call model-assisted shell execution deterministic verification** — overstates the trust boundary; the agent still controls command invocation, output interpretation, and reporting.
 - **Invent a second wave lifecycle for attempts or repairs** — fights RFC-86 D9's content-addressed write-once wave; phases and abandoned attempts share the envelope wave digest when inputs are unchanged.
 - **Make the build report an RFC-18 reward contract** — structured reports are reusable inputs, but a training scorer also grades traceability, layout, migration, and configuration concerns outside build verification. RFC-18 may project a reward from durable reports without making model-training rankability a lifecycle invariant.

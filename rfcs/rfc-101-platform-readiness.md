@@ -1,8 +1,8 @@
 # RFC-101: Platform Readiness
 
-> Status: Draft — planning spine for the hosted / fleet readiness track that follows the platform-migration critical path ([platform.md](platform.md))
+> Status: **Parked.** Reopen only after RFC-100 is activated by a real multi-node deployment or a contracted client requirement demands hosted tenancy, authenticated fleet ingress, or sealed shared audit storage. Small desktop projections such as OpenTelemetry export do not by themselves activate this RFC.
 >
-> Owns: the gap taxonomy between today's desktop-shaped deployment and a multi-tenant hosted fleet; the four storage/locality classes every host concern must land in; adapter and change-home readiness; worker capability profiles; model, secret, and operator-ingress host policy; multi-tenancy of deployment roots; and the landing sequence that makes RFC-100's distributed contract operable without inventing a second Emery.
+> Owns: the gap taxonomy between today's desktop-shaped deployment and a multi-tenant hosted fleet; the four storage/locality classes every host concern must land in; adapter and change-home readiness; worker capability profiles; hosted bindings for model, secret, [RFC-93](rfc-93-operator-boundary.md) operator-grant, and ingress policy; authenticated/sealed audit storage; fleet integration of [RM-30](roadmap.md#rm-30-journal-opentelemetry-projection); multi-tenancy of deployment roots; and the landing sequence that makes RFC-100's distributed contract operable without inventing a second Emery.
 >
 > Does not own: workflow lifecycle, claim/ownership/convergence semantics ([RFC-100](rfc-100-distributed-execution.md)), native verification profiles ([RFC-97](rfc-97-native-verification.md)), forge publication providers ([roadmap.md](roadmap.md) RM-17), or scheduling heuristics beyond the minimum needed for capability-scoped claims.
 >
@@ -25,9 +25,9 @@ Every desktop assumption maps to exactly one class:
 | Class | Role | Crosses nodes as | Examples today |
 | ----- | ---- | ---------------- | -------------- |
 | **Value** | Self-certifying immutable bytes | Content digest | Snapshot objects (already `wasi:blobstore`); adapter component bytes + digest sidecars; verification attestations (RFC-97) |
-| **Coordination** | Authority-bearing linearizable state | Hosted CAS / ordered docs | Writer events; slice ownership; operation claims; resolved adapter locks for a fleet execute |
+| **Coordination** | Authority-bearing linearizable state | Hosted CAS / ordered docs | Authenticated writer events and audit checkpoints; slice ownership; operation claims; resolved adapter locks for a fleet execute |
 | **Node-local ephemeral** | Disposable execution machinery | Never | Private workspaces; scratch lanes; warm toolchain / verification-lineage caches; MCP loopback; `guest.lock` stand-ins |
-| **Host policy** | Credentials, tenancy, sandbox, ingress | Never enters guests, change homes, or journals | GHCR / model / forge identities; profile→command maps; network allowlists; HTTP AuthN/Z; tenant root isolation |
+| **Host policy** | Credentials, tenancy, sandbox, ingress | Never enters guests or change homes; only policy identities/digests enter facts | GHCR / model / forge identities; policy bundle; operator grants; profile→command maps; network allowlists; HTTP AuthN/Z; tenant root isolation |
 
 Correctness fails when (3) or (4) leaks into authority, or when (1) is treated as node-local mutable state. Desktop convenience (bare-name newest-local, `$EMERY_HOME` as the universe) is legal only as a degenerate binding of these classes onto one filesystem backend.
 
@@ -98,6 +98,8 @@ Hosted ingress allocates the change home server-side (RFC-100 D9). The operator 
 
 Writer events use `wasi:documentstore` as RFC-100 requires. Local `.emery/events/<writer>.jsonl` remains the desktop backend binding of that contract, not the cloud shape. Process-exclusive markers such as `guest.lock` become lease/claim fencing on the coordination plane; they are not ported as create-exclusive files across attachments.
 
+Hosted writer append is authenticated to a workload or operator identity and returns an immutable storage receipt. The coordination backend periodically seals each writer's ordered prefix and the projected union frontier into a signed or host-attested checkpoint. Events retain RFC-86's semantic shape; the envelope and checkpoint provide tamper evidence without making a signature part of lifecycle projection. Desktop JSONL remains honestly unattested unless bound to an equivalent local sealing provider.
+
 Scratch lanes stay node-local ephemeral with aggressive GC and zero authority.
 
 ### D4 — Objects may be remote; materialization stays node-local
@@ -130,9 +132,9 @@ Three secret classes stay host-only and never enter change homes, events, or ada
 
 Source material that is not yet in the value plane (private repos, large binaries, design assets) enters through an authorized host ingest that produces digest-named objects.
 
-### D7 — Operator ingress is authenticated and non-interactive
+### D7 — Operator ingress authenticates and authorizes before dispatch
 
-CLI process lifetime remains a valid interactive attachment. Hosted attachments use authenticated HTTP control: submit, status, event follow, graceful detach, and the non-interactive form of every confirmation gate (`--force`, ownership recovery, amendment apply). AuthN/Z answers who may attach, recover, amend, and archive. Skills and Cursor plugins stay an IDE distribution surface; they are not the hosted control plane.
+CLI process lifetime remains a valid interactive attachment. Hosted attachments use authenticated HTTP control: submit, status, event follow, graceful detach, and the non-interactive form of every confirmation gate (`--force`, ownership recovery, amendment apply). AuthN/Z binds the hosted principal to RFC-93's operator grant over exact act, tenant, product, target, change, expiry, and any external-approval requirement before guest dispatch. The resolved actor and grant records enter invocation context and resulting facts; credentials and policy bodies do not. Skills and Cursor plugins stay an IDE distribution surface; they are not the hosted control plane.
 
 ### D8 — Multi-tenancy splits the former `EMERY_HOME`
 
@@ -151,6 +153,14 @@ RFC-100's first-claim-wins with capability topics remains the execution contract
 ### D10 — Omnia conformance gates fleet mode
 
 A deployment may open a distributed session only when its bound documentstore, keyvalue, and blobstore backends prove the RFC-100 D10 contract. Lossy, racy, or process-local development defaults remain desktop-only. Messaging stays wake-up-weak. This RFC tracks the Emery-side refusal and the desktop↔fleet matrix; Omnia owns the backend implementations.
+
+### D11 — Audit export is a projection, not another authority
+
+The hosted journal may project facts and operation timings into OpenTelemetry spans, events, and metrics for enterprise observability. Projection is asynchronous and failure-tolerant: exporter loss, sampling, backpressure, or retention never changes a fact, claim, gate, or lifecycle result.
+
+The projection uses bounded-cardinality operation, adapter, target, profile, actor-class, and outcome attributes. Digests are links or sampled event attributes rather than metric labels. Prompts, source bodies, protected corpus data, credentials, continuations, raw tool output, and free-form reasons are excluded by default; a deployment may export message content only under an explicit redaction and retention policy to a customer-controlled collector.
+
+OpenTelemetry answers operational questions. Authenticated documentstore events and their sealed checkpoints remain the semantic and tamper-evident audit record.
 
 ## Sequencing
 
@@ -176,8 +186,8 @@ RFC-101 Phase A ──► Phase B ──► Phase C ──► Phase D ──► 
 | **A** | Conformance & homes | Refuse non-conforming backends for `--distributed` / hosted execute; host-allocated change homes; documentstore-backed writer log binding; replace `guest.lock` exclusivity with coordination-plane fencing for hosted attachments | RFC-100 contract; Omnia backend work | RFC-88/95 completion |
 | **B** | Adapter values & locks | Adapter store/cache as blobstore values; verify-on-read admission on every worker; fleet resolved-adapter lock on the execute epoch; bare-name newest-local confined to desktop; tenant-scoped custom component admission | Phase A; existing launcher install/digest path | RFC-95 |
 | **C** | Worker capabilities | Host capability profiles; capability-scoped offer topics as the only fleet placement path; materialization/fetch SLOs; workspace vs shared-object GC split; RFC-97 profile preflight as claim eligibility | Phase B; RFC-97 profile registry (may land stub `unavailable` first) | RFC-97 implementation |
-| **D** | Hosted judgment & ingress | Non-Cursor model backend binding with quotas; host-mediated MCP/reference grants; AuthN/Z on submit/status/follow/detach; non-interactive confirmation gates; secret classes host-only | Phase A (ingress), Phase C (for verify-backed builds) | RM-17 forge providers |
-| **E** | Tenancy & operations | Tenant/org isolation of policy and caches; attachment/change quotas; redaction and retention for tool/model telemetry; eval matrix: desktop degenerate ≡ two-node ≡ hosted attachment on the same fixtures | Phases A–D | Roadmap evidence triggers |
+| **D** | Hosted judgment & ingress | Non-Cursor model backend binding with quotas; host-mediated MCP/reference grants; hosted RFC-93 AuthN/Z binding on submit/status/follow/detach; non-interactive confirmation gates; secret classes host-only | Phase A (ingress), Phase C (for verify-backed builds) | RM-17 forge providers |
+| **E** | Tenancy & operations | Tenant/org isolation of policy and caches; authenticated writer receipts and sealed audit checkpoints; attachment/change quotas; fleet binding of RM-30 OpenTelemetry projection; eval matrix: desktop degenerate ≡ two-node ≡ hosted attachment on the same fixtures | Phases A–D | Roadmap evidence triggers |
 
 ### Staffing sketch
 
@@ -224,12 +234,14 @@ RFC-101 Phase A ──► Phase B ──► Phase C ──► Phase D ──► 
 - Bind at least one non-interactive model backend suitable for fleet credentials.
 - Mediate MCP/reference URLs so guests never observe another tenant's network topology.
 - Authenticate attachment control; map every interactive confirmation to an explicit API/CLI flag already used in automation.
+- Bind authenticated hosted principals to RFC-93 operator grants before dispatch; reject missing, malformed, expired, or insufficient grants and carry only actor/grant records into facts.
 - Document the three secret classes and enforce “never in journal / change home / guest env” in integration tests.
 
 ### Phase E
 
 - Introduce tenant keys in host policy and cache admission; prove cross-tenant cache negative tests.
-- Retain RFC-100/97 latency and usage projections with redaction.
+- Authenticate writer append, retain immutable storage receipts, and seal ordered writer prefixes plus union frontiers under deployment identity.
+- Retain RFC-100/97 latency and usage projections with redaction; add bounded-cardinality OpenTelemetry export whose failure has no workflow effect.
 - Ship a readiness matrix job: same fixtures on desktop, two-node distributed, and hosted attachment — equal target-wave CIDs and slice statuses given equal accepted facts.
 
 ## Acceptance criteria
@@ -243,16 +255,20 @@ RFC-101 Phase A ──► Phase B ──► Phase C ──► Phase D ──► 
 7. Shared object GC never deletes a CID still referenced by a live claim, open attachment, or unreaped coordination record; node workspace GC never deletes another node's materialization.
 8. Non-conforming Omnia backends cannot open a fleet session; desktop filesystem backends continue to satisfy the degenerate single-node case.
 9. Phases A–E each have a crate-level or deployment integration fixture named in the readiness matrix; `cargo make ci` stays green in every touched repository.
+10. A caller whose operator grant excludes the verb, tenant, product, target, change, or required external approval is refused before guest dispatch; no guest-visible declaration can widen the grant.
+11. Editing or deleting a hosted event beneath a sealed checkpoint is detectable, and every projected actor attestation names the host identity that authenticated the append. Desktop logs without a sealing provider remain explicitly unattested.
+12. OpenTelemetry exporter loss, backpressure, or sampling changes no journal projection or lifecycle result; default export contains no prompts, source bodies, protected corpus data, credentials, continuations, raw tool output, or free-form reasons.
 
 ## Relationship to other RFCs
 
 | Document | Boundary |
 | -------- | -------- |
-| [platform.md](platform.md) / RFC-86…94 | Product and scale semantics; this RFC makes the host/fleet operable |
+| [platform.md](platform.md) / active RFC programme | Product, evidence, and scale semantics; this RFC makes the parked host/fleet option operable |
 | [RFC-100](rfc-100-distributed-execution.md) | Owns claims, fencing, attach/resume, coordination/value split — readiness implements host bindings and conformance gates |
 | [RFC-97](rfc-97-native-verification.md) | Owns profile execution and attestations — readiness places them on capability-scoped workers and attestation value transport |
+| [RFC-93](rfc-93-operator-boundary.md) | Owns actor/grant contracts and desktop enforcement — readiness binds authenticated hosted principals |
 | [architecture.md](architecture.md) | Standing Omnia boundary — readiness is how desktop→cloud stays a backend swap |
-| [roadmap.md](roadmap.md) RM-17 / RM-21 | Forge providers and third-party adapter ecosystem — triggered separately |
+| [roadmap.md](roadmap.md) RM-17 / RM-21 / RM-30 | Forge providers, third-party adapter ecosystem, and desktop OTel projection — triggered separately |
 
 ## Rejected alternatives
 

@@ -1,26 +1,26 @@
 # RFC-86a: Gap Deferral
 
-> **Status:** Draft — fix-up of [RFC-86](rfc-86-change-facts.md) (not a new series step; sits between RFC-86 and its consumers); all product / contract questions are **closed** (decision trail below).
+> **Status:** Implemented — fix-up of [RFC-86](rfc-86-change-facts.md), amended after landing as stated below. The body preserves the original `strict | defer` decision trail as history.
 >
-> **Amended after landing:** the `strict | defer` gap-policy knob (D3/D6 — the `project.yaml` declaration, `emery init --gap-policy`, `emery plan execute --gap-policy`), the `emery plan defer` verb with its `--retract` reversal (`gap.deferral-retracted`), and the `origin` field on `gap.deferred` are **deleted**. Gate-time auto-deferral is now unconditional: the build gate mints one `gap.deferred` fact per open row and build always proceeds. Everything downstream (D1/D2/D4/D5/D9 — build-scope exclusion, debt conservation, `plan gaps`, `emery debt`, the archive summary) stands. The operator pause on gaps returns with [RFC-91](rfc-91-refinement-stage.md)'s refinement stage. The body below is the historical record of the original design.
+> **Amended after landing:** the `strict | defer` gap-policy knob (D3/D6 — the `project.yaml` declaration, `emery init --gap-policy`, `emery plan execute --gap-policy`), the `emery plan defer` verb with its `--retract` reversal (`gap.deferral-retracted`), and the `origin` field on `gap.deferred` are **deleted**. Gate-time auto-deferral is now unconditional: the build gate mints one `gap.deferred` fact per open row and build always proceeds. The digest-bound disposition identity and downstream contracts (build-scope exclusion, debt conservation, `plan gaps`, `emery debt`, archive summary) stand; D1's original open-row block is superseded. The operator pause on gaps returns with [RFC-91](rfc-91-refinement-stage.md)'s refinement stage. The body below is the historical record of the original design.
 >
-> **Owns:** the typed gap **disposition** model (`open | deferred`), durable digest-bound **deferral facts**, the **gap policy** (`strict | defer`) with its project-level declaration and per-epoch override, the build-scope exclusion contract for deferred requirements, debt conservation through merge and archive, the **baseline debt projection** surfaced at the change boundaries, and the unattended-execution posture the embedded eval composition depends on.
+> **Owns:** the typed gap **disposition** model (`open | deferred`), durable digest-bound gate-minted **deferral facts**, unconditional build-gate auto-deferral, the build-scope exclusion contract for deferred requirements, debt conservation through merge and archive, and the **baseline debt projection** surfaced at change boundaries.
 >
-> **Builds on** RFC-86's fact substrate (per-writer logs, computed status, `plan.execute.started` typed coverage, one-member waves) and [RFC-88](rfc-88-detached-changes.md)'s three-verb surface and `refine-under-epoch` coverage. Consumed by [RFC-90](rfc-90-build-verification.md) (verification must respect build scope) and [RFC-96](rfc-96-concurrent-execution.md) (deferral facts union like every other fact).
+> **Builds on** RFC-86's fact substrate (per-writer logs, computed status, `plan.execute.started` typed coverage, one-member waves) and [RFC-91](rfc-91-refinement-stage.md)'s standalone refinement stage. Consumed by [RFC-90](rfc-90-build-verification.md) (verification must respect build scope), [RFC-88](rfc-88-detached-changes.md) (detached changes conserve the same debt), and [RFC-96](rfc-96-concurrent-execution.md) (deferral facts union like every other fact).
 >
-> **Amends** RFC-86 D15 (an *open* `[unknown]` blocks build; a *deferred* one leaves build scope and build proceeds), D17 (per-epoch `--waive` is deleted in favor of durable deferral facts; conflict build-over remains forbidden), and D22 (Ready stays clean-gap; deferrals, like waivers before them, never contribute to Ready). D13 (gaps gate build, not refine), D16 (divergence informational), D18 (prose review human-owned), D19 (rollup presentation-only), and D24 (in-scope membership) are unchanged.
+> **Amends** RFC-86 D15/D17 so every open `[unknown]` or `[conflict]` is gate-minted as a durable deferral, leaves build scope, and proceeds; conflict build-over remains forbidden. D22 keeps Ready clean-gap: deferrals never contribute to Ready. D13 (gaps gate build, not refine), D16 (divergence informational), D18 (prose review human-owned), D19 (rollup presentation-only), and D24 (in-scope membership) are unchanged.
 
 ## Intent
 
-Let an execute loop finish without knowing everything up front.
+Let an execute loop finish without inventing what it does not know.
 
-RFC-86 made typed gaps visible and made building over them a deliberate act. This RFC keeps both properties but changes the shape of the act: instead of *permission to build over* a gap (a waiver, re-supplied on every epoch), the operator or a declared policy assigns each gap a **disposition**. A deferred requirement leaves the build's scope entirely — generation is told, in a typed and machine-checkable way, that this behaviour is not to be implemented — and the gap is conserved as visible **debt** through build, merge, baseline, and archive, where the next change's evidence can resolve it.
+RFC-86 made typed gaps visible. This RFC keeps that property but removes permission from the mechanism: at the build gate, every open gap is unconditionally assigned a durable **deferred** disposition. The requirement leaves build scope entirely — generation is told, in a typed and machine-checkable way, that this behaviour is not to be implemented — and the gap is conserved as visible **debt** through build, merge, baseline, and archive, where the next change's evidence can resolve it.
 
-This is the agile posture: ship the evidenced part now, carry the unevidenced part as an explicit backlog item in the baseline spec, iterate. The degenerate autonomous case — the embedded `examples/eval` workflow cases — runs `author → execute → archive` end-to-end with no operator gesture beyond starting the run.
+This is the agile posture: ship the evidenced part now, carry the unevidenced part as an explicit backlog item in the baseline spec, iterate. The degenerate autonomous case — the embedded `examples/eval` workflow cases — runs `author → refine → execute → archive` end-to-end with no operator gesture beyond starting the run.
 
-The operating posture is **keep going unless told not to**: under a declared `defer` policy the loop never parks on a gap, and the operator's review moment moves from mid-execute to the change boundaries — the archive summary looking back, the baseline debt projection looking ahead (D9).
+The operating posture is **keep going and conserve uncertainty**: the loop never parks on a gap, and the operator's review moments are the standalone RFC-91 specification review plus the change boundaries — the archive summary looking back and the baseline debt projection looking ahead. The original explicit-act and `strict | defer` design below is retained only as the decision trail superseded by the amendment header.
 
-## Why RFC-86's waiver does not scale
+## Historical rationale: why RFC-86's waiver did not scale
 
 Desk experience with the landed gate shows four compounding problems:
 
@@ -33,7 +33,7 @@ Desk experience with the landed gate shows four compounding problems:
 
 The last row is the opening. An `[unknown]` requirement body is non-operative by construction: a gap statement, `Sources: []`, and scenarios that must not invent behaviour. A `[conflict]` body is *only* `Note:` lines with no operative sentence. There is nothing for generation to implement — so the safe way to proceed is not to permit building *over* the gap but to take the gap *out of the build's obligations* and conserve it. That is a different act than the waiver RFC-86 debated, and it is the act this RFC types.
 
-## The reframe: disposition, not permission
+## Historical reframe: disposition, not permission
 
 Every typed gap row `(slice, req, status)` in the inventory has a computed **disposition**:
 
@@ -46,7 +46,7 @@ Resolution is not a disposition — a resolved gap's row simply disappears from 
 
 The disposition vocabulary already has a precedent at slice granularity: `plan drop` durably excludes a slice from in-scope (D24) without deleting its row. Deferral is the same shape one level down — *drop : slice :: defer : requirement* — a durable, retractable exclusion fact, not an authorization.
 
-## Decisions
+## Historical original decisions
 
 ### D1 — Open gaps block; deferred gaps leave build scope
 
@@ -123,20 +123,20 @@ This is the sharpest revision of RFC-86 in this RFC (resolved question 1). The c
 
 ### D8 — Unattended composition: the eval loop runs end-to-end
 
-The probe workflow-case runner passes `--gap-policy defer` on `plan execute` by default (a case may pin `strict` to exercise the gate, or declare the policy at init through D3's `project.yaml` declaration — the flag wins for one epoch either way). Acceptance: `cargo make eval auth --restart` completes `init → plan author → plan execute (refine → build → merge) → drained` with no operator gesture, even when synthesis honestly mints `[unknown]` rows — and the retained sandbox's fact log, gaps projection, and archive summary show exactly what was deferred. The same posture serves the wasm examples and any future CI-shaped deployment.
+As implemented after RFC-91, the probe workflow-case runner completes `init → plan author → plan refine → plan execute → drained` with no gap-policy argument and no operator gesture, even when synthesis honestly mints `[unknown]` rows. Execute gate-mints the deferral facts before build, and the retained sandbox's fact log, gaps projection, and archive summary show exactly what was deferred. The same posture serves the wasm examples and any future CI-shaped deployment.
 
-Skills stay ultrathin: `/emery:execute` continues to elicit arguments and relay — `--gap-policy` is just another argument. No new skill.
+Skills stay ultrathin: `/emery:refine` and `/emery:execute` invoke their one CLI verb and relay. No gap-specific skill or argument surface remains.
 
 ### D9 — Baseline debt is a projection, surfaced at the change boundaries
 
-Under a `defer` policy nothing parks mid-loop, so the strict gate's forcing function needs a replacement: a review surface at the boundary between changes. Both boundary surfaces read the same debt, and both are read-only projections — nothing new is stored (RFC-86 D2; the baseline spec *is* the backlog, per D5).
+Because the current gate never parks mid-loop, review needs explicit surfaces at the standalone refinement pause and the boundaries between changes. The boundary projections read the same debt and store nothing new (RFC-86 D2; the baseline spec *is* the backlog, per D5).
 
 - **Looking back — archive.** `plan archive` prints the carried-debt summary (D5) and stays advisory: it never blocks on debt, and there is no threshold gate — a gate at archive would be a park by another name (resolved question 6).
 - **Looking ahead — the baseline debt projection.** A read-only verb (drafted `emery debt`; exact surface illustrative, like D3's clap names) walks the baseline specs and lists every requirement whose status is `unknown` or `conflict`, with the reason, origin, originating change, and age read from the self-describing `Note:` line D5 folds in — conflicts rendered separately from unknowns. `plan author` renders the same inventory in the plan review prose it authors, so a corrective change is scoped with the backlog in front of the operator. Resolution then flows through the ordinary path the RFC already defines: new evidence in the corrective change's sources resolves carried rows at refine, and they disappear from the baseline at the next merge.
 
 Debt aging beyond the projection — nagging, SLAs, thresholds, cross-change dashboards — stays out of scope (resolved question 9).
 
-## Commands that change
+## Historical original command proposal
 
 | Command | Change |
 | ------- | ------ |
@@ -150,7 +150,7 @@ Debt aging beyond the projection — nagging, SLAs, thresholds, cross-change das
 | `emery debt` | **New** read-only baseline debt projection (name illustrative): walks the baseline specs and lists every `unknown` / `conflict` requirement with reason, origin, originating change, and age (D9) |
 | eval / probe runner | Workflow cases execute under `--gap-policy defer` by default; per-case override |
 
-## Amendments to RFC-86 (explicit)
+## Historical original amendments to RFC-86
 
 | RFC-86 decision | Status here |
 | --------------- | ----------- |
@@ -161,7 +161,7 @@ Debt aging beyond the projection — nagging, SLAs, thresholds, cross-change das
 | Rejected: warn-only `[unknown]` | **Still rejected** — defer is not warn-and-build-over; the requirement leaves scope |
 | Rejected: silent auto-waive | **Still rejected** — every policy deferral is an enumerated, journaled, digest-bound, debt-conserved fact under an explicitly declared policy |
 
-## Implementation requirements
+## Historical original implementation requirements
 
 - New journal events `gap.deferred` / `gap.deferral-retracted` in the closed `EventKind` taxonomy (kebab-case wire ids), payload per D2 with closed `origin: operator | policy`; policy-minted facts carry the synthesized reason (D3). Duplicate deferrals for one `(slice, digest)` are idempotent under projection.
 - Canonical requirement-body digest exported from the `model.yaml` requirement representation (kernel-owned, format-independent — the same digest posture as RFC-88's planning digests); recorded on each deferral and joined at projection time under the `(slice, digest)` match key (D2).
@@ -178,7 +178,7 @@ Debt aging beyond the projection — nagging, SLAs, thresholds, cross-change das
 - Hard cut (pre-1.0): no compatibility parsing for `unknown-waivers` coverage payloads or `--waive` argv; goldens regenerate.
 - Documentation: `AGENTS.md`, `docs/standards/workflow.md`, CLI help, and RFC-86's gap-policy prose gain the disposition vocabulary in the same change (RFC-86 D20 posture — shipped-doc drift is delivery work, not a freeze blocker).
 
-## Acceptance criteria
+## Historical original acceptance criteria
 
 1. **Strict default preserved:** with no deferrals, no `project.yaml` declaration, and no `--gap-policy` flag (or an explicit `strict`), the gate behaves as RFC-86 shipped it — open `[unknown]` / `[conflict]` refuse build with the rendered inventory; `[divergence]` is listed and allowed.
 2. **Durable disposition:** `plan defer` writes a digest-bound fact that covers the requirement across resumes and fresh epochs with no re-supply; `--retract` reopens it; a re-refine that changes the requirement body lapses it and the new row blocks again under strict; a re-refine that restores the exact body revives the deferral without re-assertion.
@@ -189,11 +189,11 @@ Debt aging beyond the projection — nagging, SLAs, thresholds, cross-change das
 7. **Boundary visibility:** after a debt-carrying merge, the baseline debt projection lists each carried row with reason, origin, originating change, and age, conflicts rendered separately from unknowns; `plan author` renders the same inventory in the plan review prose.
 8. **Projection coherence:** `plan status` next-actions compute over open findings only; a fully-dispositioned plan resumes at `plan execute`; Ready projects only on zero open and zero deferred; debt counts render with conflicts broken out.
 9. **Waiver surface deleted:** `--waive` is unknown argv; no coverage payload carries `unknown-waivers`; no path demands re-supplying a decision already on the log.
-10. **Unattended eval:** `cargo make eval auth --restart` runs `init → author → execute → drained` with no operator gesture, including when synthesis mints `[unknown]` rows; the retained sandbox shows the deferral trail.
+10. **Unattended eval:** `cargo make eval auth --restart` runs `init → author → refine → execute → drained` with no operator gesture, including when synthesis mints `[unknown]` rows; the retained sandbox shows the deferral trail.
 11. **Multi-writer:** deferral facts from two writers union losslessly; duplicate deferrals of one `(slice, digest)` project one disposition; retraction from either writer reopens.
 12. `cargo make ci` passes with crate-level integration coverage for dispositions, lapse-on-digest-change, revival, policy layering, gate-time policy minting, build-scope exclusion, debt-through-merge, the baseline debt projection, and the strict-mode regression suite.
 
-## Open questions
+## Historical decision trail
 
 All product / contract questions are **closed**. Items below are the decision trail, in the original numbering. The governing posture across every closure: **keep going unless told not to** — the loop never parks under a declared `defer` policy, and the review moment moves to the change boundaries (D9).
 
@@ -209,7 +209,7 @@ All product / contract questions are **closed**. Items below are the decision tr
 8. ~~**Retraction surface.**~~ **Closed — D3.** Dedicated `plan defer --retract` appending `gap.deferral-retracted`. Retraction is a domain act with domain validation (must name a live deferral) and a typed projection join; routing one use case through a generic fact-retraction surface trades that for genericity with no second consumer. Rejected: a generic `fact.retracted` surface as the operator-facing retraction verb.
 9. ~~**Debt aging.**~~ **Closed — split.** The baseline debt projection — with age, origin, and reason read from D5's self-describing note — is **promoted into this RFC** (D9): under a defer-default posture it is the replacement for the strict gate's forcing function, not optional polish. Everything beyond the projection — nagging, SLAs, thresholds, cross-change dashboards — stays out of scope as a roadmap candidate. Rejected: leaving all visibility to next-plan-time `plan gaps` (it projects the live change's inventory, not the carried baseline).
 
-## Rejected alternatives
+## Historical rejected alternatives
 
 - **Warn-only unknowns / flipping D15** — re-litigates the settled failure mode; generation over an in-scope gap invents behaviour. Deferral removes the gap from scope instead.
 - **Sticky waivers (make `--waive` survive epochs) without the scope contract** — fixes only the re-supply tax; still per-requirement pre-knowledge the operator cannot have under `refine-under-epoch`, and still no defined build behaviour for the waived row.
@@ -226,7 +226,7 @@ All product / contract questions are **closed**. Items below are the decision tr
 - **Mandatory `--reason` on the `defer` policy invocation** — friction with no reader on unattended runs; every policy fact carries origin, epoch, and a synthesized reason (resolved question 5).
 - **Downgrading deferred conflicts to `unknown` at baseline merge** — loses the typed distinction the corrective change needs (resolved question 4).
 
-## Non-goals
+## Historical non-goals
 
 - Changing Evidence schemas, the authority ranking, synthesis status derivation, or when `[unknown]` / `[conflict]` / `[divergence]` are minted.
 - Permitting generation to build over (implement, guess at, or scaffold around) any gap-status requirement under any disposition or policy.

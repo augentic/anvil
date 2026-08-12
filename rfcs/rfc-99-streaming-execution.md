@@ -1,6 +1,6 @@
 # RFC-99: Streaming Execution
 
-> Status: Draft — step 9 of the platform-migration series, scale track ([platform.md](../platform.md)). Phase A owns progressive refinement and depends on [RFC-88](../rfc-88-detached-changes.md), [RFC-91](../rfc-91-refinement-stage.md), and [RFC-96](../rfc-96-concurrent-execution.md) Phase A. Phase B owns unattended progressive build, candidate dependency frontiers, build-only policy admission, and deferred commit; it depends on completed RFC-96. Distribution through [RFC-100](../rfc-100-distributed-execution.md) is optional.
+> Status: **Parked.** Reopen Phase A only when measured authoring duration or time-to-first-refinement shows that complete-plan closure is a material engagement bottleneck. Reopen Phase B only after RFC-96 is complete and a client engagement requires unattended candidate build before final closure. Phase A depends on [RFC-88](rfc-88-detached-changes.md), [RFC-91](rfc-91-refinement-stage.md), and [RFC-96](rfc-96-concurrent-execution.md) Phase A; Phase B depends on completed RFC-96. Distribution through parked [RFC-100](rfc-100-distributed-execution.md) remains optional.
 >
 > Patch ownership: this RFC amends RFC-86 D27, RFC-88 D1 / D3 / D7 / D8, and RFC-90's wave-only build envelope after those contracts land. Those predecessor RFC texts remain unchanged.
 
@@ -16,7 +16,7 @@ Time to first refinement and first build stop being bounded by complete-tree clo
 
 ## Relationship to staged execution
 
-[RFC-91](../rfc-91-refinement-stage.md) remains the complete-plan reference path:
+[RFC-91](rfc-91-refinement-stage.md) remains the complete-plan reference path:
 
 ```text
 plan author → [optional review] → plan refine → [optional review] → plan execute
@@ -234,7 +234,7 @@ The run policy may require stronger checks than the target's baseline but cannot
 - accept a blocking report;
 - treat candidate-authored tests as protected assurance.
 
-[RFC-97](../rfc-97-native-verification.md) may provide host-attested profiles. Until required profiles exist, policy reports the actual model-assisted assurance and may stop rather than claim stronger evidence.
+[RFC-97](rfc-97-native-verification.md) may provide host-attested profiles. Until required profiles exist, policy reports the actual model-assisted assurance and may stop rather than claim stronger evidence.
 
 ### Deferred commit
 
@@ -249,7 +249,7 @@ If final closure changes a leaf planning projection, protected set, dependency i
 
 After final closure, an operator may review the plan, refinement manifests, gaps, and candidate results, then invoke `plan execute`. Closed-plan authorization revalidates every candidate against the final plan, accepted target, dependency frontier, protected inputs, and current policy. Valid candidates may be reused; stale candidates rebuild.
 
-Unattended accepted-CID mutation is deferred to [RFC-102](../rfc-102-policy-gated-autonomy.md). Plan closure, completed builds, claims, elapsed time, or a passing model review never imply merge authority.
+Unattended accepted-CID mutation is deferred to [RFC-102](rfc-102-policy-gated-autonomy.md). Plan closure, completed builds, claims, elapsed time, or a passing model review never imply merge authority.
 
 ## Plan-run facts
 

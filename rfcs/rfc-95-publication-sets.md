@@ -1,10 +1,10 @@
 # RFC-95: Publication Sets
 
-> Status: Draft — step 4 of the platform-migration series ([platform.md](platform.md))
+> Status: Active product follow-on to RFC-88 in the [Services Delivery Programme](platform.md)
 >
 > Owns: one local project seal per publication member; the branch, pull-request marker, and landing-order conventions that bind those members into one change; archive-time verification; and the shared machine-readable publication projection.
 >
-> Builds on completed [RFC-88](rfc-88-detached-changes.md), which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-100](rfc-100-distributed-execution.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
+> Builds on [RFC-88](rfc-88-detached-changes.md) once landed, which records the targets, persists recursive conflict-domain decomposition, projects its buildable leaves into the plan, and supplies the forge provider extended here with publication reads. [RFC-100](rfc-100-distributed-execution.md) coordinates execution across nodes before publication. RFC-81 in `augentic/remedium` is the first external producer.
 >
 > Defers: pushing branches, opening or merging pull requests, atomic cross-repository submission, automated rollback, cross-checkout CI, and parallel member preparation.
 

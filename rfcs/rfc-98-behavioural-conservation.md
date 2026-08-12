@@ -6,7 +6,7 @@
 >
 > Depends on [RFC-97](rfc-97-native-verification.md) for host execution, protected oracles, and assurance, and on the `captures` source adapter for the recorded corpus. Benefits from [RFC-94](rfc-94-target-readiness.md) `behavioural-observability`.
 >
-> Patch ownership: this RFC extends RFC-97 D2's closed profile-name set with `conserve` and RFC-97 D4's protected-oracle contract with corpus admission. RFC-97 remains unchanged.
+> Patch ownership: this RFC extends RFC-97 D2's closed profile-name set with `conserve` and RFC-97 D4's protected-oracle contract with corpus admission. Those additions land as the RFC-98 implementation rather than reopening RFC-97's phase-machine ownership.
 >
 > Evidence posture: [platform evaluation](platform.md#evidence-and-iteration-posture).
 
@@ -16,7 +16,9 @@
 
 Emery recovers a specification from a running legacy system. The `captures` source adapter consumes runtime capture trees and emits `kind: example` Evidence claims anchored by `replay-digest: sha256:…`. That evidence flows inward into synthesis and then stops.
 
-At build time the strongest available assurance is RFC-97's `test` profile over candidate-authored tests, which reports `assurance: candidate`, plus a model review. For a modernization engagement that is the wrong question answered well. "Does the new code pass the tests written alongside it" is weak evidence, because the same process produced both. The load-bearing question is whether the new system reproduces the recorded behaviour of the old one.
+At build time RFC-97's `test` profile over candidate-authored tests reports `execution-assurance: host-attested` but `oracle-assurance: candidate`, plus a model review. For a modernization engagement that is the wrong question answered well. "Does the new code pass the tests written alongside it" is weak evidence, because the same process produced both. The load-bearing question is whether the new system reproduces the recorded behaviour of the old one.
+
+Conservation is the stronger form of a pre-implementation validation contract for legacy work: the contract is the retained `captures` corpus, and the validators are host-driven replays under RFC-97's `conserve` profile — not fresh agents judging a milestone in chat context ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)).
 
 The capture corpus is the only input in the change that is neither model-authored nor model-writable: it came off the running legacy system before any slice existed. That makes it the natural protected oracle, and this RFC turns it into one.
 
@@ -45,7 +47,7 @@ Three gaps sit between today's evidence and a defensible conservation claim.
 
 The conservation corpus is admitted through RFC-97 D4's `protected-oracles[]` by digest and mounted read-only outside the candidate tree. It is never materialized into the workspace, never included in snapshot capture, and never within any task owner's ownership envelope.
 
-This is the whole mechanism. A slice that could resolve a failing replay by editing the recording would convert the one trustworthy input in the change into another model-writable artifact, and the resulting attestation would mean nothing. Replay evidence earns `assurance: protected` by construction, and only because the corpus is unreachable from every writer.
+This is the authority mechanism. A slice that could resolve a failing replay by editing the recording would convert the one trustworthy input in the change into another model-writable artifact, and the resulting attestation would mean nothing. Replay evidence earns `oracle-assurance: protected` by construction, and only because the corpus is unreachable from every writer. D7 separately governs whether the host may retain, mount, and replay the protected data at all.
 
 Corpus admission is covered by member admission on the same rule as every other protected input, so the exact recording set that a build was verified against is bound into the epoch and reproducible from the fact log.
 
@@ -89,7 +91,7 @@ The roll-up is snapshotted onto `target.merge.wave-committed` and summarized by 
 
 ### D5 — Conservation gates by policy, and an absent corpus is never a silent pass
 
-A conservation floor is an execution-policy input resolved on the established precedence — `--conservation-floor` flag, then a `project.yaml` declaration, then the default of zero — and recorded in `plan.execute.started` coverage beside the gap policy.
+A conservation floor is an execution-policy input. Deployment policy may set a minimum; `project.yaml` and `--conservation-floor` may strengthen but never lower it. The effective maximum of those declarations, defaulting to zero when none exists, is recorded in `plan.execute.started` coverage.
 
 The floor is checked at the same gate as gaps, before build. Two rules keep it honest:
 
@@ -100,7 +102,22 @@ The default of zero keeps every existing change working unchanged. Greenfield wo
 
 ### D6 — Conservation telemetry is raw evidence
 
-Each replay set emits RFC-97 D9's `target.verify.profile-completed` for the `conserve` profile with no new event kind, plus per-verdict counts. RFC-93 outcome records carry the change's terminal coverage roll-up, so recurrence analysis can ask which corpus shapes actually predicted post-merge defects. Telemetry is observation; no count changes a lifecycle transition.
+Each replay set emits RFC-97 D9's `target.verify.profile-completed` for the `conserve` profile with no new event kind, plus per-verdict counts. RFC-103 outcome records carry the change's terminal coverage roll-up, so recurrence analysis can ask which corpus shapes actually predicted post-merge defects. Telemetry is observation; no count changes a lifecycle transition.
+
+### D7 — Corpus protection includes data governance
+
+Write denial protects oracle integrity, not confidentiality or lawful use. Before corpus admission, deployment policy resolves a digest-bound corpus-governance profile covering:
+
+- data classification and permitted products, targets, tenants, and regions;
+- deterministic redaction or tokenization performed before the corpus value is committed;
+- encryption and key identity at rest and in transport;
+- identities allowed to admit, mount, replay, or project corpus-derived evidence;
+- retention and deletion, including archive behavior;
+- replay environment and side-effect policy, with production mutation denied by default;
+- bounded output capture and secret filtering;
+- an access fact for every admission, mount, replay, export, and deletion.
+
+The engine sees opaque corpus and governance-profile identities plus typed admission results. It receives no key, credential, unredacted secret, or deployment location. A missing, stale, region-incompatible, or unauthorized governance profile fails before build; it cannot be downgraded to an uncovered replay. Conservation projections expose requirement and verdict identities, not protected bodies.
 
 ## Implementation requirements
 
@@ -110,26 +127,29 @@ Each replay set emits RFC-97 D9's `target.verify.profile-completed` for the `con
 - Add the closed `ConservationVerdict` enum, reconciliation against `spec.md` `[divergence]` tags and `model.yaml` provenance, and routing of `diverged` into RFC-90's existing blocking-finding path with no new repair budget.
 - Add read-only `emery slice conservation` and the change-level roll-up; snapshot the roll-up on wave commit and summarize it in `plan archive`.
 - Add the conservation floor to execution-policy resolution and the pre-build gate, with `conservation-corpus-absent` and the missing-profile refusal.
-- Extend RFC-93 outcome records with terminal conservation coverage.
+- Add the D7 corpus-governance provider contract, digest-bound admission, access facts, deterministic redaction identity, retention/deletion handling, side-effect-denied replay environment, and region/tenant refusal.
+- Extend RFC-103 outcome records with terminal conservation coverage.
 - Integration coverage for corpus write-denial from every task owner, replay normalization determinism, declared-versus-undeclared divergence routing, vacuous-pass refusal, and coverage projection against a scripted driver.
 
 ## Acceptance criteria
 
 1. A corpus admitted as a protected oracle is unreachable from every task owner's ownership envelope; an attempt to write it fails the attempt rather than passing a replay.
 2. Replaying the same corpus against the same candidate twice produces byte-identical normalized reports and fingerprints, with volatile content removed by policy.
-3. A conserved replay set reports `assurance: protected` through direct engine handle resolution and `phase-source: tool`.
+3. A conserved replay set reports `execution-assurance: host-attested` and `oracle-assurance: protected` through direct engine handle resolution, with RFC-90 `phase-source: tool`.
 4. A candidate that changes a recorded behaviour with no declaring requirement produces a blocking `diverged` finding routed through RFC-90's existing repair budget. Adding a `[divergence]` requirement that names the behaviour reclassifies it as `declared` on the next attempt.
 5. A conservation floor above zero with no admitted corpus fails typed `conservation-corpus-absent` before build, and a floor above zero against a target that does not declare `conserve` is refused as configuration.
 6. A change with no floor and no corpus behaves exactly as it does today.
 7. `emery slice conservation` projects per-requirement verdicts from `model.yaml` provenance, and the change roll-up survives archive on the wave-commit fact.
 8. Outcome records carry terminal conservation coverage, and removing a change from the analysed set changes the analysis digest.
+9. A corpus with no current governance profile, a mismatched tenant/region, or a replay driver that requests undeclared side effects fails before build. Every corpus admission, mount, replay, export, and deletion is attributable without exposing protected bodies in the fact log.
 
 ## Rejected alternatives
 
 - **Replay recordings as ordinary candidate tests.** Materializing the corpus into the workspace makes it writable by the process being verified and collapses the `candidate` / `protected` distinction that gives the result its meaning.
 - **Require bug-for-bug conservation.** A migration exists to change something. Without declared divergence the gate would block every valuable change and be switched off, which is worse than not having it.
-- **Let the review leg decide whether a divergence was intended.** That is the specification's job. Asking the model that wrote the code whether the behaviour change was deliberate is not an independent check.
+- **Let the review leg decide whether a divergence was intended.** That is the specification's job. Asking the model that wrote the code whether the behaviour change was deliberate is not an independent check — the same self-evaluation failure a black-box validator is meant to avoid, without the digest-bound oracle.
 - **Promote `captures` Evidence above `documentation` or `intent` authority when a replay conserves.** Conservation says what the old system did, not what the new one should do. Authority ordering is unchanged.
 - **Generate the corpus from the new system when the legacy recording is thin.** Circular: the candidate would define its own oracle.
 - **A separate conservation phase in the build machine.** Conservation is a check over a candidate, which is exactly what a verification profile is. A new phase would duplicate budgets, reports, and gates for no additional expressiveness.
 - **Store coverage on `model.yaml` or `plan.yaml`.** Coverage is computed from facts and the corpus, on the same rule that keeps every other status projected.
+- **Treat read-only mounting as complete data protection.** It prevents oracle mutation but does not provide classification, redaction, encryption, residency, retention, access control, or safe replay. Those are deployment capabilities and must be resolved before admission.
