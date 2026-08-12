@@ -1,8 +1,10 @@
-# RFC-97: Outcome Learning
+# RFC-93: Outcome Learning
 
-> Status: Draft — evidence and promotion track after implemented [RFC-90](rfc-90-build-verification.md), extended by [RFC-92](rfc-92-concurrent-execution.md), [RFC-94](future/rfc-94-streaming-execution.md), and [RFC-95](rfc-95-native-verification.md). Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
+> Status: Draft — evidence and promotion track after implemented [RFC-90](rfc-90-build-verification.md), extended by [RFC-96](rfc-96-concurrent-execution.md), [RFC-99](future/rfc-99-streaming-execution.md), and [RFC-97](rfc-97-native-verification.md). Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
 >
 > Patch ownership: this RFC amends RFC-88 D1 after RFC-88 lands by adding `outcome.yaml` to the detached change root and `.emery/change/outcome.yaml` to in-place mode. RFC-88 remains unchanged.
+>
+> Producers this RFC assumes: [RFC-92](rfc-92-operation-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block below, which is otherwise structurally `unknown`. [RFC-94](rfc-94-target-readiness.md) supplies per-target readiness bands and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions. None is required for the first cut; each adds a dimension to the same record.
 
 ## Intent
 
@@ -24,7 +26,7 @@ Self-healing inside one run remains bounded engine orchestration. Learning chang
 
 ## Problem
 
-RFC-90 retains every build phase and diagnostic, RFC-92 adds task and domain outcomes, RFC-95 adds host attestations, and the live harness records blind grades. Today those records answer what happened in one attempt but no contract:
+RFC-90 retains every build phase and diagnostic, RFC-96 adds task and domain outcomes, RFC-97 adds host attestations, and the live harness records blind grades. Today those records answer what happened in one attempt but no contract:
 
 - projects recurring diagnostic fingerprints across changes;
 - measures which repair, decomposition, prompt, model, or policy revision resolved them;
@@ -208,7 +210,7 @@ Future runs record the selected version. Existing runs remain pinned.
 
 ## Relation to automatic execution
 
-[RFC-94](future/rfc-94-streaming-execution.md) records progressive-run outcomes and policy identity. [RFC-98](rfc-98-policy-gated-autonomy.md) may select only promoted policy generations.
+[RFC-99](future/rfc-99-streaming-execution.md) records progressive-run outcomes and policy identity. [RFC-102](rfc-102-policy-gated-autonomy.md) may select only promoted policy generations.
 
 Outcome learning never authorizes build or merge. A good historical success rate cannot:
 
@@ -254,7 +256,7 @@ Deletion removes the record from future datasets and corpus builds. Released bin
 7. An observation is scope-, digest-, line-, and expiry-bounded and enters every operation key that consumes it.
 8. Removing an eligible outcome from the selected dataset changes the analysis digest and prevents stale promotion.
 9. Cross-tenant aggregation fails without an explicit policy-approved export.
-10. Existing RFC-90 repair budgets, RFC-92 scheduling, RFC-94 admission, and RFC-95 verification remain runtime authority.
+10. Existing RFC-90 repair budgets, RFC-96 scheduling, RFC-99 admission, and RFC-97 verification remain runtime authority.
 
 ## Rejected alternatives
 

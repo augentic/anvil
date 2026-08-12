@@ -6,7 +6,7 @@
 >
 > **Owns:** the typed gap **disposition** model (`open | deferred`), durable digest-bound **deferral facts**, the **gap policy** (`strict | defer`) with its project-level declaration and per-epoch override, the build-scope exclusion contract for deferred requirements, debt conservation through merge and archive, the **baseline debt projection** surfaced at the change boundaries, and the unattended-execution posture the embedded eval composition depends on.
 >
-> **Builds on** RFC-86's fact substrate (per-writer logs, computed status, `plan.execute.started` typed coverage, one-member waves) and [RFC-88](rfc-88-detached-changes.md)'s three-verb surface and `refine-under-epoch` coverage. Consumed by [RFC-90](rfc-90-build-verification.md) (verification must respect build scope) and [RFC-92](rfc-92-concurrent-execution.md) (deferral facts union like every other fact).
+> **Builds on** RFC-86's fact substrate (per-writer logs, computed status, `plan.execute.started` typed coverage, one-member waves) and [RFC-88](rfc-88-detached-changes.md)'s three-verb surface and `refine-under-epoch` coverage. Consumed by [RFC-90](rfc-90-build-verification.md) (verification must respect build scope) and [RFC-96](rfc-96-concurrent-execution.md) (deferral facts union like every other fact).
 >
 > **Amends** RFC-86 D15 (an *open* `[unknown]` blocks build; a *deferred* one leaves build scope and build proceeds), D17 (per-epoch `--waive` is deleted in favor of durable deferral facts; conflict build-over remains forbidden), and D22 (Ready stays clean-gap; deferrals, like waivers before them, never contribute to Ready). D13 (gaps gate build, not refine), D16 (divergence informational), D18 (prose review human-owned), D19 (rollup presentation-only), and D24 (in-scope membership) are unchanged.
 
@@ -72,7 +72,7 @@ A deferral is a journal fact (`gap.deferred`, per-writer like every fact) carryi
 - **Retraction:** `gap.deferral-retracted` reopens a live deferral explicitly (surface in D3).
 - **No stored state:** disposition is computed by joining the fact union to the live gap inventory. `spec.md`, `model.yaml`, and `plan.yaml` are not touched — no `deferred:` field anywhere, per RFC-86 D2.
 
-Because deferrals are facts rather than epoch payload, they survive resumes, survive fresh epochs, union across writers (RFC-92), and travel with the change home (RFC-88). The entire "re-supply `--waive` on every run" protocol — and its earlier-epoch footgun handler — is deleted.
+Because deferrals are facts rather than epoch payload, they survive resumes, survive fresh epochs, union across writers (RFC-96), and travel with the change home (RFC-88). The entire "re-supply `--waive` on every run" protocol — and its earlier-epoch footgun handler — is deleted.
 
 ### D3 — Two deferral surfaces: an explicit act and a declared policy
 

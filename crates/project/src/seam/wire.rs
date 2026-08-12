@@ -151,7 +151,7 @@ pub enum PhaseOutcome {
 /// WIT `phase-source` enum.
 ///
 /// `Tool` is reserved on the wire but rejected by the RFC-90 engine
-/// gate until a trusted host-tool execution seam exists (RFC-95).
+/// gate until a trusted host-tool execution seam exists (RFC-97).
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, strum::Display,
 )]

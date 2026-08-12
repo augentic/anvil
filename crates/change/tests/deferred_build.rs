@@ -320,6 +320,55 @@ async fn orphan_wave_stays_stale() {
     );
 }
 
+/// A slice parked at merge with BOTH a hand-edited refinement
+/// manifest and drifted dispositions still rebuilds under the
+/// disposition redirect (RFC-91 D5): a built leaf's covered digest is
+/// the on-disk manifest at resume — execute never re-refines, and pin
+/// freshness is not re-litigated past build.
+#[tokio::test]
+async fn built_skips_pin_drift() {
+    let session = unknown_session();
+    let root = session.root().to_path_buf();
+    scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
+
+    // Park the loop between build and merge.
+    fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");
+    run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect_err("parked at merge preflight");
+    fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
+
+    // Drift both probes: lapse the gate-minted deferral (disposition
+    // drift) and plant an orphan source pin on the refinement
+    // manifest.
+    lapse_deferral(&root);
+    let slice_dir = Layout::new(&root).slice_dir("greeting");
+    let mut manifest =
+        slice::refinement::Manifest::load(&slice_dir).expect("refinement.yaml after refine");
+    manifest.inputs.sources.insert("gone".into(), project::plan::value_cid("orphan pin"));
+    manifest.write(&slice_dir).expect("plant orphan pin");
+
+    // Resume rebuilds under the disposition redirect — the orphan pin
+    // does not force a refine stop once a build record is present.
+    let drained = run::<plan::handlers::Execute, _, _>(
+        session.provider(),
+        plan::handlers::ExecuteInput::default(),
+    )
+    .await
+    .expect("disposition drift rebuilds; pin drift on a built leaf is ignored");
+    assert_eq!(drained.status, "drained");
+    let steps: Vec<LoopStep> = drained.phases.iter().map(|phase| phase.step).collect();
+    assert_eq!(
+        steps,
+        [LoopStep::Build, LoopStep::Merge],
+        "execute never re-refines a built leaf; got {steps:?}"
+    );
+}
+
 /// Loop staleness: a deferral lapse between build and merge sends the
 /// slice back through the build gate — the gate re-mints the
 /// reopened row's disposition, re-builds, and drains.

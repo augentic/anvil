@@ -285,10 +285,10 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// Interim code delivery (RFC-87, pre-RFC-89): after the target's
+    /// Interim code delivery (RFC-87, pre-RFC-95): after the target's
     /// postflight gate passed, the merge orchestration materialized
     /// the slice's accepted result snapshot onto the product tree.
-    /// Deleted when publication sets (RFC-89) own the final seal.
+    /// Deleted when publication sets (RFC-95) own the final seal.
     #[serde(rename = "slice.code.applied", rename_all = "kebab-case")]
     SliceCodeApplied {
         /// Affected slice.
