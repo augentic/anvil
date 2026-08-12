@@ -18,6 +18,8 @@ Emery recovers a specification from a running legacy system. The `captures` sour
 
 At build time the strongest available assurance is RFC-97's `test` profile over candidate-authored tests, which reports `assurance: candidate`, plus a model review. For a modernization engagement that is the wrong question answered well. "Does the new code pass the tests written alongside it" is weak evidence, because the same process produced both. The load-bearing question is whether the new system reproduces the recorded behaviour of the old one.
 
+Comparable products answer a softer version of that question with a pre-implementation validation contract and black-box user-testing validators. Conservation is the stronger form for legacy work: the contract is the retained `captures` corpus, and the validators are host-driven replays under RFC-97's `conserve` profile — not fresh agents judging a milestone in chat context ([platform.md § Absorbed lessons](platform.md#absorbed-lessons-not-the-opposite-bet)).
+
 The capture corpus is the only input in the change that is neither model-authored nor model-writable: it came off the running legacy system before any slice existed. That makes it the natural protected oracle, and this RFC turns it into one.
 
 ## Problem
@@ -128,7 +130,7 @@ Each replay set emits RFC-97 D9's `target.verify.profile-completed` for the `con
 
 - **Replay recordings as ordinary candidate tests.** Materializing the corpus into the workspace makes it writable by the process being verified and collapses the `candidate` / `protected` distinction that gives the result its meaning.
 - **Require bug-for-bug conservation.** A migration exists to change something. Without declared divergence the gate would block every valuable change and be switched off, which is worse than not having it.
-- **Let the review leg decide whether a divergence was intended.** That is the specification's job. Asking the model that wrote the code whether the behaviour change was deliberate is not an independent check.
+- **Let the review leg decide whether a divergence was intended.** That is the specification's job. Asking the model that wrote the code whether the behaviour change was deliberate is not an independent check — the same self-evaluation failure a black-box validator is meant to avoid, without the digest-bound oracle.
 - **Promote `captures` Evidence above `documentation` or `intent` authority when a replay conserves.** Conservation says what the old system did, not what the new one should do. Authority ordering is unchanged.
 - **Generate the corpus from the new system when the legacy recording is thin.** Circular: the candidate would define its own oracle.
 - **A separate conservation phase in the build machine.** Conservation is a check over a candidate, which is exactly what a verification profile is. A new phase would duplicate budgets, reports, and gates for no additional expressiveness.

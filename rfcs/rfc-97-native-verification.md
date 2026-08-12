@@ -18,6 +18,8 @@ RFC-90 uses a model to choose commands, run them, interpret their output, and re
 
 With this RFC, target adapters request standard checks such as `build` or `test`. Emery's trusted native runtime chooses the approved tools, runs them in a locked-down environment against an unchanged code snapshot, and records a stable report bound to that exact run.
 
+Comparable products write a validation contract before features and inject black-box validators at milestones so the implementer does not define “done.” Protected oracles and host-attested profiles are Emery's stronger form of that contract: correctness criteria are digest-bound and executed outside the candidate's write set, not held in an orchestrator agent's context ([platform.md § Absorbed lessons](platform.md#absorbed-lessons-not-the-opposite-bet); [RFC-98](rfc-98-behavioural-conservation.md) supplies the corpus oracle when the estate has no pre-existing suite).
+
 The adapter only relays an opaque handle to that report. The engine resolves the handle directly, confirms that every required check ran in the expected context, and then applies RFC-90's existing verification and repair policy. A missing or unavailable check fails rather than becoming a false success.
 
 Here **host** means the trusted native runtime outside the engine and adapter Wasm guests. In local execution it runs on the operator's node; under RFC-100 it is the verifier provider on the worker that claimed the operation.
@@ -134,7 +136,7 @@ Under RFC-100 placement, the worker-side verifier provider publishes that digest
 
 RFC-96's admission-covered `protected-verification-inputs[]` is the authority for in-tree baseline tests and fixtures that workers cannot change. Digest-bound external material must appear in `protected-oracles[]` before a profile may mount it read-only outside the candidate tree. Deployment policy controls how an authorized input or oracle is mounted and consumed; it cannot introduce another identity.
 
-Candidate-authored tests remain useful: they demonstrate that the candidate passes its own checks. They do not become an independent oracle merely because the host ran them. Every profile report records:
+Candidate-authored tests remain useful: they demonstrate that the candidate passes its own checks. They do not become an independent oracle merely because the host ran them — the same reason a worker that writes its own tests cannot close a milestone validation contract. Every profile report records:
 
 - `assurance: candidate | protected | mixed`
 - candidate snapshot id

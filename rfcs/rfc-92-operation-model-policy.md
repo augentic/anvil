@@ -69,6 +69,8 @@ The closed operation-key set derives from the existing typed enums plus the engi
 
 An absent key falls to `default`. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is simply never consulted; a route is a binding, not a requirement to invoke.
 
+That closed key set is also Emery's form of **model specialization by role**: survey, extract, synthesize, build, verify, and review may bind different tiers without introducing an orchestrator-agent model. Comparable products pair a strong planning model with cheaper workers and skeptical validators; the analogue here is the pinned route table over operation keys, not a conversational scheduler that chooses models mid-run ([platform.md § Absorbed lessons](platform.md#absorbed-lessons-not-the-opposite-bet)).
+
 Pinning is the point. A route table change produces a new profile digest and invalidates the epoch on exactly the same rule as a threshold change, because a plan authored under an economy route is not the same plan as one authored under a frontier route, and coverage that pretended otherwise would be false.
 
 ### D2 — Routes name capability tiers; deployment binds them to providers
@@ -145,7 +147,8 @@ The one permitted in-flight variation is deterministic and pre-declared: a route
 
 ## Rejected alternatives
 
-- **Automatic per-task model routing decided inside the run.** Convenient and directly opposed to the reproducibility claim: the recorded authorization would no longer describe what executed. Selection is learned offline and promoted, which gets the same benefit with a version attached.
+- **Automatic per-task model routing decided inside the run.** Convenient and directly opposed to the reproducibility claim: the recorded authorization would no longer describe what executed. Selection is learned offline and promoted, which gets the same benefit with a version attached. An orchestrator agent that upgrades workers mid-mission is the same failure mode with a chat surface.
+- **A single “orchestrator” route that plans and schedules.** Role specialization belongs on the closed operation-key set above; putting planning authority on a model route would recreate an agent orchestration layer, which [platform.md](platform.md#deliberately-rejected) rejects.
 - **Cost as a lifecycle gate.** A budget that fails a merge turns spend into a correctness signal and creates pressure to accept unverified work to stay under a number. Cost informs pricing and learning; it never gates.
 - **Provider endpoints and credentials in `plan.yaml`.** A change home is portable and archivable, which is exactly what deployment topology and secrets must not be.
 - **A separate model-policy object with its own lifecycle.** Two pinned policies covering one epoch means two invalidation rules and an ordering question between them. The capability profile already pins how the model is asked to work.

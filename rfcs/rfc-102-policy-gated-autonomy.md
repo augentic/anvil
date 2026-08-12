@@ -271,6 +271,7 @@ RFC-95 forge publication remains a separate operator act. This RFC may create lo
 - **Treat unattended invocation as blanket approval.** The policy constrains scope; exact member and commit admissions constrain artifacts and results.
 - **Auto-waive gaps.** Missing or conflicting intent is not a repairable implementation defect.
 - **Let a model choose recovery actions.** Models return typed judgments and reports; the engine owns the ladder and counters.
+- **Invent free-form fix work from validation gaps in model context.** Comparable products let an orchestrator agent mint follow-up features after validators report. Under this RFC the only allowed forms of “fix work invented from findings” are the engine-owned recovery ladder and standing amendments over inert, digest-bound proposals — never mid-run conversational re-plan that widens scope, resets budgets, or invents topology outside those predicates. See [platform.md § Absorbed lessons](platform.md#absorbed-lessons-not-the-opposite-bet).
 - **Apply every valid amendment automatically.** Structural validity does not imply policy authority.
 - **Use historical success as current assurance.** Every commit proves its own exact protected and host checks.
 - **Publish to the forge automatically.** Accepted local state and external publication retain separate authority and recovery domains.
