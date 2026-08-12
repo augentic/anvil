@@ -236,6 +236,7 @@ async fn orphan_wave_stays_stale() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
 
     // Park the loop between build and merge: the build succeeded and
     // its record consumes the policy-minted deferral.
@@ -300,20 +301,16 @@ async fn orphan_wave_stays_stale() {
     );
 }
 
-/// A slice parked at merge with BOTH drifted pins and drifted
-/// dispositions re-refines first: the disposition redirect lands on
-/// the pin-drift check, so the re-build never runs under stale
-/// `base.yaml` pins.
+/// A slice parked at merge with BOTH drifted refinement inputs and
+/// drifted dispositions stops typed `plan-refinement-required`
+/// (RFC-91 D5): execute never re-refines; the operator drains
+/// `emery plan refine` before a resume can rebuild.
 #[tokio::test]
-async fn drift_rerefines_first() {
-    // One extra synthesis answer feeds the forced re-refine.
-    let session = Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synth(),
-        mock::answers::greeting_unknown_synth(),
-    ]);
+async fn drift_stops_for_refine() {
+    let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
 
     // Park the loop between build and merge under the defer policy.
     fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");
@@ -328,31 +325,28 @@ async fn drift_rerefines_first() {
     fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
 
     // Drift both probes: retract the deferral (disposition drift) and
-    // plant an orphan source pin (pin drift).
+    // plant an orphan source pin on the refinement manifest.
     defer_req(&session, true).await;
-    let layout = Layout::new(&root);
-    let slice_dir = layout.slice_dir("greeting");
-    let mut base = slice::Base::load(&slice_dir).expect("base.yaml after build");
-    base.sources.insert("gone".into(), project::plan::value_cid("orphan pin"));
-    base.write(&slice_dir).expect("plant orphan pin");
+    let slice_dir = Layout::new(&root).slice_dir("greeting");
+    let mut manifest =
+        slice::refinement::Manifest::load(&slice_dir).expect("refinement.yaml after refine");
+    manifest.inputs.sources.insert("gone".into(), project::plan::value_cid("orphan pin"));
+    manifest.write(&slice_dir).expect("plant orphan pin");
 
-    // The resume must re-refine before re-building: the disposition
-    // redirect (Merge → Build) lands on the pin-drift check
-    // (Build → Refine), so the fresh pins are frozen first.
-    let drained = run::<plan::handlers::Execute, _, _>(
+    // Resume refuses: stale refinement wins over the disposition
+    // redirect — execute never re-refines in-loop.
+    let err = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput {
             gap_policy: Some(GapPolicy::Defer),
         },
     )
     .await
-    .expect("resume re-refines, re-builds, and drains");
-    assert_eq!(drained.status, "drained");
-    let steps: Vec<LoopStep> = drained.phases.iter().map(|phase| phase.step).collect();
-    assert_eq!(
-        steps,
-        [LoopStep::Refine, LoopStep::Build, LoopStep::Merge],
-        "stale pins re-refine before the disposition-drift re-build; got {steps:?}"
+    .expect_err("stale refinement stops execute");
+    let detail = err.to_string();
+    assert!(
+        detail.contains("plan-refinement-required") || detail.contains("refinement"),
+        "{detail}"
     );
 }
 
@@ -364,6 +358,7 @@ async fn rebuild_after_retract() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
 
     // Park the loop between build and merge.
     fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");

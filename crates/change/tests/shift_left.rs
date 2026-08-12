@@ -190,10 +190,10 @@ async fn unrefined_execute_fails() {
     assert_eq!(executed.status, "drained");
 }
 
-/// RFC-86a acceptance #3: under `refine-under-epoch` the unknowns do
-/// not exist when execute starts; the `defer` policy dispositions them
-/// at the build gate (one `origin: policy` fact each, synthesized
-/// reason) and the loop proceeds through build and merge to drained.
+/// RFC-86a acceptance #3 under RFC-91 staging: refine mints the
+/// unknown; execute under `defer` dispositions it at the build gate
+/// (one `origin: policy` fact, synthesized reason) and drains
+/// build/merge — execute never auto-refines.
 #[tokio::test]
 async fn refine_defer_drains() {
     let session = Session::bare(vec![
@@ -206,7 +206,12 @@ async fn refine_defer_drains() {
 
     assert!(
         !root.join(".emery/slices/greeting/model.yaml").exists(),
-        "execute starts over unspec'd leaf — the unknown is minted under the epoch"
+        "author is topology-only — the unknown arrives via refine"
+    );
+    support::refine_plan(&session).await;
+    assert!(
+        root.join(".emery/slices/greeting/model.yaml").is_file(),
+        "refine mints the unknown before execute"
     );
 
     let executed = run::<plan::handlers::Execute, _, _>(
@@ -222,12 +227,8 @@ async fn refine_defer_drains() {
         executed.phases.iter().map(|phase| (phase.slice.as_str(), phase.step)).collect();
     assert_eq!(
         ran,
-        [
-            ("greeting", LoopStep::Refine),
-            ("greeting", LoopStep::Build),
-            ("greeting", LoopStep::Merge),
-        ],
-        "defer never parks the loop; got {ran:?}"
+        [("greeting", LoopStep::Build), ("greeting", LoopStep::Merge)],
+        "execute must not re-refine; got {ran:?}"
     );
 
     // Exactly one gate-time policy fact for the minted unknown.
