@@ -18,7 +18,7 @@ RFC-90 uses a model to choose commands, run them, interpret their output, and re
 
 With this RFC, target adapters request standard checks such as `build` or `test`. Emery's trusted native runtime chooses the approved tools, runs them in a locked-down environment against an unchanged code snapshot, and records a stable report bound to that exact run.
 
-Comparable products write a validation contract before features and inject black-box validators at milestones so the implementer does not define “done.” Protected oracles and host-attested profiles are Emery's stronger form of that contract: correctness criteria are digest-bound and executed outside the candidate's write set, not held in an orchestrator agent's context ([platform.md § Absorbed lessons](platform.md#lessons-absorbed-from-comparable-systems); [RFC-98](rfc-98-behavioural-conservation.md) supplies the corpus oracle when the estate has no pre-existing suite).
+Protected oracles and host-attested profiles are Emery's form of a validation contract the implementer does not define: correctness criteria are digest-bound and executed outside the candidate's write set, not held in an orchestrator agent's context ([platform.md § Design principles](platform.md#design-principles-at-the-call-site); [RFC-98](rfc-98-behavioural-conservation.md) supplies the corpus oracle when the estate has no pre-existing suite).
 
 The adapter only relays an opaque handle to that report. The engine resolves the handle directly, confirms that every required check ran in the expected context, and then applies RFC-90's existing verification and repair policy. A missing or unavailable check fails rather than becoming a false success.
 

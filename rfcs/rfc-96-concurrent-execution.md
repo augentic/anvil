@@ -1,6 +1,6 @@
 # RFC-96: Concurrent Execution
 
-> Status: Draft — the retained scale lane in the [Services Delivery Programme](platform.md), started when measurement shows serial model work or refinement is the binding constraint
+> Status: Evidence-gated in the [Services Delivery Programme](platform.md) — accepted architecture, not default staffing. Start only when RFC-92/RFC-97 timing shows serial model work or refinement is a material programme bottleneck, or when a contracted engagement requires task-graph and domain-convergence semantics directly.
 >
 > Owns:
 >

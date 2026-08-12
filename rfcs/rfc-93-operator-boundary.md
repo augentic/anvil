@@ -1,6 +1,6 @@
 # RFC-93: Operator Boundary
 
-> **Status:** Draft — unblocked operator-boundary track over implemented [RFC-86](rfc-86-change-facts.md).
+> **Status:** Draft — parallel assurance track over implemented [RFC-86](rfc-86-change-facts.md) in the [Services Delivery Programme](platform.md). Startable now, but not on the product critical path; do not staff ahead of [RFC-88](rfc-88-detached-changes.md) or [RFC-92](rfc-92-model-policy.md). Host operator grants land when an engagement needs caller refusal, not as programme step one.
 >
 > **Owns:** the typed **actor record** carried by every fact — the closed actor class (`human | agent`), declared driver identity, and **attestation level** (`unattested | declared | attested`) — plus the deployment-owned **operator grant** that may refuse an otherwise legal CLI act before guest dispatch. Attribution answers who acted; authorization answers what that caller was allowed to request. Neither becomes lifecycle state.
 >

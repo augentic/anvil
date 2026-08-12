@@ -18,7 +18,7 @@ Emery recovers a specification from a running legacy system. The `captures` sour
 
 At build time RFC-97's `test` profile over candidate-authored tests reports `execution-assurance: host-attested` but `oracle-assurance: candidate`, plus a model review. For a modernization engagement that is the wrong question answered well. "Does the new code pass the tests written alongside it" is weak evidence, because the same process produced both. The load-bearing question is whether the new system reproduces the recorded behaviour of the old one.
 
-Comparable products answer a softer version of that question with a pre-implementation validation contract and black-box user-testing validators. Conservation is the stronger form for legacy work: the contract is the retained `captures` corpus, and the validators are host-driven replays under RFC-97's `conserve` profile — not fresh agents judging a milestone in chat context ([platform.md § Absorbed lessons](platform.md#lessons-absorbed-from-comparable-systems)).
+Conservation is the stronger form of a pre-implementation validation contract for legacy work: the contract is the retained `captures` corpus, and the validators are host-driven replays under RFC-97's `conserve` profile — not fresh agents judging a milestone in chat context ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)).
 
 The capture corpus is the only input in the change that is neither model-authored nor model-writable: it came off the running legacy system before any slice existed. That makes it the natural protected oracle, and this RFC turns it into one.
 

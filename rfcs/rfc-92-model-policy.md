@@ -1,10 +1,10 @@
 # RFC-92: Model Policy
 
-> Status: Draft — model-economics track following [RFC-88](rfc-88-detached-changes.md), over implemented [RFC-86](rfc-86-change-facts.md) and [RFC-90](rfc-90-build-verification.md)
+> Status: Draft — model-economics track startable on implemented [RFC-86](rfc-86-change-facts.md) and [RFC-90](rfc-90-build-verification.md); parallel with the [RFC-88](rfc-88-detached-changes.md) product critical path in the [Services Delivery Programme](platform.md).
 >
-> Owns: the closed operation-key set for model routing, the per-operation route and bounded escalation table on the pinned capability profile, deployment binding of route names to providers, the model-usage fact, and cost attribution projections.
+> Owns: the closed operation-key set for model routing, the per-operation route and minimal bounded escalation table on the pinned capability profile, deployment binding of route names to providers, the model-usage fact, and cost attribution projections.
 >
-> Depends on implemented RFC-86 facts and RFC-90 phase identity. Extends [RFC-88](rfc-88-detached-changes.md)'s model-capability profile. Supplies the objects [RFC-103](rfc-103-outcome-learning.md) already references as `model-route-change` proposals and the `cost.model-usage` outcome field.
+> Depends on implemented RFC-86 facts and RFC-90 phase identity. Patches [RFC-88](rfc-88-detached-changes.md)'s model-capability profile when that cut lands; does not wait for RFC-88 to finish. Supplies the objects [RFC-103](rfc-103-outcome-learning.md) already references as `model-route-change` proposals and the `cost.model-usage` outcome field.
 >
 > Patch ownership: this RFC amends RFC-88 D3 by adding a `routes` table to the model-capability profile and RFC-103's outcome DTO by populating `cost`. Both remain unchanged.
 >
@@ -76,7 +76,7 @@ The closed operation-key set derives from the existing typed enums plus the engi
 
 An absent key falls to `default`. The shorthand scalar `target.review: frontier` is canonicalized to `{ start: frontier }` with no escalation. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is simply never consulted; a route policy is a binding, not a requirement to invoke. The set is closed per programme state, not forever: [RFC-96](rfc-96-concurrent-execution.md)'s `target.decompose` operation joins it when that RFC lands.
 
-That closed key set is also Emery's form of **model specialization by role**: survey, extract, synthesize, build, verify, and review may bind different tiers without introducing an orchestrator-agent model. Comparable products pair a strong planning model with cheaper workers and skeptical validators; the analogue here is the pinned route table over operation keys, not a conversational scheduler that chooses models mid-run ([platform.md § Absorbed lessons](platform.md#lessons-absorbed-from-comparable-systems)).
+That closed key set is also Emery's form of **model specialization by role**: survey, extract, synthesize, build, verify, and review may bind different tiers without introducing an orchestrator-agent model. The analogue is the pinned route table over operation keys, not a conversational scheduler that chooses models mid-run ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)).
 
 Pinning is the point. A starting-route or escalation-ladder change produces a new profile digest and invalidates the epoch on exactly the same rule as a threshold change, because a plan authored under an economy-first policy is not the same plan as one authored under a frontier route, and coverage that pretended otherwise would be false.
 
@@ -122,13 +122,13 @@ The projection joins usage facts to the units an engagement is priced in. Slice,
 
 `plan archive` summarizes terminal spend beside the carried-debt summary, and RFC-103 outcome records populate `cost` from the same union, which is what lets recurrence analysis ask whether an economy route on `source.extract` actually cost more downstream in repair rounds than it saved.
 
-### D5 — Route policy is pinned; escalation is bounded and engine-selected
+### D5 — Route policy is pinned; escalation stays minimal, closed, and engine-selected
 
 A run never invents or edits a route policy. It starts each operation on the profile's selected route and may advance only through that policy's ordered escalation ladder when a closed engine trigger is present.
 
 The initial closed triggers are `answer-repair-exhausted`, `context-limit-refusal`, and RFC-97's `unchanged-failure-set`. Each names an engine fact or typed provider outcome; no model, adapter, prompt, readiness judgment, token total, elapsed-time threshold, or free-form classifier may select it. A trigger either advances to the next declared route for that operation or stops when no declared step remains. Every dispatch records the route step and triggering fact. `unchanged-failure-set` has no producer until [RFC-97](rfc-97-native-verification.md) Phase A lands — the trigger is declared in the closed set but simply never fires before then.
 
-This is a deliberate divergence from opaque adaptive routing. An unrecorded router that quietly upgrades a model makes epoch coverage a partial description of what was authorized. A pinned economy → balanced → frontier ladder remains fully described by the covered profile, and its fact-triggered transitions are comparable across runs even though model outputs are not deterministic.
+Keep the ladder small. Prefer a single starting route plus offline promotion via RFC-103 over growing in-flight escalation. An unrecorded router that quietly upgrades a model makes epoch coverage a partial description of what was authorized; a pinned economy → balanced step advanced only by a closed engine fact remains fully described by the covered profile.
 
 Route policy remains learnable offline. RFC-103 aggregates usage facts against escalation, repair counts, amendment rates, terminal outcomes, and conservation coverage, emits a `model-route-change` proposal, evaluates it blind, and promotes a new profile generation for future runs. Readiness may recommend a route policy before authorization, but a readiness score cannot trigger or redirect one in flight.
 
@@ -158,7 +158,8 @@ A route may separately name a provider-unavailability fallback, resolved from th
 
 ## Rejected alternatives
 
-- **Automatic per-task model routing decided by a model, readiness score, or opaque classifier inside the run.** Convenient and directly opposed to the reproducibility claim: the recorded authorization would no longer describe what executed. The permitted form is a pinned bounded ladder advanced by closed engine facts; changes to that ladder are learned offline and promoted.
+- **Automatic per-task model routing decided by a model, readiness score, spend signal, or opaque classifier inside the run.** Convenient and directly opposed to the reproducibility claim: the recorded authorization would no longer describe what executed. The permitted form is a minimal pinned ladder advanced only by closed engine facts; prefer offline promotion over expanding that ladder.
+- **Growing escalation into a soft adaptive router.** Adding readiness-, latency-, token-, or classifier-driven steps recreates opaque mid-run routing under a different name. Keep triggers closed and few; learn route changes between runs.
 - **A single “orchestrator” route that plans and schedules.** Role specialization belongs on the closed operation-key set above; putting planning authority on a model route would recreate an agent orchestration layer, which [platform.md](platform.md#deliberately-rejected) rejects.
 - **Cost as a lifecycle gate.** A budget that fails a merge turns spend into a correctness signal and creates pressure to accept unverified work to stay under a number. Cost informs pricing and learning; it never gates.
 - **Provider endpoints and credentials in `plan.yaml`.** A change home is portable and archivable, which is exactly what deployment topology and secrets must not be.
