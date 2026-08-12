@@ -164,7 +164,8 @@ pub struct GateProse {
     /// The `discovery.md` `## Source inventory` section body — one row
     /// per bound source under `plan.yaml.sources.<key>`: key, adapter,
     /// path or value. Body only, no heading.
-    pub discovery_source_inventory: String,
+    #[serde(rename = "discovery-source-inventory")]
+    pub discovery_inventory: String,
 }
 
 /// One `slices[]` row in a [`ProposalResponse`]: one slice of work

@@ -247,7 +247,7 @@ async fn decisions_exact_set() {
 }
 
 #[tokio::test]
-async fn evidence_gap_projects_unknown() {
+async fn evidence_gap_projects() {
     let session = Session::scripted(
         "mock",
         vec![mock::answers::adversarial_grouping(), reset_synthesis_answer()],

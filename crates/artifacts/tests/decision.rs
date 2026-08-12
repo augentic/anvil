@@ -52,7 +52,7 @@ mod findings {
     use super::*;
 
     #[test]
-    fn missing_frontmatter_schema() {
+    fn missing_frontmatter() {
         let parsed = parse_decision("# Title\n\n## Context\n## Decision\n## Consequences\n");
         assert!(parsed.record.is_none());
         assert!(parsed.findings.iter().any(|f| f.rule_id == "decision-record-schema"));

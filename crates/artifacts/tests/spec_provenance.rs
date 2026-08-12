@@ -195,7 +195,7 @@ fn empty_sources_for_unknown() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn unannotated_file_is_skipped() {
+fn unannotated_file_skipped() {
     let parsed = parse_spec_md(fixture!("unannotated-legacy.md"));
     assert!(parsed.is_unannotated());
     assert_eq!(parsed.requirements.len(), 1);

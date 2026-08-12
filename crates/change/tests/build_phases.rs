@@ -8,7 +8,7 @@ mod support;
 
 use mock::behaviour::{
     REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED,
-    VERIFY_AFTER_REVIEW_FAIL_MARKER, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER,
+    VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER,
 };
 use mock::session::Session;
 use project::build_record::BuildRecord;
@@ -54,7 +54,7 @@ mod success {
     /// attempt tree, the ordered phase-completed facts, the terminal
     /// projection, the `BuildRecord`, and the promoted stage change.
     #[tokio::test]
-    async fn phase_sequence_and_promotion() {
+    async fn phase_sequence_promotion() {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
         let dir = slice_dir(&session);
@@ -100,7 +100,7 @@ mod success {
     /// Every phase-completed digest is `sha256:` over the exact
     /// persisted phase-report bytes.
     #[tokio::test]
-    async fn event_digests_match_phase_files() {
+    async fn event_digests_match_phase() {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
 
@@ -194,11 +194,11 @@ mod repair_rounds {
     /// verification budget: one review remediation, then three
     /// verification repairs, then the blocking terminal.
     #[tokio::test]
-    async fn post_review_verification_failure() {
+    async fn post_review_verification() {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
         support::marker(&root, REVIEW_FIXABLE_MARKER);
-        support::marker(&root, VERIFY_AFTER_REVIEW_FAIL_MARKER);
+        support::marker(&root, VERIFY_AFTER_REVIEW);
 
         let err = support::build(&session, "greeting").await.expect_err("budget exhausts");
         assert_eq!(err.variant_str(), "target-build-failed");
@@ -374,7 +374,7 @@ mod round_isolation {
     /// repair finding under the blocked profile so dedupe cannot hide
     /// a leak.
     #[tokio::test]
-    async fn terminal_carries_final_round_only() {
+    async fn terminal_carries_final() {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
         support::marker(&root, VERIFY_BLOCKED_MARKER);

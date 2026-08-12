@@ -20,10 +20,7 @@ use project::seam::wire::BuildRequest;
 /// The minimal profile whose refine mints one `[unknown]` row
 /// (`greeting/REQ-001`).
 fn unknown_session() -> Session {
-    Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synthesis(),
-    ])
+    Session::bare(vec![mock::answers::greeting_grouping(), mock::answers::greeting_unknown_synth()])
 }
 
 async fn scaffold(session: &Session) {
@@ -115,7 +112,7 @@ async fn validate_reviews(session: &Session) -> Vec<String> {
 /// record binds the consumed digests; matching live dispositions read
 /// as fresh.
 #[tokio::test]
-async fn request_and_record_bind_the_deferred_set() {
+async fn binds_deferred_set() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -159,7 +156,7 @@ async fn request_and_record_bind_the_deferred_set() {
 /// verify never dispatches, the failed canonical projection carries
 /// the engine finding, and no record lands.
 #[tokio::test]
-async fn covered_deferred_requirement_refuses_build() {
+async fn covered_deferred_refuses() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -196,7 +193,7 @@ async fn covered_deferred_requirement_refuses_build() {
 
 /// `covered[]` naming only non-deferred requirements passes the gate.
 #[tokio::test]
-async fn covered_claim_without_deferral_passes() {
+async fn covered_without_deferral() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -212,7 +209,7 @@ async fn covered_claim_without_deferral_passes() {
 /// drifts the record: the probe flips and validate carries the
 /// `slice-disposition-drifted` review.
 #[tokio::test]
-async fn lapse_after_build_drifts_dispositions() {
+async fn lapse_drifts_build() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -260,21 +257,22 @@ async fn lapse_after_build_drifts_dispositions() {
 /// `slice-build-record-missing` against the orphan wave — so the next
 /// resume re-builds instead of wedging on the older record.
 #[tokio::test]
-async fn failed_rebuild_orphan_wave_stays_stale() {
+async fn orphan_wave_stays_stale() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
 
     // Park the loop between build and merge: the build succeeded and
     // its record consumes the gate-minted deferral.
-    fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
+    fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");
     run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
     )
     .await
     .expect_err("parked at merge preflight");
-    fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
+    fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
 
     // Lapse the deferral (drift) and make the redirected re-build
     // fail: the loop opens a new wave, the build dies, no record
@@ -322,82 +320,18 @@ async fn failed_rebuild_orphan_wave_stays_stale() {
     );
 }
 
-/// A slice parked at merge with BOTH drifted pins and drifted
-/// dispositions re-refines first: the disposition redirect lands on
-/// the pin-drift check, so the re-build never runs under stale
-/// `base.yaml` pins.
-#[tokio::test]
-async fn drifted_pins_and_dispositions_rerefine_before_rebuild() {
-    // One extra synthesis answer feeds the forced re-refine. Its
-    // reshaped statement keeps the requirement body — and so the
-    // disposition drift — from reverting to the recorded digest
-    // (identical bodies would revive the original deferral fact and
-    // legitimately skip the re-build).
-    let reshaped = mock::answers::greeting_unknown_synthesis().replace(
-        "The greeting service handles errors",
-        "The greeting service handles errors; new evidence reshaped the gap",
-    );
-    assert_ne!(
-        reshaped,
-        mock::answers::greeting_unknown_synthesis(),
-        "the unknown row's statement is present to reshape"
-    );
-    let session = Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synthesis(),
-        reshaped,
-    ]);
-    let root = session.root().to_path_buf();
-    scaffold(&session).await;
-
-    // Park the loop between build and merge.
-    fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
-    run::<plan::handlers::Execute, _, _>(
-        session.provider(),
-        plan::handlers::ExecuteInput::default(),
-    )
-    .await
-    .expect_err("parked at merge preflight");
-    fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
-
-    // Drift both probes: lapse the deferral (disposition drift) and
-    // plant an orphan source pin (pin drift).
-    lapse_deferral(&root);
-    let layout = Layout::new(&root);
-    let slice_dir = layout.slice_dir("greeting");
-    let mut base = slice::Base::load(&slice_dir).expect("base.yaml after build");
-    base.sources.insert("gone".into(), project::plan::value_cid("orphan pin"));
-    base.write(&slice_dir).expect("plant orphan pin");
-
-    // The resume must re-refine before re-building: the disposition
-    // redirect (Merge → Build) lands on the pin-drift check
-    // (Build → Refine), so the fresh pins are frozen first.
-    let drained = run::<plan::handlers::Execute, _, _>(
-        session.provider(),
-        plan::handlers::ExecuteInput::default(),
-    )
-    .await
-    .expect("resume re-refines, re-builds, and drains");
-    assert_eq!(drained.status, "drained");
-    let steps: Vec<LoopStep> = drained.phases.iter().map(|phase| phase.step).collect();
-    assert_eq!(
-        steps,
-        [LoopStep::Refine, LoopStep::Build, LoopStep::Merge],
-        "stale pins re-refine before the disposition-drift re-build; got {steps:?}"
-    );
-}
-
 /// Loop staleness: a deferral lapse between build and merge sends the
 /// slice back through the build gate — the gate re-mints the
 /// reopened row's disposition, re-builds, and drains.
 #[tokio::test]
-async fn execute_rebuilds_after_deferral_lapse() {
+async fn rebuild_after_lapse() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
 
     // Park the loop between build and merge.
-    fs::write(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER), "").expect("marker");
+    fs::write(root.join(behaviour::PREFLIGHT_FAIL), "").expect("marker");
     let stopped = run::<plan::handlers::Execute, _, _>(
         session.provider(),
         plan::handlers::ExecuteInput::default(),
@@ -405,7 +339,7 @@ async fn execute_rebuilds_after_deferral_lapse() {
     .await
     .expect_err("parked at merge preflight");
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
-    fs::remove_file(root.join(behaviour::FAIL_MERGE_PREFLIGHT_MARKER)).expect("remove marker");
+    fs::remove_file(root.join(behaviour::PREFLIGHT_FAIL)).expect("remove marker");
 
     // Lapse the gate-minted deferral: the parked build is stale.
     lapse_deferral(&root);

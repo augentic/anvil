@@ -36,7 +36,7 @@ A markdown prompt file shipped by a source or target adapter that drives one ope
 ## C
 
 **Change**
-The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/emery:plan`, `emery plan execute`, `/emery:finalize`.
+The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/emery:plan`, `emery plan refine`, `emery plan execute`, `/emery:finalize`.
 
 **Command**
 One operator-facing `emery` invocation (`emery plan status`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation shape](../standards/handler-shape.md).
@@ -48,7 +48,7 @@ The resource prefix that namespaces CLI actions (`slice`, `plan`, `journal`). `e
 One row inside an `Evidence` document. Closed `kind` enum: `intent`, `requirement`, `criterion`, `decision`, `section`, `diagram`, `contract`, `excerpt`, `type`, `call`, `region`, `container`, `leaf`. `requirement` and `criterion` carry a `id` for deterministic reconciliation across sources.
 
 **Conflict**
-Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by recording a per-slice authority override (`emery plan amend --authority-override`) or amending sources, then re-running `emery plan execute` (the loop re-refines the affected slice under the new epoch) — never by hand-editing the kernel-rendered `Status:` / `Sources:` lines. Tags never park the slice.
+Unresolvable disagreement between two `Evidence` rows at the same authority class. Surfaces as `Status: conflict` and a `[conflict]` tag on the requirement header. The operator reconciles by recording a per-slice authority override (`emery plan amend --authority-override`) or amending sources, then re-running `emery plan refine` (the amendment stales the slice's refinement manifest and the drain re-refines it) — never by hand-editing the kernel-rendered `Status:` / `Sources:` lines. Tags never park the slice.
 
 **Contract id**
 The optional `info.x-emery-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract. Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. Rename-stable hint that survives file moves and `info.version` bumps.
@@ -85,7 +85,7 @@ The single CLI binary produced by the Rust workspace at the repo root that backs
 The per-source result of `extract`. A structured document with `claims:` persisted to `.emery/slices/<slice>/evidence/<source>.yaml`. Parsed and validated through the typed `artifacts::evidence::Document`. Top-level `authority:` is required.
 
 **Execute**
-The guest-routed driver loop (`emery plan execute`) that advances each entry and runs refine → build → merge until the plan drains. Running it is the operator's approval of the plan. Resumes from on-disk state — no `--continue` flag.
+The guest-routed driver loop (`emery plan execute`) that advances each entry and runs build → merge until the plan drains, consuming the exact refinement manifests `emery plan refine` wrote (it never refines — a missing or stale manifest is the typed `plan-refinement-required`). Running it opens the authorization epoch over the covered refinement digests. Resumes from on-disk state — no `--continue` flag.
 
 **Extract**
 The slice-time operation declared by a source adapter. Reads one `Lead` plus the bound source and returns `Evidence` content the CLI persists.
@@ -101,7 +101,7 @@ The closure skill (`/emery:finalize`) that verifies the plan is drained, confirm
 One of the two engine test rungs and its cadence: repository correctness (`cargo make ci`, every push) or prompt evaluation (`cargo make eval`, operator-invoked). The WASM seam has no automated gate — it is exercised by the operator-run wasm example (`cargo make wasm-run`). See [Quality gates](../contributing/quality-gates.md).
 
 **Guest**
-The **engine guest** is the WebAssembly component embedded in the `emery` binary that owns the orchestrations behind "guest-routed" verbs (`plan author`, `plan execute`) and the refine / build / merge phases they run. An **adapter guest** is a source or target adapter's own component, dispatched by the engine. A running driver orchestration holds the create-exclusive `.emery/guest.lock` marker; a second driver session exits with `guest-marker-held`.
+The **engine guest** is the WebAssembly component embedded in the `emery` binary that owns the orchestrations behind "guest-routed" verbs (`plan author`, `plan refine`, `plan execute`) and the refine / build / merge phases they run. An **adapter guest** is a source or target adapter's own component, dispatched by the engine. A running driver orchestration holds the create-exclusive `.emery/guest.lock` marker; a second driver session exits with `guest-marker-held`.
 
 ## H
 
@@ -191,7 +191,7 @@ The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as
 A thin Cursor slash-command wrapper (e.g. `/emery:plan`, `/emery:execute`) that elicits arguments, invokes one `emery` verb, and relays its output. Skills do not own orchestration, synthesis, or code generation — those live in the engine guest and target-adapter prompts.
 
 **Slice**
-The single unit that flows through the fixed `refine → build → merge` loop. Each slice has its own proposal, spec, design, tasks, metadata, and evidence rows, and lives under `.emery/slices/<name>/`.
+The single unit that flows through the fixed `refine → build → merge` rhythm — refinement inside the `emery plan refine` drain, build and merge inside `emery plan execute`. Each slice has its own proposal, spec, design, tasks, metadata, evidence rows, and refinement manifest, and lives under `.emery/slices/<name>/`.
 
 **Source adapter**
 Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Published as `emery:<name>@<semver>`; the guest crate lives at `sources/<name>/` in the adapters repo. See the [Source adapters](../reference/sources/index.md) reference.

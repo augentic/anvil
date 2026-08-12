@@ -28,7 +28,7 @@ fn fp_is_deterministic() {
 }
 
 #[test]
-fn fp_excludes_producer_fields() {
+fn fp_excludes_producer() {
     let base = sample_diagnostic();
     let expected = fingerprint(&base);
 
@@ -51,7 +51,7 @@ fn fp_excludes_producer_fields() {
 }
 
 #[test]
-fn fp_includes_identity_fields() {
+fn fp_includes_identity() {
     let base = sample_diagnostic();
     let expected = fingerprint(&base);
 
@@ -89,7 +89,7 @@ fn fp_ignores_range_end() {
 }
 
 #[test]
-fn verify_roundtrip_and_tamper() {
+fn verify_roundtrip_tamper() {
     let mut d = sample_diagnostic();
     d.fingerprint = fingerprint(&d);
     assert!(verify_fingerprint(&d));

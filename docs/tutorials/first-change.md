@@ -2,7 +2,7 @@
 <div class="eyebrow">Tutorial</div>
 <h1 class="hero-title">Your first multi-slice change</h1>
 
-Plan and execute a change with three slices bound to a documentation source. When you finish, three slices have moved through refine → build → merge and their specs live in your baseline.
+Plan, refine, and execute a change with three slices bound to a documentation source. When you finish, three slices have moved through refine → build → merge and their specs live in your baseline.
 
 <div class="meta-row">
 
@@ -131,19 +131,31 @@ Survey and reconciliation are model-driven, so your lead names and synopses will
 | `plan.yaml` | Three slices, sensible names, each bound to one `docs` lead |
 | `discovery.md` | The lead inventory matches your three notes |
 
-This pause is the operator review step. When the plan looks right, start privileged work with `emery plan execute` (it journals `plan.execute.started`). If the grouping is wrong — say survey merged two notes into one lead — fix the notes and re-run `/emery:plan` (it confirms before replacing), or curate entries with the CLI; see [Amend a plan before executing](../how-to/amend-a-plan.md).
+This pause is the topology review step. If the grouping is wrong — say survey merged two notes into one lead — fix the notes and re-run `/emery:plan` (it confirms before replacing), or curate entries with the CLI; see [Amend a plan before executing](../how-to/amend-a-plan.md).
 </div>
 
 
 <div class="tutorial-step" data-step="04">
 <div class="step-label">04</div>
+<h3 class="step-title">Refine the slices</h3>
+
+```text
+emery plan refine
+```
+
+The drain refines all three slices serially in plan order: each extraction reads the bound `docs` source, synthesis writes the slice artifacts under `.emery/slices/<name>/`, and the refinement manifest (`refinement.yaml`) records the exact inputs and output bundle. When the drain completes, read the three `specs/<domain>/spec.md` files — this pause is the specification review step. If a spec is wrong, fix the note (or amend the plan) and re-run `emery plan refine`; only the staled slices re-refine.
+</div>
+
+
+<div class="tutorial-step" data-step="05">
+<div class="step-label">05</div>
 <h3 class="step-title">Execute and watch per-entry status</h3>
 
 ```text
 emery plan execute
 ```
 
-Execute opens the authorization epoch, then drives each slice through refine → build → merge in plan order (a single execute process walks entries one-by-one; other journal writers may still claim different slices). Each slice gets its own directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
+Execute opens the authorization epoch over the plan and refinement digests, then drives each slice through build → merge in plan order (a single execute process walks entries one-by-one; other journal writers may still claim different slices). Execute never refines — a missing or stale manifest stops it with `plan-refinement-required`. Each slice keeps its directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
 
 Check progress at any time from a second terminal:
 
@@ -165,8 +177,8 @@ When every entry is `done`, status projects the literal `drained` line. If execu
 </div>
 
 
-<div class="tutorial-step" data-step="05">
-<div class="step-label">05</div>
+<div class="tutorial-step" data-step="06">
+<div class="step-label">06</div>
 <h3 class="step-title">Finalize when drained</h3>
 
 When all three entries are `done`, publish the repository changes through your normal Git workflow, then close the change:
@@ -183,13 +195,13 @@ Finalize confirms publication is complete and archives the [drained](../appendic
 
 
 > [!TIP]
-> **Done.** Three slices flowed through the same loop as the quick start's one: documentation bound at plan time, three leads reconciled into three slices, one plan review, one execute run to drain them all.
+> **Done.** Three slices flowed through the same rhythm as the quick start's one: documentation bound at plan time, three leads reconciled into three slices, one plan review, one refine drain plus spec review, one execute run to drain them all.
 
 ## What you learned
 
 - Documentation sources bind at plan time with `source <key>=<adapter>:<path>` — here, `docs=documentation:./design-notes/account`.
 - One lead per slice-sized unit: survey turns each note into a lead, and reconciliation turns each lead into a plan entry.
-- Multi-slice plans share one `change.md` and one plan review; per-entry status (`pending → in-progress → done`) tracks progress through the execute loop.
+- Multi-slice plans share one `change.md`, one plan review, and one refinement drain; per-entry status (`pending → in-progress → done`) tracks progress through the execute loop.
 
 <div class="see-also">
 <strong>See also</strong>

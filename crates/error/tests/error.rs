@@ -48,7 +48,7 @@ fn adapter_too_old_display() {
 }
 
 #[test]
-fn validation_code_and_display() {
+fn validation_code_display() {
     // The common path borrows a `&'static str` code, and
     // `validation_failed` folds `rule` + `detail` into one message.
     let err = Error::validation_failed("bad-thing", "rule", "detail");
@@ -57,7 +57,7 @@ fn validation_code_and_display() {
 }
 
 #[test]
-fn execute_validation_codes_carry_hints() {
+fn execute_codes_hint() {
     // The RFC-86 execute refusals are the operator's main exit-2
     // surface; each carries a recovery hint mirroring
     // docs/reference/diagnostics.md.

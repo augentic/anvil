@@ -42,7 +42,7 @@ fn enum_wire_matrix() {
 }
 
 #[test]
-fn claim_kind_rejects_unknown() {
+fn claim_kind_rejects() {
     let err = "bogus".parse::<ClaimKind>().expect_err("must reject unknown");
     assert!(err.contains("bogus"), "error must mention input, got: {err}");
 }

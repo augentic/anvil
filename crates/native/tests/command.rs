@@ -65,7 +65,7 @@ async fn executes_a_verb() {
 }
 
 #[tokio::test]
-async fn failure_is_a_typed_response() {
+async fn failure_typed_response() {
     let (_tmp, root) = project();
     let paths = paths(&root);
     // An unknown verb is a buffered response, not a library error.

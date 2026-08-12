@@ -49,7 +49,7 @@ async fn orphan_supersede_reported() {
 }
 
 #[tokio::test]
-async fn merge_promotes_and_supersedes() {
+async fn merge_promotes_supersedes() {
     let project = Session::scripted("mock", Vec::new());
     let slice = project.root().join(".emery/slices/demo");
     let staged = slice.join("decisions");

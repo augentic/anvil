@@ -3,7 +3,7 @@
 use artifacts::discovery::lead::Lead;
 
 #[test]
-fn optional_topics_round_trip() {
+fn optional_topics_round() {
     let yaml = r"
 lead: user-registration
 source: legacy-monolith
@@ -17,7 +17,7 @@ topics:
 }
 
 #[test]
-fn absent_topics_default_empty() {
+fn absent_topics_default() {
     let yaml = r"
 lead: user-registration
 source: legacy-monolith

@@ -20,10 +20,7 @@ use project::journal::{
 /// The minimal profile whose refine mints one `[unknown]` row
 /// (`greeting/REQ-001`).
 fn unknown_session() -> Session {
-    Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synthesis(),
-    ])
+    Session::bare(vec![mock::answers::greeting_grouping(), mock::answers::greeting_unknown_synth()])
 }
 
 async fn scaffold(session: &Session) {
@@ -86,10 +83,11 @@ fn render_archive(body: &plan::handlers::ArchiveBody) -> String {
 /// names the accepted debt; the unforced archive succeeds and renders
 /// the summary.
 #[tokio::test]
-async fn deferred_unknown_conserved_through_merge_and_archive() {
+async fn gate_debt_conserved() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
     execute(&session).await;
 
     // The folded baseline row: status preserved, final baseline id,
@@ -150,7 +148,7 @@ async fn deferred_unknown_conserved_through_merge_and_archive() {
 /// before execute covers the gate, and the note folds its reason —
 /// not a fresh gate-time synthesis.
 #[tokio::test]
-async fn pre_covered_deferral_note_carries_reason() {
+async fn note_carries_reason() {
     let session = unknown_session();
     let root = session.root().to_path_buf();
     scaffold(&session).await;
@@ -193,17 +191,18 @@ async fn pre_covered_deferral_note_carries_reason() {
 /// next `plan author` renders the same inventory into the `change.md`
 /// review prose it authors.
 #[tokio::test]
-async fn debt_projection_and_author_inventory_after_merge() {
+async fn debt_after_merge() {
     // Three judgment answers: the first author's grouping, the refine
     // synthesis that mints the unknown, and the corrective change's
     // author grouping.
     let session = Session::bare(vec![
         mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synthesis(),
+        mock::answers::greeting_unknown_synth(),
         mock::answers::greeting_grouping(),
     ]);
     let root = session.root().to_path_buf();
     scaffold(&session).await;
+    support::refine(&session, "greeting").await.expect("refine");
     execute(&session).await;
 
     // The projection reads the merged baseline note, never fact logs.
@@ -255,7 +254,7 @@ async fn debt_projection_and_author_inventory_after_merge() {
 /// deferred conflicts separately from deferred unknowns, joined from
 /// staged wave and deferral facts.
 #[tokio::test]
-async fn archive_renders_conflicts_separately_from_unknowns() {
+async fn archive_splits_kinds() {
     let session = Session::bare(Vec::new());
     let root = session.root().to_path_buf();
     run::<project::init::handlers::Init, _, _>(
@@ -295,6 +294,7 @@ async fn archive_renders_conflicts_separately_from_unknowns() {
                 sequence: 1,
             },
             identity_maps: vec![],
+            baseline: None,
             deferred: vec![
                 DeferredMember {
                     req: "REQ-007".into(),
@@ -350,7 +350,7 @@ async fn archive_renders_conflicts_separately_from_unknowns() {
 /// missing (a pruned or damaged journal) still renders in the archive
 /// summary — as a placeholder row, never silently dropped.
 #[tokio::test]
-async fn archive_renders_placeholder_on_deferral_fact_join_miss() {
+async fn archive_join_miss() {
     let session = Session::bare(Vec::new());
     let root = session.root().to_path_buf();
     run::<project::init::handlers::Init, _, _>(
@@ -380,6 +380,7 @@ async fn archive_renders_placeholder_on_deferral_fact_join_miss() {
                 sequence: 1,
             },
             identity_maps: vec![],
+            baseline: None,
             deferred: vec![DeferredMember {
                 req: "REQ-009".into(),
                 status: RequirementStatus::Unknown,

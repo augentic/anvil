@@ -7,6 +7,7 @@ use std::hash::BuildHasher;
 use std::ops::ControlFlow;
 use std::path::Path;
 
+use artifacts::discovery::Lead;
 use error::Error;
 
 use super::model::{Entry, Plan, Status};
@@ -15,6 +16,7 @@ use crate::build_record::BuildRecord;
 use crate::config::Layout;
 use crate::journal::{self, Event, EventKind, claim};
 use crate::name::{PlanName, SliceName};
+use crate::refinement::{Freshness, Live};
 use crate::slice::SliceMetadata;
 
 /// Whether the active-window journal overlay applies to the candidate
@@ -130,7 +132,7 @@ pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Stat
             }
             EventKind::SliceArchiveCreated { slice_name, .. }
             | EventKind::TargetMergeWaveCommitted { slice_name, .. }
-            | EventKind::TargetMergeWavePostflightFailed { slice_name, .. }
+            | EventKind::MergeWavePostflightFailed { slice_name, .. }
                 if ladders.contains_key(slice_name) =>
             {
                 ladders.insert(slice_name.clone(), Status::Done);
@@ -163,8 +165,11 @@ pub fn next_eligible<'a, S: BuildHasher>(
 
 /// Project one candidate entry: artifact + fact phase first, then
 /// (for an in-progress entry) the folded active-window journal facts.
+/// `inventory` and `live` feed the refinement-freshness recompute
+/// behind the refined rung (RFC-91 D2).
 pub(super) fn resolve_entry(
     plan: &Plan, entry: &Entry, layout: Layout<'_>, overlay: JournalOverlay, events: &[Event],
+    inventory: &[Lead], live: &mut Live,
 ) -> Result<Resolution, Error> {
     let slice_dir = layout.slice_dir(entry.name.as_str());
 
@@ -189,9 +194,22 @@ pub(super) fn resolve_entry(
         ));
     }
 
+    // The refined-rung verdict. Post-build, manifest presence suffices:
+    // build promotion legitimately drifts bundle artifacts through
+    // `writable-artifacts[]` (and `Phase::Built` dominates anyway).
+    let refined = if BuildRecord::present(&slice_dir) {
+        Refined::Fresh
+    } else {
+        match crate::refinement::freshness_with(layout, plan, entry, inventory, live)? {
+            Freshness::Fresh { .. } => Refined::Fresh,
+            Freshness::Missing => Refined::Missing,
+            Freshness::Stale { .. } => Refined::Stale,
+        }
+    };
+
     let phase = match overlay {
-        JournalOverlay::Apply => phase_progress(&slice_dir, Some(&facts)),
-        JournalOverlay::Skip => phase_progress(&slice_dir, None),
+        JournalOverlay::Apply => phase_progress(&slice_dir, Some(&facts), refined),
+        JournalOverlay::Skip => phase_progress(&slice_dir, None, refined),
     };
 
     let last_completed = match phase {
@@ -227,18 +245,28 @@ enum Phase {
     Built,
 }
 
-fn phase_progress(slice_dir: &Path, window: Option<&WindowFacts>) -> Phase {
-    // RFC-86 D27: “built” from fact-substrate build records, not
-    // `build/patch.yaml`.
+/// Refined-rung verdict fed into [`phase_progress`]: the manifest's
+/// freshness pre-build, [`Refined::Fresh`] once a build record exists.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Refined {
+    Fresh,
+    Missing,
+    Stale,
+}
+
+fn phase_progress(slice_dir: &Path, window: Option<&WindowFacts>, refined: Refined) -> Phase {
+    // RFC-91 D2/D8: “refined” requires a FRESH manifest — stale
+    // projects the refine next-action and suppresses the window's
+    // refine-success bump; “built” from build records (RFC-86 D27).
     let mut phase = if BuildRecord::present(slice_dir) {
         Phase::Built
-    } else if slice_dir.join("model.yaml").is_file() || slice_dir.join("spec.md").is_file() {
+    } else if refined == Refined::Fresh && crate::slice::refinement_present(slice_dir) {
         Phase::Refined
     } else {
         Phase::None
     };
     if let Some(facts) = window {
-        if facts.refined {
+        if facts.refined && refined != Refined::Stale {
             phase = phase_max(phase, Phase::Refined);
         }
         if facts.built {
@@ -342,7 +370,7 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
                 }
                 terminal_seen = true;
             }
-            EventKind::TargetMergeWavePostflightFailed {
+            EventKind::MergeWavePostflightFailed {
                 slice_name: s,
                 reason,
                 ..

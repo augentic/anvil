@@ -5,11 +5,10 @@
 pub use source::{extract, survey};
 pub use targets::{
     BUILD_DIR, CLAIM_COVERED_MARKER, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER,
-    CONTINUATION_V1, CONTINUATION_V2, FAIL_BUILD_MARKER, FAIL_MERGE_POSTFLIGHT_MARKER,
-    FAIL_MERGE_PREFLIGHT_MARKER, REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED,
-    VERIFICATION_REPAIRED, VERIFY_AFTER_REVIEW_FAIL_MARKER, VERIFY_BLOCKED_MARKER,
-    VERIFY_FIXABLE_MARKER, build, build_artifact_path, claimed_covered, guidance, merge, repair,
-    review, verify,
+    CONTINUATION_V1, CONTINUATION_V2, FAIL_BUILD_MARKER, POSTFLIGHT_FAIL, PREFLIGHT_FAIL,
+    REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED,
+    VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build, build_artifact_path,
+    claimed_covered, guidance, merge, repair, review, verify,
 };
 
 mod source {
@@ -231,7 +230,7 @@ mod targets {
     /// finding — drives the post-review-repair verification failure
     /// consuming the shared verification budget. Compose with
     /// [`REVIEW_FIXABLE_MARKER`].
-    pub const VERIFY_AFTER_REVIEW_FAIL_MARKER: &str = "mock-verify-after-review-fail";
+    pub const VERIFY_AFTER_REVIEW: &str = "mock-verify-after-review-fail";
 
     /// Marker file: `build` returns [`CONTINUATION_V1`]; a `review`
     /// receiving a non-empty continuation replaces it with
@@ -408,7 +407,7 @@ mod targets {
         {
             return Ok(blocked("the verify-fixable marker blocks until a verification repair ran"));
         }
-        if project_root.join(VERIFY_AFTER_REVIEW_FAIL_MARKER).is_file()
+        if project_root.join(VERIFY_AFTER_REVIEW).is_file()
             && workspace.root_path().join(REVIEW_REPAIRED).is_file()
         {
             return Ok(blocked("the review-origin repair regressed verification"));
@@ -491,11 +490,11 @@ mod targets {
 
     /// Marker file (project-root-relative) that flips the preflight merge
     /// gate to a failed report while it exists.
-    pub const FAIL_MERGE_PREFLIGHT_MARKER: &str = "mock-fail-merge-preflight";
+    pub const PREFLIGHT_FAIL: &str = "mock-fail-merge-preflight";
 
     /// Marker file (project-root-relative) that flips the postflight merge
     /// gate to a failed report while it exists.
-    pub const FAIL_MERGE_POSTFLIGHT_MARKER: &str = "mock-fail-merge-postflight";
+    pub const POSTFLIGHT_FAIL: &str = "mock-fail-merge-postflight";
 
     /// One phased merge gate: a success report with no outputs, unless the
     /// id selects a failure profile or the matching per-phase marker file
@@ -509,8 +508,8 @@ mod targets {
             return Err(Error::Internal(format!("mock merge failure for `{id}`")));
         }
         let marker = match phase {
-            MergePhase::Preflight => FAIL_MERGE_PREFLIGHT_MARKER,
-            MergePhase::Postflight => FAIL_MERGE_POSTFLIGHT_MARKER,
+            MergePhase::Preflight => PREFLIGHT_FAIL,
+            MergePhase::Postflight => POSTFLIGHT_FAIL,
         };
         let status = if root.join(marker).is_file() { Status::Failure } else { Status::Success };
         Ok(report(status, Vec::new()))

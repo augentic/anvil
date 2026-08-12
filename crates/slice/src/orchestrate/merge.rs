@@ -289,7 +289,8 @@ async fn apply_result(
 }
 
 /// Append `target.merge.wave-committed` with identity maps and the
-/// deferred member-set snapshot (RFC-86a D5).
+/// post-merge baseline identity (RFC-91 D4) and deferred member-set
+/// snapshot (RFC-86a D5).
 ///
 /// Commit-authorization reuses the wave's build-authorization
 /// (serial execution normally uses the covering `plan.execute.started`
@@ -299,6 +300,7 @@ fn emit_wave_committed(
     slice_debt: &debt::SliceDebt,
 ) -> Result<(), Error> {
     let auth = &commit.wave.build_authorization;
+    let baseline = project::plan::dir_cid(&layout.specs_dir())?;
     journal::append_one(
         layout,
         &journal::Event::new(
@@ -312,6 +314,7 @@ fn emit_wave_committed(
                     sequence: auth.sequence,
                 },
                 identity_maps: maps.to_vec(),
+                baseline: Some(baseline),
                 deferred: slice_debt
                     .rows
                     .iter()
@@ -344,7 +347,7 @@ fn postflight_terminal(
     );
     let event = journal::Event::new(
         now,
-        EventKind::TargetMergeWavePostflightFailed {
+        EventKind::MergeWavePostflightFailed {
             target: commit.wave.target.clone(),
             digest: commit.digest.clone(),
             slice_name: slice.into(),
@@ -391,7 +394,7 @@ fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
     if layout.slice_dir(slice).exists() {
         return None;
     }
-    let archive_path = latest_archive(&layout.archive_dir(), slice)?;
+    let archive_path = project::refinement::latest_archive(&layout.archive_dir(), slice)?;
     let metadata = project::slice::SliceMetadata::load(&archive_path).ok()?;
     metadata.merged_at?;
     Some(MergeOutcome {
@@ -399,23 +402,6 @@ fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
         decisions: vec![],
         archive_path,
     })
-}
-
-/// The newest `<YYYY-MM-DD>-<slice>` folder under the archive root,
-/// by the date prefix's lexicographic order.
-fn latest_archive(archive_dir: &Path, slice: &str) -> Option<PathBuf> {
-    const DATE_PREFIX_LEN: usize = "0000-00-00-".len();
-    let mut best: Option<String> = None;
-    for entry in std::fs::read_dir(archive_dir).ok()?.flatten() {
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let dated_match = name.len() == DATE_PREFIX_LEN + slice.len()
-            && name.ends_with(slice)
-            && name.as_bytes().get(DATE_PREFIX_LEN - 1) == Some(&b'-');
-        if dated_match && entry.path().is_dir() && best.as_deref() < Some(name.as_str()) {
-            best = Some(name);
-        }
-    }
-    best.map(|name| archive_dir.join(name))
 }
 
 /// Read-only completion preflight, run before the `slice.merge.*`

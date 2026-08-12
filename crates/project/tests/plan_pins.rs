@@ -38,7 +38,7 @@ fn plan_with(sources: BTreeMap<String, SourceBinding>) -> Plan {
 }
 
 #[test]
-fn value_binding_pins_one_file_tree() {
+fn value_binding_pins_file() {
     let mut plan = plan_with(BTreeMap::from([("intent".into(), binding_value("hello"))]));
     close_source_pins(&mut plan, Path::new(".")).expect("close");
     let cid = plan.sources["intent"].cid.as_ref().expect("cid");
@@ -47,7 +47,7 @@ fn value_binding_pins_one_file_tree() {
 }
 
 #[tokio::test]
-async fn path_dir_matches_store_snapshot() {
+async fn path_dir_matches_store() {
     let root = tempfile::tempdir().expect("tempdir");
     let docs = root.path().join("docs");
     std::fs::create_dir_all(&docs).expect("mkdir");
@@ -65,7 +65,7 @@ async fn path_dir_matches_store_snapshot() {
 }
 
 #[test]
-fn path_file_is_one_file_tree() {
+fn path_file_file_tree() {
     let root = tempfile::tempdir().expect("tempdir");
     let file = root.path().join("notes.md");
     std::fs::write(&file, b"body").expect("write");
@@ -84,21 +84,21 @@ fn missing_path_refuses() {
 }
 
 #[test]
-fn value_cid_is_stable_snapshot_id() {
+fn value_cid_stable_snapshot() {
     let a = value_cid("x");
     let b = SnapshotId::parse(a.as_str()).expect("parse");
     assert_eq!(a, b);
 }
 
 #[test]
-fn missing_dir_shares_empty_tree_cid() {
+fn missing_dir_shares_empty() {
     let root = tempfile::tempdir().expect("tempdir");
     let missing = root.path().join("no-specs");
     assert_eq!(dir_cid(&missing).expect("cid"), empty_cid());
 }
 
 #[tokio::test]
-async fn dir_cid_matches_store_snapshot() {
+async fn dir_cid_matches_store() {
     let root = tempfile::tempdir().expect("tempdir");
     let specs = root.path().join("specs");
     let domain = specs.join("a");

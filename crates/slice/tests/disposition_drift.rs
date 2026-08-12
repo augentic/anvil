@@ -32,7 +32,7 @@ fn body_digest() -> String {
 }
 
 #[tokio::test]
-async fn identical_bodies_share_one_digest_without_drift() {
+async fn same_body_no_drift() {
     let session = Session::scripted("mock", Vec::new());
     let root = session.root().to_path_buf();
 

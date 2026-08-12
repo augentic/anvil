@@ -214,7 +214,7 @@ mod repaired {
 // router maps it back onto the registered identity), while the grant
 // name strips both axis and pin.
 #[test]
-fn mcp_url_mirrors_the_routed_id() {
+fn mcp_url_mirrors_routed_id() {
     let addr = Some("127.0.0.1:8080");
     assert_eq!(
         mcp_url_for(addr, "target:omnia").as_deref(),
@@ -249,7 +249,7 @@ fn mcp_url_port_from_trigger() {
 }
 
 #[test]
-fn pinned_grant_strips_version() {
+fn pinned_grant_strips() {
     let url = mcp_url_for(Some("127.0.0.1:8080"), "target:contracts@1.0.0");
     let context = Context {
         adapter_id: "target:contracts@1.0.0",
@@ -266,7 +266,7 @@ fn pinned_grant_strips_version() {
 // Build and merge legs re-lend their prepared workspace: the lent path
 // rides the model request instead of the `"."` project mount.
 #[tokio::test]
-async fn lending_overrides_the_lend_path() {
+async fn lending_overrides_lend() {
     let model = Harness::answering([r#"{"done":true}"#]);
     let context = ctx(None, Path::new(".")).lending("/emery-workspaces/ws-1");
 

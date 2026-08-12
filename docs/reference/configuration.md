@@ -121,8 +121,8 @@ into Omnia. Priority: user registration, password reset.
 ## metadata.yaml
 
 **Location:** `.emery/slices/<name>/metadata.yaml`
-**Created by:** the execute loop's refine orchestration (slice create is re-entry safe)
-**Modified by:** the refine / build / merge orchestrations inside `emery plan execute`, and `emery plan drop`
+**Created by:** the `emery plan refine` drain (slice create is re-entry safe)
+**Modified by:** the `plan refine` drain, the build / merge orchestrations inside `emery plan execute`, and `emery plan drop`
 
 Per-slice lifecycle metadata. **Never hand-edit this file.**
 

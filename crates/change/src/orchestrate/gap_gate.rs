@@ -1,6 +1,6 @@
-//! Epoch freshness + gate-time gap deferral before build (RFC-86a
-//! D1): deferred rows leave build scope; open rows are dispositioned
-//! at the gate itself; drift is `plan-epoch-stale`.
+//! Epoch freshness + gate-time gap deferral before build: deferred
+//! rows leave build scope; open rows are dispositioned at the gate
+//! itself; covered-refinement digest drift is `plan-epoch-stale`.
 
 use error::Error;
 use jiff::Timestamp;
@@ -15,14 +15,14 @@ use project::plan::{Disposition, GapRow, Plan, collect_events, plan_gaps_body};
 /// Freshness is the shared [`project::plan::epoch::freshness`]
 /// predicate — the same rule `plan status` projects as Authorized.
 /// The gate mints one `gap.deferred` fact per open row (synthesized
-/// reason) and build proceeds — minting is gate-time because
-/// `refine-under-epoch` rows do not exist earlier. A digest-less open
-/// row (legacy `spec.md` fallback) has no match key: the gate refuses.
+/// reason, bound to the requirement digest live at build) and build
+/// proceeds. A digest-less open row (legacy `spec.md` fallback) has
+/// no match key: the gate refuses.
 ///
 /// # Errors
 ///
 /// - `plan-epoch-stale` — no covering `plan.execute.started`, plan /
-///   covered-spec digest drift, or an in-scope leaf absent from
+///   covered-refinement digest drift, or an in-scope leaf absent from
 ///   coverage.
 /// - `plan-gap-digest-missing` — an open row on `slice` carries no
 ///   `requirement-digest`, so no deferral fact can cover it.

@@ -2,7 +2,7 @@
 //! the report projection onto the compact seam types.
 
 use adapter::answers::{
-    EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, PHASE_REPORT_ANSWER_SCHEMA, PhaseReportAnswer,
+    EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, PHASE_REPORT_ANSWER, PhaseReportAnswer,
     REPORT_ANSWER_SCHEMA, ReportAnswer, parse_evidence, parse_leads, validate_evidence,
     validate_leads,
 };
@@ -14,7 +14,7 @@ fn schema_pins() {
         (LEADS_ANSWER_SCHEMA, "leads.schema.json"),
         (EVIDENCE_ANSWER_SCHEMA, "evidence.schema.json"),
         (REPORT_ANSWER_SCHEMA, "report.schema.json"),
-        (PHASE_REPORT_ANSWER_SCHEMA, "phase-report.schema.json"),
+        (PHASE_REPORT_ANSWER, "phase-report.schema.json"),
     ] {
         let on_disk = std::fs::read_to_string(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas/answers").join(file),
@@ -194,7 +194,7 @@ fn report_projection() {
 /// Schema-gated phase answers may emit `"related-rule-ids": null`
 /// (Diagnostic wire); the answer deserializer must accept that.
 #[test]
-fn phase_report_null_related_rule_ids() {
+fn phase_report_null_related() {
     let report = PhaseReportAnswer::parse(
         r#"{
             "outcome": "completed",

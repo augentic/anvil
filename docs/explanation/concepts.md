@@ -22,7 +22,7 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
   <div class="who">Operator</div>
   <div class="path">
 
-<a href="#the-plan--gate-1--execute--finalize-rhythm">Change rhythm</a> → <a href="#the-per-slice-loop">Slice loop</a> → <a href="../reference/quick-reference.md">Quick reference</a>
+<a href="#the-plan--review--refine--review--execute--finalize-rhythm">Change rhythm</a> → <a href="#the-per-slice-loop">Slice loop</a> → <a href="../reference/quick-reference.md">Quick reference</a>
   </div>
 </div>
 
@@ -65,7 +65,7 @@ Recognise every term that appears throughout the guide after a quick skim of [Wh
 <div class="rhythm-label">Review</div>
 <h4 class="rhythm-title">Human review</h4>
 
-Operator reviews topology, then runs `emery plan execute` to open the authorization epoch. Nothing privileged runs until then.
+Operator reviews topology, then runs `emery plan refine` to generate every slice's specifications, reviews them, and runs `emery plan execute` to open the authorization epoch. Nothing privileged runs until then.
 </div>
 
 
@@ -74,14 +74,14 @@ Operator reviews topology, then runs `emery plan execute` to open the authorizat
 <div class="rhythm-label">Execute</div>
 <h4 class="rhythm-title">Build in the loop</h4>
 
-`emery plan execute` journals `plan.execute.started`, enforces gap gates before build, and drives refine → build → merge per slice until drained.
+`emery plan execute` journals `plan.execute.started` over the exact refinement digests, enforces gap gates before build, and drives build → merge per slice until drained — it never refines.
 </div>
 
 
 </div>
 
 
-## The plan → operator review → execute → finalize rhythm
+## The plan → review → refine → review → execute → finalize rhythm
 
 Every change flows through one rhythm. Full command detail: [Quick reference card](../reference/quick-reference.md).
 
@@ -90,32 +90,32 @@ Every change flows through one rhythm. Full command detail: [Quick reference car
 
 ![Change rhythm](../assets/diagrams/concepts/change-rhythm.svg)
 
-<p class="pipeline-caption">/emery:plan exits for review; emery plan execute opens the authorization epoch and drives slices; /emery:finalize closes the change.</p>
+<p class="pipeline-caption">/emery:plan exits for review; emery plan refine writes every specification; emery plan execute opens the authorization epoch and drives slices; /emery:finalize closes the change.</p>
 </div>
 
 
-`/emery:plan` surveys each bound source, proposes `slices[]`, and exits for operator review (topology-only — no refine). The operator starts privileged work with the guest-routed `emery plan execute` — which journals `plan.execute.started` and drives the per-slice loop until every entry projects `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
+`/emery:plan` surveys each bound source, proposes `slices[]`, and exits for operator review (topology-only — no refine). `emery plan refine` then drains specification refinement over the closed plan — extract, synthesize, validate, and a `refinement.yaml` manifest per slice — and stops before any code work. The operator starts privileged work with the guest-routed `emery plan execute` — which journals `plan.execute.started` over the exact refinement digests and drives the build → merge loop until every entry projects `done`. The operator publishes the resulting repository changes outside Emery; `/emery:finalize` archives only after that publication is complete.
 
-A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `emery plan execute` runs the same single-slice rhythm.
+A one-slice change uses the same steps as a twelve-slice change: `intent.survey` produces one lead and `emery plan refine` / `emery plan execute` run the same single-slice rhythm.
 
 ## The per-slice loop
 
-Each slice runs through three phases inside `emery plan execute`. The refine phase extracts evidence per bound source and synthesizes the artifacts. The build phase works through the task list and writes code. The merge phase folds the slice's specs into the baseline.
+Each slice runs through three phases. The refine phase — inside `emery plan refine` — extracts evidence per bound source and synthesizes the artifacts. The build phase — inside `emery plan execute` — works through the task list and writes code. The merge phase folds the slice's specs into the baseline.
 
 <div class="pipeline">
 
 
 ![Per-slice loop](../assets/diagrams/concepts/slice-loop.svg)
 
-<p class="pipeline-caption">refine → build → merge inside emery plan execute; merge folds specs into .emery/specs/ baseline.</p>
+<p class="pipeline-caption">refine inside emery plan refine; build → merge inside emery plan execute; merge folds specs into .emery/specs/ baseline.</p>
 </div>
 
 
-If execute parks on a failure, fix the input the stop card points at and re-run `emery plan execute` — the loop resumes at the parked phase. There are no per-phase operator verbs.
+If refine or execute parks on a failure, fix the input the stop card points at and re-run the same command — refine skips fresh slices; the execute loop resumes at the parked phase. There are no per-slice phase-breakout verbs.
 
 ## The four slice artifacts
 
-Refine generates four documents in dependency order. Each one answers a different question and feeds the next:
+Refinement generates four documents in dependency order. Each one answers a different question and feeds the next:
 
 | Artifact      | Question it answers                                                                | Location                            |
 | ------------- | ---------------------------------------------------------------------------------- | ----------------------------------- |
@@ -130,13 +130,13 @@ Synthesis is owned by **core**, not by adapters. Source adapters supply `Evidenc
 
 The **baseline** is the accumulated set of merged specs at `.emery/specs/`. It represents the current known behaviour of your system. Every time a slice merges, its spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline files. The slice itself is then archived for audit.
 
-Future slices read from the baseline. When you describe a new piece of work, refine consults the baseline to keep new specs consistent with what already exists. Specs are version-controlled alongside your code, so the baseline is reviewable, diffable, and revertable like any other source file.
+Future slices read from the baseline. When you describe a new piece of work, refinement consults the baseline to keep new specs consistent with what already exists. Specs are version-controlled alongside your code, so the baseline is reviewable, diffable, and revertable like any other source file.
 
 ## Slice vs change
 
-A **slice** is one trip through the refine → build → merge loop. It lives at `.emery/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
+A **slice** is one trip through the refine → build → merge rhythm. It lives at `.emery/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
 
-A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace; every change is driven through `/emery:plan`, `emery plan execute`, `/emery:finalize`.
+A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace; every change is driven through `/emery:plan`, `emery plan refine`, `emery plan execute`, `/emery:finalize`.
 
 ## Source and target adapters
 
@@ -152,7 +152,7 @@ You pick the target at scaffolding time (`/emery:init <target>`). You bind sourc
 
 ## Evidence, provenance, authority
 
-When refine runs, each bound source produces an `Evidence` document at `.emery/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)) and a list of `claims:` with structured kinds.
+When refinement runs, each bound source produces an `Evidence` document at `.emery/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)) and a list of `claims:` with structured kinds.
 
 Core synthesis reconciles `Evidence[]` into the slice's per-domain `specs/<domain>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
 
@@ -171,7 +171,7 @@ A **skill** is a slash-command you invoke in Cursor's agent chat. Skills are how
 The default rhythm:
 
 > [!NOTE]
-> **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan execute` (approval + loop) → `/emery:finalize <name>`
+> **Commands.** `/emery:init <target>` → `/emery:plan <name> source …` → `emery plan refine` (specifications) → `emery plan execute` (authorization + loop) → `/emery:finalize <name>`
 
 `/emery:status` projects the next action at any point; `emery plan drop <entry>` abandons a slice without merging.
 

@@ -103,7 +103,7 @@ mod round_trip {
 
     #[cfg(unix)]
     #[tokio::test]
-    async fn mode_only_change_is_touched() {
+    async fn mode_change_touched() {
         let lab = lab();
         write(&lab.source, "tool", b"#!/bin/sh\n");
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
@@ -116,7 +116,7 @@ mod round_trip {
     }
 
     #[tokio::test]
-    async fn apply_writes_only_touched_paths() {
+    async fn apply_writes_touched() {
         let lab = lab();
         write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
         write(&lab.source, "contracts/api.yaml", b"openapi: 3.1.0\n");
@@ -150,7 +150,7 @@ mod round_trip {
     /// symmetric at snapshot time.
     #[cfg(unix)]
     #[tokio::test]
-    async fn absolute_symlink_target_refused() {
+    async fn absolute_symlink_target() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         std::os::unix::fs::symlink("/etc/hosts", lab.source.join("abs")).expect("symlink");
@@ -160,7 +160,7 @@ mod round_trip {
     }
 
     #[tokio::test]
-    async fn unchanged_tree_is_empty_patch() {
+    async fn unchanged_tree_empty() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
@@ -228,7 +228,7 @@ mod privacy {
     use super::*;
 
     #[tokio::test]
-    async fn two_preparations_never_share_a_directory() {
+    async fn two_preparations_never() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
@@ -265,7 +265,7 @@ mod privacy {
     }
 
     #[tokio::test]
-    async fn artifacts_and_vcs_state_excluded() {
+    async fn artifacts_vcs_state() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         write(&lab.source, ".git/config", b"[core]");
@@ -283,7 +283,7 @@ mod access {
     use super::*;
 
     #[tokio::test]
-    async fn read_only_view_refuses_capture() {
+    async fn read_view_refuses_capture() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
@@ -312,7 +312,7 @@ mod durability {
     use super::*;
 
     #[tokio::test]
-    async fn discard_loses_nothing_and_retry_reprepares() {
+    async fn discard_loses_nothing() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
@@ -341,7 +341,7 @@ mod durability {
     }
 
     #[tokio::test]
-    async fn determinism_across_locations() {
+    async fn determinism_across() {
         let lab = lab();
         write(&lab.source, "x/y.txt", b"same");
         let elsewhere = lab.source.parent().expect("parent").join("elsewhere");
@@ -447,7 +447,7 @@ mod sweep {
     /// Absent roots (never frozen, or already collected) are skipped;
     /// sweeping twice deletes nothing new.
     #[tokio::test]
-    async fn absent_roots_skipped_and_idempotent() {
+    async fn absent_roots_skipped() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         let dead = lab.store.snapshot(&lab.source).await.expect("snapshot");

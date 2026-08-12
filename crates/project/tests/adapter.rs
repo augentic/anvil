@@ -31,7 +31,7 @@ mod resolve {
     }
 
     #[tokio::test]
-    async fn wrong_axis_fails_at_dispatch() {
+    async fn wrong_axis_fails_dispatch() {
         // The store carries no axis segment, so a component bound on
         // the wrong axis fails at the dispatch seam: no deployed
         // guest exports the requested `<axis>:<name>` id, the
@@ -74,7 +74,7 @@ mod resolve {
     }
 
     #[tokio::test]
-    async fn bare_cache_miss_dispatches() {
+    async fn bare_cache_miss() {
         // A bare name with no seeded cache entry resolves
         // dispatch-first: the deployment locates the component
         // local-first behind the seam, so the envelope carries no
@@ -122,7 +122,7 @@ mod resolve {
     }
 
     #[test]
-    fn sibling_checkout_never_probed() {
+    fn sibling_checkout_never() {
         // Resolution is project-contained: an artifact in a sibling
         // `emery-adapters` checkout (the retired development probe)
         // must not back a bare-name resolve.
@@ -202,7 +202,7 @@ mod upgrade {
     }
 
     #[tokio::test]
-    async fn falls_back_to_the_source_axis() {
+    async fn falls_back_source_axis() {
         // A source adapter's name fails the target-axis dispatch (no
         // deployed guest exports `target:<name>`) and resolves on the
         // source axis.
@@ -226,7 +226,7 @@ mod upgrade {
     }
 
     #[tokio::test]
-    async fn all_collects_bare_bindings() {
+    async fn all_collects_bare() {
         // `--all` walks the project's recorded bindings: the
         // `project.yaml` target plus every `plan.yaml.sources.<key>`
         // adapter — keeping bare names and skipping pins.
@@ -255,7 +255,7 @@ mod upgrade {
     }
 
     #[tokio::test]
-    async fn all_empty_when_nothing_bare() {
+    async fn all_empty_nothing_bare() {
         // A pinned project binding and no plan leave nothing to
         // upgrade: exit 0 with an empty set, not an error.
         let project = Provider::bare();
@@ -275,7 +275,7 @@ mod upgrade {
 }
 
 #[test]
-fn platforms_metadata_preserved() {
+fn platforms_metadata() {
     let project = Provider::bare();
     stage_cached_component(&project, "vectis");
 

@@ -16,7 +16,8 @@ pub use project::plan_status_body;
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum NextActionKind {
-    /// The execute loop's refine phase awaits [`StatusBody::slice`].
+    /// The refinement stage (`emery plan refine`, RFC-91) awaits
+    /// [`StatusBody::slice`].
     Refine,
     /// The execute loop's build phase awaits [`StatusBody::slice`].
     Build,
@@ -54,6 +55,10 @@ pub enum LoopStep {
 pub enum StopReason {
     /// The awaited refine phase last ended in `slice.synthesize.failed`.
     RefineFailed,
+    /// Execute reached an entry without a fresh refinement manifest —
+    /// execute never refines (RFC-91); refinement is `emery plan
+    /// refine`.
+    RefinementRequired,
     /// The awaited build phase last ended in `slice.build.failed`.
     BuildFailed,
     /// The awaited merge phase last ended in `slice.merge.failed`.
@@ -78,8 +83,12 @@ impl StopReason {
     pub const fn hint(self) -> &'static str {
         match self {
             Self::RefineFailed => {
-                "Fix the failure, then re-run emery plan execute — the loop resumes at the \
-                 refine phase. The plan entry stays in-progress."
+                "Fix the failure, then re-run emery plan refine — the drain resumes the \
+                 missing or stale refinement. The plan entry stays in-progress."
+            }
+            Self::RefinementRequired => {
+                "Run emery plan refine to generate fresh refinement manifests, then re-run \
+                 emery plan execute — execute never refines."
             }
             Self::BuildFailed => {
                 "Fix the failure, then re-run emery plan execute — the loop resumes at the \

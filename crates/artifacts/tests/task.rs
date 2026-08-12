@@ -93,7 +93,7 @@ mod parse {
     }
 
     #[test]
-    fn non_skill_comment_preserved() {
+    fn non_skill_comment() {
         let input = "\
 ## 3. Notes
 
@@ -108,7 +108,7 @@ mod parse {
     }
 
     #[test]
-    fn duplicate_numbers_preserved() {
+    fn duplicate_numbers() {
         let input = "\
 ## 1. Group
 
@@ -124,7 +124,7 @@ mod parse {
     }
 
     #[test]
-    fn nested_headings_keep_group() {
+    fn nested_headings_keep() {
         let input = "\
 ## 1. Implementation
 
@@ -184,7 +184,7 @@ mod parse {
     }
 
     #[test]
-    fn non_task_bullets_are_ignored() {
+    fn non_task_bullets_ignored() {
         let input = "\
 ## 1. Group
 
@@ -198,7 +198,7 @@ mod parse {
     }
 
     #[test]
-    fn deep_task_numbers_preserved() {
+    fn deep_task_numbers() {
         let input = "\
 ## 1. Deep
 

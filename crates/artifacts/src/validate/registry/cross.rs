@@ -2,7 +2,7 @@
 
 use crate::validate::{CrossContext, CrossRule, RuleOutcome, primitives};
 
-fn proposal_domains_have_specs(ctx: &CrossContext<'_>) -> RuleOutcome {
+fn proposal_domains_specs(ctx: &CrossContext<'_>) -> RuleOutcome {
     let proposal_path = ctx.slice_dir.join("proposal.md");
     if !proposal_path.is_file() {
         return RuleOutcome::Pass;
@@ -15,7 +15,7 @@ fn proposal_domains_have_specs(ctx: &CrossContext<'_>) -> RuleOutcome {
             };
         }
     };
-    if primitives::proposal_deliverables_have_specs(&proposal_text, ctx.specs_dir) {
+    if primitives::proposal_deliverables(&proposal_text, ctx.specs_dir) {
         RuleOutcome::Pass
     } else {
         RuleOutcome::Fail {
@@ -115,7 +115,7 @@ const CROSS_RULES: &[CrossRule] = &[
     CrossRule {
         id: "cross.proposal-domains-have-specs",
         description: "Every domain listed in the proposal has a matching spec file",
-        check: proposal_domains_have_specs,
+        check: proposal_domains_specs,
     },
     CrossRule {
         id: "cross.design-references-valid",

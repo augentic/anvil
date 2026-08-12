@@ -50,7 +50,7 @@ mod routing {
     }
 
     #[tokio::test]
-    async fn post_body_reaches_operation() {
+    async fn post_body_reaches() {
         let project = Session::scripted("mock", Vec::new());
         let request = Request::builder()
             .method(Method::POST)
@@ -63,7 +63,7 @@ mod routing {
     }
 
     #[tokio::test]
-    async fn path_param_reaches_operation() {
+    async fn path_param_reaches() {
         let project = Session::scripted("mock", Vec::new());
         stage_plan(project.root());
         let request = Request::builder()
@@ -94,7 +94,7 @@ mod errors {
     }
 
     #[tokio::test]
-    async fn missing_field_unprocessable() {
+    async fn field_unprocessable() {
         let project = Session::scripted("mock", Vec::new());
         let request = Request::builder()
             .method(Method::POST)

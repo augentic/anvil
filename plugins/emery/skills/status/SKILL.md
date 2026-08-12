@@ -17,7 +17,7 @@ Status is a short deterministic verb — it runs with `--quiet` per the plugin r
 
 ## Relay
 
-- Surface the CLI output verbatim. The `resume:` line is the answer to "what do I do next" — a skill invocation (`/emery:execute`, `/emery:finalize <name>`) or a literal command (usually `emery plan execute`).
+- Surface the CLI output verbatim. The `resume:` line is the answer to "what do I do next" — a skill invocation (`/emery:refine`, `/emery:execute`, `/emery:finalize <name>`) or a literal command (`emery plan refine` when refinement is missing or stale, or `emery plan execute`).
 - On a stop projection (`stop: <reason>` with `hint:`), the hint already names the recovery path — relay it without improvising an alternative.
 - On non-zero exit (for example `artifact-not-found` when no `plan.yaml` exists), surface the structured error and its hint verbatim and stop — the hint names the authoring entry point (`/emery:plan`).
 - Never write anything in response to a status probe: no status edits, no artifact changes.

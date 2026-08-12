@@ -9,7 +9,7 @@ use error::Error;
 use serde::{Deserialize, Serialize};
 
 use super::core::{
-    AdapterLocation, Axis, BuildInputDeclaration, PlatformsCapability, WritableArtifactDeclaration,
+    AdapterLocation, ArtifactDeclaration, Axis, BuildInputDeclaration, PlatformsCapability,
 };
 use super::routed::RoutedId;
 
@@ -30,7 +30,7 @@ pub struct Metadata {
     /// empty for source adapters and targets that write no slice
     /// artifacts.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub writable_artifacts: Vec<WritableArtifactDeclaration>,
+    pub writable_artifacts: Vec<ArtifactDeclaration>,
 }
 
 /// One metadata dispatch by axis and routed adapter id.

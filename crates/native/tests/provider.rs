@@ -105,7 +105,7 @@ async fn exact_pin_matching() {
 // A local component selector can never select a same-named compiled
 // adapter.
 #[tokio::test]
-async fn component_selector_refused() {
+async fn component_selector() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
     let paths = paths(tmp.path());
@@ -134,7 +134,7 @@ fn floor_enforced_at_resolve() {
 }
 
 #[tokio::test]
-async fn guidance_crosses_workflow_seam() {
+async fn guidance_crosses_workflow() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
 
@@ -154,7 +154,7 @@ async fn guidance_crosses_workflow_seam() {
 }
 
 #[tokio::test]
-async fn survey_crosses_workflow_seam() {
+async fn survey_crosses_workflow() {
     let tmp = tempfile::tempdir().expect("tempdir");
     // The probe's survey threads the model, so the scripted answer
     // crossing the seam proves the model reached the adapter leg.
@@ -169,7 +169,7 @@ async fn survey_crosses_workflow_seam() {
 // The extract leg threads its lead and surfaces the adapter's typed
 // error across the seam.
 #[tokio::test]
-async fn extract_crosses_workflow_seam() {
+async fn extract_crosses_workflow() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
 

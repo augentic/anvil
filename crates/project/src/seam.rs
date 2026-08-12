@@ -230,10 +230,10 @@ pub trait Target: Send + Sync {
 /// host-implemented WIT imports.
 pub trait Workspaces: Send + Sync {
     /// Freeze the product tree (the project root minus VCS and
-    /// change-tree state) as an immutable snapshot. Refine records the
-    /// result as the slice's target-base pin in `base.yaml`; build
-    /// prepares from that recorded pin and must not call this (RFC-86
-    /// D25 / D27).
+    /// change-tree state) as an immutable snapshot. The build phase
+    /// calls this when it opens the target wave: the result is
+    /// persisted as the wave base before any workspace is prepared
+    /// (RFC-91 D6). Refinement never freezes the product tree.
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, Error>> + Send;
 
     /// Materialize `base` into a fresh private workspace.

@@ -7,7 +7,7 @@
 For what a source adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [From sources to slices](../../explanation/reconciliation.md). The contract facts:
 
 - `survey` — plan-time. Reads the operator-bound source and emits one **lead** block per slice-sized unit of work under `## Lead inventory` in `discovery.md`. Runs inside `/emery:plan`.
-- `extract` — slice-time. Reads one matched lead plus the bound source and returns an `Evidence` document the CLI persists to `.emery/slices/<slice>/evidence/<source>.yaml`. Runs inside the refine phase of `emery plan execute`.
+- `extract` — slice-time. Reads one matched lead plus the bound source and returns an `Evidence` document the CLI persists to `.emery/slices/<slice>/evidence/<source>.yaml`. Runs inside the `emery plan refine` drain.
 
 Source adapters do not write `spec.md` — that is core synthesis's responsibility. A source supplies evidence; synthesis reconciles evidence from every bound source into one spec.
 
@@ -35,7 +35,7 @@ The operation set is not declared anywhere on the wire — it derives from the c
 
 ```text
 /emery:plan    →  runs source.survey    (emits leads into discovery.md)
-refine phase   →  runs source.extract   (emits evidence/<source>.yaml)
+/emery:refine  →  runs source.extract   (emits evidence/<source>.yaml)
 ```
 
 Both operations run sandboxed under the WASI Preview 2 posture — directory preopens only, no inherited host environment, no network. The host gives `survey` and `extract` read-only access to the bound source path and a write-only scratch directory, and denies access to the project root. See [Sandboxing](../adapter-contract.md#sandboxing) for the preopened roots and the guest orchestration that drives each operation.

@@ -8,9 +8,7 @@ use std::path::Path;
 use omnia_guest::Model;
 use serde::Deserialize;
 
-use crate::answers::{
-    PHASE_REPORT_ANSWER_SCHEMA, PhaseReportAnswer, REPORT_ANSWER_SCHEMA, ReportAnswer,
-};
+use crate::answers::{PHASE_REPORT_ANSWER, PhaseReportAnswer, REPORT_ANSWER_SCHEMA, ReportAnswer};
 use crate::judgment;
 use crate::seam::{
     Context, Error, Finding, Input, Payload, PhaseFinding, PhaseReport, Report, Status, Workspace,
@@ -89,7 +87,7 @@ pub async fn report<P: Model>(
 pub async fn phase_report<P: Model>(
     model: &P, ctx: &Context<'_>, system: String, user: String, name: &str,
 ) -> Result<PhaseReport, Error> {
-    judgment::<P, PhaseReportAnswer>(model, ctx, system, user, name, PHASE_REPORT_ANSWER_SCHEMA)
+    judgment::<P, PhaseReportAnswer>(model, ctx, system, user, name, PHASE_REPORT_ANSWER)
         .await
         .map(PhaseReportAnswer::into_report)
 }

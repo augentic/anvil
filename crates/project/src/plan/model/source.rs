@@ -33,8 +33,8 @@ pub struct SourceBinding {
     pub value: Option<String>,
     /// Content-addressed identity of the bound source tree
     /// (`sha256:…`). Wire field `cid` (RFC-86 D25). Absent until plan
-    /// author closes the source set; refine copies these pins into
-    /// `base.yaml`.
+    /// author closes the source set; refinement records these pins in
+    /// the manifest's `inputs.sources`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cid: Option<SnapshotId>,
 }

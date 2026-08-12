@@ -125,7 +125,8 @@ pub struct SharedLeadRollup {
     /// Discovery lead id.
     pub lead: String,
     /// In-scope slice selectors suggested for a follow-up re-refine
-    /// (via `emery plan execute`) after the shared input is fixed.
+    /// (`emery plan refine --slice <name>`) after the shared input is
+    /// fixed.
     pub selectors: Vec<String>,
 }
 
@@ -222,12 +223,14 @@ impl Render for GapsBody {
         self.render_deferred(w, RequirementStatus::Unknown, "deferred unknowns:")?;
         self.render_deferred(w, RequirementStatus::Conflict, "deferred conflicts:")?;
         for rollup in &self.rollups {
+            let selectors: Vec<String> =
+                rollup.selectors.iter().map(|s| format!("--slice {s}")).collect();
             writeln!(
                 w,
-                "# shared lead {}:{} → re-refine selectors: {}",
+                "# shared lead {}:{} → re-refine: emery plan refine {}",
                 rollup.source,
                 rollup.lead,
-                rollup.selectors.join(" ")
+                selectors.join(" ")
             )?;
         }
         Ok(())

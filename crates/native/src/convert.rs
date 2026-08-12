@@ -10,7 +10,7 @@ use diagnostics::{
 };
 use project::adapter::metadata::Metadata;
 use project::adapter::{
-    BuildInputDeclaration, PlatformsCapability, WritableArtifactDeclaration, WritableArtifactKind,
+    ArtifactDeclaration, BuildInputDeclaration, PlatformsCapability, WritableArtifactKind,
 };
 use project::seam::wire::{
     BuildOutput, BuildReport, BuildStatus, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource,
@@ -485,7 +485,7 @@ pub fn target_metadata(record: aseam::TargetMetadata) -> Metadata {
         writable_artifacts: record
             .writable_artifacts
             .into_iter()
-            .map(|artifact| WritableArtifactDeclaration {
+            .map(|artifact| ArtifactDeclaration {
                 path: artifact.path,
                 kind: match artifact.kind {
                     aseam::WritableArtifactKind::File => WritableArtifactKind::File,
