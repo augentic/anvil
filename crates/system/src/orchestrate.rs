@@ -139,11 +139,8 @@ pub async fn survey(
     // The lead gate runs before any extract: exceeding the engine
     // constant is a typed stop, and surveyed rows keep their observed
     // trees (the survey leg completed; the gate is extract-side).
-    let total: usize = surveyed
-        .iter()
-        .filter_map(|row| row.as_ref().ok())
-        .map(|source| source.leads.len())
-        .sum();
+    let total: usize =
+        surveyed.iter().filter_map(|row| row.as_ref().ok()).map(|source| source.leads.len()).sum();
     if total > MAX_SURVEY_LEADS {
         for source in surveyed.into_iter().filter_map(Result::ok) {
             patches.insert(
