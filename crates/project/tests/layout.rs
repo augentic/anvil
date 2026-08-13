@@ -19,7 +19,8 @@ fn change_home_boundary() {
 
     assert_eq!(layout.plan_path(), change.join("plan.yaml"));
     assert_eq!(layout.change_brief_path(), change.join("change.md"));
-    assert_eq!(layout.discovery_path(), change.join("discovery.md"));
+    assert_eq!(layout.leads_path(), change.join("leads.md"));
+    assert_eq!(layout.leads_dir(), change.join("leads"));
     assert_eq!(layout.slices_dir(), change.join("slices"));
     assert_eq!(layout.slice_dir("demo"), change.join("slices/demo"));
     assert_eq!(layout.events_dir(), change.join("events"));

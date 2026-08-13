@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use diagnostics::{
     Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity, fingerprint, is_blocking,
 };
@@ -55,7 +55,7 @@ impl Plan {
     /// Returns an [`Error::Validation`] (exit 2) carrying the first
     /// violated invariant code.
     pub fn propose_from(
-        &mut self, response: ProposalResponse, discovery: &Discovery, topology: &[ProjectRef],
+        &mut self, response: ProposalResponse, leads: &Leads, topology: &[ProjectRef],
         ladders: &HashMap<crate::name::SliceName, Status>,
     ) -> Result<ProposeOutcome> {
         if !Self::is_replaceable(ladders) {
@@ -66,7 +66,7 @@ impl Plan {
             ));
         }
 
-        let catalog = build_catalog(discovery);
+        let catalog = build_catalog(leads);
         let slices = response.slices.as_slice();
 
         check_lead_orphans(slices, &catalog)?;
@@ -84,7 +84,7 @@ impl Plan {
         // Advisory topic-overlap review findings, computed before
         // `build_entries` consumes the response slices. Latent (empty)
         // until both leads and decisions carry topics.
-        let topic_overlaps = topic_overlaps(slices, discovery, &bound);
+        let topic_overlaps = topic_overlaps(slices, leads, &bound);
 
         let new_entries = build_entries(response.slices, &names, &bound);
 
@@ -123,10 +123,10 @@ impl Plan {
 /// Non-blocking `kind: review`; degrades to an empty vec until both
 /// surveyed leads and baseline decisions carry topics.
 fn topic_overlaps(
-    slices: &[ResponseSlice], discovery: &Discovery, bound: &[&ProjectRef],
+    slices: &[ResponseSlice], leads: &Leads, bound: &[&ProjectRef],
 ) -> Vec<Diagnostic> {
     let mut lead_topics: HashMap<(&str, &str), &[String]> = HashMap::new();
-    for lead in discovery.leads() {
+    for lead in leads.leads() {
         lead_topics.insert((lead.source.as_str(), lead.lead.as_str()), lead.topics.as_slice());
     }
 
@@ -190,10 +190,7 @@ fn check_lead_orphans(slices: &[ResponseSlice], catalog: &LeadCatalog) -> Result
                 return Err(Error::validation_failed(
                     "plan-reconcile-lead-orphan",
                     "every cited source binding must name a surveyed lead",
-                    format!(
-                        "({}, {}) is not in the discovery.md lead catalog",
-                        member.source, member.lead
-                    ),
+                    format!("({}, {}) is not in the leads.md catalog", member.source, member.lead),
                 ));
             }
         }

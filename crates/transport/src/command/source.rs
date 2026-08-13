@@ -37,7 +37,7 @@ pub struct SurveyArgs {
 pub struct ExtractArgs {
     /// Source key from `plan.yaml.sources.<key>`.
     pub source: String,
-    /// Lead id (from `discovery.md`) the Evidence is bound to.
+    /// Lead id (from `leads.md`) the Evidence is bound to.
     pub lead: String,
     /// Slice the Evidence is extracted into; keys the
     /// `.emery/change/slices/<slice>/evidence/` target.

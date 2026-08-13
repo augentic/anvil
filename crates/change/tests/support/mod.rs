@@ -7,8 +7,7 @@
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
-use std::fmt::Write as _;
-
+use artifacts::leads::{Lead, Leads};
 use mock::session::Session;
 use project::adapter::catalog::Pin;
 use project::handler::Anchor as _;
@@ -222,7 +221,7 @@ pub fn greeting_sources() -> Vec<(&'static str, &'static str, &'static str)> {
     vec![("main", "mock", "The greeting service.")]
 }
 
-/// Write a fixture `plan.yaml` + `discovery.md` for tests that used to
+/// Write a fixture `plan.yaml` + `leads.md` for tests that used to
 /// call survey-driven `plan author`. Binding-phase authoring stops at
 /// decomposition pending until that stage lands.
 ///
@@ -246,7 +245,7 @@ pub fn write_plan_fixture(
     for (key, adapter, value) in sources {
         plan.sources.insert((*key).into(), source_value(adapter, value));
     }
-    let mut inventory = String::from("# Discovery\n\n## Lead inventory\n");
+    let mut imported = Vec::new();
     for (slice, source, lead) in slices {
         if plan.entries.iter().any(|entry| entry.name.as_str() == *slice) {
             let entry =
@@ -257,13 +256,10 @@ pub fn write_plan_fixture(
             entry.sources = vec![SliceSourceBinding::structured(*source, *lead)];
             plan.entries.push(entry);
         }
-        let _ = write!(
-            inventory,
-            "\n### {source}:{lead}\n\n- lead: {lead}\n- source: {source}\n- synopsis: {lead}\n"
-        );
+        imported.push(Lead::new(*lead, *source, *lead));
     }
     plan.save(&layout.plan_path()).expect("plan.yaml");
-    std::fs::write(layout.discovery_path(), inventory).expect("discovery.md");
+    Leads::from_leads(imported).write_atomic(&layout.leads_path()).expect("leads.md");
 }
 
 /// A minimal in-memory plan named `test` wrapping `changes`.

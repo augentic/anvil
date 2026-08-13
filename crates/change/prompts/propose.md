@@ -20,13 +20,9 @@ When a lead is guidance that informs several work leads — a conventions or app
 
 ## Review prose
 
-When the answer schema requires a `gate` object (the collapsed plan-authoring flow), author the plan review prose alongside the grouping. Provide section **bodies only** — the caller owns every deterministic frame (`# Change — <name>`, `# Discovery — <name>`, and the `##` headings around your discovery sections):
+When the answer schema requires a `gate` object (the collapsed plan-authoring flow), author the plan review prose alongside the grouping. Provide section **bodies only** — the caller owns the deterministic `# Change — <name>` frame:
 
 - `change` — the `change.md` operator brief body: a short `## Intent` and `## Scope` for the change, then the review sections when applicable: `## Tentative merges` for cross-source pairings you kept split on doubt, `## Cross-cutting leads` listing each multi-homed lead and its member slices, and `## Likely divergences` with the operator-facing side-by-side synopses backing any `divergence: likely` flag (the machine-readable values stay in that slice's `disagreements[]`).
-- `discovery-summary` — the `discovery.md` `## Summary` body: one-line counts (`Sources: N. Leads: M.`); adapter-specific tallies are permitted.
-- `discovery-source-inventory` — the `discovery.md` `## Source inventory` body: a markdown table with one row per bound source (key, adapter, path or value), taken from the `## Plan context` section of the user message.
-
-Never emit `#` or `##` headings inside `discovery-summary` or `discovery-source-inventory`, and never restate the `## Lead inventory` (the caller preserves it verbatim).
 
 ## Divergence
 

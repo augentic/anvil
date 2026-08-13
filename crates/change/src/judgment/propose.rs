@@ -16,7 +16,7 @@ use crate::judgment::prose;
 /// requires.
 ///
 /// Carries the plan name and its `plan.yaml.sources` bindings, so the
-/// model can author the `discovery.md` source-inventory rows without
+/// model can author the `change.md` review prose without
 /// widening the pinned [`ProposalRequest`] envelope. Rendered as a
 /// `## Plan context` section appended to the user message.
 #[derive(Debug, Clone, Copy)]

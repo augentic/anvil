@@ -62,6 +62,8 @@ pub struct AuthorBody {
     pub plan: String,
     /// Canonical `discovery.yaml` digest.
     pub discovery_digest: String,
+    /// Canonical `leads.md` digest.
+    pub leads_digest: String,
     /// Bound target ids.
     pub targets: Vec<String>,
     /// Bound source keys.
@@ -77,6 +79,7 @@ impl From<orchestrate::AuthorOutcome> for AuthorBody {
         Self {
             plan: outcome.plan,
             discovery_digest: outcome.discovery_digest.to_string(),
+            leads_digest: outcome.leads_digest.to_string(),
             targets: outcome.targets,
             sources: outcome.sources,
             pending: outcome.pending,
@@ -89,6 +92,7 @@ impl Render for AuthorBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         writeln!(w, "plan: {}", self.plan)?;
         writeln!(w, "discovery-digest: {}", self.discovery_digest)?;
+        writeln!(w, "leads-digest: {}", self.leads_digest)?;
         for target in &self.targets {
             writeln!(w, "target: {target}")?;
         }

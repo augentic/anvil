@@ -157,8 +157,8 @@ where
         ["source", "survey"],
         source::SurveyArgs,
         ::change::source::Survey,
-        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md` — `plan author` runs this step itself",
-        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md` — `plan author` runs this step itself; reach for this verb only to re-survey a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, `leads.md` validation, and the `discovery.md` merge."
+        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `leads.md` — `plan author` runs this step itself",
+        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `leads.md` — `plan author` runs this step itself; reach for this verb only to re-survey a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, catalog validation, and the `leads.md` merge."
     );
     route!(
         ["source", "extract"],
@@ -238,7 +238,7 @@ where
         ["plan", "remove"],
         plan::RemoveArgs,
         ::change::plan::handlers::Remove,
-        "Remove a plan entry while the plan is still replaceable (every entry still projects `pending`). Plan-review curation only — defers a lead without re-surveying `discovery.md`"
+        "Remove a plan entry while the plan is still replaceable (every entry still projects `pending`). Plan-review curation only — defers a lead without re-surveying `leads.md`"
     );
     route!(
         ["plan", "drop"],

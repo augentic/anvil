@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use artifacts::atomic::bytes_write;
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::{Resolver, SourceOperation};
@@ -105,20 +105,20 @@ pub async fn extract(
     })
 }
 
-/// Resolve `(source, lead)` from `discovery.md` into the seam's
+/// Resolve `(source, lead)` from `leads.md` into the seam's
 /// lead record (the WIT shape drops the envelope `source` key).
 fn resolve_seam_lead(
     layout: Layout<'_>, source: &str, lead: &str,
 ) -> Result<project::seam::Lead, Error> {
-    let discovery = Discovery::load(&layout.discovery_path())?;
-    let resolved = discovery
+    let catalog = Leads::load(&layout.leads_path())?;
+    let resolved = catalog
         .leads()
         .iter()
         .find(|candidate| candidate.source == source && candidate.lead == lead)
         .ok_or_else(|| Error::Diag {
-            code: "discovery-lead-unknown",
+            code: "leads-lead-unknown",
             detail: format!(
-                "no lead `{lead}` for source `{source}` in discovery.md; extract resolves its \
+                "no lead `{lead}` for source `{source}` in leads.md; extract resolves its \
                  lead against the surveyed inventory"
             ),
         })?;

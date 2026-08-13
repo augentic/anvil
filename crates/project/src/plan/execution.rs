@@ -7,7 +7,7 @@ use std::hash::BuildHasher;
 use std::ops::ControlFlow;
 use std::path::Path;
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use error::Error;
 
 use super::model::{Entry, Plan, Status};

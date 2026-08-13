@@ -5,8 +5,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use artifacts::discovery::Lead;
 use artifacts::evidence::ClaimKind;
+use artifacts::leads::Lead;
 use diagnostics::digest::sha256_hex;
 use error::Error;
 use serde::Serialize;
@@ -68,13 +68,13 @@ impl Projections {
 
 /// Resolve the entry's contributing lead closure, in binding order.
 ///
-/// `inventory` is the full `discovery.md` lead set. A bare binding's
+/// `inventory` is the full `leads.md` catalog. A bare binding's
 /// lead falls back to the owning slice's name (workflow
 /// §`Slice.sources`).
 ///
 /// # Errors
 ///
-/// `discovery-lead-unknown` when a bound `(source, lead)` pair has no
+/// `leads-lead-unknown` when a bound `(source, lead)` pair has no
 /// matching inventory block.
 pub fn contributing_leads(entry: &Entry, inventory: &[Lead]) -> Result<Vec<Lead>, Error> {
     entry
@@ -88,9 +88,9 @@ pub fn contributing_leads(entry: &Entry, inventory: &[Lead]) -> Result<Vec<Lead>
                 .find(|block| block.source == source && block.lead == lead)
                 .cloned()
                 .ok_or_else(|| Error::Diag {
-                    code: "discovery-lead-unknown",
+                    code: "leads-lead-unknown",
                     detail: format!(
-                        "no lead `{lead}` for source `{source}` in discovery.md; slice `{}` \
+                        "no lead `{lead}` for source `{source}` in leads.md; slice `{}` \
                          binds it as a contributing lead",
                         entry.name
                     ),

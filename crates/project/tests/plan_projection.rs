@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use project::adapter::catalog::Pin;
 use project::plan::{
     Entry, Plan, Projections, SliceSourceBinding, SourceBinding, TargetBinding, contributing_leads,
@@ -37,12 +37,7 @@ fn plan(sources: BTreeMap<String, SourceBinding>, entries: Vec<Entry>) -> Plan {
 }
 
 fn lead(source: &str, id: &str, synopsis: &str) -> Lead {
-    Lead {
-        lead: id.into(),
-        source: source.into(),
-        synopsis: synopsis.into(),
-        topics: vec![],
-    }
+    Lead::new(id, source, synopsis)
 }
 
 fn base_plan() -> (Plan, Vec<Lead>) {
@@ -176,7 +171,7 @@ fn bare_binding_lead() {
 fn missing_lead_refuses() {
     let (plan, _) = base_plan();
     let err = contributing_leads(&plan.entries[0], &[]).expect_err("missing lead");
-    assert!(err.to_string().contains("discovery-lead-unknown"), "{err}");
+    assert!(err.to_string().contains("leads-lead-unknown"), "{err}");
 }
 
 #[test]

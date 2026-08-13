@@ -5,8 +5,8 @@
 
 pub mod atomic;
 pub mod decision;
-pub mod discovery;
 pub mod evidence;
+pub mod leads;
 pub mod spec;
 pub mod task;
 pub mod validate;

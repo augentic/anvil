@@ -6,7 +6,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use error::Error;
 use project::adapter::BuildInputDeclaration;
 use project::config::Layout;
@@ -32,13 +32,13 @@ pub struct TargetInputs<'a> {
 
 /// Assemble the refinement manifest for `entry`.
 ///
-/// `inventory` is the full `discovery.md` lead set; `dependencies`
+/// `inventory` is the full `leads.md` catalog; `dependencies`
 /// are the ordered predecessor `(slice, digest)` pairs; `target`
 /// carries the bound target's facts.
 ///
 /// # Errors
 ///
-/// - `discovery-lead-unknown` / `plan-projection-source-unbound` from
+/// - `leads-lead-unknown` / `plan-projection-source-unbound` from
 ///   the planning projections.
 /// - `slice-refinement-source-unbound` / `slice-refinement-pin-missing`
 ///   when a bound source has no closed plan pin.

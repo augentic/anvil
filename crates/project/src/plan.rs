@@ -14,6 +14,7 @@ pub mod epoch;
 mod execution;
 pub mod gaps;
 pub mod io;
+pub mod leads;
 pub mod model;
 pub mod pins;
 pub mod projection;
@@ -32,6 +33,7 @@ pub use execution::{collect_events, project_ladders};
 pub use gaps::{
     DebtCounts, Deferral, Disposition, GapRow, GapsBody, SharedLeadRollup, plan_gaps_body,
 };
+pub use leads::retain as retain_leads;
 pub use model::{
     AuthorityOverride, DefinitionIdentity, Disagreement, DisagreementValue, Divergence, Entry,
     EntryPatch, Patch, Plan, ProfileRef, ReviewIdentity, SliceSourceBinding, SourceBinding, Status,

@@ -61,7 +61,7 @@ pub struct SurveyBody {
     pub source: String,
     /// The bound adapter that answered.
     pub adapter: String,
-    /// Lead ids merged into `discovery.md`.
+    /// Lead ids merged into `leads.md`.
     pub leads: Vec<String>,
 }
 

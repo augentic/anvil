@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use artifacts::discovery::{Discovery, Lead as DiscoveryLead, validate_leads};
+use artifacts::leads::{Lead as CatalogLead, Leads, validate_leads};
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::{Resolver, SourceOperation};
@@ -19,12 +19,12 @@ pub struct SurveyedSource {
     pub source: String,
     /// Bound source adapter name.
     pub adapter: String,
-    /// Lead ids merged into `discovery.md`, in survey order.
+    /// Lead ids merged into `leads.md`, in survey order.
     pub leads: Vec<String>,
 }
 
 /// Survey every `plan.yaml` source binding through the seam and merge
-/// each lead set into `discovery.md`.
+/// each lead set into `leads.md`.
 ///
 /// Bindings run in plan order; each is dispatched, source-attributed,
 /// validated before it becomes visible, merged, and journalled.
@@ -48,7 +48,7 @@ pub async fn survey_all(
 }
 
 /// Survey one `plan.yaml` source binding (`emery source survey
-/// <source>`) and merge its lead set into `discovery.md`.
+/// <source>`) and merge its lead set into `leads.md`.
 ///
 /// Resolves `source` against `plan.yaml.sources.<key>`, optionally
 /// guards the plan name, then dispatch → attribute → validate → merge
@@ -120,21 +120,23 @@ async fn survey_one(
     // Attribution is orchestrator-owned, mirroring the native verb: a
     // `survey` for `source` produces `source`'s leads, so stamp every
     // lead before the validity check and the merge.
-    let leads: Vec<DiscoveryLead> = raw
+    let leads: Vec<CatalogLead> = raw
         .into_iter()
-        .map(|lead| DiscoveryLead {
+        .map(|lead| CatalogLead {
             lead: lead.lead,
             source: source.to_string(),
             synopsis: lead.synopsis,
             topics: lead.topics,
+            parent: None,
+            focus: None,
         })
         .collect();
     validate_leads(&leads)?;
     let lead_ids: Vec<String> = leads.iter().map(|lead| lead.lead.clone()).collect();
 
-    let discovery_path = layout.discovery_path();
-    let mut discovery = load_or_empty_discovery(&discovery_path)?;
-    discovery.merge_survey(source, leads, &discovery_path)?;
+    let leads_path = layout.leads_path();
+    let mut catalog = load_or_empty_leads(&leads_path)?;
+    catalog.merge_survey(source, leads, &leads_path)?;
 
     emit(
         layout,
@@ -151,10 +153,10 @@ async fn survey_one(
     })
 }
 
-/// Load `discovery.md`, or start from an empty document when the file
+/// Load `leads.md`, or start from an empty catalog when the file
 /// is absent so the first survey can author the inventory.
-fn load_or_empty_discovery(path: &Path) -> Result<Discovery, Error> {
-    if path.exists() { Discovery::load(path) } else { Discovery::parse("") }
+fn load_or_empty_leads(path: &Path) -> Result<Leads, Error> {
+    if path.exists() { Leads::load(path) } else { Ok(Leads::empty()) }
 }
 
 /// Append one journal event, propagating the write failure — the

@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use project::adapter::catalog::Pin;
 use project::plan::{Plan, ProjectRef, ProposalResponse, SourceBinding, TargetBinding};
 use project::snapshot::SnapshotId;
@@ -21,8 +21,8 @@ fn topology() -> Vec<ProjectRef> {
     }]
 }
 
-fn inventory() -> Discovery {
-    Discovery::parse(
+fn inventory() -> Leads {
+    Leads::parse(
         "## Lead inventory\n\n\
          ### docs:login-flow\n\n- lead: login-flow\n- source: docs\n- synopsis: sign-in\n\n\
          ### code:login-flow\n\n- lead: login-flow\n- source: code\n- synopsis: sign-in\n\n\
@@ -30,7 +30,7 @@ fn inventory() -> Discovery {
          ### code:session-timeout\n\n- lead: session-timeout\n- source: code\n- synopsis: idle\n\n\
          ### docs:password-reset\n\n- lead: password-reset\n- source: docs\n- synopsis: reset\n",
     )
-    .expect("discovery")
+    .expect("leads")
 }
 
 #[test]

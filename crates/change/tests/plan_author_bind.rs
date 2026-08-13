@@ -65,6 +65,18 @@ async fn binds_degenerate_intent() {
     assert_eq!(plan.discovery_digest.as_ref(), Some(&discovery.digest().expect("digest")));
     assert!(plan.entries.is_empty(), "decomposition pending: slices stay empty");
 
+    let catalog = artifacts::leads::Leads::load(&layout.leads_path()).expect("leads.md");
+    assert_eq!(catalog.leads().len(), 1);
+    assert_eq!(catalog.leads()[0].source, INTENT);
+    assert_eq!(catalog.leads()[0].lead, INTENT);
+    assert_eq!(catalog.leads()[0].synopsis, "Ship the greeting.");
+    let leads_digest =
+        project::snapshot::SnapshotId::from_digest(&catalog.digest_hex().expect("hex"));
+    assert_eq!(plan.leads_digest.as_ref(), Some(&leads_digest));
+    let retained = std::fs::read(layout.leads_revision_path(&leads_digest)).expect("retained");
+    let current = std::fs::read(layout.leads_path()).expect("current");
+    assert_eq!(retained, current, "retention copies exact leads.md bytes");
+
     let reviewed = project::definition::resolve(&from, &wave).expect("resolve");
     let handoff =
         std::fs::read(layout.import_handoff_path(&reviewed.digest)).expect("handoff import");

@@ -12,15 +12,14 @@ use crate::config::Layout;
 use crate::fs::move_atomic;
 
 impl Plan {
-    /// Move `plan.yaml` — plus, when present, the authoring working
-    /// directory and the `change.md` brief — into
-    /// `<change>/archive/plans/<plan.name>-<YYYYMMDD>{.yaml,/}`.
+    /// Move `plan.yaml` and, when present, the working directory,
+    /// `change.md`, `leads.md`, retained `leads/`, and `discovery.yaml`
+    /// into `<change>/archive/plans/<plan.name>-<YYYYMMDD>{.yaml,/}`.
     ///
-    /// Entries that do not project `done` from the fact union refuse
-    /// the move (`plan-has-outstanding-work`) unless `force`.
-    /// Destination collisions error before any file moves. Returns the
-    /// archived plan path plus `Some(dir)` iff a working directory or
-    /// brief was co-moved.
+    /// Non-`done` entries refuse (`plan-has-outstanding-work`) unless
+    /// `force`. Destination collisions error before any move. Returns
+    /// the archived plan path plus `Some(dir)` iff a working directory
+    /// or brief was co-moved.
     ///
     /// # Errors
     ///
@@ -58,9 +57,16 @@ impl Plan {
         let co_move_plans = plans_dir.is_dir().then_some(plans_dir);
 
         let brief_src = Some(layout.change_brief_path()).filter(|p| p.is_file());
+        let leads_src = Some(layout.leads_path()).filter(|p| p.is_file());
+        let leads_dir_src = Some(layout.leads_dir()).filter(|p| p.is_dir());
+        let discovery_src = Some(layout.discovery_yaml_path()).filter(|p| p.is_file());
 
-        let dest_plans_dir = (co_move_plans.is_some() || brief_src.is_some())
-            .then(|| archive_dir.join(format!("{}-{}", plan.name, today)));
+        let dest_plans_dir = (co_move_plans.is_some()
+            || brief_src.is_some()
+            || leads_src.is_some()
+            || leads_dir_src.is_some()
+            || discovery_src.is_some())
+        .then(|| archive_dir.join(format!("{}-{}", plan.name, today)));
 
         if dest_plan.exists() {
             return Err(Error::Diag {
@@ -92,6 +98,18 @@ impl Plan {
         if let (Some(src), Some(dst)) = (brief_src.as_ref(), dest_plans_dir.as_ref()) {
             std::fs::create_dir_all(dst)?;
             move_atomic(src, &dst.join("change.md"))?;
+        }
+        if let (Some(src), Some(dst)) = (leads_src.as_ref(), dest_plans_dir.as_ref()) {
+            std::fs::create_dir_all(dst)?;
+            move_atomic(src, &dst.join("leads.md"))?;
+        }
+        if let (Some(src), Some(dst)) = (leads_dir_src.as_ref(), dest_plans_dir.as_ref()) {
+            std::fs::create_dir_all(dst)?;
+            move_atomic(src, &dst.join("leads"))?;
+        }
+        if let (Some(src), Some(dst)) = (discovery_src.as_ref(), dest_plans_dir.as_ref()) {
+            std::fs::create_dir_all(dst)?;
+            move_atomic(src, &dst.join("discovery.yaml"))?;
         }
 
         Ok((dest_plan, dest_plans_dir))

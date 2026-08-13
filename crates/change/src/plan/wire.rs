@@ -4,8 +4,8 @@
 
 use std::str::FromStr;
 
-use artifacts::discovery::{Discovery, DiscoveryResolveError};
 use artifacts::evidence::ClaimKind;
+use artifacts::leads::{Leads, LeadsResolveError};
 use error::{Error, Result};
 use project::config::Layout;
 use project::plan::{Divergence, SliceSourceBinding};
@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 pub struct BindingArg {
     /// Source key.
     pub key: String,
-    /// Lead id from `discovery.md`; `None` for the bare shorthand.
+    /// Lead id from `leads.md`; `None` for the bare shorthand.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lead: Option<String>,
 }
@@ -70,26 +70,26 @@ impl FromStr for KindAssign {
 /// when the lead id equals the slice's name (workflow
 /// §`Slice.sources`).
 ///
-/// When `discovery` is `Some(_)`, the supplied lead value must match a
-/// canonical `lead` id in `discovery.md`. With `discovery` `None` (no
-/// `discovery.md` on disk) the supplied value is used verbatim.
+/// When `leads` is `Some(_)`, the supplied lead value must match a
+/// canonical `lead` id in `leads.md`. With `leads` `None` (no
+/// `leads.md` on disk) the supplied value is used verbatim.
 ///
 /// # Errors
 ///
 /// Unknown lead tokens surface as `Error::validation_failed` (exit 2)
-/// with the discriminant `discovery-lead-unknown`.
+/// with the discriminant `leads-lead-unknown`.
 pub(crate) fn bindings_from_args(
-    args: &[BindingArg], slice_name: &str, discovery: Option<&Discovery>,
+    args: &[BindingArg], slice_name: &str, leads: Option<&Leads>,
 ) -> Result<Vec<SliceSourceBinding>> {
-    args.iter().map(|a| binding_from_arg(a, slice_name, discovery)).collect()
+    args.iter().map(|a| binding_from_arg(a, slice_name, leads)).collect()
 }
 
 fn binding_from_arg(
-    arg: &BindingArg, slice_name: &str, discovery: Option<&Discovery>,
+    arg: &BindingArg, slice_name: &str, leads: Option<&Leads>,
 ) -> Result<SliceSourceBinding> {
     let lead = match &arg.lead {
         None => None,
-        Some(value) => Some(resolve_lead_token(value, discovery)?),
+        Some(value) => Some(resolve_lead_token(value, leads)?),
     };
     Ok(match lead {
         None => SliceSourceBinding::bare(arg.key.clone()),
@@ -99,40 +99,39 @@ fn binding_from_arg(
 }
 
 /// Rewrite a `<key>=<lead>` binding's lead token to the canonical
-/// `lead` id discovered in `discovery.md`.
+/// `lead` id in `leads.md`.
 ///
-/// When `discovery` is `None` (no `discovery.md` on disk), the token
+/// When `leads` is `None` (no `leads.md` on disk), the token
 /// round-trips unchanged.
-fn resolve_lead_token(token: &str, discovery: Option<&Discovery>) -> Result<String> {
-    let Some(discovery) = discovery else {
+fn resolve_lead_token(token: &str, leads: Option<&Leads>) -> Result<String> {
+    let Some(leads) = leads else {
         return Ok(token.to_string());
     };
-    match discovery.resolve_lead(token) {
+    match leads.resolve_lead(token) {
         Ok(lead) => Ok(lead.lead.clone()),
-        Err(DiscoveryResolveError::Unknown { token }) => Err(Error::validation_failed(
-            "discovery-lead-unknown",
-            "source bindings (`<key>=<lead>`) must resolve to a lead in discovery.md",
+        Err(LeadsResolveError::Unknown { token }) => Err(Error::validation_failed(
+            "leads-lead-unknown",
+            "source bindings (`<key>=<lead>`) must resolve to a lead in leads.md",
             format!(
-                "no lead in discovery.md has an id matching `{token}`; inspect discovery.md \
+                "no lead in leads.md has an id matching `{token}`; inspect leads.md \
                  directly to review the inventory"
             ),
         )),
     }
 }
 
-/// Best-effort load of `<project_dir>/discovery.md`. Returns
-/// `Ok(None)` when the file is absent so plan scaffolding works
-/// without a `discovery.md`.
+/// Best-effort load of `<change>/leads.md`. Returns `Ok(None)` when
+/// the file is absent so plan scaffolding works without a catalog.
 ///
 /// # Errors
 ///
-/// Propagates `discovery.md` parse and I/O failures.
-pub(crate) fn load_discovery(layout: Layout<'_>) -> Result<Option<Discovery>> {
-    let path = layout.discovery_path();
+/// Propagates `leads.md` parse and I/O failures.
+pub(crate) fn load_leads(layout: Layout<'_>) -> Result<Option<Leads>> {
+    let path = layout.leads_path();
     if !path.exists() {
         return Ok(None);
     }
-    Ok(Some(Discovery::load(&path)?))
+    Ok(Some(Leads::load(&path)?))
 }
 
 /// Parse the `--divergence` flag value.

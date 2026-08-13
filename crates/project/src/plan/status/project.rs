@@ -46,7 +46,7 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         plan.entries.iter().find(|e| ladders.get(&e.name).copied() == Some(Status::InProgress));
 
     // One freshness cache and lead inventory serve the resolution and
-    // the Ready milestone; an absent `discovery.md` degrades to an
+    // the Ready milestone; an absent `leads.md` degrades to an
     // empty inventory (planning drift then reads as staleness).
     let mut live = Live::new();
     let inventory = load_inventory(layout)?;
@@ -152,7 +152,7 @@ fn clean_gaps(gaps: &GapsBody) -> bool {
 /// execute's coverage assembly applies). Empty in-scope set is
 /// vacuously refined.
 fn all_in_scope_refined(
-    plan: &Plan, layout: Layout<'_>, inventory: &[artifacts::discovery::Lead], live: &mut Live,
+    plan: &Plan, layout: Layout<'_>, inventory: &[artifacts::leads::Lead], live: &mut Live,
 ) -> Result<bool, Error> {
     for entry in &plan.entries {
         let slice_dir = layout.slice_dir(entry.name.as_str());
@@ -174,14 +174,14 @@ fn all_in_scope_refined(
     Ok(true)
 }
 
-/// The full `discovery.md` lead inventory; an absent file degrades to
+/// The full `leads.md` catalog; an absent file degrades to
 /// an empty set the way the freshness callers tolerate today.
-fn load_inventory(layout: Layout<'_>) -> Result<Vec<artifacts::discovery::Lead>, Error> {
-    let path = layout.discovery_path();
+fn load_inventory(layout: Layout<'_>) -> Result<Vec<artifacts::leads::Lead>, Error> {
+    let path = layout.leads_path();
     if !path.is_file() {
         return Ok(Vec::new());
     }
-    Ok(artifacts::discovery::Discovery::load(&path)?.leads().to_vec())
+    Ok(artifacts::leads::Leads::load(&path)?.leads().to_vec())
 }
 
 /// Authorized when the newest `plan.execute.started` epoch still

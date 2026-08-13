@@ -5,13 +5,13 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use error::{Error, Result};
 
 use super::PROPOSAL_VERSION;
 use super::wire::{LeadCatalogEntry, ProjectRef, ProposalKind, ProposalRequest};
 
-/// Set of `(source, lead)` identities surveyed in `discovery.md`.
+/// Set of `(source, lead)` identities surveyed in `leads.md`.
 ///
 /// The membership oracle `Plan::propose_from` checks every
 /// agent-supplied `{ source, lead }` against, rejecting orphan bindings
@@ -40,36 +40,36 @@ impl LeadCatalog {
 }
 
 /// Build the `(source, lead)` identity set from a surveyed
-/// `discovery.md`.
+/// `leads.md`.
 ///
 /// Shared with the response-validation kernel: the reconciliation tail
-/// re-reads `discovery.md`, calls this to rebuild the catalog, then
+/// re-reads `leads.md`, calls this to rebuild the catalog, then
 /// checks every response `(source, lead)` against it. Duplicate
 /// identities collapse into one set entry (see [`LeadCatalog`]).
 #[must_use]
-pub fn build_catalog(discovery: &Discovery) -> LeadCatalog {
+pub fn build_catalog(leads: &Leads) -> LeadCatalog {
     let mut identities: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    for lead in discovery.leads() {
+    for lead in leads.leads() {
         identities.entry(lead.source.clone()).or_default().insert(lead.lead.clone());
     }
     LeadCatalog { identities }
 }
 
-/// Assemble the `kind: request` envelope from a surveyed `discovery.md`
+/// Assemble the `kind: request` envelope from a surveyed `leads.md`
 /// and an already-resolved project topology.
 ///
-/// `leads[]` is one `LeadCatalogEntry` per `discovery.leads()` row,
-/// carrying `source`, `lead`, and `synopsis`.
+/// `leads[]` is one `LeadCatalogEntry` per catalog row, carrying
+/// `source`, `lead`, and `synopsis`.
 /// `projects` (produced by [`super::topology::resolve_topology`]) is
 /// embedded verbatim.
 ///
 /// # Errors
 ///
 /// Returns [`Error::Validation`] (`plan-reconcile-empty-catalog`, exit
-/// 2) when `discovery.md` carries no leads — the reconciliation
+/// 2) when `leads.md` carries no leads — the reconciliation
 /// request has nothing to group.
-pub fn build_request(discovery: &Discovery, projects: &[ProjectRef]) -> Result<ProposalRequest> {
-    let leads: Vec<LeadCatalogEntry> = discovery
+pub fn build_request(catalog: &Leads, projects: &[ProjectRef]) -> Result<ProposalRequest> {
+    let leads: Vec<LeadCatalogEntry> = catalog
         .leads()
         .iter()
         .map(|lead| LeadCatalogEntry {
@@ -84,7 +84,7 @@ pub fn build_request(discovery: &Discovery, projects: &[ProjectRef]) -> Result<P
         return Err(Error::validation_failed(
             "plan-reconcile-empty-catalog",
             "lead reconciliation requires at least one surveyed lead",
-            "discovery.md carries no leads under `## Lead inventory`",
+            "leads.md carries no leads under `## Lead inventory`",
         ));
     }
 

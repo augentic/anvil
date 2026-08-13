@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use artifacts::discovery::{Discovery, Lead};
+use artifacts::leads::{Lead, Leads};
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
@@ -65,7 +65,7 @@ pub enum RefineOutcome {
 ///   marker.
 /// - [`Error::Argument`] when a `--slice` selector names no in-scope
 ///   plan entry.
-/// - Plan / discovery / config load and freshness-projection failures.
+/// - Plan / leads-catalog / config load and freshness-projection failures.
 ///
 /// Per-slice refinement failures do **not** surface here — they return
 /// as [`RefineOutcome::Stopped`].
@@ -78,8 +78,8 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
-    let discovery = Discovery::load(&layout.discovery_path())?;
-    let inventory = discovery.leads();
+    let catalog = Leads::load(&layout.leads_path())?;
+    let inventory = catalog.leads();
 
     let ordered = topological(layout, &plan)?;
     // One shared freshness cache per drain: baseline, journaled

@@ -57,7 +57,7 @@ pub struct Plan {
     /// Canonical digest of `discovery.yaml`. Absent until wave binding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub discovery_digest: Option<SnapshotId>,
-    /// Canonical digest of `leads.md`. Filled by later authoring phases.
+    /// Canonical digest of `leads.md`. Set when the catalog is imported.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub leads_digest: Option<SnapshotId>,
     /// Canonical digest of `decomposition.yaml`. Filled by later phases.

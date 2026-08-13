@@ -366,7 +366,7 @@ pub enum EventKind {
         slice_name: SliceName,
     },
     /// The `source survey` finalize tail validated and merged
-    /// one source's lead set into `discovery.md`. The plan-time peer
+    /// one source's lead set into `leads.md`. The plan-time peer
     /// of [`Self::SliceExtractCompleted`]; one event per `(source,
     /// survey)` run. CLI-owned.
     #[serde(rename = "source.survey.completed", rename_all = "kebab-case")]

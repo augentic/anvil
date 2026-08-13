@@ -26,7 +26,7 @@ pub enum ProposalKind {
 /// `kind: request` envelope — the lead-centric catalog the agent groups.
 ///
 /// Assembled by the guest `plan author` orchestration: a flat
-/// `leads[]` catalog read 1:1 from `discovery.md`, plus the `projects[]`
+/// `leads[]` catalog read 1:1 from `leads.md`, plus the `projects[]`
 /// topology the agent binds slices to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -96,7 +96,7 @@ pub struct ProjectRef {
 ///
 /// Identity is the `(source, lead)` pair; `lead` repeats
 /// across rows when multiple sources surface the same slug. Mirrors a
-/// single `discovery.md` [`artifacts::discovery::Lead`].
+/// single `leads.md` [`artifacts::leads::Lead`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LeadCatalogEntry {
@@ -136,15 +136,15 @@ pub struct ProposalResponse {
     /// Plan review prose authored alongside the grouping.
     /// Canonically optional; the generated judgment-answer schema
     /// requires it, and the collapsed `plan author` orchestration
-    /// persists it into `change.md` / `discovery.md`. The projection
+    /// persists it into `change.md`. The projection
     /// kernel ignores it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gate: Option<GateProse>,
 }
 
 /// Plan review prose riding a [`ProposalResponse`]: section bodies
-/// only — the orchestrator owns every deterministic frame (`# Change —
-/// <name>`, `# Discovery — <name>`, the `##` headings).
+/// only — the orchestrator owns the deterministic `# Change — <name>`
+/// frame.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct GateProse {
@@ -154,14 +154,6 @@ pub struct GateProse {
     /// (`## Tentative merges`, `## Cross-cutting leads`, `## Likely
     /// divergences` when applicable).
     pub change: String,
-    /// The `discovery.md` `## Summary` section body — one-line counts
-    /// (`Sources: N. Leads: M.`). Body only, no heading.
-    pub discovery_summary: String,
-    /// The `discovery.md` `## Source inventory` section body — one row
-    /// per bound source under `plan.yaml.sources.<key>`: key, adapter,
-    /// path or value. Body only, no heading.
-    #[serde(rename = "discovery-source-inventory")]
-    pub discovery_inventory: String,
 }
 
 /// One `slices[]` row in a [`ProposalResponse`]: one slice of work

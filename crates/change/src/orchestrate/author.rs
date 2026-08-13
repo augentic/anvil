@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use artifacts::leads::{Lead, Leads};
 use error::Error;
 use project::adapter::catalog::{self, Hint, Pin, Row};
 use project::adapter::{Inventory, Resolver};
@@ -13,7 +14,7 @@ use project::definition::{self, Home, INTENT, Reviewed, Scope};
 use project::handler::ExecutionPaths;
 use project::plan::{
     DISCOVERY_VERSION, DefinitionIdentity, Discovery, Plan, ReviewIdentity, SourceBinding,
-    TargetBinding,
+    TargetBinding, retain_leads,
 };
 use project::seam::{self, Ingest};
 use project::snapshot::SnapshotId;
@@ -25,6 +26,8 @@ pub struct AuthorOutcome {
     pub plan: String,
     /// Canonical `discovery.yaml` digest.
     pub discovery_digest: SnapshotId,
+    /// Canonical `leads.md` digest.
+    pub leads_digest: SnapshotId,
     /// Bound target ids.
     pub targets: Vec<String>,
     /// Bound source keys.
@@ -62,8 +65,10 @@ pub async fn author<P: Resolver + Inventory + Ingest>(
         bind_sources(provider, catalog, paths, &reviewed, existing.as_ref(), &mut intern).await?;
     let prior = prior_keys(existing.as_ref());
     let keys = catalog::assign(&source_rows, &prior)?;
+    let scopes = &reviewed.handoff.wave.evidence_scopes;
     let mut sources = BTreeMap::new();
-    for (key, row) in keys.into_iter().zip(source_rows) {
+    let mut imported = Vec::with_capacity(keys.len());
+    for ((key, row), scope) in keys.into_iter().zip(source_rows).zip(scopes) {
         let binding = match row.origin {
             Origin::Value(value) => SourceBinding::intent(row.pin, value),
             Origin::Location(_) => {
@@ -78,6 +83,7 @@ pub async fn author<P: Resolver + Inventory + Ingest>(
             }
         };
         binding.validate(&key)?;
+        imported.push(import_lead(&key, scope));
         sources.insert(key, binding);
     }
 
@@ -93,8 +99,13 @@ pub async fn author<P: Resolver + Inventory + Ingest>(
     std::fs::create_dir_all(layout.imports_dir())?;
     discovery.save(&layout.discovery_yaml_path())?;
 
+    let catalog = Leads::from_leads(imported);
+    catalog.write_atomic(&layout.leads_path())?;
+    let leads_digest = retain_leads(layout)?;
+
     let mut plan = Plan::named(name);
     plan.discovery_digest = Some(discovery_digest.clone());
+    plan.leads_digest = Some(leads_digest.clone());
     plan.definition = Some(definition);
     plan.targets = targets;
     plan.sources = sources;
@@ -103,12 +114,27 @@ pub async fn author<P: Resolver + Inventory + Ingest>(
     Ok(AuthorOutcome {
         plan: name.to_string(),
         discovery_digest,
+        leads_digest,
         targets: plan.targets.keys().cloned().collect(),
         sources: plan.sources.keys().cloned().collect(),
         pending: "decomposition".into(),
         hint: "decomposition pending; later authoring phases land with the decomposition step"
             .into(),
     })
+}
+
+/// One catalog row from a handoff evidence scope. Synopsis is the
+/// inline value for `intent`, otherwise the lead id — the handoff
+/// carries no survey-grade headline.
+fn import_lead(key: &str, scope: &Scope) -> Lead {
+    let synopsis = scope
+        .value
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(scope.lead.as_str())
+        .to_string();
+    Lead::new(scope.lead.clone(), key, synopsis)
 }
 
 fn resolve_from(paths: &ExecutionPaths, from: &Path) -> PathBuf {

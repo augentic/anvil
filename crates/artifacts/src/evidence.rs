@@ -25,7 +25,7 @@ pub fn is_kebab(value: &str) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Document {
-    /// Lead id (matches a `## Lead inventory` block in `discovery.md`)
+    /// Lead id (matches a `## Lead inventory` block in `leads.md`)
     /// the Evidence is bound to.
     pub lead: String,
     /// Document-level authority class for this Evidence.

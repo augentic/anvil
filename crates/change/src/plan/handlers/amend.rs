@@ -17,9 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
 use super::plan_ref;
-use crate::plan::wire::{
-    BindingArg, KindAssign, bindings_from_args, load_discovery, parse_divergence,
-};
+use crate::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_leads, parse_divergence};
 
 /// Wire input for `plan amend`. Option-typed fields distinguish
 /// "leave unchanged" (`None`) from "replace/clear" (`Some`), matching
@@ -108,15 +106,15 @@ impl<P: Anchor> Operation<P> for Amend {
         let override_clear_all: Vec<String> =
             if clear_authority_overrides { vec![name.clone()] } else { Vec::new() };
         let plan_path = cx.layout().plan_path();
-        let discovery = load_discovery(cx.layout())?;
+        let leads = load_leads(cx.layout())?;
         let now = cx.now();
         let (body, journal_events) =
             with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
                 let sources_replace = sources
                     .as_ref()
-                    .map(|v| bindings_from_args(v, &name, discovery.as_ref()))
+                    .map(|v| bindings_from_args(v, &name, leads.as_ref()))
                     .transpose()?;
-                let add_bindings = bindings_from_args(&add_source, &name, discovery.as_ref())?;
+                let add_bindings = bindings_from_args(&add_source, &name, leads.as_ref())?;
 
                 let plan_name = plan.name.clone();
                 let previous_divergence =

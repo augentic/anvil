@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use artifacts::spec::provenance::RequirementTag;
 use diagnostics::has_blocking;
 use error::Error;
@@ -217,7 +217,7 @@ fn write_manifest(
     layout: Layout<'_>, plan: &Plan, entry: &Entry, guidance: SnapshotId,
     dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration], slice_dir: &Path,
 ) -> Result<(), Error> {
-    let inventory = Discovery::load(&layout.discovery_path())?;
+    let inventory = Leads::load(&layout.leads_path())?;
     let config = ProjectConfig::load(layout.project_dir())?;
     refinement::assemble(
         layout,

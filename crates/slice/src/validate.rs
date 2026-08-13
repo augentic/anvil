@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use artifacts::spec::provenance::RequirementTag;
 use diagnostics::Diagnostic;
 use error::Result;
@@ -108,7 +108,7 @@ pub fn run(layout: Layout<'_>, name: &str) -> Result<Validation> {
 /// Refinement-freshness review advisories (`slice-refinement-missing`
 /// / `slice-refinement-stale`, RFC-91): recompute the slice's manifest
 /// against its live inputs and bundle. An absent plan or entry
-/// (archived slice) yields none; an absent `discovery.md` degrades to
+/// (archived slice) yields none; an absent `leads.md` degrades to
 /// an empty lead inventory. The stale advisory is suppressed once a
 /// build record exists — build promotion legitimately drifts bundle
 /// artifacts through `writable-artifacts[]`, and advising a re-refine
@@ -122,8 +122,8 @@ fn refinement_findings(layout: Layout<'_>, name: &str) -> Result<Vec<Diagnostic>
     let Some(entry) = plan.entries.iter().find(|entry| entry.name == name) else {
         return Ok(Vec::new());
     };
-    let inventory = if layout.discovery_path().is_file() {
-        Discovery::load(&layout.discovery_path())?.leads().to_vec()
+    let inventory = if layout.leads_path().is_file() {
+        Leads::load(&layout.leads_path())?.leads().to_vec()
     } else {
         Vec::new()
     };

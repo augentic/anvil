@@ -103,7 +103,7 @@ pub enum Artifact {
     Tokens,
     /// Per-shell composition manifest.
     Composition,
-    /// Plan or workflow artifact (`plan.yaml`, `discovery.md`).
+    /// Plan or workflow artifact (`plan.yaml`, `leads.md`).
     Plan,
     /// Artifact category not classified.
     Unknown,

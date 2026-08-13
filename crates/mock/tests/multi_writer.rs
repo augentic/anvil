@@ -96,16 +96,17 @@ fn write_adversarial_plan(root: &Path) {
         plan.entries.push(entry);
     }
     plan.save(&layout.plan_path()).expect("plan.yaml");
-    fs::write(
-        layout.discovery_path(),
-        "# Discovery\n\n## Lead inventory\n\n\
+    artifacts::leads::Leads::parse(
+        "## Lead inventory\n\n\
          ### docs:login-flow\n\n- lead: login-flow\n- source: docs\n- synopsis: login-flow\n\n\
          ### code:login-flow\n\n- lead: login-flow\n- source: code\n- synopsis: login-flow\n\n\
          ### docs:session-timeout\n\n- lead: session-timeout\n- source: docs\n- synopsis: session-timeout\n\n\
          ### code:session-timeout\n\n- lead: session-timeout\n- source: code\n- synopsis: session-timeout\n\n\
          ### docs:password-reset\n\n- lead: password-reset\n- source: docs\n- synopsis: password-reset\n",
     )
-    .expect("discovery.md");
+    .expect("catalog")
+    .write_atomic(&layout.leads_path())
+    .expect("leads.md");
 }
 
 fn ts(second: i64) -> Timestamp {

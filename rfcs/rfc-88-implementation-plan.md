@@ -30,7 +30,7 @@ What exists and is load-bearing for this plan:
 | Area | State |
 | --- | --- |
 | RFC-104 (`emery system *`, `system.wave.reviewed`, handoffs, definition home) | **Read surface only** — `project::definition` owns the closed `Handoff` DTO, canonical digest, and fail-closed `resolve` (step 5). No `emery system *` write path. `EventKind::SystemWaveReviewed` parses from a definition-home event root and is refused by change-journal append. `EventKind::PlanExecuteStarted.discovery_digest` exists but is always `None`. |
-| In-place `plan author` | Implemented: `crates/change/src/orchestrate/author.rs` (survey → pins → propose → `plan.yaml` + `discovery.md` + `change.md` under `.emery/change/`). |
+| In-place `plan author` | Wave-bind (step 9) plus imported catalog (step 10): reviewed handoff → `discovery.yaml` + skeleton `plan.yaml` + catalog-only `leads.md` (retained at `leads/<digest>.md`, stamped on `plan.leads_digest`). Decomposition still pending (`slices[]` empty). |
 | Plan model | `crates/project/src/plan/model/state.rs`: `Plan { name, sources, entries }`; `Entry.project: Option<String>` is the current target hook (removed in step 9 per closed Open Question 11); no `targets:` map, no digests. |
 | RFC-91 refinement | Implemented: `refinement.yaml` with `inputs.planning.{entry, leads, decomposition}` (decomposition currently the canonical single-node projection), `inputs.profile` = canonical empty digest placeholder. |
 | RFC-86 waves / build records | Implemented in-place: `crates/project/src/wave.rs` (`.emery/change/targets/<target>/waves/<digest>.yaml`; `Wave.members: Vec<Member>` gated by `enforce_one_member` — preserved, closed Open Question 12), `crates/project/src/build_record.rs` (`builds/<digest>.yaml`). Wave base comes from `freeze()` at build open. |
@@ -313,7 +313,7 @@ The first cut lands the execution-substrate change while everything is still in-
 
 ## Cut C — leads, decomposition, profiles, proposals
 
-### Step 10 — Canonical `leads.md` catalog + revision retention [ ]
+### Step 10 — Canonical `leads.md` catalog + revision retention [x]
 
 **RFC anchors:** D1 (`leads.md` / `leads/<digest>.md` paragraphs), D3 (focused-scope import), acceptance criterion 6.
 
@@ -329,6 +329,16 @@ The first cut lands the execution-substrate change while everything is still in-
 
 **Tests / gates:** catalog parse/serialize round-trip (no preamble); digest stability; retention-on-reference; criterion-6 edit-invalidates-digest cases; proposal-schema golden regen. `cargo make ci`.
 
+**Notes (2026-08-13):**
+
+- Markdown document type is `artifacts::leads::Leads` (not `Discovery`) so it does not collide with `project::plan::Discovery` (`discovery.yaml`). Error codes are `leads-parse-failed` / `leads-lead-schema` / `leads-lead-unknown`.
+- Catalog-only: `## Lead inventory` plus `### <source>:<lead>` blocks; preamble/suffix refused; `Discovery::set_preamble` deleted. Canonical digest is YAML of `{ version: 1, leads: [...] }` sorted by `(source, lead)`, hashed as bare hex. Empty `parent` / `focus` / `topics` skip serialization so existing refinement lead-projection digests stay stable for rows without those fields.
+- Wave import: one catalog row per assigned plan source key, zipped with handoff evidence scopes in order. Synopsis is the inline `value` for intent (and any value-backed scope), otherwise the lead id. Parent/focus are `None`. Author writes `leads.md`, calls `retain_leads`, stamps `plan.leads_digest` — that is the first reference. Retention filename is `leads/<64-hex>.md` via `SnapshotId::digest()` (no `sha256:` colon).
+- Survey-merge (`orchestrate::survey`) rewrites the current `leads.md` only and does **not** call `retain_leads` or bump `plan.leads_digest` — it remains the debug breakout. WIT/seam `Lead` is unchanged (`{lead, source, synopsis, topics}`); survey maps `parent: None, focus: None`.
+- `gate.discovery-summary` / `gate.discovery-source-inventory` deleted; `gate.change` remains. `proposal.schema.json` regenerated. `report.schema.json` / `phase-report.schema.json` also regenerated because `Artifact::Plan` rustdoc now names `leads.md`; the adapter `phase-report` pin is a symlink again (it had become a regular file). Archive co-moves `leads.md` + `leads/` + `discovery.yaml` (no `discovery.md`).
+- Docs/glossary/skills still say `discovery.md` (step 20). The rustdoc path links in `docs/standards/workflow.md` were retargeted to `crates/artifacts/src/leads/{lead,document}.rs` so the links gate does not 404. AGENTS.md vocabulary and the never-hand-edit list name `leads.md`.
+- `resolve_topology` still synthesises one `ProjectRef` from live `project.yaml` (step 9 leftover; step 15).
+
 ### Step 11 — Source WIT extension: value-in, focused survey, child leads [ ]
 
 **RFC anchors:** D2 (source key + workspace-or-value; they never parse `plan.yaml`; focused-survey paragraphs), implementation requirement "The source WIT receives either a read-only workspace or inline value. Extend `survey` with an optional parent-lead focus and stable child-lead response…". D2's "read-only change artifacts" for sources is typed catalog context on that input, not a filesystem grant (closed Open Question 7).
@@ -343,6 +353,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Key code areas:** `wit/emery.wit` (via `crates/adapter`), `crates/adapter/src/{operations,seam,source,answers}.rs`, `crates/change/src/orchestrate/survey.rs`, `crates/slice/src/`, `crates/mock/`, `crates/{native,guest}` providers.
 
 **Tests / gates:** engine-side focused-survey integration over the mock catalog; extract-over-view tests (terminal `Lead` carries parent/focus; no change-home / `leads.md` / `slices/` preopen on the source dispatch); schema goldens regenerated; `cargo make ci` + wasm32 check.
+
+**Notes (from step 10):** Engine-owned focused survey must write a **new** `leads.md` revision and `retain_leads` when the new digest is published onto the plan; do not overwrite `leads/<old-digest>.md`. Today's survey-merge does not update `plan.leads_digest`. Extend WIT/seam `Lead` with parent/focus to match the catalog type (`artifacts::leads::Lead`); the catalog already stores those fields. Import synopses are value/lead-id placeholders until focused survey fills them.
 
 ### Step 12 — Update the five source adapters to the new seam (adapters repo) [ ]
 
@@ -407,6 +419,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Key code areas:** `crates/change/src/orchestrate/author.rs` (+ new `decompose.rs`), `crates/change/src/judgment/`, `crates/change/prompts/`, `crates/project/src/plan/propose/topology.rs`, `crates/probe/src/case.rs`, `crates/mock` scripted answers for the new judgment legs.
 
 **Tests / gates:** end-to-end detached author over mock catalog + fixture definition (single-leaf degenerate; multi-target ≥3 levels; budget exhaustion parks; invalid-split repair path; overlap ambiguity blocks). This closes step 9's "decomposition pending" window — the full author path is green again. `cargo make ci`.
+
+**Notes (from step 10):** `gate.change` remains the sole model-authored body; do not revive `gate.discovery-summary` / `gate.discovery-source-inventory`. Imported catalog synopses are value/lead-id placeholders until focused survey (step 11) fills them — the engine-authored orientation in `change.md` (counts + binding table) should not treat those placeholders as survey-grade headlines. `resolve_topology` leftover from step 9 still applies.
 
 ### Step 16 — Refinement boundary escalation [ ]
 
@@ -477,6 +491,8 @@ The first cut lands the execution-substrate change while everything is still in-
 - **emery:** rewrite affected prose — `AGENTS.md` (vocabulary: change home paths, `discovery.yaml` / `leads.md` / `decomposition.yaml`, targets map, accepted CID, removed `apply`/`slice.code.applied`, detached mode, cwd-as-change-root, source seam is value-in + typed catalog context with no change-home grant), `docs/standards/workflow.md` (the workflow contract spans both repos), `docs/reference/` and `docs/explanation/` pages touching artifacts/adapter-contract/provenance (adapter-contract sandbox: sources do not get `$PROJECT_DIR` or the change home), skills wrapper text (`plugins/emery/` — `/emery:plan` elicits `--from`/`--wave`; later skills inherit workspace cwd as the change root and may elicit `--change-dir`), RFC status headers (RFC-87: `apply` deleted; RFC-86: stand-ins resolved; RFC-88: status → implemented contract wording per house style; platform.md "Where we are"). Run the AGENTS.md rule: `rg` every removed/renamed symbol across Rust *and* prose in both repos.
 - **emery-adapters:** `AGENTS.md` (source contract now value-in + focused survey; no change-home filesystem grant — catalog context is typed on the call), `docs/authoring.md`, `docs/testing.md`, eval README.
 - Final gates: `cargo make ci` in both repos, wasm32 compile check, `cargo make links`.
+
+**Notes (from step 10):** Rustdoc path links in `docs/standards/workflow.md` already point at `crates/artifacts/src/leads/{lead,document}.rs` (required for the links gate after the module rename). Remaining `discovery.md` prose in docs, glossary, skills, and CLI reference is this step's name sweep. AGENTS.md vocabulary and the never-hand-edit list already name `leads.md`.
 
 ---
 

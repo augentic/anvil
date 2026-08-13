@@ -19,7 +19,7 @@ use crate::orchestrate;
 pub struct ExtractInput {
     /// Source key from `plan.yaml.sources.<key>`.
     pub source: String,
-    /// Lead id from `discovery.md`.
+    /// Lead id from `leads.md`.
     pub lead: String,
     /// Slice the Evidence is extracted into.
     pub slice: String,

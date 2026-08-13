@@ -302,11 +302,22 @@ impl<'a> Layout<'a> {
         self.change_root().join("change.md")
     }
 
-    /// Absolute path to `<change>/discovery.md` — the candidate
-    /// inventory written at plan time until the leads catalog lands.
+    /// Absolute path to `<change>/leads.md` — the authoritative lead catalog.
     #[must_use]
-    pub fn discovery_path(&self) -> PathBuf {
-        self.change_root().join("discovery.md")
+    pub fn leads_path(&self) -> PathBuf {
+        self.change_root().join("leads.md")
+    }
+
+    /// Absolute path to `<change>/leads/` — retained catalog revisions.
+    #[must_use]
+    pub fn leads_dir(&self) -> PathBuf {
+        self.change_root().join("leads")
+    }
+
+    /// Absolute path to `<change>/leads/<digest>.md`.
+    #[must_use]
+    pub fn leads_revision_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.leads_dir().join(format!("{}.md", digest.digest()))
     }
 
     /// Absolute path to `<change>/discovery.yaml` — pinned delivery topology.

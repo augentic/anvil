@@ -4,7 +4,6 @@
 //! paths, never reconstructed here; rerun from fresh state with `--restart`.
 
 use std::collections::{BTreeMap, HashSet};
-use std::fmt::Write as _;
 use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
@@ -12,6 +11,7 @@ use std::process::Command;
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result, bail, ensure};
+use artifacts::leads::{Lead, Leads};
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
 use project::adapter::catalog::Pin;
 use project::config::Layout;
@@ -201,7 +201,7 @@ async fn run_build(
     Ok(())
 }
 
-/// Write a fixture `plan.yaml` + `discovery.md` from case source
+/// Write a fixture `plan.yaml` + `leads.md` from case source
 /// bindings. Wave-binding `plan author` stops at decomposition pending.
 ///
 /// # Errors
@@ -225,7 +225,7 @@ pub fn seed_authored_plan(
             SnapshotId::from_digest(&"0".repeat(64)),
         ),
     );
-    let mut inventory = String::from("# Discovery\n\n## Lead inventory\n");
+    let mut imported = Vec::new();
     for (key, raw) in sources {
         let (source_adapter, value) = parse_value_binding(raw).with_context(|| {
             format!("case source `{key}` must be `adapter:value:…` until decomposition authoring")
@@ -248,13 +248,12 @@ pub fn seed_authored_plan(
         {
             entry.sources.push(SliceSourceBinding::structured(key, lead));
         }
-        let _ = write!(
-            inventory,
-            "\n### {key}:{lead}\n\n- lead: {lead}\n- source: {key}\n- synopsis: {lead}\n"
-        );
+        imported.push(Lead::new(lead, key, lead));
     }
     plan.save(&layout.plan_path()).context("write fixture plan.yaml")?;
-    fs::write(layout.discovery_path(), inventory).context("write fixture discovery.md")?;
+    Leads::from_leads(imported)
+        .write_atomic(&layout.leads_path())
+        .context("write fixture leads.md")?;
     Ok(())
 }
 

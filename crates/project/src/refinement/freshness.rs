@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::Error;
 
@@ -142,7 +142,7 @@ pub fn freshness(
 
 /// Project the freshness of `entry`'s recorded refinement manifest.
 ///
-/// `inventory` is the full `discovery.md` lead set; `live` memoizes
+/// `inventory` is the full `leads.md` catalog; `live` memoizes
 /// shared inputs across leaves. Recomputes the planning projections,
 /// baseline, sources, predecessors (an archived manifest counts,
 /// RFC-91 D3), spec membership, and bundle digests; an unparseable

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
 use super::plan_ref;
-use crate::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
+use crate::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_leads};
 
 /// Wire input for `plan add`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,11 +67,11 @@ impl<P: Anchor> Operation<P> for Add {
         } = input;
         let name = name.as_str();
 
-        // When `discovery.md` exists, resolve `--sources <key>=<lead>` to the
-        // canonical lead id before persisting. Absence of `discovery.md`
+        // When `leads.md` exists, resolve `--sources <key>=<lead>` to the
+        // canonical lead id before persisting. Absence of `leads.md`
         // short-circuits to the verbatim path.
-        let discovery = load_discovery(cx.layout())?;
-        let sources = bindings_from_args(&sources, name, discovery.as_ref())?;
+        let leads = load_leads(cx.layout())?;
+        let sources = bindings_from_args(&sources, name, leads.as_ref())?;
         let authority_override_map = AuthorityOverride {
             by_kind: authority_override
                 .iter()

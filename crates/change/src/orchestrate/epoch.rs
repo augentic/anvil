@@ -13,7 +13,7 @@ use project::plan::{Plan, Status, collect_events, in_scope, project_ladders};
 use project::slice::SliceMetadata;
 use slice::refinement::{self, Freshness, Live};
 
-use crate::plan::wire::load_discovery;
+use crate::plan::wire::load_leads;
 
 /// Append `plan.execute.started` with typed `closed-plan` coverage.
 ///
@@ -46,8 +46,8 @@ pub(super) fn append_started(layout: Layout<'_>, plan: &Plan, now: Timestamp) ->
 fn assemble_coverage(layout: Layout<'_>, plan: &Plan) -> Result<ClosedPlanCoverage, Error> {
     let plan_digest = Plan::file_digest(layout)?;
 
-    let discovery = load_discovery(layout)?;
-    let inventory = discovery.as_ref().map_or(&[][..], |d| d.leads());
+    let catalog = load_leads(layout)?;
+    let inventory = catalog.as_ref().map_or(&[][..], |d| d.leads());
     let events = collect_events(layout)?;
     let ladders = project_ladders(plan, &events);
 

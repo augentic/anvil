@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use diagnostics::digest::sha256_hex;
 use error::Error;
 use project::adapter::BuildInputDeclaration;
@@ -62,12 +62,7 @@ fn fixture() -> (tempfile::TempDir, Plan, Vec<Lead>) {
     plan.entries.push(entry);
     close_source_pins(&mut plan, root.path()).expect("close pins");
 
-    let inventory = vec![Lead {
-        lead: "orders-lead".into(),
-        source: "docs".into(),
-        synopsis: "orders endpoint".into(),
-        topics: vec![],
-    }];
+    let inventory = vec![Lead::new("orders-lead", "docs", "orders endpoint")];
     (root, plan, inventory)
 }
 

@@ -68,25 +68,15 @@
     },
     "GateProse": {
       "additionalProperties": false,
-      "description": "Plan review prose riding a [`ProposalResponse`]: section bodies\nonly — the orchestrator owns every deterministic frame (`# Change —\n<name>`, `# Discovery — <name>`, the `##` headings).",
+      "description": "Plan review prose riding a [`ProposalResponse`]: section bodies\nonly — the orchestrator owns the deterministic `# Change — <name>`\nframe.",
       "properties": {
         "change": {
           "description": "The `change.md` operator brief body rendered below the\ndeterministic `# Change — <name>` heading: intent, scope, and\nthe plan review sections the skill flow authored by hand\n(`## Tentative merges`, `## Cross-cutting leads`, `## Likely\ndivergences` when applicable).",
           "type": "string"
-        },
-        "discovery-source-inventory": {
-          "description": "The `discovery.md` `## Source inventory` section body — one row\nper bound source under `plan.yaml.sources.<key>`: key, adapter,\npath or value. Body only, no heading.",
-          "type": "string"
-        },
-        "discovery-summary": {
-          "description": "The `discovery.md` `## Summary` section body — one-line counts\n(`Sources: N. Leads: M.`). Body only, no heading.",
-          "type": "string"
         }
       },
       "required": [
-        "change",
-        "discovery-summary",
-        "discovery-source-inventory"
+        "change"
       ],
       "type": "object"
     },
@@ -198,7 +188,7 @@
           "type": "null"
         }
       ],
-      "description": "Plan review prose authored alongside the grouping.\nCanonically optional; the generated judgment-answer schema\nrequires it, and the collapsed `plan author` orchestration\npersists it into `change.md` / `discovery.md`. The projection\nkernel ignores it."
+      "description": "Plan review prose authored alongside the grouping.\nCanonically optional; the generated judgment-answer schema\nrequires it, and the collapsed `plan author` orchestration\npersists it into `change.md`. The projection\nkernel ignores it."
     },
     "kind": {
       "const": "response"

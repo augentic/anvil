@@ -55,7 +55,7 @@
         },
         {
           "const": "plan",
-          "description": "Plan or workflow artifact (`plan.yaml`, `discovery.md`).",
+          "description": "Plan or workflow artifact (`plan.yaml`, `leads.md`).",
           "type": "string"
         },
         {

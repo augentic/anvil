@@ -22,9 +22,7 @@ pub fn greeting_grouping() -> String {
             "rationale": "One mock lead, one slice."
         }],
         "gate": {
-            "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nOne slice.",
-            "discovery-summary": "Sources: 1. Leads: 1.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| main | mock | \"The greeting service.\" |"
+            "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nOne slice."
         }
     }))
     .expect("grouping serialises")
@@ -142,9 +140,7 @@ pub fn adversarial_grouping() -> String {
             }
         ],
         "gate": {
-            "change": "## Intent\n\nCharacterise the auth surface.\n\n## Scope\n\nThree slices.\n\n## Likely divergences\n\n- session-policy: docs say 30 minutes, code says 15.",
-            "discovery-summary": "Sources: 2. Leads: 5.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| docs | mock-docs | \"The docs source.\" |\n| code | mock-code | \"The code source.\" |"
+            "change": "## Intent\n\nCharacterise the auth surface.\n\n## Scope\n\nThree slices.\n\n## Likely divergences\n\n- session-policy: docs say 30 minutes, code says 15."
         }
     }))
     .expect("grouping serialises")

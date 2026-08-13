@@ -230,7 +230,7 @@ pub fn phase_report() -> Value {
 /// answer-side adjustments the shared type cannot carry: `gate` is made
 /// required (optional on the persisted envelope, mandatory on the
 /// judgment answer — the collapsed `plan author` orchestration persists
-/// it into `change.md` / `discovery.md`), and `kind` is pinned to the
+/// it into `change.md`), and `kind` is pinned to the
 /// `response` literal (the type's kind enum also covers the request
 /// envelope).
 ///

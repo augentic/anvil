@@ -48,7 +48,7 @@ Adapter names remain unique across axes — one component exports exactly one ax
 
 ## Discovery handshake
 
-`survey` writes `## Lead inventory` blocks — one **raw, unmerged** lead per source, each identified by its `(source, lead)` pair (`survey` stamps `source` from the surveyed source). A re-survey of one source replaces only that source's blocks by `(source, lead)`; the same `lead` may appear under different source keys. The operator approves by running `emery plan refine`; `extract` resolves `slices[].sources[].lead` against the canonical `lead` id within the binding's `source`. Cross-source unification is deferred to plan-time reconciliation. Typed shape and validator at [`crates/artifacts/src/discovery/lead.rs`](../../crates/artifacts/src/discovery/lead.rs); parser at [`crates/artifacts/src/discovery/document.rs`](../../crates/artifacts/src/discovery/document.rs).
+`survey` writes `## Lead inventory` blocks — one **raw, unmerged** lead per source, each identified by its `(source, lead)` pair (`survey` stamps `source` from the surveyed source). A re-survey of one source replaces only that source's blocks by `(source, lead)`; the same `lead` may appear under different source keys. The operator approves by running `emery plan refine`; `extract` resolves `slices[].sources[].lead` against the canonical `lead` id within the binding's `source`. Cross-source unification is deferred to plan-time reconciliation. Typed shape and validator at [`crates/artifacts/src/leads/lead.rs`](../../crates/artifacts/src/leads/lead.rs); parser at [`crates/artifacts/src/leads/document.rs`](../../crates/artifacts/src/leads/document.rs).
 
 ## The Plan
 
