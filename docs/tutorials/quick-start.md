@@ -150,7 +150,7 @@ emery plan refine
 
 (`/emery:refine` runs this same drain.)
 
-Refinement extracts evidence from each bound source, synthesizes the slice artifacts, and records the exact inputs and outputs in `refinement.yaml`. Under `.emery/slices/fix-typo/` you will find:
+Refinement extracts evidence from each bound source, synthesizes the slice artifacts, and records the exact inputs and outputs in `refinement.yaml`. Under `.emery/change/slices/fix-typo/` you will find:
 
 | File | Purpose |
 | ---- | ------- |
@@ -209,7 +209,7 @@ Source code changes land in your project tree (not under `.emery/`). Task checkb
 ##### After merge
 
 - Spec deltas apply to `.emery/specs/`
-- The slice directory moves to `.emery/archive/`
+- The slice directory moves to `.emery/change/archive/`
 - Facts project the entry `done` (no stored status field on `plan.yaml`)
 
 ##### Watching progress

@@ -1,5 +1,5 @@
 //! `emery archive prune` — the retention GC over
-//! `.emery/archive/`. Pure filesystem inside the project root, so
+//! `.emery/change/archive/`. Pure filesystem inside the project root, so
 //! the verb runs on every transport.
 
 use std::io::Write;

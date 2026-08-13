@@ -36,11 +36,11 @@ description: |
 | `emery-version` | Yes                    | Minimum CLI version required (set by `emery init`). Kebab-case on disk; the Rust field stays snake_case via `#[serde(rename = "emery-version")]`. |
 | `description`     | No                     | Free-form project description (tech stack, architecture, testing) available to briefs. This is the only *authored* identity field; routing identity is otherwise *derived* — see below. |
 
-A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored — projected from the project's baseline (`.emery/specs/` requirement titles + the `.emery/events/<writer>.jsonl` outcome ledger). The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
+A project's routing identity (the `surface[]` of owned domains and a `recent[]` merge tail surfaced in the reconciliation `projects[]`) is **derived**, not authored — projected from the project's baseline (`.emery/specs/` requirement titles + the `.emery/change/events/<writer>.jsonl` outcome ledger). The earlier hand-authored `capabilities` / `keywords` facets are removed; a stale `capabilities:` / `keywords:` key in an existing `project.yaml` is silently ignored.
 
 ## plan.yaml
 
-**Location:** `plan.yaml` at the project root
+**Location:** `.emery/change/plan.yaml`
 **Created by:** `/emery:plan` (via `emery plan author`'s scaffold leg)
 **Modified by:** `emery plan author`, `emery plan add`, `emery plan amend`, `emery plan remove`, `emery plan archive`
 
@@ -94,7 +94,7 @@ slices:
 
 ## change.md
 
-**Location:** `change.md` at the project root
+**Location:** `.emery/change/change.md`
 **Created by:** `/emery:plan` (scaffolded; CLI helper)
 **Edited by:** Operator (directly)
 
@@ -120,7 +120,7 @@ into Omnia. Priority: user registration, password reset.
 
 ## metadata.yaml
 
-**Location:** `.emery/slices/<name>/metadata.yaml`
+**Location:** `.emery/change/slices/<name>/metadata.yaml`
 **Created by:** the `emery plan refine` drain (slice create is re-entry safe)
 **Modified by:** the `plan refine` drain, the build / merge orchestrations inside `emery plan execute`, and `emery plan drop`
 

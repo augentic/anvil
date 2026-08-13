@@ -1,6 +1,6 @@
 //! Workflow journal events: append-only newline-delimited JSON at
-//! `.emery/events/<writer>.jsonl`. Each writer appends only its own
-//! file; readers union all files by `(timestamp, writer, sequence)`.
+//! `.emery/change/events/<writer>.jsonl`. Each writer appends only its
+//! own file; readers union all files by `(timestamp, writer, sequence)`.
 
 mod append;
 pub mod claim;
@@ -46,14 +46,14 @@ pub fn writer_id() -> String {
 }
 
 /// Absolute path to one writer's log at
-/// `<project_dir>/.emery/events/<writer>.jsonl`.
+/// `<project_dir>/.emery/change/events/<writer>.jsonl`.
 #[must_use]
 pub(crate) fn writer_log_path(layout: Layout<'_>, writer: &str) -> PathBuf {
     layout.writer_events_path(writer)
 }
 
 /// Refuse writer ids that cannot be a single path segment under
-/// `.emery/events/`.
+/// `.emery/change/events/`.
 pub(crate) fn validate_writer(writer: &str) -> Result<(), Error> {
     if writer.is_empty()
         || writer == "."
@@ -74,7 +74,7 @@ pub(crate) fn validate_writer(writer: &str) -> Result<(), Error> {
 }
 
 /// Read every parseable [`Event`] from every per-writer log under
-/// `.emery/events/`, ordered by `(timestamp, writer, sequence)`.
+/// `.emery/change/events/`, ordered by `(timestamp, writer, sequence)`.
 ///
 /// A missing events directory yields an empty vector. Blank lines and
 /// lines that fail to parse as an [`Event`] are skipped rather than

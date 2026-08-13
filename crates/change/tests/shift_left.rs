@@ -81,7 +81,7 @@ async fn shift_left_refine_execute() {
     );
 
     // Author is topology-only — no extract / synthesis artifacts.
-    let slice_dir = root.join(".emery/slices/greeting");
+    let slice_dir = root.join(".emery/change/slices/greeting");
     assert!(!slice_dir.join("model.yaml").exists(), "author must not mint model.yaml");
     assert!(!slice_dir.join("spec.md").exists(), "author must not mint spec.md");
     assert!(!slice_dir.join("refinement.yaml").exists(), "author must not write the manifest");
@@ -143,7 +143,7 @@ async fn shift_left_refine_execute() {
     assert!(journal.contains("plan.execute.started"), "{journal}");
     assert!(journal.contains("target.wave.opened"), "{journal}");
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");
-    assert!(!root.join(".emery/slices/greeting/build/patch.yaml").exists());
+    assert!(!root.join(".emery/change/slices/greeting/build/patch.yaml").exists());
 }
 
 /// Execute over an unrefined leaf fails typed
@@ -157,7 +157,7 @@ async fn unrefined_execute_fails() {
     author(&session).await;
 
     assert!(
-        !root.join(".emery/slices/greeting/refinement.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/refinement.yaml").exists(),
         "execute starts over an unrefined leaf"
     );
 
@@ -176,7 +176,7 @@ async fn unrefined_execute_fails() {
     assert!(!journal.contains("plan.execute.started"), "no epoch: {journal}");
     assert!(!journal.contains("slice.synthesize."), "execute never refines: {journal}");
     assert!(!journal.contains("target.wave.opened"), "no wave: {journal}");
-    assert!(!root.join(".emery/slices/greeting/model.yaml").exists());
+    assert!(!root.join(".emery/change/slices/greeting/model.yaml").exists());
 
     // The drain then execute is the recovery path.
     support::refine_plan(&session).await;
@@ -204,12 +204,12 @@ async fn refine_gate_mints_drains() {
     author(&session).await;
 
     assert!(
-        !root.join(".emery/slices/greeting/model.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/model.yaml").exists(),
         "author is topology-only — the unknown arrives via refine"
     );
     support::refine_plan(&session).await;
     assert!(
-        root.join(".emery/slices/greeting/model.yaml").is_file(),
+        root.join(".emery/change/slices/greeting/model.yaml").is_file(),
         "refine mints the unknown before execute"
     );
 

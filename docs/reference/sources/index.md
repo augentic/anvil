@@ -7,7 +7,7 @@
 For what a source adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [From sources to slices](../../explanation/reconciliation.md). The contract facts:
 
 - `survey` — plan-time. Reads the operator-bound source and emits one **lead** block per slice-sized unit of work under `## Lead inventory` in `discovery.md`. Runs inside `/emery:plan`.
-- `extract` — slice-time. Reads one matched lead plus the bound source and returns an `Evidence` document the CLI persists to `.emery/slices/<slice>/evidence/<source>.yaml`. Runs inside the `emery plan refine` drain.
+- `extract` — slice-time. Reads one matched lead plus the bound source and returns an `Evidence` document the CLI persists to `.emery/change/slices/<slice>/evidence/<source>.yaml`. Runs inside the `emery plan refine` drain.
 
 Source adapters do not write `spec.md` — that is core synthesis's responsibility. A source supplies evidence; synthesis reconciles evidence from every bound source into one spec.
 

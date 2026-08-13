@@ -330,8 +330,10 @@ fn project(fixture: Fixture) -> TempDir {
     )
     .expect("write project config");
     if matches!(fixture, Fixture::Cycle) {
+        let plan_path = project.path().join(".emery/change/plan.yaml");
+        fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
         fs::write(
-            project.path().join("plan.yaml"),
+            &plan_path,
             "name: cycle\nsources: {}\nslices:\n  - name: first\n    depends-on: [second]\n  - name: second\n    depends-on: [first]\n",
         )
         .expect("write cyclic plan");

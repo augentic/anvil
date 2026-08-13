@@ -48,7 +48,7 @@ fn stage(root: &Path, case: &Path, name: &str) {
         fs::copy(baseline, destination.join("spec.md")).expect("stage baseline");
     }
 
-    let slice_dir = root.join(".emery/slices").join(SLICE);
+    let slice_dir = root.join(".emery/change/slices").join(SLICE);
     let destination = slice_dir.join("specs").join(name);
     fs::create_dir_all(&destination).expect("create delta directory");
     let source = case.join("delta.md");

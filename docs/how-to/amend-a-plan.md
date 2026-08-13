@@ -19,7 +19,7 @@ There is one active `plan.yaml` per project. `emery plan amend` takes **one posi
 
 ## Step 1 — Read the plan artifacts
 
-Open these files at the project root:
+Open these files under `.emery/change/`:
 
 | File | Check |
 | ---- | ----- |

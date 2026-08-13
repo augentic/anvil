@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::TargetOperation;
+use project::config::Layout;
 use serde::Serialize;
 
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
@@ -161,7 +162,7 @@ pub fn commit(
     // The supersede-orphan re-check aborts before any baseline write,
     // leaving the slice `Built` for a clean retry; the kernel's
     // `(slice, slug)` guard keeps that retry from double-promoting.
-    let decisions = promote_decisions(slice_dir, archive_dir, now)?;
+    let decisions = promote_decisions(slice_dir, now)?;
 
     write_baselines(&merged)?;
     let opaque_counts = commit_opaque(classes)?;
@@ -198,18 +199,14 @@ pub fn commit(
 }
 
 /// Promote the slice's Decision Records into the baseline catalogue.
-/// `archive_dir` is `<project>/.emery/archive`, so its grandparent is
-/// the project root and its parent is `.emery`; the catalogue lives at
-/// `.emery/decisions/`. The slice name is the slice directory's final
-/// component.
-fn promote_decisions(
-    slice_dir: &Path, archive_dir: &Path, now: Timestamp,
-) -> Result<Vec<String>, Error> {
-    let Some(project_dir) = archive_dir.parent().and_then(Path::parent) else {
+/// The catalogue lives at `.emery/decisions/` (durable product state);
+/// the project root is walked from the slice directory.
+fn promote_decisions(slice_dir: &Path, now: Timestamp) -> Result<Vec<String>, Error> {
+    let Some(project_dir) = Layout::project_dir_from_slice(slice_dir) else {
         return Ok(Vec::new());
     };
     let slice_name = slice_dir.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-    project::decisions::promote(slice_dir, project_dir, slice_name, now)
+    project::decisions::promote(slice_dir, &project_dir, slice_name, now)
 }
 
 /// Check for baseline drift on the modified `touched_specs` and on

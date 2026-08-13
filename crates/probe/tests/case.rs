@@ -353,7 +353,7 @@ fn stage_case(cases: &Path, id: &str, body: &str) {
 }
 
 fn journal(root: &Path) -> String {
-    let dir = root.join(".emery/events");
+    let dir = root.join(".emery/change/events");
     let Ok(entries) = fs::read_dir(&dir) else {
         return String::new();
     };
@@ -395,22 +395,22 @@ async fn build_case_reaches_built() {
     .expect("the build case passes");
 
     let root = sandbox.join("greeting-build");
-    let metadata = SliceMetadata::load(&root.join(".emery/slices/greeting"))
+    let metadata = SliceMetadata::load(&root.join(".emery/change/slices/greeting"))
         .expect("slice metadata after build");
     assert!(
         metadata.completed_at.is_some(),
         "build stamps completed_at (LifecycleStatus is not authority)"
     );
     assert!(
-        root.join(".emery/slices/greeting/build/report.yaml").is_file(),
+        root.join(".emery/change/slices/greeting/build/report.yaml").is_file(),
         "the authoritative build report is persisted"
     );
     assert!(
-        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
+        project::build_record::BuildRecord::present(&root.join(".emery/change/slices/greeting")),
         "the fact-substrate build record is persisted"
     );
     assert!(
-        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/build/patch.yaml").exists(),
         "patch.yaml is not build-outcome authority"
     );
     assert!(

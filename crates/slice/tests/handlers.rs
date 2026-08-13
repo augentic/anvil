@@ -17,9 +17,9 @@ use mock::session::Session;
 mod archive {
     use super::*;
 
-    /// Stage two dated archive entries under `.emery/archive/`.
+    /// Stage two dated archive entries under `.emery/change/archive/`.
     fn stage(root: &Path) -> PathBuf {
-        let archive = root.join(".emery/archive");
+        let archive = root.join(".emery/change/archive");
         for name in ["2020-01-01-old", "2026-01-01-new"] {
             fs::create_dir_all(archive.join(name)).expect("stage archive entry");
             fs::write(archive.join(name).join("spec.md"), "# archived\n").expect("stage file");
@@ -198,7 +198,7 @@ mod journal {
         assert!(
             project
                 .root()
-                .join(".emery/events")
+                .join(".emery/change/events")
                 .join(format!("{}.jsonl", project::journal::DEFAULT_WRITER))
                 .is_file(),
             "the per-writer journal persists"

@@ -48,7 +48,7 @@ fn assert_projected_pending(root: &std::path::Path) {
     // project done — assert the fresh plan rows are pending when no
     // matching done fact exists for the current plan name+entries.
     assert_eq!(plan.entries.len(), 1);
-    let yaml = std::fs::read_to_string(root.join("plan.yaml")).expect("plan.yaml");
+    let yaml = std::fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("plan.yaml");
     assert!(!yaml.contains("status:"), "no stored status field: {yaml}");
     assert!(
         ladders.values().all(|status| *status == Status::Pending)
@@ -78,7 +78,7 @@ async fn replaces_replaceable() {
     init(&session).await;
     author(&session, false).await.expect("first author");
 
-    let plan_path = session.root().join("plan.yaml");
+    let plan_path = session.root().join(".emery/change/plan.yaml");
     let before = Plan::load(&plan_path).expect("plan after first author");
     assert!(!before.entries.is_empty(), "first author wrote slices");
     let main = before.sources.get("main").expect("main source");
@@ -111,7 +111,7 @@ async fn force_replaces_progressed() {
     // Walk progress forward via facts so the plan is no longer
     // replaceable under projected ladders — `--force` still recreates
     // it unconditionally (scaffold wipes `plan.yaml` first).
-    let plan_path = session.root().join("plan.yaml");
+    let plan_path = session.root().join(".emery/change/plan.yaml");
     let plan = Plan::load(&plan_path).expect("load");
     let slice = plan.entries[0].name.clone();
     let now = Timestamp::from_second(1_700_000_000).expect("timestamp");
@@ -136,7 +136,8 @@ async fn force_replaces_progressed() {
     // Fresh scaffold + propose; the prior archive fact still names the
     // same slice, so projected ladder may show done — the force gate is
     // that author succeeded. Assert the on-disk plan has no status field.
-    let yaml = std::fs::read_to_string(session.root().join("plan.yaml")).expect("plan.yaml");
+    let yaml =
+        std::fs::read_to_string(session.root().join(".emery/change/plan.yaml")).expect("plan.yaml");
     assert!(!yaml.contains("status:"), "no stored status field: {yaml}");
     let after = Plan::load(&plan_path).expect("plan after force");
     assert_eq!(after.entries.len(), 1);

@@ -135,7 +135,7 @@ async fn pin_build_record_wave() {
     // Merged projection: baseline carries finalized ids; no leftover
     // patch.yaml authority under the archived slice.
     assert!(root.join(".emery/specs/auth/spec.md").is_file());
-    let archive = fs::read_dir(root.join(".emery/archive"))
+    let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive")
         .map(|e| e.expect("entry").path())
         .find(|p| {

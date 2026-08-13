@@ -125,7 +125,7 @@ fn assert_no_git(root: &Path) {
 }
 
 fn project_lifecycle(root: &Path, slice: &str) -> LifecycleStatus {
-    let slice_dir = root.join(".emery/slices").join(slice);
+    let slice_dir = root.join(".emery/change/slices").join(slice);
     let metadata = SliceMetadata::load(&slice_dir).expect("metadata.yaml");
     LifecycleStatus::project(&slice_dir, &metadata)
 }
@@ -208,13 +208,14 @@ async fn disjoint_refine_fact() {
     // Lossless fact-tree union: fold bob's writer log + refined slice
     // into alice's change tree.
     let union_root = alice.root();
-    let bob_events = bob.root().join(".emery/events/bob.jsonl");
+    let bob_events = bob.root().join(".emery/change/events/bob.jsonl");
     assert!(bob_events.is_file(), "bob wrote a per-writer log");
-    fs::create_dir_all(union_root.join(".emery/events")).expect("events dir");
-    fs::copy(&bob_events, union_root.join(".emery/events/bob.jsonl")).expect("union bob events");
+    fs::create_dir_all(union_root.join(".emery/change/events")).expect("events dir");
+    fs::copy(&bob_events, union_root.join(".emery/change/events/bob.jsonl"))
+        .expect("union bob events");
     mirror_tree(
-        &bob.root().join(".emery/slices/password-reset"),
-        &union_root.join(".emery/slices/password-reset"),
+        &bob.root().join(".emery/change/slices/password-reset"),
+        &union_root.join(".emery/change/slices/password-reset"),
     );
 
     let events = read_union(Layout::new(union_root)).expect("union reads");

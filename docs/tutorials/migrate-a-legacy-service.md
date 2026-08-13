@@ -176,7 +176,7 @@ emery plan archive
 
 
 > [!TIP]
-> **Done looks like:** archived slice artifacts under `.emery/archive/`, Omnia output in the project tree, and the merged spec baseline under `.emery/specs/` — a durable chain from recovered evidence and reviewed provenance to the generated service.
+> **Done looks like:** archived slice artifacts under `.emery/change/archive/`, Omnia output in the project tree, and the merged spec baseline under `.emery/specs/` — a durable chain from recovered evidence and reviewed provenance to the generated service.
 
 
 <section id="troubleshooting" markdown="1">

@@ -99,7 +99,7 @@ impl Render for RefineBody {
         }
         writeln!(
             w,
-            "refinement complete — review the slice artifacts under .emery/slices/, then run \
+            "refinement complete — review the slice artifacts under .emery/change/slices/, then run \
              emery plan execute"
         )
     }

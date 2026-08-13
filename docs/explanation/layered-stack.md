@@ -31,7 +31,7 @@ Layer 0 settles before any change starts. Once `project.yaml` exists and the rel
 
 ## Layer 1: Executing one slice
 
-Layer 1 is the per-slice `refine → build → merge` rhythm. It operates on **one slice** inside `.emery/slices/<name>/`: refinement runs inside the `emery plan refine` drain, and the build and merge phases run inside `emery plan execute` — there are no per-slice phase-breakout verbs or skills.
+Layer 1 is the per-slice `refine → build → merge` rhythm. It operates on **one slice** inside `.emery/change/slices/<name>/`: refinement runs inside the `emery plan refine` drain, and the build and merge phases run inside `emery plan execute` — there are no per-slice phase-breakout verbs or skills.
 
 <div class="pipeline">
 
@@ -80,4 +80,4 @@ This means you can always drop down a layer:
 - If `/emery:plan` produces a plan you want to adjust, use **re-propose** or `emery plan add` / `emery plan remove` for grouping and deferral, and `emery plan amend <entry>` for divergence stamps, authority overrides, and single-source fixes — then run `emery plan refine` when ready.
 - If `emery plan refine` or `emery plan execute` parks on a slice, fix the input the stop card points at, then re-run the same command — refine skips fresh manifests; the execute loop resumes at the parked phase and continues to the next entry.
 - If publication is incomplete, finish the repository's normal branch and review workflow before running `/emery:finalize`.
-- If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.emery/slices/<name>/metadata.yaml` directly — they are plain YAML files.
+- If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.emery/change/slices/<name>/metadata.yaml` directly — they are plain YAML files.

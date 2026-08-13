@@ -107,7 +107,8 @@ async fn author_approve_execute() {
     );
 
     // Plan progress projects `done` from archive facts (RFC-86 D2 / D11).
-    let plan_yaml = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
+    let plan_yaml =
+        fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("read plan.yaml");
     assert!(!plan_yaml.contains("status:"), "plan.yaml has no stored status: {plan_yaml}");
     let plan: change::Plan = serde_saphyr::from_str(&plan_yaml).expect("parse plan.yaml");
     let events =
@@ -126,7 +127,7 @@ async fn author_approve_execute() {
 
     // The merge archived the slice directory; the archived model.yaml
     // carries the kernel-projected provenance inline.
-    let archive = fs::read_dir(root.join(".emery/archive"))
+    let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive dir exists")
         .map(|entry| entry.expect("archive entry").path())
         .find(|path| {
@@ -238,7 +239,7 @@ async fn archive_sweeps_change() {
 
     // The archived pins themselves stay on disk for audit — only the
     // store objects they anchored are collected.
-    let slice_archive = fs::read_dir(root.join(".emery/archive"))
+    let slice_archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive dir")
         .filter_map(Result::ok)
         .map(|entry| entry.path())
@@ -290,7 +291,7 @@ async fn execute_reentry_noop() {
 
     // No approval field ever reaches disk: `plan.yaml` carries no
     // lifecycle key and the journal carries no approval event.
-    let raw = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
+    let raw = fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("read plan.yaml");
     assert!(!raw.contains("lifecycle"), "{raw}");
     let journal = journal_text(&root);
     assert!(!journal.contains("plan.transition.approved"), "{journal}");
@@ -340,15 +341,15 @@ async fn preflight_parks_built() {
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
 
     // Nothing merged: the build record remains, no baseline, no archive.
-    let metadata = fs::read_to_string(root.join(".emery/slices/greeting/metadata.yaml"))
+    let metadata = fs::read_to_string(root.join(".emery/change/slices/greeting/metadata.yaml"))
         .expect("slice still present");
     assert!(metadata.contains("completed-at:"), "{metadata}");
     assert!(
-        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
+        project::build_record::BuildRecord::present(&root.join(".emery/change/slices/greeting")),
         "build record must remain after a parked preflight"
     );
     assert!(
-        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/build/patch.yaml").exists(),
         "patch.yaml is not authority"
     );
     assert!(!root.join(".emery/specs/greeting/spec.md").exists());
@@ -399,9 +400,9 @@ async fn postflight_terminal() {
     // Non-rollback: the merge committed before the gate ran — baseline
     // written, slice archived, plan entry projects `done`.
     assert!(root.join(".emery/specs/greeting/spec.md").is_file());
-    assert!(!root.join(".emery/slices/greeting").exists());
+    assert!(!root.join(".emery/change/slices/greeting").exists());
     let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
+        &fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
     let events =
@@ -413,7 +414,7 @@ async fn postflight_terminal() {
     );
 
     // Failed postflight report persists beside the archive.
-    let archive = fs::read_dir(root.join(".emery/archive"))
+    let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive dir exists")
         .map(|entry| entry.expect("archive entry").path())
         .find(|path| {

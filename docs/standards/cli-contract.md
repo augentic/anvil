@@ -10,7 +10,7 @@ Skills are ultrathin invoke-and-relay wrappers: they elicit missing arguments, i
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. See [AGENTS.md § Skill / CLI responsibility split](../../AGENTS.md#skill--cli-responsibility-split).
 
-Never hand-edit `metadata.yaml`, never `mkdir -p .emery/...`, and never `mv` anything into `.emery/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
+Never hand-edit `metadata.yaml`, never `mkdir -p .emery/...`, and never `mv` anything into `.emery/change/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
 ## Verb tree
 
@@ -43,7 +43,7 @@ Refinement is the standalone `emery plan refine` drain (slice directories are mi
 
 ### Journal
 
-- `emery journal show` — the observability surface over `.emery/events/<writer>.jsonl`: the read-only union projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events).
+- `emery journal show` — the observability surface over `.emery/change/events/<writer>.jsonl`: the read-only union projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events).
 
 Today the read-only per-slice projections live under `emery slice *` and every workflow verb lives under `emery plan *`.
 
@@ -53,7 +53,7 @@ When a change is coordinated through a `plan.yaml`, the recommended skill / CLI 
 
 1. **Author.** `/emery:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `survey` operation, reconciles leads across sources into proposed `slices[]` rows, validates the plan, and exits after authoring. The skill stops at the operator review seam — execution does not start automatically and the literal `emery plan execute` command is printed for the operator.
 2. **Execute.** Invoking `emery plan execute` opens the authorization epoch (`plan.execute.started` with typed `closed-plan` coverage carrying per-leaf refinement digests; a leaf without a fresh refinement manifest refuses `plan-refinement-required` before the epoch, pointing at `emery plan refine` — execute never refines) and drives the loop. Before each build the gap gate joins durable deferral dispositions — deferred rows leave build scope, and every remaining open row is auto-deferred at the gate as a journaled `gap.deferred` fact, so build always proceeds. `/emery:plan` never runs it; `/emery:execute` wraps it. Under the guest lock the loop claims → builds → merges per entry (gap gate before each build). Per-entry `done` projects from merge / archive facts. Exits on the first `stop <reason>` (the `plan-execute-stopped` error envelope on stderr, exit 2, with the canonical plan-status stop card on stdout — no follow-up `emery plan status` call needed), on a hard epoch refusal (`plan-epoch-stale`), or on `drained` (the success body carries `plan` and `phases[]`; text mode prints the phase lines and closes with the canonical `drained — run /emery:finalize <plan>` line). A fresh plan's `plan status` projection exposes `/emery:execute` as its `resume` so the operator path starts with execute.
-3. **Publish and finalize.** After execution drains, the operator commits, publishes, and completes the required repository workflow. `/emery:finalize <change-name>` confirms publication is complete, then runs `emery plan archive`, which sweeps `plan.yaml` and the `.emery/plans/<name>/` authoring trail into `.emery/archive/plans/<YYYYMMDD>-<name>/`.
+3. **Publish and finalize.** After execution drains, the operator commits, publishes, and completes the required repository workflow. `/emery:finalize <change-name>` confirms publication is complete, then runs `emery plan archive`, which sweeps `plan.yaml` and the `.emery/change/plans/<name>/` authoring trail into `.emery/change/archive/plans/<YYYYMMDD>-<name>/`.
 
 Recovery composes the same verbs: after a stop, fix the reported problem (curate entries with `emery plan {add, amend, remove, drop}` as needed) and re-run the command the stop card names — `emery plan refine` for refinement stops and staleness, `emery plan execute` for build / merge stops (the loop resumes at the parked phase). There are no phase-breakout verbs and no undo; forward re-execution is the only recovery direction.
 
@@ -111,7 +111,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 
 ## Journal events
 
-Durable run telemetry is the newline-delimited JSON per-writer event log at `.emery/events/<writer>.jsonl`. Each line serialises `timestamp` first, then `writer` and `sequence`, then `event`, then the kebab-case `payload`:
+Durable run telemetry is the newline-delimited JSON per-writer event log at `.emery/change/events/<writer>.jsonl`. Each line serialises `timestamp` first, then `writer` and `sequence`, then `event`, then the kebab-case `payload`:
 
 ```json
 {"timestamp": "2026-06-11T00:00:00Z", "writer": "local", "sequence": 1, "event": "slice.build.started", "payload": {"slice": "user-auth"}}

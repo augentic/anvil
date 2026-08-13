@@ -113,11 +113,15 @@ async fn divergence_docs_wins() {
     let requests = session.model().requests();
     let prompt = &requests.last().expect("synthesis request recorded").messages[0].content;
     assert!(
-        prompt.contains("\"evidence-path\": \".emery/slices/session-policy/evidence/docs.yaml\""),
+        prompt.contains(
+            "\"evidence-path\": \".emery/change/slices/session-policy/evidence/docs.yaml\""
+        ),
         "{prompt}"
     );
     assert!(
-        prompt.contains("\"evidence-path\": \".emery/slices/session-policy/evidence/code.yaml\""),
+        prompt.contains(
+            "\"evidence-path\": \".emery/change/slices/session-policy/evidence/code.yaml\""
+        ),
         "{prompt}"
     );
     assert!(!prompt.contains("\"claims\""), "claims must not be inlined: {prompt}");
@@ -146,7 +150,7 @@ async fn divergence_docs_wins() {
 
     // The written spec carries the inline `[divergence]` tag.
     let spec = fs::read_to_string(
-        session.root().join(".emery/slices/session-policy/specs/session/spec.md"),
+        session.root().join(".emery/change/slices/session-policy/specs/session/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[divergence]"), "{spec}");
@@ -222,7 +226,7 @@ async fn decisions_exact_set() {
 
     // The sidecar carries only slice-authored fields; the engine stamps
     // `id` / `slice` / `date` at merge.
-    let sidecar = root.join(".emery/slices/session-policy/decisions/session-ttl-source.md");
+    let sidecar = root.join(".emery/change/slices/session-policy/decisions/session-ttl-source.md");
     let record = fs::read_to_string(&sidecar).expect("decision sidecar written");
     assert!(record.contains("slug: session-ttl-source"), "{record}");
     assert!(record.contains("status: accepted"), "{record}");
@@ -233,7 +237,7 @@ async fn decisions_exact_set() {
 
     // Re-refine with a decision-free response: the exact-set
     // replacement clears both the generated record and any stray file.
-    let slice_dir = root.join(".emery/slices/session-policy");
+    let slice_dir = root.join(".emery/change/slices/session-policy");
     fs::write(slice_dir.join("decisions/stale.md"), "stale").expect("plant stray file");
     support::refine(&session, "session-policy").await.expect("re-refine replaces the decision set");
 
@@ -269,7 +273,7 @@ async fn evidence_gap_projects() {
     assert!(requirement.claims.is_empty(), "{requirement:?}");
 
     let spec = fs::read_to_string(
-        session.root().join(".emery/slices/password-reset/specs/password-reset/spec.md"),
+        session.root().join(".emery/change/slices/password-reset/specs/password-reset/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[unknown]"), "{spec}");

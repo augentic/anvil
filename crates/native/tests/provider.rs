@@ -202,7 +202,7 @@ async fn build_merge_cross_seam() {
     };
 
     let inputs = vec![seam::Input::Proposal(seam::Payload::Path(
-        ".emery/slices/demo/proposal.md".to_string(),
+        ".emery/change/slices/demo/proposal.md".to_string(),
     ))];
     let report = provider
         .build(

@@ -232,8 +232,10 @@ mod upgrade {
         // adapter — keeping bare names and skipping pins.
         let project = Provider::bare();
         stage_project(&project, "demo");
+        let plan_path = project.root.join(".emery/change/plan.yaml");
+        std::fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
         std::fs::write(
-            project.root.join("plan.yaml"),
+            &plan_path,
             "name: demo-plan\n\
              sources:\n\
              \x20 brief:\n\

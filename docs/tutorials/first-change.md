@@ -99,7 +99,7 @@ slices:
         lead: account-audit-log
 ```
 
-Each slice row maps one lead from `discovery.md` to a unit of work. `discovery.md` (at the project root) lists the full lead inventory the survey found:
+Each slice row maps one lead from `discovery.md` to a unit of work. `discovery.md` (under `.emery/change/`) lists the full lead inventory the survey found:
 
 ```markdown
 ## Summary
@@ -123,7 +123,7 @@ Survey and reconciliation are model-driven, so your lead names and synopses will
 <div class="step-label">03</div>
 <h3 class="step-title">Review the plan</h3>
 
-`/emery:plan` exits after authoring. Before executing, read the three plan artifacts at the project root:
+`/emery:plan` exits after authoring. Before executing, read the three plan artifacts under `.emery/change/`:
 
 | File | Check |
 | ---- | ----- |
@@ -143,7 +143,7 @@ This pause is the topology review step. If the grouping is wrong — say survey 
 emery plan refine
 ```
 
-The drain refines all three slices serially in plan order: each extraction reads the bound `docs` source, synthesis writes the slice artifacts under `.emery/slices/<name>/`, and the refinement manifest (`refinement.yaml`) records the exact inputs and output bundle. When the drain completes, read the three `specs/<domain>/spec.md` files — this pause is the specification review step. If a spec is wrong, fix the note (or amend the plan) and re-run `emery plan refine`; only the staled slices re-refine.
+The drain refines all three slices serially in plan order: each extraction reads the bound `docs` source, synthesis writes the slice artifacts under `.emery/change/slices/<name>/`, and the refinement manifest (`refinement.yaml`) records the exact inputs and output bundle. When the drain completes, read the three `specs/<domain>/spec.md` files — this pause is the specification review step. If a spec is wrong, fix the note (or amend the plan) and re-run `emery plan refine`; only the staled slices re-refine.
 </div>
 
 
@@ -155,7 +155,7 @@ The drain refines all three slices serially in plan order: each extraction reads
 emery plan execute
 ```
 
-Execute opens the authorization epoch over the plan and refinement digests, then drives each slice through build → merge in plan order (a single execute process walks entries one-by-one; other journal writers may still claim different slices). Execute never refines — a missing or stale manifest stops it with `plan-refinement-required`. Each slice keeps its directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
+Execute opens the authorization epoch over the plan and refinement digests, then drives each slice through build → merge in plan order (a single execute process walks entries one-by-one; other journal writers may still claim different slices). Execute never refines — a missing or stale manifest stops it with `plan-refinement-required`. Each slice keeps its directory under `.emery/change/slices/<name>/` while active, then moves to `.emery/change/archive/` when merged.
 
 Check progress at any time from a second terminal:
 
@@ -187,7 +187,7 @@ When all three entries are `done`, publish the repository changes through your n
 /emery:finalize account-revamp
 ```
 
-Finalize confirms publication is complete and archives the [drained](../appendices/glossary.md#d) plan — `plan.yaml`, `change.md`, and `discovery.md` move to `.emery/archive/plans/`.
+Finalize confirms publication is complete and archives the [drained](../appendices/glossary.md#d) plan — `plan.yaml`, `change.md`, and `discovery.md` move to `.emery/change/archive/plans/`.
 </div>
 
 

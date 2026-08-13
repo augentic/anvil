@@ -50,9 +50,11 @@ fn meta() -> SliceMetadata {
 }
 
 fn write_plan(root: &std::path::Path, plan: &Plan) {
+    let path = root.join(".emery/change/plan.yaml");
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("change home");
     let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
-    std::fs::write(root.join("plan.yaml"), yaml).expect("write plan.yaml");
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices dir");
+    std::fs::write(&path, yaml).expect("write plan.yaml");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices dir");
 }
 
 fn seed_in_progress(root: &std::path::Path, plan_name: &str, slice: &str, seconds: i64) {
@@ -126,7 +128,8 @@ fn advance_starts_second() {
     assert!(body.active.is_none(), "fresh advance, not a mid-slice resume");
 
     let loaded = Plan::load(&Layout::new(session.root()).plan_path()).expect("reload plan");
-    let yaml = std::fs::read_to_string(session.root().join("plan.yaml")).expect("plan.yaml");
+    let yaml =
+        std::fs::read_to_string(session.root().join(".emery/change/plan.yaml")).expect("plan.yaml");
     assert!(!yaml.contains("status:"), "plan.yaml must not carry a stored status field: {yaml}");
     let events = project::plan::collect_events(Layout::new(session.root())).expect("events");
     let ladders = project_ladders(&loaded, &events);

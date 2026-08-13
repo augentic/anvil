@@ -36,7 +36,7 @@ pub struct ExtractArgs {
     /// Lead id (from `discovery.md`) the Evidence is bound to.
     pub lead: String,
     /// Slice the Evidence is extracted into; keys the
-    /// `.emery/slices/<slice>/evidence/` target.
+    /// `.emery/change/slices/<slice>/evidence/` target.
     #[arg(long)]
     pub slice: String,
 }

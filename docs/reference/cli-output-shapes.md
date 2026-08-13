@@ -19,7 +19,7 @@ Canonical JSON envelope shapes for `emery *` commands that skills shell out to. 
 Every `Render` impl follows one convention so operators can scan any command's output the same way:
 
 - **Result line first, lowercase, verb-first**: `created plan entry `foo``, `dropped `checkout``, `archived plan `demo``. Reports keep their `PASS` / `FAIL` banner — the one uppercase exception, shared by `plan validate` and `slice validate`.
-- **Detail lines are indented `label: value` pairs** with kebab-case labels: `  plan: .emery/plan.yaml`, `  archived: .emery/archive/slices/…`, `  reason: superseded`.
+- **Detail lines are indented `label: value` pairs** with kebab-case labels: `  plan: .emery/plan.yaml`, `  archived: .emery/change/archive/slices/…`, `  reason: superseded`.
 - **Names in backticks**, paths bare: `merged `checkout``, `  plan: <path>`.
 - **No trailing periods** on result or detail lines.
 - **`hint:` is recovery guidance** (what to fix); **`resume:` is the literal next command** (what to run). A line is one or the other, never both.
@@ -158,7 +158,7 @@ Abandons one entry's slice without merging. The body carries the archive destina
 ```json
 {
   "name": "identity-service",
-  "archive-path": "<TEMPDIR>/.emery/archive/2026-07-31-identity-service",
+  "archive-path": "<TEMPDIR>/.emery/change/archive/2026-07-31-identity-service",
   "drop-reason": "superseded by identity-contracts"
 }
 ```
@@ -233,11 +233,11 @@ A failed run carries one object per finding in `findings`, each with `rule-id` (
 
 ### `emery plan archive`
 
-Sweeps a closed plan into `.emery/archive/plans/`, then runs the change-scoped snapshot collection. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept; `swept-objects` counts the snapshot-store objects the collection deleted (objects whose GC roots belonged only to the archived change, RFC-88 D2). Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
+Sweeps a closed plan into `.emery/change/archive/plans/`, then runs the change-scoped snapshot collection. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept; `swept-objects` counts the snapshot-store objects the collection deleted (objects whose GC roots belonged only to the archived change, RFC-88 D2). Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
 
 ```json
 {
-  "archived": "<TEMPDIR>/.emery/archive/plans/demo-<YYYYMMDD>.yaml",
+  "archived": "<TEMPDIR>/.emery/change/archive/plans/demo-<YYYYMMDD>.yaml",
   "archived-plans-dir": null,
   "swept-objects": 7,
   "plan": {
@@ -255,7 +255,7 @@ The merge phase inside `emery plan execute` folds the slice's spec deltas into t
   "slice": "login",
   "merged": ["login"],
   "decisions": ["DEC-0001"],
-  "archive-path": "<TEMPDIR>/.emery/archive/2026-07-31-login"
+  "archive-path": "<TEMPDIR>/.emery/change/archive/2026-07-31-login"
 }
 ```
 
@@ -272,12 +272,12 @@ The synthesis leg inside the `emery plan refine` drain assembles the agent **inp
     {
       "source": "docs",
       "lead": "password-reset",
-      "evidence-path": ".emery/slices/identity-service/evidence/docs.yaml"
+      "evidence-path": ".emery/change/slices/identity-service/evidence/docs.yaml"
     },
     {
       "source": "legacy",
       "lead": "password-reset",
-      "evidence-path": ".emery/slices/identity-service/evidence/legacy.yaml"
+      "evidence-path": ".emery/change/slices/identity-service/evidence/legacy.yaml"
     }
   ],
   "guidance-brief": "# Guidance brief\n…"

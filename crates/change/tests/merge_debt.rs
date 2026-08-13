@@ -240,7 +240,7 @@ async fn debt_after_merge() {
     .await
     .expect("corrective author");
 
-    let brief = fs::read_to_string(root.join("change.md")).expect("change.md");
+    let brief = fs::read_to_string(root.join(".emery/change/change.md")).expect("change.md");
     assert!(brief.contains("## Carried debt"), "{brief}");
     assert!(brief.contains("Unknowns:"), "{brief}");
     assert!(

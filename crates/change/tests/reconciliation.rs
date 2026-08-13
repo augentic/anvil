@@ -80,7 +80,8 @@ async fn overlap_merges() {
     assert_eq!(authored.surveyed[1].leads, ["login-flow", "session-timeout", "password-reset"]);
 
     let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(session.root().join("plan.yaml")).expect("read plan.yaml"),
+        &fs::read_to_string(session.root().join(".emery/change/plan.yaml"))
+            .expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
 

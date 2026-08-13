@@ -150,8 +150,8 @@ async fn build_writes_artifact() {
 
     let payload = |path: &str| Payload::Path(path.to_string());
     let inputs = [
-        Input::Proposal(payload(".emery/slices/greeting/proposal.md")),
-        Input::Spec(payload(".emery/slices/greeting/specs/core/spec.md")),
+        Input::Proposal(payload(".emery/change/slices/greeting/proposal.md")),
+        Input::Spec(payload(".emery/change/slices/greeting/specs/core/spec.md")),
     ];
     let report = Adapter::build(
         &model,

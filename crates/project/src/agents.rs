@@ -111,7 +111,7 @@ fn render_body(adapter: Option<&str>) -> String {
          \n## Boundaries\n\
          - During execute/build/merge, agents consume Emery and adapters — they do not maintain them.\n\
          - `metadata.yaml` and `plan.yaml` are framework-managed; update them through `emery` verbs.\n\
-         - `.emery/archive/` is framework-managed history.\n\n",
+         - `.emery/change/archive/` is framework-managed history.\n\n",
     )
 }
 

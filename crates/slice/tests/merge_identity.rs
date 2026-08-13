@@ -105,7 +105,7 @@ fn stage_wave_and_record(session: &Session, slice: &str, base: SnapshotId) -> Sn
 
 fn stage_built_slice(session: &Session, digest: &str) {
     let root = session.root();
-    let slice_dir = root.join(".emery/slices/login-flow");
+    let slice_dir = root.join(".emery/change/slices/login-flow");
     let specs = slice_dir.join("specs/auth");
     fs::create_dir_all(&specs).expect("slice specs");
     fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline specs");
@@ -321,7 +321,7 @@ async fn two_slices_merge_without() {
     {
         let snapshot = session.provider().freeze().await.expect("freeze");
         stage_wave_and_record(&session, slice, snapshot);
-        let slice_dir = root.join(".emery/slices").join(slice);
+        let slice_dir = root.join(".emery/change/slices").join(slice);
         let specs = slice_dir.join("specs/auth");
         fs::create_dir_all(&specs).expect("specs");
         fs::write(specs.join("spec.md"), delta).expect("delta");
@@ -410,7 +410,7 @@ fn stage_overlap_ids(session: &Session) {
     fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline specs");
     fs::write(root.join(".emery/specs/auth/spec.md"), baseline).expect("baseline");
 
-    let slice_dir = root.join(".emery/slices/login-flow");
+    let slice_dir = root.join(".emery/change/slices/login-flow");
     let specs = slice_dir.join("specs/auth");
     fs::create_dir_all(&specs).expect("slice specs");
     // Local REQ-001 modifies baseline REQ-002; local REQ-002 is ADDED.
@@ -502,7 +502,7 @@ async fn task_tokens_no_chain() {
     merge(&session, "login-flow").await.expect("merge succeeds");
 
     let date = ts().strftime("%Y-%m-%d").to_string();
-    let archived = session.root().join(".emery/archive").join(format!("{date}-login-flow"));
+    let archived = session.root().join(".emery/change/archive").join(format!("{date}-login-flow"));
     let tasks = fs::read_to_string(archived.join("tasks.md")).expect("archived tasks");
     assert!(tasks.contains("TASK-001 satisfies REQ-002"), "{tasks}");
     assert!(tasks.contains("TASK-002 satisfies REQ-003"), "{tasks}");
@@ -518,7 +518,7 @@ async fn omit_domain_default() {
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, "login-flow", snapshot);
 
-    let slice_dir = root.join(".emery/slices/login-flow");
+    let slice_dir = root.join(".emery/change/slices/login-flow");
     let specs = slice_dir.join("specs/default");
     fs::create_dir_all(&specs).expect("slice specs");
     fs::create_dir_all(root.join(".emery/specs/default")).expect("baseline specs");
@@ -588,7 +588,7 @@ async fn related_ids_finalize() {
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
     stage_built_slice(&session, wave_digest.as_str());
-    let decisions = session.root().join(".emery/slices/login-flow/decisions");
+    let decisions = session.root().join(".emery/change/slices/login-flow/decisions");
     fs::create_dir_all(&decisions).expect("slice decisions");
     fs::write(
         decisions.join("passkey-auth.md"),
@@ -650,7 +650,7 @@ async fn drifted_modified_rejects() {
         "no wave-committed on pre-commit failure"
     );
     assert!(
-        session.root().join(".emery/slices/login-flow").exists(),
+        session.root().join(".emery/change/slices/login-flow").exists(),
         "slice still present (not archived)"
     );
     let baseline = fs::read_to_string(session.root().join(".emery/specs/auth/spec.md"))
@@ -689,5 +689,5 @@ async fn postflight_failure_keeps() {
     let merged = fs::read_to_string(session.root().join(".emery/specs/auth/spec.md"))
         .expect("merged baseline");
     assert!(merged.contains("ID: REQ-009"), "{merged}");
-    assert!(!session.root().join(".emery/slices/login-flow").exists());
+    assert!(!session.root().join(".emery/change/slices/login-flow").exists());
 }

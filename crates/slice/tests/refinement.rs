@@ -28,7 +28,7 @@ fn fixture() -> (tempfile::TempDir, Plan, Vec<Lead>) {
     std::fs::create_dir_all(&baseline).expect("mkdir baseline");
     std::fs::write(baseline.join("spec.md"), b"login baseline").expect("write baseline");
 
-    let slice_dir = root.path().join(".emery/slices").join(SLICE);
+    let slice_dir = root.path().join(".emery/change/slices").join(SLICE);
     std::fs::create_dir_all(slice_dir.join("specs/orders")).expect("mkdir slice");
     std::fs::write(slice_dir.join("proposal.md"), b"proposal").expect("write");
     std::fs::write(slice_dir.join("design.md"), b"design").expect("write");
@@ -336,7 +336,7 @@ fn predecessor_binding() {
 #[test]
 fn archived_pred_fresh() {
     // A merged (or dropped) predecessor's slice tree moves to
-    // `.emery/archive/<stamp>-<slice>/` with its manifest; the archived
+    // `.emery/change/archive/<stamp>-<slice>/` with its manifest; the archived
     // digest satisfies the dependent's pin (RFC-91 D3). The newest
     // archive entry wins.
     let (root, plan, inventory) = fixture();

@@ -17,7 +17,7 @@ A plan entry that currently projects `in-progress` from claim facts. The execute
 A machine-readable interface definition at `contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Authored, imported, or verified through the contracts target adapter's `build` sub-flows; validated by the contracts adapter's in-guest validator.
 
 **Archive**
-The `.emery/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
+The `.emery/change/archive/` directory where finalized plans (one per change) and merged or dropped slices are stored for audit.
 
 **Authority**
 Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)). Set on each `Evidence` document during `extract`, applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
@@ -65,7 +65,7 @@ A marketplace package under `plugins/<name>/` that registers slash-command skill
 The neutral finding currency every check surface emits (`emery slice validate`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
 
 **Discovery**
-The plan-time discovery artifact at `discovery.md` in the project root. Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/emery:plan` through CLI helpers.
+The plan-time discovery artifact at `.emery/change/discovery.md`. Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/emery:plan` through CLI helpers.
 
 **Divergence**
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's plan-review acknowledgement; the field is advisory in v1.
@@ -82,7 +82,7 @@ The lifecycle target that abandons a slice without merging its specs into the ba
 The single CLI binary produced by the Rust workspace at the repo root that backs every `/emery:*` skill: validation, lifecycle transitions, spec merging, and plan and slice management. Contributor consistency for this repo is the mdBook links gate (`cargo make links`), not a CLI verb. See [Workflow, standards, and artifacts](../explanation/standards-layer.md).
 
 **Evidence**
-The per-source result of `extract`. A structured document with `claims:` persisted to `.emery/slices/<slice>/evidence/<source>.yaml`. Parsed and validated through the typed `artifacts::evidence::Document`. Top-level `authority:` is required.
+The per-source result of `extract`. A structured document with `claims:` persisted to `.emery/change/slices/<slice>/evidence/<source>.yaml`. Parsed and validated through the typed `artifacts::evidence::Document`. Top-level `authority:` is required.
 
 **Execute**
 The guest-routed driver loop (`emery plan execute`) that advances each entry and runs build → merge until the plan drains, consuming the exact refinement manifests `emery plan refine` wrote (it never refines — a missing or stale manifest is the typed `plan-refinement-required`). Running it opens the authorization epoch over the covered refinement digests. Resumes from on-disk state — no `--continue` flag.
@@ -116,10 +116,10 @@ The operator-supplied free-form description that backs single-slice, intent-only
 ## J
 
 **Journal**
-Per-writer append-only fact logs at `.emery/events/<writer>.jsonl` (union via `emery journal show`). Carries authorization (`plan.execute.started`), claims, phase events, waves, and the outcome ledger (`slice.archive.created`, …).
+Per-writer append-only fact logs at `.emery/change/events/<writer>.jsonl` (union via `emery journal show`). Carries authorization (`plan.execute.started`), claims, phase events, waves, and the outcome ledger (`slice.archive.created`, …).
 
 **Journal writer**
-A stable identity with exclusive append authority over one `.emery/events/<writer>.jsonl` log and its sequence namespace. Claims use that writer ID to identify the current slice owner.
+A stable identity with exclusive append authority over one `.emery/change/events/<writer>.jsonl` log and its sequence namespace. Claims use that writer ID to identify the current slice owner.
 
 ## L
 
@@ -141,7 +141,7 @@ The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec op
 The implementation serving judgment requests in a test: `omnia-testkit` scripted responses on the native and WASM rungs, or the configured live model on the explicit live rung.
 
 **model.yaml**
-The single structured artifact per refined slice, at `.emery/slices/<slice>/model.yaml`. Holds the requirement set with **inline provenance** (per requirement: contributing claims and the winning one), the task list, and a small header. Validated by `emery slice validate`; the audit `provenance` view is projected from it on demand (there is no persisted `provenance.yaml`). See [From sources to slices](../explanation/reconciliation.md).
+The single structured artifact per refined slice, at `.emery/change/slices/<slice>/model.yaml`. Holds the requirement set with **inline provenance** (per requirement: contributing claims and the winning one), the task list, and a small header. Validated by `emery slice validate`; the audit `provenance` view is projected from it on demand (there is no persisted `provenance.yaml`). See [From sources to slices](../explanation/reconciliation.md).
 
 ## O
 
@@ -191,7 +191,7 @@ The idiom-guidance prompt shipped by a target adapter. Read by core synthesis as
 A thin Cursor slash-command wrapper (e.g. `/emery:plan`, `/emery:execute`) that elicits arguments, invokes one `emery` verb, and relays its output. Skills do not own orchestration, synthesis, or code generation — those live in the engine guest and target-adapter prompts.
 
 **Slice**
-The single unit that flows through the fixed `refine → build → merge` rhythm — refinement inside the `emery plan refine` drain, build and merge inside `emery plan execute`. Each slice has its own proposal, spec, design, tasks, metadata, evidence rows, and refinement manifest, and lives under `.emery/slices/<name>/`.
+The single unit that flows through the fixed `refine → build → merge` rhythm — refinement inside the `emery plan refine` drain, build and merge inside `emery plan execute`. Each slice has its own proposal, spec, design, tasks, metadata, evidence rows, and refinement manifest, and lives under `.emery/change/slices/<name>/`.
 
 **Source adapter**
 Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Published as `emery:<name>@<semver>`; the guest crate lives at `sources/<name>/` in the adapters repo. See the [Source adapters](../reference/sources/index.md) reference.

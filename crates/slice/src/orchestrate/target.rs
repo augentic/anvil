@@ -316,7 +316,7 @@ fn restage_input(input: Input, slice_prefix: &str, stage_prefix: &str) -> Input 
 
 /// Assemble the build request from the declared inputs and persist it
 /// atomically to
-/// `.emery/slices/<slice>/build/request.yaml` — the native prepare
+/// `.emery/change/slices/<slice>/build/request.yaml` — the native prepare
 /// leg verbatim, minus the shell hooks.
 fn write_request(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,

@@ -211,7 +211,7 @@ async fn merge_stop_reentry() {
     let stopped = execute(&session).await.expect_err("preflight failure stops").to_string();
     assert!(stopped.contains("plan-execute-stopped"), "{stopped}");
     assert!(stopped.contains("merge-conflict"), "{stopped}");
-    assert!(root.join(".emery/slices/alpha").is_dir(), "alpha not merged yet");
+    assert!(root.join(".emery/change/slices/alpha").is_dir(), "alpha not merged yet");
 
     // Run 2: alpha merges and archives (the baseline moves), then
     // beta's build fails on the marker — the stop leaves beta unbuilt
@@ -220,7 +220,7 @@ async fn merge_stop_reentry() {
     support::marker(&root, mock::behaviour::FAIL_BUILD_MARKER);
     let stopped = execute(&session).await.expect_err("build failure stops").to_string();
     assert!(stopped.contains("build-failed"), "{stopped}");
-    assert!(!root.join(".emery/slices/alpha").exists(), "alpha merged and archived");
+    assert!(!root.join(".emery/change/slices/alpha").exists(), "alpha merged and archived");
 
     // Run 3: fresh coverage over the moved baseline — alpha is done
     // and excluded, beta's untouched manifest still projects fresh —
@@ -271,7 +271,7 @@ async fn dependent_rerefine() {
     let stopped = execute(&session).await.expect_err("beta build fails").to_string();
     assert!(stopped.contains("build-failed"), "{stopped}");
     std::fs::remove_file(root.join(mock::behaviour::FAIL_BUILD_MARKER)).expect("rm marker");
-    assert!(!root.join(".emery/slices/alpha").exists(), "alpha merged and archived");
+    assert!(!root.join(".emery/change/slices/alpha").exists(), "alpha merged and archived");
 
     // Amend the dependent post-merge: the entry projection drifts and
     // the manifest goes stale.

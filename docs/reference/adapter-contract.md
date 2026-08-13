@@ -25,7 +25,7 @@ A source adapter participates in two places in the lifecycle.
 - synopsis: Registration endpoint accepting email + password with email-format validation.
 ```
 
-**`extract(Lead, Source) → Evidence`** runs inside the `emery plan refine` drain (and standalone `emery source extract`). It returns a structured document the CLI persists to `.emery/slices/<slice>/evidence/<source>.yaml`:
+**`extract(Lead, Source) → Evidence`** runs inside the `emery plan refine` drain (and standalone `emery source extract`). It returns a structured document the CLI persists to `.emery/change/slices/<slice>/evidence/<source>.yaml`:
 
 ```yaml
 authority: behaviour

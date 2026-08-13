@@ -35,7 +35,7 @@ fn reads_prior_actor_wire() {
     // unparseable lines, so missing aliases would silently drop history.
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
-    let events_dir = root.join(".emery/events");
+    let events_dir = root.join(".emery/change/events");
     std::fs::create_dir_all(&events_dir).expect("mkdir");
     let claimed = concat!(
         r#"{"timestamp":"2023-11-14T22:13:20Z","actor":"alice","sequence":1,"#,
@@ -172,7 +172,7 @@ fn append_stamps_writer() {
         .expect("append batch");
     append_for(layout, "operator-a", &[build_started(2, "gamma")]).expect("append one more");
 
-    let path = root.join(".emery/events/operator-a.jsonl");
+    let path = root.join(".emery/change/events/operator-a.jsonl");
     assert!(path.is_file(), "writer file created");
     assert!(!root.join(".emery/journal.jsonl").exists(), "single-file journal is not written");
     let events = read_union(layout).expect("union");
@@ -222,7 +222,7 @@ fn append_uses_default() {
 
     append_one(layout, &build_started(0, "solo")).expect("append");
 
-    let writer_path = root.join(".emery/events").join(format!("{DEFAULT_WRITER}.jsonl"));
+    let writer_path = root.join(".emery/change/events").join(format!("{DEFAULT_WRITER}.jsonl"));
     assert!(writer_path.is_file(), "default writer file");
     assert!(!root.join(".emery/journal.jsonl").exists(), "legacy journal.jsonl is not written");
 

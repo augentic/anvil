@@ -8,7 +8,7 @@ Augentic uses stock Emery as its executable workflow contract. Operators drive `
 
 ```text
 $PROJECT_DIR        = <workspace>
-$SLICE_DIR          = $PROJECT_DIR/.emery/slices/<slice-name>
+$SLICE_DIR          = $PROJECT_DIR/.emery/change/slices/<slice-name>
 $SPECS_DIR          = $SLICE_DIR/specs
 $DESIGN_PATH        = $SLICE_DIR/design.md
 $PROPOSAL_PATH      = $SLICE_DIR/proposal.md
@@ -18,7 +18,7 @@ $BASELINE_SPECS     = $PROJECT_DIR/.emery/specs
 $BASELINE_DECISIONS = $PROJECT_DIR/.emery/decisions
 ```
 
-Merged and dropped slices are archived to `$PROJECT_DIR/.emery/archive/YYYY-MM-DD-<slice-name>/` — a prunable convenience cache, not the system of record.
+Merged and dropped slices are archived to `$PROJECT_DIR/.emery/change/archive/YYYY-MM-DD-<slice-name>/` — a prunable convenience cache, not the system of record.
 
 ## What belongs to specialists vs the artifacts
 

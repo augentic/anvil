@@ -30,10 +30,10 @@ What exists and is load-bearing for this plan:
 | Area | State |
 | --- | --- |
 | RFC-104 (`emery system *`, `system.wave.reviewed`, handoffs, definition home) | **Absent** — prose only; implementation imminent (see closed Open Question 1). `EventKind::PlanExecuteStarted.discovery_digest` exists but is always `None`. |
-| In-place `plan author` | Implemented: `crates/change/src/orchestrate/author.rs` (survey → pins → propose → `plan.yaml` + `discovery.md` + `change.md` at the repo root). |
+| In-place `plan author` | Implemented: `crates/change/src/orchestrate/author.rs` (survey → pins → propose → `plan.yaml` + `discovery.md` + `change.md` under `.emery/change/`). |
 | Plan model | `crates/project/src/plan/model/state.rs`: `Plan { name, sources, entries }`; `Entry.project: Option<String>` is the current target hook (removed in step 9 per closed Open Question 11); no `targets:` map, no digests. |
 | RFC-91 refinement | Implemented: `refinement.yaml` with `inputs.planning.{entry, leads, decomposition}` (decomposition currently the canonical single-node projection), `inputs.profile` = canonical empty digest placeholder. |
-| RFC-86 waves / build records | Implemented in-place: `crates/project/src/wave.rs` (`.emery/targets/<target>/waves/<digest>.yaml`; `Wave.members: Vec<Member>` gated by `enforce_one_member` — preserved, closed Open Question 12), `crates/project/src/build_record.rs` (`builds/<digest>.yaml`). Wave base comes from `freeze()` at build open. |
+| RFC-86 waves / build records | Implemented in-place: `crates/project/src/wave.rs` (`.emery/change/targets/<target>/waves/<digest>.yaml`; `Wave.members: Vec<Member>` gated by `enforce_one_member` — preserved, closed Open Question 12), `crates/project/src/build_record.rs` (`builds/<digest>.yaml`). Wave base comes from `freeze()` at build open. |
 | RFC-86a gap gate | Implemented (`gap.deferred`, debt projection). No RFC-88 work needed beyond coverage wiring. |
 | Workspace kernel | Implemented: `crates/project/src/workspace/` + `snapshot.rs`. `Store::apply` **exists** (used by merge `apply_result`); `Workspaces` trait carries `freeze/prepare/capture/discard/apply/sweep`; snapshot ignore policy excludes `.git` **and `.emery`**. |
 | Merge | `crates/slice/src/orchestrate/merge.rs`: preflight → deterministic delta-spec commit **into the operator checkout's `.emery/specs/`** → `Workspaces::apply` patch write-back → `target.merge.wave-committed` → postflight. |
@@ -76,7 +76,7 @@ Steps 1–3 and 5–18 are strictly ordered. Step 4 is closed with no work (Open
 
 The first cut lands the execution-substrate change while everything is still in-place and single-target, so behaviour changes are testable against the existing suite before any new authoring surface exists.
 
-### Step 1 — Relocate the in-place change home to `.emery/change/` [ ]
+### Step 1 — Relocate the in-place change home to `.emery/change/` [x]
 
 **RFC anchors:** D1 (change-home tree, in-place mode paragraph), implementation requirement "Operations take explicit target (product) and change roots… in-place changes use `<product>/.emery/change/`".
 
@@ -96,6 +96,15 @@ The first cut lands the execution-substrate change while everything is still in-
 
 **Why first:** every later step (tree boundary, two-root dispatch, detached homes) needs "the change home" to be one directory, not a scatter of root-level files plus most-of-`.emery/`.
 
+**Notes (2026-08-13):**
+
+- `Layout::change_root()` is `<project>/.emery/change/`. Durable helpers (`config_path`, `specs_dir`, `decisions_dir`, `guest_lock_path`) stay on `.emery/`; change-scoped helpers (`plan_path`, `change_brief_path`, `discovery_path`, `slices_dir`, `events_dir`, `targets_dir`, `archive_dir`) re-anchor on `change_root()`. `emery init --upgrade` now ensures those directories exist and does not migrate live artifacts from the old flat layout.
+- Parent-walk helpers that assumed `slices/` sat directly under `.emery/` are updated: `Layout::project_dir_from_slice` walks `slices → change → .emery → project`. `Plan::archive` takes a `Layout` instead of inferring the project root from `plan.yaml`'s parent. The unused `.emery/plans/<name>/` co-move (nothing writes that trail today) now looks under `change_root()/plans/`.
+- `guest.lock` and `scratch/` stay under `.emery/`, not the change home — they were not in this step's change-scoped list. Step 6's two-root plumbing should decide whether the guest marker moves onto the change root once a detached home has no `.emery/`.
+- First-party source adapters still tell the model to parse `plan.yaml` at the lent workspace root (`BINDING_NOTE` in `emery-adapters`). Engine mock tests do not hit that path. Live eval/wasm against real adapters will look in the wrong place until step 12 deletes those notes. No adapters-repo change in this step.
+- Answer-schema goldens (`report` / `phase-report`) carry the slice Decision Record path in a description string; the engine copies under `crates/adapter/schemas/` were updated with it. Not a wire-shape break.
+- Between this step and step 2, `plan.yaml` / `change.md` / `discovery.md` drop out of snapshots (they moved under `.emery/`, which is still fully excluded). That is the desired end state for those files — step 2 keeps the change home excluded. Step 2's "root-plan-artifact exclusions" item is now a no-op: there are no plan artifacts at the repo root to exclude. The snapshot walker still carries `IGNORED_ROOT` (`change.md` / `discovery.md` / `plan.yaml` at the walk root) in `crates/project/src/workspace/store.rs`; after this move those names never appear at the product root, so step 2 should delete the constant when it retargets the ignore policy from `.emery/` to `.emery/change/`.
+
 ### Step 2 — Target-tree boundary: `.git` + change home only [ ]
 
 **RFC anchors:** D1 (last paragraph), D5 ("the identified tree includes durable Emery state"), implementation requirement "Target trees ignore only `.git` and a nested change home. `.emery/` is otherwise included." Amends RFC-87 D4 / acceptance criterion 4.
@@ -103,7 +112,7 @@ The first cut lands the execution-substrate change while everything is still in-
 **Scope (emery):**
 
 - Change the snapshot ignore policy (`project::snapshot` ignore rules and the native `Store::snapshot` walker) from "exclude `.git` + `.emery`" to "exclude `.git` + the nested change home (`.emery/change/`)". `project.yaml`, `specs/`, `decisions/`, and the rest of `.emery/` fold into every snapshot.
-- Update `freeze()` implementations (native provider, guest provider) and any root-plan-artifact exclusions that step 1 made obsolete.
+- Update `freeze()` implementations (native provider, guest provider). Delete `IGNORED_ROOT` in `crates/project/src/workspace/store.rs` (`change.md` / `discovery.md` / `plan.yaml` at the walk root): step 1 moved those files into the change home, so there is nothing at the repo root for freeze to special-case.
 - Verify digest identity stays deployment-independent (native vs guest kernels produce byte-identical manifests for the new boundary).
 - Kernel round-trip tests: baseline (`.emery/specs/`), `project.yaml`, and `decisions/` survive `freeze → prepare → capture`; the change home never appears in a snapshot; a workspace prepared from such a snapshot exposes the baseline to the build agent.
 
@@ -173,6 +182,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Transport grammar: `emery plan author <name> --from <definition-root> --wave <id> [--change-dir <dir>] [--force]` (detached), and in-place `--from .emery/system/` binding for a colocated degenerate definition. The old author grammar (bindings from `case.toml`-style init) is removed in step 9 when binding fully replaces survey-driven authoring; this step lands the flags, root resolution, and change-home scaffolding, with the new path returning a typed "not yet implemented" until step 9 completes the phases. (If the operator prefers no dead grammar on the branch, fold this step's CLI surface into step 9 and keep only the root plumbing here.)
 - Launcher: mount policy for the detached change root (writable) and the definition root (read-only) as preopens; keep the store host-owned. Guest `Layout` consumes the change root.
 - `emery init` is not required for a detached change (acceptance criterion 1: empty non-Git directory works); make init-dependence explicit and remove it from the detached path.
+- Step 1 left `guest.lock` at `.emery/guest.lock`. A detached change home has no `.emery/`; this step should re-home the marker onto the resolved change root (or replace it) so detached `plan refine` / `plan execute` still have a create-exclusive fence.
 
 **Key code areas:** `crates/project/src/handler/paths.rs`, `crates/project/src/config.rs`, `crates/launcher/src/`, `crates/transport/src/command/`, `crates/guest/`, `src/main.rs` mount expressions.
 
@@ -275,7 +285,7 @@ The first cut lands the execution-substrate change while everything is still in-
 **Scope (emery-adapters, path-patched to sibling engine):**
 
 - The adapters repo is expected not to build against the sibling engine between steps 11 and 12 — that window is intra-branch only (closed Open Question 13). The adapters PR lands with the engine PR.
-- Rework `sources/{intent,documentation,typescript,screenshots,captures}/src/operations.rs` to the new trait: consume the passed source key, workspace-or-value, and optional parent/terminal `Lead` (parent/focus on the wire). Delete every `BINDING_NOTE` that tells the model to parse `plan.yaml` from a lent project or change-home tree. Implement focused survey (return stable child leads under the requested parent, inheriting parent context from the passed `Lead`, not from `leads.md` or slice files).
+- Rework `sources/{intent,documentation,typescript,screenshots,captures}/src/operations.rs` to the new trait: consume the passed source key, workspace-or-value, and optional parent/terminal `Lead` (parent/focus on the wire). Delete every `BINDING_NOTE` that tells the model to parse `plan.yaml` from a lent project or change-home tree (as of step 1 those notes still say "workspace root", which is already wrong for in-place `.emery/change/plan.yaml`). Implement focused survey (return stable child leads under the requested parent, inheriting parent context from the passed `Lead`, not from `leads.md` or slice files).
 - Update survey/extract prompts (`prose/prompts/`) for the new input model and focused re-survey semantics: `$SOURCE_DIR` is the CID view (absent for inline `value`); the change home and `$PROJECT_DIR` are unreachable; do not look leads up in `leads.md` / `discovery.md` or read `slices/<slice>/`.
 - Target adapters: audit for assumptions broken by steps 2–3 (baseline now inside the workspace tree; merge runs against a workspace, not the checkout) — expected small; contracts preflight/postflight baseline reads are the main suspects.
 - Update adapter native tests (`tests/operations.rs`) to the new DTOs.

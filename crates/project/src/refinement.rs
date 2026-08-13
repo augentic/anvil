@@ -20,7 +20,7 @@ use crate::snapshot::SnapshotId;
 /// Manifest wire version.
 pub const VERSION: u32 = 1;
 
-/// On-disk `.emery/slices/<slice>/refinement.yaml`.
+/// On-disk `.emery/change/slices/<slice>/refinement.yaml`.
 ///
 /// The canonical bytes are the YAML serialization written by
 /// [`Manifest::write`]; [`file_digest`] over the untouched on-disk

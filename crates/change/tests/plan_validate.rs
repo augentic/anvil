@@ -27,8 +27,9 @@ async fn structural_findings() {
 
     for (expected, body) in cases {
         let project = Session::scripted("demo", Vec::new());
-        fs::write(project.root().join("plan.yaml"), format!("name: validation\n{body}"))
-            .expect("stage plan");
+        let path = project.root().join(".emery/change/plan.yaml");
+        fs::create_dir_all(path.parent().expect("parent")).expect("change home");
+        fs::write(&path, format!("name: validation\n{body}")).expect("stage plan");
 
         let err = run::<change::plan::handlers::Validate, _, _>(
             project.provider(),

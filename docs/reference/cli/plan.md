@@ -17,7 +17,7 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 | [`validate`](#emery-plan-validate) | Structural and referential integrity check (cycles, unknown deps) plus health diagnostics (`cycle-in-depends-on`, `orphan-source`). First triage step when `emery plan execute` reports `stuck`. |
 | [`status`](#emery-plan-status) | Read-only projection into a deterministic `next-action` (`refine|build|merge <slice>` / `stop <reason>` / `drained`) plus Ready / Authorized. |
 | [`gaps`](#emery-plan-gaps) | Read-only typed gap inventory (`unknown` / `conflict` / `divergence`) with shared-lead grouping annotations. |
-| [`archive`](#emery-plan-archive) | Move a completed `plan.yaml` and `.emery/plans/<name>/` to `.emery/archive/plans/`. Usually invoked by `/emery:finalize` after the operator confirms publication (commits, PRs, review) is complete — publication itself stays operator-owned, outside Emery. |
+| [`archive`](#emery-plan-archive) | Move a completed `plan.yaml` and `.emery/change/plans/<name>/` to `.emery/change/archive/plans/`. Usually invoked by `/emery:finalize` after the operator confirms publication (commits, PRs, review) is complete — publication itself stays operator-owned, outside Emery. |
 
 ## Subcommands
 
@@ -42,7 +42,7 @@ JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-pl
 
 Behavior notes:
 
-- **Order of operations.** Every binding is resolved up front, then `plan.yaml` is scaffolded at the repo root, then the survey and reconcile legs run. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
+- **Order of operations.** Every binding is resolved up front, then `plan.yaml` is scaffolded under `.emery/change/`, then the survey and reconcile legs run. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
 - **Bare adapter names** persist bare in `plan.yaml` (no auto version stamp). A cache-seeded binding (`emery adapter add`) resolves the seed; an unseeded bare name resolves local-first — newest installed store version, else pull-latest provisioning. The resolved version is logged to stderr; the survey fan-out and every later `plan refine` extract dispatch the same local resolution.
 - **Explicit pins** (`emery:<name>@<semver>`) stamp `version:` on the binding and install through the standard pull-on-miss path.
 - **`--intent`** creates an implicit `intent` value binding that rides the same resolution rules.
@@ -59,7 +59,7 @@ emery plan refine [--slice <slice>]...
 |------|-------------|
 | `--slice <slice>` | Repeatable. Target specific in-scope leaves; selectors also include the stale-or-missing predecessor closure the selected work needs. Omitted, every in-scope leaf is targeted. |
 
-The drain walks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts (`proposal.md`, `specs/<domain>/spec.md`, `design.md`, `tasks.md`, `model.yaml`), and atomically writes `.emery/slices/<slice>/refinement.yaml` — the canonical record of the refinement's exact inputs and complete output bundle, identified by its content digest. Dependent refinement requires every direct predecessor's manifest currently fresh; the fresh digests are recorded as the dependent's ordered `dependencies[]` pins. Fresh leaves are skipped (`fresh <slice> (skipped)`), so re-running resumes missing or stale work. The drain holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime.
+The drain walks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts (`proposal.md`, `specs/<domain>/spec.md`, `design.md`, `tasks.md`, `model.yaml`), and atomically writes `.emery/change/slices/<slice>/refinement.yaml` — the canonical record of the refinement's exact inputs and complete output bundle, identified by its content digest. Dependent refinement requires every direct predecessor's manifest currently fresh; the fresh digests are recorded as the dependent's ordered `dependencies[]` pins. Fresh leaves are skipped (`fresh <slice> (skipped)`), so re-running resumes missing or stale work. The drain holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime.
 
 No target build operation, product workspace, target wave, `BuildRecord`, merge gate, or authorization epoch is created — `plan refine` writes planning artifacts only. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs; those are persisted, not failures, and the output points at `emery plan gaps`. Bundle artifacts are engine-owned between refine and execute: a direct edit is detected as staleness and re-refinement replaces it — durable corrections travel through inputs (source material, `emery plan amend`, authority overrides).
 
@@ -193,7 +193,7 @@ Abandon one plan entry's slice without merging.
 emery plan drop <entry> [--reason "<rationale>"]
 ```
 
-Stamps the slice `dropped` (persisting the reason in `metadata.yaml.drop_reason`) and moves the slice tree to `.emery/archive/`. The entry stays on the plan and projects the `slice-dropped` stop — a dropped slice remains in-scope for gap accounting (RFC-86 D24).
+Stamps the slice `dropped` (persisting the reason in `metadata.yaml.drop_reason`) and moves the slice tree to `.emery/change/archive/`. The entry stays on the plan and projects the `slice-dropped` stop — a dropped slice remains in-scope for gap accounting (RFC-86 D24).
 
 Exit codes: `0` success (the body carries the archive path); `1` for an unknown entry (`plan-entry-not-found`) or a never-refined entry with no slice tree (`plan-drop-no-slice` — curate that entry with `emery plan remove` instead).
 
@@ -232,7 +232,7 @@ Archive a completed plan.
 emery plan archive
 ```
 
-Moves `plan.yaml` and `.emery/plans/<name>/` to `.emery/archive/plans/<YYYYMMDD>-<name>/`, then runs the change-scoped snapshot collection: the archived change's pins (wave bases, `builds/<digest>.yaml`) stop being GC roots, so snapshot-store objects reachable only from them are deleted (RFC-88 D2). Objects still reachable from a live slice tree survive.
+Moves `plan.yaml` and `.emery/change/plans/<name>/` to `.emery/change/archive/plans/<YYYYMMDD>-<name>/`, then runs the change-scoped snapshot collection: the archived change's pins (wave bases, `builds/<digest>.yaml`) stop being GC roots, so snapshot-store objects reachable only from them are deleted (RFC-88 D2). Objects still reachable from a live slice tree survive.
 
 When the change carried deferred debt into the baseline, the archive prints the carried-debt summary (slice, requirement, reason, age) — advisory only; archiving never blocks on debt. The rows stay in the baseline, projected by [`emery debt`](debt.md).
 

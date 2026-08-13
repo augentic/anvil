@@ -2,16 +2,14 @@
 //! ensured adapter binding and writes `project.yaml`.
 
 use std::collections::BTreeMap;
-use std::fs;
-use std::path::PathBuf;
 
 use error::Error;
 
 use crate::adapter::ComponentMeta;
 use crate::config::{Layout, ProjectConfig};
 use crate::init::{
-    InitOptions, InitResult, binding_value, resolve_version, resolved_name, upsert_gitignore,
-    validate_platforms,
+    InitOptions, InitResult, binding_value, ensure_scaffold_dirs, resolve_version, resolved_name,
+    upsert_gitignore, validate_platforms,
 };
 
 /// canonical refine-time artifact set. Hardcoded — refine synthesises
@@ -29,22 +27,10 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let name = resolved_name(opts.project_dir, opts.name);
     let layout = Layout::new(opts.project_dir);
 
-    let mut directories_created: Vec<PathBuf> = Vec::new();
-    // Repo-root artefacts (`change.md`, `plan.yaml`) and the
+    // Change-home artefacts (`change.md`, `plan.yaml`) and the
     // out-of-tree memoization cache are minted on demand by their
-    // owners; `.emery/specs/` is a convention the omnia adapter uses.
-    for dir in [
-        layout.emery_dir(),
-        layout.slices_dir(),
-        layout.emery_dir().join("specs"),
-        layout.archive_dir(),
-    ] {
-        let already = dir.exists();
-        fs::create_dir_all(&dir)?;
-        if !already {
-            directories_created.push(dir);
-        }
-    }
+    // owners; `.emery/specs/` is durable product state.
+    let directories_created = ensure_scaffold_dirs(&layout)?;
 
     // Persist the selector as typed: a bare name stays bare — the
     // deployment resolves it local-first at every use.

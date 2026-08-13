@@ -8,7 +8,7 @@ Every verb takes the slice `<name>`. The CLI resolves the on-disk directory from
 
 | Verb | When to use |
 |------|-------------|
-| [`list`](#emery-slice-list) | Read-only listing of every slice under `.emery/slices/` with its lifecycle status and target. |
+| [`list`](#emery-slice-list) | Read-only listing of every slice under `.emery/change/slices/` with its lifecycle status and target. |
 | [`validate`](#emery-slice-validate) | Run artifact validation, including refinement-freshness and baseline-conflict review advisories. |
 | [`model`](#emery-slice-model) | `model show` — read-only view of the persisted `model.yaml`. |
 | [`provenance`](#emery-slice-provenance) | Project the on-demand audit view of inline provenance from `model.yaml` + Evidence. |
@@ -17,7 +17,7 @@ Every verb takes the slice `<name>`. The CLI resolves the on-disk directory from
 
 ### emery slice list
 
-List every slice under `.emery/slices/` with its lifecycle status and recorded target.
+List every slice under `.emery/change/slices/` with its lifecycle status and recorded target.
 
 ```bash
 emery slice list [--format json]
@@ -52,7 +52,7 @@ Read-only view of the persisted typed model.
 emery slice model show <name> [--format json]
 ```
 
-Loads `.emery/slices/<name>/model.yaml` and renders it (text, or the schema-shaped object under `--format json`). The model carries the earned core — `requirements` (with inline provenance: `claims[]`, `winner` markers, rendered `sources`, `status`) and `tasks` — plus the `version` / `slice` / `project` header. `target` is not a `model.yaml` field; it is resolved on demand from the bound project.
+Loads `.emery/change/slices/<name>/model.yaml` and renders it (text, or the schema-shaped object under `--format json`). The model carries the earned core — `requirements` (with inline provenance: `claims[]`, `winner` markers, rendered `sources`, `status`) and `tasks` — plus the `version` / `slice` / `project` header. `target` is not a `model.yaml` field; it is resolved on demand from the bound project.
 
 ### emery slice provenance
 

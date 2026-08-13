@@ -20,7 +20,7 @@ pub struct ExtractOutcome {
     pub source: String,
     /// Bound source adapter name.
     pub adapter: String,
-    /// Persisted `.emery/slices/<slice>/evidence/<source>.yaml`.
+    /// Persisted `.emery/change/slices/<slice>/evidence/<source>.yaml`.
     pub evidence: PathBuf,
 }
 

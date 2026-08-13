@@ -304,10 +304,13 @@ pub fn marker(root: &std::path::Path, name: &str) {
 }
 
 /// The attempt directory
-/// `.emery/slices/<slice>/build/attempts/<NNNN>/`.
+/// `.emery/change/slices/<slice>/build/attempts/<NNNN>/`.
 #[must_use]
 pub fn attempt_dir(root: &std::path::Path, slice: &str, attempt: u32) -> std::path::PathBuf {
-    root.join(".emery/slices").join(slice).join("build/attempts").join(format!("{attempt:04}"))
+    root.join(".emery/change/slices")
+        .join(slice)
+        .join("build/attempts")
+        .join(format!("{attempt:04}"))
 }
 
 /// Sorted `phases/` file names of one attempt.
@@ -357,7 +360,7 @@ pub fn phase_events(root: &std::path::Path) -> Vec<(u32, u32, String, String)> {
 /// Panics when the canonical report is absent or stops parsing.
 #[must_use]
 pub fn canonical_report(root: &std::path::Path, slice: &str) -> slice::BuildReport {
-    let path = root.join(".emery/slices").join(slice).join("build/report.yaml");
+    let path = root.join(".emery/change/slices").join(slice).join("build/report.yaml");
     let yaml = std::fs::read_to_string(&path)
         .unwrap_or_else(|err| panic!("canonical report `{}`: {err}", path.display()));
     serde_saphyr::from_str(&yaml).expect("canonical report parses")

@@ -91,7 +91,7 @@ async fn author(session: &Session, sources: Vec<SourceAssign>) {
 }
 
 fn manifest_path(root: &std::path::Path, slice: &str) -> std::path::PathBuf {
-    root.join(".emery/slices").join(slice).join("refinement.yaml")
+    root.join(".emery/change/slices").join(slice).join("refinement.yaml")
 }
 
 // (1) + (2): a fresh closed plan drains every leaf in entry order and
@@ -237,7 +237,7 @@ async fn slice_closure() {
     assert_eq!(drained.refined, ["login-flow", "password-reset"]);
     assert!(drained.skipped.is_empty(), "{:?}", drained.skipped);
     assert!(
-        !root.join(".emery/slices/session-policy").exists(),
+        !root.join(".emery/change/slices/session-policy").exists(),
         "the unselected sibling is untouched"
     );
     // The password-reset evidence gap surfaces as an open `[unknown]`.

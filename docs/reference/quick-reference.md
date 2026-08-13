@@ -32,14 +32,14 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 
 | Artifact            | Question                            | Location                                                          |
 | ------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `change.md`         | Why is the change happening?        | `change.md` (project root)                                        |
-| `plan.yaml`         | Which slices, in what order?        | `plan.yaml` (project root)                                        |
-| `discovery.md`      | What leads did sources surface? | `discovery.md` (project root)                                     |
-| `proposal.md`       | Why does this slice exist?          | `.emery/slices/<name>/proposal.md`                              |
-| `spec.md`           | What must the system do?            | `.emery/slices/<name>/specs/<domain>/spec.md`                     |
-| `design.md`         | How will it be implemented?         | `.emery/slices/<name>/design.md`                                |
-| `tasks.md`          | In what sequence?                   | `.emery/slices/<name>/tasks.md`                                 |
-| `evidence/<key>.yaml` | What did this source say?         | `.emery/slices/<name>/evidence/<source>.yaml`               |
+| `change.md`         | Why is the change happening?        | `.emery/change/change.md`                                         |
+| `plan.yaml`         | Which slices, in what order?        | `.emery/change/plan.yaml`                                         |
+| `discovery.md`      | What leads did sources surface? | `.emery/change/discovery.md`                                      |
+| `proposal.md`       | Why does this slice exist?          | `.emery/change/slices/<name>/proposal.md`                              |
+| `spec.md`           | What must the system do?            | `.emery/change/slices/<name>/specs/<domain>/spec.md`                     |
+| `design.md`         | How will it be implemented?         | `.emery/change/slices/<name>/design.md`                                |
+| `tasks.md`          | In what sequence?                   | `.emery/change/slices/<name>/tasks.md`                                 |
+| `evidence/<key>.yaml` | What did this source say?         | `.emery/change/slices/<name>/evidence/<source>.yaml`               |
 
 ## Lifecycle states (projected)
 
@@ -107,19 +107,20 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
 ```text
 <project-root>/
 ├── AGENTS.md             # generated agent guidance with operator-editable prose outside fences
-├── change.md             # operator brief (per active change)
-├── plan.yaml             # change plan
-├── discovery.md          # plan-time lead inventory
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .emery/
     ├── project.yaml      # project config (target, sources, emery-version)
     ├── guest.lock        # lock held by a running plan refine / plan execute (a second driver gets guest-marker-held)
     ├── scratch/          # transient per-run working state (gitignored)
-    ├── slices/           # active slices (proposal/spec/design/tasks + evidence/ + refinement.yaml + builds/)
-    ├── targets/          # one-member wave manifests
     ├── specs/            # merged baseline
-    ├── events/           # per-writer fact logs (<writer>.jsonl)
-    └── archive/          # finalized plans and merged or dropped slices
+    └── change/           # in-place change home
+        ├── plan.yaml     # change plan
+        ├── change.md     # operator brief
+        ├── discovery.md  # plan-time lead inventory
+        ├── slices/       # active slices (proposal/spec/design/tasks + evidence/ + refinement.yaml + builds/)
+        ├── targets/      # one-member wave manifests
+        ├── events/       # per-writer fact logs (<writer>.jsonl)
+        └── archive/      # finalized plans and merged or dropped slices
 ```
 
 The regenerable adapter cache lives outside the working tree under the Emery home (`$EMERY_HOME/cache/<project-id>/`, default `~/.emery`). See [Directory layout](directory-layout.md) for the full tree.

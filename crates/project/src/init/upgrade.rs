@@ -1,18 +1,23 @@
-//! Re-entry (`emery init --upgrade`): bumps `project.yaml.emery` over
-//! an existing `.emery/` without re-scaffolding. Mutates only
-//! `project.yaml`; the recorded adapter binding is never rewritten.
+//! Re-entry (`emery init --upgrade`): bumps `project.yaml.emery` and
+//! ensures the current layout directories exist. Does not migrate
+//! live change artifacts; the recorded adapter binding is never rewritten.
 
 use error::Error;
 
 use crate::adapter::ComponentMeta;
 use crate::config::{Layout, ProjectConfig};
-use crate::init::{InitOptions, InitResult, binding_value, resolve_version, validate_platforms};
+use crate::init::{
+    InitOptions, InitResult, binding_value, ensure_scaffold_dirs, resolve_version,
+    validate_platforms,
+};
 
 /// Run the re-entry version bump.
 ///
 /// Loads the existing config, then bumps the `emery` pin to the
 /// running binary's version — but only when it differs, so an
 /// already-current project is a true no-op (no `project.yaml` write).
+/// Always ensures the current layout directories exist; never moves
+/// live change artifacts from a prior layout.
 ///
 /// # Errors
 ///
@@ -25,6 +30,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
     let mut cfg = ProjectConfig::load(opts.project_dir)?;
 
     let layout = Layout::new(opts.project_dir);
+    let directories_created = ensure_scaffold_dirs(&layout)?;
     let config_path = layout.config_path();
     let target = resolve_version();
 
@@ -69,7 +75,7 @@ pub(super) fn run(opts: InitOptions<'_>) -> Result<InitResult, Error> {
         cache_present: ComponentMeta::path(opts.paths, &adapter_name).exists(),
         adapter_name,
         adapter_binding,
-        directories_created: Vec::new(),
+        directories_created,
         scaffolded_rule_keys: Vec::new(),
         emery_version: target,
         context_skip_reason: None,

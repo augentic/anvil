@@ -12,20 +12,20 @@ pub struct ListArgs {}
 /// Arguments for `slice validate`.
 #[derive(Debug, clap::Args)]
 pub struct ValidateArgs {
-    /// Slice name (under `.emery/slices/`)
+    /// Slice name (under `.emery/change/slices/`)
     pub name: String,
 }
 
 /// Arguments for `slice provenance`.
 #[derive(Debug, clap::Args)]
 pub struct ProvenanceArgs {
-    /// Slice name (under `.emery/slices/`)
+    /// Slice name (under `.emery/change/slices/`)
     pub name: String,
 }
 
 /// Arguments for `slice model show`.
 #[derive(Debug, clap::Args)]
 pub struct ModelShowArgs {
-    /// Slice name (under `.emery/slices/`)
+    /// Slice name (under `.emery/change/slices/`)
     pub name: String,
 }

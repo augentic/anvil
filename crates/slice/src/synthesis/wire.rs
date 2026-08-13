@@ -193,7 +193,7 @@ pub struct DependencyContext {
     /// Predecessor refinement digest (`sha256:…`).
     pub refinement: String,
     /// Project-relative readable artifact root
-    /// (`.emery/slices/<predecessor>/`).
+    /// (`.emery/change/slices/<predecessor>/`).
     pub artifacts_root: String,
 }
 
@@ -243,7 +243,7 @@ pub struct SourceInput {
     /// The source's discovery lead id (from `evidence/<source>.yaml`).
     pub lead: String,
     /// Project-relative path to the source's Evidence document
-    /// (`.emery/slices/<slice>/evidence/<source>.yaml`), resolvable in
+    /// (`.emery/change/slices/<slice>/evidence/<source>.yaml`), resolvable in
     /// the lent tree the agent works in.
     pub evidence_path: String,
 }

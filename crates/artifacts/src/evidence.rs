@@ -1,6 +1,6 @@
 //! Source-adapter Evidence shapes.
 //!
-//! Per-source `extract` output at `.emery/slices/<slice>/evidence/<source>.yaml`:
+//! Per-source `extract` output at `.emery/change/slices/<slice>/evidence/<source>.yaml`:
 //! typed [`Document`] / [`Claim`] plus the closed [`AuthorityClass`] / [`ClaimKind`] enums.
 
 pub mod authority;

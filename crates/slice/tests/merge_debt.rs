@@ -70,7 +70,7 @@ tasks: []
 
 fn stage_built_gap_slice(session: &Session) {
     let root = session.root();
-    let slice_dir = root.join(".emery/slices/greeting");
+    let slice_dir = root.join(".emery/change/slices/greeting");
     let specs = slice_dir.join("specs/greeting");
     fs::create_dir_all(&specs).expect("slice specs");
     fs::write(specs.join("spec.md"), gap_delta()).expect("delta");

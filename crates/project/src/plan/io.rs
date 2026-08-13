@@ -30,7 +30,7 @@ impl AtomicYaml for Plan {
 }
 
 impl Plan {
-    /// Load `plan.yaml` (at the repo root) from disk.
+    /// Load `plan.yaml` from disk.
     ///
     /// Errors mirror [`crate::slice::SliceMetadata::load`]:
     ///   - missing file -> `Error::ArtifactNotFound`

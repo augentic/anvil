@@ -63,7 +63,7 @@ fn write_plan(root: &std::path::Path, plan: &Plan) {
 }
 
 fn write_model(root: &std::path::Path, slice: &str, yaml: &str) {
-    let dir = root.join(".emery/slices").join(slice);
+    let dir = root.join(".emery/change/slices").join(slice);
     fs::create_dir_all(dir.join("specs")).expect("slice/specs");
     fs::write(dir.join("model.yaml"), yaml).expect("model.yaml");
     fs::write(

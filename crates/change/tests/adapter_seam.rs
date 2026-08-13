@@ -65,7 +65,7 @@ async fn unknown_fails_scaffold() {
     let err = author(&session, "no-such-adapter").await.expect_err("ensure fails");
     let detail = err.to_string();
     assert!(detail.contains("adapter-not-linked"), "{detail}");
-    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+    assert!(!session.root().join(".emery/change/plan.yaml").exists(), "nothing scaffolded");
 }
 
 #[tokio::test]
@@ -80,7 +80,7 @@ async fn mismatched_pin_refused() {
     let detail = err.to_string();
     assert!(detail.contains("adapter-not-linked"), "{detail}");
     assert!(detail.contains("emery:mock@1.0.0"), "pin parsed into the package form: {detail}");
-    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+    assert!(!session.root().join(".emery/change/plan.yaml").exists(), "nothing scaffolded");
 }
 
 #[tokio::test]
@@ -96,7 +96,7 @@ async fn placeholder_pin_refused() {
     let detail = err.to_string();
     assert!(detail.contains("adapter-not-linked"), "{detail}");
     assert!(detail.contains("placeholder"), "{detail}");
-    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+    assert!(!session.root().join(".emery/change/plan.yaml").exists(), "nothing scaffolded");
 }
 
 #[tokio::test]
@@ -117,7 +117,7 @@ async fn survey_ensures_pinned() {
             cid: None,
         },
     );
-    let plan_path = session.root().join("plan.yaml");
+    let plan_path = session.root().join(".emery/change/plan.yaml");
     project::plan::scaffold(&plan_path, "demo", bindings, false)
         .expect("scaffold")
         .save(&plan_path)
@@ -146,7 +146,7 @@ async fn malformed_token_parse() {
     let err = author(&session, "mock@not-semver").await.expect_err("parse refuses the token");
     let detail = err.to_string();
     assert!(detail.contains("plan-source-adapter-invalid"), "{detail}");
-    assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+    assert!(!session.root().join(".emery/change/plan.yaml").exists(), "nothing scaffolded");
 }
 
 mod bare_bindings {
@@ -163,7 +163,8 @@ mod bare_bindings {
 
         author(&session, "mock").await.expect("author succeeds over the bare binding");
 
-        let plan = project::plan::Plan::load(&session.root().join("plan.yaml")).expect("plan.yaml");
+        let plan = project::plan::Plan::load(&session.root().join(".emery/change/plan.yaml"))
+            .expect("plan.yaml");
         assert_eq!(plan.sources["main"].version, None, "the bare binding stays unversioned");
     }
 
@@ -185,7 +186,8 @@ mod bare_bindings {
         .await
         .expect("author succeeds over the bare bindings");
 
-        let plan = project::plan::Plan::load(&session.root().join("plan.yaml")).expect("plan.yaml");
+        let plan = project::plan::Plan::load(&session.root().join(".emery/change/plan.yaml"))
+            .expect("plan.yaml");
         for key in ["docs", "code"] {
             assert_eq!(plan.sources[key].version, None, "binding `{key}` stays unversioned");
         }
@@ -212,7 +214,7 @@ mod bare_bindings {
         let detail = err.to_string();
         assert!(detail.contains("adapter-not-linked"), "{detail}");
         assert!(detail.contains("intent"), "{detail}");
-        assert!(!session.root().join("plan.yaml").exists(), "nothing scaffolded");
+        assert!(!session.root().join(".emery/change/plan.yaml").exists(), "nothing scaffolded");
     }
 }
 
@@ -271,11 +273,13 @@ async fn merge_failure_parks_built() {
     assert!(detail.contains("mock merge failure"), "typed detail preserved: {detail}");
 
     let metadata =
-        std::fs::read_to_string(session.root().join(".emery/slices/greeting/metadata.yaml"))
+        std::fs::read_to_string(session.root().join(".emery/change/slices/greeting/metadata.yaml"))
             .expect("slice still present");
     assert!(metadata.contains("completed-at:"), "no commit happened:\n{metadata}");
     assert!(
-        project::build_record::BuildRecord::present(&session.root().join(".emery/slices/greeting")),
+        project::build_record::BuildRecord::present(
+            &session.root().join(".emery/change/slices/greeting")
+        ),
         "build record must remain when merge parks"
     );
     assert!(!session.root().join(".emery/specs/greeting/spec.md").exists(), "no baseline write");

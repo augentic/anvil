@@ -45,8 +45,8 @@ fn workspace_paths() {
     let ws = workspace();
     assert_eq!(ws.root_path(), Path::new("/emery-workspaces/ws-1"));
     assert_eq!(
-        ws.artifact_path(".emery/slices/demo/spec.md"),
-        "/host/project/.emery/slices/demo/spec.md"
+        ws.artifact_path(".emery/change/slices/demo/spec.md"),
+        "/host/project/.emery/change/slices/demo/spec.md"
     );
 }
 
@@ -91,7 +91,7 @@ fn renderers() {
     assert_eq!(render_inputs(&[], &ws), "(no slice artifacts were provided)");
     let rendered = render_inputs(
         &[
-            Input::Proposal(Payload::Path(".emery/slices/demo/proposal.md".to_string())),
+            Input::Proposal(Payload::Path(".emery/change/slices/demo/proposal.md".to_string())),
             Input::Spec(Payload::Body("inlined spec body".to_string())),
         ],
         &ws,
@@ -101,7 +101,8 @@ fn renderers() {
         "the preamble instructs the agent to read the files: {rendered}"
     );
     assert!(
-        rendered.contains("### input: proposal → /host/project/.emery/slices/demo/proposal.md")
+        rendered
+            .contains("### input: proposal → /host/project/.emery/change/slices/demo/proposal.md")
     );
     assert!(rendered.contains("### input: spec\n\ninlined spec body"));
 

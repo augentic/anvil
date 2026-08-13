@@ -386,7 +386,7 @@ fn journal_on_failure<V>(
 }
 
 /// Detect a torn merge left by a crash after the deterministic commit:
-/// the slice tree is gone from `.emery/slices/` and its newest archive
+/// the slice tree is gone from `.emery/change/slices/` and its newest archive
 /// carries `merged_at`. Returns the outcome without re-running merge
 /// work. Detection is best-effort read-only — any unreadable archive
 /// falls through to the normal merge path and its errors.

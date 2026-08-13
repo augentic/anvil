@@ -31,7 +31,7 @@ pub struct ArchiveInput {
 /// `emery plan archive` — close the change.
 ///
 /// Moves the current plan to
-/// `.emery/archive/plans/<name>-<YYYYMMDD>.yaml`, then sweeps the
+/// `.emery/change/archive/plans/<name>-<YYYYMMDD>.yaml`, then sweeps the
 /// snapshot store: the archived change's pins stop being GC roots
 /// (RFC-88 D2), so objects reachable only from archived slice trees
 /// are deleted.
@@ -56,8 +56,6 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
             }
             .into());
         }
-        let archive_dir = layout.archive_dir().join("plans");
-        let brief_path = layout.change_brief_path();
         let plan = Plan::load(&plan_path)?;
         let plan_name = plan.name.to_string();
 
@@ -65,8 +63,7 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
         // moves; advisory only — archiving never blocks on debt.
         let debt = carried_debt(layout, &plan, cx.now())?;
 
-        let (archived, archived_plans_dir) =
-            Plan::archive(&plan_path, &brief_path, &archive_dir, input.force, cx.now())?;
+        let (archived, archived_plans_dir) = Plan::archive(layout, input.force, cx.now())?;
 
         // Change-scoped collection: pins under the archive tree are
         // dead roots; pins under any slice tree still live (a forced

@@ -1,7 +1,6 @@
-//! One-member target wave manifests.
-//!
-//! Before build, the engine writes an immutable manifest at
-//! `.emery/targets/<target>/waves/<digest>.yaml`, then appends `target.wave.opened`.
+//! One-member target wave manifests at
+//! `.emery/change/targets/<target>/waves/<digest>.yaml`, written
+//! before build then journalled as `target.wave.opened`.
 
 use std::path::{Path, PathBuf};
 
@@ -40,7 +39,7 @@ pub struct Member {
 
 /// Immutable target-wave manifest (RFC-86 D9).
 ///
-/// On disk under `.emery/targets/<target>/waves/<digest>.yaml` where
+/// On disk under `.emery/change/targets/<target>/waves/<digest>.yaml` where
 /// `digest` is the bare hex of the canonical YAML bytes. This cut
 /// accepts exactly one [`Member`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

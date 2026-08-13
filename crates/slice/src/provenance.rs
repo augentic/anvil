@@ -16,7 +16,7 @@ pub struct ProvenanceIndex {
     /// Stored schema version. Currently `1`; additive fields land
     /// without a bump.
     pub version: u32,
-    /// Slice name. MUST match the directory under `.emery/slices/`.
+    /// Slice name. MUST match the directory under `.emery/change/slices/`.
     pub slice: String,
     /// UTC second-precision timestamp at which the projection was
     /// produced. Resolution is to the second so byte-stable diffs

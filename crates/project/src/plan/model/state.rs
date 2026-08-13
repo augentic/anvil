@@ -40,7 +40,7 @@ pub enum Status {
     Done,
 }
 
-/// In-memory model of `plan.yaml` (at the repo root).
+/// In-memory model of `plan.yaml` (under `.emery/change/`).
 ///
 /// A `Plan` is an ordered, dependency-aware list of [`Entry`]s plus
 /// a named map of [`Plan::sources`] (local paths or git URLs) that the

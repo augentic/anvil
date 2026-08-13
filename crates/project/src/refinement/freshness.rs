@@ -242,7 +242,7 @@ pub fn findings(name: &str, freshness: &Freshness) -> Vec<Diagnostic> {
 /// newest archive entry when the live slice tree has none.
 ///
 /// Merge and `plan drop` move the whole tree — `refinement.yaml`
-/// included — to `.emery/archive/<stamp>-<slice>/`, and an accepted
+/// included — to `.emery/change/archive/<stamp>-<slice>/`, and an accepted
 /// predecessor satisfies "predecessor refined" a fortiori (RFC-91
 /// D3). `None` only when neither a live nor an archived manifest
 /// exists.

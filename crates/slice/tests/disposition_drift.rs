@@ -37,8 +37,9 @@ async fn same_body_no_drift() {
     let root = session.root().to_path_buf();
 
     // Plan entry covering the slice — the live projection reads it.
-    std::fs::write(root.join("plan.yaml"), "name: demo\nslices:\n  - name: greeting\n")
-        .expect("plan.yaml");
+    let plan_path = root.join(".emery/change/plan.yaml");
+    std::fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
+    std::fs::write(&plan_path, "name: demo\nslices:\n  - name: greeting\n").expect("plan.yaml");
 
     // Two requirements with identical bodies mint one digest (D2), so
     // the single deferral fact covers both rows.

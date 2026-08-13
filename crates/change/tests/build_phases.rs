@@ -29,7 +29,7 @@ async fn ready(target_adapter: &str) -> Session {
 }
 
 fn slice_dir(session: &Session) -> std::path::PathBuf {
-    session.root().join(".emery/slices/greeting")
+    session.root().join(".emery/change/slices/greeting")
 }
 
 fn operations(events: &[(u32, u32, String, String)]) -> Vec<&str> {

@@ -92,7 +92,7 @@ pub enum Artifact {
     Specs,
     /// Design notes (`design.md`).
     Design,
-    /// Decision Records (`.emery/slices/<slice>/decisions/<slug>.md`,
+    /// Decision Records (`.emery/change/slices/<slice>/decisions/<slug>.md`,
     /// promoted to `.emery/decisions/DEC-NNNN-<slug>.md`).
     Decisions,
     /// Task list (`tasks.md`).

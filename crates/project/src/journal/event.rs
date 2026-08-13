@@ -27,7 +27,7 @@ pub struct Event {
     /// [`super::append_for`] stamps the wire fields.
     ///
     /// Deserialise accepts the prior `actor` wire key so existing
-    /// `.emery/events/*.jsonl` lines remain in the union after the rename.
+    /// `.emery/change/events/*.jsonl` lines remain in the union after the rename.
     #[serde(alias = "actor")]
     pub writer: String,
     /// Monotonic per-writer sequence (1-based) inside that writer's
@@ -303,7 +303,7 @@ pub enum EventKind {
     /// the merged baseline stands.
     #[serde(rename = "target.merge.wave-postflight-failed", rename_all = "kebab-case")]
     MergeWavePostflightFailed {
-        /// Target key under `.emery/targets/`.
+        /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
@@ -318,7 +318,7 @@ pub enum EventKind {
     /// baseline `REQ-NNN` mapping for the wave's sole member.
     #[serde(rename = "target.merge.wave-committed", rename_all = "kebab-case")]
     TargetMergeWaveCommitted {
-        /// Target key under `.emery/targets/`.
+        /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
@@ -348,7 +348,7 @@ pub enum EventKind {
     /// Target postflight gate succeeded after wave commit (RFC-86 D9).
     #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
     TargetMergeWaveSucceeded {
-        /// Target key under `.emery/targets/`.
+        /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
@@ -445,7 +445,7 @@ pub enum EventKind {
     /// append-only journal records what merged, when, which baseline
     /// specs it touched, a one-line outcome summary, and the git SHA
     /// the baseline sat at. The archived slice folder under
-    /// `.emery/archive/` is a prunable convenience cache
+    /// `.emery/change/archive/` is a prunable convenience cache
     /// (`emery archive prune`), not the system of record — this
     /// event plus git history of `.emery/specs/` is.
     #[serde(rename = "slice.archive.created", rename_all = "kebab-case")]
@@ -488,11 +488,11 @@ pub enum EventKind {
     },
     /// An immutable one-member target wave was written before build
     /// (RFC-86 D9). The manifest lives at
-    /// `.emery/targets/<target>/waves/<digest>.yaml`; `digest` is the
+    /// `.emery/change/targets/<target>/waves/<digest>.yaml`; `digest` is the
     /// content address (`sha256:…`) of that YAML.
     #[serde(rename = "target.wave.opened", rename_all = "kebab-case")]
     TargetWaveOpened {
-        /// Target key under `.emery/targets/` (project name in the
+        /// Target key under `.emery/change/targets/` (project name in the
         /// in-place cut).
         target: String,
         /// Manifest content digest (`sha256:<64 hex>`).

@@ -93,7 +93,7 @@ mod continuation_rules {
         let report = support::canonical_report(&root, "greeting");
         assert_eq!(report.status, BuildStatus::Failure);
         assert!(!support::attempt_dir(&root, "greeting", 1).join("stage").exists());
-        assert!(!BuildRecord::present(&root.join(".emery/slices/greeting")));
+        assert!(!BuildRecord::present(&root.join(".emery/change/slices/greeting")));
     }
 }
 
@@ -109,7 +109,7 @@ mod attempts {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
         support::build(&session, "greeting").await.expect("first build");
-        let canonical_path = root.join(".emery/slices/greeting/build/report.yaml");
+        let canonical_path = root.join(".emery/change/slices/greeting/build/report.yaml");
         let canonical_before = std::fs::read(&canonical_path).expect("canonical after success");
 
         // Simulate an interrupted attempt: an allocated directory with
@@ -157,7 +157,7 @@ mod attempts {
     async fn failed_attempt_keeps() {
         let session = ready("mock").await;
         let root = session.root().to_path_buf();
-        let dir = root.join(".emery/slices/greeting");
+        let dir = root.join(".emery/change/slices/greeting");
         support::build(&session, "greeting").await.expect("first build");
 
         assert!(BuildRecord::present(&dir));

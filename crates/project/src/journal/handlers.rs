@@ -1,5 +1,5 @@
 //! `emery journal show` — read-only filter/limit projection over the
-//! per-writer union under `.emery/events/`.
+//! per-writer union under `.emery/change/events/`.
 //!
 //! There is no operator-facing emit verb; writes are operation side effects.
 
@@ -27,7 +27,7 @@ pub struct ShowInput {
 /// `emery journal show [--filter <event-id-prefix>] [--limit N]`.
 ///
 /// Read-only projection: emits no journal event and writes nothing.
-/// Merges every `.emery/events/<writer>.jsonl` file in
+/// Merges every `.emery/change/events/<writer>.jsonl` file in
 /// `(timestamp, writer, sequence)` order. Text mode prints the
 /// canonical JSONL lines (one `{ timestamp, writer, sequence, event,
 /// payload }` object per event — pipeable); JSON wraps the same

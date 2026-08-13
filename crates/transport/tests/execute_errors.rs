@@ -47,7 +47,7 @@ async fn fixture(model: &str) -> (TempDir, Provider) {
     .await
     .expect("init");
 
-    let slice_dir = project.path().join(".emery/slices/a");
+    let slice_dir = project.path().join(".emery/change/slices/a");
     fs::create_dir_all(slice_dir.join("specs")).expect("slice/specs");
     fs::write(slice_dir.join("model.yaml"), model).expect("model.yaml");
     fs::write(

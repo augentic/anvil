@@ -10,7 +10,7 @@ use error::Error;
 /// directory is framework-managed and regenerable, never checked in.
 ///
 /// Deliberately **not** listed: `.emery/specs/` (the durable baseline)
-/// and `.emery/archive/` (the prunable outcome cache) — both stay
+/// and `.emery/change/archive/` (the prunable outcome cache) — both stay
 /// committable so git history records merged work.
 const EMERY_GITIGNORE_ENTRIES: &[&str] = &[".emery/scratch/"];
 

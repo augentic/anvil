@@ -15,7 +15,7 @@ pub(super) const DROPPED_FILE_NAME: &str = "journal.dropped";
 ///
 /// Resolves the writer via [`super::writer_id`], stamps monotonic
 /// `writer` / `sequence` on each line, and writes only that writer's
-/// `.emery/events/<writer>.jsonl` file.
+/// `.emery/change/events/<writer>.jsonl` file.
 ///
 /// Empty batches do not create the file.
 ///

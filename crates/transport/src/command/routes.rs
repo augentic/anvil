@@ -72,17 +72,17 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     ),
     NamespaceHelp::new(
         &["slice"],
-        "Read-only slice projections over `.emery/slices/` — `plan refine` owns refinement; the execute loop owns the build → merge phases",
+        "Read-only slice projections over `.emery/change/slices/` — `plan refine` owns refinement; the execute loop owns the build → merge phases",
     ),
     NamespaceHelp::new(&["slice", "model"], "Read-only viewer over a slice's `model.yaml`"),
     NamespaceHelp::new(
         &["archive"],
-        "Slice-archive cache maintenance. The archived slice folders under `.emery/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
+        "Slice-archive cache maintenance. The archived slice folders under `.emery/change/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
     ),
     NamespaceHelp::new(&["plan"], "Executable plan operations — `plan.yaml` lifecycle"),
     NamespaceHelp::new(
         &["journal"],
-        "Workflow journal at `.emery/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
+        "Workflow journal at `.emery/change/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
 ];
 
@@ -164,8 +164,8 @@ where
         ["source", "extract"],
         source::ExtractArgs,
         ::slice::source::Extract,
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself",
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/change/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself",
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/change/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
     );
     route!(
         ["target", "resolve"],
@@ -177,7 +177,7 @@ where
         ["slice", "list"],
         slice::ListArgs,
         ::slice::handlers::List,
-        "List every slice under `.emery/slices/` with its lifecycle status and target"
+        "List every slice under `.emery/change/slices/` with its lifecycle status and target"
     );
     route!(
         ["slice", "validate"],
@@ -202,8 +202,8 @@ where
         ["archive", "prune"],
         archive::PruneArgs,
         ::slice::handlers::Prune,
-        "Prune archived slice folders under `.emery/archive/` that fall outside the supplied retention bounds",
-        "Prune archived slice folders under `.emery/archive/` that fall outside the supplied retention bounds.\n\nThe archive is a prunable convenience cache, not the system of record — git history of `.emery/specs/` plus the `slice.archive.created` journal entries are. At least one of `--keep` / `--older-than` is required; a folder is pruned when it falls outside the newest-`--keep` window or is older than `--older-than` days."
+        "Prune archived slice folders under `.emery/change/archive/` that fall outside the supplied retention bounds",
+        "Prune archived slice folders under `.emery/change/archive/` that fall outside the supplied retention bounds.\n\nThe archive is a prunable convenience cache, not the system of record — git history of `.emery/specs/` plus the `slice.archive.created` journal entries are. At least one of `--keep` / `--older-than` is required; a folder is pruned when it falls outside the newest-`--keep` window or is older than `--older-than` days."
     );
     route!(
         ["plan", "validate"],
@@ -245,7 +245,7 @@ where
         plan::DropArgs,
         ::change::plan::handlers::Drop,
         "Abandon one plan entry's slice without merging: stamp it `dropped` and archive the slice tree",
-        "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
+        "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/change/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
     );
     route!(
         ["plan", "author"],
@@ -272,7 +272,7 @@ where
         ["plan", "archive"],
         plan::ArchiveArgs,
         ::change::plan::handlers::Archive,
-        "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
+        "Archive the current plan to `.emery/change/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
     );
     route!(
         ["debt"],
@@ -285,8 +285,8 @@ where
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
-        "Read events from `.emery/events/<writer>.jsonl` (union order)",
-        "Read events from `.emery/events/<writer>.jsonl`, merging every writer file in `(timestamp, writer, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, writer, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
+        "Read events from `.emery/change/events/<writer>.jsonl` (union order)",
+        "Read events from `.emery/change/events/<writer>.jsonl`, merging every writer file in `(timestamp, writer, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, writer, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
     );
     for help in NAMESPACE_HELP {
         router = router.namespace(help.path.iter().copied(), help.metadata);
