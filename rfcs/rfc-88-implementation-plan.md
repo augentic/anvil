@@ -35,7 +35,7 @@ What exists and is load-bearing for this plan:
 | RFC-91 refinement | Implemented: `refinement.yaml` with `inputs.planning.{entry, leads, decomposition}` (decomposition currently the canonical single-node projection), `inputs.profile` = canonical empty digest placeholder. |
 | RFC-86 waves / build records | Implemented in-place: `crates/project/src/wave.rs` (`.emery/change/targets/<target>/waves/<digest>.yaml`; `Wave.members: Vec<Member>` gated by `enforce_one_member` — preserved, closed Open Question 12), `crates/project/src/build_record.rs` (`builds/<digest>.yaml`). Wave base comes from `freeze()` at build open. |
 | RFC-86a gap gate | Implemented (`gap.deferred`, debt projection). No RFC-88 work needed beyond coverage wiring. |
-| Workspace kernel | Implemented: `crates/project/src/workspace/` + `snapshot.rs`. `Store::apply` **exists** (used by merge `apply_result`); `Workspaces` trait carries `freeze/prepare/capture/discard/apply/sweep`; snapshot ignore policy excludes `.git` **and `.emery`**. |
+| Workspace kernel | Implemented: `crates/project/src/workspace/` + `snapshot.rs`. `Store::apply` **exists** (used by merge `apply_result`); `Workspaces` trait carries `freeze/prepare/capture/discard/apply/sweep`; snapshot ignore policy excludes `.git` **and a nested change home** (`.emery/change/`). Durable `.emery/` state (`project.yaml`, `specs/`, `decisions/`) folds into every snapshot. |
 | Merge | `crates/slice/src/orchestrate/merge.rs`: preflight → deterministic delta-spec commit **into the operator checkout's `.emery/specs/`** → `Workspaces::apply` patch write-back → `target.merge.wave-committed` → postflight. |
 | Registry / workspace slots | Already removed (router rejects `emery registry *` / `emery init --workspace`). D4 is mostly a no-op; the remaining `Entry.project` vocabulary is deleted in step 9 (closed Open Question 11). |
 | Source WIT | `survey(id) -> list<lead>` — no focus parameter, no child leads. Source adapters read `plan.yaml` from the lent project preopen to find their binding. |
@@ -105,7 +105,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Answer-schema goldens (`report` / `phase-report`) carry the slice Decision Record path in a description string; the engine copies under `crates/adapter/schemas/` were updated with it. Not a wire-shape break.
 - Between this step and step 2, `plan.yaml` / `change.md` / `discovery.md` drop out of snapshots (they moved under `.emery/`, which is still fully excluded). That is the desired end state for those files — step 2 keeps the change home excluded. Step 2's "root-plan-artifact exclusions" item is now a no-op: there are no plan artifacts at the repo root to exclude. The snapshot walker still carries `IGNORED_ROOT` (`change.md` / `discovery.md` / `plan.yaml` at the walk root) in `crates/project/src/workspace/store.rs`; after this move those names never appear at the product root, so step 2 should delete the constant when it retargets the ignore policy from `.emery/` to `.emery/change/`.
 
-### Step 2 — Target-tree boundary: `.git` + change home only [ ]
+### Step 2 — Target-tree boundary: `.git` + change home only [x]
 
 **RFC anchors:** D1 (last paragraph), D5 ("the identified tree includes durable Emery state"), implementation requirement "Target trees ignore only `.git` and a nested change home. `.emery/` is otherwise included." Amends RFC-87 D4 / acceptance criterion 4.
 
@@ -121,6 +121,12 @@ The first cut lands the execution-substrate change while everything is still in-
 **Tests / gates:** kernel tests above; existing build/merge integration suites still pass (they will see baselines inside workspaces from here on); `cargo make ci` + wasm32 compile check.
 
 **Out of scope:** merge behaviour changes (step 3). Note: between steps 2 and 3, merge still writes the checkout baseline; that overlap is fine because the snapshot simply carries a copy.
+
+**Notes (2026-08-13):**
+
+- Ignore policy lives on `project::snapshot::ignored` (the vocabulary AGENTS.md already named). `Store::snapshot`, the native `FsExecBits` walk, and `plan::pins` (source/`dir_cid` trees) all call it, so a source tree and a freeze of the same directory stay byte-identical — step 7's both-roles CID reuse depends on that. `IGNORED_ROOT` is deleted. Nested `.emery/change` at any depth is excluded (vendored product trees), matching `.git`.
+- `freeze()` on the native and guest providers is still `store.snapshot(project_root)`; only the kernel boundary and the impl/trait docs changed. Digest identity stays the shared canonical manifest (existing `golden::pinned_snapshot_id`).
+- **Ephemeral `.emery/` tenants now fold into snapshots.** `guest.lock` and `scratch/` were previously excluded only because all of `.emery/` was. Execute holds `.emery/guest.lock` (pid/hostname/timestamp body) across wave-open `freeze()`, so every in-place freeze until step 6 re-homes the marker will hash that lock into the CID. `scratch/` is gitignored but freeze walks the filesystem. This step does not add those exclusions — the RFC requirement is "only `.git` and a nested change home". Step 6's re-home onto the change root also *fixes* in-place: `.emery/change/guest.lock` is already ignored here. Step 3's accepted-CID work should not golden a freeze digest and should treat lock-file presence as known noise until step 6; if a test needs a product-only CID before then, exclude the two tenants in the ignore policy as a recorded deviation rather than teaching freeze to run before the marker.
 
 ### Step 3 — Accepted-CID merge; delete interim `apply` [ ]
 
@@ -141,7 +147,7 @@ The first cut lands the execution-substrate change while everything is still in-
 
 **Out of scope:** detached targets, multi-target execution (step 18), multi-member waves (RFC-96 — keep the `Vec` and the one-member gate; closed Open Question 12). There is no materialization surface to build — per closed Open Question 2, merged results stay store-only until RFC-95; from this step until step 19 repoints the graders, the eval and wasm rungs cannot inspect produced trees.
 
-**Note:** this is the largest Cut A step. If a session runs hot, the accepted-CID projection + wave-open change can be split from the merge rework at the recorded seam (projection lands first, merge rework consumes it).
+**Note:** this is the largest Cut A step. If a session runs hot, the accepted-CID projection + wave-open change can be split from the merge rework at the recorded seam (projection lands first, merge rework consumes it). Step 2's Notes: in-place `freeze()` currently hashes `.emery/guest.lock` (held for the execute run) into the CID; do not golden freeze digests, and do not treat lock-file presence as product drift.
 
 ### Step 4 — Interim accepted-result access and eval survival [closed — no work]
 
@@ -182,7 +188,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Transport grammar: `emery plan author <name> --from <definition-root> --wave <id> [--change-dir <dir>] [--force]` (detached), and in-place `--from .emery/system/` binding for a colocated degenerate definition. The old author grammar (bindings from `case.toml`-style init) is removed in step 9 when binding fully replaces survey-driven authoring; this step lands the flags, root resolution, and change-home scaffolding, with the new path returning a typed "not yet implemented" until step 9 completes the phases. (If the operator prefers no dead grammar on the branch, fold this step's CLI surface into step 9 and keep only the root plumbing here.)
 - Launcher: mount policy for the detached change root (writable) and the definition root (read-only) as preopens; keep the store host-owned. Guest `Layout` consumes the change root.
 - `emery init` is not required for a detached change (acceptance criterion 1: empty non-Git directory works); make init-dependence explicit and remove it from the detached path.
-- Step 1 left `guest.lock` at `.emery/guest.lock`. A detached change home has no `.emery/`; this step should re-home the marker onto the resolved change root (or replace it) so detached `plan refine` / `plan execute` still have a create-exclusive fence.
+- Step 1 left `guest.lock` at `.emery/guest.lock`. A detached change home has no `.emery/`; this step should re-home the marker onto the resolved change root (or replace it) so detached `plan refine` / `plan execute` still have a create-exclusive fence. Re-homing onto the change root also stops in-place wave-open `freeze()` from hashing the lock into the CID (step 2's boundary already excludes `.emery/change/`; see that step's Notes). `scratch/` stays under `.emery/` and will still enter snapshots unless this step moves it too or the ignore policy grows that tenant.
 
 **Key code areas:** `crates/project/src/handler/paths.rs`, `crates/project/src/config.rs`, `crates/launcher/src/`, `crates/transport/src/command/`, `crates/guest/`, `src/main.rs` mount expressions.
 

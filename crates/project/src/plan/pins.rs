@@ -10,11 +10,7 @@ use diagnostics::digest::sha256_hex;
 use error::Error;
 
 use super::model::{Plan, SourceBinding};
-use crate::snapshot::SnapshotId;
-
-/// Path components excluded from every source-tree walk — same policy
-/// as the snapshot store (version-control and change-tree state).
-const IGNORED: [&str; 2] = [".git", ".emery"];
+use crate::snapshot::{self, SnapshotId};
 
 /// Entry path used for the one-file tree of a value binding.
 const VALUE_ENTRY: &str = "content";
@@ -167,10 +163,10 @@ fn walk(dir: &Path, prefix: &str, entries: &mut BTreeMap<String, Entry>) -> Resu
         if name.contains('\n') {
             return Err(unsupported(prefix, name));
         }
-        if IGNORED.contains(&name) {
+        let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
+        if snapshot::ignored(&rel) {
             continue;
         }
-        let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
         let path = entry.path();
         let meta = std::fs::symlink_metadata(&path)?;
         if meta.file_type().is_symlink() {

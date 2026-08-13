@@ -229,8 +229,8 @@ pub trait Target: Send + Sync {
 /// [`crate::workspace`] kernel in-process; the engine guest maps the
 /// host-implemented WIT imports.
 pub trait Workspaces: Send + Sync {
-    /// Freeze the product tree (the project root minus VCS and
-    /// change-tree state) as an immutable snapshot. The build phase
+    /// Freeze the product tree (the project root minus `.git` and a
+    /// nested change home) as an immutable snapshot. The build phase
     /// calls this when it opens the target wave: the result is
     /// persisted as the wave base before any workspace is prepared
     /// (RFC-91 D6). Refinement never freezes the product tree.

@@ -111,3 +111,23 @@ async fn dir_cid_matches_store() {
         store.snapshot(&specs).await.expect("store snapshot")
     );
 }
+
+#[tokio::test]
+async fn ignore_policy_parity() {
+    let root = tempfile::tempdir().expect("tempdir");
+    let tree = root.path().join("tree");
+    std::fs::create_dir_all(tree.join(".emery/specs")).expect("mkdir specs");
+    std::fs::create_dir_all(tree.join(".emery/change")).expect("mkdir change");
+    std::fs::create_dir_all(tree.join(".git")).expect("mkdir git");
+    std::fs::write(tree.join(".emery/project.yaml"), b"name: demo\n").expect("project.yaml");
+    std::fs::write(tree.join(".emery/specs/a.md"), b"spec\n").expect("spec");
+    std::fs::write(tree.join(".emery/change/plan.yaml"), b"name: demo\n").expect("plan");
+    std::fs::write(tree.join(".git/config"), b"[core]\n").expect("git");
+    std::fs::write(tree.join("src.rs"), b"fn main() {}\n").expect("src");
+
+    let store = Store::new(root.path().join("snapshots"));
+    assert_eq!(
+        dir_cid(&tree).expect("dir cid"),
+        store.snapshot(&tree).await.expect("store snapshot")
+    );
+}

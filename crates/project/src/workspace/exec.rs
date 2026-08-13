@@ -17,8 +17,8 @@ use error::Error;
 pub trait ExecBits: Debug + Send + Sync {
     /// The `/`-separated relative paths of executable regular files
     /// beneath `root`. Never follows symlinks. May skip the store's
-    /// ignored components (`.git`, `.emery`) as an optimization — the
-    /// walk never queries paths it excludes.
+    /// ignored paths (`.git`, `.emery/change`) as an optimization —
+    /// the walk never queries paths it excludes.
     ///
     /// # Errors
     ///
@@ -69,10 +69,10 @@ fn collect(dir: &Path, prefix: &str, set: &mut BTreeSet<String>) -> Result<(), E
         let Some(name) = name.to_str() else {
             continue;
         };
-        if super::store::IGNORED.contains(&name) {
+        let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
+        if crate::snapshot::ignored(&rel) {
             continue;
         }
-        let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
         let path = entry.path();
         let meta = std::fs::symlink_metadata(&path)?;
         if meta.file_type().is_symlink() {

@@ -176,6 +176,8 @@ impl Target for Provider {
 /// workspaces preopens, objects through `wasi:blobstore` (Omnia's
 /// `BlobStore` capability), exec bits through `emery:exec-bits`.
 impl seam::Workspaces for Provider {
+    /// Freeze the project root's product tree (the kernel excludes
+    /// `.git` and a nested `.emery/change/` home).
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
         async move {
             let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;

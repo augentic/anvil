@@ -263,19 +263,90 @@ mod privacy {
         workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
         assert!(!lab.source.join("b.txt").exists(), "the snapshotted tree stays untouched");
     }
+}
 
+mod boundary {
+    use project::snapshot;
+
+    use super::*;
+
+    #[test]
+    fn ignore_policy() {
+        assert!(snapshot::ignored(".git"));
+        assert!(snapshot::ignored("vendor/.git"));
+        assert!(snapshot::ignored(".emery/change"));
+        assert!(snapshot::ignored("nested/.emery/change"));
+        assert!(!snapshot::ignored(".emery"));
+        assert!(!snapshot::ignored(".emery/project.yaml"));
+        assert!(!snapshot::ignored(".emery/specs/a/spec.md"));
+        assert!(!snapshot::ignored(".emery/decisions/d.md"));
+        assert!(!snapshot::ignored("src/lib.rs"));
+        assert!(!snapshot::ignored("change.md"));
+        assert!(!snapshot::ignored("plan.yaml"));
+        assert!(!snapshot::ignored("discovery.md"));
+    }
+
+    /// Durable `.emery/` state survives freeze → prepare → capture;
+    /// `.git` and the nested change home never appear. A prepared
+    /// workspace exposes the baseline.
     #[tokio::test]
-    async fn artifacts_vcs_state() {
+    async fn durable_round_trip() {
         let lab = lab();
-        write(&lab.source, "a.txt", b"a");
-        write(&lab.source, ".git/config", b"[core]");
-        write(&lab.source, ".emery/project.yaml", b"emery: 1.0.0");
+        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
+        write(&lab.source, ".git/config", b"[core]\n");
+        write(&lab.source, ".emery/project.yaml", b"name: demo\nadapter: mock\nrules: {}\n");
+        write(&lab.source, ".emery/specs/greeting/spec.md", b"# Greeting\n");
+        write(&lab.source, ".emery/decisions/ttl.md", b"# TTL\n");
+        write(&lab.source, ".emery/change/plan.yaml", b"name: demo\nsources: {}\nentries: []\n");
+        write(&lab.source, ".emery/change/change.md", b"# Change\n");
+        write(&lab.source, "vendor/.emery/change/plan.yaml", b"name: nested\n");
+        write(&lab.source, "vendor/.emery/project.yaml", b"name: vendor\n");
+
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
         let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
             .await
             .expect("prepare");
-        assert!(!ws.root.join(".git").exists());
-        assert!(!ws.root.join(".emery").exists());
+
+        assert!(!ws.root.join(".git").exists(), ".git is never product tree");
+        assert!(
+            !ws.root.join(".emery/change").exists(),
+            "the nested change home is never product tree"
+        );
+        assert!(
+            !ws.root.join("vendor/.emery/change").exists(),
+            "a nested change home at any depth is excluded"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join(".emery/project.yaml")).expect("project.yaml"),
+            "name: demo\nadapter: mock\nrules: {}\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join(".emery/specs/greeting/spec.md")).expect("spec"),
+            "# Greeting\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join(".emery/decisions/ttl.md")).expect("decision"),
+            "# TTL\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join("vendor/.emery/project.yaml")).expect("vendor"),
+            "name: vendor\n"
+        );
+
+        // An agent write into the change home is not product tree.
+        write(&ws.root, ".emery/change/sneak.yaml", b"nope\n");
+
+        let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
+        assert_eq!(patch.base, patch.result, "an untouched durable tree re-captures identically");
+        assert!(patch.touched.is_empty(), "change-home writes are not captured");
+
+        let out = lab.source.parent().expect("parent").join("captured");
+        lab.store.materialize(&patch.result, &out).await.expect("materialize");
+        assert!(out.join(".emery/specs/greeting/spec.md").is_file());
+        assert!(out.join(".emery/project.yaml").is_file());
+        assert!(out.join(".emery/decisions/ttl.md").is_file());
+        assert!(!out.join(".emery/change").exists());
+        assert!(!out.join(".git").exists());
     }
 }
 

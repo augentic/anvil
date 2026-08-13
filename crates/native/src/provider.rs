@@ -339,7 +339,8 @@ impl Target for Provider {
 
 impl seam::Workspaces for Provider {
     /// Freeze the project root's product tree (the kernel excludes
-    /// `.git` and `.emery`) into the local snapshot store.
+    /// `.git` and a nested `.emery/change/` home) into the local
+    /// snapshot store.
     async fn freeze(&self) -> Result<SnapshotId, seam::Error> {
         self.store()
             .snapshot(self.paths.project_root())

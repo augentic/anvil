@@ -11,18 +11,7 @@ use error::Error;
 use super::exec::{ExecBits, FsExecBits};
 use super::manifest::{Entry, Manifest};
 use super::objects::{FsObjects, Objects};
-use crate::snapshot::{CodePatch, SnapshotId};
-
-/// Path components excluded from every snapshot walk: version-control
-/// state and the Emery change tree are never product code (RFC-87 D4).
-pub(super) const IGNORED: [&str; 2] = [".git", ".emery"];
-
-/// Root-level names excluded from every snapshot walk: the plan
-/// artifacts living at the repo root (`change.md` + `plan.yaml` and
-/// the authored `discovery.md`) are change-tree state, not product
-/// code — capturing them would let the interim apply rewind live plan
-/// state.
-const IGNORED_ROOT: [&str; 3] = ["change.md", "discovery.md", "plan.yaml"];
+use crate::snapshot::{self, CodePatch, SnapshotId};
 
 /// The snapshot store: tree walks and manifests in the kernel, object
 /// bytes behind [`Objects`], exec bits behind [`ExecBits`].
@@ -65,7 +54,7 @@ impl<O: Objects> Store<O> {
     }
 
     /// Snapshot the complete tree at `dir` into the store and return
-    /// its identity. Ignored components (`.git`, `.emery`) are
+    /// its identity. Ignored paths (`.git`, `.emery/change`) are
     /// excluded; empty directories are not tracked.
     ///
     /// # Errors
@@ -264,11 +253,11 @@ impl<O: Objects> Store<O> {
                 if name.contains('\n') {
                     return Err(unsupported(&prefix, name));
                 }
-                if IGNORED.contains(&name) || (prefix.is_empty() && IGNORED_ROOT.contains(&name)) {
-                    continue;
-                }
                 let rel =
                     if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
+                if snapshot::ignored(&rel) {
+                    continue;
+                }
                 let path = entry.path();
                 if own_root.is_some() && std::path::absolute(&path).ok().as_deref() == own_root {
                     continue;

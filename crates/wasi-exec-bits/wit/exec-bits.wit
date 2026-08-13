@@ -22,8 +22,8 @@ interface exec-bits {
   /// The `/`-separated relative paths of executable regular files
   /// beneath `root` — a deployment-local tree root: `.` (the project
   /// tree) or a workspace root beneath the deployment's workspaces
-  /// mount. Never follows symlinks; ignored components (`.git`,
-  /// `.emery`) may be skipped.
+  /// mount. Never follows symlinks; ignored paths (`.git`,
+  /// `.emery/change`) may be skipped.
   read: async func(root: string) -> result<list<string>, error>;
 
   /// Round-trip the manifest's mode distinction onto a materialized
