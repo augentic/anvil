@@ -138,7 +138,7 @@ impl<O: Objects> Store<O> {
         remove_entry(&target)?;
         match entry {
             Entry::File { blob, .. } => {
-                std::fs::write(&target, self.get(blob).await?)?;
+                self.copy_file(blob, &target).await?;
             }
             Entry::Link { blob } => {
                 let link_target =
@@ -231,17 +231,33 @@ impl<O: Objects> Store<O> {
         Ok(digest)
     }
 
+    /// Stream-hash `path` and store it as an object, returning its
+    /// digest. Same identity as [`Self::put`] of the file's bytes.
+    async fn put_file(&self, path: &Path) -> Result<String, Error> {
+        let digest = hash_path(path)?;
+        self.objects.put_file(&digest, path).await?;
+        Ok(digest)
+    }
+
     /// Read the object named `digest`, verifying its content hashes
     /// back to the name.
     async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
         let bytes = self.objects.get(digest).await?;
         if diagnostics::digest::sha256_hex(&bytes) != digest {
-            return Err(Error::Diag {
-                code: "snapshot-object-corrupt",
-                detail: format!("object `{digest}` failed digest verification"),
-            });
+            return Err(corrupt(digest));
         }
         Ok(bytes)
+    }
+
+    /// Stream object `digest` into `dest` and verify the written
+    /// bytes hash back to the name.
+    async fn copy_file(&self, digest: &str, dest: &Path) -> Result<(), Error> {
+        self.objects.copy_file(digest, dest).await?;
+        if hash_path(dest)? != digest {
+            drop(std::fs::remove_file(dest));
+            return Err(corrupt(digest));
+        }
+        Ok(())
     }
 
     /// Depth-first walk folding `root` into `manifest`, driven by an
@@ -298,12 +314,7 @@ impl<O: Objects> Store<O> {
                 } else if meta.is_dir() {
                     pending.push((path, rel));
                 } else {
-                    let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
-                        op: "read",
-                        path: path.clone(),
-                        source,
-                    })?;
-                    let blob = self.put(&bytes).await?;
+                    let blob = self.put_file(&path).await?;
                     let exec = exec.contains(&rel);
                     manifest.entries.insert(rel, Entry::File { exec, blob });
                 }
@@ -354,6 +365,21 @@ fn prune_empty_parents(root: &Path, path: &str) {
             return;
         }
         parent = rel.parent();
+    }
+}
+
+fn hash_path(path: &Path) -> Result<String, Error> {
+    diagnostics::digest::sha256_path(path).map_err(|source| Error::Filesystem {
+        op: "read",
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
+fn corrupt(digest: &str) -> Error {
+    Error::Diag {
+        code: "snapshot-object-corrupt",
+        detail: format!("object `{digest}` failed digest verification"),
     }
 }
 

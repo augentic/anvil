@@ -1,7 +1,7 @@
-//! The object seam beneath the snapshot store: digest-named blobs.
+//! Digest-named blob storage beneath the snapshot store.
 //!
-//! The kernel owns hashing and verify-on-read; an implementor only
-//! stores and returns bytes under the digest the kernel computed.
+//! The kernel owns hashing; implementors stream bytes under that digest
+//! so a large file need not fit in memory.
 
 use std::fmt::Debug;
 use std::future::Future;
@@ -26,12 +26,30 @@ pub trait Objects: Debug + Send + Sync {
     /// Storage failures.
     fn put(&self, digest: &str, bytes: &[u8]) -> impl Future<Output = Result<(), Error>> + Send;
 
+    /// Stream the file at `src` into the object named `digest`.
+    /// Write-once: an existing object is left untouched.
+    ///
+    /// # Errors
+    ///
+    /// Storage failures, including an unreadable `src`.
+    fn put_file(&self, digest: &str, src: &Path) -> impl Future<Output = Result<(), Error>> + Send;
+
     /// Read the object named `digest`.
     ///
     /// # Errors
     ///
     /// Storage failures, including absence.
     fn get(&self, digest: &str) -> impl Future<Output = Result<Vec<u8>, Error>> + Send;
+
+    /// Stream the object named `digest` into `dest`. The kernel
+    /// verifies the written bytes; implementors do not hash.
+    ///
+    /// # Errors
+    ///
+    /// Storage failures, including absence.
+    fn copy_file(
+        &self, digest: &str, dest: &Path,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
 
     /// Whether the object named `digest` exists.
     fn has(&self, digest: &str) -> impl Future<Output = bool> + Send;
@@ -83,6 +101,14 @@ impl Objects for FsObjects {
         Ok(())
     }
 
+    async fn put_file(&self, digest: &str, src: &Path) -> Result<(), Error> {
+        let path = self.object_path(digest);
+        if !path.is_file() {
+            artifacts::atomic::copy_write(&path, src)?;
+        }
+        Ok(())
+    }
+
     async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
         let path = self.object_path(digest);
         std::fs::read(&path).map_err(|source| Error::Filesystem {
@@ -90,6 +116,16 @@ impl Objects for FsObjects {
             path,
             source,
         })
+    }
+
+    async fn copy_file(&self, digest: &str, dest: &Path) -> Result<(), Error> {
+        let path = self.object_path(digest);
+        std::fs::copy(&path, dest).map_err(|source| Error::Filesystem {
+            op: "read",
+            path,
+            source,
+        })?;
+        Ok(())
     }
 
     async fn has(&self, digest: &str) -> bool {

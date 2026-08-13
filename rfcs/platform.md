@@ -6,6 +6,8 @@
 >
 > Audience: contributors choosing what to build next and operators evaluating what Emery is becoming.
 
+
+
 ## Direction
 
 Propellerhead exists to build and change critical software without losing the behaviour, knowledge, and trust the organisation depends on. The programme supports one services promise:
@@ -14,7 +16,9 @@ Propellerhead exists to build and change critical software without losing the be
 
 Modernization remains the commercial wedge. A new system is the simpler evidence case: authoritative intent and constraints establish the initial baseline rather than system archaeology recovering one from existing behaviour.
 
-Emery is the delivery system behind that promise, not the product strategy. Its immediate goal is the smallest single-node system that can survey a bounded multi-repository system, recover an evidence-linked architecture and migration path, reconcile behaviour with stakeholder intent, expose uncertainty, price work honestly, prove the delivered candidate against the assurance available, deliver across the repositories one programme actually touches, and leave living behavioural and architectural baselines. Services expertise supplies architectural and exception judgment; Emery preserves its evidence, decisions, and consequences instead of assuming the topology is already known. Bounded single-node concurrency is part of that delivery system; streaming, distribution, hosted fleets, and unattended merge are not prerequisites for the offer.
+Emery is the delivery system behind that promise, not the product strategy. Its immediate goal is the smallest single-node system that can survey a bounded multi-repository system, recover an evidence-linked architecture and migration path, reconcile behaviour with stakeholder intent, expose uncertainty, price work honestly, prove the delivered candidate against the assurance available, deliver across the repositories one programme actually touches, and leave living behavioural and architectural baselines. 
+
+Services expertise supplies architectural and exception judgment; Emery preserves its evidence, decisions, and consequences instead of assuming the topology is already known. Bounded single-node concurrency is part of that delivery system; streaming, distribution, hosted fleets, and unattended merge are not prerequisites for the offer.
 
 The north-star architecture remains capable of scaling beyond one node and one reviewed run. Multi-node and unattended scale are no longer the default implementation queue; they are activated by measured engagement pull, not by architectural completeness.
 
@@ -38,7 +42,7 @@ None requires streaming, distribution, a hosted fleet, or autonomous merge.
 
 ## Active dependency map
 
-Only hard dependencies appear here. Enrichment relationships belong in prose and outcome schemas, not in the graph. Green = done; amber = critical path.
+Only hard dependencies appear here. Enrichment relationships belong in prose and outcome schemas, not in the graph. Green = done; orange = near-term critical path; blue = later critical path.
 
 ```mermaid
 flowchart TD
@@ -63,10 +67,14 @@ flowchart TD
     R92 --> R103
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
-    classDef critical fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:3px
+    classDef nearterm fill:#fed7aa,stroke:#c2410c,color:#7c2d12,stroke-width:3px
+    classDef later fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
     class R86,R87,R90,R91 done
-    class R104,R88,R94,R95,R96,R97,R98 critical
+    class R104,R88,R96 nearterm
+    class R94,R95,R97,R98 later
 ```
+
+
 
 RFC-92 patches the model-capability profile shape owned by RFC-88, but it does not wait for RFC-88 to finish: routes and usage facts land on the implemented substrate and fold into the profile when that cut lands.
 
@@ -95,7 +103,7 @@ Independent tracks proceed in parallel. Staffing follows the critical path first
 4. record modernization dispositions, target and transition architecture, and bounded migration waves;
 5. project one immutable wave handoff and append `system.wave.reviewed` over its exact definition, model, migration-plan, and wave digests before RFC-88 may import it.
 
-The definition loop may finish without product execution. That is a legitimate paid archaeology or readiness outcome, not a failed attempt to produce slices.
+The definition loop may finish without product execution. That is a legitimate paid archaeology or readiness outcome, not a failed attempt to produce slices. Implement RFC-104 in three internal cuts rather than extra RFCs: coverage and Evidence; correlation and as-is; plan, handoff, and review. The cuts control implementation risk and are not partial public lifecycle variants. Acceptance remains the loop through `system.wave.reviewed`.
 
 [RFC-88 Detached Changes](rfc-88-detached-changes.md) remains one active delivery contract following the reviewed RFC-104 handoff. Implement it in internal cuts rather than splitting its delivery mechanics into more RFCs:
 
@@ -162,6 +170,8 @@ The services trace test resolves the ordering:
 6. **Learn only after signal producers exist.** RFC-103 without RFC-92 and blind evaluation archives outcomes but cannot promote an improvement honestly.
 7. **Make required single-node concurrency deterministic before adding deployment modes.** RFC-96 follows the stable delivery contracts; streaming, distribution, hosted fleets, and unattended merge remain parked until separately justified.
 
+
+
 ## RFC-88 scope discipline
 
 RFC-88 is the programme's largest judgment-heavy product cut. Its implementation must preserve these boundaries:
@@ -185,6 +195,8 @@ Do not split the implementation cuts into new lifecycle RFCs. Do not pre-impleme
 - **Assurance is claimed on both axes at the level earned.** RFC-97 projects `execution-assurance: model-assisted | host-attested | hybrid`; `oracle-assurance: candidate | protected | mixed` says whether the correctness input was independent of the writer. “Verified” must name the profile and both assurances.
 - **A number that looks measured must be measured.** Unknown cost remains `unknown`; thresholds and weights are starting values with an outcome-backed route to revision.
 - **Land the smallest thing that produces a useful fact.** Read those facts before introducing another execution mode.
+
+
 
 ## Reviewed services workflow
 
@@ -242,6 +254,8 @@ Parking means:
 - the document may receive correctness fixes but not roadmap elaboration;
 - reopening requires the stated evidence or contracted need and an explicit programme decision.
 
+
+
 ## Operator identity: an agent may drive the engine
 
 The engine is a deterministic state machine over a fact log, and the operator sits outside it as a caller. Substituting an autonomous driver for a person does not change artifact authority: authority comes from digests, gates, and facts, never from who invoked a command or what they intended.
@@ -279,11 +293,14 @@ The commercial interpretation is services-led: Emery supports Propellerhead's ac
 - **Architecture diagrams as model authority.** Diagrams are reviewable projections from evidence-linked architecture, not persuasive substitutes for it.
 - **A migration plan as a renamed delivery backlog.** Transition architecture, state movement, coexistence, cutover, rollback, and context-only dependencies must shape the wave before RFC-88 creates slices.
 
+
+
 ## Outside the programme
 
 Unchanged and orthogonal:
 
-- [CLI architecture](../docs/contributing/cli-architecture.md) and `crates/launcher/`.
+- [CLI architecture](../docs/contributing/cli-architecture.md) and `crates/launcher/`, except [RFC-104](rfc-104-system-archaeology.md)'s `system *` mount projection (`--dir` or CWD as the guest `.`; no `project.yaml` walk).
 - [Release process](../docs/release.md).
 - [RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md), an optional cost lever.
 - [RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md), content-triggered Vectis work.
+
