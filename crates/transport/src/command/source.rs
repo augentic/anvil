@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use super::change_dir::ChangeDir;
+
 /// Arguments for `source resolve`.
 #[derive(Debug, Args)]
 pub struct ResolveArgs {
@@ -26,6 +28,8 @@ pub struct SurveyArgs {
     /// Plan name guard. When set, must match `plan.yaml.name`.
     #[arg(long)]
     pub plan: Option<String>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `source extract`.
@@ -39,4 +43,6 @@ pub struct ExtractArgs {
     /// `.emery/change/slices/<slice>/evidence/` target.
     #[arg(long)]
     pub slice: String,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }

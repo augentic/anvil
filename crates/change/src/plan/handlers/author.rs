@@ -2,6 +2,7 @@
 //! authoring; the operator reviews the plan, then starts execution.
 
 use std::io::Write;
+use std::path::PathBuf;
 
 use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
@@ -17,8 +18,9 @@ use crate::plan::wire::{SourceAssign, source_map};
 /// Wire input for `plan author`.
 ///
 /// Carries the raw source surface on every transport — the
-/// [`SourceAssign`] list + `intent` sugar; the desugaring into the
-/// structured `plan.yaml.sources` map runs at the operation boundary.
+/// [`SourceAssign`] list + `intent` sugar — and the `--from`/`--wave`
+/// definition-home pair. Binding from a reviewed definition is not
+/// implemented yet; that path returns `plan-author-unimplemented`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AuthorInput {
@@ -31,6 +33,12 @@ pub struct AuthorInput {
     /// `--source intent=intent:value:<string>`.
     #[serde(default)]
     pub intent: Option<String>,
+    /// Reviewed definition home. Requires [`Self::wave`].
+    #[serde(default)]
+    pub from: Option<PathBuf>,
+    /// Wave id inside [`Self::from`]. Requires [`Self::from`].
+    #[serde(default)]
+    pub wave: Option<String>,
     /// Replace an existing plan unconditionally, whatever its entry
     /// statuses. Without this flag an existing `plan.yaml` refuses
     /// with `plan-already-exists`.
@@ -52,12 +60,35 @@ impl<P: Anchor + Model + Resolver + Source> Operation<P> for Author {
     async fn call(
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
+        if input.from.is_some() || input.wave.is_some() {
+            if input.from.is_none() || input.wave.is_none() {
+                return Err(error::Error::Argument {
+                    flag: "--from",
+                    detail: "--from and --wave are required together".into(),
+                }
+                .into());
+            }
+            if !input.sources.is_empty() || input.intent.is_some() {
+                return Err(error::Error::Argument {
+                    flag: "--from",
+                    detail: "--from/--wave cannot be combined with --source or --intent".into(),
+                }
+                .into());
+            }
+            return Err(error::Error::validation_failed(
+                "plan-author-unimplemented",
+                "authoring from a reviewed definition is not implemented yet",
+                "in-place `emery plan author` without --from still works; --from/--wave binding lands with the discovery phase",
+            )
+            .into());
+        }
         let cx = Ctx::load(context.provider)?;
         let AuthorInput {
             name,
             sources,
             intent,
             force,
+            ..
         } = input;
         let sources = source_map(sources, intent)?;
         let caps = orchestrate::Capabilities::provider(context.provider).sans_targets();

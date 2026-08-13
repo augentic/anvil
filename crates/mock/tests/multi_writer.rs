@@ -170,6 +170,8 @@ async fn author_adversarial(session: &Session) {
             name: "auth".to_string(),
             sources: adversarial_bindings(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

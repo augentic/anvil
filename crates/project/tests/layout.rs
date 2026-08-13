@@ -15,7 +15,7 @@ fn change_home_boundary() {
     assert_eq!(layout.config_path(), emery.join("project.yaml"));
     assert_eq!(layout.specs_dir(), emery.join("specs"));
     assert_eq!(layout.decisions_dir(), emery.join("decisions"));
-    assert_eq!(layout.guest_lock_path(), emery.join("guest.lock"));
+    assert_eq!(layout.guest_lock_path(), change.join("guest.lock"));
 
     assert_eq!(layout.plan_path(), change.join("plan.yaml"));
     assert_eq!(layout.change_brief_path(), change.join("change.md"));
@@ -30,7 +30,7 @@ fn change_home_boundary() {
     assert!(!layout.config_path().starts_with(&change));
     assert!(!layout.specs_dir().starts_with(&change));
     assert!(!layout.decisions_dir().starts_with(&change));
-    assert!(!layout.guest_lock_path().starts_with(&change));
+    assert!(layout.guest_lock_path().starts_with(&change));
 }
 
 #[test]

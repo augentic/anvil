@@ -10,6 +10,7 @@ use project::adapter::Resolver;
 use project::handler::Anchor;
 use project::seam::{Source, Target, Workspaces};
 
+use super::change_dir::ChangeDir;
 use super::{EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, target};
 
 /// One-line application description.
@@ -34,13 +35,12 @@ pub(super) struct InitArgs {
     pub(super) upgrade: bool,
 }
 
-/// Arguments for `debt` — none.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub(super) struct DebtArgs {}
+/// Arguments for `debt`.
+#[derive(Clone, Debug, Args)]
+pub(super) struct DebtArgs {
+    #[command(flatten)]
+    pub(super) change_dir: ChangeDir,
+}
 
 #[derive(Clone, Copy)]
 struct NamespaceHelp {
@@ -259,14 +259,14 @@ where
         plan::RefineArgs,
         ::change::plan::handlers::Refine,
         "Drain refinement for a closed plan: extract + synthesize every targeted in-scope leaf in dependency order, write per-slice refinement manifests, and stop before any code work",
-        "Drain refinement for a closed plan in the engine guest — the specification stage between `plan author` and `plan execute` (RFC-91).\n\nWalks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts, and atomically writes `refinement.yaml`. Fresh leaves are skipped, so re-running resumes missing or stale work; the drain stops on the first failed refinement (exit 2, `plan-refine-stopped`).\n\nRepeatable `--slice <name>` targets specific leaves plus the stale-or-missing predecessor closure they need. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs — inspect them with `emery plan gaps`. No target build operation, workspace, wave, or authorization epoch is created; the loop holds the create-exclusive `.emery/guest.lock` marker while it drains."
+        "Drain refinement for a closed plan in the engine guest — the specification stage between `plan author` and `plan execute` (RFC-91).\n\nWalks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts, and atomically writes `refinement.yaml`. Fresh leaves are skipped, so re-running resumes missing or stale work; the drain stops on the first failed refinement (exit 2, `plan-refine-stopped`).\n\nRepeatable `--slice <name>` targets specific leaves plus the stale-or-missing predecessor closure they need. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs — inspect them with `emery plan gaps`. No target build operation, workspace, wave, or authorization epoch is created; the loop holds the create-exclusive `.emery/change/guest.lock` marker while it drains."
     );
     route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
         "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) covering exact per-leaf refinement digests, then build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`)",
-        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests. Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows are dispositioned at the gate (one `gap.deferred` fact each) and build proceeds — nothing blocks. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests. Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows are dispositioned at the gate (one `gap.deferred` fact each) and build proceeds — nothing blocks. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/change/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
@@ -296,8 +296,8 @@ where
 
 macro_rules! convert {
     // The destructuring pattern is exhaustive on purpose: a new clap
-    // flag missing from the field list is a compile error, not a
-    // silently dropped argument.
+    // flag missing from the field list is a compile error. `; drop`
+    // names launcher-only flags (`--change-dir`).
     ($args:path => $input:path {}) => {
         impl TryFrom<$args> for $input {
             type Error = error::Error;
@@ -318,31 +318,59 @@ macro_rules! convert {
             }
         }
     };
+    ($args:path => $input:path {} ; drop $($drop:ident),+) => {
+        impl TryFrom<$args> for $input {
+            type Error = error::Error;
+
+            #[expect(
+                clippy::unneeded_field_pattern,
+                reason = "named drops keep clap Args exhaustive; `..` would swallow a new flag"
+            )]
+            fn try_from(args: $args) -> Result<Self, Self::Error> {
+                let $args { $($drop: _,)+ } = args;
+                Ok(Self {})
+            }
+        }
+    };
+    ($args:path => $input:path { $($field:ident),* $(,)? } ; drop $($drop:ident),+) => {
+        impl TryFrom<$args> for $input {
+            type Error = error::Error;
+
+            #[expect(
+                clippy::unneeded_field_pattern,
+                reason = "named drops keep clap Args exhaustive; `..` would swallow a new flag"
+            )]
+            fn try_from(args: $args) -> Result<Self, Self::Error> {
+                let $args { $($field,)* $($drop: _,)+ } = args;
+                Ok(Self { $($field),* })
+            }
+        }
+    };
 }
 
 convert!(adapter::AddArgs => project::adapter::handlers::AddInput { component, project_dir });
 convert!(adapter::UpgradeArgs => project::adapter::handlers::UpgradeInput { name, all, project_dir });
 convert!(source::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(target::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
-convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan });
-convert!(source::ExtractArgs => ::slice::source::ExtractInput { source, lead, slice });
-convert!(slice::ListArgs => ::slice::handlers::ListInput {});
-convert!(slice::ValidateArgs => ::slice::handlers::ValidateInput { name });
-convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name });
-convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name });
-convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run });
-convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
-convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
-convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
-convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice });
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
-convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override });
-convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });
-convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
-convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason });
-convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
-convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
-convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
-convert!(DebtArgs => ::slice::handlers::DebtInput {});
+convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan } ; drop change_dir);
+convert!(source::ExtractArgs => ::slice::source::ExtractInput { source, lead, slice } ; drop change_dir);
+convert!(slice::ListArgs => ::slice::handlers::ListInput {} ; drop change_dir);
+convert!(slice::ValidateArgs => ::slice::handlers::ValidateInput { name } ; drop change_dir);
+convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name } ; drop change_dir);
+convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name } ; drop change_dir);
+convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run } ; drop change_dir);
+convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {} ; drop change_dir);
+convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {} ; drop change_dir);
+convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {} ; drop change_dir);
+convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice } ; drop change_dir);
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {} ; drop change_dir);
+convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override } ; drop change_dir);
+convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace } ; drop change_dir);
+convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name } ; drop change_dir);
+convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason } ; drop change_dir);
+convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, from, wave, force } ; drop change_dir);
+convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force } ; drop change_dir);
+convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit } ; drop change_dir);
+convert!(DebtArgs => ::slice::handlers::DebtInput {} ; drop change_dir);
 
 convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });

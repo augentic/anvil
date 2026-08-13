@@ -64,6 +64,57 @@ fn http_parity() {
 }
 
 #[tokio::test]
+async fn author_from_wave_grammar() {
+    let router = command_router(".");
+
+    let help = router.execute(["emery", "plan", "author", "--help"]).await;
+    assert_eq!(help.exit, 0);
+    let help = String::from_utf8_lossy(&help.stdout);
+    assert!(help.contains("--from"), "{help}");
+    assert!(help.contains("--wave"), "{help}");
+    assert!(help.contains("--change-dir"), "{help}");
+    assert!(help.contains("--intent"), "{help}");
+
+    let status_help = router.execute(["emery", "plan", "status", "--help"]).await;
+    assert_eq!(status_help.exit, 0);
+    assert!(
+        String::from_utf8_lossy(&status_help.stdout).contains("--change-dir"),
+        "change-scoped verbs carry --change-dir"
+    );
+
+    let missing_wave =
+        router.execute(["emery", "plan", "author", "demo", "--from", ".emery/system/"]).await;
+    assert_eq!(missing_wave.exit, 2);
+    let stderr = String::from_utf8_lossy(&missing_wave.stderr);
+    assert!(stderr.contains("--wave") || stderr.contains("required"), "{stderr}");
+}
+
+#[tokio::test]
+async fn author_from_unimplemented() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let router = command_router(home.path());
+    let response =
+        router.execute(["emery", "plan", "author", "demo", "--from", "def", "--wave", "w1"]).await;
+    assert_eq!(response.exit, 2);
+    let stderr = String::from_utf8(response.stderr).expect("stderr utf-8");
+    assert!(stderr.contains("plan-author-unimplemented"), "{stderr}");
+    assert!(!home.path().join("demo").exists(), "name is identity, not a subdirectory");
+    assert!(!home.path().join(".emery/project.yaml").exists(), "no synthetic project.yaml");
+    assert!(!home.path().join("guest.lock").exists(), "unimplemented path writes no marker");
+    assert!(!home.path().join(".emery/change/guest.lock").exists());
+}
+
+#[tokio::test]
+async fn author_intent_parses() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let router = command_router(home.path());
+    let response = router.execute(["emery", "plan", "author", "demo", "--intent", "Ship it"]).await;
+    assert_eq!(response.exit, 1);
+    let stderr = String::from_utf8_lossy(&response.stderr);
+    assert!(stderr.contains("not initialized"), "{stderr}");
+}
+
+#[tokio::test]
 async fn globals_and_completions() {
     let router = command_router(".");
 

@@ -279,6 +279,8 @@ async fn coverage_wire_shape_stale() {
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )
@@ -367,6 +369,8 @@ async fn post_author_resume_names() {
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )
@@ -420,6 +424,8 @@ async fn wave_opened_build_execute() {
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )
@@ -456,6 +462,8 @@ async fn wave_opened_build_execute() {
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

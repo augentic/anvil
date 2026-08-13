@@ -16,6 +16,7 @@ pub use self::routes::router;
 
 mod adapter;
 mod archive;
+mod change_dir;
 mod journal;
 mod output;
 mod plan;

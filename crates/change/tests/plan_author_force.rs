@@ -19,6 +19,8 @@ async fn author(
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force,
         },
     )

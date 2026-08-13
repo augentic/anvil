@@ -19,6 +19,8 @@ async fn author(
             name: "demo".to_string(),
             sources: support::greeting_binding_for(source_adapter),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )
@@ -180,6 +182,8 @@ mod bare_bindings {
                 name: "demo".to_string(),
                 sources: support::adversarial_bindings(),
                 intent: None,
+                from: None,
+                wave: None,
                 force: false,
             },
         )
@@ -206,6 +210,8 @@ mod bare_bindings {
                 name: "demo".to_string(),
                 sources: Vec::new(),
                 intent: Some("Ship the greeting.".to_string()),
+                from: None,
+                wave: None,
                 force: false,
             },
         )

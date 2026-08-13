@@ -150,6 +150,8 @@ fn anchors_at_project_root() {
 
     let policy = Policy::new(&nested, &argv(&["slice", "build", "s1"]), sandbox.locations.clone());
     assert_eq!(policy.project_root(), sandbox.root);
+    assert!(!policy.is_detached());
+    assert_eq!(policy.change_root(), sandbox.root.join(".emery/change"));
 }
 
 #[test]
@@ -194,6 +196,56 @@ fn unparseable_argv_anchors() {
     let policy = sandbox.policy(&["frobnicate"]);
     assert_eq!(policy.project_root(), sandbox.root);
     assert_eq!(policy.seed_dir(), sandbox.root);
+}
+
+#[test]
+fn detached_cwd() {
+    let sandbox = Sandbox::new();
+    let policy = sandbox.policy(&["plan", "status"]);
+    assert!(policy.is_detached());
+    assert_eq!(policy.project_root(), sandbox.root);
+    assert_eq!(policy.change_root(), sandbox.root);
+    assert_eq!(policy.definition_mount_name(), "/emery-definition");
+}
+
+#[test]
+fn change_dir_detached() {
+    let sandbox = Sandbox::new();
+    let home = sandbox.root.parent().expect("sandbox base").join("change-home");
+    std::fs::create_dir(&home).expect("mkdir change home");
+    let policy = Policy::new(
+        &sandbox.root,
+        &argv(&["plan", "status", "--change-dir", home.to_str().expect("utf-8")]),
+        sandbox.locations.clone(),
+    );
+    assert!(policy.is_detached());
+    assert_eq!(policy.project_root(), home.as_path());
+    assert_eq!(policy.change_root(), home.as_path());
+}
+
+#[test]
+fn from_system_preopen() {
+    let sandbox = Sandbox::new();
+    let emery = sandbox.root.join(".emery");
+    std::fs::create_dir_all(emery.join("system")).expect("mkdir .emery/system");
+    std::fs::write(
+        emery.join("project.yaml"),
+        format!(
+            "name: fixture\nadapter: mock\nemery: {}\nrules: {{}}\n",
+            env!("CARGO_PKG_VERSION")
+        ),
+    )
+    .expect("write project.yaml");
+
+    let policy = Policy::new(
+        &sandbox.root,
+        &argv(&["plan", "author", "demo", "--from", ".emery/system/", "--wave", "w1"]),
+        sandbox.locations.clone(),
+    );
+    assert!(!policy.is_detached());
+    let expected = std::fs::canonicalize(sandbox.root.join(".emery/system")).expect("system dir");
+    assert_eq!(std::fs::canonicalize(policy.definition_dir()).expect("definition"), expected);
+    assert_eq!(policy.definition_mount_name(), policy.definition_dir().display().to_string());
 }
 
 // ---------------------------------------------------------------------------

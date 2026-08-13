@@ -83,6 +83,8 @@ async fn author(session: &Session, sources: Vec<plan::wire::SourceAssign>) {
             name: "demo".to_string(),
             sources,
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

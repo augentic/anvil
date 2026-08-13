@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use project::config::Layout;
 use project::handler::{
     CachePlacement, ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_STORE_MOUNT, Locations,
 };
@@ -77,6 +78,16 @@ fn root_preserves_placement() {
 fn guest_paths_bind_preopens() {
     let paths = ExecutionPaths::guest();
     assert_eq!(paths.project_root(), Path::new("."));
+    assert_eq!(paths.change_root(), Layout::new(Path::new(".")).change_root());
+    assert!(!paths.is_detached());
     assert_eq!(paths.locations().store_root(), Path::new(GUEST_STORE_MOUNT));
     assert_eq!(paths.cache_dir(), PathBuf::from(GUEST_CACHE_MOUNT));
+}
+
+#[test]
+fn detached_constructor() {
+    let paths = ExecutionPaths::detached("/tmp/change-home", explicit());
+    assert_eq!(paths.project_root(), Path::new("/tmp/change-home"));
+    assert_eq!(paths.change_root(), Path::new("/tmp/change-home"));
+    assert!(paths.is_detached());
 }

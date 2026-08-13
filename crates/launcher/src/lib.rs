@@ -9,9 +9,10 @@ use std::sync::OnceLock;
 use project::adapter::{AdapterSelector, RoutedId};
 use project::config::ProjectConfig;
 use project::handler::{
-    ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT, Locations, PROJECT_ROOT_ENV,
+    CHANGE_ROOT_ENV, DETACHED_ENV, ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT,
+    Locations, PROJECT_ROOT_ENV,
 };
-use transport::command::selectors::{SeedRequest, refresh_request, seed_request};
+use transport::command::selectors::{SeedRequest, change_request, refresh_request, seed_request};
 
 mod anchor;
 mod blobstore;
@@ -30,6 +31,11 @@ pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
 /// Guest-visible preopen name of the private-workspaces root.
 pub const WORKSPACES_MOUNT: &str = GUEST_WORKSPACES_MOUNT;
 
+/// Fallback guest name for the definition preopen when argv carries
+/// no `--from` (or the named directory does not exist). Distinct from
+/// the seed preopen's self-named path so the two never collide.
+const DEFINITION_FALLBACK_MOUNT: &str = "/emery-definition";
+
 /// One invocation's deployment policy: the anchored layout plus the
 /// optional `adapter add` seed preopen.
 ///
@@ -46,6 +52,10 @@ pub struct Policy {
     /// the directory does not exist — the guest then renders
     /// `adapter-component-missing` itself).
     seed_dir: Option<PathBuf>,
+    /// Read-only preopen of `plan author --from`. `None` when argv
+    /// carries no `--from` or the named directory does not exist —
+    /// the guest then renders the author diagnostic itself.
+    definition_dir: Option<PathBuf>,
     /// Bare adapter names this invocation explicitly upgrades — the
     /// resolver's registry check runs for these even when a store
     /// entry exists. Derived from argv (`adapter upgrade <name>` /
@@ -72,28 +82,47 @@ impl Policy {
         let argv: Vec<String> =
             argv.iter().filter(|arg| *arg != "--debug" && *arg != "--quiet").cloned().collect();
         let seed = seed_request(&argv);
-        let root = anchor::project_root(invoked_dir, seed.as_ref());
-        let paths = ExecutionPaths::new(root, locations);
+        let change = change_request(&argv);
+        let roots = anchor::roots(invoked_dir, seed.as_ref(), change.change_dir.as_deref());
+        let paths = ExecutionPaths::from_roots(&roots, locations);
         // The global store is host-owned (no guest mount); the install
-        // leg creates it on demand. Same for the snapshot store — the
-        // workspace backend's kernel creates it on first write.
+        // leg creates it on demand. Same for the snapshot store. The
+        // `.` mount is product (in-place) or the change home (detached).
         let workspaces_dir = paths.locations().workspaces_root().to_path_buf();
         for dir in [paths.project_root().to_path_buf(), paths.cache_dir(), workspaces_dir] {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
+        let definition_dir = change.from.as_ref().and_then(|from| {
+            let resolved = roots.definition_root(from);
+            resolved.is_dir().then(|| std::path::absolute(&resolved).unwrap_or(resolved))
+        });
         let refresh = refresh_names(&argv, paths.project_root());
         Self {
             paths,
             seed_dir,
+            definition_dir,
             refresh,
         }
     }
 
-    /// Host directory of the writable project mount, named `.`.
+    /// Host directory of the writable `.` mount: product tree when
+    /// in-place, change home when detached.
     #[must_use]
     pub fn project_root(&self) -> &Path {
         self.paths.project_root()
+    }
+
+    /// Host directory of the change home.
+    #[must_use]
+    pub fn change_root(&self) -> &Path {
+        self.paths.change_root()
+    }
+
+    /// Whether this invocation has no ambient product root.
+    #[must_use]
+    pub const fn is_detached(&self) -> bool {
+        self.paths.is_detached()
     }
 
     /// Bare adapter names this invocation forces a registry check for
@@ -131,6 +160,22 @@ impl Policy {
     #[must_use]
     pub fn seed_mount_name(&self) -> String {
         self.seed_dir().display().to_string()
+    }
+
+    /// Host directory of the read-only definition preopen when argv
+    /// carries `--from` whose directory exists, else the `.` mount.
+    #[must_use]
+    pub fn definition_dir(&self) -> &Path {
+        self.definition_dir.as_deref().unwrap_or_else(|| self.paths.project_root())
+    }
+
+    /// Guest-visible name of the definition preopen: the absolute host
+    /// path when `--from` resolved, else `/emery-definition`.
+    #[must_use]
+    pub fn definition_mount_name(&self) -> String {
+        self.definition_dir
+            .as_ref()
+            .map_or_else(|| DEFINITION_FALLBACK_MOUNT.to_string(), |dir| dir.display().to_string())
     }
 
     /// The fail-closed adapters-only guest resolver over this
@@ -187,9 +232,9 @@ fn seed_dir(request: &SeedRequest, project_root: &Path) -> Option<PathBuf> {
 
 /// The process-wide policy, evaluated once across the macro's mount
 /// and resolver expressions. The first evaluation also exports the
-/// host-absolute project root as [`PROJECT_ROOT_ENV`]: guests inherit
-/// the host environment, and the in-guest kernel derives the
-/// agent-visible artifact root from it.
+/// host-absolute `.` mount, change home, and detached flag: guests
+/// inherit the host environment, and the in-guest kernel derives the
+/// agent-visible artifact root from [`PROJECT_ROOT_ENV`].
 fn current() -> &'static Policy {
     static POLICY: OnceLock<Policy> = OnceLock::new();
     POLICY.get_or_init(|| {
@@ -199,20 +244,31 @@ fn current() -> &'static Policy {
         let argv: Vec<String> =
             std::env::args_os().skip(1).map(|arg| arg.to_string_lossy().into_owned()).collect();
         let policy = Policy::new(&invoked_dir, &argv, Locations::from_env());
-        export_project_root(policy.project_root());
+        export_roots(&policy.paths);
         policy
     })
 }
 
-/// Export the host-absolute project root as [`PROJECT_ROOT_ENV`] so
-/// guests inherit it.
-fn export_project_root(root: &Path) {
-    let root = std::path::absolute(root).unwrap_or_else(|_io| root.to_path_buf());
+/// Export the host-absolute `.` mount, change home, and detached flag
+/// so guests inherit them.
+fn export_roots(paths: &ExecutionPaths) {
+    let mount = std::path::absolute(paths.project_root())
+        .unwrap_or_else(|_io| paths.project_root().to_path_buf());
+    let change = std::path::absolute(paths.change_root())
+        .unwrap_or_else(|_io| paths.change_root().to_path_buf());
     // SAFETY: one write during runtime assembly, before guest stores
     // snapshot the environment and before this process spawns any
     // concurrent environment reader.
-    #[expect(unsafe_code, reason = "the guest inherits the project root through the env")]
-    let () = unsafe { std::env::set_var(PROJECT_ROOT_ENV, root.as_os_str()) };
+    #[expect(unsafe_code, reason = "the guest inherits the roots through the env")]
+    let () = unsafe {
+        std::env::set_var(PROJECT_ROOT_ENV, mount.as_os_str());
+        std::env::set_var(CHANGE_ROOT_ENV, change.as_os_str());
+        if paths.is_detached() {
+            std::env::set_var(DETACHED_ENV, "1");
+        } else {
+            std::env::remove_var(DETACHED_ENV);
+        }
+    };
 }
 
 /// Macro expression: this invocation's pre-bound HTTP trigger
@@ -268,6 +324,18 @@ pub fn seed_mount_name() -> String {
 #[must_use]
 pub fn seed_mount_path() -> PathBuf {
     current().seed_dir().to_path_buf()
+}
+
+/// Macro expression: guest-visible name of the read-only definition preopen.
+#[must_use]
+pub fn definition_mount_name() -> String {
+    current().definition_mount_name()
+}
+
+/// Macro expression: host directory of the read-only definition preopen.
+#[must_use]
+pub fn definition_mount_path() -> PathBuf {
+    current().definition_dir().to_path_buf()
 }
 
 /// Macro expression: the fail-closed adapters-only guest resolver.

@@ -151,7 +151,7 @@ impl Error {
                     "re-run `emery plan execute` — it opens a fresh epoch over the current plan and specs; durable deferrals carry over, nothing needs re-supplying",
                 ),
                 "guest-marker-held" => Some(
-                    "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
+                    "wait for the running execute session; if no run is live (a crash left the marker behind), delete `.emery/change/guest.lock` and retry\nsee: docs/how-to/recover-from-a-stale-guest-lock.md",
                 ),
                 _ => None,
             },

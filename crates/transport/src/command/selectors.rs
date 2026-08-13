@@ -23,6 +23,38 @@ pub struct SeedRequest {
     pub project_dir: Option<std::path::PathBuf>,
 }
 
+/// Change-home facts argv carries: `--change-dir` and `plan author
+/// --from`. Relative values join the invocation directory at the
+/// launcher; the guest `.` mount is already the resolved home.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ChangeRequest {
+    /// Detached change-home override, when supplied.
+    pub change_dir: Option<std::path::PathBuf>,
+    /// Reviewed definition home from `plan author --from`.
+    pub from: Option<std::path::PathBuf>,
+}
+
+/// Project change-home facts out of `argv` (without the program name)
+/// through the shared command grammar.
+///
+/// Argv the grammar refuses — including help — projects the empty
+/// default, so the launcher stays total and the guest renders the
+/// rejection.
+#[must_use]
+pub fn change_request(argv: &[String]) -> ChangeRequest {
+    let mut full = Vec::with_capacity(argv.len() + 1);
+    full.push("emery".to_string());
+    full.extend(argv.iter().cloned());
+    let Ok(matches) = grammar().try_get_matches_from(full) else {
+        return ChangeRequest::default();
+    };
+    let (_path, leaf) = selected(&matches);
+    ChangeRequest {
+        change_dir: leaf.try_get_one::<std::path::PathBuf>("change_dir").ok().flatten().cloned(),
+        from: leaf.try_get_one::<std::path::PathBuf>("from").ok().flatten().cloned(),
+    }
+}
+
 /// Project the `adapter add` seed request out of `argv` (without the
 /// program name) through the shared command grammar.
 ///

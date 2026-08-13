@@ -1,14 +1,17 @@
 //! `ProjectConfig` — in-memory model of `.emery/project.yaml` — and
 //! `Layout<'a>`, the typed home for every `.emery/` path helper.
-//! Change-scoped artifacts live under `.emery/change/`.
+//!
+//! [`Roots`] selects in-place vs detached change homes.
 
 mod atomic;
+mod roots;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub use atomic::{AtomicYaml, Mutation, with_state};
 use error::Error;
+pub use roots::Roots;
 use serde::{Deserialize, Serialize};
 
 use crate::platform::Platform;
@@ -119,7 +122,7 @@ impl ProjectConfig {
 /// literally. Durable product state (`project.yaml`, `specs/`,
 /// `decisions/`) stays under `.emery/`; change-scoped artifacts
 /// (`plan.yaml`, `change.md`, `discovery.md`, `slices/`, `events/`,
-/// `targets/`, `archive/`) live under [`Self::change_root`].
+/// `targets/`, `archive/`, `guest.lock`) live under [`Self::change_root`].
 #[derive(Debug, Clone, Copy)]
 pub struct Layout<'a> {
     project_dir: &'a Path,
@@ -270,13 +273,11 @@ impl<'a> Layout<'a> {
         self.change_root().join("plan.yaml")
     }
 
-    /// Absolute path to `<project_dir>/.emery/guest.lock` — the
-    /// guest execute loop's create-exclusive advisory marker
-    /// (the engine guest marker), the guest-vs-guest
-    /// breakout refusal fence.
+    /// Absolute path to the guest execute loop's create-exclusive
+    /// advisory marker: `<change-root>/guest.lock`.
     #[must_use]
     pub fn guest_lock_path(&self) -> PathBuf {
-        self.emery_dir().join("guest.lock")
+        self.change_root().join("guest.lock")
     }
 
     /// Absolute path to `<project_dir>/.emery/change/change.md` — the

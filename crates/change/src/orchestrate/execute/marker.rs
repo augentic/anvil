@@ -1,5 +1,5 @@
 //! The create-exclusive guest-run marker
-//! (`<plan-root>/.emery/guest.lock`): atomic acquisition, holder
+//! (`<change-root>/guest.lock`): atomic acquisition, holder
 //! diagnostics, and drop-time release.
 
 use std::io::Write as _;
@@ -9,7 +9,7 @@ use error::Error;
 use jiff::Timestamp;
 use project::config::Layout;
 
-/// Create-exclusive advisory marker at `<plan-root>/.emery/guest.lock`,
+/// Create-exclusive advisory marker at `<change-root>/guest.lock`,
 /// held for one guest execute run — the only execute-run interlock.
 ///
 /// `OpenOptions::create_new` makes acquisition atomic; existence is the

@@ -83,6 +83,8 @@ async fn author(session: &Session, sources: Vec<SourceAssign>) {
             name: "demo".to_string(),
             sources,
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )
@@ -202,6 +204,8 @@ async fn slice_closure() {
             name: "auth".to_string(),
             sources: support::adversarial_bindings(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

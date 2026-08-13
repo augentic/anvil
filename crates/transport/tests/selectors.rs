@@ -4,7 +4,9 @@
 //! rejections, every workflow verb — runs in the guest, so it
 //! projects nothing.
 
-use transport::command::selectors::{RefreshRequest, refresh_request, seed_request};
+use transport::command::selectors::{
+    ChangeRequest, RefreshRequest, change_request, refresh_request, seed_request,
+};
 
 fn argv(args: &[&str]) -> Vec<String> {
     args.iter().map(ToString::to_string).collect()
@@ -121,6 +123,51 @@ mod refresh {
             &["frobnicate"][..],
         ] {
             assert_eq!(refresh_request(&argv(args)), RefreshRequest::default(), "{args:?}");
+        }
+    }
+}
+
+mod change {
+    use super::*;
+
+    #[test]
+    fn author_from_wave_dir() {
+        let request = change_request(&argv(&[
+            "plan",
+            "author",
+            "demo",
+            "--from",
+            ".emery/system/",
+            "--wave",
+            "w1",
+            "--change-dir",
+            "/tmp/change",
+        ]));
+        assert_eq!(
+            request,
+            ChangeRequest {
+                change_dir: Some(std::path::PathBuf::from("/tmp/change")),
+                from: Some(std::path::PathBuf::from(".emery/system/")),
+            }
+        );
+    }
+
+    #[test]
+    fn status_change_dir() {
+        let request = change_request(&argv(&["plan", "status", "--change-dir", "/tmp/change"]));
+        assert_eq!(request.change_dir, Some(std::path::PathBuf::from("/tmp/change")));
+        assert_eq!(request.from, None);
+    }
+
+    #[test]
+    fn routes_project_nothing() {
+        for args in [
+            &["plan", "status"][..],
+            &["adapter", "add", "./demo.wasm"][..],
+            &["init", "omnia"][..],
+            &["frobnicate"][..],
+        ] {
+            assert_eq!(change_request(&argv(args)), ChangeRequest::default(), "{args:?}");
         }
     }
 }

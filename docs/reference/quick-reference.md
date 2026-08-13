@@ -110,10 +110,10 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .emery/
     ├── project.yaml      # project config (target, sources, emery-version)
-    ├── guest.lock        # lock held by a running plan refine / plan execute (a second driver gets guest-marker-held)
     ├── scratch/          # transient per-run working state (gitignored)
     ├── specs/            # merged baseline
     └── change/           # in-place change home
+        ├── guest.lock    # lock held by a running plan refine / plan execute (a second driver gets guest-marker-held)
         ├── plan.yaml     # change plan
         ├── change.md     # operator brief
         ├── discovery.md  # plan-time lead inventory

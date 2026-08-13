@@ -28,7 +28,7 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `guest-marker-held` | A second driver session tried to start while `.emery/guest.lock` is held (exit 2). | Wait for the running session, or if the holder died, [recover from the stale lock](../how-to/recover-from-a-stale-guest-lock.md). |
+| `guest-marker-held` | A second driver session tried to start while `.emery/change/guest.lock` is held (exit 2). | Wait for the running session, or if the holder died, [recover from the stale lock](../how-to/recover-from-a-stale-guest-lock.md). |
 
 ## Plan authoring and amendment
 

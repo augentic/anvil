@@ -23,6 +23,8 @@ async fn author_and_refine(session: &Session) {
             name: "auth".to_string(),
             sources: support::adversarial_bindings(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

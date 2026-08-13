@@ -133,7 +133,7 @@ Plan artifacts (`plan.yaml` / `change.md` / `discovery.md`) live under `.emery/c
 
 Progress is projected, not stored. Topology rows are written by `plan author` / `plan add` / `plan amend` / `plan remove`. Slice artifacts and refinement manifests are written by the `plan refine` drain — planning writes, no code-work grant (RFC-91 D5). Ladder / ownership facts: the execute loop's claim step appends `slice.claimed` + `plan.entry.advanced` (projects `in-progress`); its merge phase appends wave-commit / archive facts (projects `done`); `plan drop <entry>` archives the slice without merging (in-scope exclusion). There is no undo verb — `done` facts are never retracted. Authorization is a write: starting `emery plan execute` (directly or through `/emery:execute`) appends `plan.execute.started` with typed `closed-plan` coverage — `{plan-digest, refinements: {<slice>: <refinement digest>}}`; there is no `plan approve` verb.
 
-Driver mutual exclusion is guest-owned: the `plan refine` and `plan execute` orchestrators each hold the `.emery/guest.lock` marker for the run's lifetime and refuse a concurrent driver with `guest-marker-held`. Per-slice exclusivity is claim facts (`slice-claim-conflict` on a second journal writer); there is no plan-wide single-active-entry gate and no native lock wrapper.
+Driver mutual exclusion is guest-owned: the `plan refine` and `plan execute` orchestrators each hold the `.emery/change/guest.lock` marker for the run's lifetime and refuse a concurrent driver with `guest-marker-held`. Per-slice exclusivity is claim facts (`slice-claim-conflict` on a second journal writer); there is no plan-wide single-active-entry gate and no native lock wrapper.
 
 ## Observability
 

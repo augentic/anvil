@@ -101,7 +101,7 @@ The closure skill (`/emery:finalize`) that verifies the plan is drained, confirm
 One of the two engine test rungs and its cadence: repository correctness (`cargo make ci`, every push) or prompt evaluation (`cargo make eval`, operator-invoked). The WASM seam has no automated gate — it is exercised by the operator-run wasm example (`cargo make wasm-run`). See [Quality gates](../contributing/quality-gates.md).
 
 **Guest**
-The **engine guest** is the WebAssembly component embedded in the `emery` binary that owns the orchestrations behind "guest-routed" verbs (`plan author`, `plan refine`, `plan execute`) and the refine / build / merge phases they run. An **adapter guest** is a source or target adapter's own component, dispatched by the engine. A running driver orchestration holds the create-exclusive `.emery/guest.lock` marker; a second driver session exits with `guest-marker-held`.
+The **engine guest** is the WebAssembly component embedded in the `emery` binary that owns the orchestrations behind "guest-routed" verbs (`plan author`, `plan refine`, `plan execute`) and the refine / build / merge phases they run. An **adapter guest** is a source or target adapter's own component, dispatched by the engine. A running driver orchestration holds the create-exclusive `.emery/change/guest.lock` marker; a second driver session exits with `guest-marker-held`.
 
 ## H
 

@@ -58,6 +58,8 @@ async fn scaffold_author(session: &Session) {
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

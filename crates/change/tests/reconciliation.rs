@@ -57,6 +57,8 @@ async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project
             name: "auth".to_string(),
             sources: support::adversarial_bindings(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

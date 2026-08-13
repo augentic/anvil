@@ -28,6 +28,7 @@ cfg_if::cfg_if! {
                 // The snapshot store itself is host-owned — no mount.
                 { name: launcher::WORKSPACES_MOUNT, path: launcher::workspaces_dir(), writable: true },
                 { name: launcher::seed_mount_name(), path: launcher::seed_mount_path() },
+                { name: launcher::definition_mount_name(), path: launcher::definition_mount_path() },
             ],
             link: ["emery:adapter/source@0.1.0", "emery:adapter/target@0.1.0"],
             resolver: launcher::resolver(),

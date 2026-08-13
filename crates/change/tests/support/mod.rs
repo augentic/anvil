@@ -286,6 +286,8 @@ pub async fn greeting_ready(session: &Session) {
             name: "demo".to_string(),
             sources: greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

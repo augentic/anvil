@@ -51,7 +51,7 @@ The two adapter validators — `contract` and `vectis` — are in-guest adapter 
 
 ## Layout boundary
 
-`.emery/` is framework-managed state every CLI verb writes through. Durable product state (`project.yaml`, `specs/`, `decisions/`, `scratch/`, the `guest.lock` marker) stays under `.emery/`; change-scoped artifacts (`plan.yaml`, `change.md`, `discovery.md`, `slices/`, `events/`, `targets/`, `archive/`) live under `.emery/change/`. The boundary is enforced by the `Layout<'a>` newtype in `project` (`crates/project/src/config.rs`): path helpers are inherent methods on `Layout<'a>`, and call sites write `Layout::new(&dir).plan_path()`. Do not hard-code `.emery/change/plan.yaml` or sibling paths, and do not declare free path-helper functions outside `crates/project/src/config/`; any new `.emery/` path lands on `Layout`.
+`.emery/` is framework-managed state every CLI verb writes through. Durable product state (`project.yaml`, `specs/`, `decisions/`, `scratch/`) stays under `.emery/`; change-scoped artifacts (`plan.yaml`, `change.md`, `discovery.md`, `slices/`, `events/`, `targets/`, `archive/`, the `guest.lock` marker) live under `.emery/change/`. The boundary is enforced by the `Layout<'a>` newtype in `project` (`crates/project/src/config.rs`): path helpers are inherent methods on `Layout<'a>`, and call sites write `Layout::new(&dir).plan_path()`. Do not hard-code `.emery/change/plan.yaml` or sibling paths, and do not declare free path-helper functions outside `crates/project/src/config/`; any new `.emery/` path lands on `Layout`.
 
 ## Time injection
 

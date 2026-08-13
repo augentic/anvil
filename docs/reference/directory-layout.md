@@ -20,7 +20,6 @@ contracts/                                  # Baseline API contracts
 .emery/
 ├── project.yaml                            # Project configuration (target, sources, emery-version)
 ├── context.lock                            # Sidecar for init-time AGENTS.md scaffold
-├── guest.lock                              # Create-exclusive marker held by guest orchestrations
 │
 ├── scratch/                                # Transient working state (per-run lanes; wiped freely; gitignored)
 │   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
@@ -34,6 +33,7 @@ contracts/                                  # Baseline API contracts
 ├── design-system/                          # Shared UI catalog (opt-in; Vectis)
 │
 └── change/                                 # In-place change home (temporary; archived or deleted)
+    ├── guest.lock                          # Create-exclusive marker held by guest orchestrations
     ├── plan.yaml                           # Change plan (topology + slices[]; progress is projected)
     ├── change.md                           # Operator brief for the active change
     ├── discovery.md                        # Plan-time lead inventory

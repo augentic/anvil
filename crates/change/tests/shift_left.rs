@@ -56,6 +56,8 @@ async fn author(session: &Session) -> plan::handlers::AuthorBody {
             name: "demo".to_string(),
             sources: support::greeting_binding(),
             intent: None,
+            from: None,
+            wave: None,
             force: false,
         },
     )

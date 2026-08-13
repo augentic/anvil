@@ -2,9 +2,13 @@
 //! locked argv grammars for `--source` ([`source_assign`]) and
 //! `--sources` / `--add-source` ([`binding_arg`]).
 
+use std::path::PathBuf;
+
 use ::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
 use artifacts::evidence::ClaimKind;
 use clap::{ArgAction, Args};
+
+use super::change_dir::ChangeDir;
 
 /// Parse the locked `--source` argv grammar into a [`SourceAssign`]:
 /// `<key>=<adapter>:<path>` (path-bound) or
@@ -87,28 +91,25 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
 }
 
 /// Arguments for `plan validate`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct ValidateArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct ValidateArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan status`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct StatusArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct StatusArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan gaps`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct GapsArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct GapsArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan refine`.
 #[derive(Clone, Debug, Args)]
@@ -118,21 +119,24 @@ pub struct RefineArgs {
     /// selected work coherent; fresh siblings are skipped.
     #[arg(long = "slice", action = ArgAction::Append, value_name = "NAME")]
     pub slice: Vec<String>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
-/// Arguments for `plan execute` — none.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct ExecuteArgs {}
+/// Arguments for `plan execute`.
+#[derive(Clone, Debug, Args)]
+pub struct ExecuteArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan remove`.
 #[derive(Debug, Args)]
 pub struct RemoveArgs {
     /// Kebab-case entry name to remove
     pub name: String,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan drop`.
@@ -144,6 +148,8 @@ pub struct DropArgs {
     /// the archive path.
     #[arg(long)]
     pub reason: Option<String>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan author`.
@@ -166,20 +172,32 @@ pub struct AuthorArgs {
     /// `--source intent=intent:value:<string>`.
     #[arg(long = "intent", value_name = "STRING")]
     pub intent: Option<String>,
+    /// Reviewed definition home. Requires `--wave`. Relative values
+    /// join the product root in-place (`.emery/system/` for a colocated
+    /// degenerate definition) or the change home when detached.
+    #[arg(long = "from", value_name = "DIR", requires = "wave")]
+    pub from: Option<PathBuf>,
+    /// Wave id inside the definition named by `--from`. Requires `--from`.
+    #[arg(long = "wave", value_name = "ID", requires = "from")]
+    pub wave: Option<String>,
     /// Replace an existing plan unconditionally, whatever its entry
     /// statuses. Without --force an existing `plan.yaml` refuses
     /// with `plan-already-exists`.
     #[arg(long)]
     pub force: bool,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan archive`.
-#[derive(Clone, Copy, Debug, Args)]
+#[derive(Clone, Debug, Args)]
 pub struct ArchiveArgs {
     /// Archive even when the plan has pending or in-progress entries.
     /// Without --force, these non-terminal statuses block the archive.
     #[arg(long)]
     pub force: bool,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan add`.
@@ -213,6 +231,8 @@ pub struct AddArgs {
     /// `plan.amend.authority-override` event fires per resolved entry.
     #[arg(long = "authority-override", action = ArgAction::Append)]
     pub authority_override: Vec<KindAssign>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan amend`.
@@ -293,4 +313,6 @@ pub struct AmendArgs {
     /// `true` or `false`; omit the flag to leave it unchanged.
     #[arg(long = "allow-composition-replace", value_name = "BOOL")]
     pub allow_composition_replace: Option<bool>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
