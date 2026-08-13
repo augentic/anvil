@@ -28,9 +28,9 @@ pub struct Projections {
     /// Digest of exactly the retained contributing lead closure —
     /// the full lead blocks the entry's source bindings reference.
     pub leads: SnapshotId,
-    /// Digest of the decomposition scope. Pre-RFC-88 this is the
-    /// canonical single-node projection: the leaf as its own terminal
-    /// with empty ancestry and the transitive `depends-on` closure.
+    /// Digest of the decomposition scope: retained ancestry,
+    /// dependency closure, and terminal mapping. Absent ancestry is
+    /// canonical-empty, so a tree-less compute stays digest-neutral.
     pub decomposition: SnapshotId,
 }
 
@@ -50,6 +50,20 @@ impl Projections {
     pub fn compute(
         plan: &Plan, entry: &Entry, contributing: &[Lead], target: Option<&str>,
     ) -> Result<Self, Error> {
+        Self::compute_with(plan, entry, contributing, target, None)
+    }
+
+    /// [`Self::compute`] using `tree` for ancestry and compiled
+    /// `depends-on` when a decomposition is present.
+    ///
+    /// # Errors
+    ///
+    /// The same codes as [`Self::compute`], plus tree lookup / compile
+    /// failures when `tree` is `Some`.
+    pub fn compute_with(
+        plan: &Plan, entry: &Entry, contributing: &[Lead], target: Option<&str>,
+        tree: Option<&super::decomposition::Decomposition>,
+    ) -> Result<Self, Error> {
         Ok(Self {
             entry: digest(&entry_projection(plan, entry, target)?)?,
             leads: digest(&LeadsProjection {
@@ -57,11 +71,7 @@ impl Projections {
                 slice: entry.name.as_str().to_string(),
                 leads: contributing.to_vec(),
             })?,
-            decomposition: digest(&DecompositionProjection {
-                version: PROJECTION_VERSION,
-                terminal: entry.name.as_str().to_string(),
-                depends_on: dependency_closure(plan, entry),
-            })?,
+            decomposition: digest(&decomp_projection(plan, entry, tree)?)?,
         })
     }
 }
@@ -166,16 +176,54 @@ struct LeadsProjection {
     leads: Vec<Lead>,
 }
 
-/// Canonical `decomposition` projection bytes — pre-RFC-88 the leaf is
-/// its own terminal.
+/// Canonical `decomposition` projection bytes.
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct DecompositionProjection {
     version: u32,
     terminal: String,
-    /// Sorted transitive `depends-on` closure from `plan.yaml`.
+    /// Parent-chain from the tree root, excluding the leaf.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    ancestry: Vec<String>,
+    /// Sorted transitive `depends-on` closure.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     depends_on: Vec<SliceName>,
+}
+
+fn decomp_projection(
+    plan: &Plan, entry: &Entry, tree: Option<&super::decomposition::Decomposition>,
+) -> Result<DecompositionProjection, Error> {
+    let Some(tree) = tree else {
+        return Ok(DecompositionProjection {
+            version: PROJECTION_VERSION,
+            terminal: entry.name.as_str().to_string(),
+            ancestry: Vec::new(),
+            depends_on: dependency_closure(plan, entry),
+        });
+    };
+    let id = tree.leaf_id(entry.name.as_str())?;
+    let edges = super::decomposition::compile(tree)?;
+    let depends_on = slice_closure(&edges, &entry.name);
+    Ok(DecompositionProjection {
+        version: PROJECTION_VERSION,
+        terminal: entry.name.as_str().to_string(),
+        ancestry: tree.ancestry(id)?,
+        depends_on,
+    })
+}
+
+fn slice_closure(edges: &BTreeMap<SliceName, Vec<SliceName>>, name: &SliceName) -> Vec<SliceName> {
+    let mut closure: BTreeSet<SliceName> = BTreeSet::new();
+    let mut frontier: Vec<SliceName> = edges.get(name).cloned().unwrap_or_default();
+    while let Some(dep) = frontier.pop() {
+        if dep.as_str() == name.as_str() || !closure.insert(dep.clone()) {
+            continue;
+        }
+        if let Some(next) = edges.get(&dep) {
+            frontier.extend(next.iter().cloned());
+        }
+    }
+    closure.into_iter().collect()
 }
 
 fn entry_projection(

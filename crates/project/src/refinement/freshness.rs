@@ -14,7 +14,7 @@ use super::{Kind, Manifest, VERSION, file_digest};
 use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
 use crate::plan::{
-    Entry, Plan, Projections, SourceBinding, contributing_leads, dir_cid, source_cid,
+    Decomposition, Entry, Plan, Projections, SourceBinding, contributing_leads, dir_cid, source_cid,
 };
 use crate::snapshot::SnapshotId;
 
@@ -191,7 +191,15 @@ pub fn freshness_with(
             .push(format!("manifest names slice `{}`, expected `{}`", manifest.slice, entry.name));
     }
 
-    planning(plan, entry, inventory, &manifest, live.target(layout)?.as_deref(), &mut reasons);
+    planning(
+        layout,
+        plan,
+        entry,
+        inventory,
+        &manifest,
+        live.target(layout)?.as_deref(),
+        &mut reasons,
+    );
     profile(plan, entry, &manifest, &mut reasons);
     baseline(layout, &manifest, live, &mut reasons)?;
     sources(layout, plan, entry, &manifest, live, &mut reasons)?;
@@ -291,11 +299,19 @@ fn profile(plan: &Plan, entry: &Entry, manifest: &Manifest, reasons: &mut Vec<St
 /// contributing lead or plan-level source binding no longer resolves)
 /// is itself staleness: the covered planning input has changed shape.
 fn planning(
-    plan: &Plan, entry: &Entry, inventory: &[Lead], manifest: &Manifest, target: Option<&str>,
-    reasons: &mut Vec<String>,
+    layout: Layout<'_>, plan: &Plan, entry: &Entry, inventory: &[Lead], manifest: &Manifest,
+    target: Option<&str>, reasons: &mut Vec<String>,
 ) {
-    let live = contributing_leads(entry, inventory)
-        .and_then(|contributing| Projections::compute(plan, entry, &contributing, target));
+    let tree = match Decomposition::load_opt(&layout.decomposition_path()) {
+        Ok(tree) => tree,
+        Err(err) => {
+            reasons.push(format!("planning projections no longer compute: {err}"));
+            return;
+        }
+    };
+    let live = contributing_leads(entry, inventory).and_then(|contributing| {
+        Projections::compute_with(plan, entry, &contributing, target, tree.as_ref())
+    });
     match live {
         Ok(live) => {
             let recorded = &manifest.inputs.planning;

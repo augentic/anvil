@@ -326,6 +326,24 @@ impl<'a> Layout<'a> {
         self.change_root().join("discovery.yaml")
     }
 
+    /// Absolute path to `<change>/decomposition.yaml`.
+    #[must_use]
+    pub fn decomposition_path(&self) -> PathBuf {
+        self.change_root().join("decomposition.yaml")
+    }
+
+    /// Absolute path to `<change>/decompositions/` — retained revisions.
+    #[must_use]
+    pub fn decompositions_dir(&self) -> PathBuf {
+        self.change_root().join("decompositions")
+    }
+
+    /// Absolute path to `<change>/decompositions/<digest>.yaml`.
+    #[must_use]
+    pub fn decomp_revision_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.decompositions_dir().join(format!("{}.yaml", digest.digest()))
+    }
+
     /// Absolute path to `<change>/imports/`.
     #[must_use]
     pub fn imports_dir(&self) -> PathBuf {

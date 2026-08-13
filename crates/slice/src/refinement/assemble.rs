@@ -10,7 +10,7 @@ use artifacts::leads::Lead;
 use error::Error;
 use project::adapter::BuildInputDeclaration;
 use project::config::Layout;
-use project::plan::{Entry, Plan, Projections, contributing_leads, dir_cid};
+use project::plan::{Decomposition, Entry, Plan, Projections, contributing_leads, dir_cid};
 use project::snapshot::SnapshotId;
 
 use super::{BundleEntry, Dependency, Inputs, Kind, Manifest, Planning, VERSION};
@@ -52,7 +52,9 @@ pub fn assemble(
     dependencies: Vec<Dependency>,
 ) -> Result<Manifest, Error> {
     let contributing = contributing_leads(entry, inventory)?;
-    let planning = Projections::compute(plan, entry, &contributing, target.reference)?;
+    let tree = Decomposition::load_opt(&layout.decomposition_path())?;
+    let planning =
+        Projections::compute_with(plan, entry, &contributing, target.reference, tree.as_ref())?;
     let slice_dir = layout.slice_dir(entry.name.as_str());
     Ok(Manifest {
         version: VERSION,

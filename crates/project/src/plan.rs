@@ -8,6 +8,7 @@ pub mod amend;
 pub mod archive;
 pub mod authority_override;
 pub mod create;
+pub mod decomposition;
 pub mod discovery;
 pub mod doctor;
 pub mod epoch;
@@ -27,6 +28,9 @@ pub mod validate;
 
 pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
+pub use decomposition::{
+    Decomposition, VERSION as DECOMPOSITION_VERSION, retain as retain_decomposition,
+};
 pub use discovery::{Discovery, VERSION as DISCOVERY_VERSION};
 pub use doctor::{advance_gate, author_gate, detect, full_report};
 pub use execution::{collect_events, project_ladders};

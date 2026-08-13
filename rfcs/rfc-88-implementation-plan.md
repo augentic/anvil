@@ -413,7 +413,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - **Step 15:** leaf-readiness is `Profile::exceeds(&assessment, Gate::SliceSplit)` against the plan-row pin (already stamped). Do not re-resolve the host table during decompose unless `--force` re-authored. `Gate::Task` is recorded only.
 - **Step 18:** the digest chain is plan-row digest ↔ decomposition body digest ↔ `refinement.yaml.inputs.profile`. Verify those pins match; do not re-resolve the host table at execute start. A binary bump of compiled weights creates a new digest for *new* authoring only — an in-flight epoch stays valid until re-author restamps (same honesty posture as closed Open Question 10's compiled constants).
 
-### Step 14 — Decomposition substrate: DTOs, validators, compiler, projection [ ]
+### Step 14 — Decomposition substrate: DTOs, validators, compiler, projection [x]
 
 **RFC anchors:** D1 (`decomposition.yaml`, `decompositions/<digest>.yaml`), D3 (split/leaf validation rules, containment-vs-dependency, budgets, deterministic engine ownership), implementation requirement "Add the closed `decomposition.yaml` shape… RFC-95 target-contraction cycle check"; acceptance criteria 5 and 6; RFC-95 D4/implementation note (shared contraction kernel).
 
@@ -429,6 +429,20 @@ The first cut lands the execution-substrate change while everything is still in-
 **Key code areas:** new `crates/project/src/plan/decomposition/` (DTOs + validators + compiler + projector), `crates/project/src/plan/projection.rs`, retention plumbing, extensive fixture-based tests.
 
 **Tests / gates:** validator matrix over hand-built fixtures (every blocking rule); byte-stable projection; contraction-cycle fixtures (leaf-acyclic but target-cyclic); ≥3-level multi-target fixture; revision retention. `cargo make ci`.
+
+**Notes (2026-08-14):**
+
+- Kernel is `project::plan::decomposition`: closed `Decomposition` `{ version, leads-digest, model-capability-profiles, root, nodes }` (`deny_unknown_fields`). Rust field `profiles` serializes as `model-capability-profiles`. Each map value is `BoundProfile` — `Profile::reference()` plus the `Profile` fields (`id`, `version`, `weights`, `thresholds`). Digest is **not** inside the hashed `Profile` body. Nodes carry children, parent, `sources` (`Scope { source, lead }`), `target` / `targets`, `ownership`, `depends-on`, `kind: split | leaf`, terminal `slice`, and `acceptance`. Golden: `crates/project/answers/decomposition.yaml`.
+- D1's "handoff" is not a field on this DTO — it already rides `discovery.yaml` / `plan.yaml.definition`. Putting it here would duplicate the binding digest.
+- Compiled caps sit beside the kernel as `MAX_DEPTH` 8, `MAX_NODES` 64, `MAX_JUDGMENTS` 128 (the plan's `MAX_DECOMPOSITION_*` names exceed the 25-char ident cap). `MAX_JUDGMENTS` is exported for step 15 and is not enforced here. Invalid-split repair still reuses `MAX_REPAIRS`.
+- Unary splits (including the required root → leaf degenerate) are exempt from strict scope-reduction — otherwise the one-slice tree cannot pass. Reduction is lexicographic `(leads, targets, ownership-paths)` and applies only when `children.len() >= 2`.
+- Cross-cutting retention: a parent lead that appears on two or more children must appear on every sibling that does not carry a different lead from the same source (focused-child replacement).
+- Domain-dep compiler (`compile`): `depends_on: [predecessor]` expands to predecessor exit leaves → successor entry leaves. Authored leaf-to-leaf edges copy through. Projector (`slices`) emits structured `{ source, lead }` bindings and required `slices[].target` (never `project`). `matches_plan` compares name / target / sources / depends-on only — review fields are not projection.
+- Target-contraction kernel is `decomposition::contraction(&[Entry])` so RFC-95 archive can reuse it without loading a `Decomposition`. Same-target edges drop; an SCC or self-loop is `publication-target-cycle`.
+- `Projections::compute` stays digest-neutral (empty `ancestry` omitted). `compute_with` fills ancestry + compiled closure from a tree. Freshness and manifest assembly load `decomposition.yaml` when present. Retention copies exact bytes to `decompositions/<digest>.yaml` on first reference (`retain_decomposition`).
+- **Step 15:** validate each judgment response with `Decomposition::check` / `findings` before enqueueing. Unary splits are only legal as the root container (or other 1-child wrappers); do not emit them as reducing partitions. Caps are `plan::decomposition::{MAX_DEPTH, MAX_NODES, MAX_JUDGMENTS}` — do not introduce `MAX_DECOMPOSITION_*` aliases. Leaf-readiness remains `Profile::exceeds` against the plan-row pin (step 13).
+- **Step 17:** `plan add` / `amend` / `remove` still write `slices[]` directly. Once a `decomposition.yaml` exists they must refuse or reproject via `slices` + `matches_plan`. Do not invent a second drift check.
+- **Step 18:** execute start is `matches_plan` plus `plan.decomposition_digest == tree.digest()` plus the retained `decompositions/<digest>.yaml`. The profile digest chain is plan-row digest ↔ `BoundProfile.digest` ↔ `refinement.yaml.inputs.profile`. Call `contraction(&plan.entries)` when validating the plan graph without reloading the tree.
 
 ### Step 15 — Decomposition judgment legs + full detached `plan author` [ ]
 
