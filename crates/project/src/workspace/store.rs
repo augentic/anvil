@@ -11,7 +11,7 @@ use error::Error;
 use super::exec::{ExecBits, FsExecBits};
 use super::manifest::{Entry, Manifest};
 use super::objects::{FsObjects, Objects};
-use crate::snapshot::{self, CodePatch, SnapshotId};
+use crate::snapshot::{self, SnapshotId};
 
 /// The snapshot store: tree walks and manifests in the kernel, object
 /// bytes behind [`Objects`], exec bits behind [`ExecBits`].
@@ -87,33 +87,6 @@ impl<O: Objects> Store<O> {
             modes.record(path, entry);
         }
         self.exec.apply(dest, &modes.exec, &modes.plain)
-    }
-
-    /// Apply `patch` to the tree at `dir`: rewrite each touched path
-    /// from the result snapshot, deleting touched paths the result no
-    /// longer carries.
-    ///
-    /// Only the patch's touched paths are written — everything else in
-    /// `dir` (including paths the engine's own deterministic merge just
-    /// folded) is left untouched.
-    ///
-    /// # Errors
-    ///
-    /// `snapshot-missing` for an unknown result identity, filesystem
-    /// failures.
-    pub async fn apply(&self, patch: &CodePatch, dir: &Path) -> Result<(), Error> {
-        let target = self.manifest(&patch.result).await?;
-        let mut modes = ModeSets::default();
-        for path in &patch.touched {
-            if let Some(entry) = target.entries.get(path) {
-                self.write_entry(dir, path, entry).await?;
-                modes.record(path, entry);
-            } else {
-                remove_entry(&dir.join(path))?;
-                prune_empty_parents(dir, path);
-            }
-        }
-        self.exec.apply(dir, &modes.exec, &modes.plain)
     }
 
     /// Write one manifest entry beneath `root`, replacing whatever is
@@ -332,18 +305,6 @@ fn remove_entry(path: &Path) -> Result<(), Error> {
         Ok(_) => std::fs::remove_file(path),
     };
     removed.map_err(Error::Io)
-}
-
-/// Best-effort removal of directories left empty by a deletion, walking
-/// `path`'s parents up to (never including) `root`.
-fn prune_empty_parents(root: &Path, path: &str) {
-    let mut parent = Path::new(path).parent();
-    while let Some(rel) = parent {
-        if rel.as_os_str().is_empty() || std::fs::remove_dir(root.join(rel)).is_err() {
-            return;
-        }
-        parent = rel.parent();
-    }
 }
 
 fn unsupported(prefix: &str, name: &str) -> Error {

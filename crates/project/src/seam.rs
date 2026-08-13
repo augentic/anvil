@@ -211,8 +211,8 @@ pub trait Target: Send + Sync {
 
     /// Run one target-specific merge gate (`phase`) around the engine's
     /// deterministic core merge. Dispatched twice per slice merge —
-    /// preflight before the commit, postflight after it — each over a
-    /// read-only view of the built result snapshot.
+    /// preflight before the commit, postflight after it — each over the
+    /// merge workspace.
     fn merge(
         &self, id: String, slice: String, phase: MergePhase, workspace: Workspace,
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
@@ -231,9 +231,9 @@ pub trait Target: Send + Sync {
 pub trait Workspaces: Send + Sync {
     /// Freeze the product tree (the project root minus `.git` and a
     /// nested change home) as an immutable snapshot. The build phase
-    /// calls this when it opens the target wave: the result is
-    /// persisted as the wave base before any workspace is prepared
-    /// (RFC-91 D6). Refinement never freezes the product tree.
+    /// calls this when it opens a target's *first* wave: later waves
+    /// open against the current accepted CID instead. Refinement never
+    /// freezes the product tree.
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, Error>> + Send;
 
     /// Materialize `base` into a fresh private workspace.
@@ -251,12 +251,6 @@ pub trait Workspaces: Send + Sync {
     /// Discard a workspace. Idempotent; captured snapshots survive by
     /// digest.
     fn discard(&self, id: String) -> impl Future<Output = Result<(), Error>> + Send;
-
-    /// Interim code delivery (pre-RFC-95): write `patch`'s touched
-    /// paths from its result snapshot onto the product tree, leaving
-    /// everything else untouched. Deleted when publication sets own
-    /// the final seal.
-    fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), Error>> + Send;
 
     /// Change-scoped snapshot collection (RFC-88 D2): delete the
     /// store objects reachable from `dead` roots but not from `live`

@@ -23,8 +23,8 @@ pub(super) async fn run_gate<T: Target>(
 }
 
 /// Fetch one target merge gate report and check the slice-name match.
-/// `view` is the read-only workspace over the slice's built result
-/// snapshot both gates read the result code through.
+/// `view` is the merge workspace (the composed member-result before
+/// fold for preflight; the captured candidate after fold for postflight).
 pub(super) async fn fetch_gate_report<T: Target>(
     targets: &T, id: &str, slice: &str, phase: MergePhase, view: &seam::Workspace,
 ) -> Result<BuildReport, Error> {

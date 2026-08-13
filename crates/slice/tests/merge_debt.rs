@@ -124,13 +124,14 @@ fn stage_wave_and_record(session: &Session, base: SnapshotId) {
 #[tokio::test]
 async fn fold_keeps_status() {
     let session = Session::scripted("mock", Vec::new());
+    stage_built_gap_slice(&session);
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, snapshot);
-    stage_built_gap_slice(&session);
 
     merge(&session, "greeting").await.expect("gap-status rows must not fail the scenario rule");
 
-    let baseline = fs::read_to_string(session.root().join(".emery/specs/greeting/spec.md"))
+    let tree = session.materialize_accepted("demo").await;
+    let baseline = fs::read_to_string(tree.path().join(".emery/specs/greeting/spec.md"))
         .expect("merged baseline");
     // Status preserved — the unknown stays [unknown]...
     assert!(baseline.contains("greeting error handling [unknown]"), "{baseline}");

@@ -285,51 +285,45 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// Interim code delivery (RFC-87, pre-RFC-95): after the target's
-    /// postflight gate passed, the merge orchestration materialized
-    /// the slice's accepted result snapshot onto the product tree.
-    /// Deleted when publication sets (RFC-95) own the final seal.
-    #[serde(rename = "slice.code.applied", rename_all = "kebab-case")]
-    SliceCodeApplied {
-        /// Affected slice.
-        slice_name: SliceName,
-        /// The applied result snapshot (`sha256:<hex>`).
-        snapshot: String,
-    },
     /// The target's postflight merge gate raised a blocking finding
     /// **after** `target.merge.wave-committed` (RFC-86 D9): the member
-    /// is already merged, so this is a terminal diagnostic — never a
+    /// set is already merged, so this is a terminal diagnostic — never a
     /// rollback. `reason` carries a short human reason or finding code;
-    /// the merged baseline stands.
+    /// the accepted CID stands. Names every failed member.
     #[serde(rename = "target.merge.wave-postflight-failed", rename_all = "kebab-case")]
     MergeWavePostflightFailed {
         /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
-        /// Sole member's slice — already merged and archived.
-        slice_name: SliceName,
+        /// Failed members (stable wave order).
+        members: Vec<SliceName>,
         /// Short human reason / finding code for the failed gate.
         reason: String,
     },
-    /// Deterministic wave commit finalized requirement identity maps
-    /// (RFC-86 D5 / D9). Projects the member merged; failures before
-    /// this fact leave no merged projection. Carries every local→
-    /// baseline `REQ-NNN` mapping for the wave's sole member.
+    /// Deterministic wave commit: the accepted-CID transition for this
+    /// target. Projects every named member `merged`; failures before
+    /// this fact leave no merged projection and leave the prior
+    /// accepted CID authoritative.
     #[serde(rename = "target.merge.wave-committed", rename_all = "kebab-case")]
     TargetMergeWaveCommitted {
         /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
-        /// Sole member's slice name.
-        slice_name: SliceName,
+        /// Frozen member set in stable wave order.
+        members: Vec<SliceName>,
+        /// Accepted CID the wave opened against (`wave.base`).
+        base: crate::snapshot::SnapshotId,
+        /// Captured CID after folding every member's delta inside the
+        /// workspace — the new accepted CID.
+        result: crate::snapshot::SnapshotId,
         /// Closed-plan commit-authorization epoch (may differ from the
         /// wave's build-authorization; serial execution normally reuses
         /// the same epoch).
         commit_authorization: FactEpochRef,
         /// Slice-local id → final baseline `REQ-NNN` for every
-        /// requirement in the member.
+        /// requirement across the member set.
         identity_maps: Vec<IdentityMap>,
         /// Post-merge `.emery/specs/` tree digest (RFC-91 D4): the
         /// accepted baseline this commit advanced to. Freshness treats
@@ -527,6 +521,35 @@ pub enum EventKind {
         /// The synthesized gate-time reason.
         reason: String,
     },
+}
+
+impl EventKind {
+    /// Member slices a `target.merge.wave-committed` fact projects
+    /// `merged` for.
+    #[must_use]
+    pub fn committed_members(&self) -> Option<&[SliceName]> {
+        match self {
+            Self::TargetMergeWaveCommitted { members, .. } => Some(members),
+            _ => None,
+        }
+    }
+
+    /// Whether this wave-commit fact names `slice` in its frozen
+    /// member set.
+    #[must_use]
+    pub fn commits_member(&self, slice: &str) -> bool {
+        self.committed_members().is_some_and(|members| members.iter().any(|m| m.as_str() == slice))
+    }
+
+    /// Failed members named by a `target.merge.wave-postflight-failed`
+    /// fact.
+    #[must_use]
+    pub fn postflight_failed_members(&self) -> Option<&[SliceName]> {
+        match self {
+            Self::MergeWavePostflightFailed { members, .. } => Some(members),
+            _ => None,
+        }
+    }
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`].

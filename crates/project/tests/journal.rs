@@ -11,6 +11,11 @@ use project::journal::{
     DEFAULT_WRITER, Event, EventKind, FactEpochRef, append_for, append_one, claim,
     emit_best_effort, handlers, read_union,
 };
+use project::snapshot::SnapshotId;
+
+fn cid(ch: char) -> SnapshotId {
+    SnapshotId::from_digest(&ch.to_string().repeat(64))
+}
 
 const fn layout(root: &std::path::Path) -> Layout<'_> {
     Layout::new(root)
@@ -118,7 +123,9 @@ fn wave_defer_roundtrip() {
         kind: EventKind::TargetMergeWaveCommitted {
             target: "mock".into(),
             digest: "sha256:abc".into(),
-            slice_name: "auth-login".into(),
+            members: vec!["auth-login".into()],
+            base: cid('a'),
+            result: cid('b'),
             commit_authorization: FactEpochRef {
                 writer: "alice".into(),
                 sequence: 1,
@@ -147,7 +154,9 @@ fn wave_defer_roundtrip() {
         kind: EventKind::TargetMergeWaveCommitted {
             target: "mock".into(),
             digest: "sha256:abc".into(),
-            slice_name: "auth-login".into(),
+            members: vec!["auth-login".into()],
+            base: cid('a'),
+            result: cid('b'),
             commit_authorization: FactEpochRef {
                 writer: "alice".into(),
                 sequence: 1,

@@ -181,14 +181,41 @@ async fn chain_drains() {
         ]
     );
     session.model().assert_exhausted();
+
+    // Dependent waves open against the prior accepted CID, not a fresh freeze.
+    let layout = project::config::Layout::new(&root);
+    let events = project::journal::read_union(layout).expect("union");
+    let commits: Vec<_> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            project::journal::EventKind::TargetMergeWaveCommitted {
+                base,
+                result,
+                members,
+                ..
+            } => Some((members.clone(), base.clone(), result.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(commits.len(), 3, "one commit per leaf: {commits:?}");
+    assert_eq!(
+        commits[0].0.iter().map(project::name::SliceName::as_str).collect::<Vec<_>>(),
+        ["alpha"]
+    );
+    assert_eq!(
+        commits[1].0.iter().map(project::name::SliceName::as_str).collect::<Vec<_>>(),
+        ["beta"]
+    );
+    assert_eq!(commits[1].1, commits[0].2, "beta's wave opened against alpha's accepted result");
+    assert_eq!(commits[2].1, commits[1].2, "gamma's wave opened against beta's accepted result");
 }
 
 // (AC7) Execute re-entry after a plan-local merge: alpha merges and
-// archives (moving the baseline), execute stops on beta's failed
-// build, and the re-run assembles fresh coverage — alpha is done and
-// excluded, and beta's manifest is still fresh because the live
-// baseline matches the journaled post-merge digest (D4). Without the
-// plan-local carve-out the re-run would fail `plan-refinement-required`.
+// archives, execute stops on beta's failed build, and the re-run
+// assembles fresh coverage — alpha is done and excluded, and beta's
+// manifest is still fresh because checkout `.emery/specs/` no longer
+// moves on merge (recorded refine pins still match live). Without
+// that, the re-run would fail `plan-refinement-required`.
 #[tokio::test]
 async fn merge_stop_reentry() {
     let session = Session::scripted(

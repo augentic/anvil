@@ -1,7 +1,7 @@
 //! `plan archive` — move the current plan into the archive and run
 //! the change-scoped snapshot sweep.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -34,7 +34,8 @@ pub struct ArchiveInput {
 /// `.emery/change/archive/plans/<name>-<YYYYMMDD>.yaml`, then sweeps the
 /// snapshot store: the archived change's pins stop being GC roots
 /// (RFC-88 D2), so objects reachable only from archived slice trees
-/// are deleted.
+/// are deleted. Each target's accepted CID stays as a live root — it
+/// is the merged product (checkout is never written).
 #[derive(Clone, Copy, Debug)]
 pub struct Archive;
 
@@ -65,11 +66,12 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
 
         let (archived, archived_plans_dir) = Plan::archive(layout, input.force, cx.now())?;
 
-        // Change-scoped collection: pins under the archive tree are
-        // dead roots; pins under any slice tree still live (a forced
-        // archive leaves unfinished slices in place) are kept.
+        // Change-scoped collection: archive pins are dead; live roots
+        // are leftover slice trees plus every target's accepted CID
+        // (the merged product, no longer on checkout).
         let dead = collect_pins(&layout.archive_dir())?;
-        let live = collect_pins(&layout.slices_dir())?;
+        let mut live = collect_pins(&layout.slices_dir())?;
+        live.extend(accepted_roots(layout)?);
         let swept_objects =
             context.provider.sweep(dead, live).await.map_err(|err| Error::Diag {
                 code: "snapshot-sweep-failed",
@@ -145,8 +147,8 @@ fn latest_wave_deferred<'e>(
 ) -> Option<&'e [project::journal::DeferredMember]> {
     events.iter().rev().find_map(|event| match &event.kind {
         EventKind::TargetMergeWaveCommitted {
-            slice_name, deferred, ..
-        } if slice_name.as_str() == slice => Some(deferred.as_slice()),
+            members, deferred, ..
+        } if members.iter().any(|m| m.as_str() == slice) => Some(deferred.as_slice()),
         _ => None,
     })
 }
@@ -206,6 +208,30 @@ fn collect_pins(root: &Path) -> Result<Vec<SnapshotId>, Error> {
         }
     }
     Ok(pins)
+}
+
+/// Current accepted CID for every target that has opened a wave or
+/// committed a merge — live GC roots so `plan archive` does not
+/// collect the merged product (checkout is never written).
+fn accepted_roots(layout: project::config::Layout<'_>) -> Result<Vec<SnapshotId>, Error> {
+    let events = collect_events(layout)?;
+    let mut targets = BTreeSet::new();
+    for event in &events {
+        match &event.kind {
+            EventKind::TargetWaveOpened { target, .. }
+            | EventKind::TargetMergeWaveCommitted { target, .. } => {
+                targets.insert(target.clone());
+            }
+            _ => {}
+        }
+    }
+    let mut roots = Vec::new();
+    for target in targets {
+        if let Some(cid) = project::wave::accepted_cid(layout, &events, &target)? {
+            roots.push(cid);
+        }
+    }
+    Ok(roots)
 }
 
 /// Success envelope for `plan archive`.

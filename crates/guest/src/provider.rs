@@ -225,13 +225,6 @@ impl seam::Workspaces for Provider {
         }
     }
 
-    fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            store.apply(&patch, PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
-        }
-    }
-
     fn sweep(
         &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
     ) -> impl Future<Output = Result<usize, seam::Error>> + Send {

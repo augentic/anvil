@@ -395,7 +395,7 @@ mod postflight_debt {
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                    slice_name: "a".into(),
+                    members: vec!["a".into()],
                     reason: "target-merge-postflight-failed".to_string(),
                 },
             )],
@@ -428,7 +428,7 @@ mod postflight_debt {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                        slice_name: "a".into(),
+                        members: vec!["a".into()],
                         reason: "target-merge-postflight-failed".to_string(),
                     },
                 ),
@@ -460,7 +460,7 @@ mod postflight_debt {
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                    slice_name: "a".into(),
+                    members: vec!["a".into()],
                     reason: "target-merge-postflight-failed".to_string(),
                 },
             )],
@@ -483,7 +483,7 @@ mod postflight_debt {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                        slice_name: "a".into(),
+                        members: vec!["a".into()],
                         reason: "target-merge-postflight-failed".to_string(),
                     },
                 ),

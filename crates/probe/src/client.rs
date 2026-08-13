@@ -62,7 +62,8 @@ pub async fn run(
     argv.retain(|arg| arg != "--debug" && arg != "--quiet");
     let root = project_root(&mut argv)?;
     init_tracing(log_destination(&argv, &root, sandbox), debug, quiet)?;
-    dispatch(root, argv, catalog, cases, sandbox).await
+    // Same EventKind growth as `plan execute`: clippy large_futures at 16KiB.
+    Box::pin(dispatch(root, argv, catalog, cases, sandbox)).await
 }
 
 async fn dispatch(

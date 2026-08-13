@@ -379,7 +379,9 @@ fn merged_baseline_fresh() {
         project::journal::EventKind::TargetMergeWaveCommitted {
             target: "demo".into(),
             digest: "sha256:0000".into(),
-            slice_name: "billing-api".into(),
+            members: vec!["billing-api".into()],
+            base: SnapshotId::from_digest(&"a".repeat(64)),
+            result: SnapshotId::from_digest(&"b".repeat(64)),
             commit_authorization: project::journal::FactEpochRef {
                 writer: "local".into(),
                 sequence: 1,

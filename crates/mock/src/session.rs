@@ -93,6 +93,38 @@ impl Session {
         &self.provider
     }
 
+    /// Content-addressed snapshot store this session's provider writes to.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the session layout is missing the temp-home parent
+    /// of the project root.
+    #[must_use]
+    pub fn store(&self) -> project::workspace::Store<project::workspace::FsObjects> {
+        let home = self.root.parent().expect("session layout: project sits under the temp home");
+        project::workspace::Store::new(home.join("snapshots"))
+    }
+
+    /// Materialize this target's current accepted CID into a tempdir.
+    ///
+    /// Merge no longer writes the operator checkout; tests inspect
+    /// folded baselines and build outputs from this tree.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the journal cannot be read, the accepted-CID chain
+    /// is broken, no CID exists yet, or materialization fails.
+    pub async fn materialize_accepted(&self, target: &str) -> tempfile::TempDir {
+        let dest = tempfile::TempDir::new().expect("accepted tree");
+        let layout = project::config::Layout::new(&self.root);
+        let events = project::journal::read_union(layout).expect("union");
+        let cid = project::wave::accepted_cid(layout, &events, target)
+            .expect("accepted-CID projection")
+            .expect("target has an accepted CID");
+        self.store().materialize(&cid, dest.path()).await.expect("materialize accepted CID");
+        dest
+    }
+
     /// The caller-held recording model handle — for `requests()` and
     /// `assert_exhausted`.
     #[must_use]

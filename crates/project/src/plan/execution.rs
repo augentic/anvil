@@ -131,11 +131,17 @@ pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Stat
                 }
             }
             EventKind::SliceArchiveCreated { slice_name, .. }
-            | EventKind::TargetMergeWaveCommitted { slice_name, .. }
-            | EventKind::MergeWavePostflightFailed { slice_name, .. }
                 if ladders.contains_key(slice_name) =>
             {
                 ladders.insert(slice_name.clone(), Status::Done);
+            }
+            EventKind::TargetMergeWaveCommitted { members, .. }
+            | EventKind::MergeWavePostflightFailed { members, .. } => {
+                for name in members {
+                    if ladders.contains_key(name) {
+                        ladders.insert(name.clone(), Status::Done);
+                    }
+                }
             }
             _ => {}
         }
@@ -323,9 +329,11 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
             EventKind::SliceMergeSucceeded { slice_name: s } if s == slice => {
                 facts.merged = true;
             }
-            EventKind::SliceArchiveCreated { slice_name: s, .. }
-            | EventKind::TargetMergeWaveCommitted { slice_name: s, .. }
-                if s == slice =>
+            EventKind::SliceArchiveCreated { slice_name: s, .. } if s == slice => {
+                facts.merged = true;
+            }
+            EventKind::TargetMergeWaveCommitted { members, .. }
+                if members.iter().any(|m| m == slice) =>
             {
                 facts.merged = true;
             }
@@ -370,11 +378,9 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
                 }
                 terminal_seen = true;
             }
-            EventKind::MergeWavePostflightFailed {
-                slice_name: s,
-                reason,
-                ..
-            } if s == slice => {
+            EventKind::MergeWavePostflightFailed { members, reason, .. }
+                if members.iter().any(|m| m == slice) =>
+            {
                 if !terminal_seen {
                     facts.newest_failure = Some((
                         NextActionKind::Merge,

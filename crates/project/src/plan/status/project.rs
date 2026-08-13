@@ -106,20 +106,19 @@ struct Milestones {
 fn postflight_debt(plan: &Plan, events: &[Event]) -> Option<Resolution> {
     let mut resolution = None;
     scan_union(events, |event| match &event.kind {
-        EventKind::MergeWavePostflightFailed {
-            slice_name, reason, ..
-        } if plan.entries.iter().any(|e| e.name == *slice_name) => {
-            let entry = plan.entries.iter().find(|e| e.name == *slice_name);
-            if let Some(entry) = entry {
+        EventKind::MergeWavePostflightFailed { members, reason, .. } => plan
+            .entries
+            .iter()
+            .find(|e| members.contains(&e.name))
+            .map_or(ControlFlow::Continue(()), |entry| {
                 resolution = Some(Resolution::stop_for(
                     StopReason::MergePostflightFailed,
                     Some(reason.clone()),
                     entry,
                     Some(LoopStep::Merge),
                 ));
-            }
-            ControlFlow::Break(())
-        }
+                ControlFlow::Break(())
+            }),
         EventKind::PostflightAcknowledged { slice_name }
             if plan.entries.iter().any(|e| e.name == *slice_name) =>
         {

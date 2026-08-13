@@ -378,13 +378,6 @@ impl seam::Workspaces for Provider {
             .map_err(|err| workspace_failure(&err))
     }
 
-    async fn apply(&self, patch: CodePatch) -> Result<(), seam::Error> {
-        self.store()
-            .apply(&patch, self.paths.project_root())
-            .await
-            .map_err(|err| workspace_failure(&err))
-    }
-
     async fn sweep(
         &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
     ) -> Result<usize, seam::Error> {

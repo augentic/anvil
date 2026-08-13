@@ -119,9 +119,14 @@ async fn author_approve_execute() {
         "projected ladders: {ladders:?}"
     );
 
-    // Baseline merge output with complete provenance.
-    let baseline = root.join(".emery/specs/greeting/spec.md");
-    let content = fs::read_to_string(&baseline).expect("baseline spec written");
+    // Baseline merge output with complete provenance lives on the accepted CID.
+    assert!(
+        !root.join(".emery/specs/greeting/spec.md").exists(),
+        "merge must not write the operator checkout"
+    );
+    let accepted = session.materialize_accepted("demo").await;
+    let content = fs::read_to_string(accepted.path().join(".emery/specs/greeting/spec.md"))
+        .expect("accepted baseline spec");
     assert!(content.contains("ID: REQ-001"), "{content}");
     assert!(content.contains("Sources: main"), "{content}");
 
@@ -144,16 +149,20 @@ async fn author_approve_execute() {
     assert_eq!(requirement["status"], "agreed");
     assert_eq!(requirement["claims"][0]["source"], "main");
 
-    // The mock target produced a real, non-empty build output.
-    let artifact = behaviour::build_artifact_path(&root, "greeting");
+    // The mock target produced a real, non-empty build output on the
+    // accepted CID — never an ambient checkout write.
+    let artifact = behaviour::build_artifact_path(accepted.path(), "greeting");
     let body = fs::read_to_string(&artifact).expect("mock build output exists");
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
+    assert!(
+        !behaviour::build_artifact_path(&root, "greeting").exists(),
+        "build output must not land on the operator checkout"
+    );
 
-    // RFC-87 / RFC-86 D27: the artifact arrived through capture + the
-    // interim post-merge apply, never an ambient checkout write — the
-    // archived fact-substrate build record records the touched path
-    // and the journal carries the apply event.
+    // RFC-88: the artifact arrived through capture + accepted-CID merge,
+    // never an interim apply. The archived fact-substrate build record
+    // records the touched path; the journal carries no apply event.
     let builds = archive.join("builds");
     let record_path = fs::read_dir(&builds)
         .expect("archived builds/")
@@ -168,7 +177,7 @@ async fn author_approve_execute() {
         "patch.yaml must not be build-outcome authority"
     );
     let journal = journal_text(&root);
-    assert!(journal.contains("slice.code.applied"), "{journal}");
+    assert!(!journal.contains("slice.code.applied"), "{journal}");
     assert!(journal.contains("target.wave.opened"), "{journal}");
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");
     assert!(journal.contains("target.merge.wave-succeeded"), "{journal}");
@@ -231,10 +240,14 @@ async fn archive_sweeps_change() {
     .expect("archive moves the plan and sweeps");
     assert_eq!(archived.plan.name, "demo");
     assert!(archived.swept_objects > 0, "the sweep collected the change's objects");
-    assert_eq!(
-        count_files(&objects),
-        0,
-        "no snapshot objects survive once the change's pins stop being GC roots"
+    let accepted = session.materialize_accepted("demo").await;
+    assert!(
+        accepted.path().join(".emery/specs/greeting/spec.md").is_file(),
+        "the accepted CID survives archive — it is the merged product"
+    );
+    assert!(
+        count_files(&objects) > 0,
+        "accepted-CID objects stay as live GC roots after the change's pins stop being roots"
     );
 
     // The archived pins themselves stay on disk for audit — only the
@@ -397,9 +410,12 @@ async fn postflight_terminal() {
         "hint must not describe a retryable in-progress merge conflict: {stopped}"
     );
 
-    // Non-rollback: the merge committed before the gate ran — baseline
-    // written, slice archived, plan entry projects `done`.
-    assert!(root.join(".emery/specs/greeting/spec.md").is_file());
+    // Non-rollback: the merge committed before the gate ran — accepted
+    // CID stands, slice archived, plan entry projects `done`. Checkout
+    // is untouched.
+    assert!(!root.join(".emery/specs/greeting/spec.md").exists());
+    let accepted = session.materialize_accepted("demo").await;
+    assert!(accepted.path().join(".emery/specs/greeting/spec.md").is_file());
     assert!(!root.join(".emery/change/slices/greeting").exists());
     let plan: change::Plan = serde_saphyr::from_str(
         &fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("read plan.yaml"),

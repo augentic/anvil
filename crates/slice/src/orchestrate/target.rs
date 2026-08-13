@@ -119,12 +119,13 @@ pub async fn build(
 }
 
 /// Bracket [`finalize`] with the workspace lifecycle: gate on the
-/// slice's refinement manifest, freeze the current product snapshot
-/// as the wave base (RFC-91 D6), persist + open the one-member wave,
-/// prepare a writable private workspace from that base, run the
-/// dispatch + finalize tail against it, and discard the workspace on
-/// every exit (best-effort — captured snapshots survive by digest and
-/// a leaked directory is GC territory, never a build failure).
+/// slice's refinement manifest, select the wave base (the current
+/// accepted CID, or an ambient freeze on the target's first wave),
+/// persist + open the one-member wave, prepare a writable private
+/// workspace from that base, run the dispatch + finalize tail against
+/// it, and discard the workspace on every exit (best-effort — captured
+/// snapshots survive by digest and a leaked directory is GC territory,
+/// never a build failure).
 async fn in_workspace(
     seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
@@ -136,12 +137,17 @@ async fn in_workspace(
              `emery plan refine` before building"
         ),
     })?;
-    let base = seam.freeze().await.map_err(|err| Error::Diag {
-        code: "target-base-freeze-failed",
-        detail: format!(
-            "freezing the product tree as the wave base for slice `{slice}` failed: {err}"
-        ),
-    })?;
+    let config = ProjectConfig::load(layout.project_dir())?;
+    let events = journal::read_union(layout)?;
+    let base = match project::wave::accepted_cid(layout, &events, &config.name)? {
+        Some(cid) => cid,
+        None => seam.freeze().await.map_err(|err| Error::Diag {
+            code: "target-base-freeze-failed",
+            detail: format!(
+                "freezing the product tree as the wave base for slice `{slice}` failed: {err}"
+            ),
+        })?,
+    };
     let wave_digest = open_wave(layout, now, slice, &base, &refinement)?;
     let workspace =
         seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;

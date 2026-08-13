@@ -44,7 +44,6 @@ fn journal_kinds(root: &std::path::Path) -> Vec<&'static str> {
             EventKind::TargetWaveOpened { .. } => Some("target.wave.opened"),
             EventKind::TargetMergeWaveCommitted { .. } => Some("target.merge.wave-committed"),
             EventKind::TargetMergeWaveSucceeded { .. } => Some("target.merge.wave-succeeded"),
-            EventKind::SliceCodeApplied { .. } => Some("slice.code.applied"),
             EventKind::SliceBuildSucceeded { .. } => Some("slice.build.succeeded"),
             _ => None,
         })
@@ -121,7 +120,7 @@ async fn pin_build_record_wave() {
     let kinds = journal_kinds(&root);
     assert!(kinds.contains(&"target.merge.wave-committed"), "{kinds:?}");
     assert!(kinds.contains(&"target.merge.wave-succeeded"), "{kinds:?}");
-    assert!(kinds.contains(&"slice.code.applied"), "interim apply still runs: {kinds:?}");
+    assert!(!kinds.contains(&"slice.code.applied"), "interim apply is gone: {kinds:?}");
 
     let events = read_union(layout).expect("union");
     let maps = events.iter().find_map(|event| match &event.kind {
@@ -132,9 +131,10 @@ async fn pin_build_record_wave() {
     assert!(!maps.is_empty(), "identity maps recorded: {maps:?}");
     assert!(maps.iter().any(|m| m.local == "REQ-001"), "local id mapped: {maps:?}");
 
-    // Merged projection: baseline carries finalized ids; no leftover
-    // patch.yaml authority under the archived slice.
-    assert!(root.join(".emery/specs/auth/spec.md").is_file());
+    // Merged projection: accepted CID carries finalized ids; checkout is untouched.
+    assert!(!root.join(".emery/specs/auth/spec.md").is_file());
+    let tree = session.materialize_accepted("demo").await;
+    assert!(tree.path().join(".emery/specs/auth/spec.md").is_file());
     let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive")
         .map(|e| e.expect("entry").path())

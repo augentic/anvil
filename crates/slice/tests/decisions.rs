@@ -118,9 +118,15 @@ async fn merge_promotes_supersedes() {
     .expect("standalone merge succeeds");
 
     assert_eq!(outcome.decisions, ["DEC-0002"]);
-    assert!(baseline.join("DEC-0002-new-choice.md").is_file());
-    let old =
-        fs::read_to_string(baseline.join("DEC-0001-old-choice.md")).expect("superseded baseline");
+    let tree = project.materialize_accepted("demo").await;
+    let accepted_decisions = tree.path().join(".emery/decisions");
+    assert!(accepted_decisions.join("DEC-0002-new-choice.md").is_file());
+    let old = fs::read_to_string(accepted_decisions.join("DEC-0001-old-choice.md"))
+        .expect("superseded baseline");
     assert!(old.contains("status: superseded"), "{old}");
     assert!(old.contains("superseded-by: DEC-0002"), "{old}");
+    assert!(
+        !baseline.join("DEC-0002-new-choice.md").is_file(),
+        "merge must not write the operator checkout"
+    );
 }

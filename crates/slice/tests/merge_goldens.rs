@@ -104,8 +104,8 @@ fn stage_wave_and_record(session: &Session, base: SnapshotId) {
 /// against the written baseline before the tempdir drops.
 async fn run_case(name: &str, spec_name: &str) -> (Session, Result<MergeOutcome, error::Error>) {
     let session = Session::scripted("mock", Vec::new());
-    let snapshot = session.provider().freeze().await.expect("freeze");
     stage(session.root(), &fixtures().join(name), spec_name);
+    let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, snapshot);
     let layout = project::config::Layout::new(session.root());
     let outcome = slice::orchestrate::merge(session.provider(), layout, ts(), SLICE, false).await;
@@ -134,9 +134,10 @@ async fn merged_outputs() {
                 assert_eq!(merged.merged.len(), 1, "{name}: expected one merged entry");
                 let output = &merged.merged[0].result.output;
                 assert_golden(&case.join("expected-merged.md"), output);
-                let written = session.root().join(".emery/specs").join(SLICE).join("spec.md");
-                let on_disk = fs::read_to_string(written).expect("read written baseline");
-                assert_eq!(&on_disk, output, "{name}: written baseline diverges from output");
+                let tree = session.materialize_accepted("demo").await;
+                let written = tree.path().join(".emery/specs").join(SLICE).join("spec.md");
+                let on_disk = fs::read_to_string(written).expect("read accepted baseline");
+                assert_eq!(&on_disk, output, "{name}: accepted baseline diverges from output");
             }
             Err(err) if error_golden.is_file() => {
                 assert_golden(&error_golden, &format!("{err}\n"));

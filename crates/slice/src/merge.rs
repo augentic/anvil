@@ -1,6 +1,6 @@
 //! Deterministic delta-merge engine. [`merge`] folds one delta into a
-//! baseline; [`validate_baseline`] runs post-merge coherence checks;
-//! [`slice::commit`] is the transactional multi-class merge + archive.
+//! baseline; [`validate_baseline`] runs post-merge coherence checks.
+//! [`slice::commit`] is the transactional multi-class fold into a product tree.
 
 mod artifact_class;
 mod composition;

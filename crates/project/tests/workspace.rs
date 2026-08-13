@@ -115,36 +115,6 @@ mod round_trip {
         assert_eq!(patch.touched, vec!["tool"]);
     }
 
-    #[tokio::test]
-    async fn apply_writes_touched() {
-        let lab = lab();
-        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
-        write(&lab.source, "contracts/api.yaml", b"openapi: 3.1.0\n");
-        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
-        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
-            .await
-            .expect("prepare");
-        write(&ws.root, "src/new.rs", b"pub struct New;\n");
-        std::fs::remove_file(ws.root.join("src/lib.rs")).expect("rm");
-        let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
-
-        // Between capture and apply the product tree moves on — the
-        // deterministic merge folds the contracts baseline. Apply must
-        // write only the patch's touched paths and leave the fold.
-        write(&lab.source, "contracts/api.yaml", b"openapi: 3.1.0 # folded\n");
-        lab.store.apply(&patch, &lab.source).await.expect("apply");
-        assert_eq!(
-            std::fs::read_to_string(lab.source.join("contracts/api.yaml")).expect("read"),
-            "openapi: 3.1.0 # folded\n",
-            "apply never rewinds paths the patch did not touch"
-        );
-        assert_eq!(
-            std::fs::read_to_string(lab.source.join("src/new.rs")).expect("read"),
-            "pub struct New;\n"
-        );
-        assert!(!lab.source.join("src/lib.rs").exists(), "touched deletions apply");
-    }
-
     /// Snapshots carry relative links only: an absolute target cannot
     /// be re-created inside a sandboxed guest, so refusal is typed and
     /// symmetric at snapshot time.
@@ -200,8 +170,8 @@ mod golden {
         assert_eq!(base.as_str(), BASE, "canonical tree digest drifted");
     }
 
-    /// An exec → plain flip changes the digest and survives `apply`
-    /// onto a live tree.
+    /// An exec → plain flip changes the digest and survives
+    /// materialization of the captured result.
     #[tokio::test]
     async fn exec_flip_round_trip() {
         use std::os::unix::fs::PermissionsExt as _;
@@ -218,9 +188,10 @@ mod golden {
         assert_eq!(patch.result.as_str(), FLIPPED, "flipped tree digest drifted");
         assert_eq!(patch.touched, vec!["run.sh"]);
 
-        lab.store.apply(&patch, &lab.source).await.expect("apply");
-        let mode = std::fs::metadata(lab.source.join("run.sh")).expect("meta").permissions().mode();
-        assert_eq!(mode & 0o111, 0, "apply must clear the executable bit");
+        let out = lab.source.parent().expect("parent").join("flipped");
+        lab.store.materialize(&patch.result, &out).await.expect("materialize");
+        let mode = std::fs::metadata(out.join("run.sh")).expect("meta").permissions().mode();
+        assert_eq!(mode & 0o111, 0, "captured result must clear the executable bit");
     }
 }
 
