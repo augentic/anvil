@@ -19,7 +19,7 @@ use project::seam::{Source, Workspaces};
 use serde_json::json;
 
 use crate::judgment::{partition, review};
-use crate::orchestrate::survey::survey;
+use crate::orchestrate::survey::{focused_leads, survey};
 
 /// Result of a completed decomposition loop.
 #[derive(Debug, Clone)]
@@ -42,22 +42,53 @@ pub async fn decompose<P>(
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
 {
-    let mut tree = seed(plan, leads, provider.profiles())?;
-    let mut queue = VecDeque::from([tree.root.clone()]);
+    let mut catalog = leads.clone();
+    let tree = seed(plan, &catalog, provider.profiles())?;
+    let queue = VecDeque::from([tree.root.clone()]);
+    run(provider, paths, now, plan, &mut catalog, tree, queue, true).await
+}
+
+/// Re-decompose the nearest domain of `leaf` against `catalog` without
+/// writing `leads.md` or `decomposition.yaml`.
+///
+/// # Errors
+///
+/// Missing decomposition, unknown leaf, and the same loop failures as
+/// [`decompose`].
+pub async fn nearest<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, leaf: &str,
+    catalog: &mut Leads,
+) -> Result<Decomposed, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let mut tree = Decomposition::load(&paths.layout().decomposition_path())?;
+    let start = reopen(&mut tree, leaf, catalog)?;
+    tree.leads_digest = project::snapshot::SnapshotId::from_digest(&catalog.digest_hex()?);
+    let queue = VecDeque::from([start]);
+    run(provider, paths, now, plan, catalog, tree, queue, false).await
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the loop carries the live tree, catalog, and persist mode"
+)]
+async fn run<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
+    mut tree: Decomposition, mut queue: VecDeque<String>, persist: bool,
+) -> Result<Decomposed, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
     let mut judgments = 0_usize;
     let mut caveats = Vec::new();
 
     while let Some(id) = queue.pop_front() {
         if judgments >= MAX_JUDGMENTS {
-            return Err(Error::validation_failed(
-                "plan-author-budget-exhausted",
-                "decomposition stays within the compiled judgment budget",
-                format!("decomposition parked after {MAX_JUDGMENTS} judgments"),
-            ));
+            return Err(budget_exhausted());
         }
         judgments += 1;
-        let catalog = Leads::load(&paths.layout().leads_path())?;
-        let request = partition_request(&tree, &id, &catalog, plan, judgments)?;
+        let request = partition_request(&tree, &id, catalog, plan, judgments)?;
         let response = partition::partition(provider, &request, |answer| {
             check_targets(plan, answer)?;
             let mut trial = tree.clone();
@@ -81,6 +112,8 @@ where
                     paths,
                     now,
                     plan,
+                    catalog,
+                    persist,
                     &mut tree,
                     &mut queue,
                     &mut caveats,
@@ -97,14 +130,87 @@ where
     Ok(Decomposed { tree, caveats })
 }
 
+fn budget_exhausted() -> Error {
+    Error::validation_failed(
+        "plan-author-budget-exhausted",
+        "decomposition stays within the compiled judgment budget",
+        format!("decomposition parked after {MAX_JUDGMENTS} judgments"),
+    )
+}
+
+fn reopen(tree: &mut Decomposition, leaf: &str, catalog: &Leads) -> Result<String, Error> {
+    let leaf_id = tree
+        .nodes
+        .iter()
+        .find(|(_, node)| node.slice.as_ref().is_some_and(|name| name.as_str() == leaf))
+        .map(|(id, _)| id.clone())
+        .ok_or_else(|| Error::Diag {
+            code: "decomposition-node-unknown",
+            detail: format!("no decomposition leaf `{leaf}`"),
+        })?;
+    let nearest = tree
+        .nodes
+        .get(&leaf_id)
+        .and_then(|node| node.parent.clone())
+        .unwrap_or_else(|| tree.root.clone());
+    prune_descendants(tree, &nearest);
+    let owned = tree.node(&nearest)?.sources.clone();
+    let sources = close_sources(&owned, catalog);
+    let node = tree.nodes.get_mut(&nearest).ok_or_else(|| Error::Diag {
+        code: "decomposition-node-unknown",
+        detail: format!("no decomposition node `{nearest}`"),
+    })?;
+    node.children.clear();
+    node.kind = None;
+    node.slice = None;
+    node.acceptance = None;
+    node.ownership.clear();
+    node.sources = sources;
+    Ok(nearest)
+}
+
+fn prune_descendants(tree: &mut Decomposition, id: &str) {
+    let children = tree.nodes.get(id).map(|node| node.children.clone()).unwrap_or_default();
+    for child in children {
+        prune_descendants(tree, &child);
+        tree.nodes.remove(&child);
+    }
+}
+
+fn close_sources(owned: &[Scope], catalog: &Leads) -> Vec<Scope> {
+    let mut keep: std::collections::BTreeSet<(String, String)> =
+        owned.iter().map(|scope| (scope.source.clone(), scope.lead.clone())).collect();
+    let mut grew = true;
+    while grew {
+        grew = false;
+        for lead in catalog.leads() {
+            let pair = (lead.source.clone(), lead.lead.clone());
+            if keep.contains(&pair) {
+                continue;
+            }
+            let parent = lead.parent.as_ref().or(lead.focus.as_ref());
+            if parent.is_some_and(|parent| keep.contains(&(lead.source.clone(), parent.clone()))) {
+                keep.insert(pair);
+                grew = true;
+            }
+        }
+    }
+    catalog
+        .leads()
+        .iter()
+        .filter(|lead| keep.contains(&(lead.source.clone(), lead.lead.clone())))
+        .map(|lead| Scope::new(&lead.source, &lead.lead))
+        .collect()
+}
+
 #[expect(
     clippy::too_many_arguments,
-    reason = "leaf-readiness carries the live tree and queue beside the provider"
+    reason = "leaf-readiness carries the live tree, catalog, and persist mode"
 )]
 async fn close_or_review<P>(
-    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, tree: &mut Decomposition,
-    queue: &mut VecDeque<String>, caveats: &mut Vec<String>, judgments: &mut usize, id: &str,
-    response: &PartitionResponse,
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
+    persist: bool, tree: &mut Decomposition, queue: &mut VecDeque<String>,
+    caveats: &mut Vec<String>, judgments: &mut usize, id: &str, response: &PartitionResponse,
 ) -> Result<(), Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
@@ -115,16 +221,11 @@ where
         return Ok(());
     }
     if *judgments >= MAX_JUDGMENTS {
-        return Err(Error::validation_failed(
-            "plan-author-budget-exhausted",
-            "decomposition stays within the compiled judgment budget",
-            format!("decomposition parked after {MAX_JUDGMENTS} judgments"),
-        ));
+        return Err(budget_exhausted());
     }
     *judgments += 1;
-    let catalog = Leads::load(&paths.layout().leads_path())?;
-    let request = review_request(tree, id, response, profile, &catalog)?;
-    let review = review::review(provider, &request, |answer| check_focus(&catalog, answer)).await?;
+    let request = review_request(tree, id, response, profile, catalog)?;
+    let review = review::review(provider, &request, |answer| check_focus(catalog, answer)).await?;
     match review.verdict {
         ReviewVerdict::Close => {
             apply(tree, id, response)?;
@@ -142,25 +243,7 @@ where
                 ));
             }
             for parent in &review.focus {
-                let Some(binding) = plan.sources.get(&parent.source) else {
-                    return Err(Error::Diag {
-                        code: "plan-source-unknown",
-                        detail: format!("focus source `{}` is not a plan binding", parent.source),
-                    });
-                };
-                if binding.locator.is_some() {
-                    survey(
-                        provider,
-                        provider,
-                        provider,
-                        paths,
-                        now,
-                        &parent.source,
-                        None,
-                        Some(parent.lead.as_str()),
-                    )
-                    .await?;
-                }
+                focus_parent(provider, paths, now, plan, catalog, persist, parent).await?;
             }
             queue.push_front(id.to_string());
             Ok(())
@@ -173,6 +256,54 @@ where
             }),
         )),
     }
+}
+
+async fn focus_parent<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
+    persist: bool, parent: &project::plan::FocusParent,
+) -> Result<(), Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let Some(binding) = plan.sources.get(&parent.source) else {
+        return Err(Error::Diag {
+            code: "plan-source-unknown",
+            detail: format!("focus source `{}` is not a plan binding", parent.source),
+        });
+    };
+    if persist {
+        if binding.locator.is_some() {
+            survey(
+                provider,
+                provider,
+                provider,
+                paths,
+                now,
+                &parent.source,
+                None,
+                Some(parent.lead.as_str()),
+            )
+            .await?;
+            *catalog = Leads::load(&paths.layout().leads_path())?;
+        }
+        return Ok(());
+    }
+    if binding.locator.is_some() {
+        let children = focused_leads(
+            provider,
+            provider,
+            provider,
+            paths,
+            now,
+            &parent.source,
+            binding,
+            catalog,
+            &parent.lead,
+        )
+        .await?;
+        catalog.merge_leads(&parent.source, children);
+    }
+    Ok(())
 }
 
 fn seed(

@@ -344,6 +344,18 @@ impl<'a> Layout<'a> {
         self.decompositions_dir().join(format!("{}.yaml", digest.digest()))
     }
 
+    /// Absolute path to `<change>/planning/proposals/`.
+    #[must_use]
+    pub fn proposals_dir(&self) -> PathBuf {
+        self.change_root().join("planning").join("proposals")
+    }
+
+    /// Absolute path to `<change>/planning/proposals/<digest>.yaml`.
+    #[must_use]
+    pub fn proposal_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.proposals_dir().join(format!("{}.yaml", digest.digest()))
+    }
+
     /// Absolute path to `<change>/imports/`.
     #[must_use]
     pub fn imports_dir(&self) -> PathBuf {

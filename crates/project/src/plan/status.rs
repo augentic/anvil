@@ -74,6 +74,12 @@ pub enum StopReason {
     MergeIncomplete,
     /// Pending entries remain but every one waits on unmet dependencies.
     Stuck,
+    /// Refinement Evidence produced an inert boundary proposal. The
+    /// leaf is parked until the operator applies it.
+    BoundaryEscalation,
+    /// Focused resurvey or nearest-domain re-decomposition exhausted
+    /// its compiled budget. The leaf is parked.
+    RefineBudgetExhausted,
 }
 
 impl StopReason {
@@ -115,6 +121,16 @@ impl StopReason {
             Self::Stuck => {
                 "Remaining entries wait on unmet dependencies; complete or amend the blocking \
                  entries."
+            }
+            Self::BoundaryEscalation => {
+                "Refinement wrote an inert boundary proposal under planning/proposals/. Apply it \
+                 with emery plan amend --proposal <digest> after quiescing affected work, then \
+                 re-run emery plan refine on the new child slices. Re-running refine on this \
+                 leaf does not re-synthesize."
+            }
+            Self::RefineBudgetExhausted => {
+                "Focused resurvey or nearest-domain re-decomposition exhausted its budget. \
+                 Adjust sources or the bound profile, then re-run emery plan refine."
             }
         }
     }

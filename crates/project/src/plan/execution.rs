@@ -11,10 +11,11 @@ use artifacts::leads::Lead;
 use error::Error;
 
 use super::model::{Entry, Plan, Status};
+use super::proposal::Proposal;
 use super::status::{LoopStep, NextActionKind, StopBody, StopReason};
 use crate::build_record::BuildRecord;
 use crate::config::Layout;
-use crate::journal::{self, Event, EventKind, claim};
+use crate::journal::{self, Event, EventKind, ParkReason, claim};
 use crate::name::{PlanName, SliceName};
 use crate::refinement::{Freshness, Live};
 use crate::slice::SliceMetadata;
@@ -213,6 +214,12 @@ pub(super) fn resolve_entry(
         }
     };
 
+    if matches!(refined, Refined::Missing | Refined::Stale)
+        && let Some(parked) = parked_refinement(layout, events, entry.name.as_str())?
+    {
+        return Ok(parked.into_resolution(entry));
+    }
+
     let phase = match overlay {
         JournalOverlay::Apply => phase_progress(&slice_dir, Some(&facts), refined),
         JournalOverlay::Skip => phase_progress(&slice_dir, None, refined),
@@ -394,6 +401,53 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
         }
     }
     facts
+}
+
+/// An unrefined leaf parked by boundary escalation or budget exhaustion.
+struct Parked {
+    reason: StopReason,
+    detail: Option<String>,
+}
+
+impl Parked {
+    fn into_resolution(self, entry: &Entry) -> Resolution {
+        Resolution::stop_for(self.reason, self.detail, entry, None)
+    }
+}
+
+fn parked_refinement(
+    layout: Layout<'_>, events: &[Event], slice: &str,
+) -> Result<Option<Parked>, Error> {
+    if let Some((digest, _)) = Proposal::boundary_for(layout, slice)? {
+        return Ok(Some(Parked {
+            reason: StopReason::BoundaryEscalation,
+            detail: Some(digest.to_string()),
+        }));
+    }
+    let mut parked = None;
+    for event in events.iter().rev() {
+        match &event.kind {
+            EventKind::SliceRefinementParked {
+                slice_name,
+                reason: ParkReason::BudgetExhausted,
+                ..
+            } if slice_name.as_str() == slice => {
+                parked = Some(Parked {
+                    reason: StopReason::RefineBudgetExhausted,
+                    detail: None,
+                });
+                break;
+            }
+            EventKind::SliceSynthesizeCompleted { slice_name, .. }
+            | EventKind::SliceTransitionRefined { slice_name }
+                if slice_name.as_str() == slice =>
+            {
+                break;
+            }
+            _ => {}
+        }
+    }
+    Ok(parked)
 }
 
 /// Scan the union newest-first until `select` breaks — shared by the

@@ -151,20 +151,14 @@ impl Leads {
         Ok(sha256_hex(atomic::serialise_yaml(&payload)?.as_bytes()))
     }
 
-    /// Merge a re-survey of `source` into the inventory and
-    /// atomically persist the result at `path`.
+    /// Merge a re-survey of `source` into the in-memory inventory.
     ///
     /// Incoming leads replace the prior block sharing their
     /// `(source, lead)` pair in place; new leads append in survey
     /// order. Other sources — and this source's blocks absent from
     /// the incoming set — stay. Re-survey never prunes and never
-    /// collapses across sources. The current view is rewritten; a
-    /// previously retained revision is never touched.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`Error::Io`] when the atomic re-render fails.
-    pub fn merge_survey(&mut self, source: &str, leads: Vec<Lead>, path: &Path) -> Result<()> {
+    /// collapses across sources.
+    pub fn merge_leads(&mut self, source: &str, leads: Vec<Lead>) {
         let mut slots: Vec<Option<Lead>> = leads
             .into_iter()
             .map(|mut lead| {
@@ -198,6 +192,19 @@ impl Leads {
         }
 
         self.leads = merged;
+    }
+
+    /// Merge a re-survey of `source` into the inventory and
+    /// atomically persist the result at `path`.
+    ///
+    /// The current view is rewritten; a previously retained revision
+    /// is never touched.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Io`] when the atomic re-render fails.
+    pub fn merge_survey(&mut self, source: &str, leads: Vec<Lead>, path: &Path) -> Result<()> {
+        self.merge_leads(source, leads);
         self.write_atomic(path)
     }
 

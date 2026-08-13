@@ -23,6 +23,7 @@ fn change_home_boundary() {
     assert_eq!(layout.leads_dir(), change.join("leads"));
     assert_eq!(layout.decomposition_path(), change.join("decomposition.yaml"));
     assert_eq!(layout.decompositions_dir(), change.join("decompositions"));
+    assert_eq!(layout.proposals_dir(), change.join("planning/proposals"));
     assert_eq!(layout.slices_dir(), change.join("slices"));
     assert_eq!(layout.slice_dir("demo"), change.join("slices/demo"));
     assert_eq!(layout.events_dir(), change.join("events"));

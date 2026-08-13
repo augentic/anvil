@@ -537,6 +537,19 @@ pub enum EventKind {
         /// The synthesized gate-time reason.
         reason: String,
     },
+    /// Refinement parked this leaf: an inert boundary proposal, or
+    /// exhausted resurvey / re-decomposition budgets. No `refined`
+    /// transition and no synthesis promotion.
+    #[serde(rename = "slice.refinement.parked", rename_all = "kebab-case")]
+    SliceRefinementParked {
+        /// Parked leaf.
+        slice_name: SliceName,
+        /// Why refinement stopped.
+        reason: ParkReason,
+        /// Boundary-proposal digest when [`ParkReason::BoundaryEscalation`].
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        proposal: Option<SnapshotId>,
+    },
     /// RFC-104 wave-review fact. Parsed from a definition home's
     /// `events/<writer>.jsonl`; the change journal never appends it.
     #[serde(rename = "system.wave.reviewed", rename_all = "kebab-case")]
@@ -544,6 +557,17 @@ pub enum EventKind {
         /// Canonical digest of the reviewed handoff (`sha256:…`).
         handoff_digest: SnapshotId,
     },
+}
+
+/// Closed reason on [`EventKind::SliceRefinementParked`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ParkReason {
+    /// Inert boundary proposal written; planning artifacts unchanged.
+    BoundaryEscalation,
+    /// Focused resurvey or nearest-domain re-decomposition exhausted
+    /// the compiled judgment budget.
+    BudgetExhausted,
 }
 
 impl EventKind {

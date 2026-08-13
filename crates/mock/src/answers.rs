@@ -190,9 +190,10 @@ pub fn greeting_overlap() -> String {
 #[must_use]
 pub fn greeting_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "greeting",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "greeting returns the static string",
@@ -215,6 +216,26 @@ pub fn greeting_synthesis() -> String {
     .expect("synthesis serialises")
 }
 
+/// Boundary-escalation synthesis for the degenerate authored `greeting`
+/// leaf (`intent` / `intent`). Assessment exceeds the compiled
+/// slice-split threshold.
+///
+/// # Panics
+///
+/// Panics when the synthesis value stops serialising.
+#[must_use]
+pub fn greeting_escalation() -> String {
+    serde_json::to_string(&json!({
+        "version": 3,
+        "kind": "boundary-escalation",
+        "slice": "greeting",
+        "assessment": loud_assessment(),
+        "affected": [{ "source": "intent", "lead": "intent" }],
+        "rationale": "Evidence supports separately acceptable child boundaries for the greeting surface."
+    }))
+    .expect("escalation serialises")
+}
+
 /// The minimal-profile synthesis with an evidence gap: the sole
 /// requirement carries no claims, so authority derivation mints
 /// `status: unknown` — the gate-time deferral fixtures ride this.
@@ -225,9 +246,10 @@ pub fn greeting_synthesis() -> String {
 #[must_use]
 pub fn greeting_unknown_synth() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "greeting",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "greeting error handling",
@@ -309,9 +331,10 @@ pub fn adversarial_grouping() -> String {
 #[must_use]
 pub fn login_flow_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "login-flow",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "users sign in with email and password",
@@ -345,9 +368,10 @@ pub fn login_flow_synthesis() -> String {
 #[must_use]
 pub fn password_reset_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "password-reset",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "password reset behaviour",

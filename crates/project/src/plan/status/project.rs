@@ -234,7 +234,10 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
         NextActionKind::Merge => Some(LoopStep::Merge),
         NextActionKind::Drained => None,
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed | StopReason::RefinementRequired => Some(LoopStep::Refine),
+            StopReason::RefineFailed
+            | StopReason::RefinementRequired
+            | StopReason::BoundaryEscalation
+            | StopReason::RefineBudgetExhausted => Some(LoopStep::Refine),
             StopReason::BuildFailed => Some(LoopStep::Build),
             // `merge-incomplete` parks inside merge: the spec merge landed
             // but the per-entry `done` stamp has not. Postflight failure is
@@ -274,14 +277,14 @@ fn resume_point(
         NextActionKind::Build | NextActionKind::Merge => Some("emery plan execute".to_string()),
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
-            StopReason::RefineFailed | StopReason::RefinementRequired => {
-                Some("emery plan refine".to_string())
-            }
+            StopReason::RefineFailed
+            | StopReason::RefinementRequired
+            | StopReason::RefineBudgetExhausted => Some("emery plan refine".to_string()),
             StopReason::BuildFailed
             | StopReason::MergeConflict
             | StopReason::MergePostflightFailed
             | StopReason::MergeIncomplete => Some("emery plan execute".to_string()),
-            StopReason::SliceDropped | StopReason::Stuck => None,
+            StopReason::SliceDropped | StopReason::Stuck | StopReason::BoundaryEscalation => None,
         }),
     }
 }

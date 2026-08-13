@@ -478,7 +478,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Probe: deleted `seed_authored_plan` from the library. Workflow cases mint a degenerate definition home (or reuse a fixture `definition/`) and invoke `plan author --from/--wave`. A multi-source `case.toml` without `intent` or a `definition/` fixture fails closed — `examples/eval/cases/auth` stays red until step 19 supplies a definition home. Build-case fixtures still write a plan tree locally. `emery-mock` is now a regular probe dependency so the runner can call `mock::definition::mint`.
 - Caps used: `plan::decomposition::{MAX_DEPTH, MAX_NODES, MAX_JUDGMENTS}` — no `MAX_DECOMPOSITION_*` aliases. README / tutorials / `docs/reference/quick-reference.md` still describe the old author path — step 20.
 
-### Step 16 — Refinement boundary escalation [ ]
+### Step 16 — Refinement boundary escalation [x]
 
 **RFC anchors:** D3 (refinement paragraphs: typed `proceed | boundary-escalation`, Evidence-informed reassessment, focused resurvey + nearest-domain re-decomposition into an **inert** proposal, no artifact promotion, budgets/parking), implementation requirement "The refinement judgment adds the typed `proceed | boundary-escalation` outcome"; acceptance criterion 9 (refinement half).
 
@@ -494,6 +494,17 @@ The first cut lands the execution-substrate change while everything is still in-
 
 **Notes (from step 15):** Focused survey during authoring is review-driven only. Value-backed `focus` parents skip `survey` and requeue — a refinement escalation that names an intent parent must not expect new child leads from that skip. Location-backed focus still runs `orchestrate::survey(..., focus)`.
 
+**Notes:**
+
+- Proposal DTO skeleton landed here: `Proposal::Boundary` at `planning/proposals/<digest>.yaml` with `Frontiers` compare-and-set fields. Step 17 owns application (`plan amend --proposal`) plus ownership / envelope / definition-revision variants. Live `plan.yaml` / `leads.md` / `decomposition.yaml` stay unchanged until application; `plan.yaml.slices` is not rewritten here.
+- Journal: new `slice.refinement.parked` (`ParkReason::boundary-escalation | budget-exhausted`), not an extension of `plan.reconcile.completed`. Status projects `stop boundary-escalation` from the on-disk proposal (re-entry skips re-synthesis; `resume` is unset until step 17's amend verb) and `stop refine-budget-exhausted` from the newest park event (resume is `emery plan refine`).
+- Synthesis wire is v3 `proceed | boundary-escalation` (hard cut; no `response` alias). `assessment` is required on both kinds; the kernel rejects escalation at or below the pinned slice-split threshold and requires `affected` to be this leaf's bound terminals. Fixture plans without a profile pin fall back to `Table::resolve()` so proceed still works.
+- Value-backed focus parents skip `survey` on the candidate catalog (step 15). Escalating an intent-only leaf produces no new child leads.
+- Re-decomposition budget exhaustion remaps `plan-author-budget-exhausted` → `plan-refine-budget-exhausted`. `MAX_JUDGMENTS` is 128, so a live exhaust loop is not a practical native fixture; status overlay is covered by a planted park event.
+- Fixture `write_plan_fixture` plans have no `decomposition.yaml` / `leads-digest`; only the author path can persist a boundary proposal.
+- Native author→refine fixtures rebind recorded first-party pins (`intent@1.0.0`, `omnia@1.0.0`) onto `emery:mock@0.0.0` so extract/guidance can dispatch. The mock catalog has no `intent` source; lead `intent` now has extract evidence. Live adapters in step 19 do not need this rebind.
+- `docs/standards/workflow.md` persist-tail still says `kind: response` — step 20 name sweep.
+
 ### Step 17 — Amendment proposals + `plan amend --proposal` [ ]
 
 **RFC anchors:** D1 (`planning/proposals/`), D8 (ownership proposals, boundary proposals, envelope escalation shape for RFC-96, definition-revision requests, compare-and-set application, preservation rules, lowering of direct plan mutations); acceptance criterion 9 (application half); implementation requirement "Add closed ownership and refinement-boundary proposal DTOs plus `emery plan amend --proposal <digest>`…".
@@ -505,9 +516,11 @@ The first cut lands the execution-substrate change while everything is still in-
 - Lower existing `plan add` / `amend` / `remove` to the same domain-mutation + reprojection path; refuse when no unambiguous hierarchy edit exists. `plan drop` (in-scope exclusion) is audited against the new model but keeps its semantics.
 - Runtime ownership-overlap detection (build/merge surfaces) authors ownership proposals but never applies them — wire the authoring hook where overlap is detected today (merge staleness/validate diagnostics), keeping it inert.
 
-**Key code areas:** new `crates/project/src/plan/proposal/`, `crates/change/src/plan/handlers/amend.rs` (+ new proposal leg), `crates/change/src/orchestrate/`, transport grammar.
+**Key code areas:** `crates/project/src/plan/proposal.rs` (extend the step-16 skeleton), `crates/change/src/plan/handlers/amend.rs` (+ new proposal leg), `crates/change/src/orchestrate/`, transport grammar.
 
 **Tests / gates:** compare-and-set matrix (each expected-revision mismatch refuses); preservation-violation refusals; boundary activation + reprojection round-trip; add/amend/remove lowering including refusal; epoch invalidation observed by step 18's checks (assert the fact-side effect now, full chain in 18). `cargo make ci`.
+
+**Notes (from step 16):** `Proposal::Boundary` already persists at `planning/proposals/<digest>.yaml` with `Frontiers` (leads / decomposition / discovery / plan digests, accepted CIDs, empty committed map, claims). Apply via `plan amend --proposal <digest>` with compare-and-set on those frontiers; do not re-home the file. Ownership / envelope / definition-revision variants are still this step. Status `resume` for `boundary-escalation` is currently unset — point it at the amend verb here. Re-entry on `plan refine` already refuses to re-synthesize when a boundary proposal parks the leaf.
 
 ---
 
@@ -553,6 +566,8 @@ The first cut lands the execution-substrate change while everything is still in-
 - Final gates: `cargo make ci` in both repos, wasm32 compile check, `cargo make links`.
 
 **Notes (from step 10):** Rustdoc path links in `docs/standards/workflow.md` already point at `crates/artifacts/src/leads/{lead,document}.rs` (required for the links gate after the module rename). Remaining `discovery.md` prose in docs, glossary, skills, and CLI reference is this step's name sweep. AGENTS.md vocabulary and the never-hand-edit list already name `leads.md`.
+
+**Notes (from step 16):** Synthesis persist-tail in `docs/standards/workflow.md` still says `kind: response`. The wire is v3 `proceed | boundary-escalation`. Sweep that plus `planning/proposals/`, `slice.refinement.parked`, and the new stop reasons (`boundary-escalation`, `refine-budget-exhausted`).
 
 ---
 

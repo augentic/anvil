@@ -118,10 +118,67 @@ async fn survey_one(
     parent: Option<&Lead>,
 ) -> Result<SurveyedSource, Error> {
     let layout = paths.layout();
+    let (leads, adapter) =
+        collect_leads(seam, resolver, workspaces, paths, now, source, binding, parent).await?;
+    let lead_ids: Vec<String> = leads.iter().map(|lead| lead.lead.clone()).collect();
 
-    // Ensure/resolve before dispatch: the binding's pin and the
-    // adapter's `emery_floor` are enforced by the deployment's
-    // resolver, and dispatch routes by the exact resolved identity.
+    let leads_path = layout.leads_path();
+    let mut catalog = if parent.is_some() {
+        Leads::load(&leads_path)?
+    } else {
+        load_or_empty_leads(&leads_path)?
+    };
+    catalog.merge_survey(source, leads, &leads_path)?;
+    if parent.is_some() {
+        let digest = retain_leads(layout)?;
+        let mut plan = Plan::load(&layout.plan_path())?;
+        plan.leads_digest = Some(digest);
+        plan.save(&layout.plan_path())?;
+    }
+
+    emit(
+        layout,
+        now,
+        EventKind::SourceSurveyCompleted {
+            source: source.to_string(),
+            adapter: adapter.clone(),
+        },
+    )?;
+    Ok(SurveyedSource {
+        source: source.to_string(),
+        adapter,
+        leads: lead_ids,
+    })
+}
+
+/// Focused survey that returns attributed child leads without merging
+/// into `leads.md`.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "source dispatch carries the workspace capability beside the existing seam kernel"
+)]
+pub async fn focused_leads(
+    seam: &impl Source, resolver: &impl Resolver, workspaces: &impl Workspaces,
+    paths: &ExecutionPaths, now: Timestamp, source: &str, binding: &SourceBinding, catalog: &Leads,
+    lead: &str,
+) -> Result<Vec<CatalogLead>, Error> {
+    let parent = resolve_focus_in(catalog, source, lead)?;
+    let (leads, _) =
+        collect_leads(seam, resolver, workspaces, paths, now, source, binding, Some(&parent))
+            .await?;
+    Ok(leads)
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "source dispatch carries the workspace capability beside the existing seam kernel"
+)]
+async fn collect_leads(
+    seam: &impl Source, resolver: &impl Resolver, workspaces: &impl Workspaces,
+    paths: &ExecutionPaths, now: Timestamp, source: &str, binding: &SourceBinding,
+    parent: Option<&Lead>,
+) -> Result<(Vec<CatalogLead>, String), Error> {
+    let layout = paths.layout();
     let adapter = resolver.ensure_source(&binding.selector(), paths).await?.manifest;
     tracing::Span::current().record("adapter", adapter.name.as_str());
 
@@ -169,9 +226,6 @@ async fn survey_one(
         }
     };
 
-    // Attribution is orchestrator-owned: stamp `source`, and on a
-    // focused survey stamp parent/focus so the catalog records the
-    // engine-chosen parent rather than an adapter guess.
     let leads: Vec<CatalogLead> = incoming
         .into_iter()
         .map(|lead| CatalogLead {
@@ -184,39 +238,15 @@ async fn survey_one(
         })
         .collect();
     validate_leads(&leads)?;
-    let lead_ids: Vec<String> = leads.iter().map(|lead| lead.lead.clone()).collect();
-
-    let leads_path = layout.leads_path();
-    let mut catalog = if parent.is_some() {
-        Leads::load(&leads_path)?
-    } else {
-        load_or_empty_leads(&leads_path)?
-    };
-    catalog.merge_survey(source, leads, &leads_path)?;
-    if parent.is_some() {
-        let digest = retain_leads(layout)?;
-        let mut plan = Plan::load(&layout.plan_path())?;
-        plan.leads_digest = Some(digest);
-        plan.save(&layout.plan_path())?;
-    }
-
-    emit(
-        layout,
-        now,
-        EventKind::SourceSurveyCompleted {
-            source: source.to_string(),
-            adapter: adapter.name.clone(),
-        },
-    )?;
-    Ok(SurveyedSource {
-        source: source.to_string(),
-        adapter: adapter.name,
-        leads: lead_ids,
-    })
+    Ok((leads, adapter.name))
 }
 
 fn resolve_focus(layout: Layout<'_>, source: &str, lead: &str) -> Result<Lead, Error> {
     let catalog = Leads::load(&layout.leads_path())?;
+    resolve_focus_in(&catalog, source, lead)
+}
+
+fn resolve_focus_in(catalog: &Leads, source: &str, lead: &str) -> Result<Lead, Error> {
     let resolved = catalog
         .leads()
         .iter()

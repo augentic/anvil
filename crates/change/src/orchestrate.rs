@@ -6,6 +6,7 @@
 mod author;
 mod decompose;
 mod epoch;
+mod escalate;
 mod execute;
 mod gap_gate;
 mod refine;

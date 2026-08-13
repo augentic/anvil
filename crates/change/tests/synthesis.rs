@@ -17,9 +17,16 @@ use serde_json::json;
 /// kernel resolves documentation over behaviour.
 fn session_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "session-policy",
+        "assessment": {
+            "behavioural-breadth": 1,
+            "coupling": 1,
+            "uncertainty": 1,
+            "context-volume": 1,
+            "verification-surface": 1
+        },
         "model": {
             "requirements": [{
                 "title": "sessions expire after inactivity",
@@ -52,9 +59,16 @@ fn session_synthesis_answer() -> String {
 /// unanchored requirement (zero claims) the kernel marks `[unknown]`.
 fn reset_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "password-reset",
+        "assessment": {
+            "behavioural-breadth": 1,
+            "coupling": 1,
+            "uncertainty": 1,
+            "context-volume": 1,
+            "verification-surface": 1
+        },
         "model": {
             "requirements": [{
                 "title": "password reset behaviour",
@@ -91,7 +105,10 @@ async fn divergence_docs_wins() {
     let refined = support::refine(&session, "session-policy")
         .await
         .expect("refine synthesises the divergent slice");
-    assert_eq!(refined.slice, "session-policy");
+    let slice::orchestrate::RefineOutcome::Refined { slice, .. } = refined else {
+        panic!("expected proceed, got {refined:?}");
+    };
+    assert_eq!(slice, "session-policy");
 
     // The synthesis prompt is path-first: each source row carries the
     // project-relative `evidence-path` into the lent tree, and no

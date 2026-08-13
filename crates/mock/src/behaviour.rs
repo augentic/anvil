@@ -193,14 +193,8 @@ mod source {
                     "SESSION_TTL expires sessions after 15 minutes of inactivity.",
                 )],
             },
-            (Profile::Minimal, "greeting") => Evidence {
-                authority: Authority::Documentation,
-                claims: vec![requirement(
-                    "greeting.behaviour",
-                    "Greeting behaviour",
-                    "GET /greeting returns the static string 'hello'.",
-                )],
-            },
+            (Profile::Minimal, "greeting") => greeting_evidence(Authority::Documentation),
+            (Profile::Minimal, "intent") => greeting_evidence(Authority::Intent),
             (Profile::Minimal, "greeting-tone") => Evidence {
                 authority: Authority::Documentation,
                 claims: vec![requirement(
@@ -253,6 +247,17 @@ mod source {
             topics: topics.iter().map(ToString::to_string).collect(),
             parent: Some(parent.to_string()),
             focus: Some(parent.to_string()),
+        }
+    }
+
+    fn greeting_evidence(authority: Authority) -> Evidence {
+        Evidence {
+            authority,
+            claims: vec![requirement(
+                "greeting.behaviour",
+                "Greeting behaviour",
+                "GET /greeting returns the static string 'hello'.",
+            )],
         }
     }
 

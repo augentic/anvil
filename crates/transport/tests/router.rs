@@ -149,6 +149,7 @@ async fn detailed_help() {
     let route = String::from_utf8_lossy(&route.stdout);
     assert!(route.contains("Read-only projection of the plan's execution state"));
     assert!(route.contains("Stop reasons (`refine-failed`"));
+    assert!(route.contains("boundary-escalation"));
 
     let namespace = router.execute(["emery", "source", "--help"]).await;
     assert_eq!(namespace.exit, 0);
