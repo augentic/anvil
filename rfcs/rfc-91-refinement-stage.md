@@ -1,6 +1,6 @@
 # RFC-91: Refinement Stage
 
-> Status: Implemented foundation of the [Services Delivery Programme](platform.md). Adds `plan refine`, reviewable refinement manifests, and wave-time target bases. Builds on [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md). Scheduled [RFC-96](rfc-96-concurrent-execution.md) owns concurrent refinement and execution; parked [RFC-100](rfc-100-distributed-execution.md) and [RFC-99](rfc-99-streaming-execution.md) retain distributed claims and progressive execution.
+> Status: Implemented foundation of the [Services Delivery Programme](platform.md). Adds `plan refine`, reviewable refinement manifests, and wave-time target bases. Builds on [RFC-90](rfc-90-build-verification.md). Scheduled [RFC-96](rfc-96-concurrent-execution.md) owns concurrent refinement and execution; parked [RFC-100](rfc-100-distributed-execution.md) and [RFC-99](rfc-99-streaming-execution.md) retain distributed claims and progressive execution.
 >
 > Patch ownership: this RFC amends implemented RFC-86 D6 / D8 / D12 / D14 / D22 / D25 / D26 and, once RFC-88 lands, RFC-88 D7 / D8 plus its public operator flow. The predecessor RFC texts remain unchanged.
 >

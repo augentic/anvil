@@ -22,25 +22,20 @@ Only hard dependencies appear here. Enrichment relationships belong in prose and
 
 ```mermaid
 flowchart TD
-    R86[RFC-86] --> R87[RFC-87]
-    R86 --> R104[RFC-104 system archaeology]
-    R86 --> R92[RFC-92 model policy]
+    R86[RFC-86 change facts] --> R87[RFC-87 working trees]
     R86 --> R93[RFC-93 operator boundary]
-    R87 --> R104
+    R87 --> R104[RFC-104 system archaeology]
+    R87 --> R90[RFC-90 private workspaces]
     R104 --> R88[RFC-88 detached changes]
-    R87 --> R90[RFC-90]
-    R90 --> R91[RFC-91]
-    R90 --> R92
-    R87 --> R97[RFC-97 native verification]
-    R90 --> R97
-    R88 --> R94[RFC-94 target execution readiness]
+    R88 --> R94[RFC-94 target readiness]
     R88 --> R95[RFC-95 publication sets]
     R88 --> R96[RFC-96 concurrent execution]
-    R91 --> R96
-    R96 --> R97
+    R90 --> R91[RFC-91 specification refinement]
+    R90 --> R92[RFC-92 model policy]
+    R91 --> R96[RFC-96 concurrent execution]
+    R92 --> R103[RFC-103 outcome learning]
+    R96 --> R97[RFC-97 native verification]
     R97 --> R98[RFC-98 conservation]
-    R90 --> R103[RFC-103 outcome learning]
-    R92 --> R103
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef nearterm fill:#fed7aa,stroke:#c2410c,color:#7c2d12,stroke-width:3px
@@ -99,13 +94,13 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 ### Parallel — measure and quote honestly
 
-- [RFC-92](rfc-92-model-policy.md) — pinned per-operation routes, a minimal closed escalation ladder, usage facts, and cost attribution on implemented RFC-86/90. Inputs for RFC-96 pool and budget tuning. Prefer offline route promotion via RFC-103; do not grow the ladder into readiness-, spend-, or classifier-driven rerouting.
+- [RFC-92](rfc-92-model-policy.md) — pinned per-operation routes, a minimal closed escalation ladder, usage facts, and cost attribution on implemented RFC-90. Inputs for RFC-96 pool and budget tuning. Prefer offline route promotion via RFC-103; do not grow the ladder into readiness-, spend-, or classifier-driven rerouting.
 - [RM-26](roadmap.md#rm-26-client-controlled-model-endpoint) — whether regulated model egress can use a client-owned endpoint. Potential engagement blocker, not a product feature queue.
 
 ### Next — target admission and trustworthy outcomes
 
 - [RFC-94](rfc-94-target-readiness.md) — follows RFC-88 target binding. Deterministic-first execution gate: structural criteria and approved host probes produce authority; model judgment cannot grant a band; bands select named policies and never mutate mechanics in flight. Not the paid definition engagement — RFC-104 owns system understanding and migration readiness.
-- [RFC-97](rfc-97-native-verification.md) — one RFC, two phases. Phase A: host-attested `slice-attempt` verification on implemented RFC-87/90; may proceed beside RFC-88. Phase B: attached to RFC-96 (`frontier-domain | complete-domain`, protected-input closure, distributed placement).
+- [RFC-97](rfc-97-native-verification.md) — one RFC, two phases. Phase A: host-attested `slice-attempt` verification on implemented RFC-90; may proceed beside RFC-88. Phase B: attached to RFC-96 (`frontier-domain | complete-domain`, protected-input closure, distributed placement).
 - [RFC-98](rfc-98-behavioural-conservation.md) — follows RFC-97 Phase A. Protected replay oracle from retained `captures`; execution assurance stays separate from oracle assurance; data-governance contract for regulated capture material.
 
 ### Parallel assurance — attribution and operability

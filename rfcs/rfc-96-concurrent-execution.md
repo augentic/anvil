@@ -12,7 +12,7 @@
 > - the shared local pool and its fan-outs
 > - the synthesis payload redesign
 >
-> Builds on implemented [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), [RFC-90](rfc-90-build-verification.md), and [RFC-91](rfc-91-refinement-stage.md), and on [RFC-88](rfc-88-detached-changes.md) once landed. RFC-91 owns serial staged refinement, reviewable refinement manifests, and wave-time target bases; this RFC replaces the serial entry cursor with phase work items, local operation claims, concurrent pools, task graphs, and multi-member waves.
+> Builds on [RFC-91](rfc-91-refinement-stage.md) and on [RFC-88](rfc-88-detached-changes.md) once landed. RFC-91 owns serial staged refinement, reviewable refinement manifests, and wave-time target bases; this RFC replaces the serial entry cursor with phase work items, local operation claims, concurrent pools, task graphs, and multi-member waves.
 >
 > Path-first evidence and lent-tree synthesis inputs are already landed ([workflow](../docs/standards/workflow.md); [CLI output shapes](../docs/reference/cli-output-shapes.md)). Request timeout and session-resume semantics live in the Cursor model backend. This RFC absorbs the former swarm-build and synthesis-redesign scope.
 >

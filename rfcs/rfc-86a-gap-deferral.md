@@ -6,7 +6,7 @@
 >
 > **Owns:** the typed gap **disposition** model (`open | deferred`), durable digest-bound gate-minted **deferral facts**, unconditional build-gate auto-deferral, the build-scope exclusion contract for deferred requirements, debt conservation through merge and archive, and the **baseline debt projection** surfaced at change boundaries.
 >
-> **Builds on** RFC-86's fact substrate (per-writer logs, computed status, `plan.execute.started` typed coverage, one-member waves) and [RFC-91](rfc-91-refinement-stage.md)'s standalone refinement stage. Consumed by [RFC-90](rfc-90-build-verification.md) (verification must respect build scope), [RFC-88](rfc-88-detached-changes.md) (detached changes conserve the same debt), and [RFC-96](rfc-96-concurrent-execution.md) (deferral facts union like every other fact).
+> **Builds on** RFC-86's fact substrate (per-writer logs, computed status, `plan.execute.started` typed coverage, one-member waves). Consumed by [RFC-90](rfc-90-build-verification.md) (verification must respect build scope), [RFC-88](rfc-88-detached-changes.md) (detached changes conserve the same debt), and [RFC-96](rfc-96-concurrent-execution.md) (deferral facts union like every other fact).
 >
 > **Amends** RFC-86 D15/D17 so every open `[unknown]` or `[conflict]` is gate-minted as a durable deferral, leaves build scope, and proceeds; conflict build-over remains forbidden. D22 keeps Ready clean-gap: deferrals never contribute to Ready. D13 (gaps gate build, not refine), D16 (divergence informational), D18 (prose review human-owned), D19 (rollup presentation-only), and D24 (in-scope membership) are unchanged.
 

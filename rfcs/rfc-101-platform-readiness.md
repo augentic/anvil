@@ -6,7 +6,7 @@
 >
 > Does not own: workflow lifecycle, claim/ownership/convergence semantics ([RFC-100](rfc-100-distributed-execution.md)), native verification profiles ([RFC-97](rfc-97-native-verification.md)), forge publication providers ([roadmap.md](roadmap.md) RM-17), or scheduling heuristics beyond the minimum needed for capability-scoped claims.
 >
-> Depends on completed [RFC-86](rfc-86-change-facts.md) and [RFC-87](rfc-87-working-trees.md); consumes the contracts of [RFC-88](rfc-88-detached-changes.md)…[RFC-100](rfc-100-distributed-execution.md) as they land. [RFC-97](rfc-97-native-verification.md) joins the sequence where native toolchain attestation becomes a worker capability.
+> Depends on completed [RFC-100](rfc-100-distributed-execution.md). [RFC-97](rfc-97-native-verification.md) joins the sequence where native toolchain attestation becomes a worker capability.
 >
 > Runtime dependency: Omnia backend conformance named by RFC-100 D10 (create-only documentstore, native keyvalue compare-exchange, digest-safe blobstore namespaces, durable HTTP-trigger supervision). Where a required guarantee is missing, improve the Omnia capability rather than add an Emery-specific transport API.
 
