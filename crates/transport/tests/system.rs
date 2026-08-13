@@ -356,6 +356,27 @@ async fn plan_review_loop() {
 }
 
 #[tokio::test]
+async fn plan_over_empty_as_is() {
+    // AC11: a definition whose survey produced no Evidence (empty
+    // `as-is`) still plans — the proposal writes `target` plus one
+    // evidence-collection wave with no targets and no mappings.
+    let home = tempfile::tempdir().expect("tempdir");
+    author_home(home.path(), &coverage("mock-fail-survey"));
+    let (exit, _stdout) = survey_json(home.path(), Vec::new()).await;
+    assert_eq!(exit, 0, "a failed source still persists empty as-is");
+
+    let proposal = r#"{"version":1,"kind":"response","target":{"elements":[{"id":"orders","kind":"service","status":"inferred","claims":[]}],"relationships":[]},"wave":{"id":"wave-0","outcome":"collect the missing evidence","architecture":{"before":"as-is","after":"as-is"},"gaps":[{"id":"g1","detail":"orders source inaccessible this run"}]}}"#;
+    let (exit, stdout) =
+        dispatch_json(home.path(), vec![proposal.to_string()], &["system", "plan"]).await;
+    assert_eq!(exit, 0, "empty as-is still plans: {stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["proposed"], true);
+    assert_eq!(body["waves"][0]["wave"], "wave-0");
+    let migration = fs::read_to_string(home.path().join("migration.yaml")).expect("migration");
+    assert!(migration.contains("collect the missing evidence"), "{migration}");
+}
+
+#[tokio::test]
 async fn operator_plan_edit_moves_handoff() {
     // An operator edit to migration.yaml is never overwritten: the
     // next plan reprojects a new handoff beside the historical one,

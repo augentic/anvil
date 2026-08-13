@@ -140,20 +140,20 @@ pub fn system_request(argv: &[String]) -> Option<SystemRequest> {
     let segments: Vec<&str> = path.iter().map(String::as_str).collect();
     match segments.as_slice() {
         ["system", "survey"] => {
-            let args = super::system::SurveyArgs::from_arg_matches(leaf).ok()?;
-            Some(SystemRequest { dir: args.dir })
+            let survey = super::system::SurveyArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: survey.dir })
         }
         ["system", "plan"] => {
-            let args = super::system::PlanArgs::from_arg_matches(leaf).ok()?;
-            Some(SystemRequest { dir: args.dir })
+            let plan = super::system::PlanArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: plan.dir })
         }
         ["system", "review"] => {
-            let args = super::system::ReviewArgs::from_arg_matches(leaf).ok()?;
-            Some(SystemRequest { dir: args.dir })
+            let review = super::system::ReviewArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: review.dir })
         }
         ["system", "status"] => {
-            let args = super::system::StatusArgs::from_arg_matches(leaf).ok()?;
-            Some(SystemRequest { dir: args.dir })
+            let status = super::system::StatusArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: status.dir })
         }
         _ => None,
     }

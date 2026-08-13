@@ -133,6 +133,52 @@ pub async fn plan(seam: &impl ModelSeam, paths: &ExecutionPaths) -> Result<PlanO
     })
 }
 
+/// Run the one-time initial architecture proposal: judge, extend the
+/// model with `target` (and any `transition-*` states) without
+/// overwriting, and mint `migration.yaml` only when none exists.
+async fn propose_initial(
+    seam: &impl ModelSeam, layout: &Layout<'_>, coverage: &Coverage, scope: &Scope,
+    decisions: &[decision::Decision], model: &mut Model,
+) -> Result<(), Error> {
+    let corpus = read_corpus(layout, coverage)?;
+    let inputs = propose::inputs(scope.clone(), model.as_is.clone(), corpus.declarative);
+    let decision_ids: BTreeSet<String> =
+        decisions.iter().map(|decision| decision.id.clone()).collect();
+    let proposal =
+        propose::propose(seam, &inputs, &corpus.claims, &corpus.leads, &decision_ids).await?;
+    model.target = Some(proposal.target);
+    for (name, state) in proposal.transitions {
+        if model.transitions.contains_key(&name) {
+            return Err(Error::validation_failed(
+                "system-model-invalid",
+                "no state overwrite",
+                format!("proposed state `{name}` already exists in system.yaml"),
+            ));
+        }
+        model.transitions.insert(name, state);
+    }
+    model.validate()?;
+    artifacts::atomic::yaml_write(&layout.system_path(), model)?;
+    match Migration::load(&layout.migration_path()) {
+        Err(Error::Diag {
+            code: "system-migration-missing",
+            ..
+        }) => {
+            let migration = Migration {
+                version: 1,
+                dispositions: proposal.dispositions,
+                waves: vec![proposal.wave],
+            };
+            migration.validate()?;
+            artifacts::atomic::yaml_write(&layout.migration_path(), &migration)
+        }
+        // An operator-owned plan already exists: the proposal's wave
+        // draft is discarded, never merged over their edits.
+        Ok(_operator_owned) => Ok(()),
+        Err(err) => Err(err),
+    }
+}
+
 /// Remove projection files whose stem is not a live named state.
 fn prune_views(layout: &Layout<'_>, states: &[String]) -> Result<(), Error> {
     let live: BTreeSet<&str> = states.iter().map(String::as_str).collect();

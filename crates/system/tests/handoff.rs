@@ -166,7 +166,7 @@ mod unresolved {
 mod review_verb {
     use super::{Layout, MIGRATION, author, project, review, status};
 
-    fn now() -> jiff::Timestamp {
+    const fn now() -> jiff::Timestamp {
         jiff::Timestamp::UNIX_EPOCH
     }
 
