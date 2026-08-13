@@ -287,6 +287,38 @@ mod overlay {
     }
 
     #[test]
+    fn vanished_link_keeps_shape() {
+        // A declared relationship id the new survey missed stays a
+        // relationship gap while its endpoints survive — never a
+        // placeholder element with an invented kind.
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("system.yaml");
+        write(
+            &path,
+            "version: 1\nidentities:\n  - id: owns-orders\nas-is:\n  elements:\n    - id: \
+             orders\n      kind: service\n      status: inferred\n    - id: orders-db\n      \
+             kind: data-store\n      status: inferred\n  relationships:\n    - id: owns-orders\n      \
+             kind: ownership\n      from: orders\n      to: orders-db\n      status: inferred\n",
+        );
+        let state = State {
+            elements: vec![
+                element("orders", Status::Evidenced, &[("orders-code", "orders.api")]),
+                element("orders-db", Status::Inferred, &[]),
+            ],
+            relationships: Vec::new(),
+        };
+        let model = persist_as_is(&path, state, &[]).expect("persist");
+        let gap = model
+            .as_is
+            .relationships
+            .iter()
+            .find(|relationship| relationship.id == "owns-orders")
+            .expect("relationship-shaped gap");
+        assert_eq!(gap.status, Status::Unknown);
+        assert!(gap.attributes.contains_key("gap"), "{:?}", gap.attributes);
+    }
+
+    #[test]
     fn decision_stamped() {
         let dir = tempfile::tempdir().expect("tempdir");
         let home = dir.path();

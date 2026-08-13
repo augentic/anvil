@@ -87,6 +87,9 @@ pub fn current_handoff(layout: &Layout<'_>, wave: &str) -> Result<Projected, Err
 ///
 /// # Errors
 ///
+/// - `system-overlay-stale` and stale-projection validation failures
+///   — review validates the definition it grants authority over (D1
+///   / D4), it never restamps or reprojects.
 /// - Current-handoff selection failures per [`current_handoff`].
 /// - `system-review-stale` when `supplied` names a different handoff
 ///   than the current one — the definition moved under the reviewer.
@@ -94,6 +97,10 @@ pub fn current_handoff(layout: &Layout<'_>, wave: &str) -> Result<Projected, Err
 pub fn review(
     layout: &Layout<'_>, wave: &str, supplied: &str, now: Timestamp,
 ) -> Result<ReviewOutcome, Error> {
+    let model = Model::load(&layout.system_path())?;
+    let decisions = decision::load_all(&layout.decisions_dir())?;
+    crate::model::overlay::validate(&model, &decisions)?;
+    crate::architecture::validate(layout, &model)?;
     let current = current_handoff(layout, wave)?;
     let digest = current.digest.as_str();
     let reviewed = supplied.strip_prefix("sha256:").unwrap_or(supplied);

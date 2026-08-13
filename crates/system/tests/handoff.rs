@@ -184,9 +184,15 @@ as-is:
     - id: orders-db
       kind: data-store
       status: inferred
+      attributes:
+        ownership: legacy-monolith is the single writer
+        consistency: order and line items commit in one transaction
+        retention: unknown - no policy evidenced
     - id: nightly-reconcile
       kind: scheduled-job
       status: inferred
+      attributes:
+        temporal: settles the ledger once per day; reruns are idempotent
     - id: billing-vendor
       kind: external-actor
       status: inferred
@@ -196,7 +202,8 @@ as-is:
       kind: ownership
       from: legacy-monolith
       to: orders-db
-      status: inferred
+      status: decided
+      decision: split-orders-db
 transition-coexist:
   elements:
     - id: legacy-monolith
@@ -311,7 +318,7 @@ waves:
     const DECISION: &str = "\
 version: 1
 id: split-orders-db
-applies-to: [orders-service, orders-service-owns-orders-db]
+applies-to: [monolith-owns-orders-db]
 context: order state lives inside the legacy monolith today
 decision: the orders service owns orders-db once wave-split cuts over
 consequences: the monolith becomes a coexistence-window reader
@@ -363,6 +370,19 @@ consequences: the monolith becomes a coexistence-window reader
         let disposition = migration.disposition("split-orders").expect("disposition");
         assert_eq!(disposition.treatment, Treatment::Change, "boundary is not preserved");
 
+        // AC5: the stateful element records ownership, transaction /
+        // consistency, and temporal invariants on the attribute map.
+        let model = Model::load(&layout.system_path()).expect("model");
+        let store = model
+            .as_is
+            .elements
+            .iter()
+            .find(|element| element.id == "orders-db")
+            .expect("stateful element");
+        for key in ["ownership", "consistency", "retention"] {
+            assert!(store.attributes.contains_key(key), "orders-db records `{key}`");
+        }
+
         let wave = &projected.handoff.wave;
         assert_eq!(wave.architecture.before.id, "as-is");
         assert_eq!(wave.architecture.after.id, "transition-coexist", "transition state named");
@@ -399,6 +419,69 @@ consequences: the monolith becomes a coexistence-window reader
         assert_eq!(wave.context_elements, ["nightly-reconcile"]);
         assert_eq!(wave.dependencies[0].id, "wave-split", "predecessor resolved");
         assert!(!wave.evidence_scopes.is_empty(), "evidence still selected");
+    }
+}
+
+/// Review validates the definition it grants authority over (D1/D4):
+/// a stale overlay or an edited projection refuses before selection.
+mod review_gates {
+    use system::{Layout, Model, architecture, review};
+
+    const fn now() -> jiff::Timestamp {
+        jiff::Timestamp::UNIX_EPOCH
+    }
+
+    fn review_err(mutate: impl FnOnce(&std::path::Path)) -> error::Error {
+        let home = tempfile::tempdir().expect("tempdir");
+        super::full_estate::author(home.path());
+        let projected = super::full_estate::project(home.path(), "wave-split");
+        mutate(home.path());
+        let layout = Layout::new(home.path());
+        review::review(&layout, "wave-split", projected.digest.digest(), now())
+            .expect_err("review refuses")
+    }
+
+    #[test]
+    fn unfolded_decision() {
+        // A decision added after the last survey has not been stamped
+        // onto `as-is`: review demands a re-survey, never restamps.
+        let err = review_err(|home| {
+            std::fs::write(
+                home.join("decisions/keep-billing.yaml"),
+                "version: 1\nid: keep-billing\napplies-to: [billing-vendor]\ncontext: c\n\
+                 decision: d\nconsequences: q\n",
+            )
+            .expect("new decision");
+        });
+        assert!(err.to_string().starts_with("system-overlay-stale"), "{err}");
+    }
+
+    #[test]
+    fn vanished_decision() {
+        // `as-is` is stamped by a decision record that no longer
+        // exists: the overlay is stale, not silently un-decided.
+        let err = review_err(|home| {
+            std::fs::remove_file(home.join("decisions/split-orders-db.yaml"))
+                .expect("remove decision");
+        });
+        assert!(err.to_string().starts_with("system-overlay-stale"), "{err}");
+    }
+
+    #[test]
+    fn stale_projection() {
+        // A projection whose digest stamp no longer matches the live
+        // state cannot be reviewed into authority.
+        let err = review_err(|home| {
+            let layout = Layout::new(home);
+            let model = Model::load(&layout.system_path()).expect("model");
+            architecture::project(&layout, "as-is", &model.as_is).expect("project");
+            let path = layout.state_doc_path("as-is");
+            let text = std::fs::read_to_string(&path).expect("read");
+            let live = model.as_is.digest().expect("digest");
+            std::fs::write(&path, text.replace(live.digest(), &"0".repeat(64)))
+                .expect("tamper the stamp");
+        });
+        assert!(err.to_string().starts_with("system-projection-stale"), "{err}");
     }
 }
 

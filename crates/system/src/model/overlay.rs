@@ -49,6 +49,58 @@ pub fn persist_as_is(path: &Path, state: State, decisions: &[Decision]) -> Resul
     Ok(model)
 }
 
+/// The D4 overlay-freshness gate for `system plan` and `system
+/// review`: they validate the overlay, they never stamp `as-is`.
+///
+/// Fresh means replaying the live `identities[]` and `decisions/`
+/// overlay onto the live `as-is` changes nothing, and no record is
+/// stamped by a decision that no longer exists.
+///
+/// # Errors
+///
+/// `system-overlay-stale` when an identity or decision edit has not
+/// been folded by a re-survey; propagates identity-merge validation
+/// failures.
+pub fn validate(model: &Model, decisions: &[Decision]) -> Result<(), Error> {
+    let stale = |detail: String| {
+        Err(Error::validation_failed(
+            "system-overlay-stale",
+            "re-run `emery system survey` to refold the overlay",
+            detail,
+        ))
+    };
+    let live: std::collections::BTreeSet<&str> =
+        decisions.iter().map(|decision| decision.id.as_str()).collect();
+    let stamped = model
+        .as_is
+        .elements
+        .iter()
+        .map(|element| (&element.id, element.decision.as_deref()))
+        .chain(
+            model
+                .as_is
+                .relationships
+                .iter()
+                .map(|relationship| (&relationship.id, relationship.decision.as_deref())),
+        );
+    for (id, decision) in stamped {
+        if let Some(decision) = decision
+            && !live.contains(decision)
+        {
+            return stale(format!("`{id}` is stamped by vanished decision `{decision}`"));
+        }
+    }
+    let mut replay = model.as_is.clone();
+    rename(&mut replay, &alias_map(model));
+    merge(&mut replay)?;
+    gaps(&mut replay, model, decisions);
+    stamp(&mut replay, decisions);
+    if replay != model.as_is {
+        return stale("identities or decisions changed since the last survey folded them".into());
+    }
+    Ok(())
+}
+
 /// Correlation cannot emit `status: decided` — only the persist tail
 /// stamps it from `decisions/`.
 fn reject_decided(state: &State) -> Result<(), Error> {
@@ -182,11 +234,35 @@ fn gaps(state: &mut State, model: &Model, decisions: &[Decision]) {
         decisions.iter().flat_map(|decision| decision.applies_to.iter().map(String::as_str));
     let missing: Vec<&str> =
         identity_ids.chain(decided_ids).filter(|id| !state.contains(id)).collect();
+    let note = || {
+        BTreeMap::from([(GAP.to_string(), "declared id not recovered by this survey".to_string())])
+    };
     for id in missing {
         if state.contains(id) {
             continue; // A prior iteration already appended this gap.
         }
-        // Carry the prior survey's kind when the id was modeled before.
+        // Carry the prior survey's shape when the id was modeled
+        // before: a vanished relationship stays a relationship as long
+        // as its endpoints survived; otherwise the gap is an element.
+        let prior = model.as_is.relationships.iter().find(|relationship| relationship.id == id);
+        if let Some(prior) = prior
+            && [&prior.from, &prior.to]
+                .iter()
+                .all(|end| state.elements.iter().any(|element| element.id == **end))
+        {
+            state.relationships.push(Relationship {
+                id: id.to_string(),
+                kind: prior.kind,
+                from: prior.from.clone(),
+                to: prior.to.clone(),
+                status: Status::Unknown,
+                claims: Vec::new(),
+                decision: None,
+                context_only: false,
+                attributes: note(),
+            });
+            continue;
+        }
         let kind = model
             .as_is
             .elements
@@ -200,10 +276,7 @@ fn gaps(state: &mut State, model: &Model, decisions: &[Decision]) {
             claims: Vec::new(),
             decision: None,
             context_only: false,
-            attributes: BTreeMap::from([(
-                GAP.to_string(),
-                "declared id not recovered by this survey".to_string(),
-            )]),
+            attributes: note(),
         });
     }
 }

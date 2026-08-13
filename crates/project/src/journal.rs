@@ -1,6 +1,6 @@
-//! Workflow journal events: append-only newline-delimited JSON at
-//! `.emery/events/<writer>.jsonl`. Each writer appends only its own
-//! file; readers union all files by `(timestamp, writer, sequence)`.
+//! Workflow journal events: append-only newline-delimited JSON, one
+//! file per writer under a `JournalRoot` (`.emery/events/` for the
+//! change home, `<system>/events/` for an RFC-104 definition home).
 
 mod append;
 pub mod claim;

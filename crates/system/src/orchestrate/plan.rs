@@ -73,6 +73,9 @@ pub async fn plan(seam: &impl ModelSeam, paths: &ExecutionPaths) -> Result<PlanO
         }
         loaded => loaded?,
     };
+    // D4: plan validates the overlay, it never stamps `as-is` — an
+    // identity or decision edit demands a re-survey first.
+    crate::model::overlay::validate(&model, &decisions)?;
 
     // Initial architecture proposal: only when `target` is absent at
     // load, and never overwriting an existing named state or an
