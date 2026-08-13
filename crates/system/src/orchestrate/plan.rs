@@ -1,10 +1,6 @@
-//! The `emery system plan` orchestration (RFC-104 D8–D10).
-//!
-//! Validate the definition, run the initial-plan proposal judgment
-//! when `target` is absent at load, reproject every architecture
-//! view, and project each wave's canonical handoff. Re-running the
-//! stage is resume — plan always reprojects from live files and never
-//! overwrites an operator-owned named state or `migration.yaml`.
+//! The `emery system plan` orchestration (RFC-104 D8–D10): validate,
+//! run the initial proposal when `target` is absent, reproject every
+//! view, and project each wave's canonical handoff. Re-run is resume.
 
 use std::collections::BTreeSet;
 use std::path::Path;

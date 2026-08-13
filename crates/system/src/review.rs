@@ -1,9 +1,6 @@
-//! `emery system review` (RFC-104 D10).
-//!
-//! Records architectural authority over one exact wave handoff.
-//! Selection is digest-exact — the current handoff is the unique file
-//! whose wave and covered digests match the live definition, never
-//! the newest by time.
+//! `emery system review` (RFC-104 D10): record architectural
+//! authority over one exact wave handoff. Selection is digest-exact
+//! against the live definition, never newest-by-time.
 
 use error::Error;
 use jiff::Timestamp;

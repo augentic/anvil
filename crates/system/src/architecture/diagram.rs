@@ -1,9 +1,6 @@
-//! Diagram projections over one named state.
-//!
-//! Deterministic DOT source and its rendered SVG, both stamped with
-//! the projected state's exact digest. The renderer is the wasm-clean
-//! `layout` crate; a sort shim over the SVG `<style>` block keeps the
-//! rendered bytes deterministic.
+//! Diagram projections: deterministic DOT source and rendered SVG,
+//! stamped with the projected state's exact digest. A sort shim over
+//! the SVG `<style>` block keeps the `layout` render deterministic.
 
 use std::collections::BTreeMap;
 

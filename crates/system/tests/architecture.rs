@@ -161,7 +161,7 @@ fn empty_state_diagram() {
 }
 
 #[test]
-fn project_writes_diagram_pair() {
+fn writes_diagram_pair() {
     let home = tempfile::tempdir().expect("tempdir");
     let layout = Layout::new(home.path());
     let model = persist_as_is(&layout.system_path(), linked_state(), &[]).expect("persist");

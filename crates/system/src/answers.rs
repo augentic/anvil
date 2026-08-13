@@ -1,8 +1,6 @@
-//! The generated judgment answer schemas.
-//!
-//! Generated via `schemars` from the response wire types, so the
-//! types the deterministic tails parse stay the single source of
-//! truth.
+//! Generated judgment answer schemas, produced via `schemars` from
+//! the response wire types so the types the deterministic tails parse
+//! stay the single source of truth.
 
 use serde_json::Value;
 

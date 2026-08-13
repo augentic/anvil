@@ -377,7 +377,7 @@ async fn plan_over_empty_as_is() {
 }
 
 #[tokio::test]
-async fn operator_plan_edit_moves_handoff() {
+async fn plan_edit_moves_handoff() {
     // An operator edit to migration.yaml is never overwritten: the
     // next plan reprojects a new handoff beside the historical one,
     // and a review of the old digest is refused.

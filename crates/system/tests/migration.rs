@@ -37,7 +37,7 @@ fn missing_is_typed() {
 }
 
 #[test]
-fn digest_is_formatting_independent() {
+fn digest_ignores_format() {
     let compact = parse(MINIMAL).expect("valid plan");
     let block_style =
         parse(&MINIMAL.replace("applies-to: [orders]", "applies-to:\n      - orders"))

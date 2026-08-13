@@ -1,8 +1,6 @@
-//! `handoffs/<digest>.yaml` (RFC-104 D10).
-//!
-//! The immutable, content-addressed projection of one migration wave.
-//! A handoff carries identities and closed digest references, never
-//! copied architecture prose; historical handoffs are never deleted.
+//! `handoffs/<digest>.yaml` — the immutable, content-addressed
+//! projection of one migration wave (RFC-104 D10): identities and
+//! closed digest references only; history is never deleted.
 
 use std::collections::BTreeSet;
 use std::path::Path;

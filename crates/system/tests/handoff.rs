@@ -151,7 +151,7 @@ mod unresolved {
     }
 
     #[test]
-    fn evidence_scope_without_document() {
+    fn evidence_doc_missing() {
         let err = project_with(|home| {
             std::fs::write(
                 home.join("migration.yaml"),
@@ -160,6 +160,245 @@ mod unresolved {
             .expect("rewrite");
         });
         assert!(err.to_string().starts_with("system-handoff-unresolved"), "{err}");
+    }
+}
+
+/// The RFC fixture estate (AC6–AC8): a target architecture that moves
+/// `orders-db` ownership out of the legacy monolith by decision, one
+/// boundary-change wave carrying the full D9 field set, and one
+/// evidence-collection wave that yields no delivery mapping.
+mod full_estate {
+    use std::path::Path;
+
+    use system::migration::Treatment;
+    use system::{Coverage, Layout, Migration, Model, Scope, handoff};
+
+    const MODEL: &str = "\
+version: 1
+identities: []
+as-is:
+  elements:
+    - id: legacy-monolith
+      kind: service
+      status: inferred
+    - id: orders-db
+      kind: data-store
+      status: inferred
+    - id: nightly-reconcile
+      kind: scheduled-job
+      status: inferred
+    - id: billing-vendor
+      kind: external-actor
+      status: inferred
+      context-only: true
+  relationships:
+    - id: monolith-owns-orders-db
+      kind: ownership
+      from: legacy-monolith
+      to: orders-db
+      status: inferred
+transition-coexist:
+  elements:
+    - id: legacy-monolith
+      kind: service
+      status: inferred
+    - id: orders-service
+      kind: service
+      status: decided
+      decision: split-orders-db
+    - id: orders-db
+      kind: data-store
+      status: inferred
+    - id: nightly-reconcile
+      kind: scheduled-job
+      status: inferred
+    - id: billing-vendor
+      kind: external-actor
+      status: inferred
+      context-only: true
+  relationships: []
+target:
+  elements:
+    - id: orders-service
+      kind: service
+      status: inferred
+    - id: orders-db
+      kind: data-store
+      status: inferred
+  relationships:
+    - id: orders-service-owns-orders-db
+      kind: ownership
+      from: orders-service
+      to: orders-db
+      status: decided
+      decision: split-orders-db
+";
+
+    const MIGRATION: &str = "\
+version: 1
+dispositions:
+  - id: split-orders
+    treatment: change
+    applies-to: [monolith-owns-orders-db]
+    reason: ownership moves to the orders service by split-orders-db
+waves:
+  - id: wave-split
+    outcome: move orders ownership out of the monolith
+    architecture:
+      before: as-is
+      after: transition-coexist
+    preconditions:
+      - id: schema-freeze
+        detail: orders schema freeze agreed with the vendor
+    affected-elements: [legacy-monolith, orders-db]
+    touched-elements: [orders-service]
+    context-elements: [billing-vendor]
+    dispositions: [split-orders]
+    evidence-scopes:
+      - source: orders-code
+        lead: greeting
+    targets:
+      - id: orders-service-repo
+        locator: https://github.com/acme/orders-service
+        adapter: omnia
+    delivery-mappings:
+      - source: orders-code
+        lead: greeting
+        target: orders-service-repo
+    state-movements:
+      - id: backfill
+        detail: dual-write then backfill historical orders rows
+    coexistence:
+      - id: dual-write
+        detail: monolith and service dual-write for the window
+    cutover:
+      - id: flip-reads
+        detail: flip the read path once drift holds at zero
+    rollback:
+      - id: revert-reads
+        detail: point reads back at the monolith
+    operational-readiness:
+      - id: drift-dashboard
+        detail: row-level drift dashboard live before cutover
+    acceptance:
+      - id: parity
+        detail: seven days of zero drift
+    verification:
+      - id: replay
+        detail: replay captured traffic against both paths
+    conservation:
+      - id: retention
+        detail: order history survives the move
+    gaps:
+      - id: retention-window
+        detail: legal retention window unconfirmed
+    assumptions:
+      - id: vendor-contract
+        detail: the billing contract permits the new caller
+    decisions: [split-orders-db]
+  - id: wave-observe
+    outcome: collect evidence on the nightly reconcile job
+    architecture:
+      before: transition-coexist
+      after: transition-coexist
+    predecessors: [wave-split]
+    context-elements: [nightly-reconcile]
+    evidence-scopes:
+      - source: orders-code
+        lead: greeting
+";
+
+    const DECISION: &str = "\
+version: 1
+id: split-orders-db
+applies-to: [orders-service, orders-service-owns-orders-db]
+context: order state lives inside the legacy monolith today
+decision: the orders service owns orders-db once wave-split cuts over
+consequences: the monolith becomes a coexistence-window reader
+";
+
+    /// Author the estate home: rich model, two-wave plan, and one
+    /// decision record beside the shared scope/coverage/Evidence.
+    pub fn author(home: &Path) {
+        std::fs::write(home.join("scope.yaml"), super::SCOPE).expect("scope.yaml");
+        std::fs::write(home.join("coverage.yaml"), super::COVERAGE).expect("coverage.yaml");
+        std::fs::write(home.join("system.yaml"), MODEL).expect("system.yaml");
+        std::fs::write(home.join("migration.yaml"), MIGRATION).expect("migration.yaml");
+        let evidence = home.join("evidence/orders-code");
+        std::fs::create_dir_all(&evidence).expect("evidence dir");
+        std::fs::write(evidence.join("greeting.yaml"), super::EVIDENCE).expect("evidence doc");
+        std::fs::create_dir_all(home.join("decisions")).expect("decisions dir");
+        std::fs::write(home.join("decisions/split-orders-db.yaml"), DECISION).expect("decision");
+    }
+
+    /// Project and persist one wave's handoff against the live files.
+    pub fn project(home: &Path, wave: &str) -> handoff::Projected {
+        let layout = Layout::new(home);
+        let scope = Scope::load(&layout.scope_path()).expect("scope");
+        let coverage = Coverage::load(&layout.coverage_path()).expect("coverage");
+        let model = Model::load(&layout.system_path()).expect("model");
+        let migration = Migration::load(&layout.migration_path()).expect("migration");
+        let decisions = system::decision::load_all(&layout.decisions_dir()).expect("decisions");
+        let wave = migration.wave(wave).expect("wave").clone();
+        let projected =
+            handoff::project(&layout, &scope, &coverage, &model, &migration, &decisions, &wave)
+                .expect("projection resolves");
+        handoff::write(&layout, &projected).expect("persist");
+        projected
+    }
+
+    #[test]
+    fn boundary_change_wave() {
+        // AC6: the reviewed target moves a legacy state boundary under
+        // a `change` disposition (never `preserve`) and the plan
+        // records the responsible decision, transition state, data
+        // movement, reconciliation, cutover, and rollback. AC8: every
+        // reference kind resolves and round-trips content-addressed.
+        let home = tempfile::tempdir().expect("tempdir");
+        author(home.path());
+        let projected = project(home.path(), "wave-split");
+        let layout = Layout::new(home.path());
+
+        let migration = Migration::load(&layout.migration_path()).expect("migration");
+        let disposition = migration.disposition("split-orders").expect("disposition");
+        assert_eq!(disposition.treatment, Treatment::Change, "boundary is not preserved");
+
+        let wave = &projected.handoff.wave;
+        assert_eq!(wave.architecture.before.id, "as-is");
+        assert_eq!(wave.architecture.after.id, "transition-coexist", "transition state named");
+        assert_eq!(wave.decisions[0].id, "split-orders-db", "responsible decision referenced");
+        for refs in [&wave.state_movements, &wave.coexistence, &wave.cutover, &wave.rollback] {
+            assert_eq!(refs.len(), 1);
+        }
+        assert_eq!(wave.targets[0].adapter, "omnia", "bare adapter name copied verbatim");
+        assert_eq!(wave.delivery_mappings.len(), 1);
+        assert_eq!(wave.context_elements, ["billing-vendor"], "context-only system carried");
+        assert!(!wave.preconditions.is_empty());
+        assert!(!wave.operational_readiness.is_empty());
+        assert!(!wave.acceptance.is_empty());
+        assert!(!wave.verification.is_empty());
+        assert!(!wave.conservation.is_empty());
+        assert!(!wave.assumptions.is_empty());
+
+        let path = home.path().join(format!("handoffs/{}.yaml", projected.digest.digest()));
+        let loaded = handoff::load(&path).expect("verified load");
+        assert_eq!(loaded, projected);
+    }
+
+    #[test]
+    fn evidence_collection_wave() {
+        // AC7: an evidence-collection wave over context-only systems
+        // projects a canonical handoff with no delivery target and no
+        // delivery mapping — nothing for RFC-88 to slice.
+        let home = tempfile::tempdir().expect("tempdir");
+        author(home.path());
+        let projected = project(home.path(), "wave-observe");
+        let wave = &projected.handoff.wave;
+        assert!(wave.targets.is_empty(), "no delivery target");
+        assert!(wave.delivery_mappings.is_empty(), "no delivery mapping");
+        assert_eq!(wave.context_elements, ["nightly-reconcile"]);
+        assert_eq!(wave.dependencies[0].id, "wave-split", "predecessor resolved");
+        assert!(!wave.evidence_scopes.is_empty(), "evidence still selected");
     }
 }
 
@@ -204,7 +443,7 @@ mod review_verb {
     }
 
     #[test]
-    fn stale_supplied_digest_refused() {
+    fn stale_digest_refused() {
         let home = tempfile::tempdir().expect("tempdir");
         author(home.path());
         let _projected = project(home.path());
@@ -231,6 +470,19 @@ mod review_verb {
         let err = review::review(&layout, "wave-1", projected.digest.digest(), now())
             .expect_err("no current handoff");
         assert!(err.to_string().starts_with("system-review-handoff-stale"), "{err}");
+    }
+
+    #[test]
+    fn full_estate_review_loop() {
+        // AC6/AC9 end to end over the rich estate: review the
+        // boundary-change wave's exact handoff and observe the fact.
+        let home = tempfile::tempdir().expect("tempdir");
+        super::full_estate::author(home.path());
+        let projected = super::full_estate::project(home.path(), "wave-split");
+        let layout = Layout::new(home.path());
+        let outcome = review::review(&layout, "wave-split", projected.digest.digest(), now())
+            .expect("review records");
+        assert!(outcome.recorded);
     }
 
     #[test]

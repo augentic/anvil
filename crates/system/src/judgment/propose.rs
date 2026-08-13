@@ -1,10 +1,6 @@
-//! The initial-plan proposal judgment (RFC-104 D10).
-//!
-//! When `target` is absent at load, one judgment over the live
-//! `as-is` (possibly empty), `scope.yaml`, and any included intent or
-//! constraint Evidence may propose `target`, optional `transition-*`
-//! states, and one migration wave. Later plans never run it and never
-//! add named states.
+//! The initial-plan proposal judgment (RFC-104 D10): when `target` is
+//! absent at load, one judgment over the live `as-is`, `scope.yaml`,
+//! and declarative Evidence proposes `target` and one wave.
 
 use std::collections::{BTreeMap, BTreeSet};
 
