@@ -33,6 +33,18 @@ pub fn propose() -> &'static str {
     doc("propose.md")
 }
 
+/// System prompt body for the partition judgment.
+#[must_use]
+pub fn partition() -> &'static str {
+    doc("partition.md")
+}
+
+/// System prompt body for the boundary-review judgment.
+#[must_use]
+pub fn review() -> &'static str {
+    doc("review.md")
+}
+
 // Keep (private embed-table kernel): "an embedded prompt assembles
 // nowhere" is unobservable at any CLI or crate boundary, so
 // integration cannot own this invariant.
@@ -40,13 +52,17 @@ pub fn propose() -> &'static str {
 mod tests {
     use super::*;
 
-    /// Every embedded document is consumed by the propose leg. A
+    /// Every embedded document is consumed by a judgment leg. A
     /// prompt file that ships but assembles nowhere is a wiring bug,
     /// not harmless.
     #[test]
     fn every_doc_assembles() {
         for doc in DOCS {
-            assert!(doc.path == "propose.md", "embedded prompt `{}` assembles nowhere", doc.path);
+            assert!(
+                matches!(doc.path, "propose.md" | "partition.md" | "review.md"),
+                "embedded prompt `{}` assembles nowhere",
+                doc.path
+            );
         }
     }
 }

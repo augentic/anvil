@@ -1,5 +1,4 @@
-//! Wave-binding `plan author` does not dispatch the propose judgment
-//! loop. Decomposition (and its repair budget) lands in a later step.
+//! `plan author` dispatches partition and change-prose judgments.
 
 use change::plan;
 use mock::definition::{Spec, mint};
@@ -15,8 +14,8 @@ fn seed_target(root: &std::path::Path) -> std::path::PathBuf {
 }
 
 #[tokio::test]
-async fn binding_skips_judgment() {
-    let session = Session::scripted("mock", Vec::new());
+async fn author_runs_judgment() {
+    let session = Session::scripted("mock", mock::answers::greeting_author());
     let target = seed_target(session.root());
     let definition = session.root().join("definition");
     let mut spec = Spec::degenerate("Ship the greeting.");
@@ -33,7 +32,7 @@ async fn binding_skips_judgment() {
         },
     )
     .await
-    .expect("binding succeeds without a model");
-    assert_eq!(authored.pending, "decomposition");
+    .expect("author succeeds with scripted partition and change answers");
+    assert!(authored.slices.iter().any(|name| name == "greeting"), "{:?}", authored.slices);
     session.model().assert_exhausted();
 }

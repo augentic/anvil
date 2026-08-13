@@ -3,7 +3,7 @@
 //! Every command runs through [`native::command::execute`] — production
 //! paths, never reconstructed here; rerun from fresh state with `--restart`.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
@@ -11,13 +11,10 @@ use std::process::Command;
 use std::sync::Arc;
 
 use anyhow::{Context as _, Result, bail, ensure};
-use artifacts::leads::{Lead, Leads};
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
-use project::adapter::catalog::Pin;
 use project::config::Layout;
-use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, Status, TargetBinding};
+use project::plan::Status;
 use project::slice::SliceMetadata;
-use project::snapshot::SnapshotId;
 use tracing::Instrument as _;
 
 use crate::telemetry::{self, Telemetry};
@@ -123,7 +120,14 @@ async fn run_workflow(
     catalog: &Catalog, telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
     invoke(root, model, catalog, &["init", &case.target]).await?;
-    seed_authored_plan(root, &case.change, &case.sources)?;
+    let (from, wave) = seed_definition(root, case)?;
+    invoke(
+        root,
+        model,
+        catalog,
+        &["plan", "author", &case.change, "--from", &from.to_string_lossy(), "--wave", &wave],
+    )
+    .await?;
 
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
@@ -201,66 +205,42 @@ async fn run_build(
     Ok(())
 }
 
-/// Write a fixture `plan.yaml` + `leads.md` from case source
-/// bindings. Wave-binding `plan author` stops at decomposition pending.
+/// Mint a reviewed definition home from the case, or reuse a fixture
+/// `definition/` tree. Wave-binding `plan author` consumes `--from` /
+/// `--wave`.
 ///
 /// # Errors
 ///
-/// Adapter-pin parse failures and fixture write failures.
-pub fn seed_authored_plan(
-    root: &Path, name: &str, sources: &BTreeMap<String, String>,
-) -> Result<()> {
-    let layout = Layout::new(root);
-    fs::create_dir_all(layout.change_root()).context("create change home")?;
+/// Fixture mint failures.
+fn seed_definition(root: &Path, case: &Workflow) -> Result<(PathBuf, String)> {
+    let from = root.join("definition");
+    if project::definition::Home::new(&from).handoffs_dir().is_dir() {
+        return Ok((from, case.wave.clone().unwrap_or_else(|| "deliver".into())));
+    }
+    let intent = case.intent.clone().or_else(|| single_value_source(case));
+    let intent = intent.context(
+        "workflow case needs `intent`, a single `adapter:value:…` source, or a `definition/` \
+         fixture home to drive `plan author --from/--wave`",
+    )?;
     let adapter = project::config::ProjectConfig::load(root)
         .ok()
         .and_then(|config| config.adapter)
-        .unwrap_or_else(|| "mock".into());
-    let mut plan = Plan::named(name);
-    plan.targets.insert(
-        "default".into(),
-        TargetBinding::new(
-            Pin::parse(&format!("emery:{adapter}@0.0.0")).context("target pin")?,
-            ".",
-            SnapshotId::from_digest(&"0".repeat(64)),
-        ),
-    );
-    let mut imported = Vec::new();
-    for (key, raw) in sources {
-        let (source_adapter, value) = parse_value_binding(raw).with_context(|| {
-            format!("case source `{key}` must be `adapter:value:…` until decomposition authoring")
-        })?;
-        plan.sources.insert(
-            key.clone(),
-            SourceBinding::intent(
-                Pin::parse(&format!("emery:{source_adapter}@0.0.0")).context("source pin")?,
-                value,
-            ),
-        );
-        let (slice, lead) =
-            if key == "main" { ("greeting", "greeting") } else { (key.as_str(), key.as_str()) };
-        if !plan.entries.iter().any(|entry| entry.name.as_str() == slice) {
-            let mut entry = Entry::named(slice, "default");
-            entry.sources = vec![SliceSourceBinding::structured(key, lead)];
-            plan.entries.push(entry);
-        } else if let Some(entry) =
-            plan.entries.iter_mut().find(|entry| entry.name.as_str() == slice)
-        {
-            entry.sources.push(SliceSourceBinding::structured(key, lead));
-        }
-        imported.push(Lead::new(lead, key, lead));
-    }
-    plan.save(&layout.plan_path()).context("write fixture plan.yaml")?;
-    Leads::from_leads(imported)
-        .write_atomic(&layout.leads_path())
-        .context("write fixture leads.md")?;
-    Ok(())
+        .unwrap_or_else(|| case.target.clone());
+    let mut spec = mock::definition::Spec::degenerate(&intent);
+    spec.targets[0].locator = root.display().to_string();
+    spec.targets[0].adapter = format!("emery:{adapter}@0.0.0");
+    spec.wave = case.wave.clone().unwrap_or(spec.wave);
+    mock::definition::mint(&from, &spec).context("mint definition home")?;
+    Ok((from, spec.wave))
 }
 
-fn parse_value_binding(raw: &str) -> Option<(&str, &str)> {
-    let (adapter, rest) = raw.split_once(':')?;
-    let (kind, value) = rest.split_once(':')?;
-    (kind == "value").then_some((adapter, value))
+fn single_value_source(case: &Workflow) -> Option<String> {
+    if case.sources.len() != 1 {
+        return None;
+    }
+    case.sources.values().next().and_then(|raw| {
+        raw.split_once(':').and_then(|(_, rest)| rest.strip_prefix("value:")).map(str::to_string)
+    })
 }
 
 // One build phase over the case's refined fixture, driven straight

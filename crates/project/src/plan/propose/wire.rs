@@ -42,10 +42,10 @@ pub struct ProposalRequest {
     pub leads: Vec<LeadCatalogEntry>,
 }
 
-/// One product tree the agent may bind a response slice to.
+/// One bound target the agent may bind a response slice to.
 ///
-/// Synthesised from live `project.yaml` (name + resolved target adapter
-/// + description) plus the product's baseline projection.
+/// Synthesised from `plan.yaml.targets`: `name` is the handoff target
+/// id and `target` is that row's adapter pin.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProjectRef {

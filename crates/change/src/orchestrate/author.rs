@@ -1,26 +1,34 @@
-//! Wave-binding phase of `plan author`: import a reviewed handoff,
-//! ingest locators, write `discovery.yaml`, and stop until decomposition.
+//! `plan author`: bind a reviewed handoff, focus delivery scopes,
+//! decompose, and publish `decomposition.yaml` + `plan.yaml`.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use artifacts::leads::{Lead, Leads};
 use error::Error;
+use jiff::Timestamp;
+use omnia_guest::Model;
 use project::adapter::catalog::{self, Hint, Pin, Row};
 use project::adapter::{Inventory, Resolver};
 use project::binding::{Location, Origin, Policy};
 use project::config::{Layout, ProjectConfig};
 use project::definition::{self, Home, INTENT, Reviewed, Scope};
 use project::handler::ExecutionPaths;
+use project::journal::{self, Event, EventKind};
 use project::plan::{
-    DISCOVERY_VERSION, DefinitionIdentity, Discovery, Plan, ReviewIdentity, SourceBinding,
-    TargetBinding, retain_leads,
+    DISCOVERY_VERSION, DefinitionIdentity, Discovery, GateProse, Plan, ReviewIdentity,
+    SourceBinding, TargetBinding, build_request, resolve_topology, retain_decomposition,
+    retain_leads,
 };
 use project::profile::Profiles;
-use project::seam::{self, Ingest};
+use project::seam::{self, Ingest, Source, Workspaces};
 use project::snapshot::SnapshotId;
 
-/// Binding-phase result: topology written, decomposition still pending.
+use super::decompose;
+use crate::judgment::propose::{self, GateContext};
+
+/// Completed authoring: bound topology, decomposition, and leaf plan.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorOutcome {
     /// Change name.
@@ -29,25 +37,30 @@ pub struct AuthorOutcome {
     pub discovery_digest: SnapshotId,
     /// Canonical `leads.md` digest.
     pub leads_digest: SnapshotId,
+    /// Canonical `decomposition.yaml` digest.
+    pub decomposition_digest: SnapshotId,
     /// Bound target ids.
     pub targets: Vec<String>,
     /// Bound source keys.
     pub sources: Vec<String>,
-    /// The typed stop until decomposition lands.
-    pub pending: String,
-    /// Operator hint.
-    pub hint: String,
+    /// Projected slice names, in tree order.
+    pub slices: Vec<String>,
 }
 
-/// Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml`.
+/// Bind a reviewed handoff, decompose it, and publish the leaf plan.
 ///
 /// # Errors
 ///
-/// Definition resolve, ingest, catalog, overwrite, and validation failures.
+/// Definition resolve, ingest, catalog, overwrite, judgment, and
+/// validation failures.
 #[tracing::instrument(name = "plan.author", skip_all, fields(plan = %name))]
-pub async fn author<P: Resolver + Inventory + Profiles + Ingest>(
-    provider: &P, paths: &ExecutionPaths, name: &str, from: &Path, wave: &str, force: bool,
-) -> Result<AuthorOutcome, Error> {
+pub async fn author<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, name: &str, from: &Path, wave: &str,
+    force: bool,
+) -> Result<AuthorOutcome, Error>
+where
+    P: Resolver + Inventory + Profiles + Ingest + Model + Source + Workspaces,
+{
     project::name::validate_name(name)?;
     let from = resolve_from(paths, from);
     let reviewed = definition::resolve(&from, wave)?;
@@ -114,16 +127,118 @@ pub async fn author<P: Resolver + Inventory + Profiles + Ingest>(
     plan.sources = sources;
     plan.save(&plan_path)?;
 
+    finish(provider, paths, layout, now, name, discovery_digest, leads_digest).await
+}
+
+async fn finish<P>(
+    provider: &P, paths: &ExecutionPaths, layout: Layout<'_>, now: Timestamp, name: &str,
+    discovery_digest: SnapshotId, leads_digest: SnapshotId,
+) -> Result<AuthorOutcome, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let leads = Leads::load(&layout.leads_path())?;
+    let mut plan = Plan::load(&layout.plan_path())?;
+
+    let decomposed = decompose::decompose(provider, paths, now, &plan, &leads).await?;
+    let entries = project::plan::decomposition::slices(&decomposed.tree)?;
+    let slice_names: Vec<String> = entries.iter().map(|entry| entry.name.to_string()).collect();
+    decomposed.tree.save(&layout.decomposition_path())?;
+    let decomposition_digest = retain_decomposition(layout)?;
+    plan.decomposition_digest = Some(decomposition_digest.clone());
+    plan.leads_digest = Some(decomposed.tree.leads_digest.clone());
+    plan.entries = entries;
+    plan.save(&layout.plan_path())?;
+
+    let topology = resolve_topology(&plan);
+    let request = build_request(&leads, &topology)?;
+    let gate = propose::reconcile(
+        provider,
+        &request,
+        Some(GateContext {
+            plan: plan.name.as_str(),
+            sources: &plan.sources,
+        }),
+        |answer| {
+            let mut trial = plan.clone();
+            trial.propose_from(answer.clone(), &leads, &topology, &HashMap::new()).map(|_| ())
+        },
+    )
+    .await?;
+    write_change(layout, &plan, &leads, gate.gate.as_ref(), &decomposed.caveats, now)?;
+    journal::append_one(
+        layout,
+        &Event::new(
+            now,
+            EventKind::PlanReconcileCompleted {
+                plan_name: plan.name.clone(),
+                slice_count: slice_names.len(),
+                slice_names: slice_names.iter().map(|name| name.as_str().into()).collect(),
+            },
+        ),
+    )?;
+
     Ok(AuthorOutcome {
         plan: name.to_string(),
         discovery_digest,
         leads_digest,
+        decomposition_digest,
         targets: plan.targets.keys().cloned().collect(),
         sources: plan.sources.keys().cloned().collect(),
-        pending: "decomposition".into(),
-        hint: "decomposition pending; later authoring phases land with the decomposition step"
-            .into(),
+        slices: slice_names,
     })
+}
+
+fn write_change(
+    layout: Layout<'_>, plan: &Plan, leads: &Leads, gate: Option<&GateProse>, caveats: &[String],
+    now: Timestamp,
+) -> Result<(), Error> {
+    let mut body = format!("# Change — {}\n\n", plan.name);
+    body.push_str(&orientation(plan, leads));
+    if let Some(gate) = gate {
+        body.push('\n');
+        body.push_str(gate.change.trim());
+        body.push('\n');
+    }
+    if !caveats.is_empty() {
+        body.push_str("\n## Uncertain boundaries\n\n");
+        for caveat in caveats {
+            let _ = writeln!(body, "- {caveat}");
+        }
+    }
+    if let Ok(rows) = slice::debt::baseline(&layout.specs_dir(), now)
+        && let Some(section) = slice::debt::markdown(&rows)
+    {
+        body.push('\n');
+        body.push_str(&section);
+        if !body.ends_with('\n') {
+            body.push('\n');
+        }
+    }
+    let path = layout.change_brief_path();
+    std::fs::write(&path, body).map_err(|source| Error::Filesystem {
+        op: "write",
+        path,
+        source,
+    })
+}
+
+fn orientation(plan: &Plan, leads: &Leads) -> String {
+    let mut out = format!(
+        "## Summary\n\nSources: {}. Leads: {}.\n\n## Source inventory\n\n\
+         | Key | Adapter | Binding |\n| --- | --- | --- |\n",
+        plan.sources.len(),
+        leads.leads().len()
+    );
+    for (key, binding) in &plan.sources {
+        let bound = match (&binding.locator, &binding.value) {
+            (Some(locator), _) => format!("locator `{locator}`"),
+            (None, Some(value)) => format!("value \"{value}\""),
+            (None, None) => "unbound".into(),
+        };
+        let _ = writeln!(out, "| {key} | {} | {bound} |", binding.adapter);
+    }
+    out
 }
 
 /// One catalog row from a handoff evidence scope. Synopsis is the
@@ -233,7 +348,7 @@ fn review_line(events_dir: &Path, reviewed: &Reviewed) -> Result<Vec<u8>, Error>
             source,
         })?;
         for line in text.lines() {
-            let Ok(event) = serde_json::from_str::<project::journal::Event>(line) else {
+            let Ok(event) = serde_json::from_str::<Event>(line) else {
                 continue;
             };
             if event.digest().ok().as_ref() == Some(&want) {

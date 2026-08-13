@@ -5,7 +5,7 @@ You are the Emery plan-time reconciliation step. The user message carries a `kin
 ## Grouping rules
 
 - Match leads across sources by judgment from `synopsis`, shared slugs, and optional `topics[]` hints. At most one lead per source per slice — never fuse two leads from the same source.
-- Emit one `slices[]` row per slice of work, each carrying an explicit kebab-case `name`, its matched `sources[]` (`{ source, lead }` pairs), and a bound `project` chosen from the request's `projects[]`. When exactly one project exists, `project` may be omitted (it is auto-bound).
+- Emit one `slices[]` row per slice of work, each carrying an explicit kebab-case `name`, its matched `sources[]` (`{ source, lead }` pairs), and a bound `target` chosen from the request's `projects[]` (handoff target ids).
 - Bind a slice on the project's actual owned behaviour — its `target`, `description`, `surface[]`, `recent[]`, and `decisions[]` — not on description prose alone.
 - Coverage is at-least-once, not exactly-once: every catalog lead must be referenced by at least one slice, and a lead may appear in more than one slice (fan-out). Cross-project fan-out is multiple slices that may reference the same lead, joined by `depends-on`; there is no other grouping noun.
 - Add `rationale` when a cross-source match is not obvious from shared slugs or synopsis content, and `depends-on` when one slice's work requires another's.

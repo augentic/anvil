@@ -76,16 +76,17 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 
 ### `emery plan author`
 
-The guest-routed wave-binding phase: import a reviewed handoff, write `discovery.yaml` and a skeleton `plan.yaml`, and stop until decomposition. `pending` is the typed stop (`decomposition`); `hint` is the closing line the `/emery:plan` skill relays.
+The guest-routed authoring phase: import a reviewed handoff, decompose the bound catalog into a complete tree, and publish `decomposition.yaml` + `plan.yaml` together. `slices` is the projected leaf list in tree order.
 
 ```json
 {
   "plan": "identity-revamp",
   "discovery-digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "leads-digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "decomposition-digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "targets": ["app"],
   "sources": ["intent"],
-  "pending": "decomposition",
-  "hint": "decomposition pending; later authoring phases land with the decomposition step"
+  "slices": ["identity-contracts", "identity-service"]
 }
 ```
 

@@ -6,7 +6,7 @@ argument-hint: <name> --from <definition-home> --wave <id>
 
 # Plan Skill
 
-The CLI orchestration owns wave binding — import the reviewed handoff, ingest locators, write `discovery.yaml` and a skeleton `plan.yaml`. Decomposition into `slices[]` lands in a later authoring phase. This skill only elicits arguments, confirms replace when a plan already exists, invokes the verb, and relays its output.
+The CLI orchestration owns wave binding and decomposition — import the reviewed handoff, ingest locators, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml`. This skill only elicits arguments, confirms replace when a plan already exists, invokes the verb, and relays its output.
 
 ## Invocation
 
@@ -29,6 +29,6 @@ Authoring is a long-running orchestration — it runs bare (or with `--debug` wh
 
 ## Relay
 
-- Surface the CLI output verbatim, including `pending: decomposition`. This skill never runs refine or execute itself — binding exits so later authoring phases can decompose the bound topology into slices.
+- Surface the CLI output verbatim, including the projected `slices[]`. This skill never runs refine or execute itself — authoring exits so the operator can review the topology before `emery plan refine`.
 - On non-zero exit, surface the structured error verbatim and stop. Never hand-edit `plan.yaml`, `change.md`, `discovery.yaml`, or `discovery.md` — the CLI is the single writer for plan state.
 - Headless plan curation stays on the CLI: `emery plan add`, `emery plan amend`, `emery plan remove`, `emery plan drop`.

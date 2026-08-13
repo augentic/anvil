@@ -1,14 +1,15 @@
-//! `plan author` — bind a reviewed handoff into `discovery.yaml`.
+//! `plan author` — bind a reviewed handoff and decompose it.
 
 use std::io::Write;
 use std::path::PathBuf;
 
+use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::{Inventory, Resolver};
 use project::handler::{Anchor, Render};
 use project::profile::Profiles;
-use project::seam::Ingest;
+use project::seam::{Ingest, Source, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -29,11 +30,13 @@ pub struct AuthorInput {
     pub force: bool,
 }
 
-/// `emery plan author <name> --from <dir> --wave <id>` — wave binding.
+/// `emery plan author <name> --from <dir> --wave <id>` — bind and decompose.
 #[derive(Clone, Copy, Debug)]
 pub struct Author;
 
-impl<P: Anchor + Resolver + Inventory + Profiles + Ingest> Operation<P> for Author {
+impl<P: Anchor + Model + Resolver + Inventory + Profiles + Ingest + Source + Workspaces>
+    Operation<P> for Author
+{
     type Error = project::handler::Error;
     type Input = AuthorInput;
     type Output = AuthorBody;
@@ -45,6 +48,7 @@ impl<P: Anchor + Resolver + Inventory + Profiles + Ingest> Operation<P> for Auth
         let outcome = orchestrate::author(
             context.provider,
             paths,
+            jiff::Timestamp::now(),
             &input.name,
             &input.from,
             &input.wave,
@@ -55,7 +59,7 @@ impl<P: Anchor + Resolver + Inventory + Profiles + Ingest> Operation<P> for Auth
     }
 }
 
-/// Success envelope for the `plan author` binding phase.
+/// Success envelope for a completed `plan author`.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AuthorBody {
@@ -65,14 +69,14 @@ pub struct AuthorBody {
     pub discovery_digest: String,
     /// Canonical `leads.md` digest.
     pub leads_digest: String,
+    /// Canonical `decomposition.yaml` digest.
+    pub decomposition_digest: String,
     /// Bound target ids.
     pub targets: Vec<String>,
     /// Bound source keys.
     pub sources: Vec<String>,
-    /// Typed stop until decomposition lands (`decomposition`).
-    pub pending: String,
-    /// Operator hint.
-    pub hint: String,
+    /// Projected slice names, in tree order.
+    pub slices: Vec<String>,
 }
 
 impl From<orchestrate::AuthorOutcome> for AuthorBody {
@@ -81,10 +85,10 @@ impl From<orchestrate::AuthorOutcome> for AuthorBody {
             plan: outcome.plan,
             discovery_digest: outcome.discovery_digest.to_string(),
             leads_digest: outcome.leads_digest.to_string(),
+            decomposition_digest: outcome.decomposition_digest.to_string(),
             targets: outcome.targets,
             sources: outcome.sources,
-            pending: outcome.pending,
-            hint: outcome.hint,
+            slices: outcome.slices,
         }
     }
 }
@@ -94,13 +98,16 @@ impl Render for AuthorBody {
         writeln!(w, "plan: {}", self.plan)?;
         writeln!(w, "discovery-digest: {}", self.discovery_digest)?;
         writeln!(w, "leads-digest: {}", self.leads_digest)?;
+        writeln!(w, "decomposition-digest: {}", self.decomposition_digest)?;
         for target in &self.targets {
             writeln!(w, "target: {target}")?;
         }
         for source in &self.sources {
             writeln!(w, "source: {source}")?;
         }
-        writeln!(w, "pending: {}", self.pending)?;
-        writeln!(w, "{}", self.hint)
+        for slice in &self.slices {
+            writeln!(w, "slice: {slice}")?;
+        }
+        Ok(())
     }
 }

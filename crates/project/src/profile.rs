@@ -71,7 +71,7 @@ pub struct Thresholds {
 }
 
 /// Judgment-supplied integers (0–[`DIM_MAX`]) for the five dimensions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Assessment {
     /// Behavioural-breadth score.
@@ -307,6 +307,30 @@ impl Table {
         self.entries.get(class).ok_or_else(|| Error::Diag {
             code: "profile-class-unknown",
             detail: format!("no model-capability profile for class `{class}`"),
+        })
+    }
+
+    /// The table entry whose id and digest match `pin`.
+    ///
+    /// Does not re-resolve by model class — the plan-row pin is the
+    /// identity that was stamped at author.
+    ///
+    /// # Errors
+    ///
+    /// `profile-pin-unknown` when no body matches; digest failures
+    /// from [`Profile::digest`].
+    pub fn pinned(&self, pin: &ProfileRef) -> Result<&Profile, Error> {
+        for profile in self.entries.values() {
+            if profile.id == pin.id && profile.digest()? == pin.digest {
+                return Ok(profile);
+            }
+        }
+        Err(Error::Diag {
+            code: "profile-pin-unknown",
+            detail: format!(
+                "no model-capability profile matches pin `{}` / `{}`",
+                pin.id, pin.digest
+            ),
         })
     }
 }

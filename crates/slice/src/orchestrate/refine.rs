@@ -116,7 +116,7 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
-    let (baseline, baseline_decisions) = baseline_identity(caps.resolver, paths, &entry)?;
+    let (baseline, baseline_decisions) = baseline_identity(paths, &entry);
     let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
     let dependency_context = dependency_context(layout, &dependencies);
     let header = ProjectionHeader {
@@ -362,13 +362,14 @@ fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
 /// Decision Record projection (`decisions[]`). Baseline is advisory
 /// context, so any topology resolution miss degrades to empty vectors
 /// (the native handler's posture).
-fn baseline_identity(
-    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry,
-) -> Result<(Vec<Surface>, Vec<Decision>), Error> {
-    let config = ProjectConfig::load(Layout::new(paths.project_root()).project_dir())?;
-    let topology = resolve_topology(resolver, &config, paths)?;
-    let bound = topology.iter().find(|p| p.name == entry.target);
-    Ok(bound.map(|p| (p.surface.clone(), p.decisions.clone())).unwrap_or_default())
+fn baseline_identity(paths: &ExecutionPaths, entry: &Entry) -> (Vec<Surface>, Vec<Decision>) {
+    let layout = Layout::new(paths.project_root());
+    let Ok(plan) = Plan::load(&layout.plan_path()) else {
+        return Default::default();
+    };
+    let topology = resolve_topology(&plan);
+    let bound = topology.iter().find(|row| row.name == entry.target);
+    bound.map(|row| (row.surface.clone(), row.decisions.clone())).unwrap_or_default()
 }
 
 /// Warning scope for the best-effort `slice.synthesize.*` brackets.

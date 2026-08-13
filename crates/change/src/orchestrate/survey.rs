@@ -41,7 +41,7 @@ pub async fn survey_all(
     seam: &impl Source, resolver: &impl Resolver, workspaces: &impl Workspaces,
     paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<Vec<SurveyedSource>, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     let plan = Plan::load(&layout.plan_path())?;
     let mut surveyed = Vec::with_capacity(plan.sources.len());
     for (source, binding) in &plan.sources {
@@ -76,7 +76,7 @@ pub async fn survey(
     paths: &ExecutionPaths, now: Timestamp, source: &str, plan_guard: Option<&str>,
     focus: Option<&str>,
 ) -> Result<SurveyedSource, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     let plan = Plan::load(&layout.plan_path())?;
     if let Some(expected) = plan_guard
         && plan.name.as_str() != expected
@@ -117,7 +117,7 @@ async fn survey_one(
     paths: &ExecutionPaths, now: Timestamp, source: &str, binding: &SourceBinding,
     parent: Option<&Lead>,
 ) -> Result<SurveyedSource, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
 
     // Ensure/resolve before dispatch: the binding's pin and the
     // adapter's `emery_floor` are enforced by the deployment's

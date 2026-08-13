@@ -29,7 +29,9 @@ pub mod validate;
 pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
 pub use decomposition::{
-    Decomposition, VERSION as DECOMPOSITION_VERSION, retain as retain_decomposition,
+    BoundaryReview, Child, Decomposition, FocusParent, PARTITION_VERSION, PartitionKind,
+    PartitionResponse, ReviewVerdict, VERSION as DECOMPOSITION_VERSION,
+    retain as retain_decomposition,
 };
 pub use discovery::{Discovery, VERSION as DISCOVERY_VERSION};
 pub use doctor::{advance_gate, author_gate, detect, full_report};

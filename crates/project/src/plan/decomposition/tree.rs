@@ -96,7 +96,9 @@ pub struct Node {
 }
 
 /// One contributing `(source, lead)` pair.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, schemars::JsonSchema,
+)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Scope {
     /// Plan source key.

@@ -309,10 +309,44 @@ async fn stage_refined_fixture(root: &Path) {
         mock::answers::greeting_synthesis(),
     ]));
     invoke(root, &model, &["init", "mock"]).await;
-    let mut sources = std::collections::BTreeMap::new();
-    sources.insert("main".into(), "mock:value:The greeting service.".into());
-    case::seed_authored_plan(root, "demo", &sources).expect("seed fixture plan");
+    seed_greeting_plan(root);
     refine_phase(root, &model, "greeting").await;
+}
+
+// Build-case fixtures still write a plan tree — they do not run
+// `plan author`. Workflow cases drive `--from`/`--wave` instead.
+fn seed_greeting_plan(root: &Path) {
+    use artifacts::leads::{Lead, Leads};
+    use project::adapter::catalog::Pin;
+    use project::config::Layout;
+    use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, TargetBinding};
+    use project::snapshot::SnapshotId;
+
+    let layout = Layout::new(root);
+    fs::create_dir_all(layout.change_root()).expect("change home");
+    let mut plan = Plan::named("demo");
+    plan.targets.insert(
+        "default".into(),
+        TargetBinding::new(
+            Pin::parse("emery:mock@0.0.0").expect("target pin"),
+            ".",
+            SnapshotId::from_digest(&"0".repeat(64)),
+        ),
+    );
+    plan.sources.insert(
+        "main".into(),
+        SourceBinding::intent(
+            Pin::parse("emery:mock@0.0.0").expect("source pin"),
+            "The greeting service.",
+        ),
+    );
+    let mut entry = Entry::named("greeting", "default");
+    entry.sources = vec![SliceSourceBinding::structured("main", "greeting")];
+    plan.entries.push(entry);
+    plan.save(&layout.plan_path()).expect("plan.yaml");
+    Leads::from_leads(vec![Lead::new("greeting", "main", "greeting")])
+        .write_atomic(&layout.leads_path())
+        .expect("leads.md");
 }
 
 fn git(dir: &Path, args: &[&str]) {
@@ -442,7 +476,7 @@ async fn until_plan_leaves_entries() {
         Some(WorkflowUntil::Plan),
         false,
         &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping()]),
+        &scripted(mock::answers::greeting_author()),
     )
     .await
     .expect("the plan-stopped workflow case passes");
@@ -485,7 +519,7 @@ async fn clone_populates_cache() {
         Some(WorkflowUntil::Plan),
         false,
         &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping()]),
+        &scripted(mock::answers::greeting_author()),
     )
     .await
     .expect("the cloning workflow case passes");
@@ -505,7 +539,7 @@ async fn clone_populates_cache() {
         Some(WorkflowUntil::Plan),
         true,
         &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping()]),
+        &scripted(mock::answers::greeting_author()),
     )
     .await
     .expect("a restart runs offline over the cached fixture");

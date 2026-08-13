@@ -261,8 +261,8 @@ where
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
-        "Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml`",
-        "Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml` (empty `slices[]` until decomposition lands).\n\nRequires `--from <definition-home>` and `--wave <id>`. Copies the handoff and review envelopes under `imports/`, ingests target and source locators, pins adapters, and records the canonical discovery digest. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` rebinds the same reviewed handoff. Intent arrives only through the handoff — there is no `--intent` or `--source` authoring flag. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Bind a reviewed handoff, decompose it, and publish `decomposition.yaml` + `plan.yaml`",
+        "Bind a reviewed handoff, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together.\n\nRequires `--from <definition-home>` and `--wave <id>`. Copies the handoff and review envelopes under `imports/`, ingests target and source locators, pins adapters, decomposes the bound catalog, and records the canonical discovery, leads, and decomposition digests. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` rebinds the same reviewed handoff. Intent arrives only through the handoff — there is no `--intent` or `--source` authoring flag. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "refine"],

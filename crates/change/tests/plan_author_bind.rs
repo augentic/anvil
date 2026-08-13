@@ -47,10 +47,10 @@ fn code(err: &impl std::fmt::Display) -> String {
 
 #[tokio::test]
 async fn binds_degenerate_intent() {
-    let session = Session::scripted("mock", Vec::new());
+    let session = Session::scripted("mock", mock::answers::greeting_author());
     let (from, wave) = mint_bindable(session.root(), "Ship the greeting.");
     let body = author(&session, &from, &wave, false).await.expect("bind");
-    assert_eq!(body.pending, "decomposition");
+    assert!(body.slices.iter().any(|name| name == "greeting"), "{:?}", body.slices);
     assert!(body.sources.iter().any(|key| key == INTENT), "{:?}", body.sources);
     assert!(body.targets.iter().any(|key| key == "app"), "{:?}", body.targets);
 
@@ -63,7 +63,10 @@ async fn binds_degenerate_intent() {
 
     let plan = Plan::load(&layout.plan_path()).expect("plan.yaml");
     assert_eq!(plan.discovery_digest.as_ref(), Some(&discovery.digest().expect("digest")));
-    assert!(plan.entries.is_empty(), "decomposition pending: slices stay empty");
+    assert_eq!(plan.entries.len(), 1, "degenerate root → leaf projects one slice");
+    assert_eq!(plan.entries[0].name.as_str(), "greeting");
+    assert_eq!(plan.entries[0].target, "app");
+    assert!(plan.decomposition_digest.is_some());
 
     let catalog = artifacts::leads::Leads::load(&layout.leads_path()).expect("leads.md");
     assert_eq!(catalog.leads().len(), 1);
@@ -96,7 +99,7 @@ async fn binds_degenerate_intent() {
 
 #[tokio::test]
 async fn empty_dir_discovery() {
-    let session = Session::scripted("mock", Vec::new());
+    let session = Session::scripted("mock", mock::answers::greeting_author());
     let (from, wave) = mint_bindable(session.root(), "Greenfield intent.");
     assert!(!session.root().join("target-app/.git").exists());
     author(&session, &from, &wave, false).await.expect("bind");
@@ -130,7 +133,9 @@ async fn intent_locator_refused() {
 
 #[tokio::test]
 async fn force_same_handoff() {
-    let session = Session::scripted("mock", Vec::new());
+    let mut answers = mock::answers::greeting_author();
+    answers.extend(mock::answers::greeting_author());
+    let session = Session::scripted("mock", answers);
     let (from, wave) = mint_bindable(session.root(), "Ship it.");
     author(&session, &from, &wave, false).await.expect("first");
     author(&session, &from, &wave, true).await.expect("force");
@@ -138,7 +143,7 @@ async fn force_same_handoff() {
 
 #[tokio::test]
 async fn force_changed_handoff() {
-    let session = Session::scripted("mock", Vec::new());
+    let session = Session::scripted("mock", mock::answers::greeting_author());
     let (from, wave) = mint_bindable(session.root(), "First.");
     author(&session, &from, &wave, false).await.expect("first");
     let (from2, wave2) = mint_bindable(&session.root().join("other"), "Second.");
@@ -179,7 +184,7 @@ async fn host_table_stamps() {
         .expect("reference");
     assert_ne!(override_ref.digest, compiled.digest);
 
-    let session = Session::scripted("mock", Vec::new()).with_profiles(table);
+    let session = Session::scripted("mock", mock::answers::greeting_author()).with_profiles(table);
     let (from, wave) = mint_bindable(session.root(), "Ship the greeting.");
     author(&session, &from, &wave, false).await.expect("bind");
     let plan = Plan::load(&Layout::new(session.root()).plan_path()).expect("plan");

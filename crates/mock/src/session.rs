@@ -63,6 +63,37 @@ impl Session {
         }
     }
 
+    /// A detached change home (no `project.yaml`) with `answers`
+    /// behind the judgment legs.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the tempdir cannot be created.
+    #[must_use]
+    pub fn detached(answers: Vec<String>) -> Self {
+        let (tmp, base) = owned_tree();
+        let root = base.join("change");
+        std::fs::create_dir_all(&root).expect("mkdir change home");
+        let locations = Locations::explicit(
+            base.join("adapter-store"),
+            CachePlacement::Parent(base.join("project-cache")),
+        );
+        let paths = ExecutionPaths::detached(&root, locations);
+        let model = Harness::answering(answers);
+        let provider = Provider::new(
+            paths,
+            DynModel::new(model.clone()),
+            crate::catalog(),
+            ReferenceMode::Offline,
+        );
+        Self {
+            root,
+            provider,
+            model,
+            _tmp: tmp,
+        }
+    }
+
     /// A minimal initialised project (`.emery/project.yaml`) bound to
     /// `target_adapter`, with `answers` behind the judgment legs.
     ///

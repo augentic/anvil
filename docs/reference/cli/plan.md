@@ -6,7 +6,7 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 
 | Verb | When to use |
 |------|-------------|
-| [`author`](#emery-plan-author) | Bind a reviewed handoff (`--from` / `--wave`) into `discovery.yaml` and a skeleton `plan.yaml` (empty `slices[]` until decomposition). Refuses an existing plan unless `--force` rebinds the same reviewed handoff. Invoked by `/emery:plan`. |
+| [`author`](#emery-plan-author) | Bind a reviewed handoff (`--from` / `--wave`), decompose it, and publish `decomposition.yaml` + `plan.yaml` together. Refuses an existing plan unless `--force` rebinds the same reviewed handoff. Invoked by `/emery:plan`. |
 | [`refine`](#emery-plan-refine) | Guest-routed serial refinement drain: per in-scope leaf in dependency order, extract every bound source, synthesize + validate the slice artifacts, atomically write `refinement.yaml`. Fresh manifests are skipped; no code work. Invoked by `/emery:refine`. Optional repeated `--slice` selectors. |
 | [`execute`](#emery-plan-execute) | Guest-routed driver loop: requires a fresh refinement manifest per in-scope leaf, at start appends `plan.execute.started` (authorization epoch covering the exact refinement digests), then claims → builds → merges per entry under gap gates until `drained` or a stop. Holds the `.emery/change/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan (projects `pending` until claimed). |
@@ -23,7 +23,7 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 
 ### emery plan author
 
-Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml`. Invoked by `/emery:plan`. Decomposition into `slices[]` lands in a later authoring phase.
+Bind a reviewed handoff, decompose the bound catalog, and publish `decomposition.yaml` + `plan.yaml` together. Invoked by `/emery:plan`.
 
 ```bash
 emery plan author <name> --from <definition-home> --wave <id> [--force]
@@ -36,13 +36,13 @@ emery plan author <name> --from <definition-home> --wave <id> [--force]
 | `--wave` | Wave id inside the definition named by `--from`. |
 | `--force` | Rebind the same reviewed handoff. A changed wave needs a new handoff and review fact (`plan-author-handoff-changed`). Without `--force` an existing `plan.yaml` refuses with `plan-already-exists`. `/emery:plan` confirms before passing it. |
 
-Exit codes: `0` success (`pending: decomposition`); `2` for `plan-already-exists`, missing/ambiguous handoff, and binding validation failures; `1` for ingest and I/O failures.
+Exit codes: `0` success; `2` for `plan-already-exists`, missing/ambiguous handoff, binding validation failures, and decomposition stops (`plan-author-budget-exhausted`, `plan-author-unready`, `plan-author-definition-revision`); `1` for ingest and I/O failures.
 
-JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-plan-author) — bound targets and sources, the discovery digest, and `pending: decomposition`.
+JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-plan-author) — bound targets and sources, the discovery / leads / decomposition digests, and the projected `slices[]`.
 
 Behavior notes:
 
-- **Order of operations.** Resolve the current reviewed handoff, copy byte-identical envelopes under `imports/`, ingest target and source locators, pin adapters, write `discovery.yaml`, and stamp `plan.yaml.discovery-digest`. `slices[]` stays empty until decomposition.
+- **Order of operations.** Resolve the current reviewed handoff, copy byte-identical envelopes under `imports/`, ingest target and source locators, pin adapters, write `discovery.yaml`, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together (complete-tree policy).
 - **Intent** arrives only through the handoff evidence scope (reserved key `intent`, value-only, no locator, no CID). There is no `--intent` or `--source` authoring flag.
 - **Exact pins.** Every bound source and target records `emery:<name>@<semver>`. Bare names are refused on the plan topology.
 

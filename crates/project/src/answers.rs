@@ -266,6 +266,37 @@ pub fn proposal() -> Value {
     schema
 }
 
+/// The decomposition partition answer schema (`split | leaf`).
+///
+/// Generated from [`crate::plan::PartitionResponse`], with `kind`
+/// pinned to the `split` / `leaf` enum the type already carries.
+#[must_use]
+pub fn partition() -> Value {
+    root_schema::<crate::plan::PartitionResponse>(
+        "partition.schema.json",
+        "Emery decomposition partition answer",
+        "Generated judgment-answer schema — generated from the Rust wire types by \
+         project::answers; do not edit. Validates the schema-gated `split | leaf` \
+         partition of one open delivery domain. The deterministic tail applies the \
+         answer to a tentative tree and runs Decomposition::check.",
+    )
+}
+
+/// The bounded boundary-review answer schema.
+///
+/// Generated from [`crate::plan::BoundaryReview`].
+#[must_use]
+pub fn boundary_review() -> Value {
+    root_schema::<crate::plan::BoundaryReview>(
+        "boundary-review.schema.json",
+        "Emery decomposition boundary-review answer",
+        "Generated judgment-answer schema — generated from the Rust wire types by \
+         project::answers; do not edit. Validates the schema-gated boundary review \
+         after a provisional complexity score exceeds the slice-split threshold: \
+         `close | focus | unready`.",
+    )
+}
+
 // Stamp a `pattern` constraint onto the string schema at `pointer`.
 fn set_pattern(schema: &mut Value, pointer: &str, pattern: &str) {
     let target = schema

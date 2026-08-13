@@ -30,7 +30,7 @@ What exists and is load-bearing for this plan:
 | Area | State |
 | --- | --- |
 | RFC-104 (`emery system *`, `system.wave.reviewed`, handoffs, definition home) | **Read surface only** — `project::definition` owns the closed `Handoff` DTO, canonical digest, and fail-closed `resolve` (step 5). No `emery system *` write path. `EventKind::SystemWaveReviewed` parses from a definition-home event root and is refused by change-journal append. `EventKind::PlanExecuteStarted.discovery_digest` exists but is always `None`. |
-| In-place `plan author` | Wave-bind (step 9) plus imported catalog (step 10): reviewed handoff → `discovery.yaml` + skeleton `plan.yaml` + catalog-only `leads.md` (retained at `leads/<digest>.md`, stamped on `plan.leads_digest`). Decomposition still pending (`slices[]` empty). |
+| In-place `plan author` | Wave-bind plus decomposition (step 15): reviewed handoff → `discovery.yaml` + `decomposition.yaml` + projected `plan.yaml.slices[]` + catalog `leads.md`. `AuthorBody` carries discovery / leads / decomposition digests and the projected slice names. |
 | Plan model | `crates/project/src/plan/model/state.rs`: `Plan { name, sources, entries }`; `Entry.project: Option<String>` is the current target hook (removed in step 9 per closed Open Question 11); no `targets:` map, no digests. |
 | RFC-91 refinement | Implemented: `refinement.yaml` with `inputs.planning.{entry, leads, decomposition}` (decomposition currently the canonical single-node projection), `inputs.profile` = bound-target profile digest (empty digest when the target row has none). |
 | RFC-86 waves / build records | Implemented in-place: `crates/project/src/wave.rs` (`.emery/change/targets/<target>/waves/<digest>.yaml`; `Wave.members: Vec<Member>` gated by `enforce_one_member` — preserved, closed Open Question 12), `crates/project/src/build_record.rs` (`builds/<digest>.yaml`). Wave base comes from `freeze()` at build open. |
@@ -444,7 +444,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - **Step 17:** `plan add` / `amend` / `remove` still write `slices[]` directly. Once a `decomposition.yaml` exists they must refuse or reproject via `slices` + `matches_plan`. Do not invent a second drift check.
 - **Step 18:** execute start is `matches_plan` plus `plan.decomposition_digest == tree.digest()` plus the retained `decompositions/<digest>.yaml`. The profile digest chain is plan-row digest ↔ `BoundProfile.digest` ↔ `refinement.yaml.inputs.profile`. Call `contraction(&plan.entries)` when validating the plan graph without reloading the tree.
 
-### Step 15 — Decomposition judgment legs + full detached `plan author` [ ]
+### Step 15 — Decomposition judgment legs + full detached `plan author` [x]
 
 **RFC anchors:** D3 (phases 2–3, judgment `split | leaf` responses, provisional complexity, bounded boundary review, focused-survey requeue, budget exhaustion), platform § scope discipline ("the engine owns recursion, budgets, validation, and projection"); acceptance criterion 5.
 
@@ -466,6 +466,18 @@ The first cut lands the execution-substrate change while everything is still in-
 
 **Notes (from step 11):** Focused delivery-scope survey is `orchestrate::survey(..., focus)` (the `--focus` CLI looks the parent up in the catalog and retains). `survey_all` stays unfocused — complete current set, no retain — and is the wrong entry for authoring child leads. Pass the catalog parent `Lead` on `source.input.focus`; do not mount `leads.md`.
 
+**Notes (2026-08-14):**
+
+- Journal: reused `plan.reconcile.completed` with the existing payload (`plan_name`, `slice_count`, `slice_names`). New digests ride `plan.yaml`; the event is not extended.
+- `plan.yaml.slices` come from the step 14 projector (`decomposition::slices`). Propose still runs after publish so `gate.change` can be authored; `propose_from` is only a throwaway repair check. `resolve_topology(&plan)` is one `ProjectRef` per `plan.yaml.targets` key (`name` = target id, `target` = adapter pin). Surface / recent / decisions stay empty — refine `baseline_identity` already degrades to empty.
+- Focused survey is **review-driven only**. Import populates `leads.md`. Auto-surveying every location-backed placeholder at author start would inject same-source children and make a one-leaf close illegal (`decomposition-source-dup`). Boundary-review `focus` on a **value-backed** source skips `survey` (inline value has nothing to walk) and requeues. Location-backed focus still runs `orchestrate::survey(..., focus)`. This is load-bearing for step 16.
+- In-progress cuts cannot call `Decomposition::check` after a split: open children are not leaves yet. The repair loop uses `findings` and ignores `decomposition-leaf-incomplete` on nodes whose `kind` is still unset. The final publish still requires a complete `check()`.
+- Unknown target (not in `plan.yaml.targets`) is `plan-author-definition-revision` (checked in the partition tail so a typo can repair; insistence after `MAX_REPAIRS` stops). Exhaustion parks with `plan-author-budget-exhausted` and does not publish the tree. Review verdict `unready` is `plan-author-unready`. A leaf on the root is wrapped as unary `root → <slice>`.
+- `AuthorBody` dropped `pending` / `hint`; it now carries `decomposition_digest` and `slices`. Profile lookup is `Table::pinned(&ProfileRef)` (id + digest), not `Table::resolve()`.
+- `survey` uses `paths.layout()` so a detached change home works. Helps step 18.
+- Probe: deleted `seed_authored_plan` from the library. Workflow cases mint a degenerate definition home (or reuse a fixture `definition/`) and invoke `plan author --from/--wave`. A multi-source `case.toml` without `intent` or a `definition/` fixture fails closed — `examples/eval/cases/auth` stays red until step 19 supplies a definition home. Build-case fixtures still write a plan tree locally. `emery-mock` is now a regular probe dependency so the runner can call `mock::definition::mint`.
+- Caps used: `plan::decomposition::{MAX_DEPTH, MAX_NODES, MAX_JUDGMENTS}` — no `MAX_DECOMPOSITION_*` aliases. README / tutorials / `docs/reference/quick-reference.md` still describe the old author path — step 20.
+
 ### Step 16 — Refinement boundary escalation [ ]
 
 **RFC anchors:** D3 (refinement paragraphs: typed `proceed | boundary-escalation`, Evidence-informed reassessment, focused resurvey + nearest-domain re-decomposition into an **inert** proposal, no artifact promotion, budgets/parking), implementation requirement "The refinement judgment adds the typed `proceed | boundary-escalation` outcome"; acceptance criterion 9 (refinement half).
@@ -479,6 +491,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Key code areas:** `crates/slice/src/orchestrate/` (synthesis judgment), `crates/slice/src/answers.rs` (+ goldens), `crates/change/src/orchestrate/refine.rs`, prompts.
 
 **Tests / gates:** scripted-escalation integration (inert proposal produced, planning artifacts untouched, no transition); proceed-path regression; parking. `cargo make ci`.
+
+**Notes (from step 15):** Focused survey during authoring is review-driven only. Value-backed `focus` parents skip `survey` and requeue — a refinement escalation that names an intent parent must not expect new child leads from that skip. Location-backed focus still runs `orchestrate::survey(..., focus)`.
 
 ### Step 17 — Amendment proposals + `plan amend --proposal` [ ]
 
@@ -527,6 +541,8 @@ The first cut lands the execution-substrate change while everything is still in-
 - Confirm the five updated source adapters (step 12) behave over pinned read-only source views in the wasm rung. The cases ship in the adapters PR that lands with the engine PR (closed Open Question 13); they do not need a mid-plan engine tag.
 
 **Tests / gates:** `cargo make ci` in emery-adapters; eval/wasm rungs remain operator-invoked (run at least `wasm-contracts` once before closing the step; record the outcome in Notes).
+
+**Notes (from step 15):** Engine `probe` already drives `plan author --from/--wave` (degenerate mint, or a fixture `definition/` tree). Multi-source `case.toml` without `intent` or a definition home fails closed — `orders-contracts` / `omnia-r9k` / engine `auth` need definition-home fixtures here. `mock::definition::mint` is reachable from probe (`emery-mock` is a regular dep). Do not revive `seed_authored_plan`.
 
 ### Step 20 — Documentation closure and final gates (both repos) [ ]
 

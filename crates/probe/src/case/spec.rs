@@ -36,10 +36,14 @@ pub struct Workflow {
     pub target: String,
     /// Change name passed to `plan author`.
     pub change: String,
-    /// Optional operator intent passed to `plan author`.
+    /// Optional operator intent used to mint a degenerate handoff.
     #[serde(default)]
     pub intent: Option<String>,
-    /// Source bindings passed to `plan author` (`key = "adapter:…"`).
+    /// Wave id passed to `plan author --wave`. Defaults to `deliver`.
+    #[serde(default)]
+    pub wave: Option<String>,
+    /// Source bindings used to mint a degenerate handoff when `intent`
+    /// is absent (`key = "adapter:value:…"`).
     #[serde(default)]
     pub sources: BTreeMap<String, String>,
     /// Tree copied into the fresh sandbox, relative to `case.toml`;

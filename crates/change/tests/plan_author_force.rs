@@ -30,7 +30,7 @@ async fn author(
 
 #[tokio::test]
 async fn existing_refused_without() {
-    let session = Session::scripted("mock", Vec::new());
+    let session = Session::scripted("mock", mock::answers::greeting_author());
     let target = seed_target(session.root());
     let definition = session.root().join("definition");
     let mut spec = Spec::degenerate("Ship it.");
@@ -43,7 +43,9 @@ async fn existing_refused_without() {
 
 #[tokio::test]
 async fn force_replaces() {
-    let session = Session::scripted("mock", Vec::new());
+    let mut answers = mock::answers::greeting_author();
+    answers.extend(mock::answers::greeting_author());
+    let session = Session::scripted("mock", answers);
     let target = seed_target(session.root());
     let definition = session.root().join("definition");
     let mut spec = Spec::degenerate("Ship it.");

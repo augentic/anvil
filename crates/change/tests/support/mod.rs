@@ -221,9 +221,8 @@ pub fn greeting_sources() -> Vec<(&'static str, &'static str, &'static str)> {
     vec![("main", "mock", "The greeting service.")]
 }
 
-/// Write a fixture `plan.yaml` + `leads.md` for tests that used to
-/// call survey-driven `plan author`. Binding-phase authoring stops at
-/// decomposition pending until that stage lands.
+/// Write a fixture `plan.yaml` + `leads.md` for suites that do not
+/// need the full `plan author` judgment path.
 ///
 /// `sources` is `(key, adapter, value)`; `slices` is `(name, source, lead)`.
 ///
@@ -286,8 +285,8 @@ pub fn change_with_deps(name: &str, deps: &[&str]) -> Entry {
 }
 
 /// Write a fixture greeting plan and refine it to Refined — the floor
-/// for the RFC-90 build-phase suites. Wave-binding authoring stops at
-/// decomposition pending, so this path no longer calls `plan author`.
+/// for the RFC-90 build-phase suites. These suites stay fixture-driven
+/// so they do not re-enter the author judgment path.
 ///
 /// # Panics
 ///

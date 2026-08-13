@@ -4,6 +4,7 @@
 //! execute loop. Time is injected; nothing reads the clock.
 
 mod author;
+mod decompose;
 mod epoch;
 mod execute;
 mod gap_gate;
