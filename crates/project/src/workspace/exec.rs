@@ -16,9 +16,10 @@ use error::Error;
 /// filesystem directly.
 pub trait ExecBits: Debug + Send + Sync {
     /// The `/`-separated relative paths of executable regular files
-    /// beneath `root`. Never follows symlinks. May skip the store's
-    /// ignored components (`.git`, `.emery`) as an optimization — the
-    /// walk never queries paths it excludes.
+    /// beneath `root`. Never follows symlinks. May skip paths the
+    /// snapshot walk excludes (kernel excludes, `.gitignore` matches)
+    /// as an optimization — the walk never queries paths it excludes,
+    /// so the set is consulted as a lookup superset only.
     ///
     /// # Errors
     ///
@@ -44,7 +45,7 @@ impl ExecBits for FsExecBits {
     fn read(&self, root: &Path) -> Result<BTreeSet<String>, Error> {
         let mut set = BTreeSet::new();
         if cfg!(unix) {
-            collect(root, "", &mut set)?;
+            collect(root, "", &mut set, &super::Ignores::default())?;
         }
         Ok(set)
     }
@@ -60,8 +61,13 @@ impl ExecBits for FsExecBits {
     }
 }
 
-/// Stat-only recursive walk folding executable file paths into `set`.
-fn collect(dir: &Path, prefix: &str, set: &mut BTreeSet<String>) -> Result<(), Error> {
+/// Stat-only recursive walk folding executable file paths into `set`,
+/// under the same admission as the content walk (kernel excludes plus
+/// `.gitignore`) so ignored build trees are never descended.
+fn collect(
+    dir: &Path, prefix: &str, set: &mut BTreeSet<String>, ignores: &super::Ignores,
+) -> Result<(), Error> {
+    let ignores = ignores.descend(dir);
     for entry in crate::fs::dir_entries(dir)? {
         let name = entry.file_name();
         // Non-UTF-8 names are the content walk's typed refusal; the
@@ -69,7 +75,9 @@ fn collect(dir: &Path, prefix: &str, set: &mut BTreeSet<String>) -> Result<(), E
         let Some(name) = name.to_str() else {
             continue;
         };
-        if super::store::IGNORED.contains(&name) {
+        if super::store::IGNORED.contains(&name)
+            || (prefix.is_empty() && super::store::IGNORED_ROOT.contains(&name))
+        {
             continue;
         }
         let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
@@ -78,8 +86,11 @@ fn collect(dir: &Path, prefix: &str, set: &mut BTreeSet<String>) -> Result<(), E
         if meta.file_type().is_symlink() {
             continue;
         }
+        if ignores.excluded(&path, meta.is_dir()) {
+            continue;
+        }
         if meta.is_dir() {
-            collect(&path, &rel, set)?;
+            collect(&path, &rel, set, &ignores)?;
         } else if is_exec(&meta) {
             set.insert(rel);
         }

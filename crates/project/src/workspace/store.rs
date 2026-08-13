@@ -15,7 +15,8 @@ use crate::snapshot::{CodePatch, SnapshotId};
 
 /// Path components excluded from every snapshot walk: version-control
 /// state and the Emery change tree are never product code (RFC-87 D4).
-pub(super) const IGNORED: [&str; 2] = [".git", ".emery"];
+/// Kernel excludes win over any `.gitignore` negation (RFC-105 D1).
+pub const IGNORED: [&str; 2] = [".git", ".emery"];
 
 /// Root-level names excluded from every snapshot walk: the plan
 /// artifacts living at the repo root (`change.md` + `plan.yaml` and
@@ -65,8 +66,9 @@ impl<O: Objects> Store<O> {
     }
 
     /// Snapshot the complete tree at `dir` into the store and return
-    /// its identity. Ignored components (`.git`, `.emery`) are
-    /// excluded; empty directories are not tracked.
+    /// its identity. Membership is kernel excludes (`.git`, `.emery`,
+    /// the root plan files) plus the tree's own `.gitignore` rules
+    /// (RFC-105); empty directories are not tracked.
     ///
     /// # Errors
     ///
@@ -301,14 +303,17 @@ impl<O: Objects> Store<O> {
     /// explicit directory stack (awaiting inside recursion would need
     /// boxed futures). `own_root` is a nested filesystem store's
     /// absolute root, skipped when present; `exec` is the tree's
-    /// bulk-read exec set. Manifest entries are keyed by relative
-    /// path, so visit order does not affect snapshot identity.
+    /// bulk-read exec set. Each pending directory carries its
+    /// gitignore stack (RFC-105); an ignored directory is neither
+    /// hashed nor descended. Entries are keyed by relative path, so
+    /// visit order does not affect snapshot identity.
     async fn walk(
         &self, root: &Path, own_root: Option<&Path>, exec: &BTreeSet<String>,
         manifest: &mut Manifest,
     ) -> Result<(), Error> {
-        let mut pending = vec![(root.to_path_buf(), String::new())];
-        while let Some((dir, prefix)) = pending.pop() {
+        let mut pending = vec![(root.to_path_buf(), String::new(), super::Ignores::default())];
+        while let Some((dir, prefix, ignores)) = pending.pop() {
+            let ignores = ignores.descend(&dir);
             for entry in crate::fs::dir_entries(&dir)? {
                 let name = entry.file_name();
                 let Some(name) = name.to_str() else {
@@ -329,6 +334,9 @@ impl<O: Objects> Store<O> {
                 // `symlink_metadata` so a link to a directory records as a
                 // link instead of being followed into a foreign tree.
                 let meta = std::fs::symlink_metadata(&path)?;
+                if ignores.excluded(&path, meta.is_dir()) {
+                    continue;
+                }
                 if meta.file_type().is_symlink() {
                     let target = std::fs::read_link(&path)?;
                     let Some(target) = target.to_str() else {
@@ -349,7 +357,7 @@ impl<O: Objects> Store<O> {
                     let blob = self.put(target.as_bytes()).await?;
                     manifest.entries.insert(rel, Entry::Link { blob });
                 } else if meta.is_dir() {
-                    pending.push((path, rel));
+                    pending.push((path, rel, ignores.clone()));
                 } else {
                     let blob = self.put_file(&path).await?;
                     let exec = exec.contains(&rel);

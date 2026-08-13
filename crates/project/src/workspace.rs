@@ -4,6 +4,7 @@
 
 mod exec;
 mod manifest;
+mod membership;
 mod objects;
 mod store;
 
@@ -13,10 +14,11 @@ use std::time::SystemTime;
 
 use error::Error;
 pub use exec::{ExecBits, FsExecBits};
+pub(crate) use membership::Ignores;
 pub use objects::{FsObjects, Objects};
 use serde::{Deserialize, Serialize};
-pub(crate) use store::IGNORED_ROOT;
 pub use store::Store;
+pub(crate) use store::{IGNORED, IGNORED_ROOT};
 
 use crate::snapshot::{CodePatch, SnapshotId};
 

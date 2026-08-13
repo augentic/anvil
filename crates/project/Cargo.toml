@@ -21,6 +21,7 @@ workspace = true
 emery-artifacts.workspace = true
 emery-diagnostics.workspace = true
 emery-error.workspace = true
+ignore.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 petgraph.workspace = true
