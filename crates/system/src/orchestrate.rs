@@ -115,9 +115,8 @@ pub async fn survey(
     }
 
     // The lead gate runs before any extract: exceeding the engine
-    // constant is a typed stop. Surveyed rows keep their observed
-    // trees — the survey leg completed; the gate is extract-side —
-    // and recovery is narrowing coverage.
+    // constant is a typed stop, and surveyed rows keep their observed
+    // trees (the survey leg completed; the gate is extract-side).
     let total: usize = completed.iter().map(|source| source.leads.len()).sum();
     if total > MAX_SURVEY_LEADS {
         for source in completed {
