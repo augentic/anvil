@@ -147,6 +147,18 @@ impl Error {
                 "locator-private-network" => Some(
                     "use a public HTTPS locator; delivery binding does not read private-network targets",
                 ),
+                "source-adapter-no-match" | "source-adapter-ambiguous" => Some(
+                    "pin an exact adapter on the reviewed handoff (`emery:<name>@<semver>`); recognition does not rank or fall back",
+                ),
+                "adapter-unversioned" => Some(
+                    "detached topology records only exact package pins (`emery:<name>@<semver>`); seed a local component with `emery adapter add` for in-place work",
+                ),
+                "source-intent-locator" => Some(
+                    "bind `intent` as an inline value under the reserved key; locators are refused",
+                ),
+                "source-adapter-duplicate" => {
+                    Some("remove the duplicate source binding from the reviewed wave")
+                }
                 _ => None,
             },
             Self::Validation { code, .. } => match code.as_ref() {

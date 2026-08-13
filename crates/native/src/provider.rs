@@ -7,8 +7,10 @@ use diagnostics::Diagnostic;
 use error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Reply, Request};
+use project::adapter::catalog::Catalog as Adapters;
 use project::adapter::{
-    AdapterSelector, Axis, FIRST_PARTY_NAMESPACE, Origin, ResolvedSource, ResolvedTarget, Resolver,
+    AdapterSelector, Axis, FIRST_PARTY_NAMESPACE, Inventory, Origin, ResolvedSource,
+    ResolvedTarget, Resolver,
 };
 use project::handler::ExecutionPaths;
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
@@ -49,6 +51,7 @@ pub struct Provider {
     paths: ExecutionPaths,
     model: DynModel,
     catalog: Catalog,
+    inventory: Option<std::sync::Arc<Adapters>>,
     references: References,
 }
 
@@ -81,8 +84,16 @@ impl Provider {
             paths,
             model,
             catalog,
+            inventory: None,
             references,
         }
+    }
+
+    /// Replace the compiled first-party inventory.
+    #[must_use]
+    pub fn with_inventory(mut self, inventory: Adapters) -> Self {
+        self.inventory = Some(std::sync::Arc::new(inventory));
+        self
     }
 
     /// The native adapter catalog.
@@ -225,6 +236,14 @@ impl Resolver for Provider {
             entry.metadata(),
             origin(&entry),
         )
+    }
+}
+
+impl Inventory for Provider {
+    fn inventory(&self) -> &Adapters {
+        static FIRST: std::sync::LazyLock<Adapters> =
+            std::sync::LazyLock::new(Adapters::first_party);
+        self.inventory.as_deref().unwrap_or(&FIRST)
     }
 }
 

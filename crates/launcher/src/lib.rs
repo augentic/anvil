@@ -27,6 +27,12 @@ pub use ingest::{checkout, fetch, resolve as ingest};
 pub use install::Registry;
 pub use resolver::Resolver;
 
+/// Compiled first-party adapter catalog for detached binding.
+#[must_use]
+pub fn catalog() -> project::adapter::catalog::Catalog {
+    project::adapter::catalog::Catalog::first_party()
+}
+
 /// Guest-visible preopen name of the per-project derived cache.
 pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
 

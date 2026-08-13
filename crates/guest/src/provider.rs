@@ -11,8 +11,8 @@ use diagnostics::{Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSo
 use error::Error;
 use project::adapter::metadata::{Metadata, Request};
 use project::adapter::{
-    AdapterSelector, ArtifactDeclaration, Axis, BuildInputDeclaration, PlatformsCapability,
-    ResolvedSource, ResolvedTarget, Resolver, WritableArtifactKind,
+    AdapterSelector, ArtifactDeclaration, Axis, BuildInputDeclaration, Inventory,
+    PlatformsCapability, ResolvedSource, ResolvedTarget, Resolver, WritableArtifactKind,
 };
 use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT, PROJECT_ROOT_ENV};
 use project::seam::wire::{
@@ -35,6 +35,8 @@ pub struct Provider;
 /// grants as the carried locations — no environment reads and no
 /// project-id keying in-guest.
 static PATHS: LazyLock<ExecutionPaths> = LazyLock::new(ExecutionPaths::guest);
+static INVENTORY: LazyLock<project::adapter::catalog::Catalog> =
+    LazyLock::new(project::adapter::catalog::Catalog::first_party);
 
 impl omnia_guest::Model for Provider {}
 
@@ -67,6 +69,12 @@ impl Resolver for Provider {
         &self, selector: &AdapterSelector, paths: &ExecutionPaths,
     ) -> Result<ResolvedTarget, Error> {
         project::adapter::ensure::target(metadata, selector, paths, jiff::Timestamp::now())
+    }
+}
+
+impl Inventory for Provider {
+    fn inventory(&self) -> &project::adapter::catalog::Catalog {
+        &INVENTORY
     }
 }
 
