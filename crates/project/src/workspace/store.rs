@@ -22,7 +22,7 @@ pub(super) const IGNORED: [&str; 2] = [".git", ".emery"];
 /// the authored `discovery.md`) are change-tree state, not product
 /// code — capturing them would let the interim apply rewind live plan
 /// state.
-const IGNORED_ROOT: [&str; 3] = ["change.md", "discovery.md", "plan.yaml"];
+pub const IGNORED_ROOT: [&str; 3] = ["change.md", "discovery.md", "plan.yaml"];
 
 /// The snapshot store: tree walks and manifests in the kernel, object
 /// bytes behind [`Objects`], exec bits behind [`ExecBits`].
@@ -77,6 +77,43 @@ impl<O: Objects> Store<O> {
         let exec = self.exec.read(dir)?;
         let own_root = self.exclude.as_deref().and_then(|root| std::path::absolute(root).ok());
         self.walk(dir, own_root.as_deref(), &exec, &mut manifest).await?;
+        let digest = self.put(manifest.encode().as_bytes()).await?;
+        Ok(SnapshotId::from_digest(&digest))
+    }
+
+    /// [`Self::snapshot`] over a path that may be a single file: a
+    /// file snapshots as a one-file tree named by its file name
+    /// (mode `100644`, matching the plan-pin `file_cid` encoding); a
+    /// directory delegates to [`Self::snapshot`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::snapshot`], plus `workspace-path-unsupported` for a
+    /// non-UTF-8 or newline-bearing file name.
+    pub async fn snapshot_path(&self, path: &Path) -> Result<SnapshotId, Error> {
+        let meta = std::fs::symlink_metadata(path).map_err(|source| Error::Filesystem {
+            op: "stat",
+            path: path.to_path_buf(),
+            source,
+        })?;
+        if meta.is_dir() {
+            return self.snapshot(path).await;
+        }
+        let name = path.file_name().and_then(|name| name.to_str()).filter(|n| !n.contains('\n'));
+        let Some(name) = name else {
+            return Err(Error::Diag {
+                code: "workspace-path-unsupported",
+                detail: format!("path `{}` is not a snapshot-safe UTF-8 name", path.display()),
+            });
+        };
+        let bytes = std::fs::read(path).map_err(|source| Error::Filesystem {
+            op: "read",
+            path: path.to_path_buf(),
+            source,
+        })?;
+        let blob = self.put(&bytes).await?;
+        let mut manifest = Manifest::default();
+        manifest.entries.insert(name.to_string(), Entry::File { exec: false, blob });
         let digest = self.put(manifest.encode().as_bytes()).await?;
         Ok(SnapshotId::from_digest(&digest))
     }
@@ -138,7 +175,7 @@ impl<O: Objects> Store<O> {
         remove_entry(&target)?;
         match entry {
             Entry::File { blob, .. } => {
-                std::fs::write(&target, self.get(blob).await?)?;
+                self.copy_file(blob, &target).await?;
             }
             Entry::Link { blob } => {
                 let link_target =
@@ -231,17 +268,33 @@ impl<O: Objects> Store<O> {
         Ok(digest)
     }
 
+    /// Stream-hash `path` and store it as an object, returning its
+    /// digest. Same identity as [`Self::put`] of the file's bytes.
+    async fn put_file(&self, path: &Path) -> Result<String, Error> {
+        let digest = hash_path(path)?;
+        self.objects.put_file(&digest, path).await?;
+        Ok(digest)
+    }
+
     /// Read the object named `digest`, verifying its content hashes
     /// back to the name.
     async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
         let bytes = self.objects.get(digest).await?;
         if diagnostics::digest::sha256_hex(&bytes) != digest {
-            return Err(Error::Diag {
-                code: "snapshot-object-corrupt",
-                detail: format!("object `{digest}` failed digest verification"),
-            });
+            return Err(corrupt(digest));
         }
         Ok(bytes)
+    }
+
+    /// Stream object `digest` into `dest` and verify the written
+    /// bytes hash back to the name.
+    async fn copy_file(&self, digest: &str, dest: &Path) -> Result<(), Error> {
+        self.objects.copy_file(digest, dest).await?;
+        if hash_path(dest)? != digest {
+            drop(std::fs::remove_file(dest));
+            return Err(corrupt(digest));
+        }
+        Ok(())
     }
 
     /// Depth-first walk folding `root` into `manifest`, driven by an
@@ -298,12 +351,7 @@ impl<O: Objects> Store<O> {
                 } else if meta.is_dir() {
                     pending.push((path, rel));
                 } else {
-                    let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
-                        op: "read",
-                        path: path.clone(),
-                        source,
-                    })?;
-                    let blob = self.put(&bytes).await?;
+                    let blob = self.put_file(&path).await?;
                     let exec = exec.contains(&rel);
                     manifest.entries.insert(rel, Entry::File { exec, blob });
                 }
@@ -354,6 +402,21 @@ fn prune_empty_parents(root: &Path, path: &str) {
             return;
         }
         parent = rel.parent();
+    }
+}
+
+fn hash_path(path: &Path) -> Result<String, Error> {
+    diagnostics::digest::sha256_path(path).map_err(|source| Error::Filesystem {
+        op: "read",
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
+fn corrupt(digest: &str) -> Error {
+    Error::Diag {
+        code: "snapshot-object-corrupt",
+        detail: format!("object `{digest}` failed digest verification"),
     }
 }
 

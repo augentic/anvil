@@ -47,7 +47,13 @@ fn ctx(id: &str) -> Context<'_> {
         project_root: std::path::Path::new("."),
         mcp_url: None,
         lend: ".".to_string(),
+        source_key: None,
     }
+}
+
+/// A minimal inline source input for failure-path asserts.
+fn inline() -> adapter::seam::SourceInput {
+    adapter::seam::SourceInput::Inline("content".to_string())
 }
 
 fn model() -> Scripted {
@@ -69,7 +75,7 @@ fn workspace(root: &std::path::Path) -> Workspace {
 async fn source_failures() {
     let model = model();
 
-    let err = FailSurvey::survey(&model, &ctx("source:mock-fail-survey"))
+    let err = FailSurvey::survey(&model, &ctx("source:mock-fail-survey"), &inline())
         .await
         .expect_err("fail-survey fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-survey")));
@@ -77,7 +83,7 @@ async fn source_failures() {
     // The failing identity still surveys nothing before extract: the
     // extract failure is its own typed error.
     let lead = mock::behaviour::survey("source:mock").expect("minimal survey").remove(0);
-    let err = FailExtract::extract(&model, &ctx("source:mock-fail-extract"), &lead)
+    let err = FailExtract::extract(&model, &ctx("source:mock-fail-extract"), &inline(), &lead)
         .await
         .expect_err("fail-extract fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-extract")));

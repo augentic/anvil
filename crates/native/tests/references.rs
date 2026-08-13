@@ -49,7 +49,10 @@ async fn grant_routing_shutdown() {
     let catalog = Catalog::builder().source::<Reflect>().build().expect("valid catalog");
     let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Online);
 
-    let leads = provider.survey("source:reflect".to_string()).await.expect("survey dispatches");
+    let leads = provider
+        .survey("source:reflect".to_string(), "reflect".to_string(), inline())
+        .await
+        .expect("survey dispatches");
     let url = &leads[0].lead;
     assert!(url.starts_with("http://127.0.0.1:"), "loopback-only listener, got {url}");
     assert!(url.ends_with("/mcp/reflect"), "per-adapter shelf path, got {url}");
@@ -73,8 +76,16 @@ async fn offline_never_serves() {
     let catalog = Catalog::builder().source::<Reflect>().build().expect("valid catalog");
     let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Offline);
 
-    let leads = provider.survey("source:reflect".to_string()).await.expect("survey dispatches");
+    let leads = provider
+        .survey("source:reflect".to_string(), "reflect".to_string(), inline())
+        .await
+        .expect("survey dispatches");
     assert_eq!(leads[0].lead, "none");
+}
+
+/// A minimal inline source input for dispatch-threading asserts.
+fn inline() -> project::seam::SourceInput {
+    project::seam::SourceInput::Inline("content".to_string())
 }
 
 // A document-free catalog keeps online reference hosting a no-op.

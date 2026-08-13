@@ -10,7 +10,7 @@ use omnia_guest::http::StatusCode;
 use omnia_guest::http::header::{CONTENT_TYPE, HeaderValue};
 use project::adapter::Resolver;
 use project::handler::Anchor;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Origins, Source, Target, Workspaces};
 use serde::Serialize;
 
 /// Emery's JSON HTTP output and error policy.
@@ -86,7 +86,7 @@ fn encoding(error: &serde_json::Error) -> Response {
 #[must_use]
 pub fn router<P>(invoker: Invoker<P>) -> Router<P>
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces,
+    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces + Origins,
 {
     macro_rules! get {
         ($operation:ty) => {
@@ -125,4 +125,8 @@ where
         .route("/plan/archive", post!(::change::plan::handlers::Archive))
         .route("/journal", get!(project::journal::handlers::Show))
         .route("/debt", get!(::slice::handlers::Debt))
+        .route("/system/survey", post!(::system::handlers::Survey))
+        .route("/system/plan", post!(::system::handlers::Plan))
+        .route("/system/review", post!(::system::handlers::Review))
+        .route("/system/status", get!(::system::handlers::Status))
 }

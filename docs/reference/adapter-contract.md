@@ -15,7 +15,7 @@ The operation set is **not** declared on the wire — it derives from the closed
 
 A source adapter participates in two places in the lifecycle.
 
-**`survey(Source) → Lead[]`** runs inside the guest-routed `emery plan author` (and standalone `emery source survey`). It reads the operator-bound source path or value and emits one block per slice-sized **raw lead** under `## Lead inventory` in `discovery.md`. Each block carries a stable `lead` and the scalar `source` that surfaced it; identity is the `(source, lead)` pair. Re-surveying the same source replaces that source's blocks by `(source, lead)` and never merges across sources — cross-source unification is the reconcile leg inside `emery plan author`. The lead grammar:
+**`survey(source-key, input) → Lead[]`** runs inside the guest-routed `emery plan author` (and standalone `emery source survey`). Every dispatch carries the caller's `source-key` and an engine-prepared `source-input` — a read-only snapshot workspace for a `path:` binding, inline content for a `value:` binding — so the adapter never recovers a locator from `plan.yaml` or its own preopens. It surveys the prepared input into one **raw lead** per adapter-native surface (an endpoint, a document section, a screen — not a slice-sized work unit); the engine merges the set under `## Lead inventory` in `discovery.md`. Each block carries a stable `lead` and the scalar `source` that surfaced it; identity is the `(source, lead)` pair. Re-surveying the same source replaces that source's blocks by `(source, lead)` and never merges across sources — cross-source unification is the reconcile leg inside `emery plan author`. The lead grammar:
 
 ```markdown
 ### legacy-monolith:user-registration
@@ -25,7 +25,7 @@ A source adapter participates in two places in the lifecycle.
 - synopsis: Registration endpoint accepting email + password with email-format validation.
 ```
 
-**`extract(Lead, Source) → Evidence`** runs inside the `emery plan refine` drain (and standalone `emery source extract`). It returns a structured document the CLI persists to `.emery/slices/<slice>/evidence/<source>.yaml`:
+**`extract(source-key, input, lead) → Evidence`** runs inside the `emery plan refine` drain (and standalone `emery source extract`). It reads the same engine-prepared `source-input` shape as `survey` and returns a structured document the CLI persists to `.emery/slices/<slice>/evidence/<source>.yaml`:
 
 ```yaml
 authority: behaviour
@@ -44,7 +44,7 @@ Source adapter operations run under the WASI Preview 2 posture: Wasm modules wit
 
 | Root              | Mode       | Contents                                                                                                                                                                                                                                                                                                          |
 | ----------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `$SOURCE_DIR`     | read-only  | The operator-bound source path; absent for `value:`-style bindings.                                                                                                                                                                                                                                               |
+| `$SOURCE_DIR`     | read-only  | The prepared read-only materialization of the bound source (an RFC-87 snapshot workspace, discarded after the call); absent for `value:`-style bindings, whose content rides the `source-input` inline.                                                                                                          |
 | `$CAPABILITY_DIR` | read-only  | The adapter's capability shelf (out-of-tree, when present) — reference material distributed beside the component.                                                                                                                                                                                                 |
 | `$SCRATCH_DIR`    | write-only | Per-operation scratch lane under the transient working-state root, structurally outside the cache tree: `extract` → `.emery/scratch/<adapter>/<slice>/`; `survey` (plan-time, no slice) → `.emery/scratch/<adapter>/survey/`. Recreated empty at `prepare` time — only what this run writes can be finalized. |
 | `$PROJECT_DIR`    | none       | Source adapters do not get the project root; lifecycle state stays off-limits.                                                                                                                                                                                                                                    |

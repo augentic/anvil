@@ -1,0 +1,16 @@
+flowchart TB
+    subgraph guests["Guests — peers, instance-per-call"]
+        engine[engine]
+        sources[source adapters]
+        targets[target adapters]
+    end
+
+    subgraph binary["emery binary"]
+        omnia[Omnia — wasm runtime]
+        caps[filesystem · journal · workspaces · wasi-model]
+        omnia --> caps
+    end
+
+    guests <--> omnia
+    caps --> fs[snapshots / local FS]
+    caps --> model[model: frontier · agent · replay]

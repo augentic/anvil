@@ -20,6 +20,7 @@ fn ctx<'a>(mcp_url: Option<&str>, root: &'a Path) -> Context<'a> {
         project_root: root,
         mcp_url: mcp_url.map(str::to_owned),
         lend: ".".to_string(),
+        source_key: None,
     }
 }
 
@@ -256,6 +257,7 @@ fn pinned_grant_strips() {
         project_root: Path::new("."),
         mcp_url: url,
         lend: ".".to_string(),
+        source_key: None,
     };
     let grants = context.grants();
     assert_eq!(grants.len(), 1);

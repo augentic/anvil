@@ -160,7 +160,10 @@ async fn survey_crosses_workflow() {
     // crossing the seam proves the model reached the adapter leg.
     let provider = provider(tmp.path(), &["greeting"]);
 
-    let leads = provider.survey("source:mock".to_string()).await.expect("survey dispatches");
+    let leads = provider
+        .survey("source:mock".to_string(), "mock".to_string(), inline())
+        .await
+        .expect("survey dispatches");
     assert_eq!(leads.len(), 1);
     assert_eq!(leads[0].lead, "greeting");
     assert_eq!(leads[0].synopsis, "surveyed by source:mock");
@@ -179,7 +182,7 @@ async fn extract_crosses_workflow() {
         topics: Vec::new(),
     };
     let err = provider
-        .extract("source:mock".to_string(), lead)
+        .extract("source:mock".to_string(), "mock".to_string(), inline(), lead)
         .await
         .expect_err("the probe's extract fails with a typed error naming the lead");
     assert!(
@@ -235,7 +238,7 @@ async fn axis_routing() {
     let provider = provider(tmp.path(), &[]);
 
     let err = provider
-        .survey("target:mock".to_string())
+        .survey("target:mock".to_string(), "mock".to_string(), inline())
         .await
         .expect_err("a target id never reaches the source legs");
     assert!(matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("target:mock")));
@@ -246,8 +249,16 @@ async fn axis_routing() {
         .expect_err("a source id never reaches the target legs");
     assert!(matches!(err, seam::Error::InvalidRequest(_)));
 
-    let err = provider.survey("source:unknown".to_string()).await.expect_err("unlinked refuses");
+    let err = provider
+        .survey("source:unknown".to_string(), "unknown".to_string(), inline())
+        .await
+        .expect_err("unlinked refuses");
     assert!(
         matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("source:unknown"))
     );
+}
+
+/// A minimal inline source input for dispatch-threading asserts.
+fn inline() -> seam::SourceInput {
+    seam::SourceInput::Inline("content".to_string())
 }

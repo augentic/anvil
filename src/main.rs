@@ -9,6 +9,7 @@ cfg_if::cfg_if! {
         use omnia_wasi_model::WasiModel;
         use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_execbits::WasiExecBits;
+        use omnia_wasi_origins::WasiOrigins;
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
 
         omnia::runtime!({
@@ -48,6 +49,9 @@ cfg_if::cfg_if! {
                 // The snapshot object store: the filesystem blobstore
                 // anchored at the launcher's snapshots root.
                 WasiBlobstore: launcher::Blobstore,
+                // Origin fetch for system survey — the guest has no
+                // network or git; trees land under the workspaces root.
+                WasiOrigins: launcher::Origins,
             }
         });
     } else {

@@ -1,6 +1,6 @@
-//! Workflow journal events: append-only newline-delimited JSON at
-//! `.emery/events/<writer>.jsonl`. Each writer appends only its own
-//! file; readers union all files by `(timestamp, writer, sequence)`.
+//! Workflow journal events: append-only newline-delimited JSON, one
+//! file per writer under a `JournalRoot` (`.emery/events/` for the
+//! change home, `<system>/events/` for an RFC-104 definition home).
 
 mod append;
 pub mod claim;
@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use serde_json::Value;
 
-pub use self::append::{append_batch, append_for, append_one};
+pub use self::append::{append_batch, append_for, append_for_at, append_one};
 pub use self::emit::{bracket, emit_best_effort};
 pub use self::event::{
     AuthorityOverrideAction, ClosedPlanCoverage, DeferredMember, Event, EventKind, FactEpochRef,
@@ -24,6 +24,44 @@ use crate::config::Layout;
 
 /// Stable local default when `EMERY_WRITER` is unset or empty.
 pub const DEFAULT_WRITER: &str = "local";
+
+/// One journal's events directory.
+///
+/// The product change home journals at `.emery/events/`; an RFC-104
+/// definition home journals at `<system>/events/`. Carrying the
+/// events directory instead of a product [`Layout`] keeps the two
+/// roots separate while sharing the append/read kernels and the
+/// RFC-86 writer/sequence union semantics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JournalRoot {
+    events_dir: PathBuf,
+}
+
+impl JournalRoot {
+    /// Anchor a journal at an explicit events directory.
+    #[must_use]
+    pub const fn new(events_dir: PathBuf) -> Self {
+        Self { events_dir }
+    }
+
+    /// The directory holding the per-writer `.jsonl` logs.
+    #[must_use]
+    pub fn events_dir(&self) -> &Path {
+        &self.events_dir
+    }
+
+    /// `<events>/<writer>.jsonl` — one writer's log.
+    #[must_use]
+    pub fn writer_path(&self, writer: &str) -> PathBuf {
+        self.events_dir.join(format!("{writer}.jsonl"))
+    }
+}
+
+impl From<Layout<'_>> for JournalRoot {
+    fn from(layout: Layout<'_>) -> Self {
+        Self::new(layout.events_dir())
+    }
+}
 
 /// Resolve the calling writer id at the journal-append boundary.
 ///
@@ -50,6 +88,15 @@ pub fn writer_id() -> String {
 #[must_use]
 pub(crate) fn writer_log_path(layout: Layout<'_>, writer: &str) -> PathBuf {
     layout.writer_events_path(writer)
+}
+
+/// Export the JournalRoot-based union read beside the Layout one.
+///
+/// # Errors
+///
+/// Same failure surface as [`read_union`].
+pub fn read_union_at(root: &JournalRoot) -> Result<Vec<Event>, Error> {
+    read_union_dir(root.events_dir())
 }
 
 /// Refuse writer ids that cannot be a single path segment under
@@ -85,8 +132,12 @@ pub(crate) fn validate_writer(writer: &str) -> Result<(), Error> {
 ///
 /// Propagates I/O failures other than a missing events directory.
 pub fn read_union(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
-    let dir = layout.events_dir();
-    let entries = match std::fs::read_dir(&dir) {
+    read_union_dir(&layout.events_dir())
+}
+
+/// The union read over one explicit events directory.
+fn read_union_dir(dir: &Path) -> Result<Vec<Event>, Error> {
+    let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(err) if err.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
         Err(err) => return Err(Error::Io(err)),

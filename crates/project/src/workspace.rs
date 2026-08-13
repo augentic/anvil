@@ -15,6 +15,7 @@ use error::Error;
 pub use exec::{ExecBits, FsExecBits};
 pub use objects::{FsObjects, Objects};
 use serde::{Deserialize, Serialize};
+pub(crate) use store::IGNORED_ROOT;
 pub use store::Store;
 
 use crate::snapshot::{CodePatch, SnapshotId};

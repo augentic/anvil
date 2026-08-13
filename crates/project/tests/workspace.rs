@@ -101,6 +101,26 @@ mod round_trip {
         assert!(out.join("blank").exists());
     }
 
+    #[tokio::test]
+    async fn streamed_file_identity() {
+        let lab = lab();
+        let payload: Vec<u8> = (0_u8..=250).cycle().take(200_000).collect();
+        write(&lab.source, "big.bin", &payload);
+
+        let first = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        let again = lab.store.snapshot(&lab.source).await.expect("resnapshot");
+        assert_eq!(first, again, "streamed ingest is deterministic");
+
+        let out = lab.source.parent().expect("parent").join("out");
+        lab.store.materialize(&first, &out).await.expect("materialize");
+        assert_eq!(std::fs::read(out.join("big.bin")).expect("read"), payload);
+        assert_eq!(
+            diagnostics::digest::sha256_path(&out.join("big.bin")).expect("hash"),
+            diagnostics::digest::sha256_hex(&payload),
+            "blob identity is SHA-256 of the file bytes"
+        );
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn mode_change_touched() {

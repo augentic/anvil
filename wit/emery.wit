@@ -28,10 +28,23 @@ interface types {
 
 /// The source adapter contract. Both operations are judgment legs: the guest
 /// assembles a prompt from its compiled-in prompt fragments, issues `create` with an MCP
-/// grant naming its own reference route and a workspace lend of its `"."`
-/// preopen, and deserializes the schema-gated answer into the records below.
+/// grant naming its own reference route and a workspace lend of the prepared
+/// `source-input` tree, and deserializes the schema-gated answer into the
+/// records below. Adapters never recover a source location themselves — the
+/// engine prepares the input and names the source key on every call.
 interface source {
   use types.{ adapter-id, error };
+
+  /// The prepared input a source operation reads. The wire carries the
+  /// tree, never the origin locator and never a snapshot identity:
+  /// `workspace` is the deployment-local root of a prepared read-only
+  /// materialization (RFC-87), resolved against the adapter's own
+  /// preopens and lent to its agent; `inline` is the raw content of a
+  /// single-value binding, interpolated into the prompt rather than lent.
+  variant source-input {
+    workspace(string),
+    inline(string),
+  }
 
   /// The lead returned by the survey operation: the discovery lead
   /// minus the envelope `source` key — the workflow guest attributes
@@ -134,14 +147,15 @@ interface source {
   /// compiled-in constants — no model call, no filesystem access.
   metadata: func(id: adapter-id) -> adapter-metadata;
 
-  /// Lightly survey the source to create a map of its contents
-  /// (decompose into leads). An `async func` like every judgment
-  /// operation — a sync-lifted export cannot block on the pending
-  /// `completion.create` host future.
-  survey: async func(id: adapter-id) -> result<list<lead>, error>;
+  /// Lightly survey the prepared input to create a map of its contents
+  /// (decompose into adapter-native surface leads). `source-key` names
+  /// the caller's binding for prompt interpolation. An `async func`
+  /// like every judgment operation — a sync-lifted export cannot block
+  /// on the pending `completion.create` host future.
+  survey: async func(id: adapter-id, source-key: string, input: source-input) -> result<list<lead>, error>;
 
-  /// Thoroughly extract evidence from a source for a given lead.
-  extract: async func(id: adapter-id, lead: lead) -> result<evidence, error>;
+  /// Thoroughly extract evidence from the prepared input for one lead.
+  extract: async func(id: adapter-id, source-key: string, input: source-input, lead: lead) -> result<evidence, error>;
 }
 
 /// The target adapter contract. The build-loop operations (`build` /
@@ -664,10 +678,13 @@ world adapter {
 
 /// The workflow guest: the deployment's only `wasi:cli/run` exporter.
 /// The `source` / `target` imports route to adapter guests by
-/// `adapter-id`; `emery:exec-bits` is host-implemented (the workspace
-/// kernel runs in-guest over `wasi:blobstore` + `wasi:filesystem`).
+/// `adapter-id`; `emery:exec-bits` and `emery:origins` are
+/// host-implemented (the workspace kernel runs in-guest over
+/// `wasi:blobstore` + `wasi:filesystem`; origin fetch needs the
+/// host's network and git).
 world workflow {
   import source;
   import target;
   import emery:exec-bits/exec-bits@0.1.0;
+  import emery:origins/origins@0.1.0;
 }

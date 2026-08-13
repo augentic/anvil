@@ -11,7 +11,7 @@ use project::config::Layout;
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::Plan;
-use project::seam::{Source, seam_failure, source_id};
+use project::seam::{Source, Workspaces, seam_failure, source_id, source_input};
 
 /// The result of a completed [`extract`]: the persisted Evidence path.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,8 +44,8 @@ pub struct ExtractOutcome {
     fields(source = %source, slice = %slice, adapter = tracing::field::Empty)
 )]
 pub async fn extract(
-    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
-    source: &str, lead: &str, slice: &str,
+    seam: &(impl Source + Workspaces), resolver: &impl Resolver, paths: &ExecutionPaths,
+    now: Timestamp, source: &str, lead: &str, slice: &str,
 ) -> Result<ExtractOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
@@ -71,11 +71,15 @@ pub async fn extract(
         },
     )?;
 
+    // Prepare the input from the binding (tree → read-only workspace,
+    // value → inline); the wire never carries the locator.
+    let material = source_input::binding_material(source, binding, paths.project_root())?;
+    let prepared = source_input::prepare(seam, material).await?;
     let id = source_id(&adapter);
-    let evidence = seam
-        .extract(id.clone(), seam_lead)
-        .await
-        .map_err(|err| seam_failure("extract", &id, &err))?;
+    let evidence =
+        seam.extract(id.clone(), source.to_string(), prepared.input.clone(), seam_lead).await;
+    source_input::discard(seam, prepared).await;
+    let evidence = evidence.map_err(|err| seam_failure("extract", &id, &err))?;
 
     let document = artifacts::evidence::Document {
         lead: lead.to_string(),

@@ -124,6 +124,19 @@ impl Locations {
         self
     }
 
+    /// Re-home a [`CachePlacement::Parent`] onto one shared,
+    /// already-resolved `<parent>/<tenant>` directory. `system *`
+    /// invocations use this so the cache is never keyed off the
+    /// mounted definition home; an already-resolved placement is
+    /// unchanged.
+    #[must_use]
+    pub fn shared_cache(mut self, tenant: &str) -> Self {
+        if let CachePlacement::Parent(parent) = &self.cache {
+            self.cache = CachePlacement::Project(parent.join(tenant));
+        }
+        self
+    }
+
     /// The engine guest's layout: the writable cache preopen the
     /// deployment manifest grants plus the nominal (never-opened)
     /// store and snapshot roots — no environment, no project-id

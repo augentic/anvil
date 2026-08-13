@@ -13,6 +13,39 @@ pub struct SourceMetadata {
     pub emery_floor: Option<String>,
 }
 
+/// The prepared input a source operation reads — the WIT `source-input`.
+///
+/// The wire carries the tree, never the origin locator: adapters read
+/// `Workspace` roots through their own preopens and interpolate
+/// `Inline` content into the prompt.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SourceInput {
+    /// Deployment-local root of a prepared read-only tree.
+    Workspace(String),
+    /// Raw content of a single-value binding.
+    Inline(String),
+}
+
+impl SourceInput {
+    /// The prepared tree root, when tree-form.
+    #[must_use]
+    pub const fn root(&self) -> Option<&str> {
+        match self {
+            Self::Workspace(root) => Some(root.as_str()),
+            Self::Inline(_) => None,
+        }
+    }
+
+    /// The inlined content, when value-form.
+    #[must_use]
+    pub const fn content(&self) -> Option<&str> {
+        match self {
+            Self::Inline(content) => Some(content.as_str()),
+            Self::Workspace(_) => None,
+        }
+    }
+}
+
 /// One lead surfaced by a survey — mirrors the WIT `source.lead` record.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]

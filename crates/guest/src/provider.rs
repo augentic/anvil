@@ -20,11 +20,13 @@ use project::seam::wire::{
     PhaseWrite, RepairOrigin, UiSurface, build_finding,
 };
 use project::seam::{
-    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Source, Target, Workspace,
+    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Source, SourceInput,
+    Target, Workspace,
 };
 use project::snapshot::{CodePatch, SnapshotId};
 
 use crate::bindings::emery::adapter::{source, target, types};
+use crate::bindings::emery::origins::origins;
 
 /// Workflow capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -71,15 +73,18 @@ impl Resolver for Provider {
 }
 
 impl Source for Provider {
-    fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {
+    fn survey(
+        &self, id: String, key: String, input: SourceInput,
+    ) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {
         async move {
-            let leads = source::survey(id).await.map_err(map_error)?;
+            let leads =
+                source::survey(id, key, wire_source_input(input)).await.map_err(map_error)?;
             Ok(leads.into_iter().map(map_lead).collect())
         }
     }
 
     fn extract(
-        &self, id: String, lead: Lead,
+        &self, id: String, key: String, input: SourceInput, lead: Lead,
     ) -> impl Future<Output = Result<Evidence, seam::Error>> + Send {
         async move {
             let wire = source::Lead {
@@ -87,7 +92,9 @@ impl Source for Provider {
                 synopsis: lead.synopsis,
                 topics: lead.topics,
             };
-            let evidence = source::extract(id, wire).await.map_err(map_error)?;
+            let evidence = source::extract(id, key, wire_source_input(input), wire)
+                .await
+                .map_err(map_error)?;
             Ok(Evidence {
                 authority: map_authority(evidence.authority),
                 claims: evidence.claims.into_iter().map(map_claim).collect(),
@@ -183,6 +190,15 @@ impl seam::Workspaces for Provider {
         }
     }
 
+    fn snapshot(
+        &self, path: String,
+    ) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
+        async move {
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
+            store.snapshot_path(Path::new(&path)).await.map_err(|err| workspace_failure(&err))
+        }
+    }
+
     fn prepare(
         &self, base: SnapshotId, writable: bool,
     ) -> impl Future<Output = Result<Workspace, seam::Error>> + Send {
@@ -237,6 +253,39 @@ impl seam::Workspaces for Provider {
             let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
             store.sweep(&dead, &live).await.map_err(|err| workspace_failure(&err))
         }
+    }
+}
+
+/// Origin fetch is host-implemented (`emery:origins`): the engine
+/// guest has no network or git, so the host materializes the locator
+/// beneath the workspaces mount and the guest snapshots it.
+impl seam::Origins for Provider {
+    fn fetch(
+        &self, locator: String,
+    ) -> impl Future<Output = Result<seam::Fetched, seam::Error>> + Send {
+        async move {
+            let fetched = origins::fetch(locator).await.map_err(origin_failure)?;
+            Ok(seam::Fetched {
+                root: fetched.root,
+                revision: fetched.revision,
+            })
+        }
+    }
+
+    fn discard_fetched(
+        &self, root: String,
+    ) -> impl Future<Output = Result<(), seam::Error>> + Send {
+        async move { origins::discard(root).await.map_err(origin_failure) }
+    }
+}
+
+/// Map an `emery:origins` failure onto the seam error contract; an
+/// origin that cannot be reached is I/O, not an internal fault.
+fn origin_failure(error: origins::Error) -> seam::Error {
+    match error {
+        origins::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
+        origins::Error::Access(detail) => seam::Error::Io(detail),
+        origins::Error::Internal(detail) => seam::Error::Internal(detail),
     }
 }
 
@@ -328,6 +377,13 @@ fn map_error(error: types::Error) -> seam::Error {
         types::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
         types::Error::Io(detail) => seam::Error::Io(detail),
         types::Error::Internal(detail) => seam::Error::Internal(detail),
+    }
+}
+
+fn wire_source_input(input: SourceInput) -> source::SourceInput {
+    match input {
+        SourceInput::Workspace(root) => source::SourceInput::Workspace(root),
+        SourceInput::Inline(content) => source::SourceInput::Inline(content),
     }
 }
 

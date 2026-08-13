@@ -35,7 +35,7 @@ The [Services Delivery Programme](platform.md) is the active delivery spine; [ar
 - a diff of an inert amendment proposal's candidate lead and decomposition revisions against current authority, plus a retrospective view of which proposal was applied and under which RFC-93 actor/grant;
 - an exact next-action card on every refine/execute stop naming the verb, selectors, input digests, and artifact paths the caller must fix or supply.
 
-Amendment stays on `emery plan amend`; the projections never apply work, add an “apply all” path, or become another dashboard authority. Recovery remains stop → inspect → fix inputs or apply one reviewed proposal → re-run. When an agent drives Emery these projections are the human audit surface over what it accepted, proposed, and changed, so this is assurance work rather than presentation polish.
+Leaf-field amendment stays on live `plan amend` until RFC-88 (or a follow-on) takes the retirement parked in [rfc-104-rfc-88-patches.md](rfc-104-rfc-88-patches.md); structural proposals stay on RFC-88's `emery plan amend --proposal`. The projections never apply work, add an “apply all” path, or become another dashboard authority. Recovery remains stop → inspect → fix inputs or apply one reviewed proposal → re-run. When an agent drives Emery these projections are the human audit surface over what it accepted, proposed, and changed, so this is assurance work rather than presentation polish.
 
 ## Evidence-triggered
 

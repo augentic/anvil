@@ -114,6 +114,51 @@ pub fn refresh_request(argv: &[String]) -> RefreshRequest {
     }
 }
 
+/// The `system *` anchoring request: the definition home the launcher
+/// mounts as `.` — no `project.yaml` walk and no mkdir (creating the
+/// home would be `system init`, which does not exist).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SystemRequest {
+    /// The `--dir` value, when supplied; relative values anchor at
+    /// the invocation directory.
+    pub dir: Option<std::path::PathBuf>,
+}
+
+/// Project the `system *` anchoring request out of `argv` (without
+/// the program name) through the shared command grammar.
+///
+/// `None` for every other route and for argv the grammar refuses —
+/// including help and version displays, which the guest renders.
+#[must_use]
+pub fn system_request(argv: &[String]) -> Option<SystemRequest> {
+    let mut full = Vec::with_capacity(argv.len() + 1);
+    full.push("emery".to_string());
+    full.extend(argv.iter().cloned());
+    let matches = grammar().try_get_matches_from(full).ok()?;
+
+    let (path, leaf) = selected(&matches);
+    let segments: Vec<&str> = path.iter().map(String::as_str).collect();
+    match segments.as_slice() {
+        ["system", "survey"] => {
+            let survey = super::system::SurveyArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: survey.dir })
+        }
+        ["system", "plan"] => {
+            let plan = super::system::PlanArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: plan.dir })
+        }
+        ["system", "review"] => {
+            let review = super::system::ReviewArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: review.dir })
+        }
+        ["system", "status"] => {
+            let status = super::system::StatusArgs::from_arg_matches(leaf).ok()?;
+            Some(SystemRequest { dir: status.dir })
+        }
+        _ => None,
+    }
+}
+
 /// The kebab name when `value` parses as a bare adapter selector —
 /// pinned references are immutable and local components refresh
 /// through `adapter add`, so neither joins the refresh set.
@@ -198,11 +243,15 @@ impl Resolver for Grammar {
 }
 
 impl seam::Source for Grammar {
-    async fn survey(&self, _id: String) -> Result<Vec<Lead>, seam::Error> {
+    async fn survey(
+        &self, _id: String, _key: String, _input: seam::SourceInput,
+    ) -> Result<Vec<Lead>, seam::Error> {
         never_dispatched!()
     }
 
-    async fn extract(&self, _id: String, _lead: Lead) -> Result<Evidence, seam::Error> {
+    async fn extract(
+        &self, _id: String, _key: String, _input: seam::SourceInput, _lead: Lead,
+    ) -> Result<Evidence, seam::Error> {
         never_dispatched!()
     }
 }
@@ -247,8 +296,22 @@ impl seam::Target for Grammar {
     }
 }
 
+impl seam::Origins for Grammar {
+    async fn fetch(&self, _locator: String) -> Result<seam::Fetched, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn discard_fetched(&self, _root: String) -> Result<(), seam::Error> {
+        never_dispatched!()
+    }
+}
+
 impl seam::Workspaces for Grammar {
     async fn freeze(&self) -> Result<project::snapshot::SnapshotId, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn snapshot(&self, _path: String) -> Result<project::snapshot::SnapshotId, seam::Error> {
         never_dispatched!()
     }
 

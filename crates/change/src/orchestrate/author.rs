@@ -19,7 +19,7 @@ use project::plan::{
     GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, author_gate, build_request,
     collect_events, project_ladders, resolve_topology,
 };
-use project::seam::Source;
+use project::seam::{Source, Workspaces};
 
 use super::SurveyedSource;
 use crate::judgment::propose::{self, GateContext};
@@ -59,7 +59,7 @@ pub struct AuthorOutcome {
 /// - `plan-structural-errors` when the doctor sweep finds blocking
 ///   findings after the write.
 #[tracing::instrument(name = "plan.author", skip_all, fields(plan = %name))]
-pub async fn author<P: Model, S: Source, R: Resolver>(
+pub async fn author<P: Model, S: Source + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, (), R>, paths: &ExecutionPaths, now: Timestamp, name: &str,
     bindings: BTreeMap<String, SourceBinding>, force: bool,
 ) -> Result<AuthorOutcome, Error> {

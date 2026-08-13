@@ -6,7 +6,7 @@
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
-    RepairOrigin, Report, SourceMetadata, TargetMetadata, Workspace, WritableArtifact,
+    RepairOrigin, Report, SourceInput, SourceMetadata, TargetMetadata, Workspace, WritableArtifact,
 };
 use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
@@ -39,12 +39,14 @@ macro_rules! mock_source {
                 DOCS
             }
 
-            async fn survey<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
+            async fn survey<P: Model>(
+                _model: &P, ctx: &Context<'_>, _input: &SourceInput,
+            ) -> Result<Vec<Lead>, Error> {
                 behaviour::survey(ctx.adapter_id)
             }
 
             async fn extract<P: Model>(
-                _model: &P, ctx: &Context<'_>, lead: &Lead,
+                _model: &P, ctx: &Context<'_>, _input: &SourceInput, lead: &Lead,
             ) -> Result<Evidence, Error> {
                 behaviour::extract(ctx.adapter_id, lead)
             }

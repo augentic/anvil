@@ -8,9 +8,11 @@ use omnia_guest::api::command::{BuildError, Completions, Namespace, Router, Rout
 use omnia_guest::api::invoke::Invoker;
 use project::adapter::Resolver;
 use project::handler::Anchor;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Origins, Source, Target, Workspaces};
 
-use super::{EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, target};
+use super::{
+    EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, system, target,
+};
 
 /// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
@@ -84,6 +86,10 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
         &["journal"],
         "Workflow journal at `.emery/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
+    NamespaceHelp::new(
+        &["system"],
+        "Definition-loop operations over a definition home (RFC-104) — a durable root the operator authors by hand (`scope.yaml` + `coverage.yaml`), never a product checkout. The launcher mounts `--dir`-or-CWD as the invocation's root with no `project.yaml` walk",
+    ),
 ];
 
 /// Assemble the complete Emery command router.
@@ -97,7 +103,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
 )]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces,
+    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces + Origins,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -282,6 +288,34 @@ where
         "Read-only baseline debt projection (RFC-86a D9) — the backlog looking ahead.\n\nWalks the baseline specs under `.emery/specs/` and lists every requirement whose status is `unknown` or `conflict`, with the reason, originating change, and age parsed from the self-describing deferral note the merge fold appended. Conflicts render separately from unknowns. Reads the baseline alone — never archived fact logs — and writes nothing. `plan author` renders the same inventory in the review prose it authors, so a corrective change is scoped with the backlog in view."
     );
     route!(
+        ["system", "survey"],
+        system::SurveyArgs,
+        ::system::handlers::Survey,
+        "Survey the declared coverage of a definition home",
+        "Survey the declared coverage of a definition home (RFC-104).\n\nAnchors at `--dir` (or the current directory) with no `project.yaml` walk — a definition home is durable client architecture, not a product checkout. Fails closed when `scope.yaml` or `coverage.yaml` is missing; the operator authors both by hand (there is no `system init`)."
+    );
+    route!(
+        ["system", "plan"],
+        system::PlanArgs,
+        ::system::handlers::Plan,
+        "Project the migration plan's views and canonical wave handoffs",
+        "Project the definition home's architecture views and canonical wave handoffs (RFC-104).\n\nWhen `system.yaml` has no `target` state, one initial-plan proposal judgment writes `target`, optional `transition-*` states, and a first `migration.yaml` — once; both files are operator-owned afterwards and later runs never overwrite operator edits. Every run reprojects each named state's document and diagram views and each wave's content-addressed `handoffs/<digest>.yaml`; historical handoffs are never deleted. Re-running is resume."
+    );
+    route!(
+        ["system", "review"],
+        system::ReviewArgs,
+        ::system::handlers::Review,
+        "Record architectural authority over one exact wave handoff",
+        "Record architectural authority over one exact wave handoff (RFC-104 D10).\n\nSelects the wave's current handoff — the unique `handoffs/<digest>.yaml` whose covered digests all match the live definition files (zero matches means re-run `emery system plan`; two fail closed; never resolved by recency) — compares it against `--handoff`, and appends the `system.wave.reviewed` fact to `<system>/events/`. Reviewing the same handoff twice is a read-only no-op. The fact grants no product mutation authority and does not replace `plan.execute.started`."
+    );
+    route!(
+        ["system", "status"],
+        system::StatusArgs,
+        ::system::handlers::Status,
+        "Read-only definition-home projection: coverage, model, waves, next action",
+        "Read-only definition-home projection (RFC-104).\n\nProjects the declared coverage accounting, the named `system.yaml` states with their sizes, each migration wave's review standing against its current handoff, and the computed next operator action (`survey` → `plan` → `review <wave>` → reviewed). Reads files and the `<system>/events/` fact union only; writes nothing."
+    );
+    route!(
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
@@ -344,5 +378,48 @@ convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sourc
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
 convert!(DebtArgs => ::slice::handlers::DebtInput {});
+
+// Deliberately not `convert!`: `--dir` is deployment-consumed — the
+// launcher anchors the `.` mount at it (`selectors::system_request`),
+// so the operation reads the anchored root.
+impl TryFrom<system::SurveyArgs> for ::system::handlers::SurveyInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::SurveyArgs) -> Result<Self, Self::Error> {
+        let system::SurveyArgs { dir } = args;
+        drop(dir);
+        Ok(Self {})
+    }
+}
+
+impl TryFrom<system::PlanArgs> for ::system::handlers::PlanInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::PlanArgs) -> Result<Self, Self::Error> {
+        let system::PlanArgs { dir } = args;
+        drop(dir);
+        Ok(Self {})
+    }
+}
+
+impl TryFrom<system::ReviewArgs> for ::system::handlers::ReviewInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::ReviewArgs) -> Result<Self, Self::Error> {
+        let system::ReviewArgs { wave, handoff, dir } = args;
+        drop(dir);
+        Ok(Self { wave, handoff })
+    }
+}
+
+impl TryFrom<system::StatusArgs> for ::system::handlers::StatusInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::StatusArgs) -> Result<Self, Self::Error> {
+        let system::StatusArgs { dir } = args;
+        drop(dir);
+        Ok(Self {})
+    }
+}
 
 convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });
