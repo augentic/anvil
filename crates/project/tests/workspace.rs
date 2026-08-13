@@ -244,6 +244,136 @@ mod golden {
     }
 }
 
+/// RFC-105 snapshot membership: kernel excludes plus the tree's own
+/// `.gitignore` decide what enters a snapshot and `touched`.
+mod membership {
+    use super::*;
+
+    /// AC1 + AC5 (capture side): an ignored `target/` never reaches
+    /// the result id, `touched`, or a later `apply`; unignored build
+    /// output still lands.
+    #[tokio::test]
+    async fn ignored_output_excluded() {
+        let lab = lab();
+        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
+        write(&lab.source, ".gitignore", b"target/\n");
+        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
+            .await
+            .expect("prepare");
+
+        // The build writes compiler output and product code alike.
+        write(&ws.root, "target/foo.o", b"\x7fELF");
+        write(&ws.root, "mock-build/greeting.md", b"hello\n");
+        write(&ws.root, "src/new.rs", b"pub struct New;\n");
+
+        let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
+        assert_eq!(patch.touched, vec!["mock-build/greeting.md", "src/new.rs"]);
+
+        let out = lab.workspaces.join("result");
+        lab.store.materialize(&patch.result, &out).await.expect("materialize");
+        assert!(!out.join("target").exists(), "ignored output enters no snapshot");
+
+        lab.store.apply(&patch, &lab.source).await.expect("apply");
+        assert!(!lab.source.join("target").exists(), "ignored output is never applied");
+        assert_eq!(
+            std::fs::read_to_string(lab.source.join("mock-build/greeting.md")).expect("read"),
+            "hello\n",
+            "unignored build output still applies"
+        );
+    }
+
+    /// AC1 (no-ignore side) + AC5: a tree without a matching ignore
+    /// admits everything except kernel excludes — today's behaviour.
+    #[tokio::test]
+    async fn no_gitignore_admits() {
+        let lab = lab();
+        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
+        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
+            .await
+            .expect("prepare");
+        write(&ws.root, "target/foo.o", b"\x7fELF");
+        let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
+        assert_eq!(patch.touched, vec!["target/foo.o"]);
+    }
+
+    /// AC2: freeze of a checkout that carries VCS state and a local
+    /// `target/` reads the tree only — `.git` bytes stay untouched and
+    /// the ignored output stays out of the base snapshot.
+    #[tokio::test]
+    async fn freeze_reads_only() {
+        let lab = lab();
+        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
+        write(&lab.source, ".gitignore", b"target/\n");
+        write(&lab.source, "target/foo.o", b"\x7fELF");
+        write(&lab.source, ".git/index", b"DIRC-operator-index");
+        write(&lab.source, ".git/config", b"[core]");
+
+        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        assert_eq!(
+            std::fs::read(lab.source.join(".git/index")).expect("read"),
+            b"DIRC-operator-index",
+            "freeze never writes the operator index"
+        );
+
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
+            .await
+            .expect("prepare");
+        assert!(!ws.root.join("target").exists(), "dirty checkout output leaves the wave base");
+        assert!(!ws.root.join(".git").exists(), "workspaces stay gitless");
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join(".gitignore")).expect("read"),
+            "target/\n",
+            ".gitignore is product and rides the snapshot"
+        );
+    }
+
+    /// AC4: kernel excludes win — a `.gitignore` negation cannot admit
+    /// `.git`, `.emery`, or the root plan files.
+    #[tokio::test]
+    async fn negation_kernel_excludes() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a");
+        write(&lab.source, ".gitignore", b"!.git/\n!.emery/\n!plan.yaml\n!change.md\n");
+        write(&lab.source, ".git/config", b"[core]");
+        write(&lab.source, ".emery/project.yaml", b"emery: 1.0.0");
+        write(&lab.source, "plan.yaml", b"name: demo");
+        write(&lab.source, "change.md", b"# change");
+
+        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
+            .await
+            .expect("prepare");
+        assert!(!ws.root.join(".git").exists());
+        assert!(!ws.root.join(".emery").exists());
+        assert!(!ws.root.join("plan.yaml").exists());
+        assert!(!ws.root.join("change.md").exists());
+        assert!(ws.root.join("a.txt").exists());
+    }
+
+    /// Nested `.gitignore` files scope to their directory, and a
+    /// whitelist (`!pattern`) re-admits within the same file.
+    #[tokio::test]
+    async fn nested_and_whitelist() {
+        let lab = lab();
+        write(&lab.source, "pkg/.gitignore", b"out/\n*.log\n!keep.log\n");
+        write(&lab.source, "pkg/out/junk.o", b"junk");
+        write(&lab.source, "pkg/debug.log", b"noise");
+        write(&lab.source, "pkg/keep.log", b"signal");
+        write(&lab.source, "out/data.txt", b"product");
+
+        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
+            .await
+            .expect("prepare");
+        assert!(!ws.root.join("pkg/out").exists(), "nested ignore applies beneath its dir");
+        assert!(!ws.root.join("pkg/debug.log").exists());
+        assert!(ws.root.join("pkg/keep.log").exists(), "whitelist re-admits");
+        assert!(ws.root.join("out/data.txt").exists(), "nested ignore does not leak upward");
+    }
+}
+
 mod privacy {
     use super::*;
 
