@@ -155,8 +155,7 @@ async fn failures_accounted() {
             (source["source"].as_str().expect("key"), source["kind"].as_str().expect("kind"))
         })
         .collect();
-    assert!(kinds.contains(&("broken-src", "access")), "{kinds:?}");
-    assert!(kinds.contains(&("flaky", "adapter")), "{kinds:?}");
+    assert_eq!(kinds, [("broken-src", "access"), ("flaky", "adapter")]);
 
     let coverage = fs::read_to_string(home.path().join("coverage.yaml")).expect("coverage.yaml");
     assert!(coverage.contains("survey-error"), "{coverage}");
@@ -167,6 +166,36 @@ async fn failures_accounted() {
     assert_eq!(body["as-is"]["elements"], 0, "{body}");
     let system = fs::read_to_string(home.path().join("system.yaml")).expect("system.yaml");
     assert!(system.contains("as-is"), "{system}");
+}
+
+#[tokio::test]
+async fn sources_keep_order() {
+    // Mixed survey / extract outcomes stay in declared included-row
+    // order on the wire body — a survey failure must not trail later
+    // extract results.
+    let home = tempfile::tempdir().expect("tempdir");
+    let coverage_yaml = "version: 1\ncandidates:\n  - key: alpha\n    location: ./orders\n    \
+                         adapter: mock\n    disposition: included\n    reason: succeeds\n  - key: \
+                         beta\n    location: ./orders\n    adapter: mock-fail-survey\n    \
+                         disposition: included\n    reason: survey refuses\n  - key: gamma\n    \
+                         location: ./orders\n    adapter: mock-fail-extract\n    disposition: \
+                         included\n    reason: extract refuses\n  - key: skipped\n    location: \
+                         https://erp.example.com\n    disposition: inaccessible\n    reason: \
+                         accounted only\n";
+    author_home(home.path(), coverage_yaml);
+
+    let (exit, stdout) = survey_json(home.path(), vec![CORRELATED.to_string()]).await;
+    assert_eq!(exit, 0, "{stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    let keys: Vec<(&str, &str)> = body["sources"]
+        .as_array()
+        .expect("sources")
+        .iter()
+        .map(|source| {
+            (source["source"].as_str().expect("key"), source["status"].as_str().expect("status"))
+        })
+        .collect();
+    assert_eq!(keys, [("alpha", "surveyed"), ("beta", "failed"), ("gamma", "failed")]);
 }
 
 #[tokio::test]

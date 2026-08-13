@@ -119,19 +119,19 @@ pub async fn survey(
     let decisions = decision::load_all(&layout.decisions_dir())?;
 
     // Survey phase: materialize and survey every included row,
-    // holding each lent workspace for the extract phase.
-    let mut completed = Vec::new();
+    // holding each lent workspace for extract. The Result sequence
+    // is the report order so survey failures stay in place.
+    let mut surveyed = Vec::new();
     let mut patches: BTreeMap<String, RowPatch> = BTreeMap::new();
-    let mut failures = Vec::new();
     for row in coverage.included() {
         match survey_source(seam, resolver, paths, root, row).await {
-            Ok(surveyed) => completed.push(surveyed),
+            Ok(ok) => surveyed.push(Ok(ok)),
             Err(error) => {
                 patches.insert(row.key.clone(), RowPatch::Failed(error.clone()));
-                failures.push(SourceReport::Failed {
+                surveyed.push(Err(SourceReport::Failed {
                     source: row.key.clone(),
                     error,
-                });
+                }));
             }
         }
     }
@@ -139,9 +139,13 @@ pub async fn survey(
     // The lead gate runs before any extract: exceeding the engine
     // constant is a typed stop, and surveyed rows keep their observed
     // trees (the survey leg completed; the gate is extract-side).
-    let total: usize = completed.iter().map(|source| source.leads.len()).sum();
+    let total: usize = surveyed
+        .iter()
+        .filter_map(|row| row.as_ref().ok())
+        .map(|source| source.leads.len())
+        .sum();
     if total > MAX_SURVEY_LEADS {
-        for source in completed {
+        for source in surveyed.into_iter().filter_map(Result::ok) {
             patches.insert(
                 source.key,
                 RowPatch::Observed {
@@ -167,38 +171,42 @@ pub async fn survey(
     // prior corpus alongside its `survey-error`.
     let mut reports = Vec::new();
     let mut persisted = 0_usize;
-    for source in completed {
-        let extracted = extract_source(seam, &source).await;
-        let _dropped = seam.discard(source.workspace).await;
-        match extracted {
-            Ok(documents) => {
-                persisted += documents.len();
-                replace_evidence(&layout, &source.key, &documents)?;
-                patches.insert(
-                    source.key.clone(),
-                    RowPatch::Observed {
-                        cid: source.cid.clone(),
-                        revision: source.revision.clone(),
-                    },
-                );
-                reports.push(SourceReport::Surveyed {
-                    source: source.key,
-                    adapter: source.adapter,
-                    leads: source.leads.len(),
-                    cid: source.cid,
-                    revision: source.revision,
-                });
-            }
-            Err(error) => {
-                patches.insert(source.key.clone(), RowPatch::Failed(error.clone()));
-                reports.push(SourceReport::Failed {
-                    source: source.key,
-                    error,
-                });
+    for row in surveyed {
+        match row {
+            Err(failed) => reports.push(failed),
+            Ok(source) => {
+                let extracted = extract_source(seam, &source).await;
+                let _dropped = seam.discard(source.workspace).await;
+                match extracted {
+                    Ok(documents) => {
+                        persisted += documents.len();
+                        replace_evidence(&layout, &source.key, &documents)?;
+                        patches.insert(
+                            source.key.clone(),
+                            RowPatch::Observed {
+                                cid: source.cid.clone(),
+                                revision: source.revision.clone(),
+                            },
+                        );
+                        reports.push(SourceReport::Surveyed {
+                            source: source.key,
+                            adapter: source.adapter,
+                            leads: source.leads.len(),
+                            cid: source.cid,
+                            revision: source.revision,
+                        });
+                    }
+                    Err(error) => {
+                        patches.insert(source.key.clone(), RowPatch::Failed(error.clone()));
+                        reports.push(SourceReport::Failed {
+                            source: source.key,
+                            error,
+                        });
+                    }
+                }
             }
         }
     }
-    reports.extend(failures);
 
     coverage::persist(&layout.coverage_path(), &patches)?;
     std::fs::create_dir_all(layout.events_dir()).map_err(Error::Io)?;
