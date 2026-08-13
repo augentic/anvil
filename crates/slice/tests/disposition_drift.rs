@@ -39,7 +39,11 @@ async fn same_body_no_drift() {
     // Plan entry covering the slice — the live projection reads it.
     let plan_path = root.join(".emery/change/plan.yaml");
     std::fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
-    std::fs::write(&plan_path, "name: demo\nslices:\n  - name: greeting\n").expect("plan.yaml");
+    std::fs::write(
+        &plan_path,
+        "name: demo\ntargets:\n  default:\n    adapter: emery:mock@0.0.0\n    locator: \".\"\n    cid: sha256:0000000000000000000000000000000000000000000000000000000000000000\nslices:\n  - name: greeting\n    target: default\n",
+    )
+    .expect("plan.yaml");
 
     // Two requirements with identical bodies mint one digest (D2), so
     // the single deferral fact covers both rows.

@@ -157,13 +157,6 @@
           "description": "Explicit plan slice name (kebab-case). Required — with `scope`\ngone the agent names every slice directly, and the kernel writes\nit verbatim to `plan.yaml.slices[].name`.",
           "type": "string"
         },
-        "project": {
-          "description": "Project this slice binds to, chosen from the request's\n`projects[]`. Optional only when exactly one project exists, in\nwhich case the kernel auto-binds it.",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "rationale": {
           "description": "Optional cross-source-match rationale the agent renders into\n`change.md` for plan review. Agent-authored and kernel-ignored —\nit is not echoed into the journal.",
           "type": [
@@ -177,11 +170,16 @@
             "$ref": "#/$defs/ResponseMember"
           },
           "type": "array"
+        },
+        "target": {
+          "description": "Target this slice binds to, chosen from the request's\n`projects[]` (the stored topology key). Required — never omitted.",
+          "type": "string"
         }
       },
       "required": [
         "name",
-        "sources"
+        "sources",
+        "target"
       ],
       "type": "object"
     }

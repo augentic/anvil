@@ -3,60 +3,106 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE};
+use crate::adapter::AdapterSelector;
+use crate::adapter::catalog::{INTENT, Pin};
 use crate::snapshot::SnapshotId;
 
 /// One top-level [`super::Plan::sources`] binding.
 ///
-/// Carries the kebab-case source adapter name plus exactly one of
-/// `path` or `value` (mutually exclusive; readers treat `path` as
-/// taking precedence), and — once plan author closes the source set —
-/// the content-addressed tree identity of that input (`cid`).
+/// Exact adapter pin plus exactly one of `locator` or `value`. Location
+/// rows carry a tree `cid`; the reserved `intent` row is the `value`
+/// arm only (no locator, no CID).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SourceBinding {
-    /// Kebab-case source-adapter name (e.g. `intent`, `documentation`,
-    /// `typescript`, `screenshots`).
-    pub adapter: String,
-    /// Optional exact semver pin for the bound source adapter; an
-    /// omitted `version` means the single installed identity.
+    /// Exact package pin (`emery:<name>@<semver>`).
+    pub adapter: Pin,
+    /// Git, path, or HTTPS locator. Mutually exclusive with `value`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub version: Option<semver::Version>,
-    /// Filesystem path or repo location the adapter binds against.
-    /// Mutually exclusive with `value`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    /// Literal value supplied directly to the adapter (e.g. the
-    /// operator brief text for `intent`). Mutually exclusive with
-    /// `path`.
+    pub locator: Option<String>,
+    /// Inline value; required for [`INTENT`], forbidden with `locator`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-    /// Content-addressed identity of the bound source tree
-    /// (`sha256:…`). Wire field `cid` (RFC-86 D25). Absent until plan
-    /// author closes the source set; refinement records these pins in
-    /// the manifest's `inputs.sources`.
+    /// Content-addressed identity of a location-backed tree.
+    /// Absent on the `intent` / inline-value arm.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cid: Option<SnapshotId>,
 }
 
 impl SourceBinding {
-    /// The typed adapter selector this binding resolves through: the
-    /// bare development name for an unpinned binding, or the
-    /// first-party package pin when `version` is set (the binding
-    /// schema carries no namespace field; pins are implicitly
-    /// `emery:`).
+    /// Reserved `intent` row: adapter pin plus inline value, no CID.
+    #[must_use]
+    pub fn intent(adapter: Pin, value: impl Into<String>) -> Self {
+        Self {
+            adapter,
+            locator: None,
+            value: Some(value.into()),
+            cid: None,
+        }
+    }
+
+    /// Location-backed row with a recorded CID.
+    #[must_use]
+    pub fn located(adapter: Pin, locator: impl Into<String>, cid: SnapshotId) -> Self {
+        Self {
+            adapter,
+            locator: Some(locator.into()),
+            value: None,
+            cid: Some(cid),
+        }
+    }
+
+    /// Typed adapter selector this binding resolves through.
     #[must_use]
     pub fn selector(&self) -> AdapterSelector {
-        self.version.as_ref().map_or_else(
-            || AdapterSelector::Bare {
-                name: self.adapter.clone(),
-            },
-            |version| AdapterSelector::Package {
-                namespace: FIRST_PARTY_NAMESPACE.to_string(),
-                name: self.adapter.clone(),
-                version: version.clone(),
-            },
-        )
+        self.adapter.selector()
+    }
+
+    /// Whether this row is the reserved inline `intent` arm.
+    #[must_use]
+    pub fn is_intent(&self) -> bool {
+        self.adapter.name == INTENT
+    }
+
+    /// Enforce locator xor value, and the `intent` value-only rule.
+    ///
+    /// # Errors
+    ///
+    /// `source-binding-xor` when both or neither arm is present;
+    /// `source-intent-locator` when `intent` carries a locator or CID.
+    pub fn validate(&self, key: &str) -> Result<(), error::Error> {
+        let has_locator = self.locator.as_ref().is_some_and(|locator| !locator.is_empty());
+        let has_value = self.value.as_ref().is_some_and(|value| !value.is_empty());
+        match (has_locator, has_value) {
+            (true, false) | (false, true) => {}
+            (false, false) => {
+                return Err(error::Error::Diag {
+                    code: "source-binding-xor",
+                    detail: format!("source `{key}` must carry `locator` or `value`"),
+                });
+            }
+            (true, true) => {
+                return Err(error::Error::Diag {
+                    code: "source-binding-xor",
+                    detail: format!("source `{key}` must not carry both `locator` and `value`"),
+                });
+            }
+        }
+        if self.adapter.name == INTENT {
+            if has_locator || self.cid.is_some() {
+                return Err(error::Error::Diag {
+                    code: "source-intent-locator",
+                    detail: "adapter `intent` is inline `value` only; a locator is refused".into(),
+                });
+            }
+            if key != INTENT {
+                return Err(error::Error::Diag {
+                    code: "source-intent-key",
+                    detail: format!("adapter `intent` is reserved as source key `{INTENT}`"),
+                });
+            }
+        }
+        Ok(())
     }
 }
 
@@ -73,7 +119,7 @@ pub struct SliceSourceBinding {
     /// Always present, regardless of which wire shape produced this
     /// value.
     pub source: String,
-    /// Lead id from `discovery.md`, resolved within `source`.
+    /// Lead id from the catalog, resolved within `source`.
     /// `None` denotes the bare-string shorthand — the lead falls
     /// back to the owning slice's name via
     /// the binding's internal lead accessor.

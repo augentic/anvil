@@ -4,7 +4,8 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 use error::Error;
-use project::binding::{Locator, Meter, Policy};
+
+use super::{Locator, Meter, Policy};
 
 /// Checkout result: exact SHA plus an optional moved-branch warning.
 #[derive(Clone, Debug, PartialEq, Eq)]

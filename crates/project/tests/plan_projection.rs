@@ -4,42 +4,36 @@
 use std::collections::BTreeMap;
 
 use artifacts::discovery::Lead;
+use project::adapter::catalog::Pin;
 use project::plan::{
-    Entry, Plan, Projections, SliceSourceBinding, SourceBinding, contributing_leads,
+    Entry, Plan, Projections, SliceSourceBinding, SourceBinding, TargetBinding, contributing_leads,
 };
 use project::snapshot::SnapshotId;
 
+fn stub_target() -> TargetBinding {
+    TargetBinding::new(
+        Pin::emery("mock", semver::Version::new(0, 0, 0)),
+        ".",
+        SnapshotId::from_digest(&"0".repeat(64)),
+    )
+}
+
 fn binding_value(adapter: &str, value: &str) -> SourceBinding {
-    SourceBinding {
-        adapter: adapter.into(),
-        version: None,
-        path: None,
-        value: Some(value.into()),
-        cid: None,
-    }
+    SourceBinding::intent(Pin::emery(adapter, semver::Version::new(0, 0, 0)), value)
 }
 
 fn entry(name: &str, sources: Vec<SliceSourceBinding>) -> Entry {
-    Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources,
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    }
+    let mut entry = Entry::named(name, "default");
+    entry.sources = sources;
+    entry
 }
 
 fn plan(sources: BTreeMap<String, SourceBinding>, entries: Vec<Entry>) -> Plan {
-    Plan {
-        name: "demo".into(),
-        sources,
-        entries,
-    }
+    let mut plan = Plan::named("demo");
+    plan.targets.insert("default".into(), stub_target());
+    plan.sources = sources;
+    plan.entries = entries;
+    plan
 }
 
 fn lead(source: &str, id: &str, synopsis: &str) -> Lead {

@@ -23,7 +23,7 @@ mod resolver;
 
 pub use blobstore::Blobstore;
 pub use exec_bits::ExecBits;
-pub use ingest::{checkout, fetch, resolve as ingest};
+pub use ingest::{Ingest, checkout, fetch, ingest};
 pub use install::Registry;
 pub use resolver::Resolver;
 

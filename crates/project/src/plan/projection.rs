@@ -118,12 +118,10 @@ fn digest<T: Serialize>(value: &T) -> Result<SnapshotId, Error> {
 struct EntryProjection {
     version: u32,
     name: String,
+    target: String,
+    /// Declared target-adapter pin from `plan.yaml.targets`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    project: Option<String>,
-    /// Declared target adapter reference from `project.yaml` —
-    /// rebinding or re-pinning the target stales every manifest.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    target: Option<String>,
+    adapter: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     depends_on: Vec<SliceName>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -153,9 +151,7 @@ struct BindingProjection {
     lead: String,
     adapter: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    adapter_version: Option<semver::Version>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    path: Option<String>,
+    locator: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     value: Option<String>,
 }
@@ -202,9 +198,8 @@ fn entry_projection(
             Ok(BindingProjection {
                 source: key.to_string(),
                 lead: binding.lead(entry.name.as_str()).to_string(),
-                adapter: bound.adapter.clone(),
-                adapter_version: bound.version.clone(),
-                path: bound.path.clone(),
+                adapter: bound.adapter.wire(),
+                locator: bound.locator.clone(),
                 value: bound.value.clone(),
             })
         })
@@ -212,8 +207,8 @@ fn entry_projection(
     Ok(EntryProjection {
         version: PROJECTION_VERSION,
         name: entry.name.as_str().to_string(),
-        project: entry.project.clone(),
-        target: target.map(str::to_string),
+        target: entry.target.clone(),
+        adapter: target.map(str::to_string),
         depends_on: entry.depends_on.clone(),
         sources,
         context: entry.context.clone(),

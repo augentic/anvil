@@ -108,6 +108,12 @@ impl ExecutionPaths {
         Self::new(project_root, self.locations.clone())
     }
 
+    /// Typed view over change-home paths for this anchoring.
+    #[must_use]
+    pub fn layout(&self) -> Layout<'_> {
+        Layout::with_change_root(&self.project_root, &self.change_root)
+    }
+
     /// The per-project derived cache directory for this value's `.`
     /// mount (product when in-place, change home when detached).
     #[must_use]

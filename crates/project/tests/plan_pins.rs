@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use project::adapter::catalog::Pin;
 use project::plan::{
     Plan, SourceBinding, close_source_pins, dir_cid, empty_cid, file_cid, value_cid,
 };
@@ -10,40 +11,29 @@ use project::snapshot::SnapshotId;
 use project::workspace::Store;
 
 fn binding_value(value: &str) -> SourceBinding {
-    SourceBinding {
-        adapter: "intent".into(),
-        version: None,
-        path: None,
-        value: Some(value.into()),
-        cid: None,
-    }
+    SourceBinding::intent(Pin::emery("intent", semver::Version::new(0, 12, 0)), value)
 }
 
 fn binding_path(path: &str) -> SourceBinding {
     SourceBinding {
-        adapter: "documentation".into(),
-        version: None,
-        path: Some(path.into()),
+        adapter: Pin::emery("documentation", semver::Version::new(0, 12, 0)),
+        locator: Some(path.into()),
         value: None,
         cid: None,
     }
 }
 
 fn plan_with(sources: BTreeMap<String, SourceBinding>) -> Plan {
-    Plan {
-        name: "demo".into(),
-        sources,
-        entries: vec![],
-    }
+    let mut plan = Plan::named("demo");
+    plan.sources = sources;
+    plan
 }
 
 #[test]
-fn value_binding_pins_file() {
+fn value_binding_skips_cid() {
     let mut plan = plan_with(BTreeMap::from([("intent".into(), binding_value("hello"))]));
     close_source_pins(&mut plan, Path::new(".")).expect("close");
-    let cid = plan.sources["intent"].cid.as_ref().expect("cid");
-    assert_eq!(cid, &value_cid("hello"));
-    assert_eq!(cid.as_str().len(), "sha256:".len() + 64);
+    assert!(plan.sources["intent"].cid.is_none());
 }
 
 #[tokio::test]

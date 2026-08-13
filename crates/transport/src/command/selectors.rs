@@ -6,7 +6,7 @@ use clap::FromArgMatches;
 use omnia_guest::api::invoke::Invoker;
 #[cfg(not(target_arch = "wasm32"))]
 use omnia_guest::model::{Reply, Request};
-use project::adapter::{AdapterSelector, ResolvedSource, ResolvedTarget, Resolver};
+use project::adapter::{AdapterSelector, Inventory, ResolvedSource, ResolvedTarget, Resolver};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
 use project::seam::{self, Evidence, Input, Lead, MergePhase};
@@ -229,6 +229,12 @@ impl Resolver for Grammar {
     }
 }
 
+impl Inventory for Grammar {
+    fn inventory(&self) -> &project::adapter::catalog::Catalog {
+        never_dispatched!()
+    }
+}
+
 impl seam::Source for Grammar {
     async fn survey(&self, _id: String) -> Result<Vec<Lead>, seam::Error> {
         never_dispatched!()
@@ -301,6 +307,15 @@ impl seam::Workspaces for Grammar {
     async fn sweep(
         &self, _dead: Vec<project::snapshot::SnapshotId>, _live: Vec<project::snapshot::SnapshotId>,
     ) -> Result<usize, seam::Error> {
+        never_dispatched!()
+    }
+}
+
+impl seam::Ingest for Grammar {
+    async fn fetch(
+        &self, _locator: String, _recorded: Option<project::snapshot::SnapshotId>,
+        _prior: Option<String>,
+    ) -> Result<seam::Fetched, seam::Error> {
         never_dispatched!()
     }
 }

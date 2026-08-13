@@ -11,7 +11,7 @@ use diagnostics::{
 use error::{Error, Result};
 use petgraph::algo::tarjan_scc;
 
-use super::super::model::{AuthorityOverride, Entry, Plan, SliceSourceBinding, Status, TargetRef};
+use super::super::model::{Entry, Plan, SliceSourceBinding, Status, TargetRef};
 use super::super::validate::dependency_graph;
 use super::catalog::{LeadCatalog, build_catalog};
 use super::wire::{ProjectRef, ProposalResponse, ResponseMember, ResponseSlice};
@@ -72,10 +72,9 @@ impl Plan {
         check_lead_orphans(slices, &catalog)?;
         let source_sets = slice_source_sets(slices)?;
         check_coverage(&source_sets, &catalog)?;
-        let bound = bind_projects(slices, topology)?;
-        // Eagerly validate that every bound project's target parses as
-        // `name[@vN]` so a corrupt topology fails at propose time, even
-        // though the resolved target is not written to disk.
+        let bound = bind_targets(slices, topology)?;
+        // Eagerly validate that every bound target's adapter parses as
+        // `name[@vN]` so a corrupt topology fails at propose time.
         for project in &bound {
             parse_project_target(project)?;
         }
@@ -87,7 +86,7 @@ impl Plan {
         // until both leads and decisions carry topics.
         let topic_overlaps = topic_overlaps(slices, discovery, &bound);
 
-        let new_entries = build_entries(response.slices, &names, &bound, topology.len() == 1);
+        let new_entries = build_entries(response.slices, &names, &bound);
 
         if has_dependency_cycle(&new_entries) {
             return Err(Error::validation_failed(
@@ -251,69 +250,41 @@ fn check_coverage(source_sets: &[SliceMembership], catalog: &LeadCatalog) -> Res
     Ok(())
 }
 
-/// Bind a single slice to its project in `topology`: an explicit
-/// `project` must exist (`plan-reconcile-project-orphan`); an omitted
-/// `project` auto-binds the sole project or fails when several exist
-/// (`plan-reconcile-project-binding-required`). `slice_name` labels the
-/// diagnostics.
-///
-/// This is the single project-binding rule shared by the propose kernel
-/// ([`bind_projects`]) and the read-time target resolver
-/// ([`resolve_target`]) so the two cannot drift.
-fn resolve_project_binding<'a>(
-    slice_name: &str, project: Option<&str>, topology: &'a [ProjectRef],
+/// Bind a single slice to its target in `topology`: `target` must
+/// name a topology row (`plan-reconcile-target-unknown`).
+fn resolve_target_binding<'a>(
+    slice_name: &str, target: &str, topology: &'a [ProjectRef],
 ) -> Result<&'a ProjectRef> {
-    match project {
-        Some(name) => topology.iter().find(|p| p.name.as_str() == name).ok_or_else(|| {
-            Error::validation_failed(
-                "plan-reconcile-project-orphan",
-                "a bound project must exist in the request topology",
-                format!("slice '{slice_name}' binds unknown project '{name}'"),
-            )
-        }),
-        None if topology.len() == 1 => Ok(&topology[0]),
-        None => Err(Error::validation_failed(
-            "plan-reconcile-project-binding-required",
-            "a slice may omit project only when exactly one project exists",
-            format!(
-                "slice '{slice_name}' omits project but {} projects are available",
-                topology.len()
-            ),
-        )),
-    }
+    topology.iter().find(|row| row.name.as_str() == target).ok_or_else(|| {
+        Error::validation_failed(
+            "plan-reconcile-target-unknown",
+            "a bound target must exist in the request topology",
+            format!("slice '{slice_name}' binds unknown target '{target}'"),
+        )
+    })
 }
 
-/// Bind each slice to a project via [`resolve_project_binding`].
-fn bind_projects<'a>(
+/// Bind each slice to a target via [`resolve_target_binding`].
+fn bind_targets<'a>(
     slices: &[ResponseSlice], topology: &'a [ProjectRef],
 ) -> Result<Vec<&'a ProjectRef>> {
     slices
         .iter()
-        .map(|slice| resolve_project_binding(&slice.name, slice.project.as_deref(), topology))
+        .map(|slice| resolve_target_binding(&slice.name, &slice.target, topology))
         .collect()
 }
 
 /// Resolve a single slice [`Entry`]'s target adapter from the project
-/// topology.
-///
-/// A slice binds only a `project`; the target (`name[@vN]`) derives
-/// from the bound project's [`ProjectRef::target`]. Every consumer
-/// routes through this single read-time resolver, so `plan.yaml` never
-/// stores the denormalised target. An explicit project must exist in
-/// `topology`; an omitted project auto-binds the sole topology project.
+/// topology. A slice binds a required `target` key; the adapter
+/// (`name[@vN]`) derives from that topology row.
 ///
 /// # Errors
 ///
-/// - `plan-reconcile-project-orphan` when the named project is absent
-///   from `topology`.
-/// - `plan-reconcile-project-binding-required` when `project` is omitted
-///   but more than one project exists.
-/// - `plan-target-malformed` when the bound project's target does not
-///   parse as `name[@<semver>]` (an internal inconsistency — topology
-///   targets are pre-validated).
+/// - `plan-reconcile-target-unknown` when the named target is absent.
+/// - `plan-target-malformed` when the bound target does not parse.
 pub fn resolve_target(entry: &Entry, topology: &[ProjectRef]) -> Result<TargetRef> {
-    let project = resolve_project_binding(&entry.name, entry.project.as_deref(), topology)?;
-    parse_project_target(project)
+    let row = resolve_target_binding(&entry.name, &entry.target, topology)?;
+    parse_project_target(row)
 }
 
 /// Parse a [`ProjectRef`]'s `name[@<semver>]` target into a
@@ -368,33 +339,25 @@ fn check_name_collisions(names: &[String]) -> Result<()> {
 }
 
 /// Project the validated response into `plan.yaml.slices[]` entries in
-/// response order, consuming the response's slices.
-///
-/// A sole-project topology writes no `project` key at all: an omitted
-/// value auto-binds the single project, and the execute loop reads an
-/// explicit `project` as workspace routing, which a single regular
-/// project must never trigger.
+/// response order, consuming the response's slices. Every slice writes
+/// a required `target` key.
 fn build_entries(
-    slices: Vec<ResponseSlice>, names: &[String], bound: &[&ProjectRef], sole_project: bool,
+    slices: Vec<ResponseSlice>, names: &[String], bound: &[&ProjectRef],
 ) -> Vec<Entry> {
     slices
         .into_iter()
         .enumerate()
-        .map(|(idx, slice)| Entry {
-            name: names[idx].clone().into(),
-            project: (!sole_project).then(|| bound[idx].name.clone()),
-            depends_on: slice.depends_on.into_iter().map(Into::into).collect(),
-            sources: slice
+        .map(|(idx, slice)| {
+            let mut entry = Entry::named(names[idx].clone(), bound[idx].name.clone());
+            entry.depends_on = slice.depends_on.into_iter().map(Into::into).collect();
+            entry.sources = slice
                 .sources
                 .into_iter()
                 .map(|m| SliceSourceBinding::structured(m.source, m.lead))
-                .collect(),
-            context: Vec::new(),
-            description: None,
-            divergence: slice.divergence,
-            disagreements: slice.disagreements,
-            authority_override: AuthorityOverride::default(),
-            allow_composition_replace: false,
+                .collect();
+            entry.divergence = slice.divergence;
+            entry.disagreements = slice.disagreements;
+            entry
         })
         .collect()
 }

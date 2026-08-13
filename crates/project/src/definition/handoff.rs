@@ -150,8 +150,13 @@ pub struct Scope {
     /// Inline value; required for [`INTENT`], forbidden otherwise.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
-    /// Exact source-adapter package pin.
-    pub adapter: String,
+    /// Exact source-adapter package pin. Absent or empty is an open
+    /// adapter: the wave-binding phase fingerprints the staged value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adapter: Option<String>,
+    /// Origin locator for a location-backed scope. Absent on `intent`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locator: Option<String>,
     /// Lead id within `source`.
     pub lead: String,
     /// Digest of the extracted Evidence document.
@@ -285,10 +290,10 @@ fn check_scope(scope: &Scope) -> Result<(), Error> {
         }
     }
     let is_intent = scope.source == INTENT;
-    if is_intent && has_cid {
+    if is_intent && (has_cid || scope.locator.as_ref().is_some_and(|locator| !locator.is_empty())) {
         return Err(Error::Diag {
             code: "definition-intent-form",
-            detail: "evidence scope `intent` carries `value` and no `source-cid`".into(),
+            detail: "evidence scope `intent` carries `value` and no locator or `source-cid`".into(),
         });
     }
     if !is_intent && has_value {

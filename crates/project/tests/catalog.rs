@@ -59,7 +59,7 @@ mod pins {
         let scope = &spec.scopes[0];
         let pin = catalog::select(
             &catalog(),
-            Hint::Pin(&scope.adapter),
+            Hint::Pin(scope.adapter.as_deref().expect("pinned")),
             &Origin::Value(scope.value.clone().expect("intent value")),
         )
         .expect("reuse");
@@ -69,7 +69,7 @@ mod pins {
         let scope = &spec.scopes[0];
         let pin = catalog::select(
             &catalog(),
-            Hint::Pin(&scope.adapter),
+            Hint::Pin(scope.adapter.as_deref().expect("pinned")),
             &loc("https://github.com/example/orders@main"),
         )
         .expect("reuse typescript");

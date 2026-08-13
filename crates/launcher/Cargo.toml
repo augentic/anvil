@@ -25,7 +25,7 @@ omnia-wasi-blobstore.workspace = true
 emery-project.workspace = true
 emery-transport.workspace = true
 emery-wasi-exec-bits.workspace = true
-reqwest = { workspace = true, features = ["blocking"] }
+emery-wasi-ingest.workspace = true
 semver.workspace = true
 
 [dev-dependencies]

@@ -670,4 +670,5 @@ world workflow {
   import source;
   import target;
   import emery:exec-bits/exec-bits@0.1.0;
+  import emery:ingest/ingest@0.1.0;
 }

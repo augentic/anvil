@@ -25,7 +25,7 @@ fn cid(ch: char) -> SnapshotId {
 /// The minimal profile whose refine mints one `[unknown]` row
 /// (`greeting/REQ-001`).
 fn unknown_session() -> Session {
-    Session::bare(vec![mock::answers::greeting_grouping(), mock::answers::greeting_unknown_synth()])
+    Session::bare(vec![mock::answers::greeting_unknown_synth()])
 }
 
 async fn scaffold(session: &Session) {
@@ -39,19 +39,7 @@ async fn scaffold(session: &Session) {
     )
     .await
     .expect("init");
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
 }
 
 async fn execute(session: &Session) {
@@ -199,14 +187,9 @@ async fn note_carries_reason() {
 /// review prose it authors.
 #[tokio::test]
 async fn debt_after_merge() {
-    // Three judgment answers: the first author's grouping, the refine
-    // synthesis that mints the unknown, and the corrective change's
-    // author grouping.
-    let session = Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synth(),
-        mock::answers::greeting_grouping(),
-    ]);
+    // One synthesis answer: the refine that mints the unknown. Plan
+    // topology is a fixture — wave-binding authoring no longer groups.
+    let session = Session::bare(vec![mock::answers::greeting_unknown_synth()]);
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
     execute(&session).await;
@@ -235,19 +218,7 @@ async fn debt_after_merge() {
     )
     .await
     .expect("archive");
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("corrective author");
+    support::write_greeting_plan(session.root());
 }
 
 /// D6 visibility at the boundary: the archive summary renders

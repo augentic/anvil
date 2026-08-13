@@ -22,12 +22,8 @@ use project::journal::{
 use project::plan::{Disposition, Plan};
 use support::plan_with_changes;
 
-/// Single-project plan entry so execute's workspace routing refusal
-/// does not fire.
 fn leaf(name: &str) -> change::Entry {
-    let mut entry = support::change(name);
-    entry.project = None;
-    entry
+    support::change(name)
 }
 
 fn err_code(err: &project::handler::Error) -> String {

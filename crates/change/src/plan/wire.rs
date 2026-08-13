@@ -1,153 +1,15 @@
-//! Wire DTOs and payload parsers shared by `plan add`, `plan author`,
-//! and `plan amend` on both transports. The clap-only argv grammars
-//! (`--source` / `--sources` string forms) live in the transport crate.
+//! Wire DTOs and payload parsers shared by `plan add` and `plan amend`
+//! on both transports. The clap-only argv grammars (`--sources` /
+//! `--add-source` string forms) live in the transport crate.
 
-use std::collections::BTreeMap;
 use std::str::FromStr;
 
 use artifacts::discovery::{Discovery, DiscoveryResolveError};
 use artifacts::evidence::ClaimKind;
 use error::{Error, Result};
-use project::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE};
 use project::config::Layout;
-use project::plan::{Divergence, SliceSourceBinding, SourceBinding};
+use project::plan::{Divergence, SliceSourceBinding};
 use serde::{Deserialize, Serialize};
-
-/// One top-level plan source binding as it crosses the wire.
-///
-/// The key from `plan.yaml.sources.<key>` plus the adapter and its
-/// path- or value-binding; the source-map converter desugars the list
-/// into the structured `plan.yaml.sources` map ([`SourceBinding`]) at
-/// the operation boundary. The `--source` argv grammar parsing into
-/// this type is transport-owned.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct SourceAssign {
-    /// Source key (left of `=`).
-    pub key: String,
-    /// Kebab-case source-adapter name (parsed out of the `<adapter>:…`
-    /// prefix after `=`).
-    pub adapter: String,
-    /// Mutually exclusive with `value`. `Some(path)` for the
-    /// `<adapter>:<path>` form.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    /// Mutually exclusive with `path`. `Some(literal)` for the
-    /// `<adapter>:value:<literal>` form.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-}
-
-impl SourceAssign {
-    /// The desugared `plan author --intent <string>` binding —
-    /// byte-identical to parsing `intent=intent:value:<string>`.
-    #[must_use]
-    pub(crate) fn intent(value: String) -> Self {
-        Self {
-            key: "intent".to_string(),
-            adapter: "intent".to_string(),
-            path: None,
-            value: Some(value),
-        }
-    }
-}
-
-/// Desugar the `plan author` raw source surface into the structured
-/// binding map [`project::plan::Plan::init`] expects.
-///
-/// Runs at the operation boundary so every transport shares the
-/// duplicate-key gate and the `--intent` sugar.
-///
-/// `intent` appends the value-bound intent binding before the
-/// duplicate-key gate, so an explicit `--source intent=...` in the
-/// same invocation trips `plan-source-duplicate-key` — the same
-/// refusal two conflicting `--source intent=...` occurrences get.
-///
-/// # Errors
-///
-/// `Error::Diag` with the stable `plan-source-duplicate-key`
-/// discriminant on a duplicate source key, or
-/// `plan-source-adapter-invalid` when the adapter token is neither a
-/// bare name nor a first-party `<name>@<semver>` pin.
-pub(crate) fn source_map(
-    mut sources: Vec<SourceAssign>, intent: Option<String>,
-) -> Result<BTreeMap<String, SourceBinding>> {
-    if let Some(value) = intent {
-        sources.push(SourceAssign::intent(value));
-    }
-    let mut map: BTreeMap<String, SourceBinding> = BTreeMap::new();
-    for SourceAssign {
-        key,
-        adapter,
-        path,
-        value,
-    } in sources
-    {
-        if map.contains_key(&key) {
-            let detail = if key == "intent" {
-                format!(
-                    "duplicate key `{key}` in --source arguments; note `--intent <string>` is \
-                     sugar for `--source intent=intent:value:<string>` — pass one or the other"
-                )
-            } else {
-                format!("duplicate key `{key}` in --source arguments")
-            };
-            return Err(Error::Diag {
-                code: "plan-source-duplicate-key",
-                detail,
-            });
-        }
-        let (adapter, version) = parse_source_adapter(&key, &adapter)?;
-        map.insert(
-            key,
-            SourceBinding {
-                adapter,
-                version,
-                path,
-                value,
-                cid: None,
-            },
-        );
-    }
-    Ok(map)
-}
-
-/// Parse the `<adapter>` half of a source binding: a bare development
-/// name (`typescript`) or a first-party exact pin
-/// (`typescript@1.2.0`, sugar for `emery:typescript@1.2.0`). The pin
-/// lands in the binding's existing `version` field — `SourceBinding`
-/// carries no namespace, so only the implicit `emery` namespace is
-/// representable.
-///
-/// # Errors
-///
-/// `plan-source-adapter-invalid` for component paths and foreign
-/// namespaces; selector parse failures (malformed pins, GitHub URLs)
-/// propagate with their own discriminants.
-fn parse_source_adapter(key: &str, raw: &str) -> Result<(String, Option<semver::Version>)> {
-    match AdapterSelector::parse(raw)? {
-        AdapterSelector::Bare { name } => Ok((name, None)),
-        AdapterSelector::Package {
-            namespace,
-            name,
-            version,
-        } if namespace == FIRST_PARTY_NAMESPACE => Ok((name, Some(version))),
-        AdapterSelector::Package { namespace, .. } => Err(Error::Diag {
-            code: "plan-source-adapter-invalid",
-            detail: format!(
-                "source `{key}` binds adapter `{raw}` in namespace `{namespace}`; source \
-                 bindings accept only bare names or first-party pins (`<name>@<semver>`)"
-            ),
-        }),
-        AdapterSelector::Component { .. } => Err(Error::Diag {
-            code: "plan-source-adapter-invalid",
-            detail: format!(
-                "source `{key}` binds adapter `{raw}`, which is not a source-adapter name; \
-                 source bindings accept only bare names or first-party pins (`<name>@<semver>`)"
-            ),
-        }),
-    }
-}
 
 /// One per-slice source binding as it crosses the wire: the key from
 /// `plan.yaml.sources.<key>` plus an optional lead id. `lead: None` is

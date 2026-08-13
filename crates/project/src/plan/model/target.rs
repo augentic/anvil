@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 
 /// Parsed `<name>[@<semver>]` target-adapter identifier.
 ///
-/// The *resolved* target form produced by
-/// [`crate::plan::resolve_target`] — never a stored `plan.yaml` field.
+/// The *resolved* adapter form `name[@<semver>]` used by slice
+/// metadata and `$TARGET`. Stored topology lives on
+/// [`super::TargetBinding`].
 /// Wire form is the single kebab string `name[@<semver>]`.
 /// Deserialisation goes through `TargetRef::parse` and components are
 /// private, so every value satisfies the wire grammar by construction.

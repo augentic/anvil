@@ -52,11 +52,7 @@ pub struct AdvanceBody {
     pub reason: Option<AdvanceReason>,
     /// Name of the already-active in-progress entry, when one exists.
     pub active: Option<String>,
-    /// Bound project for the advanced entry.
-    pub project: Option<String>,
-    /// Resolved target adapter (`name[@vN]`, bare for an unpinned cache
-    /// resolve); best-effort, `None` when the topology cannot be
-    /// resolved.
+    /// Bound `plan.yaml.targets` key for the advanced entry.
     pub target: Option<String>,
     /// Advanced entry description.
     pub description: Option<String>,
@@ -73,8 +69,8 @@ pub struct AdvanceBody {
 /// [`Error::Validation`] `plan-structural-errors` when the plan has
 /// blocking validate findings or a dependency cycle.
 pub fn plan_advance_body<S: BuildHasher>(
-    resolver: &impl Resolver, plan: &Plan, slices_dir: &Path, config: &ProjectConfig,
-    paths: &ExecutionPaths, ladders: &HashMap<SliceName, Status, S>,
+    _resolver: &impl Resolver, plan: &Plan, slices_dir: &Path, _config: &ProjectConfig,
+    _paths: &ExecutionPaths, ladders: &HashMap<SliceName, Status, S>,
 ) -> Result<AdvanceBody, Error> {
     if has_blocking(&advance_gate(plan, slices_dir)) {
         return Err(structural_errors());
@@ -82,12 +78,10 @@ pub fn plan_advance_body<S: BuildHasher>(
 
     let plan_name = plan.name.to_string();
     if let Some(entry) = next_eligible(plan, ladders) {
-        let target = crate::target_policy::best_effort_advance(resolver, config, paths, entry);
         return Ok(AdvanceBody {
             plan: plan_name,
             advanced: Some(entry.name.to_string()),
-            project: entry.project.clone(),
-            target,
+            target: Some(entry.target.clone()),
             description: entry.description.clone(),
             sources: Some(entry.sources.clone()),
             ..AdvanceBody::default()
@@ -177,9 +171,6 @@ impl crate::handler::Render for AdvanceBody {
         }
         if let Some(name) = &self.advanced {
             writeln!(w, "advanced: {name}")?;
-            if let Some(project) = &self.project {
-                writeln!(w, "  project: {project}")?;
-            }
             if let Some(target) = &self.target {
                 writeln!(w, "  target: {target}")?;
             }

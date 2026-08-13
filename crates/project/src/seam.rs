@@ -262,6 +262,32 @@ pub trait Workspaces: Send + Sync {
     ) -> impl Future<Output = Result<usize, Error>> + Send;
 }
 
+/// Host-staged locator ingest: Git/HTTPS I/O plus CID snapshot.
+///
+/// Path locators are read in-process; Git clone and HTTPS fetch run on
+/// the host (native in-process, guest via WIT). Always uses
+/// [`crate::binding::Policy::standard`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Fetched {
+    /// Exact locator (Git revisions are SHAs).
+    pub locator: String,
+    /// Tree identity of the staged file-or-tree.
+    pub cid: SnapshotId,
+    /// Deployment-local path of the staged tree (fingerprint / `project.yaml`).
+    pub root: String,
+    /// Freshness warning (moved branch); ingest still used the recorded SHA.
+    pub warning: Option<String>,
+}
+
+/// Host ingest capability for wave binding.
+pub trait Ingest: Send + Sync {
+    /// Stage `locator`, snapshot it, and return the exact pin plus a
+    /// local tree the caller can fingerprint.
+    fn fetch(
+        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
+    ) -> impl Future<Output = Result<Fetched, Error>> + Send;
+}
+
 /// The borrowed capability bundle one orchestration run dispatches
 /// across: model judgment, source-axis seam, target-axis seam, and
 /// adapter resolver.

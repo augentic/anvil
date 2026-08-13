@@ -31,8 +31,8 @@ impl GateContext<'_> {
     fn render(&self) -> String {
         let mut out = format!("## Plan context\n\n- plan: {}\n- sources:\n", self.plan);
         for (key, binding) in self.sources {
-            let bound = match (&binding.path, &binding.value) {
-                (Some(path), _) => format!("path `{path}`"),
+            let bound = match (&binding.locator, &binding.value) {
+                (Some(locator), _) => format!("locator `{locator}`"),
                 (None, Some(value)) => format!("value \"{value}\""),
                 (None, None) => "no binding".to_string(),
             };

@@ -8,7 +8,6 @@ mod support;
 
 use std::fs;
 
-use change::plan;
 use mock::invoke::run;
 use mock::session::Session;
 use serde_json::json;
@@ -78,31 +77,16 @@ fn reset_synthesis_answer() -> String {
     .expect("synthesis serialises")
 }
 
-async fn author(session: &Session) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: support::adversarial_bindings(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author walks to pending");
+fn author(session: &Session) {
+    support::write_adversarial_plan(session.root());
 }
 
 // A documentation-vs-behaviour disagreement resolves as a divergence
 // with the docs claim winning.
 #[tokio::test]
 async fn divergence_docs_wins() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), session_synthesis_answer()],
-    );
-    author(&session).await;
+    let session = Session::scripted("mock", vec![session_synthesis_answer()]);
+    author(&session);
 
     let refined = support::refine(&session, "session-policy")
         .await
@@ -198,14 +182,8 @@ fn synthesis_with_decision() -> String {
 // *different* answer from the script.
 #[tokio::test]
 async fn decisions_exact_set() {
-    let session = Session::scripted(
-        "mock",
-        vec![
-            mock::answers::adversarial_grouping(),
-            synthesis_with_decision(),
-            session_synthesis_answer(),
-        ],
-    );
+    let session =
+        Session::scripted("mock", vec![synthesis_with_decision(), session_synthesis_answer()]);
     let root = session.root().to_path_buf();
 
     // A baseline Decision Record the slice can legally supersede — and
@@ -220,7 +198,7 @@ async fn decisions_exact_set() {
     )
     .expect("write baseline decision");
 
-    author(&session).await;
+    author(&session);
 
     support::refine(&session, "session-policy")
         .await
@@ -254,11 +232,8 @@ async fn decisions_exact_set() {
 
 #[tokio::test]
 async fn evidence_gap_projects() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), reset_synthesis_answer()],
-    );
-    author(&session).await;
+    let session = Session::scripted("mock", vec![reset_synthesis_answer()]);
+    author(&session);
 
     support::refine(&session, "password-reset").await.expect("refine synthesises the gapped slice");
 

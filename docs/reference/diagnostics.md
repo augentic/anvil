@@ -79,7 +79,7 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `slice-spec-provenance-stale` | A kernel-rendered `ID:` / `Sources:` / `Status:` line was hand-edited. | Revert the edit; drive resolution through overrides and re-run `emery plan refine` — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
 | `slice-model-schema` | `model.yaml` fails its typed schema. | Re-run `emery plan refine` (the drain re-refines the slice). |
 | `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds. | Re-run `emery plan refine` after the plan amendment. |
-| `slice-model-target-drift` | The model's recorded target diverged from the bound project's. | Re-run `emery plan refine`. |
+| `slice-model-target-drift` | The model's recorded target diverged from the bound `plan.yaml.slices[].target`. | Re-run `emery plan refine`. |
 | `slice-model-cross-ref-orphan` | A model cross-reference points at a requirement that no longer exists. | Re-run `emery plan refine`. |
 | `slice-model-claim-kind-mismatch` | A contributing claim's kind does not match its Evidence row. | Re-run `emery plan refine`. |
 | `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `emery plan refine`. |

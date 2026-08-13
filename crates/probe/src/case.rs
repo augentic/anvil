@@ -3,7 +3,8 @@
 //! Every command runs through [`native::command::execute`] — production
 //! paths, never reconstructed here; rerun from fresh state with `--restart`.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
+use std::fmt::Write as _;
 use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
@@ -12,9 +13,11 @@ use std::sync::Arc;
 
 use anyhow::{Context as _, Result, bail, ensure};
 use native::{CachePlacement, Catalog, DynModel, ExecutionPaths, Locations};
+use project::adapter::catalog::Pin;
 use project::config::Layout;
-use project::plan::Status;
+use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, Status, TargetBinding};
 use project::slice::SliceMetadata;
+use project::snapshot::SnapshotId;
 use tracing::Instrument as _;
 
 use crate::telemetry::{self, Telemetry};
@@ -59,7 +62,9 @@ pub async fn run(
         kind = %case.label(),
         until = tracing::field::Empty,
     );
-    execute(root, sandbox, id, &case, until, restart, catalog, factory).instrument(span).await
+    // Ingest on the native provider pushes this future past clippy's 16KiB cap.
+    Box::pin(execute(root, sandbox, id, &case, until, restart, catalog, factory).instrument(span))
+        .await
 }
 
 // The dispatch behind [`run`]'s `eval.case` span: sandbox policy,
@@ -118,16 +123,7 @@ async fn run_workflow(
     catalog: &Catalog, telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
     invoke(root, model, catalog, &["init", &case.target]).await?;
-
-    let mut author = vec!["plan".to_string(), "author".to_string(), case.change.clone()];
-    if let Some(intent) = &case.intent {
-        author.extend(["--intent".to_string(), intent.clone()]);
-    }
-    for (key, binding) in &case.sources {
-        author.extend(["--source".to_string(), format!("{key}={binding}")]);
-    }
-    let author: Vec<&str> = author.iter().map(String::as_str).collect();
-    invoke(root, model, catalog, &author).await?;
+    seed_authored_plan(root, &case.change, &case.sources)?;
 
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
@@ -203,6 +199,69 @@ async fn run_build(
     telemetry::report(&telemetry.counts(), 1);
     println!("eval case {id}: pass (sandbox {}, report {})", root.display(), report.display());
     Ok(())
+}
+
+/// Write a fixture `plan.yaml` + `discovery.md` from case source
+/// bindings. Wave-binding `plan author` stops at decomposition pending.
+///
+/// # Errors
+///
+/// Adapter-pin parse failures and fixture write failures.
+pub fn seed_authored_plan(
+    root: &Path, name: &str, sources: &BTreeMap<String, String>,
+) -> Result<()> {
+    let layout = Layout::new(root);
+    fs::create_dir_all(layout.change_root()).context("create change home")?;
+    let adapter = project::config::ProjectConfig::load(root)
+        .ok()
+        .and_then(|config| config.adapter)
+        .unwrap_or_else(|| "mock".into());
+    let mut plan = Plan::named(name);
+    plan.targets.insert(
+        "default".into(),
+        TargetBinding::new(
+            Pin::parse(&format!("emery:{adapter}@0.0.0")).context("target pin")?,
+            ".",
+            SnapshotId::from_digest(&"0".repeat(64)),
+        ),
+    );
+    let mut inventory = String::from("# Discovery\n\n## Lead inventory\n");
+    for (key, raw) in sources {
+        let (source_adapter, value) = parse_value_binding(raw).with_context(|| {
+            format!("case source `{key}` must be `adapter:value:…` until decomposition authoring")
+        })?;
+        plan.sources.insert(
+            key.clone(),
+            SourceBinding::intent(
+                Pin::parse(&format!("emery:{source_adapter}@0.0.0")).context("source pin")?,
+                value,
+            ),
+        );
+        let (slice, lead) =
+            if key == "main" { ("greeting", "greeting") } else { (key.as_str(), key.as_str()) };
+        if !plan.entries.iter().any(|entry| entry.name.as_str() == slice) {
+            let mut entry = Entry::named(slice, "default");
+            entry.sources = vec![SliceSourceBinding::structured(key, lead)];
+            plan.entries.push(entry);
+        } else if let Some(entry) =
+            plan.entries.iter_mut().find(|entry| entry.name.as_str() == slice)
+        {
+            entry.sources.push(SliceSourceBinding::structured(key, lead));
+        }
+        let _ = write!(
+            inventory,
+            "\n### {key}:{lead}\n\n- lead: {lead}\n- source: {key}\n- synopsis: {lead}\n"
+        );
+    }
+    plan.save(&layout.plan_path()).context("write fixture plan.yaml")?;
+    fs::write(layout.discovery_path(), inventory).context("write fixture discovery.md")?;
+    Ok(())
+}
+
+fn parse_value_binding(raw: &str) -> Option<(&str, &str)> {
+    let (adapter, rest) = raw.split_once(':')?;
+    let (kind, value) = rest.split_once(':')?;
+    (kind == "value").then_some((adapter, value))
 }
 
 // One build phase over the case's refined fixture, driven straight

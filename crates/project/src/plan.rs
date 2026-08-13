@@ -8,6 +8,7 @@ pub mod amend;
 pub mod archive;
 pub mod authority_override;
 pub mod create;
+pub mod discovery;
 pub mod doctor;
 pub mod epoch;
 mod execution;
@@ -25,14 +26,16 @@ pub mod validate;
 
 pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
+pub use discovery::{Discovery, VERSION as DISCOVERY_VERSION};
 pub use doctor::{advance_gate, author_gate, detect, full_report};
 pub use execution::{collect_events, project_ladders};
 pub use gaps::{
     DebtCounts, Deferral, Disposition, GapRow, GapsBody, SharedLeadRollup, plan_gaps_body,
 };
 pub use model::{
-    AuthorityOverride, Disagreement, DisagreementValue, Divergence, Entry, EntryPatch, Patch, Plan,
-    SliceSourceBinding, SourceBinding, Status,
+    AuthorityOverride, DefinitionIdentity, Disagreement, DisagreementValue, Divergence, Entry,
+    EntryPatch, Patch, Plan, ProfileRef, ReviewIdentity, SliceSourceBinding, SourceBinding, Status,
+    TargetBinding,
 };
 pub use pins::{close as close_source_pins, dir_cid, empty_cid, file_cid, source_cid, value_cid};
 pub use projection::{Projections, contributing_leads};

@@ -309,12 +309,9 @@ async fn stage_refined_fixture(root: &Path) {
         mock::answers::greeting_synthesis(),
     ]));
     invoke(root, &model, &["init", "mock"]).await;
-    invoke(
-        root,
-        &model,
-        &["plan", "author", "demo", "--source", "main=mock:value:The greeting service."],
-    )
-    .await;
+    let mut sources = std::collections::BTreeMap::new();
+    sources.insert("main".into(), "mock:value:The greeting service.".into());
+    case::seed_authored_plan(root, "demo", &sources).expect("seed fixture plan");
     refine_phase(root, &model, "greeting").await;
 }
 

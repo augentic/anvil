@@ -9,6 +9,7 @@ cfg_if::cfg_if! {
         use omnia_wasi_model::WasiModel;
         use omnia_wasi_blobstore::WasiBlobstore;
         use omnia_wasi_execbits::WasiExecBits;
+        use omnia_wasi_ingest::WasiIngest;
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
 
         omnia::runtime!({
@@ -46,6 +47,7 @@ cfg_if::cfg_if! {
                 // Exec-bit round-tripping for the in-guest workspace
                 // kernel — `wasi:filesystem` carries no mode bits.
                 WasiExecBits: launcher::ExecBits,
+                WasiIngest: launcher::Ingest,
                 // The snapshot object store: the filesystem blobstore
                 // anchored at the launcher's snapshots root.
                 WasiBlobstore: launcher::Blobstore,

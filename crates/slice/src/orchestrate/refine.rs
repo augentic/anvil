@@ -122,7 +122,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
     let header = ProjectionHeader {
         version: 1,
         slice: slice.to_string(),
-        project: entry.project.clone(),
+        target: Some(entry.target.clone()),
     };
     let kernel = Kernel {
         header,
@@ -357,11 +357,7 @@ fn baseline_identity(
 ) -> Result<(Vec<Surface>, Vec<Decision>), Error> {
     let config = ProjectConfig::load(Layout::new(paths.project_root()).project_dir())?;
     let topology = resolve_topology(resolver, &config, paths)?;
-    let bound = match entry.project.as_deref() {
-        Some(name) => topology.iter().find(|p| p.name == name),
-        None if topology.len() == 1 => topology.first(),
-        None => None,
-    };
+    let bound = topology.iter().find(|p| p.name == entry.target);
     Ok(bound.map(|p| (p.surface.clone(), p.decisions.clone())).unwrap_or_default())
 }
 

@@ -341,11 +341,14 @@ fn sources(
     }
     for binding in &entry.sources {
         let key = binding.source();
-        let Some(recorded) = manifest.inputs.sources.get(key) else {
-            reasons.push(format!("bound source `{key}` has no recorded digest"));
+        let Some(plan_binding) = plan.sources.get(key) else {
             continue;
         };
-        let Some(plan_binding) = plan.sources.get(key) else {
+        if plan_binding.value.is_some() {
+            continue;
+        }
+        let Some(recorded) = manifest.inputs.sources.get(key) else {
+            reasons.push(format!("bound source `{key}` has no recorded digest"));
             continue;
         };
         let current = live.source(layout, key, plan_binding)?;

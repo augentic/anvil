@@ -5,6 +5,8 @@ use std::path::Path;
 
 use error::Error;
 
+use crate::binding::{Meter, Policy};
+
 /// Directory names skipped while walking a staged source value.
 const SKIP: &[&str] = &[".git", ".emery", "node_modules", "target", "dist", "build"];
 
@@ -30,21 +32,34 @@ impl Profile {
     ///
     /// Filesystem failures while walking `root`.
     pub fn matches(&self, root: &Path) -> Result<bool, Error> {
+        self.matches_metered(root, &mut Meter::new(), &Policy::standard())
+    }
+
+    /// [`Self::matches`] charging D9 `inspected-bytes` for each file.
+    ///
+    /// # Errors
+    ///
+    /// Filesystem failures; `binding-budget-exhausted`.
+    pub fn matches_metered(
+        &self, root: &Path, meter: &mut Meter, policy: &Policy,
+    ) -> Result<bool, Error> {
         if self.paths.iter().any(|path| root.join(path).exists()) {
             return Ok(true);
         }
         if !root.exists() {
             return Ok(false);
         }
-        walk(root, self)
+        walk(root, self, meter, policy)
     }
 }
 
-fn walk(root: &Path, profile: &Profile) -> Result<bool, Error> {
+fn walk(root: &Path, profile: &Profile, meter: &mut Meter, policy: &Policy) -> Result<bool, Error> {
     if file_hits(root, profile) {
+        charge(root, meter, policy)?;
         return Ok(true);
     }
     if !root.is_dir() {
+        charge(root, meter, policy)?;
         return Ok(false);
     }
     let entries = fs::read_dir(root).map_err(|source| Error::Filesystem {
@@ -72,14 +87,33 @@ fn walk(root: &Path, profile: &Profile) -> Result<bool, Error> {
             if SKIP.iter().any(|skip| name == *skip) {
                 continue;
             }
-            if walk(&path, profile)? {
+            if walk(&path, profile, meter, policy)? {
                 return Ok(true);
             }
-        } else if file_hits(&path, profile) {
-            return Ok(true);
+        } else {
+            charge_len(meta.len(), meter, policy)?;
+            if file_hits(&path, profile) {
+                return Ok(true);
+            }
         }
     }
     Ok(false)
+}
+
+fn charge(path: &Path, meter: &mut Meter, policy: &Policy) -> Result<(), Error> {
+    let meta = fs::symlink_metadata(path).map_err(|source| Error::Filesystem {
+        op: "stat",
+        path: path.to_path_buf(),
+        source,
+    })?;
+    if meta.is_file() {
+        charge_len(meta.len(), meter, policy)?;
+    }
+    Ok(())
+}
+
+fn charge_len(len: u64, meter: &mut Meter, policy: &Policy) -> Result<(), Error> {
+    meter.bytes(len, policy)
 }
 
 fn file_hits(path: &Path, profile: &Profile) -> bool {

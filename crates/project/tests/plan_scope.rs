@@ -2,37 +2,35 @@
 //! plan-wide single-active-entry gate (D23), and fact-based advance
 //! with no stored status fields (D2 / D11).
 
-use std::collections::BTreeMap;
-
 use jiff::Timestamp;
 use mock::session::Session;
+use project::adapter::catalog::Pin;
 use project::config::{Layout, ProjectConfig};
 use project::handler::Anchor;
 use project::journal::{self, Event, EventKind};
-use project::plan::{Entry, Plan, Status, advance_gate, advance_next, in_scope, project_ladders};
+use project::plan::{
+    Entry, Plan, Status, TargetBinding, advance_gate, advance_next, in_scope, project_ladders,
+};
 use project::slice::SliceMetadata;
+use project::snapshot::SnapshotId;
+
+fn stub_target() -> TargetBinding {
+    TargetBinding::new(
+        Pin::emery("mock", semver::Version::new(0, 0, 0)),
+        ".",
+        SnapshotId::from_digest(&"0".repeat(64)),
+    )
+}
 
 fn entry(name: &str) -> Entry {
-    Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources: vec![],
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    }
+    Entry::named(name, "default")
 }
 
 fn plan(entries: Vec<Entry>) -> Plan {
-    Plan {
-        name: "test".into(),
-        sources: BTreeMap::new(),
-        entries,
-    }
+    let mut plan = Plan::named("test");
+    plan.targets.insert("default".into(), stub_target());
+    plan.entries = entries;
+    plan
 }
 
 fn meta() -> SliceMetadata {

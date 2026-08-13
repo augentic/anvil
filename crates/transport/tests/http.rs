@@ -28,7 +28,10 @@ async fn send(router: Router, request: Request<Body>) -> (StatusCode, serde_json
 fn stage_plan(root: &Path) {
     let path = root.join(".emery/change/plan.yaml");
     fs::create_dir_all(path.parent().expect("parent")).expect("change home");
-    fs::write(&path, "name: demo\nsources: {}\nslices:\n  - name: first\n  - name: second\n")
+    fs::write(
+        &path,
+        "name: demo\ntargets:\n  default:\n    adapter: emery:mock@0.0.0\n    locator: \".\"\n    cid: sha256:0000000000000000000000000000000000000000000000000000000000000000\nslices:\n  - name: first\n    target: default\n  - name: second\n    target: default\n",
+    )
         .expect("stage plan.yaml");
 }
 

@@ -6,9 +6,9 @@ use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Namespace, Router, RouterBuilder, run};
 use omnia_guest::api::invoke::Invoker;
-use project::adapter::Resolver;
+use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Ingest, Source, Target, Workspaces};
 
 use super::change_dir::ChangeDir;
 use super::{EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, target};
@@ -97,7 +97,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
 )]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces,
+    P: Provider + Anchor + Model + Resolver + Inventory + Source + Target + Workspaces + Ingest,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -251,8 +251,8 @@ where
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nWhen the baseline carries deferred debt, `change.md` also renders the carried-debt inventory (the same backlog `emery debt` projects), so a corrective change is scoped with it in view. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml`",
+        "Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml` (empty `slices[]` until decomposition lands).\n\nRequires `--from <definition-home>` and `--wave <id>`. Copies the handoff and review envelopes under `imports/`, ingests target and source locators, pins adapters, and records the canonical discovery digest. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` rebinds the same reviewed handoff. Intent arrives only through the handoff — there is no `--intent` or `--source` authoring flag. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "refine"],
@@ -364,11 +364,11 @@ convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {} ; drop cha
 convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {} ; drop change_dir);
 convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice } ; drop change_dir);
 convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {} ; drop change_dir);
-convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override } ; drop change_dir);
+convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override, target } ; drop change_dir);
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace } ; drop change_dir);
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name } ; drop change_dir);
 convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason } ; drop change_dir);
-convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, from, wave, force } ; drop change_dir);
+convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, from, wave, force } ; drop change_dir);
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force } ; drop change_dir);
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit } ; drop change_dir);
 convert!(DebtArgs => ::slice::handlers::DebtInput {} ; drop change_dir);

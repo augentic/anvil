@@ -423,10 +423,11 @@ fn build_context(layout: Layout<'_>, slice: &str) -> Result<BuildContext, Error>
     };
     let mut sources = Vec::new();
     for binding in &entry.sources {
-        if let Some(bound) = plan.sources.get(&binding.source)
-            && !sources.contains(&bound.adapter)
-        {
-            sources.push(bound.adapter.clone());
+        if let Some(bound) = plan.sources.get(&binding.source) {
+            let name = bound.adapter.name.clone();
+            if !sources.contains(&name) {
+                sources.push(name);
+            }
         }
     }
     Ok(BuildContext { sources })

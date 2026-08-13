@@ -89,6 +89,9 @@ fn source_pins(plan: &Plan, entry: &Entry) -> Result<BTreeMap<String, SnapshotId
                 ),
             });
         };
+        if bound.value.is_some() {
+            continue;
+        }
         let Some(cid) = bound.cid.clone() else {
             return Err(Error::Diag {
                 code: "slice-refinement-pin-missing",

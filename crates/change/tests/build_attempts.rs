@@ -16,10 +16,7 @@ use slice::BuildStatus;
 
 /// Author + refine the greeting fixture against `target_adapter`.
 async fn ready(target_adapter: &str) -> Session {
-    let session = Session::scripted(
-        target_adapter,
-        vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()],
-    );
+    let session = Session::scripted(target_adapter, vec![mock::answers::greeting_synthesis()]);
     support::greeting_ready(&session).await;
     session
 }

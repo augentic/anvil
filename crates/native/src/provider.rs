@@ -177,16 +177,9 @@ impl Provider {
                 }
                 let entry = self.catalog.get(axis, name)?;
                 let linked = entry_version(&entry)?;
-                // Unpublished adapters carry the `0.0.0` development
-                // placeholder; they remain bare-only identities for
-                // pin matching.
-                if linked == PLACEHOLDER {
-                    return Err(not_linked(format!(
-                        "adapter `{selector}` (axis `{axis}`): the linked `{name}` carries the \
-                         development placeholder version {PLACEHOLDER} and matches only a bare \
-                         reference"
-                    )));
-                }
+                // Detached topology records every binding as an exact
+                // pin, including native mock identities compiled at
+                // `0.0.0`. Match the compiled version exactly.
                 if linked == *version {
                     Ok(entry)
                 } else {
@@ -404,6 +397,32 @@ impl seam::Workspaces for Provider {
     }
 }
 
+impl seam::Ingest for Provider {
+    async fn fetch(
+        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
+    ) -> Result<seam::Fetched, seam::Error> {
+        let store = self.store();
+        let scratch = self.workspaces_root().join("ingest");
+        std::fs::create_dir_all(&scratch).map_err(|source| {
+            seam::Error::Io(format!("create ingest scratch {}: {source}", scratch.display()))
+        })?;
+        let policy = project::binding::Policy::standard();
+        let mut meter = project::binding::Meter::new();
+        let mut cache = project::binding::Cache::new();
+        let mut session = project::binding::Session {
+            store: &store,
+            scratch: &scratch,
+            change_root: self.paths.change_root(),
+            cache: &mut cache,
+            policy: &policy,
+            meter: &mut meter,
+        };
+        project::binding::fetch_locator(&mut session, &locator, recorded.as_ref(), prior.as_deref())
+            .await
+            .map_err(|err| seam::Error::Internal(err.to_string()))
+    }
+}
+
 /// Map a workspace-kernel failure onto the seam error contract.
 fn workspace_failure(err: &Error) -> seam::Error {
     seam::Error::Internal(err.to_string())
@@ -415,10 +434,6 @@ fn workspace_failure(err: &Error) -> seam::Error {
 fn host_absolute(path: &std::path::Path) -> String {
     std::path::absolute(path).unwrap_or_else(|_io| path.to_path_buf()).display().to_string()
 }
-
-/// The development placeholder version unpublished adapters compile
-/// with; placeholder identities match only bare references.
-const PLACEHOLDER: semver::Version = semver::Version::new(0, 0, 0);
 
 /// The exact compiled version a catalog entry resolves as.
 fn entry_version(entry: &Entry) -> Result<semver::Version, Error> {

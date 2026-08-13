@@ -243,6 +243,40 @@ impl seam::Workspaces for Provider {
     }
 }
 
+impl seam::Ingest for Provider {
+    fn fetch(
+        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
+    ) -> impl Future<Output = Result<seam::Fetched, seam::Error>> + Send {
+        async move {
+            use crate::bindings::emery::ingest::ingest;
+            let fetched = ingest::fetch(locator, recorded.as_ref().map(ToString::to_string), prior)
+                .await
+                .map_err(ingest_error)?;
+            let cid = SnapshotId::parse(&fetched.cid).map_err(|err| {
+                seam::Error::InvalidRequest(format!("host ingest returned a malformed cid: {err}"))
+            })?;
+            Ok(seam::Fetched {
+                locator: fetched.locator,
+                cid,
+                root: fetched.root,
+                warning: fetched.warning,
+            })
+        }
+    }
+}
+
+fn ingest_error(err: crate::bindings::emery::ingest::types::Error) -> seam::Error {
+    match err {
+        crate::bindings::emery::ingest::types::Error::InvalidRequest(detail) => {
+            seam::Error::InvalidRequest(detail)
+        }
+        crate::bindings::emery::ingest::types::Error::Io(detail) => seam::Error::Io(detail),
+        crate::bindings::emery::ingest::types::Error::Internal(detail) => {
+            seam::Error::Internal(detail)
+        }
+    }
+}
+
 /// Map a workspace-kernel failure onto the seam error contract.
 fn workspace_failure(err: &Error) -> seam::Error {
     seam::Error::Internal(err.to_string())

@@ -66,8 +66,8 @@ fn bare_resolution() {
     assert_eq!(unknown.variant_str(), "adapter-not-linked");
 }
 
-// An exact package pin succeeds only on the exact compiled identity
-// of a published adapter; placeholder identities are bare-only.
+// An exact package pin succeeds on the exact compiled identity,
+// including native mock identities compiled at `0.0.0`.
 #[tokio::test]
 async fn exact_pin_matching() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -92,14 +92,16 @@ async fn exact_pin_matching() {
     // The refusal names the linked identity the pin missed.
     assert!(err.to_string().contains("pinned@1.2.3"), "{err}");
 
-    // The mock probe compiles with the `0.0.0` development
-    // placeholder, so even its "exact" pin refuses: unpublished
-    // identities match only bare references.
     let placeholder = AdapterSelector::parse("emery:mock@0.0.0").expect("package selector");
-    let err =
-        provider.ensure_target(&placeholder, &paths).await.expect_err("a placeholder pin refuses");
-    assert_eq!(err.variant_str(), "adapter-not-linked");
-    assert!(err.to_string().contains("placeholder"), "{err}");
+    let resolved = provider
+        .ensure_target(&placeholder, &paths)
+        .await
+        .expect("an exact pin matching the compiled identity ensures");
+    assert_eq!(resolved.manifest.name, "mock");
+    assert_eq!(
+        resolved.manifest.version.as_ref().map(ToString::to_string).as_deref(),
+        Some("0.0.0")
+    );
 }
 
 // A local component selector can never select a same-named compiled

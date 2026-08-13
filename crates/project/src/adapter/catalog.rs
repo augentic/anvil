@@ -16,7 +16,7 @@ pub use profile::Profile;
 
 use crate::Platform;
 use crate::adapter::PlatformsCapability;
-use crate::binding::Origin;
+use crate::binding::{Meter, Origin, Policy};
 
 /// Reserved source-adapter name and source key.
 pub const INTENT: &str = "intent";
@@ -128,10 +128,30 @@ impl Catalog {
 /// `source-adapter-no-match` / `source-adapter-ambiguous` on
 /// fingerprint failure.
 pub fn select(catalog: &Catalog, hint: Hint<'_>, origin: &Origin) -> Result<Pin, Error> {
+    select_metered(catalog, hint, origin, None)
+}
+
+/// [`select`] charging D9 `inspected-bytes` on fingerprint walks.
+///
+/// # Errors
+///
+/// The same codes as [`select`], plus `binding-budget-exhausted`.
+pub fn select_metered(
+    catalog: &Catalog, hint: Hint<'_>, origin: &Origin, budget: Option<(&mut Meter, &Policy)>,
+) -> Result<Pin, Error> {
     match hint {
         Hint::Pin(raw) => reuse(raw, origin),
-        Hint::Open(root) => fingerprint(catalog, root, origin),
+        Hint::Open(root) => fingerprint(catalog, root, origin, budget),
     }
+}
+
+/// Overlay a host-resolved version onto a fingerprint-selected pin.
+#[must_use]
+pub fn overlay(mut pin: Pin, version: Option<semver::Version>) -> Pin {
+    if let Some(version) = version {
+        pin.version = version;
+    }
+    pin
 }
 
 fn reuse(raw: &str, origin: &Origin) -> Result<Pin, Error> {
@@ -142,7 +162,9 @@ fn reuse(raw: &str, origin: &Origin) -> Result<Pin, Error> {
     Ok(pin)
 }
 
-fn fingerprint(catalog: &Catalog, root: &Path, origin: &Origin) -> Result<Pin, Error> {
+fn fingerprint(
+    catalog: &Catalog, root: &Path, origin: &Origin, mut budget: Option<(&mut Meter, &Policy)>,
+) -> Result<Pin, Error> {
     if matches!(origin, Origin::Value(_)) {
         return Err(no_match(root));
     }
@@ -151,7 +173,11 @@ fn fingerprint(catalog: &Catalog, root: &Path, origin: &Origin) -> Result<Pin, E
         let Recognition::Profile(profile) = &source.recognition else {
             continue;
         };
-        if profile.matches(root)? {
+        let matched = match budget.as_mut() {
+            Some((meter, policy)) => profile.matches_metered(root, meter, policy)?,
+            None => profile.matches(root)?,
+        };
+        if matched {
             hits.push(source);
         }
     }

@@ -7,10 +7,33 @@
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
-use change::plan::wire::SourceAssign;
+use std::fmt::Write as _;
+
 use mock::session::Session;
+use project::adapter::catalog::Pin;
 use project::handler::Anchor as _;
-use serde_json::json;
+use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, TargetBinding};
+use project::snapshot::SnapshotId;
+
+/// Stub `plan.yaml.targets.default` row for in-memory plans.
+#[must_use]
+pub fn stub_target() -> TargetBinding {
+    stub_target_named("mock")
+}
+
+fn stub_target_named(adapter: &str) -> TargetBinding {
+    TargetBinding::new(
+        Pin::emery(adapter, semver::Version::new(0, 0, 0)),
+        ".",
+        SnapshotId::from_digest(&"0".repeat(64)),
+    )
+}
+
+/// Value-backed source row with an exact pin.
+#[must_use]
+pub fn source_value(adapter: &str, value: &str) -> SourceBinding {
+    SourceBinding::intent(Pin::emery(adapter, semver::Version::new(0, 0, 0)), value)
+}
 
 /// Drain the serial refinement stage through the public `plan refine`
 /// handler over every in-scope leaf (RFC-91 D1/D7).
@@ -48,7 +71,7 @@ pub async fn refine_slices(
 ///
 /// Panics when the manifest is absent or unreadable.
 #[must_use]
-pub fn manifest_digest(root: &std::path::Path, slice: &str) -> project::snapshot::SnapshotId {
+pub fn manifest_digest(root: &std::path::Path, slice: &str) -> SnapshotId {
     slice::refinement::file_digest(&project::config::Layout::new(root).slice_dir(slice))
         .expect("read refinement manifest")
         .expect("refinement manifest present")
@@ -65,7 +88,7 @@ pub fn manifest_digest(root: &std::path::Path, slice: &str) -> project::snapshot
 /// Panics when the plan, the entry, or a write is unavailable.
 pub fn stage_manifest(root: &std::path::Path, slice: &str) {
     let layout = project::config::Layout::new(root);
-    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
+    let plan = Plan::load(&layout.plan_path()).expect("plan.yaml");
     let entry =
         plan.entries.iter().find(|e| e.name == slice).expect("plan entry for slice").clone();
     let slice_dir = layout.slice_dir(slice);
@@ -123,7 +146,7 @@ pub async fn refine(
     let caps = slice::orchestrate::Capabilities::provider(provider);
     let paths = provider.paths();
     let layout = project::config::Layout::new(paths.project_root());
-    let plan = project::plan::Plan::load(&layout.plan_path())?;
+    let plan = Plan::load(&layout.plan_path())?;
     let entry = plan
         .entries
         .iter()
@@ -193,107 +216,116 @@ pub async fn merge(
     slice::orchestrate::merge(provider, layout, jiff::Timestamp::now(), slice, false).await
 }
 
-/// The single `main` binding onto the minimal mock source.
-///
-/// # Panics
-///
-/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
+/// The single `main` value binding onto the minimal mock source.
 #[must_use]
-pub fn greeting_binding() -> Vec<SourceAssign> {
-    greeting_binding_for("mock")
+pub fn greeting_sources() -> Vec<(&'static str, &'static str, &'static str)> {
+    vec![("main", "mock", "The greeting service.")]
 }
 
-/// The single `main` binding onto the named mock source adapter
-/// (for the typed-failure profiles).
+/// Write a fixture `plan.yaml` + `discovery.md` for tests that used to
+/// call survey-driven `plan author`. Binding-phase authoring stops at
+/// decomposition pending until that stage lands.
+///
+/// `sources` is `(key, adapter, value)`; `slices` is `(name, source, lead)`.
 ///
 /// # Panics
 ///
-/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
-#[must_use]
-pub fn greeting_binding_for(adapter: &str) -> Vec<SourceAssign> {
-    let main: SourceAssign = serde_json::from_value(
-        json!({ "key": "main", "adapter": adapter, "value": "The greeting service." }),
-    )
-    .expect("mock binding parses");
-    vec![main]
-}
-
-/// The adversarial two-source pair: a docs source and a code source,
-/// both served by the mock core under different adapter names.
-///
-/// # Panics
-///
-/// Panics when a binding JSON stops parsing as a [`SourceAssign`].
-#[must_use]
-pub fn adversarial_bindings() -> Vec<SourceAssign> {
-    ["docs", "code"]
-        .map(|key| {
-            serde_json::from_value(json!({
-                "key": key,
-                "adapter": format!("mock-{key}"),
-                "value": format!("The {key} source."),
-            }))
-            .expect("mock binding parses")
-        })
-        .to_vec()
+/// Panics when the fixture write fails.
+pub fn write_plan_fixture(
+    root: &std::path::Path, name: &str, sources: &[(&str, &str, &str)],
+    slices: &[(&str, &str, &str)],
+) {
+    let layout = project::config::Layout::new(root);
+    std::fs::create_dir_all(layout.change_root()).expect("change home");
+    let mut plan = Plan::named(name);
+    let adapter = project::config::ProjectConfig::load(root)
+        .ok()
+        .and_then(|config| config.adapter)
+        .unwrap_or_else(|| "mock".into());
+    plan.targets.insert("default".into(), stub_target_named(&adapter));
+    for (key, adapter, value) in sources {
+        plan.sources.insert((*key).into(), source_value(adapter, value));
+    }
+    let mut inventory = String::from("# Discovery\n\n## Lead inventory\n");
+    for (slice, source, lead) in slices {
+        if plan.entries.iter().any(|entry| entry.name.as_str() == *slice) {
+            let entry =
+                plan.entries.iter_mut().find(|entry| entry.name.as_str() == *slice).expect("slice");
+            entry.sources.push(SliceSourceBinding::structured(*source, *lead));
+        } else {
+            let mut entry = Entry::named(*slice, "default");
+            entry.sources = vec![SliceSourceBinding::structured(*source, *lead)];
+            plan.entries.push(entry);
+        }
+        let _ = write!(
+            inventory,
+            "\n### {source}:{lead}\n\n- lead: {lead}\n- source: {source}\n- synopsis: {lead}\n"
+        );
+    }
+    plan.save(&layout.plan_path()).expect("plan.yaml");
+    std::fs::write(layout.discovery_path(), inventory).expect("discovery.md");
 }
 
 /// A minimal in-memory plan named `test` wrapping `changes`.
 #[must_use]
-pub fn plan_with_changes(changes: Vec<project::plan::Entry>) -> project::plan::Plan {
-    project::plan::Plan {
-        name: "test".into(),
-        sources: std::collections::BTreeMap::new(),
-        entries: changes,
-    }
+pub fn plan_with_changes(changes: Vec<Entry>) -> Plan {
+    let mut plan = Plan::named("test");
+    plan.targets.insert("default".into(), stub_target());
+    plan.entries = changes;
+    plan
 }
 
-/// A minimal plan entry bound to project `default`.
+/// A minimal plan entry bound to target `default`.
 #[must_use]
-pub fn change(name: &str) -> project::plan::Entry {
-    project::plan::Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources: vec![],
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    }
+pub fn change(name: &str) -> Entry {
+    Entry::named(name, "default")
 }
 
 /// [`change()`] plus a `depends-on` list.
 #[must_use]
-pub fn change_with_deps(name: &str, deps: &[&str]) -> project::plan::Entry {
+pub fn change_with_deps(name: &str, deps: &[&str]) -> Entry {
     let mut entry = change(name);
     entry.depends_on = deps.iter().map(|s| (*s).into()).collect();
     entry
 }
 
-/// Author the single-slice greeting plan and refine it to Refined —
-/// the fixture floor for the RFC-90 build-phase suites.
+/// Write a fixture greeting plan and refine it to Refined — the floor
+/// for the RFC-90 build-phase suites. Wave-binding authoring stops at
+/// decomposition pending, so this path no longer calls `plan author`.
 ///
 /// # Panics
 ///
-/// Panics when author or refine fails.
+/// Panics when the fixture write or refine fails.
 pub async fn greeting_ready(session: &Session) {
-    mock::invoke::run::<change::plan::handlers::Author, _, _>(
-        session.provider(),
-        change::plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    let root = session.provider().paths().project_root();
+    write_greeting_plan(root);
     refine(session, "greeting").await.expect("refine");
+}
+
+/// Adversarial two-source fixture used by refine/execute suites that
+/// previously went through survey-driven authoring.
+pub fn write_adversarial_plan(root: &std::path::Path) {
+    write_plan_fixture(
+        root,
+        "auth",
+        &[("docs", "mock-docs", "The docs source."), ("code", "mock-code", "The code source.")],
+        &[
+            ("login-flow", "docs", "login-flow"),
+            ("login-flow", "code", "login-flow"),
+            ("session-policy", "docs", "session-timeout"),
+            ("session-policy", "code", "session-timeout"),
+            ("password-reset", "docs", "password-reset"),
+        ],
+    );
+}
+
+pub fn write_greeting_plan(root: &std::path::Path) {
+    write_plan_fixture(
+        root,
+        "demo",
+        &[("main", "mock", "The greeting service.")],
+        &[("greeting", "main", "greeting")],
+    );
 }
 
 /// Drop one mock control-plane marker file at the project root.

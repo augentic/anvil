@@ -76,16 +76,16 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 
 ### `emery plan author`
 
-The guest-routed authoring orchestration: survey per bound source, reconcile leads into `slices[]`, persist the review prose, validate, exit for operator review. `hint` is the literal closing line the `/emery:plan` skill relays.
+The guest-routed wave-binding phase: import a reviewed handoff, write `discovery.yaml` and a skeleton `plan.yaml`, and stop until decomposition. `pending` is the typed stop (`decomposition`); `hint` is the closing line the `/emery:plan` skill relays.
 
 ```json
 {
   "plan": "identity-revamp",
-  "surveyed": [
-    { "source": "docs", "adapter": "documentation", "leads": ["identity-api"] }
-  ],
-  "slices": ["identity-contracts", "identity-service"],
-  "hint": "Plan `identity-revamp` is authored. Review it, then run `emery plan refine` to generate every slice's specification bundle; `emery plan execute` builds the refined slices afterwards."
+  "discovery-digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "targets": ["app"],
+  "sources": ["intent"],
+  "pending": "decomposition",
+  "hint": "decomposition pending; later authoring phases land with the decomposition step"
 }
 ```
 

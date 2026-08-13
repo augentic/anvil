@@ -6,7 +6,7 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 
 | Verb | When to use |
 |------|-------------|
-| [`author`](#emery-plan-author) | Guest-routed authoring orchestration: scaffold `plan.yaml` (refuses an existing plan unless `--force` recreates it), survey every bound source, reconcile leads into `slices[]`, validate, exit with the review hint (the literal `emery plan refine` command). Invoked by `/emery:plan`. |
+| [`author`](#emery-plan-author) | Bind a reviewed handoff (`--from` / `--wave`) into `discovery.yaml` and a skeleton `plan.yaml` (empty `slices[]` until decomposition). Refuses an existing plan unless `--force` rebinds the same reviewed handoff. Invoked by `/emery:plan`. |
 | [`refine`](#emery-plan-refine) | Guest-routed serial refinement drain: per in-scope leaf in dependency order, extract every bound source, synthesize + validate the slice artifacts, atomically write `refinement.yaml`. Fresh manifests are skipped; no code work. Invoked by `/emery:refine`. Optional repeated `--slice` selectors. |
 | [`execute`](#emery-plan-execute) | Guest-routed driver loop: requires a fresh refinement manifest per in-scope leaf, at start appends `plan.execute.started` (authorization epoch covering the exact refinement digests), then claims → builds → merges per entry under gap gates until `drained` or a stop. Holds the `.emery/change/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan (projects `pending` until claimed). |
@@ -23,29 +23,28 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 
 ### emery plan author
 
-Guest-routed authoring orchestration — scaffold, survey, reconcile, validate, exit for operator review. Invoked by `/emery:plan`.
+Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml`. Invoked by `/emery:plan`. Decomposition into `slices[]` lands in a later authoring phase.
 
 ```bash
-emery plan author <name> [--source <key>=<adapter>:<binding>]... [--intent "<string>"] [--force]
+emery plan author <name> --from <definition-home> --wave <id> [--force]
 ```
 
 | Argument | Description |
 |----------|-------------|
 | `name` | Kebab-case change name. |
-| `--source` | Repeatable structured binding `<key>=<adapter>:<binding>`. `<key>` is an operator-chosen label for the binding — it becomes the slot name in `plan.yaml.sources` that plan entries and evidence files reference (e.g. `legacy`, `docs`); pick anything kebab-case and memorable. `<adapter>` is an explicit kebab-case source adapter name. `<binding>` is either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Example: `--source legacy=typescript:./legacy`. |
-| `--intent` | Sugar for a single implicit `intent` value binding. |
-| `--force` | Recreate an existing plan unconditionally, whatever its entry statuses (no archive — the previous `plan.yaml` is simply overwritten). `/emery:plan` confirms before passing it. |
+| `--from` | Reviewed definition home. Relative values join the product root in-place (`.emery/system/` for a colocated degenerate definition) or the change home when detached. |
+| `--wave` | Wave id inside the definition named by `--from`. |
+| `--force` | Rebind the same reviewed handoff. A changed wave needs a new handoff and review fact (`plan-author-handoff-changed`). Without `--force` an existing `plan.yaml` refuses with `plan-already-exists`. `/emery:plan` confirms before passing it. |
 
-Exit codes: `0` success (exits with the review hint); `2` for `plan-already-exists` (present plan without `--force`) and reconcile validation failures (see [Lead reconciliation](#lead-reconciliation-inside-emery-plan-author)); `1` for adapter resolution and I/O failures.
+Exit codes: `0` success (`pending: decomposition`); `2` for `plan-already-exists`, missing/ambiguous handoff, and binding validation failures; `1` for ingest and I/O failures.
 
-JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-plan-author) — surveyed sources, slice count, and the literal review `hint`.
+JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-plan-author) — bound targets and sources, the discovery digest, and `pending: decomposition`.
 
 Behavior notes:
 
-- **Order of operations.** Every binding is resolved up front, then `plan.yaml` is scaffolded under `.emery/change/`, then the survey and reconcile legs run. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
-- **Bare adapter names** persist bare in `plan.yaml` (no auto version stamp). A cache-seeded binding (`emery adapter add`) resolves the seed; an unseeded bare name resolves local-first — newest installed store version, else pull-latest provisioning. The resolved version is logged to stderr; the survey fan-out and every later `plan refine` extract dispatch the same local resolution.
-- **Explicit pins** (`emery:<name>@<semver>`) stamp `version:` on the binding and install through the standard pull-on-miss path.
-- **`--intent`** creates an implicit `intent` value binding that rides the same resolution rules.
+- **Order of operations.** Resolve the current reviewed handoff, copy byte-identical envelopes under `imports/`, ingest target and source locators, pin adapters, write `discovery.yaml`, and stamp `plan.yaml.discovery-digest`. `slices[]` stays empty until decomposition.
+- **Intent** arrives only through the handoff evidence scope (reserved key `intent`, value-only, no locator, no CID). There is no `--intent` or `--source` authoring flag.
+- **Exact pins.** Every bound source and target records `emery:<name>@<semver>`. Bare names are refused on the plan topology.
 
 ### emery plan refine
 

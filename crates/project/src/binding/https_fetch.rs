@@ -4,10 +4,11 @@ use std::io::Read as _;
 use std::net::ToSocketAddrs as _;
 
 use error::Error;
-use project::binding::{self, Meter, Policy};
 use reqwest::blocking::Client;
 use reqwest::header::LOCATION;
 use reqwest::redirect::Policy as Redirect;
+
+use super::{Meter, Policy, check_https, is_private, raw_github};
 
 /// Fetch `url` following at most `policy.https_redirects` hops.
 ///
@@ -19,8 +20,8 @@ use reqwest::redirect::Policy as Redirect;
 /// URL-gate diagnostics, `https-fetch-failed`, `https-redirect-limit`,
 /// `https-body-limit`, `binding-budget-exhausted`.
 pub fn fetch(url: &str, policy: &Policy, meter: &mut Meter) -> Result<Vec<u8>, Error> {
-    let url = binding::raw_github(url);
-    binding::check_https(&url)?;
+    let url = raw_github(url);
+    check_https(&url)?;
     pull(&url, policy, meter, true)
 }
 
@@ -35,7 +36,7 @@ fn resolved_ip(host: &str) -> Result<(), Error> {
         detail: format!("failed to resolve `{host}`: {err}"),
     })?;
     for addr in addrs {
-        if binding::is_private(addr.ip()) {
+        if is_private(addr.ip()) {
             return Err(Error::Diag {
                 code: "locator-private-network",
                 detail: format!("HTTPS locator host `{host}` resolved to a private network"),
@@ -55,7 +56,7 @@ fn pull(start: &str, policy: &Policy, meter: &mut Meter, gate: bool) -> Result<V
     for hop in 0..=policy.https_redirects {
         meter.time(policy)?;
         if gate {
-            binding::check_https(&url)?;
+            check_https(&url)?;
             if let Some(host) = host_of(&url) {
                 resolved_ip(&host)?;
             }

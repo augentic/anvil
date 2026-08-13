@@ -1,248 +1,456 @@
-//! The plan-authoring orchestrator behind `/emery:plan`: scaffold →
-//! survey fan-out → pin close → reconcile → persist → validate. The
-//! run never executes the plan — execution stays operator-only.
+//! Wave-binding phase of `plan author`: import a reviewed handoff,
+//! ingest locators, write `discovery.yaml`, and stop until decomposition.
 
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
-use artifacts::atomic::bytes_write;
-use artifacts::discovery::Discovery;
-use diagnostics::has_blocking;
 use error::Error;
-use jiff::Timestamp;
-use omnia_guest::Model;
-use project::adapter::Resolver;
-use project::config::{Layout, Mutation, ProjectConfig, with_state};
+use project::adapter::catalog::{self, Hint, Pin, Row};
+use project::adapter::{Inventory, Resolver};
+use project::binding::{Location, Origin, Policy};
+use project::config::{Layout, ProjectConfig};
+use project::definition::{self, Home, INTENT, Reviewed, Scope};
 use project::handler::ExecutionPaths;
-use project::journal::{self, Event, EventKind};
-use project::name::SliceName;
 use project::plan::{
-    GateProse, Plan, ProjectRef, ProposalResponse, SourceBinding, author_gate, build_request,
-    collect_events, project_ladders, resolve_topology,
+    DISCOVERY_VERSION, DefinitionIdentity, Discovery, Plan, ReviewIdentity, SourceBinding,
+    TargetBinding,
 };
-use project::seam::Source;
+use project::seam::{self, Ingest};
+use project::snapshot::SnapshotId;
 
-use super::SurveyedSource;
-use crate::judgment::propose::{self, GateContext};
-
-/// The result of a completed [`author`]: the authored plan with its
-/// proposed slices, plus the literal execute hint for the operator.
+/// Binding-phase result: topology written, decomposition still pending.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorOutcome {
-    /// The authored plan's name.
+    /// Change name.
     pub plan: String,
-    /// Per-source survey results, in plan-binding order.
-    pub surveyed: Vec<SurveyedSource>,
-    /// Proposed slice names written to `plan.yaml.slices[]`, in the
-    /// agent's response order.
-    pub slices: Vec<String>,
-    /// The literal closing hint the `/emery:plan` skill prints —
-    /// execution stays operator-only, so the orchestrator relays the
-    /// command instead of running it.
+    /// Canonical `discovery.yaml` digest.
+    pub discovery_digest: SnapshotId,
+    /// Bound target ids.
+    pub targets: Vec<String>,
+    /// Bound source keys.
+    pub sources: Vec<String>,
+    /// The typed stop until decomposition lands.
+    pub pending: String,
+    /// Operator hint.
     pub hint: String,
 }
 
-/// Author one plan end-to-end: scaffold → survey fan-out → reconcile →
-/// project slices → persist review prose → validate → exit for
-/// operator review.
-///
-/// `bindings` is the desugared `--source` / `--intent` map (the shape
-/// the scaffold kernel hands `Plan::init`).
+/// Bind a reviewed handoff into `discovery.yaml` and a skeleton `plan.yaml`.
 ///
 /// # Errors
 ///
-/// - `change-name-not-kebab` / `plan-already-exists` from the scaffold
-///   kernel's gates.
-/// - survey fan-out failures from [`super::survey_all`] (earlier
-///   sources stay merged — the native partial-progress posture).
-/// - the judgment leg's model / schema / kernel / gate-prose failures
-///   once the repair budget is exhausted.
-/// - `plan-structural-errors` when the doctor sweep finds blocking
-///   findings after the write.
+/// Definition resolve, ingest, catalog, overwrite, and validation failures.
 #[tracing::instrument(name = "plan.author", skip_all, fields(plan = %name))]
-pub async fn author<P: Model, S: Source, R: Resolver>(
-    caps: super::Capabilities<'_, P, S, (), R>, paths: &ExecutionPaths, now: Timestamp, name: &str,
-    bindings: BTreeMap<String, SourceBinding>, force: bool,
+pub async fn author<P: Resolver + Inventory + Ingest>(
+    provider: &P, paths: &ExecutionPaths, name: &str, from: &Path, wave: &str, force: bool,
 ) -> Result<AuthorOutcome, Error> {
-    // Authoring never dispatches the target seam — the bundle carries
-    // the unit placeholder (see `Capabilities::sans_targets`).
-    let super::Capabilities {
-        model,
-        sources,
-        resolver,
-        ..
-    } = caps;
-    let layout = Layout::new(paths.project_root());
-    tracing::info!("plan authoring started");
-    // Ensure every binding before the scaffold write and survey fan-out
-    // so an unresolvable adapter fails fast with nothing on disk; a bare
-    // name persists bare — only an explicit package pin stamps `version`.
-    for binding in bindings.values() {
-        resolver.ensure_source(&binding.selector(), paths).await?;
+    project::name::validate_name(name)?;
+    let from = resolve_from(paths, from);
+    let reviewed = definition::resolve(&from, wave)?;
+    let layout = paths.layout();
+    let plan_path = layout.plan_path();
+    let existing = load_existing(&plan_path)?;
+    refuse_overwrite(existing.as_ref(), &reviewed, force, &plan_path)?;
+
+    std::fs::create_dir_all(layout.change_root())?;
+    copy_imports(&from, &layout, &reviewed)?;
+
+    let catalog = provider.inventory();
+    let mut intern = BTreeMap::new();
+    let targets = bind_targets(provider, &reviewed, existing.as_ref(), &mut intern).await?;
+    let (source_rows, source_pins) =
+        bind_sources(provider, catalog, paths, &reviewed, existing.as_ref(), &mut intern).await?;
+    let prior = prior_keys(existing.as_ref());
+    let keys = catalog::assign(&source_rows, &prior)?;
+    let mut sources = BTreeMap::new();
+    for (key, row) in keys.into_iter().zip(source_rows) {
+        let binding = match row.origin {
+            Origin::Value(value) => SourceBinding::intent(row.pin, value),
+            Origin::Location(_) => {
+                let (locator, cid) = source_pins
+                    .get(&catalog::identity(&row))
+                    .cloned()
+                    .ok_or_else(|| Error::Diag {
+                        code: "source-pin-missing",
+                        detail: format!("source `{key}` has no cid pin after ingest"),
+                    })?;
+                SourceBinding::located(row.pin, locator, cid)
+            }
+        };
+        binding.validate(&key)?;
+        sources.insert(key, binding);
     }
-    scaffold(layout, name, bindings, force)?;
-    let surveyed = super::survey_all(sources, resolver, paths, now).await?;
 
-    // Source set is closed: record per-source tree `cid` pins before
-    // reconciliation. Refinement later records these in the slice's
-    // refinement manifest.
-    with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
-        project::plan::close_source_pins(plan, paths.project_root()).map(Mutation::changed)
-    })?;
-
-    let discovery = Discovery::load(&layout.discovery_path())?;
-    let topology = load_topology(resolver, paths)?;
-    let request = build_request(&discovery, &topology)?;
-
-    let plan = Plan::load(&layout.plan_path())?;
-    let events = collect_events(layout)?;
-    let ladders = project_ladders(&plan, &events);
-    let context = GateContext {
-        plan: plan.name.as_str(),
-        sources: &plan.sources,
+    let definition = identity(&reviewed);
+    let discovery = Discovery {
+        version: DISCOVERY_VERSION,
+        definition: definition.clone(),
+        targets: targets.clone(),
+        sources: sources.clone(),
     };
-    // The check is the kernel-projection dry run plus the gate-prose
-    // round-trip, so a rejectable grouping — or prose that would corrupt
-    // discovery.md — is repaired in-loop rather than after the call.
-    let mut response = propose::reconcile(model, &request, Some(context), |candidate| {
-        let mut throwaway = plan.clone();
-        throwaway.propose_from(candidate.clone(), &discovery, &topology, &ladders)?;
-        check_gate(candidate, name, &discovery)
-    })
-    .await?;
-    let Some(gate) = response.gate.take() else {
-        // Unreachable — the check refused gate-less answers — but a
-        // typed refusal beats a panic if the invariant ever slips.
-        return Err(gate_missing());
-    };
+    discovery.validate()?;
+    let discovery_digest = discovery.digest()?;
+    std::fs::create_dir_all(layout.imports_dir())?;
+    discovery.save(&layout.discovery_yaml_path())?;
 
-    // The accepted projection runs inside the atomic write loop:
-    // `propose_from` replaces `plan.entries`, `with_state` writes
-    // `plan.yaml` on Ok and rolls back on any Err.
-    let outcome = with_state::<Plan, _, _>(layout, "plan.yaml", |plan| {
-        plan.propose_from(response, &discovery, &topology, &ladders).map(Mutation::changed)
-    })?;
-    tracing::info!(slices = outcome.slice_names.len(), "plan written");
-
-    // Only after the write commits: emit the reconcile event.
-    let event = Event::new(
-        now,
-        EventKind::PlanReconcileCompleted {
-            plan_name: plan.name.clone(),
-            slice_count: outcome.slice_names.len(),
-            slice_names: outcome.slice_names.iter().map(SliceName::from).collect(),
-        },
-    );
-    journal::append_one(layout, &event)?;
-
-    // The baseline debt inventory (RFC-86a D9): the same backlog
-    // `emery debt` projects, rendered into the review prose so the
-    // corrective change is scoped with it in view.
-    let debt = slice::debt::baseline(&layout.specs_dir(), now)?;
-    persist_gate_prose(layout, name, &gate, discovery, &debt)?;
-    validate(layout)?;
+    let mut plan = Plan::named(name);
+    plan.discovery_digest = Some(discovery_digest.clone());
+    plan.definition = Some(definition);
+    plan.targets = targets;
+    plan.sources = sources;
+    plan.save(&plan_path)?;
 
     Ok(AuthorOutcome {
         plan: name.to_string(),
-        surveyed,
-        slices: outcome.slice_names,
-        hint: gate_hint(name),
+        discovery_digest,
+        targets: plan.targets.keys().cloned().collect(),
+        sources: plan.sources.keys().cloned().collect(),
+        pending: "decomposition".into(),
+        hint: "decomposition pending; later authoring phases land with the decomposition step"
+            .into(),
     })
 }
 
-/// The literal closing hint the `/emery:plan` skill prints.
-fn gate_hint(name: &str) -> String {
-    format!(
-        "Plan `{name}` is authored. Review it, then run `emery plan refine` \
-         to generate every slice's specification bundle; `emery plan execute` \
-         builds the refined slices afterwards."
-    )
-}
-
-/// The plan scaffold via the shared [`project::plan::scaffold`]
-/// kernel, plus the immediate atomic save. `force` opts into
-/// recreating any existing plan. No `--authority-override` surface —
-/// override pre-seeding needs slice rows that do not exist yet.
-fn scaffold(
-    layout: Layout<'_>, name: &str, bindings: BTreeMap<String, SourceBinding>, force: bool,
-) -> Result<(), Error> {
-    let plan_path = layout.plan_path();
-    project::plan::scaffold(&plan_path, name, bindings, force)?.save(&plan_path)
-}
-
-/// Resolve the project topology the request embeds.
-fn load_topology(
-    resolver: &impl Resolver, paths: &ExecutionPaths,
-) -> Result<Vec<ProjectRef>, Error> {
-    let layout = Layout::new(paths.project_root());
-    let config = ProjectConfig::load(layout.project_dir())?;
-    resolve_topology(resolver, &config, paths)
-}
-
-/// The gate-prose leg of the repair-loop check: the answer must carry
-/// the `gate` object and its discovery preamble must round-trip
-/// through the discovery parser without corrupting the inventory.
-fn check_gate(
-    candidate: &ProposalResponse, name: &str, discovery: &Discovery,
-) -> Result<(), Error> {
-    let Some(gate) = &candidate.gate else {
-        return Err(gate_missing());
-    };
-    let mut probe = discovery.clone();
-    probe.set_preamble(&discovery_preamble(name, gate))
-}
-
-fn gate_missing() -> Error {
-    Error::validation_failed(
-        "plan-author-gate-missing",
-        "the reconciliation answer carries the review prose",
-        "add the `gate` object (`change`, `discovery-summary`, `discovery-source-inventory`) \
-         alongside `slices[]`",
-    )
-}
-
-/// Persist the review prose: `change.md` framed under the
-/// deterministic `# Change — <name>` heading — plus the baseline debt
-/// inventory when the specs tree carries any (RFC-86a D9) — and the
-/// `discovery.md` preamble through the validated
-/// [`Discovery::set_preamble`] writer (the lead inventory rides
-/// through untouched).
-fn persist_gate_prose(
-    layout: Layout<'_>, name: &str, gate: &GateProse, mut discovery: Discovery,
-    debt: &[slice::debt::DebtRow],
-) -> Result<(), Error> {
-    let mut brief = format!("# Change — {name}\n\n{}\n", gate.change.trim());
-    if let Some(section) = slice::debt::markdown(debt) {
-        brief.push('\n');
-        brief.push_str(&section);
+fn resolve_from(paths: &ExecutionPaths, from: &Path) -> PathBuf {
+    if from.is_absolute() {
+        return from.to_path_buf();
     }
-    bytes_write(&layout.change_brief_path(), brief.as_bytes())?;
-
-    discovery.set_preamble(&discovery_preamble(name, gate))?;
-    discovery.write_atomic(&layout.discovery_path())
+    if paths.is_detached() {
+        paths.change_root().join(from)
+    } else {
+        paths.project_root().join(from)
+    }
 }
 
-/// Compose the deterministic `discovery.md` three-section frame around
-/// the model-authored section bodies.
-fn discovery_preamble(name: &str, gate: &GateProse) -> String {
-    format!(
-        "# Discovery — {name}\n\n## Summary\n\n{}\n\n## Source inventory\n\n{}",
-        gate.discovery_summary.trim(),
-        gate.discovery_inventory.trim()
-    )
+fn load_existing(plan_path: &Path) -> Result<Option<Plan>, Error> {
+    if !plan_path.exists() {
+        return Ok(None);
+    }
+    Ok(Some(Plan::load(plan_path)?))
 }
 
-/// The post-write author gate — the doctor sweep minus the stdout
-/// report surface (the blocking decision and error code match the
-/// native verb).
-fn validate(layout: Layout<'_>) -> Result<(), Error> {
-    let plan = Plan::load(&layout.plan_path())?;
-    let findings = author_gate(&plan, &layout.slices_dir());
-    if has_blocking(&findings) {
-        return Err(Error::validation_failed(
-            "plan-structural-errors",
-            "plan must be free of structural errors",
-            "run 'emery plan validate' for detail",
-        ));
+fn refuse_overwrite(
+    existing: Option<&Plan>, reviewed: &Reviewed, force: bool, plan_path: &Path,
+) -> Result<(), Error> {
+    let Some(existing) = existing else {
+        return Ok(());
+    };
+    if !force {
+        return Err(Error::Diag {
+            code: "plan-already-exists",
+            detail: format!(
+                "refusing to overwrite existing plan at {}; pass --force to replace it",
+                plan_path.display()
+            ),
+        });
+    }
+    if let Some(definition) = &existing.definition
+        && definition.handoff_digest != reviewed.digest
+    {
+        return Err(Error::Diag {
+            code: "plan-author-handoff-changed",
+            detail: " --force rebinds the same reviewed handoff; a changed wave needs a new \
+                     handoff and review fact"
+                .trim()
+                .into(),
+        });
     }
     Ok(())
+}
+
+fn copy_imports(from: &Path, layout: &Layout<'_>, reviewed: &Reviewed) -> Result<(), Error> {
+    let home = Home::new(from);
+    let handoff_src = home.handoff_path(&reviewed.digest);
+    let handoff_dest = layout.import_handoff_path(&reviewed.digest);
+    std::fs::create_dir_all(handoff_dest.parent().unwrap_or(&handoff_dest))?;
+    std::fs::copy(&handoff_src, &handoff_dest).map_err(|source| Error::Filesystem {
+        op: "copy",
+        path: handoff_src.clone(),
+        source,
+    })?;
+    let review_dest = layout.import_review_path(&reviewed.event_digest);
+    std::fs::create_dir_all(review_dest.parent().unwrap_or(&review_dest))?;
+    let events_dir = home.events_dir();
+    let line = review_line(&events_dir, reviewed)?;
+    std::fs::write(&review_dest, line).map_err(|source| Error::Filesystem {
+        op: "write",
+        path: review_dest,
+        source,
+    })?;
+    Ok(())
+}
+
+fn review_line(events_dir: &Path, reviewed: &Reviewed) -> Result<Vec<u8>, Error> {
+    let want = reviewed.event_digest.clone();
+    let entries = std::fs::read_dir(events_dir).map_err(|source| Error::Filesystem {
+        op: "readdir",
+        path: events_dir.to_path_buf(),
+        source,
+    })?;
+    for entry in entries {
+        let path = entry
+            .map_err(|source| Error::Filesystem {
+                op: "readdir",
+                path: events_dir.to_path_buf(),
+                source,
+            })?
+            .path();
+        if path.extension().and_then(|ext| ext.to_str()) != Some("jsonl") {
+            continue;
+        }
+        let text = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
+            op: "read",
+            path: path.clone(),
+            source,
+        })?;
+        for line in text.lines() {
+            let Ok(event) = serde_json::from_str::<project::journal::Event>(line) else {
+                continue;
+            };
+            if event.digest().ok().as_ref() == Some(&want) {
+                let mut bytes = line.as_bytes().to_vec();
+                bytes.push(b'\n');
+                return Ok(bytes);
+            }
+        }
+    }
+    let mut bytes = serde_json::to_vec(&reviewed.review).map_err(|err| Error::Diag {
+        code: "journal-event-serialise-failed",
+        detail: format!("failed to serialise journal event: {err}"),
+    })?;
+    bytes.push(b'\n');
+    Ok(bytes)
+}
+
+fn identity(reviewed: &Reviewed) -> DefinitionIdentity {
+    DefinitionIdentity {
+        system: reviewed.handoff.definition.clone(),
+        handoff_digest: reviewed.digest.clone(),
+        review: ReviewIdentity {
+            writer: reviewed.review.writer.clone(),
+            sequence: reviewed.review.sequence,
+            event_digest: reviewed.event_digest.clone(),
+        },
+        system_model_digest: reviewed.handoff.system_model_digest.clone(),
+        migration_plan_digest: reviewed.handoff.migration_plan_digest.clone(),
+        wave_id: reviewed.handoff.wave.id.clone(),
+    }
+}
+
+async fn bind_targets<P: Ingest>(
+    ingest: &P, reviewed: &Reviewed, existing: Option<&Plan>,
+    intern: &mut BTreeMap<String, SnapshotId>,
+) -> Result<BTreeMap<String, TargetBinding>, Error> {
+    let mut targets = BTreeMap::new();
+    for target in &reviewed.handoff.wave.targets {
+        let recorded = intern.get(&target.locator).cloned().or_else(|| {
+            existing.and_then(|plan| plan.targets.get(&target.id).map(|row| row.cid.clone()))
+        });
+        let prior = existing
+            .and_then(|plan| plan.targets.get(&target.id).and_then(|row| git_sha(&row.locator)));
+        let fetched = ingest
+            .fetch(target.locator.clone(), recorded, prior)
+            .await
+            .map_err(|err| seam::seam_failure("fetch", "ingest", &err))?;
+        intern.insert(target.locator.clone(), fetched.cid.clone());
+        intern.insert(fetched.locator.clone(), fetched.cid.clone());
+        let pin = Pin::parse(&target.adapter)?;
+        validate_target_tree(&fetched.root, &pin)?;
+        targets.insert(target.id.clone(), TargetBinding::new(pin, fetched.locator, fetched.cid));
+    }
+    Ok(targets)
+}
+
+async fn bind_sources<P: Ingest + Resolver>(
+    provider: &P, catalog: &catalog::Catalog, paths: &ExecutionPaths, reviewed: &Reviewed,
+    existing: Option<&Plan>, intern: &mut BTreeMap<String, SnapshotId>,
+) -> Result<(Vec<Row>, BTreeMap<String, (String, SnapshotId)>), Error> {
+    let mut rows = Vec::new();
+    let mut pins = BTreeMap::new();
+    let policy = Policy::standard();
+    let mut meter = project::binding::Meter::new();
+    for scope in &reviewed.handoff.wave.evidence_scopes {
+        if scope.source == INTENT || scope.value.is_some() {
+            let value = scope.value.clone().ok_or_else(|| Error::Diag {
+                code: "source-intent-locator",
+                detail: "adapter `intent` is inline `value` only; a locator is refused".into(),
+            })?;
+            if scope.locator.as_ref().is_some_and(|locator| !locator.is_empty()) {
+                return Err(Error::Diag {
+                    code: "source-intent-locator",
+                    detail: "adapter `intent` is inline `value` only; a locator is refused".into(),
+                });
+            }
+            let pin = intent_pin(scope, catalog)?;
+            rows.push(Row {
+                origin: Origin::Value(value),
+                pin,
+            });
+            continue;
+        }
+        let locator =
+            scope.locator.as_deref().filter(|locator| !locator.is_empty()).ok_or_else(|| {
+                Error::Diag {
+                    code: "source-locator-missing",
+                    detail: format!(
+                        "evidence scope `{}` is location-backed and needs a locator",
+                        scope.source
+                    ),
+                }
+            })?;
+        let recorded =
+            intern.get(locator).cloned().or_else(|| scope.source_cid.clone()).or_else(|| {
+                existing.and_then(|plan| {
+                    plan.sources.values().find_map(|row| {
+                        (row.locator.as_deref() == Some(locator)).then(|| row.cid.clone()).flatten()
+                    })
+                })
+            });
+        let fetched = provider
+            .fetch(locator.to_string(), recorded, None)
+            .await
+            .map_err(|err| seam::seam_failure("fetch", "ingest", &err))?;
+        intern.insert(locator.to_string(), fetched.cid.clone());
+        intern.insert(fetched.locator.clone(), fetched.cid.clone());
+        let origin = Origin::Location(Location::parse(&fetched.locator, None)?);
+        let pin = select_source(
+            provider,
+            catalog,
+            paths,
+            scope,
+            Path::new(&fetched.root),
+            &origin,
+            Some((&mut meter, &policy)),
+        )?;
+        let row = Row { origin, pin };
+        let id = catalog::identity(&row);
+        pins.insert(id, (fetched.locator, fetched.cid));
+        rows.push(row);
+    }
+    Ok((rows, pins))
+}
+
+fn intent_pin(scope: &Scope, catalog: &catalog::Catalog) -> Result<Pin, Error> {
+    scope.adapter.as_deref().map(str::trim).filter(|adapter| !adapter.is_empty()).map_or_else(
+        || {
+            catalog
+                .sources
+                .iter()
+                .find(|source| source.pin.name == INTENT)
+                .map(|source| source.pin.clone())
+                .ok_or_else(|| Error::Diag {
+                    code: "adapter-catalog-invalid",
+                    detail: "catalog has no `intent` source".into(),
+                })
+        },
+        Pin::parse,
+    )
+}
+
+fn select_source<R: Resolver>(
+    resolver: &R, catalog: &catalog::Catalog, paths: &ExecutionPaths, scope: &Scope, root: &Path,
+    origin: &Origin, budget: Option<(&mut project::binding::Meter, &Policy)>,
+) -> Result<Pin, Error> {
+    let adapter = scope.adapter.as_deref().map(str::trim).filter(|adapter| !adapter.is_empty());
+    let hint = adapter.map_or(Hint::Open(root), Hint::Pin);
+    let pin = catalog::select_metered(catalog, hint, origin, budget)?;
+    if adapter.is_none() {
+        let bound = resolver.resolve_source(&pin.selector(), paths)?;
+        return Ok(catalog::overlay(pin, bound.manifest.version));
+    }
+    Ok(pin)
+}
+
+fn validate_target_tree(root: &str, pin: &Pin) -> Result<(), Error> {
+    let root = Path::new(root);
+    let config = match ProjectConfig::load(root) {
+        Ok(config) => config,
+        Err(Error::NotInitialized) => {
+            return Err(Error::Diag {
+                code: "target-project-missing",
+                detail: format!("target tree `{}` has no `.emery/project.yaml`", root.display()),
+            });
+        }
+        Err(err) => return Err(err),
+    };
+    if config.name.is_empty() {
+        return Err(Error::Diag {
+            code: "target-project-identity",
+            detail: format!("target tree `{}` project.yaml omits `name`", root.display()),
+        });
+    }
+    let Some(adapter) = config.adapter.as_deref() else {
+        return Err(Error::Diag {
+            code: "target-project-adapter",
+            detail: format!(
+                "target tree `{}` project.yaml omits a target-axis adapter",
+                root.display()
+            ),
+        });
+    };
+    let declared = project::adapter::AdapterSelector::parse(adapter)?;
+    let declared_name = match &declared {
+        project::adapter::AdapterSelector::Bare { name }
+        | project::adapter::AdapterSelector::Package { name, .. } => name.as_str(),
+        project::adapter::AdapterSelector::Component { .. } => {
+            return Err(Error::Diag {
+                code: "target-project-adapter",
+                detail: format!(
+                    "target tree `{}` project.yaml adapter is a local component",
+                    root.display()
+                ),
+            });
+        }
+    };
+    if declared_name != pin.name {
+        return Err(Error::Diag {
+            code: "target-project-adapter",
+            detail: format!(
+                "target tree `{}` adapter `{declared_name}` does not match pin `{pin}`",
+                root.display()
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn prior_keys(existing: Option<&Plan>) -> BTreeMap<String, String> {
+    let Some(existing) = existing else {
+        return BTreeMap::new();
+    };
+    existing
+        .sources
+        .iter()
+        .map(|(key, binding)| {
+            let origin = binding_origin(binding);
+            let row = Row {
+                origin,
+                pin: binding.adapter.clone(),
+            };
+            (catalog::identity(&row), key.clone())
+        })
+        .collect()
+}
+
+fn binding_origin(binding: &SourceBinding) -> Origin {
+    if let Some(value) = &binding.value {
+        return Origin::Value(value.clone());
+    }
+    binding
+        .locator
+        .as_deref()
+        .and_then(|locator| Location::parse(locator, None).ok())
+        .map_or_else(|| Origin::Value(String::new()), Origin::Location)
+}
+
+fn git_sha(locator: &str) -> Option<String> {
+    let parsed = Location::parse(locator, None).ok()?;
+    match parsed.locator {
+        project::binding::Locator::Git { revision, .. }
+            if project::binding::Locator::is_sha(&revision) =>
+        {
+            Some(revision)
+        }
+        _ => None,
+    }
 }

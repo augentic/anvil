@@ -219,7 +219,7 @@ fn assemble(
         authorized: milestones.authorized,
         debt: gaps.debt(),
         slice: resolution.slice,
-        project: resolution.project,
+        target: resolution.target,
         stop: resolution.stop,
         gaps,
     }

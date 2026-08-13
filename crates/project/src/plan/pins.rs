@@ -23,11 +23,15 @@ const VALUE_ENTRY: &str = "content";
 ///
 /// # Errors
 ///
-/// `source-pin-unbound` when a binding carries neither `path` nor
-/// `value`; `source-pin-missing` when a path binding's target is
+/// `source-pin-unbound` when a binding carries neither `locator` nor
+/// `value`; `source-pin-missing` when a locator binding's target is
 /// absent; filesystem / path-shape failures from the tree walk.
 pub fn close(plan: &mut Plan, project_root: &Path) -> Result<(), Error> {
     for (key, binding) in &mut plan.sources {
+        if binding.value.is_some() {
+            binding.cid = None;
+            continue;
+        }
         binding.cid = Some(cid_for(key, binding, project_root)?);
     }
     Ok(())
@@ -75,7 +79,7 @@ pub fn empty_cid() -> SnapshotId {
 ///
 /// Same digest as [`close`] would stamp onto `binding.cid`. Used by
 /// refinement freshness to compare recorded source pins against the
-/// current path/value tree without rewriting the plan.
+/// current locator/value tree without rewriting the plan.
 ///
 /// # Errors
 ///
@@ -87,16 +91,19 @@ pub fn source_cid(
 }
 
 fn cid_for(key: &str, binding: &SourceBinding, project_root: &Path) -> Result<SnapshotId, Error> {
-    if let Some(path) = binding.path.as_deref() {
-        return path_cid(key, path, project_root);
+    if binding.value.is_some() {
+        return Err(Error::Diag {
+            code: "source-pin-unbound",
+            detail: format!("source `{key}` is an inline value; it does not close a tree cid pin"),
+        });
     }
-    if let Some(value) = binding.value.as_deref() {
-        return Ok(value_cid(value));
+    if let Some(locator) = binding.locator.as_deref() {
+        return path_cid(key, locator, project_root);
     }
     Err(Error::Diag {
         code: "source-pin-unbound",
         detail: format!(
-            "source `{key}` has neither `path` nor `value`; cannot close a tree cid pin"
+            "source `{key}` has neither `locator` nor `value`; cannot close a tree cid pin"
         ),
     })
 }

@@ -8,9 +8,9 @@ use omnia_guest::api::operation::Operation;
 use omnia_guest::axum::response::{IntoResponse, Response};
 use omnia_guest::http::StatusCode;
 use omnia_guest::http::header::{CONTENT_TYPE, HeaderValue};
-use project::adapter::Resolver;
+use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Ingest, Source, Target, Workspaces};
 use serde::Serialize;
 
 /// Emery's JSON HTTP output and error policy.
@@ -86,7 +86,7 @@ fn encoding(error: &serde_json::Error) -> Response {
 #[must_use]
 pub fn router<P>(invoker: Invoker<P>) -> Router<P>
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces,
+    P: Provider + Anchor + Model + Resolver + Inventory + Source + Target + Workspaces + Ingest,
 {
     macro_rules! get {
         ($operation:ty) => {

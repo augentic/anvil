@@ -16,9 +16,7 @@ use std::collections::BTreeMap;
 use std::fs;
 
 use change::orchestrate::enforce_before_build;
-use change::plan::handlers::{
-    Author, AuthorInput, Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput,
-};
+use change::plan::handlers::{Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput};
 use change::{LoopStep, Plan};
 use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
@@ -32,9 +30,7 @@ use project::journal::{
 use support::plan_with_changes;
 
 fn leaf(name: &str) -> change::Entry {
-    let mut entry = support::change(name);
-    entry.project = None;
-    entry
+    support::change(name)
 }
 
 fn write_plan(root: &std::path::Path, plan: &Plan) {
@@ -77,7 +73,7 @@ async fn init_mock(session: &Session) {
 }
 
 fn suite_answers() -> Vec<String> {
-    vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
+    vec![mock::answers::greeting_synthesis()]
 }
 
 fn started_event(root: &std::path::Path) -> Event {
@@ -273,19 +269,7 @@ async fn coverage_wire_shape_stale() {
     let root = session.root().to_path_buf();
     init_mock(&session).await;
 
-    run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
 
     // The refinement drain writes the manifest coverage stamps.
     support::refine_plan(&session).await;
@@ -362,38 +346,15 @@ async fn coverage_wire_shape_stale() {
 async fn post_author_resume_names() {
     let session = Session::bare(suite_answers());
     init_mock(&session).await;
+    support::write_greeting_plan(session.root());
 
-    let authored = run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
-
-    assert!(
-        authored.hint.contains("emery plan refine"),
-        "author hint must name plan refine: {}",
-        authored.hint
-    );
-    assert!(
-        !authored.hint.contains("plan approve"),
-        "hint must not invent plan approve: {}",
-        authored.hint
-    );
     assert!(
         !session.root().join(".emery/change/slices/greeting/model.yaml").exists(),
-        "author stays topology-only"
+        "fixture plan is topology-only"
     );
     assert!(
         !session.root().join(".emery/change/slices/greeting/refinement.yaml").exists(),
-        "author writes no refinement manifest"
+        "fixture plan writes no refinement manifest"
     );
 
     let status = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
@@ -418,19 +379,7 @@ async fn wave_opened_build_execute() {
     let root = session.root().to_path_buf();
     init_mock(&session).await;
 
-    run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
     support::refine_plan(&session).await;
 
     // Happy wave ordering under execute (build → merge only).
@@ -456,19 +405,7 @@ async fn wave_opened_build_execute() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     init_mock(&session).await;
-    run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
     support::refine_plan(&session).await;
     fs::write(root.join(behaviour::POSTFLIGHT_FAIL), "").expect("marker");
 

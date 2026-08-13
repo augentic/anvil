@@ -2,41 +2,40 @@
 //! (Gaps / D18 / D19 / D24) and the RFC-86a D2 disposition projection
 //! (deferral facts joined under the `(slice, digest)` match key).
 
-use std::collections::BTreeMap;
 use std::path::Path;
 
 use artifacts::spec::provenance::RequirementStatus;
 use jiff::Timestamp;
+use project::adapter::catalog::Pin;
 use project::config::Layout;
 use project::journal::{Event, EventKind};
 use project::plan::{
     DebtCounts, Deferral, Disposition, Entry, GapRow, Plan, SharedLeadRollup, SliceSourceBinding,
-    in_scope, plan_gaps_body,
+    TargetBinding, in_scope, plan_gaps_body,
 };
 use project::slice::{RequirementBody, SliceMetadata};
+use project::snapshot::SnapshotId;
 use tempfile::TempDir;
 
+fn stub_target() -> TargetBinding {
+    TargetBinding::new(
+        Pin::emery("mock", semver::Version::new(0, 0, 0)),
+        ".",
+        SnapshotId::from_digest(&"0".repeat(64)),
+    )
+}
+
 fn entry(name: &str, sources: Vec<SliceSourceBinding>) -> Entry {
-    Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources,
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    }
+    let mut entry = Entry::named(name, "default");
+    entry.sources = sources;
+    entry
 }
 
 fn plan(entries: Vec<Entry>) -> Plan {
-    Plan {
-        name: "test".into(),
-        sources: BTreeMap::new(),
-        entries,
-    }
+    let mut plan = Plan::named("test");
+    plan.targets.insert("default".into(), stub_target());
+    plan.entries = entries;
+    plan
 }
 
 fn write_meta(slice_dir: &Path, dropped: bool) {

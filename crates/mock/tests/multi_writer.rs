@@ -8,18 +8,20 @@
 use std::fs;
 use std::path::Path;
 
-use change::plan;
 use error::Error;
 use jiff::Timestamp;
-use mock::invoke::run;
 use mock::session::Session;
+use project::adapter::catalog::Pin;
 use project::config::{Layout, ProjectConfig};
 use project::handler::Anchor;
 use project::journal::{Event, EventKind, append_for, claim, read_union};
 use project::name::SliceName;
-use project::plan::{Status, advance_next, project_ladders};
+use project::plan::{
+    Entry, Plan, SliceSourceBinding, SourceBinding, Status, TargetBinding, advance_next,
+    project_ladders,
+};
 use project::slice::{LifecycleStatus, SliceMetadata};
-use serde_json::json;
+use project::snapshot::SnapshotId;
 
 /// RAII `EMERY_WRITER` guard — restores the prior value on drop.
 struct WriterEnv {
@@ -55,17 +57,55 @@ impl Drop for WriterEnv {
     }
 }
 
-fn adversarial_bindings() -> Vec<plan::wire::SourceAssign> {
-    ["docs", "code"]
-        .map(|key| {
-            serde_json::from_value(json!({
-                "key": key,
-                "adapter": format!("mock-{key}"),
-                "value": format!("The {key} source."),
-            }))
-            .expect("mock binding parses")
-        })
-        .to_vec()
+fn write_adversarial_plan(root: &Path) {
+    let layout = Layout::new(root);
+    fs::create_dir_all(layout.change_root()).expect("change home");
+    let mut plan = Plan::named("auth");
+    plan.targets.insert(
+        "default".into(),
+        TargetBinding::new(
+            Pin::parse("emery:mock@0.0.0").expect("pin"),
+            ".",
+            SnapshotId::from_digest(&"0".repeat(64)),
+        ),
+    );
+    plan.sources.insert(
+        "docs".into(),
+        SourceBinding::intent(
+            Pin::parse("emery:mock-docs@0.0.0").expect("pin"),
+            "The docs source.",
+        ),
+    );
+    plan.sources.insert(
+        "code".into(),
+        SourceBinding::intent(
+            Pin::parse("emery:mock-code@0.0.0").expect("pin"),
+            "The code source.",
+        ),
+    );
+    for (name, bindings) in [
+        ("login-flow", &[("docs", "login-flow"), ("code", "login-flow")][..]),
+        ("session-policy", &[("docs", "session-timeout"), ("code", "session-timeout")][..]),
+        ("password-reset", &[("docs", "password-reset")][..]),
+    ] {
+        let mut entry = Entry::named(name, "default");
+        entry.sources = bindings
+            .iter()
+            .map(|(source, lead)| SliceSourceBinding::structured(*source, *lead))
+            .collect();
+        plan.entries.push(entry);
+    }
+    plan.save(&layout.plan_path()).expect("plan.yaml");
+    fs::write(
+        layout.discovery_path(),
+        "# Discovery\n\n## Lead inventory\n\n\
+         ### docs:login-flow\n\n- lead: login-flow\n- source: docs\n- synopsis: login-flow\n\n\
+         ### code:login-flow\n\n- lead: login-flow\n- source: code\n- synopsis: login-flow\n\n\
+         ### docs:session-timeout\n\n- lead: session-timeout\n- source: docs\n- synopsis: session-timeout\n\n\
+         ### code:session-timeout\n\n- lead: session-timeout\n- source: code\n- synopsis: session-timeout\n\n\
+         ### docs:password-reset\n\n- lead: password-reset\n- source: docs\n- synopsis: password-reset\n",
+    )
+    .expect("discovery.md");
 }
 
 fn ts(second: i64) -> Timestamp {
@@ -138,7 +178,7 @@ async fn refine(session: &Session, slice: &str) {
     let caps = slice::orchestrate::Capabilities::provider(provider);
     let paths = provider.paths();
     let layout = Layout::new(paths.project_root());
-    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan loads");
+    let plan = Plan::load(&layout.plan_path()).expect("plan loads");
     let entry = plan
         .entries
         .iter()
@@ -163,31 +203,16 @@ async fn refine(session: &Session, slice: &str) {
     .unwrap_or_else(|err| panic!("refine {slice}: {err}"));
 }
 
-async fn author_adversarial(session: &Session) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: adversarial_bindings(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author walks to pending");
+fn author_adversarial(session: &Session) {
+    write_adversarial_plan(session.root());
 }
 
 /// Acceptance #2 happy path: disjoint claims on two copies, refine,
 /// lossless fact-tree union → both slices refined.
 #[tokio::test]
 async fn disjoint_refine_fact() {
-    let alice = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
-    );
-    author_adversarial(&alice).await;
+    let alice = Session::scripted("mock", vec![mock::answers::login_flow_synthesis()]);
+    author_adversarial(&alice);
     assert_no_git(alice.root());
 
     // Freeze the authored change, then give bob an independent copy.
@@ -229,7 +254,7 @@ async fn disjoint_refine_fact() {
     assert_eq!(project_lifecycle(union_root, "login-flow"), LifecycleStatus::Refined);
     assert_eq!(project_lifecycle(union_root, "password-reset"), LifecycleStatus::Refined);
 
-    let plan = project::plan::Plan::load(&Layout::new(union_root).plan_path()).expect("plan");
+    let plan = Plan::load(&Layout::new(union_root).plan_path()).expect("plan");
     let ladders = project_ladders(&plan, &events);
     let login: SliceName = "login-flow".into();
     let reset: SliceName = "password-reset".into();
@@ -247,8 +272,8 @@ async fn disjoint_refine_fact() {
 /// Same slice, two writers → `slice-claim-conflict` (Acceptance #2).
 #[tokio::test]
 async fn same_slice_claim_conflict() {
-    let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
-    author_adversarial(&session).await;
+    let session = Session::scripted("mock", Vec::new());
+    author_adversarial(&session);
     assert_no_git(session.root());
 
     claim_slice(session.root(), "alice", "auth", "login-flow", 1);
@@ -268,8 +293,8 @@ async fn same_slice_claim_conflict() {
 /// while alice's claim on another slice is still live (D23).
 #[tokio::test]
 async fn sibling_advance_peer() {
-    let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
-    author_adversarial(&session).await;
+    let session = Session::scripted("mock", Vec::new());
+    author_adversarial(&session);
 
     claim_slice(session.root(), "alice", "auth", "login-flow", 1);
 
@@ -289,7 +314,7 @@ async fn sibling_advance_peer() {
     assert_eq!(ownership.owner(&"login-flow".into()), Some("alice"));
     assert_eq!(ownership.owner(&"session-policy".into()), Some("bob"));
 
-    let plan = project::plan::Plan::load(&Layout::new(session.root()).plan_path()).expect("plan");
+    let plan = Plan::load(&Layout::new(session.root()).plan_path()).expect("plan");
     let ladders = project_ladders(&plan, &events);
     let login: SliceName = "login-flow".into();
     let session_policy: SliceName = "session-policy".into();

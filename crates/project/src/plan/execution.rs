@@ -35,7 +35,7 @@ pub(super) enum JournalOverlay {
 pub(super) struct Resolution {
     pub action: NextActionKind,
     pub slice: Option<String>,
-    pub project: Option<String>,
+    pub target: Option<String>,
     pub last_completed: Option<LoopStep>,
     pub stop: Option<StopBody>,
 }
@@ -45,7 +45,7 @@ impl Resolution {
         Self {
             action: NextActionKind::Stop,
             slice: None,
-            project: None,
+            target: None,
             last_completed: None,
             stop: Some(StopBody {
                 reason,
@@ -59,7 +59,7 @@ impl Resolution {
         Self {
             action: NextActionKind::Drained,
             slice: None,
-            project: None,
+            target: None,
             last_completed: None,
             stop: None,
         }
@@ -69,7 +69,7 @@ impl Resolution {
         Self {
             action,
             slice: Some(entry.name.to_string()),
-            project: entry.project.clone(),
+            target: Some(entry.target.clone()),
             last_completed,
             stop: None,
         }
@@ -81,7 +81,7 @@ impl Resolution {
         Self {
             action: NextActionKind::Stop,
             slice: Some(entry.name.to_string()),
-            project: entry.project.clone(),
+            target: Some(entry.target.clone()),
             last_completed,
             stop: Some(StopBody {
                 reason,

@@ -11,39 +11,6 @@ use mock::invoke::run;
 use mock::session::Session;
 use serde_json::json;
 
-/// A grouping response over `(slice, source)` pairs; every source
-/// surveys the minimal profile's single `greeting` lead.
-fn grouping(slices: &[(&str, &str)]) -> String {
-    let rows: Vec<serde_json::Value> = slices
-        .iter()
-        .map(|(name, source)| {
-            json!({
-                "name": name,
-                "sources": [{ "source": source, "lead": "greeting" }],
-                "rationale": format!("The {source} source's lead."),
-            })
-        })
-        .collect();
-    let inventory: Vec<String> = slices
-        .iter()
-        .map(|(_, source)| format!("| {source} | mock | \"The greeting service.\" |"))
-        .collect();
-    serde_json::to_string(&json!({
-        "version": 1,
-        "kind": "response",
-        "slices": rows,
-        "gate": {
-            "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nSlices.",
-            "discovery-summary": format!("Sources: {}. Leads: {}.", slices.len(), slices.len()),
-            "discovery-source-inventory": format!(
-                "| key | adapter | binding |\n|---|---|---|\n{}",
-                inventory.join("\n")
-            ),
-        }
-    }))
-    .expect("grouping serialises")
-}
-
 /// The greeting synthesis answer re-slotted for `slice`, claim
 /// anchored on `source`; each slice owns its own spec domain so the
 /// leaves merge into disjoint baselines.
@@ -62,34 +29,12 @@ fn synthesis_for(slice: &str, source: &str) -> String {
     serde_json::to_string(&answer).expect("answer serialises")
 }
 
-/// One `value` binding per source key onto the minimal mock profile.
-fn bindings(keys: &[&str]) -> Vec<plan::wire::SourceAssign> {
-    keys.iter()
-        .map(|key| {
-            serde_json::from_value(json!({
-                "key": key,
-                "adapter": "mock",
-                "value": "The greeting service.",
-            }))
-            .expect("mock binding parses")
-        })
-        .collect()
-}
-
-async fn author(session: &Session, sources: Vec<plan::wire::SourceAssign>) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources,
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author exits for review");
+fn chain_plan(root: &std::path::Path, slices: &[(&str, &str)]) {
+    let sources: Vec<(&str, &str, &str)> =
+        slices.iter().map(|(_, source)| (*source, "mock", "The greeting service.")).collect();
+    let entries: Vec<(&str, &str, &str)> =
+        slices.iter().map(|(name, source)| (*name, *source, "greeting")).collect();
+    support::write_plan_fixture(root, "demo", &sources, &entries);
 }
 
 async fn depend(session: &Session, slice: &str, on: &str) {
@@ -140,7 +85,6 @@ async fn chain_drains() {
     let session = Session::scripted(
         "mock",
         vec![
-            grouping(&[("alpha", "main"), ("beta", "aux"), ("gamma", "ter")]),
             synthesis_for("alpha", "main"),
             synthesis_for("beta", "aux"),
             synthesis_for("gamma", "ter"),
@@ -148,7 +92,7 @@ async fn chain_drains() {
     );
     let root = session.root().to_path_buf();
 
-    author(&session, bindings(&["main", "aux", "ter"])).await;
+    chain_plan(&root, &[("alpha", "main"), ("beta", "aux"), ("gamma", "ter")]);
     depend(&session, "beta", "alpha").await;
     depend(&session, "gamma", "beta").await;
 
@@ -222,15 +166,11 @@ async fn chain_drains() {
 async fn merge_stop_reentry() {
     let session = Session::scripted(
         "mock",
-        vec![
-            grouping(&[("alpha", "main"), ("beta", "aux")]),
-            synthesis_for("alpha", "main"),
-            synthesis_for("beta", "aux"),
-        ],
+        vec![synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],
     );
     let root = session.root().to_path_buf();
 
-    author(&session, bindings(&["main", "aux"])).await;
+    chain_plan(&root, &[("alpha", "main"), ("beta", "aux")]);
     support::refine_plan(&session).await;
     let beta_digest = support::manifest_digest(&root, "beta");
 
@@ -276,7 +216,6 @@ async fn dependent_rerefine() {
     let session = Session::scripted(
         "mock",
         vec![
-            grouping(&[("alpha", "main"), ("beta", "aux")]),
             synthesis_for("alpha", "main"),
             synthesis_for("beta", "aux"),
             synthesis_for("beta", "aux"),
@@ -284,7 +223,7 @@ async fn dependent_rerefine() {
     );
     let root = session.root().to_path_buf();
 
-    author(&session, bindings(&["main", "aux"])).await;
+    chain_plan(&root, &[("alpha", "main"), ("beta", "aux")]);
     depend(&session, "beta", "alpha").await;
     support::refine_plan(&session).await;
     let alpha_digest = support::manifest_digest(&root, "alpha");

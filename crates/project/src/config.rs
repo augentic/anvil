@@ -118,21 +118,36 @@ impl ProjectConfig {
 /// Typed view over a project root that exposes every `.emery/` path
 /// helper as an inherent method.
 ///
-/// Construct with [`Layout::new`]. Callers never join `.emery/...`
-/// literally. Durable product state (`project.yaml`, `specs/`,
-/// `decisions/`) stays under `.emery/`; change-scoped artifacts
-/// (`plan.yaml`, `change.md`, `discovery.md`, `slices/`, `events/`,
-/// `targets/`, `archive/`, `guest.lock`) live under [`Self::change_root`].
+/// Construct with [`Layout::new`] (in-place) or [`Layout::with_change_root`].
+/// Callers never join `.emery/...` literally. Durable product state
+/// (`project.yaml`, `specs/`, `decisions/`) stays under `.emery/`;
+/// change-scoped artifacts (`plan.yaml`, `change.md`, `discovery.yaml`,
+/// `slices/`, `events/`, `targets/`, `archive/`, `guest.lock`) live
+/// under [`Self::change_root`].
 #[derive(Debug, Clone, Copy)]
 pub struct Layout<'a> {
     project_dir: &'a Path,
+    change_root: Option<&'a Path>,
 }
 
 impl<'a> Layout<'a> {
-    /// Wrap `project_dir` as the typed root for path lookups.
+    /// Wrap `project_dir` as the typed in-place root for path lookups.
     #[must_use]
     pub const fn new(project_dir: &'a Path) -> Self {
-        Self { project_dir }
+        Self {
+            project_dir,
+            change_root: None,
+        }
+    }
+
+    /// Layout whose change home is `change_root` (detached, or an
+    /// explicit in-place override). `project_dir` is the `.` mount.
+    #[must_use]
+    pub const fn with_change_root(project_dir: &'a Path, change_root: &'a Path) -> Self {
+        Self {
+            project_dir,
+            change_root: Some(change_root),
+        }
     }
 
     /// Project root the layout is anchored at.
@@ -147,11 +162,11 @@ impl<'a> Layout<'a> {
         self.project_dir.join(".emery")
     }
 
-    /// Absolute path to the in-place change home,
-    /// `<project_dir>/.emery/change/`.
+    /// Absolute path to the change home: `<project_dir>/.emery/change/`
+    /// in-place, or the operator directory when detached.
     #[must_use]
     pub fn change_root(&self) -> PathBuf {
-        self.emery_dir().join(CHANGE_DIR_NAME)
+        self.change_root.map_or_else(|| self.emery_dir().join(CHANGE_DIR_NAME), Path::to_path_buf)
     }
 
     /// Walk `<project>/.emery/change/slices/<name>/` up to the project
@@ -287,12 +302,35 @@ impl<'a> Layout<'a> {
         self.change_root().join("change.md")
     }
 
-    /// Absolute path to `<project_dir>/.emery/change/discovery.md` —
-    /// the candidate inventory written at `/emery:plan`'s survey step
-    /// and read during lead reconciliation. Lives beside `plan.yaml`.
+    /// Absolute path to `<change>/discovery.md` — the candidate
+    /// inventory written at plan time until the leads catalog lands.
     #[must_use]
     pub fn discovery_path(&self) -> PathBuf {
         self.change_root().join("discovery.md")
+    }
+
+    /// Absolute path to `<change>/discovery.yaml` — pinned delivery topology.
+    #[must_use]
+    pub fn discovery_yaml_path(&self) -> PathBuf {
+        self.change_root().join("discovery.yaml")
+    }
+
+    /// Absolute path to `<change>/imports/`.
+    #[must_use]
+    pub fn imports_dir(&self) -> PathBuf {
+        self.change_root().join("imports")
+    }
+
+    /// Absolute path to `<change>/imports/handoffs/<digest>.yaml`.
+    #[must_use]
+    pub fn import_handoff_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.imports_dir().join("handoffs").join(format!("{}.yaml", digest.digest()))
+    }
+
+    /// Absolute path to `<change>/imports/reviews/<digest>.json`.
+    #[must_use]
+    pub fn import_review_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.imports_dir().join("reviews").join(format!("{}.json", digest.digest()))
     }
 }
 

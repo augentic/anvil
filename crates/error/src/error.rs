@@ -105,7 +105,7 @@ impl Error {
             Self::ArtifactNotFound {
                 kind: "plan.yaml", ..
             } => Some(
-                "author a plan first: run /emery:plan, or `emery plan author <name> --intent \"...\"`",
+                "author a plan first: run /emery:plan, or `emery plan author <name> --from <dir> --wave <id>`",
             ),
             Self::CliTooOld { .. } => Some(
                 "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`), then rerun the command",
@@ -124,7 +124,7 @@ impl Error {
                     Some("run `emery plan status` to see the plan's entries and the next action")
                 }
                 "plan-source-unknown" => Some(
-                    "bind the source at plan time (`emery plan author --source <key>=<adapter>:<path>`) or pass one of the bound keys",
+                    "bind the source at plan time (`emery plan author --from <dir> --wave <id>`) or pass one of the bound keys",
                 ),
                 "slice-lifecycle" => Some(
                     "run `emery slice list` for each slice's current status, then re-run `emery plan execute` — the loop drives the missing phase",

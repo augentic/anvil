@@ -164,8 +164,8 @@ pub struct StatusBody {
     /// Slice the action targets; `None` on `stop`-without-slice
     /// and `drained`.
     pub slice: Option<String>,
-    /// Bound project of the targeted entry, when set.
-    pub project: Option<String>,
+    /// Bound target of the targeted entry.
+    pub target: Option<String>,
     /// Step the targeted slice is currently at — the awaited
     /// phase, including a phase the loop is stopped on. `None` when no
     /// slice is targeted (`stuck`, `slice-dropped`, `drained`).
@@ -231,7 +231,7 @@ impl crate::handler::Render for StatusBody {
                 writeln!(w, "stop: {}", stop.reason)?;
                 if let Some(slice) = &self.slice {
                     writeln!(w, "  slice: {slice}")?;
-                    writeln!(w, "  project: {}", self.project.as_deref().unwrap_or("-"))?;
+                    writeln!(w, "  target: {}", self.target.as_deref().unwrap_or("-"))?;
                 }
                 if let Some(detail) = &stop.detail {
                     writeln!(w, "  detail: {detail}")?;

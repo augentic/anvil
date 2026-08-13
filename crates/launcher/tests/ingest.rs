@@ -91,7 +91,10 @@ async fn bind(
         policy: &policy,
         meter: &mut meter,
     };
-    ingest(&mut session, location, None, prior, &lab.scratch).await.map_err(|err| err.to_string())
+    ingest(&mut session, location, None, prior, &lab.scratch)
+        .await
+        .map(|(resolved, _)| resolved)
+        .map_err(|err| err.to_string())
 }
 
 #[tokio::test]

@@ -6,30 +6,17 @@ mod support;
 
 use std::fs;
 
-use change::plan;
 use diagnostics::DiagnosticKind;
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
 use project::journal::{EventKind, read_union};
-use project::plan::{Plan, value_cid};
+use project::plan::Plan;
 use project::slice::{LifecycleStatus, SliceMetadata};
 use slice::refinement::Manifest;
 
 async fn author_and_refine(session: &Session) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: support::adversarial_bindings(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_adversarial_plan(session.root());
 
     support::refine(session, "login-flow").await.expect("refine");
 
@@ -63,17 +50,18 @@ fn review_ids(body: &project::handler::ReportBody) -> Vec<String> {
 
 #[tokio::test]
 async fn pin_build_record_wave() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
-    );
+    let session = Session::scripted("mock", vec![mock::answers::login_flow_synthesis()]);
     let root = session.root().to_path_buf();
     author_and_refine(&session).await;
 
     let layout = Layout::new(&root);
     let slice_dir = layout.slice_dir("login-flow");
     let manifest = Manifest::load(&slice_dir).expect("refinement.yaml after refine");
-    assert_eq!(manifest.inputs.sources["docs"], value_cid("The docs source."));
+    assert!(
+        manifest.inputs.sources.is_empty(),
+        "inline values stay under the plan digest: {:?}",
+        manifest.inputs.sources
+    );
     assert!(!manifest.bundle.is_empty(), "manifest covers the output bundle");
 
     // Fresh manifest → validate PASSes with no freshness reviews.
@@ -156,10 +144,7 @@ async fn pin_build_record_wave() {
 
 #[tokio::test]
 async fn validate_staleness() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
-    );
+    let session = Session::scripted("mock", vec![mock::answers::login_flow_synthesis()]);
     let root = session.root().to_path_buf();
     author_and_refine(&session).await;
 
@@ -181,6 +166,7 @@ async fn validate_staleness() {
     assert!(ids.iter().any(|id| id == "slice-refinement-stale"), "{ids:?}");
 
     // Restore baseline agreement, then drift a bound source value.
+    // Inline values have no cid pin; the entry projection covers them.
     fs::remove_dir_all(root.join(".emery/specs")).expect("clear drifted baseline");
     let plan_path = Layout::new(&root).plan_path();
     let mut plan = Plan::load(&plan_path).expect("plan");
@@ -208,7 +194,7 @@ async fn validate_staleness() {
         })
         .collect();
     assert!(
-        details.iter().any(|d| d.contains("source `docs`")),
-        "staleness names the drifted source: {details:?}"
+        details.iter().any(|d| d.contains("planning `entry`")),
+        "value drift stales the entry projection: {details:?}"
     );
 }

@@ -39,6 +39,8 @@ pub struct AddInput {
     /// added.
     #[serde(default)]
     pub authority_override: Vec<KindAssign>,
+    /// Required `plan.yaml.targets` key this slice binds to.
+    pub target: String,
 }
 
 /// `emery plan add <name> [flags]` — append one `pending` entry.
@@ -61,6 +63,7 @@ impl<P: Anchor> Operation<P> for Add {
             description,
             context,
             authority_override,
+            target,
         } = input;
         let name = name.as_str();
 
@@ -77,7 +80,7 @@ impl<P: Anchor> Operation<P> for Add {
         };
         let entry = Entry {
             name: name.into(),
-            project: None,
+            target,
             depends_on: depends_on.into_iter().map(Into::into).collect(),
             sources,
             context,

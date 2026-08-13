@@ -2,6 +2,7 @@
 //! refuses bare names and local components.
 
 use error::Error;
+use serde::{Deserialize, Serialize};
 
 use crate::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE};
 
@@ -60,11 +61,34 @@ impl Pin {
     pub fn wire(&self) -> String {
         format!("{}:{}@{}", self.namespace, self.name, self.version)
     }
+
+    /// Typed selector this pin resolves through.
+    #[must_use]
+    pub fn selector(&self) -> AdapterSelector {
+        AdapterSelector::Package {
+            namespace: self.namespace.clone(),
+            name: self.name.clone(),
+            version: self.version.clone(),
+        }
+    }
 }
 
 impl std::fmt::Display for Pin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.wire())
+    }
+}
+
+impl Serialize for Pin {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.wire())
+    }
+}
+
+impl<'de> Deserialize<'de> for Pin {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let raw = String::deserialize(deserializer)?;
+        Self::parse(&raw).map_err(serde::de::Error::custom)
     }
 }
 

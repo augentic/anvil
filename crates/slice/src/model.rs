@@ -31,7 +31,7 @@ pub const DEFAULT_DOMAIN: &str = "default";
 /// The model carries only the earned core today — `requirements[]` and
 /// `tasks[]`; the deferred non-requirements sections (`domain`, `apis`,
 /// …) are not modeled yet and are ignored on deserialise. `target` is
-/// not persisted — it is resolved on demand from the bound `project`.
+/// persisted as the slice's `plan.yaml.targets` key.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct SliceModel {
@@ -42,9 +42,9 @@ pub struct SliceModel {
     /// Slice name. Kernel-stamped on the persisted file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slice: Option<String>,
-    /// Bound project, optional.
+    /// Bound `plan.yaml.targets` key. Kernel-stamped from the plan entry.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub project: Option<String>,
+    pub target: Option<String>,
     /// The requirement set with inline provenance.
     #[serde(default)]
     pub requirements: Vec<ModelRequirement>,

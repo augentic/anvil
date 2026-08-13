@@ -296,15 +296,8 @@
       ]
     },
     "SliceModel": {
-      "description": "In-memory view of `model.yaml`, holding the header, the requirement\nset with inline provenance, and the task list.\n\nThe model carries only the earned core today — `requirements[]` and\n`tasks[]`; the deferred non-requirements sections (`domain`, `apis`,\n…) are not modeled yet and are ignored on deserialise. `target` is\nnot persisted — it is resolved on demand from the bound `project`.",
+      "description": "In-memory view of `model.yaml`, holding the header, the requirement\nset with inline provenance, and the task list.\n\nThe model carries only the earned core today — `requirements[]` and\n`tasks[]`; the deferred non-requirements sections (`domain`, `apis`,\n…) are not modeled yet and are ignored on deserialise. `target` is\npersisted as the slice's `plan.yaml.targets` key.",
       "properties": {
-        "project": {
-          "description": "Bound project, optional.",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "requirements": {
           "default": [],
           "description": "The requirement set with inline provenance.",
@@ -315,6 +308,13 @@
         },
         "slice": {
           "description": "Slice name. Kernel-stamped on the persisted file.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "description": "Bound `plan.yaml.targets` key. Kernel-stamped from the plan entry.",
           "type": [
             "string",
             "null"

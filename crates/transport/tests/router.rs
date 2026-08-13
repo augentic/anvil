@@ -73,7 +73,7 @@ async fn author_from_wave_grammar() {
     assert!(help.contains("--from"), "{help}");
     assert!(help.contains("--wave"), "{help}");
     assert!(help.contains("--change-dir"), "{help}");
-    assert!(help.contains("--intent"), "{help}");
+    assert!(!help.contains("--intent <"), "{help}");
 
     let status_help = router.execute(["emery", "plan", "status", "--help"]).await;
     assert_eq!(status_help.exit, 0);
@@ -90,28 +90,34 @@ async fn author_from_wave_grammar() {
 }
 
 #[tokio::test]
-async fn author_from_unimplemented() {
+async fn missing_definition() {
     let home = tempfile::tempdir().expect("tempdir");
     let router = command_router(home.path());
     let response =
         router.execute(["emery", "plan", "author", "demo", "--from", "def", "--wave", "w1"]).await;
-    assert_eq!(response.exit, 2);
+    assert_ne!(response.exit, 0);
     let stderr = String::from_utf8(response.stderr).expect("stderr utf-8");
-    assert!(stderr.contains("plan-author-unimplemented"), "{stderr}");
+    assert!(
+        stderr.contains("definition") || stderr.contains("handoff") || stderr.contains("not found"),
+        "{stderr}"
+    );
     assert!(!home.path().join("demo").exists(), "name is identity, not a subdirectory");
     assert!(!home.path().join(".emery/project.yaml").exists(), "no synthetic project.yaml");
-    assert!(!home.path().join("guest.lock").exists(), "unimplemented path writes no marker");
+    assert!(!home.path().join("guest.lock").exists(), "missing definition writes no marker");
     assert!(!home.path().join(".emery/change/guest.lock").exists());
 }
 
 #[tokio::test]
-async fn author_intent_parses() {
+async fn author_intent_is_unknown() {
     let home = tempfile::tempdir().expect("tempdir");
     let router = command_router(home.path());
     let response = router.execute(["emery", "plan", "author", "demo", "--intent", "Ship it"]).await;
-    assert_eq!(response.exit, 1);
+    assert_eq!(response.exit, 2);
     let stderr = String::from_utf8_lossy(&response.stderr);
-    assert!(stderr.contains("not initialized"), "{stderr}");
+    assert!(
+        stderr.contains("--from") || stderr.contains("--intent") || stderr.contains("unexpected"),
+        "{stderr}"
+    );
 }
 
 #[tokio::test]
@@ -385,7 +391,7 @@ fn project(fixture: Fixture) -> TempDir {
         fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
         fs::write(
             &plan_path,
-            "name: cycle\nsources: {}\nslices:\n  - name: first\n    depends-on: [second]\n  - name: second\n    depends-on: [first]\n",
+            "name: cycle\ntargets:\n  default:\n    adapter: emery:mock@0.0.0\n    locator: \".\"\n    cid: sha256:0000000000000000000000000000000000000000000000000000000000000000\nslices:\n  - name: first\n    target: default\n    depends-on: [second]\n  - name: second\n    target: default\n    depends-on: [first]\n",
         )
         .expect("write cyclic plan");
     }

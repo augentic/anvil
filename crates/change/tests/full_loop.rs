@@ -16,13 +16,12 @@ use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
 
-/// The scripted answers for the whole loop, in dispatch order: the
-/// reconciliation grouping (author) and the synthesis response
-/// (the `plan refine` drain). Survey, extract, guidance, and build are
-/// deterministic mock operations — no model dispatch; execute consumes
-/// no answers at all.
+/// The scripted answers for the whole loop: the synthesis response
+/// (the `plan refine` drain). Author is fixture-driven until
+/// decomposition lands; survey, extract, guidance, and build are
+/// deterministic mock operations. Execute consumes no answers.
 fn suite_answers() -> Vec<String> {
-    vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
+    vec![mock::answers::greeting_synthesis()]
 }
 
 /// Concatenate the per-writer union as JSONL text for substring asserts.
@@ -52,23 +51,7 @@ async fn scaffold_author(session: &Session) {
     .expect("scaffold initialises the mock-bound project");
     assert_eq!(scaffolded.adapter_name, "mock");
 
-    let authored = run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            from: None,
-            wave: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author exits for review");
-    assert_eq!(authored.slices, ["greeting"]);
-    assert_eq!(authored.surveyed.len(), 1);
-    assert_eq!(authored.surveyed[0].leads, ["greeting"]);
-    assert!(authored.hint.contains("emery plan refine"), "{}", authored.hint);
+    support::write_greeting_plan(session.root());
 
     let refined = support::refine_plan(session).await;
     assert_eq!(refined.refined, ["greeting"]);
@@ -204,10 +187,9 @@ async fn author_approve_execute() {
         .expect("postflight report beside the archive");
     assert!(postflight.contains("status: success"), "{postflight}");
 
-    // Model cadence: one reconciliation leg (author), one synthesis
-    // leg (the refine drain) — exactly the two scripted answers, all
-    // consumed; execute dispatched no model call.
-    assert_eq!(requests.len(), 2);
+    // Model cadence: fixture-driven author (no propose judgment), one
+    // synthesis leg (the refine drain); execute dispatched no model call.
+    assert_eq!(requests.len(), 1);
     session.model().assert_exhausted();
 }
 

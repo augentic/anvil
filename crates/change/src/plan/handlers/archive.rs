@@ -63,15 +63,17 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
         // Carried-debt summary (RFC-86a D5/D9): read before the plan
         // moves; advisory only — archiving never blocks on debt.
         let debt = carried_debt(layout, &plan, cx.now())?;
-
+        let binding = binding_cids(&plan);
         let (archived, archived_plans_dir) = Plan::archive(layout, input.force, cx.now())?;
 
-        // Change-scoped collection: archive pins are dead; live roots
-        // are leftover slice trees plus every target's accepted CID
-        // (the merged product, no longer on checkout).
-        let dead = collect_pins(&layout.archive_dir())?;
+        // Change-scoped collection: archive pins and unbound delivery
+        // CIDs are dead; live roots are leftover slice trees plus every
+        // target's accepted CID (the merged product, no longer on checkout).
+        let mut dead = collect_pins(&layout.archive_dir())?;
+        let accepted = accepted_roots(layout)?;
+        dead.extend(binding.into_iter().filter(|cid| !accepted.contains(cid)));
         let mut live = collect_pins(&layout.slices_dir())?;
-        live.extend(accepted_roots(layout)?);
+        live.extend(accepted);
         let swept_objects =
             context.provider.sweep(dead, live).await.map_err(|err| Error::Diag {
                 code: "snapshot-sweep-failed",
@@ -208,6 +210,21 @@ fn collect_pins(root: &Path) -> Result<Vec<SnapshotId>, Error> {
         }
     }
     Ok(pins)
+}
+
+/// Delivery-binding CIDs recorded on the live plan. After archive they
+/// join the dead set unless they are also an accepted product CID.
+fn binding_cids(plan: &Plan) -> Vec<SnapshotId> {
+    let mut pins = Vec::new();
+    for target in plan.targets.values() {
+        pins.push(target.cid.clone());
+    }
+    for source in plan.sources.values() {
+        if let Some(cid) = &source.cid {
+            pins.push(cid.clone());
+        }
+    }
+    pins
 }
 
 /// Current accepted CID for every target that has opened a wave or
