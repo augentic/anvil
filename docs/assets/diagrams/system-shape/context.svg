@@ -1,0 +1,47 @@
+<svg viewBox="0 0 920 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The operator invokes the emery binary; the engine guest drives source adapters, target adapters, and the model; durable artifacts stay on disk">
+  <title>Who talks to whom</title>
+  <defs>
+    <marker id="ctx-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="26" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">WHO TALKS TO WHOM</text>
+  <text x="40" y="46" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#888">Skills wrap the CLI. The engine guest drives adapters and the model. Artifacts outrank chat.</text>
+
+  <rect x="360" y="60" width="200" height="52" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="460" y="82" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Operator</text>
+  <text x="460" y="100" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">/emery:*  or  emery &#8230;</text>
+
+  <path d="M460 112 L460 132" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#ctx-arr)"/>
+
+  <rect x="140" y="132" width="640" height="118" rx="12" fill="none" stroke="#c9c6bc" stroke-width="1.3" stroke-dasharray="6 5"/>
+  <text x="760" y="152" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">EMERY BINARY</text>
+
+  <rect x="168" y="162" width="280" height="70" rx="8" fill="#e6d9f0" stroke="#a489d8"/>
+  <text x="308" y="190" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">engine guest</text>
+  <text x="308" y="210" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">plan &#183; refine &#183; execute</text>
+
+  <rect x="468" y="162" width="288" height="70" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="612" y="190" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Omnia runtime</text>
+  <text x="612" y="210" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">hosts guests &#183; typed effects</text>
+
+  <path d="M240 250 L240 274" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#ctx-arr)"/>
+  <path d="M460 250 L460 274" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#ctx-arr)"/>
+  <path d="M680 250 L680 274" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#ctx-arr)"/>
+
+  <rect x="140" y="274" width="200" height="56" rx="8" fill="#ede9d0" stroke="#c9b766"/>
+  <text x="240" y="296" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">source adapters</text>
+  <text x="240" y="314" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">survey &#183; extract</text>
+
+  <rect x="360" y="274" width="200" height="56" rx="8" fill="#d4ecd9" stroke="#6db978" stroke-width="1.5"/>
+  <text x="460" y="296" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">model backend</text>
+  <text x="460" y="314" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">wasi-model.eval</text>
+
+  <rect x="580" y="274" width="200" height="56" rx="8" fill="#e6d9f0" stroke="#a489d8"/>
+  <text x="680" y="296" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">target adapters</text>
+  <text x="680" y="314" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">build loop &#183; merge</text>
+
+  <rect x="140" y="348" width="640" height="28" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="460" y="367" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">artifacts &#183; plan.yaml &#183; .emery/slices/ &#183; specs &#183; facts</text>
+</svg>

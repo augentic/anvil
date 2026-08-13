@@ -9,6 +9,7 @@ Standalone SVG files under `docs/assets/diagrams/` follow these rules so hero pa
 - Include a `<title>…</title>` child for accessibility (matches `aria-label`).
 - Use a fixed `viewBox`; prefer width 900–940 and height 180–460 depending on layout.
 - Embed `<defs>` for arrow markers; reuse the chevron marker pattern from existing diagrams in this tree.
+- Optional Mermaid source (`.mmd`) may sit beside the SVG as the drafting original. The SVG is what the book embeds — mdBook has no mermaid preprocessor.
 
 ## Colors (light theme, baked in)
 

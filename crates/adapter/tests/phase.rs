@@ -19,6 +19,7 @@ fn context(root: &Path) -> Context<'_> {
         project_root: root,
         mcp_url: None,
         lend: ".".to_string(),
+        source_key: None,
     }
 }
 

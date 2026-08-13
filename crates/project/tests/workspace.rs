@@ -102,7 +102,7 @@ mod round_trip {
     }
 
     #[tokio::test]
-    async fn streamed_file_keeps_slice_identity() {
+    async fn streamed_file_identity() {
         let lab = lab();
         let payload: Vec<u8> = (0_u8..=250).cycle().take(200_000).collect();
         write(&lab.source, "big.bin", &payload);

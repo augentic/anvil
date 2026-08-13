@@ -19,7 +19,7 @@ fn empty_digest_kat() {
 }
 
 #[test]
-fn streamed_digest_matches_slice() {
+fn streamed_digest_parity() {
     use std::io::Cursor;
 
     use diagnostics::digest::sha256_reader;

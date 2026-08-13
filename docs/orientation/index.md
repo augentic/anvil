@@ -22,7 +22,7 @@ You do not need to read this guide front to back. Pick the row that matches wher
   </div>
   <div class="audience">
     <div class="who">Going deeper</div>
-    <div class="path"><a href="../explanation/layered-stack.md">Layered stack</a> → <a href="../explanation/adapter-anatomy.md">Adapter anatomy</a> → <a href="../reference/index.md">Reference</a></div>
+    <div class="path"><a href="../explanation/system-shape.md">Shape of the system</a> → <a href="../explanation/layered-stack.md">Layered stack</a> → <a href="../explanation/adapter-anatomy.md">Adapter anatomy</a></div>
   </div>
 </div>
 
@@ -68,4 +68,5 @@ Behind the skills, the `emery` CLI owns lifecycle, validation, synthesis, and ta
 
 - [Quick start tutorial](../tutorials/quick-start.md) — hands-on first change
 - [Core concepts](../explanation/concepts.md) — vocabulary tour
-- [The layered stack](../explanation/layered-stack.md) — architecture
+- [Shape of the system](../explanation/system-shape.md) — visual map
+- [The layered stack](../explanation/layered-stack.md) — invocation layers

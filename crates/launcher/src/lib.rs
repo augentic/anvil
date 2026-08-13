@@ -11,17 +11,19 @@ use project::config::ProjectConfig;
 use project::handler::{
     ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT, Locations, PROJECT_ROOT_ENV,
 };
-use transport::command::selectors::{SeedRequest, refresh_request, seed_request};
+use transport::command::selectors::{SeedRequest, refresh_request, seed_request, system_request};
 
 mod anchor;
 mod blobstore;
 mod exec_bits;
 mod install;
+mod origins;
 mod resolver;
 
 pub use blobstore::Blobstore;
 pub use exec_bits::ExecBits;
 pub use install::Registry;
+pub use origins::Origins;
 pub use resolver::Resolver;
 
 /// Guest-visible preopen name of the per-project derived cache.
@@ -72,13 +74,22 @@ impl Policy {
         let argv: Vec<String> =
             argv.iter().filter(|arg| *arg != "--debug" && *arg != "--quiet").cloned().collect();
         let seed = seed_request(&argv);
-        let root = anchor::project_root(invoked_dir, seed.as_ref());
+        let system = system_request(&argv);
+        let root = anchor::project_root(invoked_dir, seed.as_ref(), system.as_ref());
+        // A `system *` invocation mounts a definition home: the cache
+        // stays under `$EMERY_HOME` on one shared tenant (never keyed
+        // off the mounted root), and the home is never created.
+        let locations = if system.is_some() { locations.shared_cache("system") } else { locations };
         let paths = ExecutionPaths::new(root, locations);
         // The global store is host-owned (no guest mount); the install
         // leg creates it on demand. Same for the snapshot store — the
         // workspace backend's kernel creates it on first write.
         let workspaces_dir = paths.locations().workspaces_root().to_path_buf();
-        for dir in [paths.project_root().to_path_buf(), paths.cache_dir(), workspaces_dir] {
+        let mut dirs = vec![paths.cache_dir(), workspaces_dir];
+        if system.is_none() {
+            dirs.push(paths.project_root().to_path_buf());
+        }
+        for dir in dirs {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));

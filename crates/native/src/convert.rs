@@ -48,6 +48,15 @@ pub fn narrow_lead(lead: Lead) -> aseam::Lead {
     }
 }
 
+/// Narrow a workflow source input to the SDK input.
+#[must_use]
+pub fn narrow_source_input(input: seam::SourceInput) -> aseam::SourceInput {
+    match input {
+        seam::SourceInput::Workspace(root) => aseam::SourceInput::Workspace(root),
+        seam::SourceInput::Inline(content) => aseam::SourceInput::Inline(content),
+    }
+}
+
 /// Widen SDK evidence to the engine evidence document.
 #[must_use]
 pub fn evidence(evidence: aseam::Evidence) -> Evidence {

@@ -1110,6 +1110,7 @@ dependencies = [
  "emery-native",
  "emery-probe",
  "emery-wasi-exec-bits",
+ "emery-wasi-origins",
  "omnia",
  "omnia-cursor",
  "omnia-wasi-blobstore",
@@ -1229,6 +1230,7 @@ dependencies = [
  "emery-project",
  "emery-transport",
  "emery-wasi-exec-bits",
+ "emery-wasi-origins",
  "oci-client",
  "oci-wasm",
  "omnia",
@@ -1268,6 +1270,7 @@ dependencies = [
  "emery-diagnostics",
  "emery-error",
  "emery-project",
+ "emery-system",
  "emery-transport",
  "omnia-guest",
  "omnia-testkit",
@@ -1314,6 +1317,7 @@ dependencies = [
  "jiff",
  "omnia-guest",
  "petgraph",
+ "reqwest 0.13.4",
  "schemars",
  "semver",
  "serde",
@@ -1359,6 +1363,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "emery-system"
+version = "0.38.0"
+dependencies = [
+ "emery-artifacts",
+ "emery-diagnostics",
+ "emery-error",
+ "emery-project",
+ "omnia-guest",
+ "serde",
+ "serde-saphyr",
+ "tempfile",
+]
+
+[[package]]
 name = "emery-transport"
 version = "0.38.0"
 dependencies = [
@@ -1371,6 +1389,7 @@ dependencies = [
  "emery-native",
  "emery-project",
  "emery-slice",
+ "emery-system",
  "jiff",
  "omnia-guest",
  "omnia-testkit",
@@ -1385,6 +1404,18 @@ dependencies = [
 
 [[package]]
 name = "emery-wasi-exec-bits"
+version = "0.38.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "omnia",
+ "tokio",
+ "tracing",
+ "wasmtime",
+]
+
+[[package]]
+name = "emery-wasi-origins"
 version = "0.38.0"
 dependencies = [
  "anyhow",
@@ -3701,6 +3732,8 @@ checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
 dependencies = [
  "base64 0.22.1",
  "bytes",
+ "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",
@@ -3712,6 +3745,7 @@ dependencies = [
  "hyper-util",
  "js-sys",
  "log",
+ "mime",
  "percent-encoding",
  "pin-project-lite",
  "quinn",

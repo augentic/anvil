@@ -123,6 +123,15 @@ impl From<crate::seam::Error> for Error {
     }
 }
 
+impl From<SourceInput> for crate::seam::SourceInput {
+    fn from(input: SourceInput) -> Self {
+        match input {
+            SourceInput::Workspace(root) => Self::Workspace(root),
+            SourceInput::Inline(content) => Self::Inline(content),
+        }
+    }
+}
+
 /// Map [`crate::Source::metadata`] onto the WIT record.
 #[must_use]
 pub fn dispatch_metadata<A: crate::Source>() -> AdapterMetadata {
@@ -132,9 +141,12 @@ pub fn dispatch_metadata<A: crate::Source>() -> AdapterMetadata {
 /// # Errors
 ///
 /// As the implementor's [`survey`](crate::Source::survey).
-pub async fn dispatch_survey<A: crate::Source>(id: AdapterId) -> Result<Vec<Lead>, Error> {
-    let ctx = crate::seam::Context::guest(&id);
-    A::survey(&crate::WasiModel, &ctx)
+pub async fn dispatch_survey<A: crate::Source>(
+    id: AdapterId, source_key: String, input: SourceInput,
+) -> Result<Vec<Lead>, Error> {
+    let input = crate::seam::SourceInput::from(input);
+    let ctx = crate::seam::Context::guest(&id).keyed(source_key, &input);
+    A::survey(&crate::WasiModel, &ctx, &input)
         .await
         .map(|leads| leads.into_iter().map(Into::into).collect())
         .map_err(Into::into)
@@ -144,11 +156,12 @@ pub async fn dispatch_survey<A: crate::Source>(id: AdapterId) -> Result<Vec<Lead
 ///
 /// As the implementor's [`extract`](crate::Source::extract).
 pub async fn dispatch_extract<A: crate::Source>(
-    id: AdapterId, lead: Lead,
+    id: AdapterId, source_key: String, input: SourceInput, lead: Lead,
 ) -> Result<Evidence, Error> {
     let lead = crate::seam::Lead::from(lead);
-    let ctx = crate::seam::Context::guest(&id);
-    A::extract(&crate::WasiModel, &ctx, &lead).await.map(Into::into).map_err(Into::into)
+    let input = crate::seam::SourceInput::from(input);
+    let ctx = crate::seam::Context::guest(&id).keyed(source_key, &input);
+    A::extract(&crate::WasiModel, &ctx, &input, &lead).await.map(Into::into).map_err(Into::into)
 }
 
 /// Wire a [`crate::Source`] implementor into the component exports.
@@ -171,15 +184,19 @@ macro_rules! source {
 
             async fn survey(
                 id: $crate::source::AdapterId,
+                source_key: String,
+                input: $crate::source::SourceInput,
             ) -> Result<Vec<$crate::source::Lead>, $crate::source::Error> {
-                $crate::source::dispatch_survey::<$adapter>(id).await
+                $crate::source::dispatch_survey::<$adapter>(id, source_key, input).await
             }
 
             async fn extract(
                 id: $crate::source::AdapterId,
+                source_key: String,
+                input: $crate::source::SourceInput,
                 lead: $crate::source::Lead,
             ) -> Result<$crate::source::Evidence, $crate::source::Error> {
-                $crate::source::dispatch_extract::<$adapter>(id, lead).await
+                $crate::source::dispatch_extract::<$adapter>(id, source_key, input, lead).await
             }
         }
 

@@ -8,9 +8,11 @@ use omnia_guest::api::command::{BuildError, Completions, Namespace, Router, Rout
 use omnia_guest::api::invoke::Invoker;
 use project::adapter::Resolver;
 use project::handler::Anchor;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Origins, Source, Target, Workspaces};
 
-use super::{EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, target};
+use super::{
+    EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, system, target,
+};
 
 /// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
@@ -84,6 +86,10 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
         &["journal"],
         "Workflow journal at `.emery/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
+    NamespaceHelp::new(
+        &["system"],
+        "Definition-loop operations over a definition home (RFC-104) — a durable root the operator authors by hand (`scope.yaml` + `coverage.yaml`), never a product checkout. The launcher mounts `--dir`-or-CWD as the invocation's root with no `project.yaml` walk",
+    ),
 ];
 
 /// Assemble the complete Emery command router.
@@ -97,7 +103,7 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
 )]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces,
+    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces + Origins,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -282,6 +288,13 @@ where
         "Read-only baseline debt projection (RFC-86a D9) — the backlog looking ahead.\n\nWalks the baseline specs under `.emery/specs/` and lists every requirement whose status is `unknown` or `conflict`, with the reason, originating change, and age parsed from the self-describing deferral note the merge fold appended. Conflicts render separately from unknowns. Reads the baseline alone — never archived fact logs — and writes nothing. `plan author` renders the same inventory in the review prose it authors, so a corrective change is scoped with the backlog in view."
     );
     route!(
+        ["system", "survey"],
+        system::SurveyArgs,
+        ::system::handlers::Survey,
+        "Survey the declared coverage of a definition home",
+        "Survey the declared coverage of a definition home (RFC-104).\n\nAnchors at `--dir` (or the current directory) with no `project.yaml` walk — a definition home is durable client architecture, not a product checkout. Fails closed when `scope.yaml` or `coverage.yaml` is missing; the operator authors both by hand (there is no `system init`)."
+    );
+    route!(
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
@@ -344,5 +357,18 @@ convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sourc
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
 convert!(DebtArgs => ::slice::handlers::DebtInput {});
+
+// Deliberately not `convert!`: `--dir` is deployment-consumed — the
+// launcher anchors the `.` mount at it (`selectors::system_request`),
+// so the operation reads the anchored root.
+impl TryFrom<system::SurveyArgs> for ::system::handlers::SurveyInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::SurveyArgs) -> Result<Self, Self::Error> {
+        let system::SurveyArgs { dir } = args;
+        drop(dir);
+        Ok(Self {})
+    }
+}
 
 convert!(InitArgs => project::init::handlers::InitInput { adapter, name, description, platforms, upgrade });

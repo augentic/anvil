@@ -8,7 +8,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::Source;
+use project::seam::{Source, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -44,7 +44,7 @@ pub struct AuthorInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Author;
 
-impl<P: Anchor + Model + Resolver + Source> Operation<P> for Author {
+impl<P: Anchor + Model + Resolver + Source + Workspaces> Operation<P> for Author {
     type Error = project::handler::Error;
     type Input = AuthorInput;
     type Output = AuthorBody;

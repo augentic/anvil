@@ -13,7 +13,7 @@
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding,
-    PhaseReport, PhaseSource, Platform, RepairOrigin, Report, SourceMetadata, Status,
+    PhaseReport, PhaseSource, Platform, RepairOrigin, Report, SourceInput, SourceMetadata, Status,
     TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Source, Target};
@@ -50,7 +50,9 @@ impl Source for Probe {
         DOCS
     }
 
-    async fn survey<P: Model>(model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
+    async fn survey<P: Model>(
+        model: &P, ctx: &Context<'_>, _input: &SourceInput,
+    ) -> Result<Vec<Lead>, Error> {
         let reply = model
             .create(Request {
                 format: Format::Json,
@@ -66,7 +68,7 @@ impl Source for Probe {
     }
 
     async fn extract<P: Model>(
-        _model: &P, _ctx: &Context<'_>, lead: &Lead,
+        _model: &P, _ctx: &Context<'_>, _input: &SourceInput, lead: &Lead,
     ) -> Result<Evidence, Error> {
         Err(Error::Internal(format!("no evidence for {}", lead.lead)))
     }
@@ -277,7 +279,9 @@ impl Source for Reflect {
         DOCS
     }
 
-    async fn survey<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
+    async fn survey<P: Model>(
+        _model: &P, ctx: &Context<'_>, _input: &SourceInput,
+    ) -> Result<Vec<Lead>, Error> {
         Ok(vec![Lead {
             lead: ctx.mcp_url.as_deref().unwrap_or("none").to_string(),
             synopsis: format!("surveyed by {}", ctx.adapter_id),
@@ -286,7 +290,7 @@ impl Source for Reflect {
     }
 
     async fn extract<P: Model>(
-        _model: &P, _ctx: &Context<'_>, lead: &Lead,
+        _model: &P, _ctx: &Context<'_>, _input: &SourceInput, lead: &Lead,
     ) -> Result<Evidence, Error> {
         Err(Error::Internal(format!("no evidence for {}", lead.lead)))
     }

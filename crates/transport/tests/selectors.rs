@@ -4,7 +4,9 @@
 //! rejections, every workflow verb — runs in the guest, so it
 //! projects nothing.
 
-use transport::command::selectors::{RefreshRequest, refresh_request, seed_request};
+use transport::command::selectors::{
+    RefreshRequest, refresh_request, seed_request, system_request,
+};
 
 fn argv(args: &[&str]) -> Vec<String> {
     args.iter().map(ToString::to_string).collect()
@@ -50,6 +52,38 @@ fn displays_project_no_seed() {
         &["adapter", "add"][..],
     ] {
         assert_eq!(seed_request(&argv(args)), None, "{args:?}");
+    }
+}
+
+mod system {
+    use super::*;
+
+    #[test]
+    fn survey_projects_dir() {
+        let request = system_request(&argv(&["system", "survey", "--dir", "client-a"]))
+            .expect("system survey projects its anchoring request");
+        assert_eq!(request.dir, Some(std::path::PathBuf::from("client-a")));
+    }
+
+    #[test]
+    fn survey_defaults_cwd() {
+        // An absent `--dir` still projects: the launcher anchors the
+        // invocation directory with no `project.yaml` walk.
+        let request = system_request(&argv(&["system", "survey"])).expect("anchoring request");
+        assert_eq!(request.dir, None);
+    }
+
+    #[test]
+    fn routes_project_nothing() {
+        for args in [
+            &["plan", "status"][..],
+            &["adapter", "add", "./demo.wasm"][..],
+            &["system", "--help"][..],
+            &["system", "frobnicate"][..],
+            &["--version"][..],
+        ] {
+            assert_eq!(system_request(&argv(args)), None, "{args:?}");
+        }
     }
 }
 

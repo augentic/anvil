@@ -1,0 +1,63 @@
+<svg viewBox="0 0 920 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Engine and adapter guests are peers on Omnia; the runtime satisfies typed host effects and never learns workflow or models">
+  <title>What runs at runtime</title>
+  <defs>
+    <marker id="rt-arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <text x="40" y="26" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">WHAT RUNS AT RUNTIME</text>
+  <text x="40" y="46" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#888">Guests are instance-per-call. Omnia knows effects, not adapters, workflow, or models.</text>
+
+  <text x="40" y="70" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">GUESTS &#8212; PEERS ON THE RUNTIME</text>
+
+  <rect x="40" y="82" width="272" height="64" rx="8" fill="#e6d9f0" stroke="#a489d8"/>
+  <text x="176" y="108" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">engine</text>
+  <text x="176" y="126" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">embedded in the binary</text>
+
+  <rect x="328" y="82" width="272" height="64" rx="8" fill="#ede9d0" stroke="#c9b766"/>
+  <text x="464" y="108" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">source adapters</text>
+  <text x="464" y="126" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">admitted by identity</text>
+
+  <rect x="616" y="82" width="264" height="64" rx="8" fill="#e6d9f0" stroke="#a489d8"/>
+  <text x="748" y="108" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">target adapters</text>
+  <text x="748" y="126" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">admitted by identity</text>
+
+  <path d="M176 146 L176 170" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#rt-arr)"/>
+  <path d="M464 146 L464 170" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#rt-arr)"/>
+  <path d="M748 146 L748 170" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#rt-arr)"/>
+
+  <rect x="32" y="170" width="856" height="168" rx="12" fill="none" stroke="#c9c6bc" stroke-width="1.3" stroke-dasharray="6 5"/>
+  <text x="868" y="190" text-anchor="end" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="600" fill="#888" letter-spacing="0.06em">EMERY BINARY</text>
+
+  <rect x="48" y="200" width="824" height="56" rx="8" fill="#d9e7f1" stroke="#6ea8d8"/>
+  <text x="64" y="224" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">Omnia</text>
+  <text x="64" y="244" font-family="ui-monospace, monospace" font-size="11" fill="#555">typed WIT &#183; fresh instance per call &#183; launcher mounts + resolver</text>
+
+  <rect x="48" y="268" width="190" height="52" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="143" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">filesystem</text>
+  <text x="143" y="308" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">wasi:filesystem</text>
+
+  <rect x="250" y="268" width="190" height="52" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="345" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">journal</text>
+  <text x="345" y="308" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">lifecycle facts</text>
+
+  <rect x="452" y="268" width="190" height="52" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="547" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">workspaces</text>
+  <text x="547" y="308" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">private snapshots</text>
+
+  <rect x="654" y="268" width="218" height="52" rx="8" fill="#d4ecd9" stroke="#6db978" stroke-width="1.5"/>
+  <text x="763" y="290" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">wasi-model</text>
+  <text x="763" y="308" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">judgment as an effect</text>
+
+  <path d="M143 338 L143 358" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#rt-arr)"/>
+  <path d="M763 338 L763 358" stroke="#555" stroke-width="1.2" fill="none" marker-end="url(#rt-arr)"/>
+
+  <rect x="48" y="358" width="392" height="52" rx="8" fill="#f2f1ec" stroke="#c9c6bc"/>
+  <text x="244" y="380" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">snapshots / local FS</text>
+  <text x="244" y="398" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">host state &#183; backends swap</text>
+
+  <rect x="456" y="358" width="416" height="52" rx="8" fill="#d4ecd9" stroke="#6db978" stroke-width="1.5"/>
+  <text x="664" y="380" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="600" fill="#1c1c1c">model fleet</text>
+  <text x="664" y="398" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#555">frontier &#183; spawned agent &#183; replay</text>
+</svg>

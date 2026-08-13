@@ -4,7 +4,7 @@ use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, evidence_tai
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
-    PhaseSource, RepairOrigin, Report, SourceMetadata, TargetMetadata, Workspace,
+    PhaseSource, RepairOrigin, Report, SourceInput, SourceMetadata, TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
 use omnia_testkit::model::Harness;
@@ -30,7 +30,9 @@ impl Source for Probe {
         DOCS
     }
 
-    async fn survey<P: Model>(model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
+    async fn survey<P: Model>(
+        model: &P, ctx: &Context<'_>, _input: &SourceInput,
+    ) -> Result<Vec<Lead>, Error> {
         repaired(
             model,
             ctx,
@@ -44,7 +46,7 @@ impl Source for Probe {
     }
 
     async fn extract<P: Model>(
-        model: &P, ctx: &Context<'_>, lead: &Lead,
+        model: &P, ctx: &Context<'_>, _input: &SourceInput, lead: &Lead,
     ) -> Result<Evidence, Error> {
         repaired(
             model,
@@ -125,11 +127,12 @@ fn ctx() -> Context<'static> {
         project_root: std::path::Path::new("."),
         mcp_url: None,
         lend: ".".to_string(),
+        source_key: None,
     }
 }
 
 async fn survey_of<A: Source, M: Model>(model: &M, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
-    A::survey(model, ctx).await
+    A::survey(model, ctx, &SourceInput::Workspace(".".to_string())).await
 }
 
 #[tokio::test]
@@ -180,6 +183,7 @@ async fn guidance_failure() {
         project_root: std::path::Path::new("."),
         mcp_url: None,
         lend: ".".to_string(),
+        source_key: None,
     };
     let err = Probe::guidance(&model, &failing).await.expect_err("guidance fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("probe-fail-guidance")));

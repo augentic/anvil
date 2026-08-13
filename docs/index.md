@@ -93,13 +93,13 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
       <p>Find the slash-command and CLI surfaces for the plan-driven workflow.</p>
     </div>
   </a>
-  <a class="card" href="explanation/layered-stack.md">
+  <a class="card" href="explanation/system-shape.md">
     <div class="card-head">
       <h3 class="card-title">Understand the architecture</h3>
-      <span class="card-time">Concepts</span>
+      <span class="card-time">Map</span>
     </div>
     <div class="card-body">
-      <p>See how Emery, source adapters, target adapters, and downstream builds fit together.</p>
+      <p>Four pictures: who talks to whom, what runs, what flows through a change, and how the crates stack.</p>
     </div>
   </a>
   <a class="card" href="how-to/resolve-spec-conflicts.md">

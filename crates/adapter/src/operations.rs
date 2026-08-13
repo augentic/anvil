@@ -11,11 +11,14 @@ use crate::identity::AdapterIdentity;
 use crate::registry::Doc;
 use crate::seam::{
     BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
-    RepairOrigin, Report, SourceMetadata, TargetMetadata, Workspace,
+    RepairOrigin, Report, SourceInput, SourceMetadata, TargetMetadata, Workspace,
 };
 
 /// Source adapter contract: `metadata`, prose registry, `survey` / `extract`.
 ///
+/// Both judgment operations receive the engine-prepared [`SourceInput`]
+/// (the context already lends tree-form inputs and carries
+/// `source_key`); adapters never recover a source location themselves.
 /// Generic over [`Model`] so native tests bind scripted doubles and the
 /// wasm shim binds `WasiModel`.
 pub trait Source {
@@ -29,14 +32,14 @@ pub trait Source {
     /// Embedded prose registry.
     fn docs() -> &'static [Doc];
 
-    /// Survey the bound source into a lead set.
+    /// Survey the prepared input into a lead set.
     fn survey<P: Model>(
-        model: &P, ctx: &Context<'_>,
+        model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> impl Future<Output = Result<Vec<Lead>, Error>> + Send;
 
-    /// Extract one lead's Evidence.
+    /// Extract one lead's Evidence from the prepared input.
     fn extract<P: Model>(
-        model: &P, ctx: &Context<'_>, lead: &Lead,
+        model: &P, ctx: &Context<'_>, input: &SourceInput, lead: &Lead,
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;
 }
 

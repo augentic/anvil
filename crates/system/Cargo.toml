@@ -1,0 +1,30 @@
+[package]
+name = "emery-system"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Emery definition loop: definition-home layout, coverage-accounted system survey, and the emery system operations"
+categories = ["development-tools"]
+keywords = ["emery", "workflow", "system"]
+readme = "../../README.md"
+
+# Workspace code imports the short crate name; the package publishes as emery-system.
+[lib]
+name = "system"
+
+[lints]
+workspace = true
+
+[dependencies]
+emery-artifacts.workspace = true
+emery-diagnostics.workspace = true
+emery-error.workspace = true
+emery-project.workspace = true
+omnia-guest.workspace = true
+serde.workspace = true
+serde-saphyr.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

@@ -10,7 +10,7 @@ use project::config::Layout;
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{Plan, SourceBinding};
-use project::seam::{Source, seam_failure, source_id};
+use project::seam::{Source, Workspaces, seam_failure, source_id, source_input};
 
 /// One source's merged survey result under [`survey_all`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,7 +36,8 @@ pub struct SurveyedSource {
 /// Plan-load failures plus whatever [`survey`] surfaces for the first
 /// failing binding.
 pub async fn survey_all(
-    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
+    seam: &(impl Source + Workspaces), resolver: &impl Resolver, paths: &ExecutionPaths,
+    now: Timestamp,
 ) -> Result<Vec<SurveyedSource>, Error> {
     let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
@@ -62,8 +63,8 @@ pub async fn survey_all(
 /// failures from the adapter's survey leg, plus plan-load and merge
 /// I/O failures.
 pub async fn survey(
-    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
-    source: &str, plan_guard: Option<&str>,
+    seam: &(impl Source + Workspaces), resolver: &impl Resolver, paths: &ExecutionPaths,
+    now: Timestamp, source: &str, plan_guard: Option<&str>,
 ) -> Result<SurveyedSource, Error> {
     let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
@@ -93,8 +94,8 @@ pub async fn survey(
     fields(source = %source, adapter = tracing::field::Empty)
 )]
 async fn survey_one(
-    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
-    source: &str, binding: &SourceBinding,
+    seam: &(impl Source + Workspaces), resolver: &impl Resolver, paths: &ExecutionPaths,
+    now: Timestamp, source: &str, binding: &SourceBinding,
 ) -> Result<SurveyedSource, Error> {
     let layout = Layout::new(paths.project_root());
 
@@ -114,8 +115,14 @@ async fn survey_one(
         },
     )?;
 
+    // Prepare the input from the binding (tree → read-only workspace,
+    // value → inline); the wire never carries the locator.
+    let material = source_input::binding_material(source, binding, paths.project_root())?;
+    let prepared = source_input::prepare(seam, material).await?;
     let id = source_id(&adapter);
-    let raw = seam.survey(id.clone()).await.map_err(|err| seam_failure("survey", &id, &err))?;
+    let raw = seam.survey(id.clone(), source.to_string(), prepared.input.clone()).await;
+    source_input::discard(seam, prepared).await;
+    let raw = raw.map_err(|err| seam_failure("survey", &id, &err))?;
 
     // Attribution is orchestrator-owned, mirroring the native verb: a
     // `survey` for `source` produces `source`'s leads, so stamp every

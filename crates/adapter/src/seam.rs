@@ -9,7 +9,9 @@ use serde::Deserialize;
 
 mod source;
 
-pub use source::{Authority, Backing, Claim, ClaimKind, Evidence, Lead, SourceMetadata};
+pub use source::{
+    Authority, Backing, Claim, ClaimKind, Evidence, Lead, SourceInput, SourceMetadata,
+};
 
 /// Operation error — mirrors the WIT `types.error` variant.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -45,10 +47,13 @@ pub struct Context<'a> {
     /// agent so it can fetch `doc://` references lazily.
     pub mcp_url: Option<String>,
     /// Deployment-local path every judgment leg lends through
-    /// `grants.workspace`. Defaults to the `"."` project mount (source
-    /// and guidance legs); build and merge legs lend their prepared
-    /// workspace via [`Self::lending`].
+    /// `grants.workspace`. Defaults to the `"."` project mount (target
+    /// guidance); source and build/merge legs lend their prepared
+    /// input or workspace via [`Self::lending`].
     pub lend: String,
+    /// The caller's source-binding key, interpolated into source
+    /// prompts. `None` on target dispatches.
+    pub source_key: Option<String>,
 }
 
 impl<'a> Context<'a> {
@@ -62,6 +67,7 @@ impl<'a> Context<'a> {
             project_root: Path::new("."),
             mcp_url: mcp_url(adapter_id),
             lend: ".".to_string(),
+            source_key: None,
         }
     }
 
@@ -71,6 +77,17 @@ impl<'a> Context<'a> {
     #[must_use]
     pub fn lending(mut self, path: impl Into<String>) -> Self {
         self.lend = path.into();
+        self
+    }
+
+    /// Carry the caller's source-binding key onto a source dispatch,
+    /// lending the prepared input tree when the input is tree-form.
+    #[must_use]
+    pub fn keyed(mut self, key: impl Into<String>, input: &SourceInput) -> Self {
+        self.source_key = Some(key.into());
+        if let SourceInput::Workspace(root) = input {
+            self.lend.clone_from(root);
+        }
         self
     }
 

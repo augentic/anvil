@@ -81,3 +81,10 @@ This means you can always drop down a layer:
 - If `emery plan refine` or `emery plan execute` parks on a slice, fix the input the stop card points at, then re-run the same command — refine skips fresh manifests; the execute loop resumes at the parked phase and continues to the next entry.
 - If publication is incomplete, finish the repository's normal branch and review workflow before running `/emery:finalize`.
 - If a skill does something unexpected, inspect the underlying state by reading `plan.yaml` and `.emery/slices/<name>/metadata.yaml` directly — they are plain YAML files.
+
+<div class="see-also">
+<strong>See also</strong>
+
+- [Shape of the system](system-shape.md) — visual map of the framework
+- [Core concepts](concepts.md) — vocabulary and the change rhythm
+</div>

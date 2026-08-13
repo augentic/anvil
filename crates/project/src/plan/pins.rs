@@ -13,7 +13,8 @@ use super::model::{Plan, SourceBinding};
 use crate::snapshot::SnapshotId;
 
 /// Path components excluded from every source-tree walk — same policy
-/// as the snapshot store (version-control and change-tree state).
+/// as the snapshot store (version-control and change-tree state), so
+/// pin digests match `Store::snapshot` for any directory tree.
 const IGNORED: [&str; 2] = [".git", ".emery"];
 
 /// Entry path used for the one-file tree of a value binding.
@@ -167,7 +168,9 @@ fn walk(dir: &Path, prefix: &str, entries: &mut BTreeMap<String, Entry>) -> Resu
         if name.contains('\n') {
             return Err(unsupported(prefix, name));
         }
-        if IGNORED.contains(&name) {
+        if IGNORED.contains(&name)
+            || (prefix.is_empty() && crate::workspace::IGNORED_ROOT.contains(&name))
+        {
             continue;
         }
         let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };

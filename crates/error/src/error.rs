@@ -138,6 +138,9 @@ impl Error {
                 "slice-already-exists" => Some(
                     "continue the existing slice (`emery slice list` shows its status) or abandon it with `emery plan drop <slice>`",
                 ),
+                "system-scope-missing" | "system-coverage-missing" => Some(
+                    "the operator creates the definition home by hand (there is no `system init`) — two declared files at the root:\n\nscope.yaml:\n  version: 1\n  id: <system>\n  decision: <the decision this survey must support>\n\ncoverage.yaml:\n  version: 1\n  candidates:\n    - key: <source>\n      location: <URL or path>\n      adapter: <name>          # required iff disposition is included\n      disposition: included    # included | excluded | inaccessible | unsupported | unresolved\n      reason: <why>",
+                ),
                 _ => None,
             },
             Self::Validation { code, .. } => match code.as_ref() {
