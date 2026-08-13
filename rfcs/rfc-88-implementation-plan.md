@@ -365,7 +365,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Judgment-answer schema: `leads[]` (unfocused) and `children[]` (focused); parent/focus kebab is the deterministic tail only (schema still patches lead id + topic slugs). Regen `leads.schema.json`.
 - The adapters repo will not build against the sibling engine until step 12.
 
-### Step 12 — Update the five source adapters to the new seam (adapters repo) [ ]
+### Step 12 — Update the five source adapters to the new seam (adapters repo) [x]
 
 **RFC anchors:** as step 11; adapters-repo AGENTS.md contract.
 
@@ -378,6 +378,14 @@ The first cut lands the execution-substrate change while everything is still in-
 - Update adapter native tests (`tests/operations.rs`) to the new DTOs.
 
 **Tests / gates:** `cargo make check` + `cargo make ci` in emery-adapters; focused-survey unit coverage per source adapter. Live eval rungs stay operator-invoked and are not gating here.
+
+**Notes (2026-08-14):**
+
+- Sibling path patch in adapters `Cargo.toml` is uncommented (`[patch.crates-io]` path entries over `../emery/crates/{adapter,probe,native,prose}`). Do not re-point the version pin here; the operator re-comments the path block when raising the concert PRs. `cargo deny` warns `unmatched-source` for `https://github.com/augentic/emery.git` while the path patch is active — expected, and it clears when the git pin returns.
+- All five sources take `SourceInput` and return `SurveyResult`. `BINDING_NOTE` is gone. Unfocused survey answers `leads[]`; focused answers `children[]` and inherits parent/focus from the passed `Lead`. Extract requires `input.focus` (`InvalidRequest` otherwise). Intent is value-only (no `$SOURCE_DIR`); the other four walk the CID view.
+- Target audit (steps 2–3): contracts and vectis postflight now validate the merged baseline **inside the lent workspace** (`workspace.root_path()/contracts` and `…/.emery/specs/composition.yaml`). In-place preflight still reads staged slice artifacts from the change home at `.emery/change/slices/<slice>/…` via `ctx.project_root`. Omnia merge already used the workspace and needed no behaviour change. `Context.lend` is now `Option<String>` — target tests wrap the path in `Some`.
+- **Step 18:** when execute is detached, the guest `.` mount *is* the change home, so the in-place `.emery/change/slices/…` preflight prefix is wrong. Detached preflight must read `slices/<slice>/…` relative to that mount (or the engine must pass the staged path). Do not invent a dual-path probe here.
+- **Step 20:** `docs/authoring.md` still teaches the pre-step-11 `Source` trait (`survey(ctx) -> Vec<Lead>`, binding resolved by reading `plan.yaml`). Adapter-local references and the `emery-runtime` overlays still say `.emery/slices/` (vectis `composition_manifests` / `validate/engine/paths`, contracts `baseline-vs-delta` / `artifact-structure`, build prompts). Sweep those with the documentation closure; they are not load-bearing on the new source seam.
 
 ### Step 13 — Model-capability profiles [ ]
 
