@@ -9,6 +9,8 @@ pub mod ops;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod answers;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod definition;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod invoke;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod registry;

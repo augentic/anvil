@@ -1245,6 +1245,7 @@ name = "emery-mock"
 version = "0.38.0"
 dependencies = [
  "emery-adapter",
+ "emery-artifacts",
  "emery-change",
  "emery-error",
  "emery-native",

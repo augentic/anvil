@@ -5,7 +5,7 @@ use std::path::Path;
 
 use error::Error;
 
-use super::{Event, validate_writer, writer_log_path};
+use super::{Event, EventKind, validate_writer, writer_log_path};
 use crate::config::Layout;
 
 /// Project-relative path of the dropped-event recovery sidecar.
@@ -50,6 +50,14 @@ pub fn append_one(layout: Layout<'_>, event: &Event) -> Result<(), Error> {
 /// separator.
 pub fn append_for(layout: Layout<'_>, writer: &str, events: &[Event]) -> Result<(), Error> {
     validate_writer(writer)?;
+    if events.iter().any(|event| matches!(event.kind, EventKind::SystemWaveReviewed { .. })) {
+        return Err(Error::Diag {
+            code: "journal-event-read-only",
+            detail: "`system.wave.reviewed` is definition-scoped and cannot be appended \
+                     to a change journal"
+                .into(),
+        });
+    }
     if events.is_empty() {
         return Ok(());
     }

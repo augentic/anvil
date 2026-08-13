@@ -29,7 +29,7 @@ What exists and is load-bearing for this plan:
 
 | Area | State |
 | --- | --- |
-| RFC-104 (`emery system *`, `system.wave.reviewed`, handoffs, definition home) | **Absent** — prose only; implementation imminent (see closed Open Question 1). `EventKind::PlanExecuteStarted.discovery_digest` exists but is always `None`. |
+| RFC-104 (`emery system *`, `system.wave.reviewed`, handoffs, definition home) | **Read surface only** — `project::definition` owns the closed `Handoff` DTO, canonical digest, and fail-closed `resolve` (step 5). No `emery system *` write path. `EventKind::SystemWaveReviewed` parses from a definition-home event root and is refused by change-journal append. `EventKind::PlanExecuteStarted.discovery_digest` exists but is always `None`. |
 | In-place `plan author` | Implemented: `crates/change/src/orchestrate/author.rs` (survey → pins → propose → `plan.yaml` + `discovery.md` + `change.md` under `.emery/change/`). |
 | Plan model | `crates/project/src/plan/model/state.rs`: `Plan { name, sources, entries }`; `Entry.project: Option<String>` is the current target hook (removed in step 9 per closed Open Question 11); no `targets:` map, no digests. |
 | RFC-91 refinement | Implemented: `refinement.yaml` with `inputs.planning.{entry, leads, decomposition}` (decomposition currently the canonical single-node projection), `inputs.profile` = canonical empty digest placeholder. |
@@ -168,7 +168,7 @@ The first cut lands the execution-substrate change while everything is still in-
 
 ## Cut B — detached change home, wave import, delivery binding
 
-### Step 5 — Handoff + review-envelope DTOs, digests, fixture builder [ ]
+### Step 5 — Handoff + review-envelope DTOs, digests, fixture builder [x]
 
 **RFC anchors:** D1 (`imports/` retention), D3 (digest coverage paragraph), D8 (verification list), implementation requirements "Handoff and binding DTOs reject unknown fields and use typed canonical digests… Integration tests use reviewed definition fixtures"; RFC-104 D10 (handoff shape, `system.wave.reviewed` fact, resolution rules).
 
@@ -187,6 +187,14 @@ The first cut lands the execution-substrate change while everything is still in-
 **Tests / gates:** round-trip + canonical-digest stability tests (YAML reformatting does not change the digest); fail-closed resolution matrix; fixture-builder self-checks including the degenerate `intent` evidence-scope form (`value` present, `source-cid` absent). `cargo make ci`.
 
 **Out of scope:** any CLI surface, binding, or import-into-change-home behaviour (steps 6/9).
+
+**Notes (2026-08-13):**
+
+- RFC-104 has not landed; this step authored the shared `Handoff` DTO, canonical digester, and read surface in `crates/project/src/definition/` (closed Open Question 1 / 8). `system.wave.reviewed` is `EventKind::SystemWaveReviewed { handoff_digest }` — change-journal `append_for` refuses it (`journal-event-read-only`). Fixture homes write definition-root `events/<writer>.jsonl` directly.
+- **Current projection** is the unique `handoffs/<hex>.yaml` whose `wave.id` matches. Zero files → `definition-handoff-missing`; two or more → `definition-handoff-ambiguous` (no timestamp pick). Filename stem must equal the canonical digest hex (`definition-handoff-mismatch`). RFC-104's write side retains historical handoffs in the same directory: either keep at most one file per wave id as "current", or add input-digest matching against live `scope.yaml` / `coverage.yaml` / … before this read can disambiguate a real definition home. Any unreadable YAML in `handoffs/` fails the whole resolve (`definition-handoff-malformed`) — retained historical files must stay parseable by this DTO.
+- Definition-home event read **fails closed** on unparseable lines (`definition-event-malformed`), unlike change-journal `read_union` which skips them. Multiple review facts for the same handoff digest take the first in union order.
+- Evidence-scope xor is enforced at parse: `intent` → `value` and no `source-cid` (`definition-intent-form`); every other source → `source-cid` and no `value`. Canonical digest is `serialise_yaml` of the parsed DTO (empty lists omitted); YAML comments/whitespace/key order do not move it. Review `event-digest` is SHA-256 of the envelope's canonical JSON.
+- Fixture builder: `mock::definition::{Spec, mint}`. `Spec::degenerate(intent)` always includes the reserved `intent` evidence scope with inline `value`. `Spec::multi_target()` is two location-backed scopes. Adapters-repo eval does not depend on `emery-mock` today — step 19 should re-export `mint` through `probe` / the lab shim rather than adding a mock dependency to first-party eval. Step 9 copies byte-identical envelopes by re-reading `Home::handoff_path` and `events_dir`; `Reviewed` does not carry raw bytes.
 
 ### Step 6 — Two-root plumbing, detached change home, author grammar [ ]
 

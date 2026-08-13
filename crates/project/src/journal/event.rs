@@ -4,12 +4,15 @@
 //! payload fields; Rust variants reach the wire via `#[serde(rename)]`.
 
 use artifacts::spec::provenance::RequirementStatus;
+use diagnostics::digest::sha256_hex;
+use error::Error;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::operation::SourceOperation;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
+use crate::snapshot::SnapshotId;
 
 /// One row of a per-writer event log.
 ///
@@ -55,6 +58,19 @@ impl Event {
             sequence: 0,
             kind,
         }
+    }
+
+    /// Canonical digest of this envelope's JSON bytes.
+    ///
+    /// # Errors
+    ///
+    /// `journal-event-serialise-failed` when the envelope cannot be serialised.
+    pub fn digest(&self) -> Result<SnapshotId, Error> {
+        let bytes = serde_json::to_vec(self).map_err(|err| Error::Diag {
+            code: "journal-event-serialise-failed",
+            detail: format!("failed to serialise journal event: {err}"),
+        })?;
+        Ok(SnapshotId::from_digest(&sha256_hex(&bytes)))
     }
 }
 
@@ -314,10 +330,10 @@ pub enum EventKind {
         /// Frozen member set in stable wave order.
         members: Vec<SliceName>,
         /// Accepted CID the wave opened against (`wave.base`).
-        base: crate::snapshot::SnapshotId,
+        base: SnapshotId,
         /// Captured CID after folding every member's delta inside the
         /// workspace — the new accepted CID.
-        result: crate::snapshot::SnapshotId,
+        result: SnapshotId,
         /// Closed-plan commit-authorization epoch (may differ from the
         /// wave's build-authorization; serial execution normally reuses
         /// the same epoch).
@@ -331,7 +347,7 @@ pub enum EventKind {
         /// plan-local drift, not staleness. Optional and additive —
         /// absent on rows written before the field existed.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        baseline: Option<crate::snapshot::SnapshotId>,
+        baseline: Option<SnapshotId>,
         /// Deferred member set the wave carried into the baseline
         /// (RFC-86a D5) — the committed audit trail names exactly
         /// which debt this wave accepted. Empty when nothing was
@@ -521,6 +537,13 @@ pub enum EventKind {
         /// The synthesized gate-time reason.
         reason: String,
     },
+    /// RFC-104 wave-review fact. Parsed from a definition home's
+    /// `events/<writer>.jsonl`; the change journal never appends it.
+    #[serde(rename = "system.wave.reviewed", rename_all = "kebab-case")]
+    SystemWaveReviewed {
+        /// Canonical digest of the reviewed handoff (`sha256:…`).
+        handoff_digest: SnapshotId,
+    },
 }
 
 impl EventKind {
@@ -568,7 +591,7 @@ pub enum ClosedPlanCoverage {
         plan_digest: String,
         /// Sorted per-leaf refinement digests (`sha256:…` of each
         /// leaf's covered `refinement.yaml`).
-        refinements: std::collections::BTreeMap<String, crate::snapshot::SnapshotId>,
+        refinements: std::collections::BTreeMap<String, SnapshotId>,
     },
 }
 
