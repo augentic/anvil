@@ -63,7 +63,7 @@ pub fn assemble(
                 leads: planning.leads,
                 decomposition: planning.decomposition,
             },
-            profile: super::empty_digest(),
+            profile: super::live_profile(plan, entry),
             observations: super::empty_digest(),
             target_guidance: target.guidance,
             baseline_specs: dir_cid(&layout.specs_dir())?,

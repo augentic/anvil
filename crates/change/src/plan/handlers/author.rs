@@ -7,6 +7,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::{Inventory, Resolver};
 use project::handler::{Anchor, Render};
+use project::profile::Profiles;
 use project::seam::Ingest;
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +33,7 @@ pub struct AuthorInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Author;
 
-impl<P: Anchor + Resolver + Inventory + Ingest> Operation<P> for Author {
+impl<P: Anchor + Resolver + Inventory + Profiles + Ingest> Operation<P> for Author {
     type Error = project::handler::Error;
     type Input = AuthorInput;
     type Output = AuthorBody;

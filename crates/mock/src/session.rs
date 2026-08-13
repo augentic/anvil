@@ -131,6 +131,14 @@ impl Session {
     pub const fn model(&self) -> &Scripted {
         &self.model
     }
+
+    /// Replace the compiled model-capability profile table.
+    #[must_use]
+    pub fn with_profiles(mut self, table: project::profile::Table) -> Self {
+        let provider = self.provider;
+        self.provider = provider.with_profiles(table);
+        self
+    }
 }
 
 // A fresh tempdir; the session's cache parent lives inside it.

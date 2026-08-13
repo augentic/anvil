@@ -20,6 +20,7 @@ pub mod judgment;
 pub mod name;
 pub mod plan;
 pub mod platform;
+pub mod profile;
 pub mod refinement;
 pub mod seam;
 pub mod serde_time;

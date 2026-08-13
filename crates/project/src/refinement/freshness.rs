@@ -1,7 +1,7 @@
 //! Freshness projection over a recorded refinement manifest.
 //!
-//! Recomputes inputs and bundle digests against the live trees;
-//! `profile` / `observations` / `target-guidance` stay recorded-only.
+//! Recomputes planning, profile, baseline, sources, predecessors, and
+//! bundle; `observations` / `target-guidance` stay recorded-only.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -142,13 +142,12 @@ pub fn freshness(
 
 /// Project the freshness of `entry`'s recorded refinement manifest.
 ///
-/// `inventory` is the full `leads.md` catalog; `live` memoizes
-/// shared inputs across leaves. Recomputes the planning projections,
-/// baseline, sources, predecessors (an archived manifest counts,
-/// RFC-91 D3), spec membership, and bundle digests; an unparseable
-/// manifest is stale, not an error. The baseline also accepts the
-/// newest journaled post-merge digest (D4), so plan-local wave
-/// commits never stale unbuilt sibling manifests.
+/// `inventory` is the full `leads.md` catalog; `live` memoizes shared
+/// inputs across leaves. Recomputes planning, profile, baseline, sources,
+/// predecessors (archived manifests count), spec membership, and bundle
+/// digests; an unparseable manifest is stale, not an error. The baseline
+/// also accepts the newest journaled post-merge digest (D4), so sibling
+/// wave commits do not stale unbuilt manifests.
 ///
 /// # Errors
 ///
@@ -193,6 +192,7 @@ pub fn freshness_with(
     }
 
     planning(plan, entry, inventory, &manifest, live.target(layout)?.as_deref(), &mut reasons);
+    profile(plan, entry, &manifest, &mut reasons);
     baseline(layout, &manifest, live, &mut reasons)?;
     sources(layout, plan, entry, &manifest, live, &mut reasons)?;
     dependencies(layout, &manifest, &mut reasons)?;
@@ -274,6 +274,17 @@ pub fn latest_archive(archive_dir: &Path, slice: &str) -> Option<PathBuf> {
         }
     }
     best.map(|name| archive_dir.join(name))
+}
+
+/// Recompute the bound-target profile digest from `plan.yaml.targets`.
+fn profile(plan: &Plan, entry: &Entry, manifest: &Manifest, reasons: &mut Vec<String>) {
+    let live = super::live_profile(plan, entry);
+    if manifest.inputs.profile != live {
+        reasons.push(format!(
+            "profile `{}` drifted; live digest is `{live}`",
+            manifest.inputs.profile
+        ));
+    }
 }
 
 /// Recompute the three planning projections. A failed recompute (a

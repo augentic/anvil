@@ -45,13 +45,14 @@ pub struct TargetBinding {
     pub locator: String,
     /// Tree identity of that commit, excluding `.git` and a nested change home.
     pub cid: SnapshotId,
-    /// Model-capability profile; filled from the profiles step onward.
+    /// Bound profile identity. Present on `plan.yaml.targets`; absent
+    /// on `discovery.yaml.targets`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model_capability_profile: Option<ProfileRef>,
 }
 
 impl TargetBinding {
-    /// A target row without a model-capability profile.
+    /// A target row without a model-capability profile (discovery).
     #[must_use]
     pub fn new(adapter: Pin, locator: impl Into<String>, cid: SnapshotId) -> Self {
         Self {
@@ -60,6 +61,13 @@ impl TargetBinding {
             cid,
             model_capability_profile: None,
         }
+    }
+
+    /// Copy this row with `profile` stamped on.
+    #[must_use]
+    pub fn with_profile(mut self, profile: ProfileRef) -> Self {
+        self.model_capability_profile = Some(profile);
+        self
     }
 }
 

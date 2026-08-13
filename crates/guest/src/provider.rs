@@ -15,6 +15,7 @@ use project::adapter::{
     PlatformsCapability, ResolvedSource, ResolvedTarget, Resolver, WritableArtifactKind,
 };
 use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT, PROJECT_ROOT_ENV};
+use project::profile::Profiles;
 use project::seam::wire::{
     BuildOutput, BuildReport, BuildStatus, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource,
     PhaseWrite, RepairOrigin, UiSurface, build_finding,
@@ -38,6 +39,8 @@ pub struct Provider;
 static PATHS: LazyLock<ExecutionPaths> = LazyLock::new(ExecutionPaths::guest);
 static INVENTORY: LazyLock<project::adapter::catalog::Catalog> =
     LazyLock::new(project::adapter::catalog::Catalog::first_party);
+static PROFILES: LazyLock<project::profile::Table> =
+    LazyLock::new(project::profile::Table::compiled);
 
 impl omnia_guest::Model for Provider {}
 
@@ -76,6 +79,12 @@ impl Resolver for Provider {
 impl Inventory for Provider {
     fn inventory(&self) -> &project::adapter::catalog::Catalog {
         &INVENTORY
+    }
+}
+
+impl Profiles for Provider {
+    fn profiles(&self) -> &project::profile::Table {
+        &PROFILES
     }
 }
 

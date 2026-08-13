@@ -13,6 +13,7 @@ use project::adapter::{
     ResolvedTarget, Resolver,
 };
 use project::handler::ExecutionPaths;
+use project::profile::{self, Profiles};
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
 use project::seam::{self, Evidence, Input, Source, SourceInput, SurveyResult, Target, Workspace};
 use project::snapshot::{CodePatch, SnapshotId};
@@ -52,6 +53,7 @@ pub struct Provider {
     model: DynModel,
     catalog: Catalog,
     inventory: Option<std::sync::Arc<Adapters>>,
+    profiles: Option<std::sync::Arc<profile::Table>>,
     references: References,
 }
 
@@ -85,6 +87,7 @@ impl Provider {
             model,
             catalog,
             inventory: None,
+            profiles: None,
             references,
         }
     }
@@ -93,6 +96,13 @@ impl Provider {
     #[must_use]
     pub fn with_inventory(mut self, inventory: Adapters) -> Self {
         self.inventory = Some(std::sync::Arc::new(inventory));
+        self
+    }
+
+    /// Replace the compiled model-capability profile table.
+    #[must_use]
+    pub fn with_profiles(mut self, profiles: profile::Table) -> Self {
+        self.profiles = Some(std::sync::Arc::new(profiles));
         self
     }
 
@@ -256,6 +266,14 @@ impl Inventory for Provider {
         static FIRST: std::sync::LazyLock<Adapters> =
             std::sync::LazyLock::new(Adapters::first_party);
         self.inventory.as_deref().unwrap_or(&FIRST)
+    }
+}
+
+impl Profiles for Provider {
+    fn profiles(&self) -> &profile::Table {
+        static FIRST: std::sync::LazyLock<profile::Table> =
+            std::sync::LazyLock::new(profile::Table::compiled);
+        self.profiles.as_deref().unwrap_or(&FIRST)
     }
 }
 

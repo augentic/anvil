@@ -83,6 +83,15 @@ async fn binds_degenerate_intent() {
     let original =
         std::fs::read(Home::new(&from).handoff_path(&reviewed.digest)).expect("handoff src");
     assert_eq!(handoff, original, "byte-identical handoff import");
+
+    let compiled = project::profile::Table::compiled();
+    let bound = compiled.resolve().expect("compiled").reference().expect("reference");
+    assert!(
+        discovery.targets.values().all(|row| row.model_capability_profile.is_none()),
+        "discovery.yaml does not carry profile pins"
+    );
+    let stamped = plan.targets.get("app").expect("app").model_capability_profile.as_ref();
+    assert_eq!(stamped, Some(&bound));
 }
 
 #[tokio::test]
@@ -151,4 +160,31 @@ fn leftover_project_field() {
     let err = serde_saphyr::from_str::<Plan>(yaml).expect_err("unknown field");
     let text = err.to_string();
     assert!(text.contains("project") || text.contains("unknown"), "{text}");
+}
+
+#[tokio::test]
+async fn host_table_stamps() {
+    let mut other = project::profile::Profile::frontier_v1();
+    other.weights.coupling = 5;
+    let table = project::profile::Table::new(std::collections::BTreeMap::from([(
+        project::profile::FRONTIER_LARGE.into(),
+        other,
+    )]))
+    .expect("table");
+    let override_ref = table.resolve().expect("resolve").reference().expect("reference");
+    let compiled = project::profile::Table::compiled()
+        .resolve()
+        .expect("compiled")
+        .reference()
+        .expect("reference");
+    assert_ne!(override_ref.digest, compiled.digest);
+
+    let session = Session::scripted("mock", Vec::new()).with_profiles(table);
+    let (from, wave) = mint_bindable(session.root(), "Ship the greeting.");
+    author(&session, &from, &wave, false).await.expect("bind");
+    let plan = Plan::load(&Layout::new(session.root()).plan_path()).expect("plan");
+    assert_eq!(
+        plan.targets.get("app").expect("app").model_capability_profile.as_ref(),
+        Some(&override_ref)
+    );
 }

@@ -16,6 +16,7 @@ use project::plan::{
     DISCOVERY_VERSION, DefinitionIdentity, Discovery, Plan, ReviewIdentity, SourceBinding,
     TargetBinding, retain_leads,
 };
+use project::profile::Profiles;
 use project::seam::{self, Ingest};
 use project::snapshot::SnapshotId;
 
@@ -44,7 +45,7 @@ pub struct AuthorOutcome {
 ///
 /// Definition resolve, ingest, catalog, overwrite, and validation failures.
 #[tracing::instrument(name = "plan.author", skip_all, fields(plan = %name))]
-pub async fn author<P: Resolver + Inventory + Ingest>(
+pub async fn author<P: Resolver + Inventory + Profiles + Ingest>(
     provider: &P, paths: &ExecutionPaths, name: &str, from: &Path, wave: &str, force: bool,
 ) -> Result<AuthorOutcome, Error> {
     project::name::validate_name(name)?;
@@ -60,7 +61,7 @@ pub async fn author<P: Resolver + Inventory + Ingest>(
 
     let catalog = provider.inventory();
     let mut intern = BTreeMap::new();
-    let targets = bind_targets(provider, &reviewed, existing.as_ref(), &mut intern).await?;
+    let mut targets = bind_targets(provider, &reviewed, existing.as_ref(), &mut intern).await?;
     let (source_rows, source_pins) =
         bind_sources(provider, catalog, paths, &reviewed, existing.as_ref(), &mut intern).await?;
     let prior = prior_keys(existing.as_ref());
@@ -102,6 +103,8 @@ pub async fn author<P: Resolver + Inventory + Ingest>(
     let catalog = Leads::from_leads(imported);
     catalog.write_atomic(&layout.leads_path())?;
     let leads_digest = retain_leads(layout)?;
+
+    stamp_profiles(&mut targets, provider.profiles())?;
 
     let mut plan = Plan::named(name);
     plan.discovery_digest = Some(discovery_digest.clone());
@@ -261,6 +264,16 @@ fn identity(reviewed: &Reviewed) -> DefinitionIdentity {
         migration_plan_digest: reviewed.handoff.migration_plan_digest.clone(),
         wave_id: reviewed.handoff.wave.id.clone(),
     }
+}
+
+fn stamp_profiles(
+    targets: &mut BTreeMap<String, TargetBinding>, table: &project::profile::Table,
+) -> Result<(), Error> {
+    let bound = table.resolve()?.reference()?;
+    for row in targets.values_mut() {
+        row.model_capability_profile = Some(bound.clone());
+    }
+    Ok(())
 }
 
 async fn bind_targets<P: Ingest>(

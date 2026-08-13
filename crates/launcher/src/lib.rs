@@ -33,6 +33,12 @@ pub fn catalog() -> project::adapter::catalog::Catalog {
     project::adapter::catalog::Catalog::first_party()
 }
 
+/// Compiled model-capability profile table.
+#[must_use]
+pub fn profiles() -> project::profile::Table {
+    project::profile::Table::compiled()
+}
+
 /// Guest-visible preopen name of the per-project derived cache.
 pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
 

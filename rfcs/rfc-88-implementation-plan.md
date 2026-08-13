@@ -32,7 +32,7 @@ What exists and is load-bearing for this plan:
 | RFC-104 (`emery system *`, `system.wave.reviewed`, handoffs, definition home) | **Read surface only** — `project::definition` owns the closed `Handoff` DTO, canonical digest, and fail-closed `resolve` (step 5). No `emery system *` write path. `EventKind::SystemWaveReviewed` parses from a definition-home event root and is refused by change-journal append. `EventKind::PlanExecuteStarted.discovery_digest` exists but is always `None`. |
 | In-place `plan author` | Wave-bind (step 9) plus imported catalog (step 10): reviewed handoff → `discovery.yaml` + skeleton `plan.yaml` + catalog-only `leads.md` (retained at `leads/<digest>.md`, stamped on `plan.leads_digest`). Decomposition still pending (`slices[]` empty). |
 | Plan model | `crates/project/src/plan/model/state.rs`: `Plan { name, sources, entries }`; `Entry.project: Option<String>` is the current target hook (removed in step 9 per closed Open Question 11); no `targets:` map, no digests. |
-| RFC-91 refinement | Implemented: `refinement.yaml` with `inputs.planning.{entry, leads, decomposition}` (decomposition currently the canonical single-node projection), `inputs.profile` = canonical empty digest placeholder. |
+| RFC-91 refinement | Implemented: `refinement.yaml` with `inputs.planning.{entry, leads, decomposition}` (decomposition currently the canonical single-node projection), `inputs.profile` = bound-target profile digest (empty digest when the target row has none). |
 | RFC-86 waves / build records | Implemented in-place: `crates/project/src/wave.rs` (`.emery/change/targets/<target>/waves/<digest>.yaml`; `Wave.members: Vec<Member>` gated by `enforce_one_member` — preserved, closed Open Question 12), `crates/project/src/build_record.rs` (`builds/<digest>.yaml`). Wave base comes from `freeze()` at build open. |
 | RFC-86a gap gate | Implemented (`gap.deferred`, debt projection). No RFC-88 work needed beyond coverage wiring. |
 | Workspace kernel | Implemented: `crates/project/src/workspace/` + `snapshot.rs`. `Store::apply` and `Workspaces::apply` are **deleted**. `Workspaces` carries `freeze/prepare/capture/discard/sweep`; snapshot ignore policy excludes `.git` **and a nested change home** (`.emery/change/`). Durable `.emery/` state (`project.yaml`, `specs/`, `decisions/`) folds into every snapshot. |
@@ -40,7 +40,7 @@ What exists and is load-bearing for this plan:
 | Registry / workspace slots | Already removed (router rejects `emery registry *` / `emery init --workspace`). D4 is mostly a no-op; the remaining `Entry.project` vocabulary is deleted in step 9 (closed Open Question 11). |
 | Source WIT | `survey(id) -> list<lead>` — no focus parameter, no child leads. Source adapters read `plan.yaml` from the lent project preopen to find their binding. |
 | Adapter catalog / fingerprinting | Implemented: `project::adapter::catalog` (pins, recognition profiles, `select` / `assign`). Hosts supply the table through `adapter::Inventory` (`native::Provider`, guest `Provider`, `launcher::catalog()`). `intent` is explicit-only. |
-| Model-capability profiles | Absent (only the manifest placeholder digest). |
+| Model-capability profiles | Implemented (step 13): `project::profile` (`Profile` / `Table` / `Profiles`). Compiled `frontier-large-v1`; host override via native `with_profiles`. Bound onto `plan.yaml.targets` at author; `refinement.yaml.inputs.profile` is that digest. |
 | Adapters repo | Five sources (`intent`, `documentation`, `typescript`, `screenshots`, `captures`), three targets (`omnia`, `vectis`, `contracts`). Targets already receive RFC-87 workspaces + artifact stage; low churn expected. Eval workflow cases (`orders-contracts`, `omnia-r9k`) drive `init` + `plan author` from `case.toml` intent/source strings — no definition home. |
 
 ## Step overview
@@ -387,7 +387,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - **Step 18:** when execute is detached, the guest `.` mount *is* the change home, so the in-place `.emery/change/slices/…` preflight prefix is wrong. Detached preflight must read `slices/<slice>/…` relative to that mount (or the engine must pass the staged path). Do not invent a dual-path probe here.
 - **Step 20:** `docs/authoring.md` still teaches the pre-step-11 `Source` trait (`survey(ctx) -> Vec<Lead>`, binding resolved by reading `plan.yaml`). Adapter-local references and the `emery-runtime` overlays still say `.emery/slices/` (vectis `composition_manifests` / `validate/engine/paths`, contracts `baseline-vs-delta` / `artifact-structure`, build prompts). Sweep those with the documentation closure; they are not load-bearing on the new source seam.
 
-### Step 13 — Model-capability profiles [ ]
+### Step 13 — Model-capability profiles [x]
 
 **RFC anchors:** D3 (profile paragraphs: closed assessment dimensions, engine-computed weighted sum, operation thresholds), acceptance criterion 5 (profile digests as planning inputs); RFC-92 note (it patches the profile shape later — keep the DTO closed but versioned).
 
@@ -401,6 +401,17 @@ The first cut lands the execution-substrate change while everything is still in-
 **Key code areas:** new `crates/project/src/profile.rs` (or under `plan/`), `crates/project/src/refinement.rs` + `crates/slice/src/refinement/`, provider/composition plumbing for the host override hook (closed Open Question 4).
 
 **Tests / gates:** digest stability; scoring kernel (weighted sum + threshold application) dense matrix; host-supplied table replaces the compiled default and produces a distinct digest; manifest staleness on profile change. `cargo make ci`.
+
+**Notes (2026-08-14):**
+
+- Kernel is `project::profile`: closed `Profile` `{ id, version, weights, thresholds }` (`deny_unknown_fields`), `Assessment` (0–10 per dimension), `Gate::{SliceSplit, Task}`, host `Table` keyed by model class, capability trait `Profiles`. Canonical digest is SHA-256 of `Profile::canonical_yaml()` — digest is **not** a field on the DTO (circular). Compiled body is `frontier-large-v1` with the RFC worked-example weights/thresholds, documented as declared starting values. Golden: `crates/project/answers/capability-profile.yaml`.
+- Host supply mirrors step 8: `Profiles::profiles` → `Table`. Default is `Table::compiled()`; native `Provider::with_profiles` / `Session::with_profiles` substitutes the whole table; guest compiles the same table; `launcher::profiles()` / `mock::profiles()` re-export it. No WIT. `Table::resolve()` returns the sole entry for every target; a multi-entry table without a class selector is `profile-class-required`; `Table::get(class)` is the keyed lookup for when a second class arrives.
+- Scoring: weighted sum, then strictly-above the named threshold (`exceeds`). Score of exactly `slice-split` (80) does not trip boundary review. Out-of-range dimension is `profile-dimension-range`; overflow is `profile-score-overflow`.
+- Author stamps `Profile::reference()` onto `plan.yaml.targets` **after** cloning the map into `discovery.yaml`, so discovery stays profile-free and its digest does not cover the pin. `--force` restamps from the current host table.
+- `refinement.yaml.inputs.profile` is `live_profile(plan, entry)` — the bound target's digest, or the canonical empty digest when the row has none (in-memory fixtures that still use `TargetBinding::new`). Freshness recomputes that pin from the plan row, not from the live host table: a compiled-table bump does not stale manifests until `plan author` restamps.
+- **Step 14:** decomposition.yaml's `model-capability-profiles` map is per-target id + digest + body. Compose with `Profile::reference()` plus the `Profile` fields; do not put `digest` inside the hashed body. Depth/node budgets stay compiled constants, not profile fields.
+- **Step 15:** leaf-readiness is `Profile::exceeds(&assessment, Gate::SliceSplit)` against the plan-row pin (already stamped). Do not re-resolve the host table during decompose unless `--force` re-authored. `Gate::Task` is recorded only.
+- **Step 18:** the digest chain is plan-row digest ↔ decomposition body digest ↔ `refinement.yaml.inputs.profile`. Verify those pins match; do not re-resolve the host table at execute start. A binary bump of compiled weights creates a new digest for *new* authoring only — an in-flight epoch stays valid until re-author restamps (same honesty posture as closed Open Question 10's compiled constants).
 
 ### Step 14 — Decomposition substrate: DTOs, validators, compiler, projection [ ]
 

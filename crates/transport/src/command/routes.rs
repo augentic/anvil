@@ -8,6 +8,7 @@ use omnia_guest::api::command::{BuildError, Completions, Namespace, Router, Rout
 use omnia_guest::api::invoke::Invoker;
 use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
+use project::profile::Profiles;
 use project::seam::{Ingest, Source, Target, Workspaces};
 
 use super::change_dir::ChangeDir;
@@ -97,7 +98,16 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
 )]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + Resolver + Inventory + Source + Target + Workspaces + Ingest,
+    P: Provider
+        + Anchor
+        + Model
+        + Resolver
+        + Inventory
+        + Profiles
+        + Source
+        + Target
+        + Workspaces
+        + Ingest,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)

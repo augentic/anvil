@@ -8,6 +8,7 @@ use omnia_guest::api::invoke::Invoker;
 use omnia_guest::model::{Reply, Request};
 use project::adapter::{AdapterSelector, Inventory, ResolvedSource, ResolvedTarget, Resolver};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
+use project::profile::Profiles;
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
 use project::seam::{self, Evidence, Input, MergePhase};
 
@@ -231,6 +232,12 @@ impl Resolver for Grammar {
 
 impl Inventory for Grammar {
     fn inventory(&self) -> &project::adapter::catalog::Catalog {
+        never_dispatched!()
+    }
+}
+
+impl Profiles for Grammar {
+    fn profiles(&self) -> &project::profile::Table {
         never_dispatched!()
     }
 }

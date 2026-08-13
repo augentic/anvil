@@ -190,6 +190,43 @@ fn empty_optional_ids() {
 }
 
 #[test]
+fn bound_profile() {
+    let (root, mut plan, inventory) = fixture();
+    let bound = project::profile::Table::compiled()
+        .resolve()
+        .expect("compiled")
+        .reference()
+        .expect("reference");
+    plan.targets.get_mut("default").expect("default").model_capability_profile =
+        Some(bound.clone());
+    let manifest = assemble(root.path(), &plan, &inventory, vec![]);
+    assert_eq!(manifest.inputs.profile, bound.digest);
+}
+
+#[test]
+fn profile_stales() {
+    let (root, mut plan, inventory) = fixture();
+    let bound = project::profile::Table::compiled()
+        .resolve()
+        .expect("compiled")
+        .reference()
+        .expect("reference");
+    plan.targets.get_mut("default").expect("default").model_capability_profile =
+        Some(bound.clone());
+    let slice_dir = Layout::new(root.path()).slice_dir(SLICE);
+    assemble(root.path(), &plan, &inventory, vec![]).write(&slice_dir).expect("write");
+    assert!(matches!(freshness_of(root.path(), &plan, &inventory), Freshness::Fresh { .. }));
+
+    plan.targets.get_mut("default").expect("default").model_capability_profile =
+        Some(project::plan::ProfileRef {
+            id: bound.id,
+            digest: SnapshotId::from_digest(&"ab".repeat(32)),
+        });
+    let freshness = freshness_of(root.path(), &plan, &inventory);
+    assert!(stale_reasons(&freshness).iter().any(|r| r.contains("profile")), "{freshness:?}");
+}
+
+#[test]
 fn missing_artifact_refuses() {
     let (root, plan, inventory) = fixture();
     let slice_dir = Layout::new(root.path()).slice_dir(SLICE);

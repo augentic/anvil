@@ -8,5 +8,5 @@ pub use assemble::{TargetInputs, assemble};
 pub use project::refinement::{
     BundleEntry, Dependency, Freshness, Inputs, Kind, Live, MISSING_CODE, Manifest, Planning,
     STALE_CODE, VERSION, content_digest, empty_digest, file_digest, findings, freshness,
-    freshness_with, latest_archive, predecessor_digest,
+    freshness_with, latest_archive, live_profile, predecessor_digest,
 };

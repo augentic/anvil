@@ -10,6 +10,7 @@ use omnia_guest::http::StatusCode;
 use omnia_guest::http::header::{CONTENT_TYPE, HeaderValue};
 use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
+use project::profile::Profiles;
 use project::seam::{Ingest, Source, Target, Workspaces};
 use serde::Serialize;
 
@@ -86,7 +87,16 @@ fn encoding(error: &serde_json::Error) -> Response {
 #[must_use]
 pub fn router<P>(invoker: Invoker<P>) -> Router<P>
 where
-    P: Provider + Anchor + Model + Resolver + Inventory + Source + Target + Workspaces + Ingest,
+    P: Provider
+        + Anchor
+        + Model
+        + Resolver
+        + Inventory
+        + Profiles
+        + Source
+        + Target
+        + Workspaces
+        + Ingest,
 {
     macro_rules! get {
         ($operation:ty) => {
