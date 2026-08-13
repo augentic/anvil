@@ -45,8 +45,8 @@ flowchart TD
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef nearterm fill:#fed7aa,stroke:#c2410c,color:#7c2d12,stroke-width:3px
     classDef later fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
-    class R86,R87,R90,R91 done
-    class R104,R88,R96 nearterm
+    class R86,R87,R90,R91,R104 done
+    class R88,R96 nearterm
     class R94,R95,R97,R98 later
 ```
 
@@ -56,9 +56,9 @@ RFC-92 patches the model-capability profile shape owned by RFC-88, but does not 
 
 ## Where we are
 
-**Implemented:** RFC-86, RFC-87, RFC-90, RFC-91. Fact-based workflow over private workspaces, with an engine-owned build phase machine and a fenced specification-refinement stage.
+**Implemented:** RFC-86, RFC-87, RFC-90, RFC-91, RFC-104. Fact-based workflow over private workspaces, with an engine-owned build phase machine, a fenced specification-refinement stage, and the definition loop through `system.wave.reviewed`.
 
-**Definition gap:** the workflow begins at change authoring. It cannot yet produce a coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, or a migration plan that can finish as a paid deliverable. [RFC-104](rfc-104-system-archaeology.md) is that predecessor and hands one reviewed wave to RFC-88.
+**Definition:** implemented. [RFC-104](rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
 
 **Delivery gap:** RFC-88 retires merge-time `apply`, establishes accepted-CID execution, and runs the detached multi-repository loop over the selected wave. RFC-96 then supplies bounded concurrent scheduling; RFC-95 seals results for publication.
 
@@ -93,7 +93,7 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 ### Critical path — definition then delivery
 
-- [RFC-104](rfc-104-system-archaeology.md) — definition predecessor. Three internal cuts (coverage and Evidence; correlation and as-is; plan, handoff, and review). Acceptance is the loop through `system.wave.reviewed`. The definition loop may finish without product execution: that is a paid archaeology or readiness outcome, not a failed attempt to produce slices.
+- [RFC-104](rfc-104-system-archaeology.md) — implemented definition predecessor. Three internal cuts (coverage and Evidence; correlation and as-is; plan, handoff, and review); the accepted loop through `system.wave.reviewed` holds. The definition loop may finish without product execution: that is a paid archaeology or readiness outcome, not a failed attempt to produce slices.
 - [RFC-88](rfc-88-detached-changes.md) — one delivery contract after that reviewed handoff. Internal cuts: accepted-CID merge and deletion of interim `apply`; detached change home importing one RFC-104 wave; capability-profile-bound decomposition and refinement feedback; deterministic accepted-CID execution. Complete-tree publication stays the reference policy.
 - [RFC-95](rfc-95-publication-sets.md) — local project seals, publication identity, ordered landing, and archive verification after RFC-88 member derivation. Forge writes remain operator-owned; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts when manual publication is a measured bottleneck.
 
@@ -180,7 +180,7 @@ operator publishes    → push sealed branches; open and merge PRs
 emery plan archive    → verify publication, project outcome, archive
 ```
 
-`plan author` onward is implemented today, with two qualifications: verification is model-assisted, and detached target pinning plus publication land with RFC-88 and RFC-95. The definition stages are RFC-104. RFC-94 adds target execution admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the delivery stages.
+`plan author` onward is implemented today, with two qualifications: verification is model-assisted, and detached target pinning plus publication land with RFC-88 and RFC-95. The definition stages are implemented by [RFC-104](rfc-104-system-archaeology.md). RFC-94 adds target execution admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the delivery stages.
 
 An automation may invoke stages back to back. Inspection is not attestation: only `system review` records wave selection (`system.wave.reviewed` over an exact handoff), and that fact grants no product mutation authority. When RFC-93 lands, it governs whether the caller may request each act; the engine applies identical artifact and result gates whoever called.
 

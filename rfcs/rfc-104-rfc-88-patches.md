@@ -96,7 +96,12 @@ RFC-88 fills a declared name to an exact package pin at bind time. A pin already
 
 When RFC-88 describes adapter binding, say that it fills a handoff name and keeps a handoff pin.
 
-## Recommended by the RFC-104 review
+### 5. Import wire facts (as implemented)
+
+Two wire facts import depends on, recorded here so the next RFC-88 cut cites them instead of re-deriving them from the code. Neither changes the contract above.
+
+- **The review-event envelope.** The fact `plan author --from` must verify is `system.wave.reviewed`, carrying `{ wave, handoff-digest }`, appended to the definition home's own per-writer log at `<system>/events/<writer>.jsonl` (union-read by `(timestamp, writer, sequence)`; definition-home writers only, never `.emery/events/`). The fact grants architectural authority only — it does not replace `plan.execute.started` and carries no product mutation authority.
+- **Handoff verify-on-read.** Handoffs are content-addressed at `handoffs/<digest>.yaml` (bare 64-hex filename, `sha256:`-prefixed digests inside). The RFC-104 loader recomputes the content address on read and rejects drift as `system-handoff-corrupt`. Import must load through the same verification rather than trusting the filename, and must match the reviewed fact's `handoff-digest` against the verified address.
 
 ### Field-patch `plan amend` retirement
 
