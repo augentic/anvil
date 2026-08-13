@@ -2,15 +2,27 @@
 //! boundary and coverage DTOs, and the `emery system *` kernels.
 //! The definition home is durable client architecture, not a product root.
 
+pub mod answers;
+pub mod architecture;
 pub mod coverage;
+pub mod decision;
 pub mod handlers;
+pub mod handoff;
+pub mod judgment;
 pub mod layout;
 pub mod materialize;
+pub mod migration;
+pub mod model;
 pub mod orchestrate;
+pub mod review;
 pub mod scope;
+pub mod status;
 
 pub use coverage::{Coverage, Disposition, Row, RowPatch, SurveyError, SurveyErrorKind};
+pub use decision::Decision;
 pub use layout::Layout;
+pub use migration::Migration;
+pub use model::{Model, State};
 pub use scope::Scope;
 
 /// Ceiling on the summed survey lead count, checked before any `extract`.

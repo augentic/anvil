@@ -527,6 +527,19 @@ pub enum EventKind {
         /// The synthesized gate-time reason.
         reason: String,
     },
+    /// `emery system review` recorded architectural authority over one
+    /// exact wave handoff (RFC-104 D10). Definition-home writers only
+    /// (`<system>/events/`, never `.emery/events/`); the fact grants
+    /// no product mutation authority and does not replace
+    /// `plan.execute.started`.
+    #[serde(rename = "system.wave.reviewed", rename_all = "kebab-case")]
+    SystemWaveReviewed {
+        /// The reviewed wave's id in `migration.yaml`.
+        wave: String,
+        /// Content digest (`sha256:…`) of the exact reviewed
+        /// `handoffs/<digest>.yaml` projection.
+        handoff_digest: String,
+    },
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`].

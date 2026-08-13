@@ -17,14 +17,20 @@ name = "system"
 [lints]
 workspace = true
 
+[build-dependencies]
+emery-prose.workspace = true
+
 [dependencies]
 emery-artifacts.workspace = true
 emery-diagnostics.workspace = true
 emery-error.workspace = true
 emery-project.workspace = true
+layout-rs.workspace = true
 omnia-guest.workspace = true
+schemars.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

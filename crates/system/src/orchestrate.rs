@@ -1,22 +1,25 @@
-//! The `emery system survey` orchestration (RFC-104 D2/D3):
-//! materialize → survey → lead gate → extract → surgical coverage
-//! persist. Failures are coverage accounting, never lost rows.
+//! The `emery system survey` orchestration (RFC-104 D2–D4):
+//! materialize → survey → lead gate → extract → coverage persist →
+//! claim gate → correlation → `as-is` overlay persist.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use artifacts::atomic::bytes_write;
 use artifacts::discovery::{Lead as DiscoveryLead, validate_leads};
 use error::Error;
+use omnia_guest::Model;
 use project::adapter::{AdapterSelector, Resolver};
 use project::handler::ExecutionPaths;
 use project::seam::{Origins, Source, SourceInput, Workspaces, source_id};
 use project::snapshot::SnapshotId;
 
 use crate::coverage::{self, Coverage, Row, RowPatch, SurveyError, SurveyErrorKind};
+use crate::judgment::correlate::{self, EvidenceRef};
 use crate::layout::Layout;
+use crate::model::{State, overlay};
 use crate::scope::Scope;
-use crate::{MAX_SURVEY_LEADS, materialize};
+use crate::{Decision, MAX_CORRELATION_CLAIMS, MAX_SURVEY_LEADS, decision, materialize};
 
 /// The completed run's accounting, projected by the operation body.
 #[derive(Debug)]
@@ -31,6 +34,19 @@ pub struct SurveyOutcome {
     pub sources: Vec<SourceReport>,
     /// Evidence documents persisted this run.
     pub evidence: usize,
+    /// The correlated `as-is` state's accounting.
+    pub correlated: Correlated,
+}
+
+/// The correlation phase's accounting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Correlated {
+    /// Elements in the persisted `as-is` state.
+    pub elements: usize,
+    /// Relationships in the persisted `as-is` state.
+    pub relationships: usize,
+    /// Claims across the included Evidence corpus.
+    pub claims: usize,
 }
 
 /// One included source's run accounting.
@@ -74,27 +90,31 @@ struct Surveyed {
 }
 
 /// Run the coverage-accounted definition survey over the anchored
-/// definition home (RFC-104 D2/D3).
+/// definition home (RFC-104 D2–D4).
 ///
-/// Every included row is materialized and surveyed; the summed lead
-/// count gates before any extract; each fully extracted source's
-/// Evidence replaces `evidence/<source>/` and its row gains the
-/// observed tree. A failed row records `survey-error` and the run
-/// continues — coverage accounting never drops a candidate.
+/// Included rows materialize and survey; the summed lead count gates
+/// before any extract; a fully extracted source replaces its
+/// `evidence/<source>/` and gains the observed tree, while a failed
+/// row records `survey-error` and the run continues. The persisted
+/// corpus then correlates into `system.yaml`'s `as-is` (zero included
+/// Evidence persists an empty state without a model call).
 ///
 /// # Errors
 ///
 /// Fail-closed loads (`system-scope-missing`,
-/// `system-coverage-missing`, validation), the typed
-/// `system-survey-lead-limit` stop (no extract; the run's coverage
-/// accounting still persists), and coverage-persist I/O failures.
+/// `system-coverage-missing`, `decisions/` validation), the typed
+/// `system-survey-lead-limit` / `system-correlation-claim-limit`
+/// stops (coverage accounting persists; `as-is` is not replaced),
+/// judgment failures, and persist I/O failures.
 pub async fn survey(
-    seam: &(impl Source + Workspaces + Origins), resolver: &impl Resolver, paths: &ExecutionPaths,
+    seam: &(impl Source + Workspaces + Origins + Model), resolver: &impl Resolver,
+    paths: &ExecutionPaths,
 ) -> Result<SurveyOutcome, Error> {
     let root = paths.project_root();
     let layout = Layout::new(root);
     let scope = Scope::load(&layout.scope_path())?;
     let coverage = Coverage::load(&layout.coverage_path())?;
+    let decisions = decision::load_all(&layout.decisions_dir())?;
 
     // Survey phase: materialize and survey every included row,
     // holding each lent workspace for the extract phase.
@@ -179,9 +199,12 @@ pub async fn survey(
     reports.extend(failures);
 
     coverage::persist(&layout.coverage_path(), &patches)?;
-    // First successful survey grows the generated layout; `as-is` and
-    // `architecture/` arrive with correlation.
     std::fs::create_dir_all(layout.events_dir()).map_err(Error::Io)?;
+
+    // Correlation phase (D4): the complete persisted corpus — not just
+    // this run's writes — composes into `as-is`, then the overlay
+    // persist reapplies identities and decision stamps.
+    let correlated = correlate_phase(seam, &layout, &coverage, &scope, &decisions).await?;
 
     Ok(SurveyOutcome {
         id: scope.id,
@@ -189,7 +212,94 @@ pub async fn survey(
         candidates: coverage.candidates.len(),
         sources: reports,
         evidence: persisted,
+        correlated,
     })
+}
+
+/// The claim-gated correlation leg plus the `as-is` overlay persist.
+///
+/// Zero included Evidence persists `as-is: { elements: [],
+/// relationships: [] }` deterministically and skips the model call; a
+/// claim count over [`MAX_CORRELATION_CLAIMS`] is the typed
+/// `system-correlation-claim-limit` stop that leaves any prior
+/// `as-is` in place.
+async fn correlate_phase(
+    model: &impl Model, layout: &Layout<'_>, coverage: &Coverage, scope: &Scope,
+    decisions: &[Decision],
+) -> Result<Correlated, Error> {
+    let corpus = read_corpus(layout, coverage)?;
+    let state = if corpus.refs.is_empty() {
+        State::default()
+    } else if corpus.claim_count > MAX_CORRELATION_CLAIMS {
+        return Err(Error::Diag {
+            code: "system-correlation-claim-limit",
+            detail: format!(
+                "the included Evidence corpus carries {} claims, over the engine ceiling of \
+                 {MAX_CORRELATION_CLAIMS}; narrow coverage (exclude or unresolve rows) or author \
+                 another definition home for a narrower decision, then re-run",
+                corpus.claim_count
+            ),
+        });
+    } else {
+        let inputs = correlate::inputs(&scope.decision, corpus.refs);
+        correlate::correlate(model, &inputs, &corpus.claims).await?
+    };
+    let model = overlay::persist_as_is(&layout.system_path(), state, decisions)?;
+    crate::architecture::project(layout, "as-is", &model.as_is)?;
+    Ok(Correlated {
+        elements: model.as_is.elements.len(),
+        relationships: model.as_is.relationships.len(),
+        claims: corpus.claim_count,
+    })
+}
+
+/// The persisted included Evidence corpus: document refs in operator
+/// order, the `(source, id)` claim anchor index, and the claim count.
+struct Corpus {
+    refs: Vec<EvidenceRef>,
+    claims: BTreeSet<(String, String)>,
+    claim_count: usize,
+}
+
+/// Read every included source's persisted Evidence documents.
+fn read_corpus(layout: &Layout<'_>, coverage: &Coverage) -> Result<Corpus, Error> {
+    let mut corpus = Corpus {
+        refs: Vec::new(),
+        claims: BTreeSet::new(),
+        claim_count: 0,
+    };
+    for row in coverage.included() {
+        let dir = layout.source_evidence_dir(&row.key);
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(err) => return Err(Error::Io(err)),
+        };
+        let mut paths: Vec<_> = entries
+            .map(|entry| entry.map(|entry| entry.path()))
+            .collect::<Result<_, _>>()
+            .map_err(Error::Io)?;
+        paths.sort();
+        for path in paths {
+            if path.extension().and_then(|ext| ext.to_str()) != Some("yaml") {
+                continue;
+            }
+            let text = std::fs::read_to_string(&path).map_err(Error::Io)?;
+            let document: artifacts::evidence::Document = serde_saphyr::from_str(&text)?;
+            corpus.claim_count += document.claims.len();
+            for claim in &document.claims {
+                if let Some(id) = &claim.id {
+                    corpus.claims.insert((row.key.clone(), id.clone()));
+                }
+            }
+            corpus.refs.push(EvidenceRef {
+                source: row.key.clone(),
+                lead: document.lead.clone(),
+                evidence_path: format!("evidence/{}/{}.yaml", row.key, document.lead),
+            });
+        }
+    }
+    Ok(corpus)
 }
 
 /// One row's survey leg: resolve the declared adapter, materialize

@@ -82,6 +82,40 @@ impl<'a> Layout<'a> {
         self.root.join("architecture")
     }
 
+    /// `<system>/architecture/<name>.md` for `as-is` / `target`,
+    /// `<system>/architecture/transitions/<name>.md` for
+    /// `transition-*` states.
+    #[must_use]
+    pub fn state_doc_path(&self, name: &str) -> PathBuf {
+        let dir = if name.starts_with("transition-") {
+            self.architecture_dir().join("transitions")
+        } else {
+            self.architecture_dir()
+        };
+        dir.join(format!("{name}.md"))
+    }
+
+    /// `<system>/architecture/diagrams/` — committed diagram source
+    /// beside its rendered form.
+    #[must_use]
+    pub fn diagrams_dir(&self) -> PathBuf {
+        self.architecture_dir().join("diagrams")
+    }
+
+    /// `<system>/architecture/diagrams/<view>.source` — deterministic
+    /// textual diagram notation.
+    #[must_use]
+    pub fn diagram_source_path(&self, view: &str) -> PathBuf {
+        self.diagrams_dir().join(format!("{view}.source"))
+    }
+
+    /// `<system>/architecture/diagrams/<view>.svg` — the rendered view
+    /// beside its committed source.
+    #[must_use]
+    pub fn diagram_svg_path(&self, view: &str) -> PathBuf {
+        self.diagrams_dir().join(format!("{view}.svg"))
+    }
+
     /// `<system>/handoffs/` — canonical wave handoffs named by digest;
     /// historical handoffs are never deleted.
     #[must_use]

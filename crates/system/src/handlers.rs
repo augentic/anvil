@@ -4,6 +4,7 @@
 
 use std::io::Write;
 
+use omnia_guest::Model;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
@@ -12,7 +13,7 @@ use project::seam::{Origins, Source, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::coverage::{SurveyError, SurveyErrorKind};
-use crate::orchestrate::{self, SourceReport, SurveyOutcome};
+use crate::orchestrate::{self, Correlated, SourceReport, SurveyOutcome};
 
 /// Wire input for `emery system survey`.
 ///
@@ -32,7 +33,7 @@ pub struct SurveyInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Survey;
 
-impl<P: Anchor + Source + Resolver + Workspaces + Origins> Operation<P> for Survey {
+impl<P: Anchor + Source + Resolver + Workspaces + Origins + Model> Operation<P> for Survey {
     type Error = project::handler::Error;
     type Input = SurveyInput;
     type Output = SurveyBody;
@@ -62,6 +63,20 @@ pub struct SurveyBody {
     pub sources: Vec<SourceBody>,
     /// Evidence documents persisted this run.
     pub evidence: usize,
+    /// The persisted `as-is` state's accounting.
+    pub as_is: AsIsBody,
+}
+
+/// The correlated `as-is` state's wire accounting.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AsIsBody {
+    /// Elements in the persisted state.
+    pub elements: usize,
+    /// Relationships in the persisted state.
+    pub relationships: usize,
+    /// Claims across the included Evidence corpus.
+    pub claims: usize,
 }
 
 /// One included source's wire accounting.
@@ -120,12 +135,22 @@ impl From<SurveyOutcome> for SurveyBody {
                 } => SourceBody::Failed { source, kind, detail },
             })
             .collect();
+        let Correlated {
+            elements,
+            relationships,
+            claims,
+        } = outcome.correlated;
         Self {
             id: outcome.id,
             decision: outcome.decision,
             candidates: outcome.candidates,
             sources,
             evidence: outcome.evidence,
+            as_is: AsIsBody {
+                elements,
+                relationships,
+                claims,
+            },
         }
     }
 }
@@ -155,6 +180,11 @@ impl Render for SurveyBody {
                 }
             }
         }
-        writeln!(w, "  evidence: {} documents", self.evidence)
+        writeln!(w, "  evidence: {} documents", self.evidence)?;
+        writeln!(
+            w,
+            "  as-is: {} elements, {} relationships ({} claims)",
+            self.as_is.elements, self.as_is.relationships, self.as_is.claims
+        )
     }
 }

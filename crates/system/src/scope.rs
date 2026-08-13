@@ -15,7 +15,7 @@ const VERSION: u32 = 1;
 ///
 /// Operator-owned; the engine validates on load and never writes it.
 /// Exact evidence locators live on `coverage.yaml` rows, not here.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Scope {
     /// Schema version; only `1` is accepted.

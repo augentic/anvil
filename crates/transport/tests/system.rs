@@ -1,7 +1,7 @@
 //! Wire-contract coverage for `system survey`: the definition home
 //! is the anchored root (no `.emery/`, no `project.yaml`), declared
 //! inputs fail closed, included rows survey → extract with coverage
-//! accounting, and the lead gate stops before any extract.
+//! accounting, the gates stop typed, and correlation persists `as-is`.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -11,7 +11,7 @@ use native::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
 use omnia_testkit::model::Harness;
 
-fn provider(root: impl Into<PathBuf>) -> Provider {
+fn provider(root: impl Into<PathBuf>, answers: Vec<String>) -> Provider {
     let root = root.into();
     let locations = project::handler::Locations::explicit(
         root.join("store"),
@@ -19,11 +19,14 @@ fn provider(root: impl Into<PathBuf>) -> Provider {
     );
     Provider::new(
         project::handler::ExecutionPaths::new(root, locations),
-        DynModel::new(Harness::answering(Vec::<String>::new())),
+        DynModel::new(Harness::answering(answers)),
         mock::catalog(),
         ReferenceMode::Offline,
     )
 }
+
+/// A minimal valid correlation answer: one inferred element.
+const CORRELATED: &str = r#"{"version":1,"kind":"response","as-is":{"elements":[{"id":"orders","kind":"service","status":"inferred","claims":[]}],"relationships":[]}}"#;
 
 const SCOPE: &str = "version: 1\nid: acme-estate\ndecision: consolidate the order stack\n";
 
@@ -47,9 +50,11 @@ fn author_home(home: &Path, coverage_yaml: &str) {
     fs::write(home.join("orders/main.ts"), "export {};\n").expect("orders file");
 }
 
-/// Dispatch `system survey` argv in JSON format against `home`.
-async fn survey_json(home: &Path) -> (u8, String) {
-    let router = transport::command::router(Invoker::new("emery", provider(home))).expect("router");
+/// Dispatch `system survey` argv in JSON format against `home`, with
+/// `answers` scripted onto the correlation model.
+async fn survey_json(home: &Path, answers: Vec<String>) -> (u8, String) {
+    let router =
+        transport::command::router(Invoker::new("emery", provider(home, answers))).expect("router");
     let response = router.execute(["emery", "--format", "json", "system", "survey"]).await;
     let stream = if response.exit == 0 { response.stdout } else { response.stderr };
     (response.exit, String::from_utf8(stream).expect("output is UTF-8"))
@@ -58,7 +63,7 @@ async fn survey_json(home: &Path) -> (u8, String) {
 #[tokio::test]
 async fn missing_scope_fails_typed() {
     let home = tempfile::tempdir().expect("tempdir");
-    let (exit, stderr) = survey_json(home.path()).await;
+    let (exit, stderr) = survey_json(home.path(), Vec::new()).await;
     let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
     assert_ne!(exit, 0);
     assert_eq!(envelope["error"], "system-scope-missing");
@@ -71,7 +76,7 @@ async fn missing_scope_fails_typed() {
 async fn coverage_missing_typed() {
     let home = tempfile::tempdir().expect("tempdir");
     fs::write(home.path().join("scope.yaml"), SCOPE).expect("scope.yaml");
-    let (exit, stderr) = survey_json(home.path()).await;
+    let (exit, stderr) = survey_json(home.path(), Vec::new()).await;
     let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
     assert_ne!(exit, 0);
     assert_eq!(envelope["error"], "system-coverage-missing");
@@ -82,7 +87,7 @@ async fn surveyed_home() {
     let home = tempfile::tempdir().expect("tempdir");
     author_home(home.path(), &coverage("mock"));
 
-    let (exit, stdout) = survey_json(home.path()).await;
+    let (exit, stdout) = survey_json(home.path(), vec![CORRELATED.to_string()]).await;
     assert_eq!(exit, 0, "declared home surveys: {stdout}");
     let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
     assert_eq!(body["id"], "acme-estate");
@@ -108,8 +113,15 @@ async fn surveyed_home() {
     assert!(coverage.contains("legacy-erp"), "{coverage}");
     assert!(coverage.contains("vendor system, no export"), "{coverage}");
 
-    // Generated layout grew beneath the home.
+    // Generated layout grew beneath the home, and correlation wrote
+    // the `as-is` state through the overlay persist.
     assert!(home.path().join("events").is_dir(), "events/ is generated on first success");
+    assert_eq!(body["as-is"]["elements"], 1, "{body}");
+    let system = fs::read_to_string(home.path().join("system.yaml")).expect("system.yaml");
+    assert!(system.contains("identities: []"), "first creation mints empty identities: {system}");
+    assert!(system.contains("id: orders"), "{system}");
+    let view = fs::read_to_string(home.path().join("architecture/as-is.md")).expect("projection");
+    assert!(view.contains("Digest: sha256:"), "the view is digest-stamped: {view}");
 }
 
 #[tokio::test]
@@ -123,7 +135,7 @@ async fn failures_accounted() {
                          disposition: included\n    reason: flaky adapter\n";
     author_home(home.path(), coverage_yaml);
 
-    let (exit, stdout) = survey_json(home.path()).await;
+    let (exit, stdout) = survey_json(home.path(), Vec::new()).await;
     assert_eq!(exit, 0, "failed rows are accounting, not a run failure: {stdout}");
     let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
     assert_eq!(body["evidence"], 0);
@@ -141,6 +153,12 @@ async fn failures_accounted() {
     let coverage = fs::read_to_string(home.path().join("coverage.yaml")).expect("coverage.yaml");
     assert!(coverage.contains("survey-error"), "{coverage}");
     assert!(!coverage.contains("observed-cid"), "no row completed: {coverage}");
+
+    // Zero included Evidence still completes: empty `as-is` persists
+    // deterministically without a model call.
+    assert_eq!(body["as-is"]["elements"], 0, "{body}");
+    let system = fs::read_to_string(home.path().join("system.yaml")).expect("system.yaml");
+    assert!(system.contains("as-is"), "{system}");
 }
 
 #[tokio::test]
@@ -153,7 +171,9 @@ async fn extract_keeps_prior() {
     fs::create_dir_all(prior.parent().expect("parent")).expect("prior dir");
     fs::write(&prior, "lead: prior\nauthority: documentation\nclaims: []\n").expect("prior doc");
 
-    let (exit, stdout) = survey_json(home.path()).await;
+    // The prior corpus is still the correlation input, so the run
+    // makes one model call over it.
+    let (exit, stdout) = survey_json(home.path(), vec![CORRELATED.to_string()]).await;
     assert_eq!(exit, 0, "{stdout}");
     let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
     assert_eq!(body["sources"][0]["status"], "failed");
@@ -181,11 +201,51 @@ async fn lead_gate_stops() {
     }
     author_home(home.path(), &coverage_yaml);
 
-    let (exit, stderr) = survey_json(home.path()).await;
+    let (exit, stderr) = survey_json(home.path(), Vec::new()).await;
     assert_ne!(exit, 0);
     let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
     assert_eq!(envelope["error"], "system-survey-lead-limit");
     assert!(!home.path().join("evidence").exists(), "a gate stop never extracts");
+    assert!(!home.path().join("system.yaml").exists(), "a gate stop writes no as-is");
     let coverage = fs::read_to_string(home.path().join("coverage.yaml")).expect("coverage.yaml");
     assert!(coverage.contains("observed-cid"), "surveyed rows keep provenance: {coverage}");
+}
+
+#[tokio::test]
+async fn claim_gate_stops() {
+    // A prior corpus over the claim ceiling stops typed before the
+    // judgment and does not write (or replace) `as-is`.
+    let home = tempfile::tempdir().expect("tempdir");
+    author_home(home.path(), &coverage("mock-fail-survey"));
+    let mut doc = "lead: prior\nauthority: documentation\nclaims:\n".to_string();
+    for claim in 0..4097 {
+        write!(doc, "  - kind: requirement\n    id: bulk.c{claim}\n").expect("string write");
+    }
+    let prior = home.path().join("evidence/orders-code/prior.yaml");
+    fs::create_dir_all(prior.parent().expect("parent")).expect("prior dir");
+    fs::write(&prior, doc).expect("prior doc");
+
+    let (exit, stderr) = survey_json(home.path(), Vec::new()).await;
+    assert_ne!(exit, 0);
+    let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
+    assert_eq!(envelope["error"], "system-correlation-claim-limit");
+    assert!(!home.path().join("system.yaml").exists(), "a gate stop writes no as-is");
+}
+
+#[tokio::test]
+async fn claims_close_in_loop() {
+    // An answer citing a claim no Evidence document carries fails the
+    // deterministic tail and is repaired in-loop; the corrected answer
+    // persists.
+    let home = tempfile::tempdir().expect("tempdir");
+    author_home(home.path(), &coverage("mock"));
+    let bogus = r#"{"version":1,"kind":"response","as-is":{"elements":[{"id":"orders","kind":"service","status":"evidenced","claims":[{"source":"orders-code","id":"no.such-claim"}]}],"relationships":[]}}"#;
+
+    let (exit, stdout) =
+        survey_json(home.path(), vec![bogus.to_string(), CORRELATED.to_string()]).await;
+    assert_eq!(exit, 0, "the repair loop corrects the citation: {stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["as-is"]["elements"], 1, "{body}");
+    let system = fs::read_to_string(home.path().join("system.yaml")).expect("system.yaml");
+    assert!(system.contains("status: inferred"), "the repaired answer persisted: {system}");
 }
