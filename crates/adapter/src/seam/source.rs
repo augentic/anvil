@@ -1,6 +1,6 @@
 //! Source-axis seam vocabulary mirroring the WIT `source` records:
-//! resolve-time metadata, survey leads, and the extract Evidence shape
-//! (authority, claim taxonomy, backing).
+//! resolve-time metadata, survey input/result, and the extract Evidence
+//! shape (authority, claim taxonomy, backing).
 
 use serde::Deserialize;
 
@@ -26,19 +26,100 @@ pub struct Lead {
     /// Agent-authored topic slugs (kebab-case); empty means unclassified.
     #[serde(default)]
     pub topics: Vec<String>,
+    /// Parent lead id within the same source. Absent on a top-level lead.
+    #[serde(default)]
+    pub parent: Option<String>,
+    /// Source-local focus that produced this lead. Absent on an
+    /// unfocused import or survey row.
+    #[serde(default)]
+    pub focus: Option<String>,
 }
 
 impl Lead {
+    /// A top-level lead with no topics, parent, or focus.
+    #[must_use]
+    pub fn new(lead: impl Into<String>, synopsis: impl Into<String>) -> Self {
+        Self {
+            lead: lead.into(),
+            synopsis: synopsis.into(),
+            topics: Vec::new(),
+            parent: None,
+            focus: None,
+        }
+    }
+
     /// Render as the survey prompts' lead-block shape for an extract prompt.
     #[must_use]
     pub fn render(&self) -> String {
-        let topics = if self.topics.is_empty() {
-            String::new()
-        } else {
-            format!("\n- topics: [{}]", self.topics.join(", "))
-        };
-        format!("- lead: {}\n- synopsis: {}{topics}", self.lead, self.synopsis)
+        let mut out = format!("- lead: {}\n- synopsis: {}", self.lead, self.synopsis);
+        if !self.topics.is_empty() {
+            out.push_str("\n- topics: [");
+            out.push_str(&self.topics.join(", "));
+            out.push(']');
+        }
+        if let Some(parent) = &self.parent {
+            out.push_str("\n- parent: ");
+            out.push_str(parent);
+        }
+        if let Some(focus) = &self.focus {
+            out.push_str("\n- focus: ");
+            out.push_str(focus);
+        }
+        out
     }
+}
+
+/// Read-only CID view — mirrors the WIT `source.workspace` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceWorkspace {
+    /// Opaque identity of the preparation.
+    pub id: String,
+    /// Deployment-local path of the read-only view root.
+    pub root: String,
+}
+
+/// Workspace-or-value payload — mirrors the WIT `source.content` variant.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SourceContent {
+    /// Read-only CID view of a location-backed source.
+    Workspace(SourceWorkspace),
+    /// Inline value; no filesystem lend.
+    Value(String),
+}
+
+/// Typed source-operation input — mirrors the WIT `source.input` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceInput {
+    /// Plan source-binding key (`plan.yaml.sources.<key>`).
+    pub key: String,
+    /// Read-only CID view or inline value.
+    pub content: SourceContent,
+    /// Parent-lead focus (survey) or terminal lead (extract).
+    pub focus: Option<Lead>,
+}
+
+impl SourceInput {
+    /// Inline-value input with no focus — the unfocused survey / value extract shape.
+    #[must_use]
+    pub fn value(key: impl Into<String>, value: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            content: SourceContent::Value(value.into()),
+            focus: None,
+        }
+    }
+}
+
+/// Survey response — mirrors the WIT `source.survey-result` record.
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct SurveyResult {
+    /// Top-level leads from an unfocused survey. Empty when focused.
+    #[serde(default)]
+    pub leads: Vec<Lead>,
+    /// Stable child leads under the focused parent. Empty when unfocused.
+    #[serde(default)]
+    pub children: Vec<Lead>,
 }
 
 /// Document-level authority class for an Evidence document

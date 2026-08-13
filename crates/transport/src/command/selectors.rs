@@ -9,7 +9,7 @@ use omnia_guest::model::{Reply, Request};
 use project::adapter::{AdapterSelector, Inventory, ResolvedSource, ResolvedTarget, Resolver};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
-use project::seam::{self, Evidence, Input, Lead, MergePhase};
+use project::seam::{self, Evidence, Input, MergePhase};
 
 /// The `adapter add` arguments the launcher needs to anchor the
 /// project mount and preopen the operator's component directory.
@@ -236,11 +236,15 @@ impl Inventory for Grammar {
 }
 
 impl seam::Source for Grammar {
-    async fn survey(&self, _id: String) -> Result<Vec<Lead>, seam::Error> {
+    async fn survey(
+        &self, _id: String, _input: seam::SourceInput,
+    ) -> Result<seam::SurveyResult, seam::Error> {
         never_dispatched!()
     }
 
-    async fn extract(&self, _id: String, _lead: Lead) -> Result<Evidence, seam::Error> {
+    async fn extract(
+        &self, _id: String, _input: seam::SourceInput,
+    ) -> Result<Evidence, seam::Error> {
         never_dispatched!()
     }
 }

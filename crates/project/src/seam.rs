@@ -32,7 +32,7 @@ pub enum Error {
 
 /// One lead surfaced by a survey.
 ///
-/// The shape is the discovery lead minus the envelope `source` key,
+/// The shape is the catalog lead minus the envelope `source` key,
 /// which the orchestrator stamps. Doubles as the item shape of the
 /// generated `survey` judgment-answer schema.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -47,6 +47,95 @@ pub struct Lead {
     /// unclassified.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub topics: Vec<String>,
+    /// Parent lead id within the same source. Absent on a top-level lead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+    /// Source-local focus that produced this lead. Absent on an
+    /// unfocused import or survey row.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focus: Option<String>,
+}
+
+impl Lead {
+    /// A top-level lead with no topics, parent, or focus.
+    #[must_use]
+    pub fn new(lead: impl Into<String>, synopsis: impl Into<String>) -> Self {
+        Self {
+            lead: lead.into(),
+            synopsis: synopsis.into(),
+            topics: Vec::new(),
+            parent: None,
+            focus: None,
+        }
+    }
+
+    /// Project a catalog row onto the seam record (drops `source`).
+    #[must_use]
+    pub fn from_catalog(lead: &artifacts::leads::Lead) -> Self {
+        Self {
+            lead: lead.lead.clone(),
+            synopsis: lead.synopsis.clone(),
+            topics: lead.topics.clone(),
+            parent: lead.parent.clone(),
+            focus: lead.focus.clone(),
+        }
+    }
+}
+
+/// Read-only CID view for a location-backed source. No artifacts
+/// grant — the change home is not on this record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceWorkspace {
+    /// Opaque identity of the preparation.
+    pub id: String,
+    /// Deployment-local path of the read-only view root.
+    pub root: String,
+}
+
+/// Workspace-or-value payload on a source dispatch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SourceContent {
+    /// Read-only CID view of a location-backed source.
+    Workspace(SourceWorkspace),
+    /// Inline value; no filesystem lend.
+    Value(String),
+}
+
+/// Typed source-operation input: source key, workspace-or-value, and
+/// optional catalog lead (parent focus on survey; terminal on extract).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceInput {
+    /// Plan source-binding key (`plan.yaml.sources.<key>`).
+    pub key: String,
+    /// Read-only CID view or inline value.
+    pub content: SourceContent,
+    /// Parent-lead focus (survey) or terminal lead (extract).
+    pub focus: Option<Lead>,
+}
+
+impl SourceInput {
+    /// Inline-value input with no focus — the unfocused survey / value extract shape.
+    #[must_use]
+    pub fn value(key: impl Into<String>, value: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            content: SourceContent::Value(value.into()),
+            focus: None,
+        }
+    }
+}
+
+/// Survey response distinguishing an unfocused top-level set from
+/// focused children under the named parent.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SurveyResult {
+    /// Top-level leads from an unfocused survey. Empty when focused.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub leads: Vec<Lead>,
+    /// Stable child leads under the focused parent. Empty when unfocused.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<Lead>,
 }
 
 /// Evidence returned by an extract, without the caller-owned `lead` key.
@@ -161,11 +250,13 @@ pub enum MergePhase {
 /// Plan-time discovery and slice-time extraction for a source adapter.
 pub trait Source: Send + Sync {
     /// Lightly survey the source into a lead set.
-    fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, Error>> + Send;
+    fn survey(
+        &self, id: String, input: SourceInput,
+    ) -> impl Future<Output = Result<SurveyResult, Error>> + Send;
 
     /// Thoroughly extract evidence from the source for one lead.
     fn extract(
-        &self, id: String, lead: Lead,
+        &self, id: String, input: SourceInput,
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;
 }
 
@@ -354,6 +445,64 @@ pub fn seam_failure(operation: &'static str, id: &str, err: &Error) -> error::Er
     error::Error::Diag {
         code: "seam-dispatch-failed",
         detail: format!("seam `{operation}` dispatch to `{id}` failed: {err}"),
+    }
+}
+
+/// Bind one plan source row into a seam [`SourceInput`].
+///
+/// Location-backed rows prepare a read-only CID view and return its
+/// workspace id for the caller to discard. Inline values carry no view.
+///
+/// # Errors
+///
+/// `source-cid-missing` when a locator row has no recorded CID;
+/// `source-view-prepare-failed` when the read-only prepare fails.
+pub async fn bind_source(
+    workspaces: &impl Workspaces, key: &str, binding: &crate::plan::SourceBinding,
+    focus: Option<Lead>,
+) -> Result<(SourceInput, Option<String>), error::Error> {
+    if let Some(value) = binding.value.as_ref().filter(|value| !value.is_empty()) {
+        return Ok((
+            SourceInput {
+                key: key.to_string(),
+                content: SourceContent::Value(value.clone()),
+                focus,
+            },
+            None,
+        ));
+    }
+    let cid = binding.cid.as_ref().ok_or_else(|| error::Error::Diag {
+        code: "source-cid-missing",
+        detail: format!(
+            "source `{key}` is location-backed but has no recorded cid; re-run plan author \
+             to bind it"
+        ),
+    })?;
+    let prepared =
+        workspaces.prepare(cid.clone(), false).await.map_err(|err| error::Error::Diag {
+            code: "source-view-prepare-failed",
+            detail: format!("preparing a read-only view of source `{key}` failed: {err}"),
+        })?;
+    Ok((
+        SourceInput {
+            key: key.to_string(),
+            content: SourceContent::Workspace(SourceWorkspace {
+                id: prepared.id.clone(),
+                root: prepared.root,
+            }),
+            focus,
+        },
+        Some(prepared.id),
+    ))
+}
+
+/// Discard a source view, warning on failure so a dispatch error stays
+/// the primary result.
+pub async fn discard_source_view(workspaces: &impl Workspaces, id: Option<String>) {
+    if let Some(id) = id
+        && let Err(err) = workspaces.discard(id.clone()).await
+    {
+        tracing::warn!(workspace = %id, "source view discard failed: {err}");
     }
 }
 

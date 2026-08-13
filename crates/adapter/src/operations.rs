@@ -10,8 +10,8 @@ use omnia_guest::Model;
 use crate::identity::AdapterIdentity;
 use crate::registry::Doc;
 use crate::seam::{
-    BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
-    RepairOrigin, Report, SourceMetadata, TargetMetadata, Workspace,
+    BuildContext, Context, Error, Evidence, Input, MergePhase, PhaseFinding, PhaseReport,
+    RepairOrigin, Report, SourceInput, SourceMetadata, SurveyResult, TargetMetadata, Workspace,
 };
 
 /// Source adapter contract: `metadata`, prose registry, `survey` / `extract`.
@@ -29,14 +29,17 @@ pub trait Source {
     /// Embedded prose registry.
     fn docs() -> &'static [Doc];
 
-    /// Survey the bound source into a lead set.
+    /// Survey the bound source into a lead set. Unfocused (`focus`
+    /// absent) returns the complete current set; focused returns
+    /// children under the named parent.
     fn survey<P: Model>(
-        model: &P, ctx: &Context<'_>,
-    ) -> impl Future<Output = Result<Vec<Lead>, Error>> + Send;
+        model: &P, ctx: &Context<'_>, input: &SourceInput,
+    ) -> impl Future<Output = Result<SurveyResult, Error>> + Send;
 
-    /// Extract one lead's Evidence.
+    /// Extract one lead's Evidence. `input.focus` is the terminal
+    /// catalog lead, carrying parent/focus for child extraction.
     fn extract<P: Model>(
-        model: &P, ctx: &Context<'_>, lead: &Lead,
+        model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;
 }
 

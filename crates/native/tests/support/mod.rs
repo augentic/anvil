@@ -13,8 +13,8 @@
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, BuildOutput, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding,
-    PhaseReport, PhaseSource, Platform, RepairOrigin, Report, SourceMetadata, Status,
-    TargetMetadata, Workspace,
+    PhaseReport, PhaseSource, Platform, RepairOrigin, Report, SourceInput, SourceMetadata, Status,
+    SurveyResult, TargetMetadata, Workspace,
 };
 use adapter::{AdapterIdentity, Source, Target};
 use omnia_guest::Model;
@@ -50,7 +50,9 @@ impl Source for Probe {
         DOCS
     }
 
-    async fn survey<P: Model>(model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
+    async fn survey<P: Model>(
+        model: &P, ctx: &Context<'_>, _input: &SourceInput,
+    ) -> Result<SurveyResult, Error> {
         let reply = model
             .create(Request {
                 format: Format::Json,
@@ -58,17 +60,23 @@ impl Source for Probe {
             })
             .await
             .map_err(Error::from)?;
-        Ok(vec![Lead {
-            lead: reply.answer,
-            synopsis: format!("surveyed by {}", ctx.adapter_id),
-            topics: Vec::new(),
-        }])
+        Ok(SurveyResult {
+            leads: vec![Lead {
+                lead: reply.answer,
+                synopsis: format!("surveyed by {}", ctx.adapter_id),
+                topics: Vec::new(),
+                parent: None,
+                focus: None,
+            }],
+            children: Vec::new(),
+        })
     }
 
     async fn extract<P: Model>(
-        _model: &P, _ctx: &Context<'_>, lead: &Lead,
+        _model: &P, _ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
-        Err(Error::Internal(format!("no evidence for {}", lead.lead)))
+        let lead = input.focus.as_ref().map_or("missing", |lead| lead.lead.as_str());
+        Err(Error::Internal(format!("no evidence for {lead}")))
     }
 }
 
@@ -277,18 +285,26 @@ impl Source for Reflect {
         DOCS
     }
 
-    async fn survey<P: Model>(_model: &P, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
-        Ok(vec![Lead {
-            lead: ctx.mcp_url.as_deref().unwrap_or("none").to_string(),
-            synopsis: format!("surveyed by {}", ctx.adapter_id),
-            topics: Vec::new(),
-        }])
+    async fn survey<P: Model>(
+        _model: &P, ctx: &Context<'_>, _input: &SourceInput,
+    ) -> Result<SurveyResult, Error> {
+        Ok(SurveyResult {
+            leads: vec![Lead {
+                lead: ctx.mcp_url.as_deref().unwrap_or("none").to_string(),
+                synopsis: format!("surveyed by {}", ctx.adapter_id),
+                topics: Vec::new(),
+                parent: None,
+                focus: None,
+            }],
+            children: Vec::new(),
+        })
     }
 
     async fn extract<P: Model>(
-        _model: &P, _ctx: &Context<'_>, lead: &Lead,
+        _model: &P, _ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
-        Err(Error::Internal(format!("no evidence for {}", lead.lead)))
+        let lead = input.focus.as_ref().map_or("missing", |lead| lead.lead.as_str());
+        Err(Error::Internal(format!("no evidence for {lead}")))
     }
 }
 

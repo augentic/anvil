@@ -28,6 +28,9 @@ pub struct SurveyArgs {
     /// Plan name guard. When set, must match `plan.yaml.name`.
     #[arg(long)]
     pub plan: Option<String>,
+    /// Parent lead to survey for stable child leads.
+    #[arg(long)]
+    pub focus: Option<String>,
     #[command(flatten)]
     pub change_dir: ChangeDir,
 }

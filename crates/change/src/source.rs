@@ -7,7 +7,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::Source;
+use project::seam::{Source, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -21,13 +21,16 @@ pub struct SurveyInput {
     /// Plan name guard; when set, must match `plan.yaml.name`.
     #[serde(default)]
     pub plan: Option<String>,
+    /// Parent lead to survey for stable child leads.
+    #[serde(default)]
+    pub focus: Option<String>,
 }
 
 /// `emery source survey <source>` → the internal survey orchestration.
 #[derive(Clone, Copy, Debug)]
 pub struct Survey;
 
-impl<P: Anchor + Source + Resolver> Operation<P> for Survey {
+impl<P: Anchor + Source + Resolver + Workspaces> Operation<P> for Survey {
     type Error = project::handler::Error;
     type Input = SurveyInput;
     type Output = SurveyBody;
@@ -39,10 +42,12 @@ impl<P: Anchor + Source + Resolver> Operation<P> for Survey {
         let outcome = orchestrate::survey(
             context.provider,
             context.provider,
+            context.provider,
             &cx.paths,
             cx.now(),
             &input.source,
             input.plan.as_deref(),
+            input.focus.as_deref(),
         )
         .await?;
         Ok(SurveyBody {

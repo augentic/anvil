@@ -2,7 +2,7 @@
 //! exercised through the SDK trait surface (no provider hooks).
 
 use adapter::seam::{
-    BuildContext, Context, Error, Input, MergePhase, Payload, PhaseOutcome, Workspace,
+    BuildContext, Context, Error, Input, MergePhase, Payload, PhaseOutcome, SourceInput, Workspace,
 };
 use adapter::{Source, Target};
 use mock::{
@@ -46,7 +46,7 @@ fn ctx(id: &str) -> Context<'_> {
         adapter_id: id,
         project_root: std::path::Path::new("."),
         mcp_url: None,
-        lend: ".".to_string(),
+        lend: Some(".".to_string()),
     }
 }
 
@@ -69,18 +69,46 @@ fn workspace(root: &std::path::Path) -> Workspace {
 async fn source_failures() {
     let model = model();
 
-    let err = FailSurvey::survey(&model, &ctx("source:mock-fail-survey"))
-        .await
-        .expect_err("fail-survey fails");
+    let err = FailSurvey::survey(
+        &model,
+        &ctx("source:mock-fail-survey"),
+        &SourceInput::value("main", ""),
+    )
+    .await
+    .expect_err("fail-survey fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-survey")));
 
     // The failing identity still surveys nothing before extract: the
     // extract failure is its own typed error.
-    let lead = mock::behaviour::survey("source:mock").expect("minimal survey").remove(0);
-    let err = FailExtract::extract(&model, &ctx("source:mock-fail-extract"), &lead)
+    let mut input = SourceInput::value("main", "");
+    input.focus = Some(
+        mock::behaviour::survey("source:mock", &SourceInput::value("main", ""))
+            .expect("minimal survey")
+            .leads
+            .remove(0),
+    );
+    let err = FailExtract::extract(&model, &ctx("source:mock-fail-extract"), &input)
         .await
         .expect_err("fail-extract fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("mock-fail-extract")));
+}
+
+#[test]
+fn focused_children() {
+    let unfocused =
+        mock::behaviour::survey("source:mock-docs", &SourceInput::value("docs", "")).expect("docs");
+    assert!(unfocused.children.is_empty(), "unfocused returns the complete set in leads");
+    assert_eq!(unfocused.leads.len(), 3);
+
+    let mut focused = SourceInput::value("docs", "");
+    focused.focus = Some(unfocused.leads[0].clone());
+    let result = mock::behaviour::survey("source:mock-docs", &focused).expect("focused");
+    assert!(result.leads.is_empty(), "focused returns children only");
+    assert_eq!(
+        result.children.iter().map(|lead| lead.lead.as_str()).collect::<Vec<_>>(),
+        vec!["login-lockout", "login-mfa"]
+    );
+    assert_eq!(result.children[0].parent.as_deref(), Some("login-flow"));
 }
 
 #[tokio::test]

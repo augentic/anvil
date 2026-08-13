@@ -13,7 +13,7 @@ use native::{Catalog, DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::Scripted;
 use project::adapter::{AdapterSelector, Resolver as _};
 use project::handler::{CachePlacement, ExecutionPaths, Locations};
-use project::seam::{self, Source as _, Target as _};
+use project::seam::{self, Source as _, SourceInput, Target as _};
 use support::{FailGuidance, Floored, Pinned, Probe};
 
 // Explicit tempdir-rooted layout: native ensure performs no component
@@ -162,10 +162,13 @@ async fn survey_crosses_workflow() {
     // crossing the seam proves the model reached the adapter leg.
     let provider = provider(tmp.path(), &["greeting"]);
 
-    let leads = provider.survey("source:mock".to_string()).await.expect("survey dispatches");
-    assert_eq!(leads.len(), 1);
-    assert_eq!(leads[0].lead, "greeting");
-    assert_eq!(leads[0].synopsis, "surveyed by source:mock");
+    let result = provider
+        .survey("source:mock".to_string(), SourceInput::value("main", ""))
+        .await
+        .expect("survey dispatches");
+    assert_eq!(result.leads.len(), 1);
+    assert_eq!(result.leads[0].lead, "greeting");
+    assert_eq!(result.leads[0].synopsis, "surveyed by source:mock");
 }
 
 // The extract leg threads its lead and surfaces the adapter's typed
@@ -175,13 +178,10 @@ async fn extract_crosses_workflow() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
 
-    let lead = seam::Lead {
-        lead: "password-reset".to_string(),
-        synopsis: String::new(),
-        topics: Vec::new(),
-    };
+    let mut input = SourceInput::value("main", "");
+    input.focus = Some(seam::Lead::new("password-reset", ""));
     let err = provider
-        .extract("source:mock".to_string(), lead)
+        .extract("source:mock".to_string(), input)
         .await
         .expect_err("the probe's extract fails with a typed error naming the lead");
     assert!(
@@ -237,7 +237,7 @@ async fn axis_routing() {
     let provider = provider(tmp.path(), &[]);
 
     let err = provider
-        .survey("target:mock".to_string())
+        .survey("target:mock".to_string(), SourceInput::value("main", ""))
         .await
         .expect_err("a target id never reaches the source legs");
     assert!(matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("target:mock")));
@@ -248,7 +248,10 @@ async fn axis_routing() {
         .expect_err("a source id never reaches the target legs");
     assert!(matches!(err, seam::Error::InvalidRequest(_)));
 
-    let err = provider.survey("source:unknown".to_string()).await.expect_err("unlinked refuses");
+    let err = provider
+        .survey("source:unknown".to_string(), SourceInput::value("main", ""))
+        .await
+        .expect_err("unlinked refuses");
     assert!(
         matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("source:unknown"))
     );

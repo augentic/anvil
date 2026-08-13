@@ -23,16 +23,18 @@ const KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*$";
 /// tail.
 const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 
-/// The `survey` answer envelope: `{ "leads": [ ... ] }`, each item a
-/// [`Lead`] (the discovery lead minus the envelope `source` key — the
-/// caller attributes every lead a survey produces to the surveyed
-/// source itself).
+/// The `survey` answer envelope: `{ "leads": [ ... ], "children": [ ... ] }`,
+/// each item a [`Lead`] (the catalog lead minus the envelope `source` key).
 #[derive(JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 #[expect(dead_code, reason = "fields exist only for schemars schema generation")]
 struct LeadsAnswer {
-    /// Every lead the survey surfaced, in source order.
+    /// Top-level leads from an unfocused survey, in source order.
+    #[serde(default)]
     leads: Vec<Lead>,
+    /// Stable child leads under a focused parent.
+    #[serde(default)]
+    children: Vec<Lead>,
 }
 
 /// The `merge` answer: the report minus the envelope keys
@@ -122,11 +124,12 @@ pub fn leads() -> Value {
         "Emery survey answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated answer to a source \
-         adapter's survey operation: an object carrying `leads[]`, each item the lead shape \
-         minus the envelope `source` key (the caller attributes every lead to the surveyed \
-         source). Lead ids and topic slugs carry the kebab-case grammar in-schema and are \
-         re-checked deterministically after the gate, alongside the trim-aware synopsis \
-         check the schema cannot express.",
+         adapter's survey operation: an object carrying `leads[]` (unfocused) and \
+         `children[]` (focused), each item the lead shape minus the envelope `source` \
+         key (the caller attributes every lead to the surveyed source). Lead ids and \
+         topic slugs carry the kebab-case grammar in-schema and are re-checked \
+         deterministically after the gate, alongside the trim-aware synopsis check \
+         the schema cannot express.",
     );
     set_pattern(&mut schema, "/$defs/Lead/properties/lead", KEBAB_PATTERN);
     set_pattern(&mut schema, "/$defs/Lead/properties/topics/items", KEBAB_PATTERN);

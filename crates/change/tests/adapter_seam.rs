@@ -51,6 +51,7 @@ async fn survey_ensures_pinned() {
         change::source::SurveyInput {
             source: "main".to_string(),
             plan: None,
+            focus: None,
         },
     )
     .await

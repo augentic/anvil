@@ -17,7 +17,7 @@ use project::handler::ExecutionPaths;
 use project::identity::{Decision, Surface};
 use project::journal::{self, EventKind};
 use project::plan::{Entry, Plan, resolve_topology};
-use project::seam::{Source, Target};
+use project::seam::{Source, Target, Workspaces};
 use project::snapshot::SnapshotId;
 
 use super::synthesize::SynthesizeRequest;
@@ -95,7 +95,7 @@ impl TagCounts {
 /// - `slice-refinement-*` / `target-build-input-missing` from the
 ///   manifest assembly, and filesystem failures from its write.
 #[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
-pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
+pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str, dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration],
 ) -> Result<RefineOutcome, Error> {
@@ -196,7 +196,7 @@ pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
 /// Extract fan-out, serially in binding declaration order (the
 /// skill's no-parallelism rule). Returns the `(source, lead)` pairs
 /// extracted, in binding order.
-async fn extract_all<P: Model, S: Source, T: Target, R: Resolver>(
+async fn extract_all<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     caps: &super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     slice: &str, entry: &Entry,
 ) -> Result<Vec<(String, String)>, Error> {
@@ -204,7 +204,17 @@ async fn extract_all<P: Model, S: Source, T: Target, R: Resolver>(
     for binding in &entry.sources {
         let source = binding.source().to_string();
         let lead = binding.lead(slice).to_string();
-        super::extract(caps.sources, caps.resolver, paths, now, &source, &lead, slice).await?;
+        super::extract(
+            caps.sources,
+            caps.resolver,
+            caps.sources,
+            paths,
+            now,
+            &source,
+            &lead,
+            slice,
+        )
+        .await?;
         extracted.push((source, lead));
     }
     Ok(extracted)

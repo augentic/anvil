@@ -18,7 +18,7 @@ fn context(root: &Path) -> Context<'_> {
         adapter_id: "target:test",
         project_root: root,
         mcp_url: None,
-        lend: ".".to_string(),
+        lend: Some(".".to_string()),
     }
 }
 

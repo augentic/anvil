@@ -14,7 +14,7 @@ use project::adapter::{
 };
 use project::handler::ExecutionPaths;
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
-use project::seam::{self, Evidence, Input, Lead, Source, Target, Workspace};
+use project::seam::{self, Evidence, Input, Source, SourceInput, SurveyResult, Target, Workspace};
 use project::snapshot::{CodePatch, SnapshotId};
 use project::workspace::{self as workspace_kernel, Access, Store};
 
@@ -144,7 +144,26 @@ impl Provider {
             adapter_id: id,
             project_root: self.paths.project_root(),
             mcp_url: url,
-            lend: self.paths.project_root().display().to_string(),
+            lend: Some(self.paths.project_root().display().to_string()),
+        }
+    }
+
+    fn source_ctx<'a>(
+        id: &'a str, url: Option<String>, input: &'a aseam::SourceInput,
+    ) -> Context<'a> {
+        match &input.content {
+            aseam::SourceContent::Workspace(view) => Context {
+                adapter_id: id,
+                project_root: std::path::Path::new(&view.root),
+                mcp_url: url,
+                lend: Some(view.root.clone()),
+            },
+            aseam::SourceContent::Value(_) => Context {
+                adapter_id: id,
+                project_root: std::path::Path::new(""),
+                mcp_url: url,
+                lend: None,
+            },
         }
     }
 
@@ -247,17 +266,19 @@ impl Model for Provider {
 }
 
 impl Source for Provider {
-    async fn survey(&self, id: String) -> Result<Vec<Lead>, seam::Error> {
-        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
-        let leads = self.catalog.survey(&self.model, &ctx, &id).await.map_err(convert::error)?;
-        Ok(leads.into_iter().map(convert::lead).collect())
+    async fn survey(&self, id: String, input: SourceInput) -> Result<SurveyResult, seam::Error> {
+        let input = convert::narrow_source_input(input);
+        let ctx = Self::source_ctx(&id, self.mcp_url(&id).await?, &input);
+        let result =
+            self.catalog.survey(&self.model, &ctx, &id, &input).await.map_err(convert::error)?;
+        Ok(convert::survey_result(result))
     }
 
-    async fn extract(&self, id: String, lead: Lead) -> Result<Evidence, seam::Error> {
-        let ctx = self.ctx(&id, self.mcp_url(&id).await?);
-        let lead = convert::narrow_lead(lead);
+    async fn extract(&self, id: String, input: SourceInput) -> Result<Evidence, seam::Error> {
+        let input = convert::narrow_source_input(input);
+        let ctx = Self::source_ctx(&id, self.mcp_url(&id).await?, &input);
         let evidence =
-            self.catalog.extract(&self.model, &ctx, &id, &lead).await.map_err(convert::error)?;
+            self.catalog.extract(&self.model, &ctx, &id, &input).await.map_err(convert::error)?;
         Ok(convert::evidence(evidence))
     }
 }

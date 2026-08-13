@@ -12,18 +12,36 @@ pub use targets::{
 };
 
 mod source {
-    use adapter::seam::{Authority, Backing, Claim, ClaimKind, Error, Evidence, Lead};
+    use adapter::seam::{
+        Authority, Backing, Claim, ClaimKind, Error, Evidence, Lead, SourceInput, SurveyResult,
+    };
 
     /// Survey the source selected by `id` into its controlled lead set.
+    ///
+    /// Unfocused returns the complete current set. Focused returns
+    /// stable children under the named parent.
     ///
     /// # Errors
     ///
     /// `Internal` when the id selects the `fail-survey` profile.
-    pub fn survey(id: &str) -> Result<Vec<Lead>, Error> {
+    pub fn survey(id: &str, input: &SourceInput) -> Result<SurveyResult, Error> {
         if id.contains("fail-survey") {
             return Err(Error::Internal(format!("mock survey failure for `{id}`")));
         }
-        Ok(match profile(id) {
+        Ok(input.focus.as_ref().map_or_else(
+            || SurveyResult {
+                leads: top_level(id),
+                children: Vec::new(),
+            },
+            |parent| SurveyResult {
+                leads: Vec::new(),
+                children: children(id, &parent.lead),
+            },
+        ))
+    }
+
+    fn top_level(id: &str) -> Vec<Lead> {
+        match profile(id) {
             Profile::Docs => vec![
                 lead("login-flow", "Users sign in with an email address and password.", &["auth"]),
                 lead("session-timeout", "Documented session expiry policy.", &["auth"]),
@@ -48,7 +66,34 @@ mod source {
                     &["greeting"],
                 )]
             }
-        })
+        }
+    }
+
+    fn children(id: &str, parent: &str) -> Vec<Lead> {
+        match (profile(id), parent) {
+            (Profile::Docs, "login-flow") => vec![
+                child("login-lockout", parent, "Five failed attempts lock the account.", &["auth"]),
+                child(
+                    "login-mfa",
+                    parent,
+                    "Optional second-factor challenge after password.",
+                    &["auth"],
+                ),
+            ],
+            (Profile::Code, "login-flow") => vec![child(
+                "login-token",
+                parent,
+                "signIn issues a session token on success.",
+                &["auth"],
+            )],
+            (Profile::Minimal, "greeting") => vec![child(
+                "greeting-tone",
+                parent,
+                "The greeting string is the static word hello.",
+                &["greeting"],
+            )],
+            _ => Vec::new(),
+        }
     }
 
     /// Extract the controlled Evidence for one surveyed lead.
@@ -56,12 +101,19 @@ mod source {
     /// # Errors
     ///
     /// - `Internal` when the id selects the `fail-extract` profile.
-    /// - `InvalidRequest` when `lead` is not one this source surveys.
-    pub fn extract(id: &str, lead: &Lead) -> Result<Evidence, Error> {
+    /// - `InvalidRequest` when `input.focus` is missing or not one this source surveys.
+    pub fn extract(id: &str, input: &SourceInput) -> Result<Evidence, Error> {
         if id.contains("fail-extract") {
             return Err(Error::Internal(format!("mock extract failure for `{id}`")));
         }
-        let evidence = match (profile(id), lead.lead.as_str()) {
+        let lead = input.focus.as_ref().ok_or_else(|| {
+            Error::InvalidRequest("extract requires a terminal lead on input.focus".into())
+        })?;
+        evidence_for(profile(id), &lead.lead)
+    }
+
+    fn evidence_for(profile: Profile, lead: &str) -> Result<Evidence, Error> {
+        Ok(match (profile, lead) {
             (Profile::Docs, "login-flow") => Evidence {
                 authority: Authority::Documentation,
                 claims: vec![
@@ -75,6 +127,21 @@ mod source {
                         "Five failed attempts lock the account for fifteen minutes.",
                     ),
                 ],
+            },
+            (Profile::Docs, "login-lockout") => Evidence {
+                authority: Authority::Documentation,
+                claims: vec![criterion(
+                    "login.flow.lockout",
+                    "Five failed attempts lock the account for fifteen minutes.",
+                )],
+            },
+            (Profile::Docs, "login-mfa") => Evidence {
+                authority: Authority::Documentation,
+                claims: vec![requirement(
+                    "login.flow.mfa",
+                    "Optional second-factor challenge",
+                    "After a valid password the user may complete a second-factor challenge.",
+                )],
             },
             (Profile::Docs, "session-timeout") => Evidence {
                 authority: Authority::Documentation,
@@ -107,6 +174,14 @@ mod source {
                     "signIn validates credentials and issues a session token.",
                 )],
             },
+            (Profile::Code, "login-token") => Evidence {
+                authority: Authority::Behaviour,
+                claims: vec![requirement(
+                    "login.flow.token",
+                    "Session token on success",
+                    "signIn issues a session token on success.",
+                )],
+            },
             // The authority disagreement: behaviour observes 15 minutes
             // where documentation states 30 — docs outrank behaviour, so
             // resolution is a `[divergence]` with the docs source winning.
@@ -126,13 +201,18 @@ mod source {
                     "GET /greeting returns the static string 'hello'.",
                 )],
             },
+            (Profile::Minimal, "greeting-tone") => Evidence {
+                authority: Authority::Documentation,
+                claims: vec![requirement(
+                    "greeting.tone",
+                    "Greeting tone",
+                    "The greeting string is the static word hello.",
+                )],
+            },
             (_, unknown) => {
-                return Err(Error::InvalidRequest(format!(
-                    "mock source `{id}` surveys no lead `{unknown}`"
-                )));
+                return Err(Error::InvalidRequest(format!("no evidence for lead `{unknown}`")));
             }
-        };
-        Ok(evidence)
+        })
     }
 
     /// The behaviour profile a routed adapter id selects.
@@ -161,6 +241,18 @@ mod source {
             lead: id.to_string(),
             synopsis: synopsis.to_string(),
             topics: topics.iter().map(ToString::to_string).collect(),
+            parent: None,
+            focus: None,
+        }
+    }
+
+    fn child(id: &str, parent: &str, synopsis: &str, topics: &[&str]) -> Lead {
+        Lead {
+            lead: id.to_string(),
+            synopsis: synopsis.to_string(),
+            topics: topics.iter().map(ToString::to_string).collect(),
+            parent: Some(parent.to_string()),
+            focus: Some(parent.to_string()),
         }
     }
 

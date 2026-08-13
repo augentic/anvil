@@ -8,7 +8,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
-use project::seam::Source;
+use project::seam::{Source, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -30,7 +30,7 @@ pub struct ExtractInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Extract;
 
-impl<P: Anchor + Source + Resolver> Operation<P> for Extract {
+impl<P: Anchor + Source + Resolver + Workspaces> Operation<P> for Extract {
     type Error = project::handler::Error;
     type Input = ExtractInput;
     type Output = ExtractBody;
@@ -40,6 +40,7 @@ impl<P: Anchor + Source + Resolver> Operation<P> for Extract {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let outcome = orchestrate::extract(
+            context.provider,
             context.provider,
             context.provider,
             &cx.paths,

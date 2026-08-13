@@ -9,7 +9,10 @@ use serde::Deserialize;
 
 mod source;
 
-pub use source::{Authority, Backing, Claim, ClaimKind, Evidence, Lead, SourceMetadata};
+pub use source::{
+    Authority, Backing, Claim, ClaimKind, Evidence, Lead, SourceContent, SourceInput,
+    SourceMetadata, SourceWorkspace, SurveyResult,
+};
 
 /// Operation error — mirrors the WIT `types.error` variant.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -45,10 +48,11 @@ pub struct Context<'a> {
     /// agent so it can fetch `doc://` references lazily.
     pub mcp_url: Option<String>,
     /// Deployment-local path every judgment leg lends through
-    /// `grants.workspace`. Defaults to the `"."` project mount (source
-    /// and guidance legs); build and merge legs lend their prepared
-    /// workspace via [`Self::lending`].
-    pub lend: String,
+    /// `grants.workspace`. Defaults to the `"."` project mount
+    /// (guidance); build and merge lend their prepared workspace via
+    /// [`Self::lending`]. Source legs lend the CID view or [`None`]
+    /// for an inline value — never the change home.
+    pub lend: Option<String>,
 }
 
 impl<'a> Context<'a> {
@@ -61,7 +65,7 @@ impl<'a> Context<'a> {
             adapter_id,
             project_root: Path::new("."),
             mcp_url: mcp_url(adapter_id),
-            lend: ".".to_string(),
+            lend: Some(".".to_string()),
         }
     }
 
@@ -70,7 +74,14 @@ impl<'a> Context<'a> {
     /// `"."` project mount.
     #[must_use]
     pub fn lending(mut self, path: impl Into<String>) -> Self {
-        self.lend = path.into();
+        self.lend = Some(path.into());
+        self
+    }
+
+    /// Issue the judgment call with no workspace lend (inline `value`).
+    #[must_use]
+    pub fn without_lend(mut self) -> Self {
+        self.lend = None;
         self
     }
 

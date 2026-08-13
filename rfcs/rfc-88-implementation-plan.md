@@ -339,7 +339,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Docs/glossary/skills still say `discovery.md` (step 20). The rustdoc path links in `docs/standards/workflow.md` were retargeted to `crates/artifacts/src/leads/{lead,document}.rs` so the links gate does not 404. AGENTS.md vocabulary and the never-hand-edit list name `leads.md`.
 - `resolve_topology` still synthesises one `ProjectRef` from live `project.yaml` (step 9 leftover; step 15).
 
-### Step 11 — Source WIT extension: value-in, focused survey, child leads [ ]
+### Step 11 — Source WIT extension: value-in, focused survey, child leads [x]
 
 **RFC anchors:** D2 (source key + workspace-or-value; they never parse `plan.yaml`; focused-survey paragraphs), implementation requirement "The source WIT receives either a read-only workspace or inline value. Extend `survey` with an optional parent-lead focus and stable child-lead response…". D2's "read-only change artifacts" for sources is typed catalog context on that input, not a filesystem grant (closed Open Question 7).
 
@@ -355,6 +355,15 @@ The first cut lands the execution-substrate change while everything is still in-
 **Tests / gates:** engine-side focused-survey integration over the mock catalog; extract-over-view tests (terminal `Lead` carries parent/focus; no change-home / `leads.md` / `slices/` preopen on the source dispatch); schema goldens regenerated; `cargo make ci` + wasm32 check.
 
 **Notes (from step 10):** Engine-owned focused survey must write a **new** `leads.md` revision and `retain_leads` when the new digest is published onto the plan; do not overwrite `leads/<old-digest>.md`. Today's survey-merge does not update `plan.leads_digest`. Extend WIT/seam `Lead` with parent/focus to match the catalog type (`artifacts::leads::Lead`); the catalog already stores those fields. Import synopses are value/lead-id placeholders until focused survey fills them.
+
+**Notes (2026-08-13):**
+
+- WIT `source` now takes `input { key, content: workspace | value, focus: option<lead> }` and returns `survey-result { leads, children }`. `lead` carries `parent` / `focus`. Source `workspace` is `{ id, root }` only — no `artifacts` grant, no change-home / catalog / slice path. Package version stays `0.1.0` (no intermediate release; step 12 consumes this break on the same branch).
+- `bind_source` prepares a read-only CID view (`prepare(..., writable: false)`) or passes the inline value. The prepared target `Workspace.artifacts` (project tree) is stripped; sources never receive it. Missing CID is `source-cid-missing`; prepare failure is `source-view-prepare-failed`. Agent lend is the view root, or nothing for `value`.
+- Focused debug survey (`emery source survey <source> --focus <lead>`) looks the parent up in the catalog, refuses shape mismatches (`source-survey-shape`), stamps child `parent`/`focus` to the focused lead id, `merge_survey`s, `retain_leads`, and stamps `plan.leads_digest`. Unfocused survey still rewrites live `leads.md` only and does **not** retain or bump the digest.
+- Mock: unfocused returns the complete top-level set; focused `login-flow` yields `login-lockout`/`login-mfa` (docs) or `login-token` (code); focused `greeting` yields `greeting-tone`. Extract requires `input.focus`.
+- Judgment-answer schema: `leads[]` (unfocused) and `children[]` (focused); parent/focus kebab is the deterministic tail only (schema still patches lead id + topic slugs). Regen `leads.schema.json`.
+- The adapters repo will not build against the sibling engine until step 12.
 
 ### Step 12 — Update the five source adapters to the new seam (adapters repo) [ ]
 
@@ -421,6 +430,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Tests / gates:** end-to-end detached author over mock catalog + fixture definition (single-leaf degenerate; multi-target ≥3 levels; budget exhaustion parks; invalid-split repair path; overlap ambiguity blocks). This closes step 9's "decomposition pending" window — the full author path is green again. `cargo make ci`.
 
 **Notes (from step 10):** `gate.change` remains the sole model-authored body; do not revive `gate.discovery-summary` / `gate.discovery-source-inventory`. Imported catalog synopses are value/lead-id placeholders until focused survey (step 11) fills them — the engine-authored orientation in `change.md` (counts + binding table) should not treat those placeholders as survey-grade headlines. `resolve_topology` leftover from step 9 still applies.
+
+**Notes (from step 11):** Focused delivery-scope survey is `orchestrate::survey(..., focus)` (the `--focus` CLI looks the parent up in the catalog and retains). `survey_all` stays unfocused — complete current set, no retain — and is the wrong entry for authoring child leads. Pass the catalog parent `Lead` on `source.input.focus`; do not mount `leads.md`.
 
 ### Step 16 — Refinement boundary escalation [ ]
 

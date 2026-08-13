@@ -20,7 +20,8 @@ use project::seam::wire::{
     PhaseWrite, RepairOrigin, UiSurface, build_finding,
 };
 use project::seam::{
-    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Source, Target, Workspace,
+    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Source, SourceContent,
+    SourceInput, SourceWorkspace, SurveyResult, Target, Workspace,
 };
 use project::snapshot::{CodePatch, SnapshotId};
 
@@ -79,23 +80,23 @@ impl Inventory for Provider {
 }
 
 impl Source for Provider {
-    fn survey(&self, id: String) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {
+    fn survey(
+        &self, id: String, input: SourceInput,
+    ) -> impl Future<Output = Result<SurveyResult, seam::Error>> + Send {
         async move {
-            let leads = source::survey(id).await.map_err(map_error)?;
-            Ok(leads.into_iter().map(map_lead).collect())
+            let result = source::survey(id, map_source_input(input)).await.map_err(map_error)?;
+            Ok(SurveyResult {
+                leads: result.leads.into_iter().map(map_lead).collect(),
+                children: result.children.into_iter().map(map_lead).collect(),
+            })
         }
     }
 
     fn extract(
-        &self, id: String, lead: Lead,
+        &self, id: String, input: SourceInput,
     ) -> impl Future<Output = Result<Evidence, seam::Error>> + Send {
         async move {
-            let wire = source::Lead {
-                lead: lead.lead,
-                synopsis: lead.synopsis,
-                topics: lead.topics,
-            };
-            let evidence = source::extract(id, wire).await.map_err(map_error)?;
+            let evidence = source::extract(id, map_source_input(input)).await.map_err(map_error)?;
             Ok(Evidence {
                 authority: map_authority(evidence.authority),
                 claims: evidence.claims.into_iter().map(map_claim).collect(),
@@ -373,6 +374,27 @@ fn map_lead(lead: source::Lead) -> Lead {
         lead: lead.lead,
         synopsis: lead.synopsis,
         topics: lead.topics,
+        parent: lead.parent,
+        focus: lead.focus,
+    }
+}
+
+fn map_source_input(input: SourceInput) -> source::Input {
+    source::Input {
+        key: input.key,
+        content: match input.content {
+            SourceContent::Workspace(SourceWorkspace { id, root }) => {
+                source::Content::Workspace(source::Workspace { id, root })
+            }
+            SourceContent::Value(value) => source::Content::Value(value),
+        },
+        focus: input.focus.map(|lead| source::Lead {
+            lead: lead.lead,
+            synopsis: lead.synopsis,
+            topics: lead.topics,
+            parent: lead.parent,
+            focus: lead.focus,
+        }),
     }
 }
 

@@ -14,7 +14,7 @@ use project::handler::ExecutionPaths;
 use project::plan::{
     Entry, Plan, Status, collect_events, in_scope, plan_gaps_body, project_ladders,
 };
-use project::seam::{Source, Target};
+use project::seam::{Source, Target, Workspaces};
 use project::slice::SliceMetadata;
 use slice::refinement::{self, Dependency, Freshness, Live};
 
@@ -69,7 +69,7 @@ pub enum RefineOutcome {
 ///
 /// Per-slice refinement failures do **not** surface here — they return
 /// as [`RefineOutcome::Stopped`].
-pub async fn refine<P: Model, S: Source, T: Target, R: Resolver>(
+pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     selectors: &[String],
 ) -> Result<RefineOutcome, Error> {

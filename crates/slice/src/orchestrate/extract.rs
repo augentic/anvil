@@ -11,7 +11,9 @@ use project::config::Layout;
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::Plan;
-use project::seam::{Source, seam_failure, source_id};
+use project::seam::{
+    Lead, Source, Workspaces, bind_source, discard_source_view, seam_failure, source_id,
+};
 
 /// The result of a completed [`extract`]: the persisted Evidence path.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,22 +32,29 @@ pub struct ExtractOutcome {
 /// The typed Evidence document is deterministically validated
 /// ([`artifacts::evidence::Document::validate`]) *before* it becomes
 /// visible to synthesis; a validation failure returns early with
-/// nothing on the persisted path.
+/// nothing on the persisted path. The terminal catalog lead (including
+/// parent/focus) is passed on the wire; the source guest receives a
+/// CID view or inline value, never the change home.
 ///
 /// # Errors
 ///
-/// `plan-source-unknown` for an unbound source key, adapter
-/// ensure/resolve failures (missing pin, `emery_floor`), seam and
-/// `evidence-schema` validation failures from the adapter's extract
-/// leg, plus plan-load and persistence I/O failures.
+/// `plan-source-unknown` for an unbound source key, `leads-lead-unknown`
+/// when the lead is absent from the catalog, adapter ensure/resolve
+/// failures (missing pin, `emery_floor`), seam and `evidence-schema`
+/// validation failures from the adapter's extract leg, plus plan-load
+/// and persistence I/O failures.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "source dispatch carries the workspace capability beside the existing seam kernel"
+)]
 #[tracing::instrument(
     name = "source.extract",
     skip_all,
     fields(source = %source, slice = %slice, adapter = tracing::field::Empty)
 )]
 pub async fn extract(
-    seam: &impl Source, resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
-    source: &str, lead: &str, slice: &str,
+    seam: &impl Source, resolver: &impl Resolver, workspaces: &impl Workspaces,
+    paths: &ExecutionPaths, now: Timestamp, source: &str, lead: &str, slice: &str,
 ) -> Result<ExtractOutcome, Error> {
     let layout = Layout::new(paths.project_root());
     let plan = Plan::load(&layout.plan_path())?;
@@ -71,11 +80,12 @@ pub async fn extract(
         },
     )?;
 
+    let (input, view) = bind_source(workspaces, source, binding, Some(seam_lead)).await?;
     let id = source_id(&adapter);
-    let evidence = seam
-        .extract(id.clone(), seam_lead)
-        .await
-        .map_err(|err| seam_failure("extract", &id, &err))?;
+    let evidence =
+        seam.extract(id.clone(), input).await.map_err(|err| seam_failure("extract", &id, &err));
+    discard_source_view(workspaces, view).await;
+    let evidence = evidence?;
 
     let document = artifacts::evidence::Document {
         lead: lead.to_string(),
@@ -107,9 +117,7 @@ pub async fn extract(
 
 /// Resolve `(source, lead)` from `leads.md` into the seam's
 /// lead record (the WIT shape drops the envelope `source` key).
-fn resolve_seam_lead(
-    layout: Layout<'_>, source: &str, lead: &str,
-) -> Result<project::seam::Lead, Error> {
+fn resolve_seam_lead(layout: Layout<'_>, source: &str, lead: &str) -> Result<Lead, Error> {
     let catalog = Leads::load(&layout.leads_path())?;
     let resolved = catalog
         .leads()
@@ -122,11 +130,7 @@ fn resolve_seam_lead(
                  lead against the surveyed inventory"
             ),
         })?;
-    Ok(project::seam::Lead {
-        lead: resolved.lead.clone(),
-        synopsis: resolved.synopsis.clone(),
-        topics: resolved.topics.clone(),
-    })
+    Ok(Lead::from_catalog(resolved))
 }
 
 /// Append one journal event, propagating the write failure — the
