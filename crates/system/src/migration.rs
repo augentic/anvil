@@ -326,9 +326,7 @@ impl Wave {
         ]
     }
 
-    fn validate(
-        &self, dispositions: &BTreeSet<&str>, waves: &BTreeSet<&str>,
-    ) -> Result<(), Error> {
+    fn validate(&self, dispositions: &BTreeSet<&str>, waves: &BTreeSet<&str>) -> Result<(), Error> {
         let invalid = |rule: &str, detail: String| {
             Err(Error::validation_failed(
                 "system-migration-invalid",

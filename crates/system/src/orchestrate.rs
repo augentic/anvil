@@ -2,6 +2,8 @@
 //! materialize → survey → lead gate → extract → coverage persist →
 //! claim gate → correlation → `as-is` overlay persist.
 
+pub mod plan;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -254,11 +256,22 @@ async fn correlate_phase(
 }
 
 /// The persisted included Evidence corpus: document refs in operator
-/// order, the `(source, id)` claim anchor index, and the claim count.
+/// order, the `(source, id)` claim anchor index, the persisted
+/// `(source, lead)` pairs, the declarative (intent / constraint)
+/// document refs, and the claim count.
 struct Corpus {
     refs: Vec<EvidenceRef>,
     claims: BTreeSet<(String, String)>,
+    leads: BTreeSet<(String, String)>,
+    declarative: Vec<EvidenceRef>,
     claim_count: usize,
+}
+
+/// Claim kinds that state intent or constraints rather than observed
+/// structure — the proposal judgment's Evidence selection.
+const fn declarative(kind: artifacts::evidence::ClaimKind) -> bool {
+    use artifacts::evidence::ClaimKind as K;
+    matches!(kind, K::Intent | K::Requirement | K::Criterion | K::Decision)
 }
 
 /// Read every included source's persisted Evidence documents.
@@ -266,6 +279,8 @@ fn read_corpus(layout: &Layout<'_>, coverage: &Coverage) -> Result<Corpus, Error
     let mut corpus = Corpus {
         refs: Vec::new(),
         claims: BTreeSet::new(),
+        leads: BTreeSet::new(),
+        declarative: Vec::new(),
         claim_count: 0,
     };
     for row in coverage.included() {
@@ -292,11 +307,16 @@ fn read_corpus(layout: &Layout<'_>, coverage: &Coverage) -> Result<Corpus, Error
                     corpus.claims.insert((row.key.clone(), id.clone()));
                 }
             }
-            corpus.refs.push(EvidenceRef {
+            corpus.leads.insert((row.key.clone(), document.lead.clone()));
+            let reference = EvidenceRef {
                 source: row.key.clone(),
                 lead: document.lead.clone(),
                 evidence_path: format!("evidence/{}/{}.yaml", row.key, document.lead),
-            });
+            };
+            if document.claims.iter().any(|claim| declarative(claim.kind)) {
+                corpus.declarative.push(reference.clone());
+            }
+            corpus.refs.push(reference);
         }
     }
     Ok(corpus)

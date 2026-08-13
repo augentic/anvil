@@ -13,7 +13,12 @@ use project::seam::{Origins, Source, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::coverage::{SurveyError, SurveyErrorKind};
+use crate::layout::Layout;
+use crate::orchestrate::plan::{PlanOutcome, WaveHandoff};
 use crate::orchestrate::{self, Correlated, SourceReport, SurveyOutcome};
+use crate::review::ReviewOutcome;
+use crate::status::{NextAction, WaveStanding};
+use crate::{review, status};
 
 /// Wire input for `emery system survey`.
 ///
@@ -186,5 +191,325 @@ impl Render for SurveyBody {
             "  as-is: {} elements, {} relationships ({} claims)",
             self.as_is.elements, self.as_is.relationships, self.as_is.claims
         )
+    }
+}
+
+/// Wire input for `emery system plan`.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde deserialises the wire `{}` object into a braced struct only"
+)]
+pub struct PlanInput {}
+
+/// `emery system plan` — validate the definition, propose the initial
+/// architecture when `target` is absent, reproject every view, and
+/// project each wave's canonical handoff.
+#[derive(Clone, Copy, Debug)]
+pub struct Plan;
+
+impl<P: Anchor + Model> Operation<P> for Plan {
+    type Error = project::handler::Error;
+    type Input = PlanInput;
+    type Output = PlanBody;
+
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let PlanInput {} = input;
+        let outcome = orchestrate::plan::plan(context.provider, context.provider.paths()).await?;
+        Ok(PlanBody::from(outcome))
+    }
+}
+
+/// Success envelope for `emery system plan`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PlanBody {
+    /// The declared engagement identity (`scope.yaml.id`).
+    pub id: String,
+    /// True when this run proposed the initial architecture.
+    pub proposed: bool,
+    /// The named states whose views were reprojected.
+    pub states: Vec<String>,
+    /// One entry per projected wave handoff, in plan order.
+    pub waves: Vec<WaveBody>,
+}
+
+/// One projected wave handoff on the wire.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct WaveBody {
+    /// The wave's id in `migration.yaml`.
+    pub wave: String,
+    /// The canonical handoff digest (`sha256:…`).
+    pub handoff_digest: String,
+}
+
+impl From<PlanOutcome> for PlanBody {
+    fn from(outcome: PlanOutcome) -> Self {
+        Self {
+            id: outcome.id,
+            proposed: outcome.proposed,
+            states: outcome.states,
+            waves: outcome
+                .waves
+                .into_iter()
+                .map(|WaveHandoff { wave, digest }| WaveBody {
+                    wave,
+                    handoff_digest: digest.as_str().to_string(),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl Render for PlanBody {
+    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "System plan — {}", self.id)?;
+        if self.proposed {
+            writeln!(w, "  proposed the initial target architecture and migration plan")?;
+        }
+        writeln!(w, "  projected states: {}", self.states.join(", "))?;
+        if self.waves.is_empty() {
+            writeln!(w, "  waves: none (no migration.yaml)")?;
+        } else {
+            writeln!(w, "  waves:")?;
+            for wave in &self.waves {
+                writeln!(w, "    - {}: handoff {}", wave.wave, wave.handoff_digest)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Wire input for `emery system review`.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ReviewInput {
+    /// The wave to review (`migration.yaml` `waves[].id`).
+    pub wave: String,
+    /// The exact handoff digest the operator reviewed (bare 64-hex or
+    /// the full `sha256:…` form).
+    pub handoff: String,
+}
+
+/// `emery system review` — record architectural authority over one
+/// exact wave handoff (`system.wave.reviewed`).
+#[derive(Clone, Copy, Debug)]
+pub struct Review;
+
+impl<P: Anchor> Operation<P> for Review {
+    type Error = project::handler::Error;
+    type Input = ReviewInput;
+    type Output = ReviewBody;
+
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let layout = Layout::new(context.provider.paths().project_root());
+        // Handler-boundary wall-clock read (architecture §Time
+        // injection); the kernel receives the timestamp explicitly.
+        let now = jiff::Timestamp::now();
+        let outcome = review::review(&layout, &input.wave, &input.handoff, now)?;
+        Ok(ReviewBody::from(outcome))
+    }
+}
+
+/// Success envelope for `emery system review`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ReviewBody {
+    /// The reviewed wave's id.
+    pub wave: String,
+    /// The reviewed handoff digest (`sha256:…`).
+    pub handoff_digest: String,
+    /// False when the same handoff was already reviewed (no-op).
+    pub recorded: bool,
+}
+
+impl From<ReviewOutcome> for ReviewBody {
+    fn from(outcome: ReviewOutcome) -> Self {
+        Self {
+            wave: outcome.wave,
+            handoff_digest: outcome.handoff_digest,
+            recorded: outcome.recorded,
+        }
+    }
+}
+
+impl Render for ReviewBody {
+    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        if self.recorded {
+            writeln!(w, "Recorded system.wave.reviewed for wave {}", self.wave)?;
+        } else {
+            writeln!(w, "Wave {} already reviewed at this handoff — nothing recorded", self.wave)?;
+        }
+        writeln!(w, "  handoff: {}", self.handoff_digest)
+    }
+}
+
+/// Wire input for `emery system status`.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+#[expect(
+    clippy::empty_structs_with_brackets,
+    reason = "serde deserialises the wire `{}` object into a braced struct only"
+)]
+pub struct StatusInput {}
+
+/// `emery system status` — the read-only definition-home projection.
+#[derive(Clone, Copy, Debug)]
+pub struct Status;
+
+impl<P: Anchor> Operation<P> for Status {
+    type Error = project::handler::Error;
+    type Input = StatusInput;
+    type Output = StatusBody;
+
+    async fn call(
+        input: Self::Input, context: CallContext<'_, P>,
+    ) -> Result<Self::Output, Self::Error> {
+        let StatusInput {} = input;
+        let layout = Layout::new(context.provider.paths().project_root());
+        let projected = status::project(&layout)?;
+        Ok(StatusBody::from(projected))
+    }
+}
+
+/// Success envelope for `emery system status`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct StatusBody {
+    /// The declared engagement identity (`scope.yaml.id`).
+    pub id: String,
+    /// The decision the definition supports.
+    pub decision: String,
+    /// Included coverage rows.
+    pub included: usize,
+    /// Rows with any other disposition.
+    pub other: usize,
+    /// Included sources whose last run failed.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub failed_sources: Vec<String>,
+    /// Named states with their sizes.
+    pub states: Vec<StateBody>,
+    /// Migration waves with review standing.
+    pub waves: Vec<WaveStatusBody>,
+    /// The computed next operator action.
+    pub next: String,
+}
+
+/// One named state's wire accounting.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct StateBody {
+    /// The state's name.
+    pub name: String,
+    /// Elements in the state.
+    pub elements: usize,
+    /// Relationships in the state.
+    pub relationships: usize,
+}
+
+/// One wave's wire review standing.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct WaveStatusBody {
+    /// The wave's id.
+    pub wave: String,
+    /// `reviewed | awaiting-review | stale`.
+    pub standing: String,
+    /// The current handoff digest, when one exists.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handoff_digest: Option<String>,
+}
+
+impl From<status::Status> for StatusBody {
+    fn from(projected: status::Status) -> Self {
+        let next = match &projected.next {
+            NextAction::Survey => "emery system survey".to_string(),
+            NextAction::Plan => "emery system plan".to_string(),
+            NextAction::Review { wave } => {
+                format!("emery system review {wave} --handoff <digest>")
+            }
+            NextAction::Replan { wave } => {
+                format!("emery system plan (wave {wave} handoff is stale)")
+            }
+            NextAction::Reviewed => "reviewed".to_string(),
+        };
+        Self {
+            id: projected.id,
+            decision: projected.decision,
+            included: projected.coverage.included,
+            other: projected.coverage.other,
+            failed_sources: projected.failed_sources,
+            states: projected
+                .states
+                .into_iter()
+                .map(|row| StateBody {
+                    name: row.name,
+                    elements: row.elements,
+                    relationships: row.relationships,
+                })
+                .collect(),
+            waves: projected
+                .waves
+                .into_iter()
+                .map(|row| {
+                    let (standing, handoff_digest) = match row.standing {
+                        WaveStanding::Reviewed { handoff_digest } => {
+                            ("reviewed".to_string(), Some(handoff_digest))
+                        }
+                        WaveStanding::AwaitingReview { handoff_digest } => {
+                            ("awaiting-review".to_string(), Some(handoff_digest))
+                        }
+                        WaveStanding::Stale => ("stale".to_string(), None),
+                    };
+                    WaveStatusBody {
+                        wave: row.wave,
+                        standing,
+                        handoff_digest,
+                    }
+                })
+                .collect(),
+            next,
+        }
+    }
+}
+
+impl Render for StatusBody {
+    fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        writeln!(w, "System status — {}", self.id)?;
+        writeln!(w, "  decision: {}", self.decision)?;
+        writeln!(w, "  coverage: {} included, {} other", self.included, self.other)?;
+        for source in &self.failed_sources {
+            writeln!(w, "    - {source}: last run failed (see coverage.yaml survey-error)")?;
+        }
+        if self.states.is_empty() {
+            writeln!(w, "  model: none (run `emery system survey`)")?;
+        } else {
+            writeln!(w, "  model:")?;
+            for state in &self.states {
+                writeln!(
+                    w,
+                    "    - {}: {} elements, {} relationships",
+                    state.name, state.elements, state.relationships
+                )?;
+            }
+        }
+        if !self.waves.is_empty() {
+            writeln!(w, "  waves:")?;
+            for wave in &self.waves {
+                match &wave.handoff_digest {
+                    Some(digest) => {
+                        writeln!(w, "    - {}: {} ({digest})", wave.wave, wave.standing)?;
+                    }
+                    None => writeln!(w, "    - {}: {}", wave.wave, wave.standing)?,
+                }
+            }
+        }
+        writeln!(w, "  next: {}", self.next)
     }
 }

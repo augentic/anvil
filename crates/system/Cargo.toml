@@ -25,6 +25,7 @@ emery-artifacts.workspace = true
 emery-diagnostics.workspace = true
 emery-error.workspace = true
 emery-project.workspace = true
+jiff.workspace = true
 layout-rs.workspace = true
 omnia-guest.workspace = true
 schemars.workspace = true

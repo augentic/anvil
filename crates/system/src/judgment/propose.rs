@@ -1,9 +1,10 @@
-//! The initial-plan proposal judgment (RFC-104 D10): when `target` is
-//! absent at load, one judgment over the live `as-is` (possibly
-//! empty), `scope.yaml`, and any included intent or constraint
-//! Evidence may propose `target`, optional `transition-*` states, and
-//! one migration wave. Later plans never run it and never add named
-//! states.
+//! The initial-plan proposal judgment (RFC-104 D10).
+//!
+//! When `target` is absent at load, one judgment over the live
+//! `as-is` (possibly empty), `scope.yaml`, and any included intent or
+//! constraint Evidence may propose `target`, optional `transition-*`
+//! states, and one migration wave. Later plans never run it and never
+//! add named states.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -94,7 +95,7 @@ pub struct Proposal {
 
 /// Assemble the proposal input envelope.
 #[must_use]
-pub fn inputs(scope: Scope, as_is: State, evidence: Vec<EvidenceRef>) -> ProposalInputs {
+pub const fn inputs(scope: Scope, as_is: State, evidence: Vec<EvidenceRef>) -> ProposalInputs {
     ProposalInputs {
         version: PROPOSAL_VERSION,
         kind: InputKind::Inputs,
@@ -225,7 +226,11 @@ fn tail(
         }
     }
 
-    let Migration { dispositions, mut waves, .. } = migration;
+    let Migration {
+        dispositions,
+        mut waves,
+        ..
+    } = migration;
     let wave = waves.remove(0);
     Ok(Proposal {
         target: response.target,

@@ -1,6 +1,6 @@
 # CLI Contract
 
-The deterministic surface skills depend on. Every skill in this repository (`/emery:init`, `/emery:plan`, `/emery:refine`, `/emery:execute`, `/emery:status`, `/emery:finalize`) shells out to the `emery` binary; each is an ultrathin wrapper over one verb (`/emery:finalize` composes a read-only status probe and an operator confirmation gate around its archive verb), and the orchestration underneath owns name validation, `metadata.yaml` reads and writes, lifecycle transitions, adapter resolution, artifact-completion checks, baseline conflict detection, delta merge, coherence validation, archive moves, and plan CRUD.
+The deterministic surface skills depend on. Every skill in this repository (`/emery:init`, `/emery:plan`, `/emery:refine`, `/emery:execute`, `/emery:status`, `/emery:finalize`, and the definition-loop wrappers `/emery:system-survey`, `/emery:system-plan`, `/emery:system-review`) shells out to the `emery` binary; each is an ultrathin wrapper over one verb (`/emery:finalize` composes a read-only status probe and an operator confirmation gate around its archive verb), and the orchestration underneath owns name validation, `metadata.yaml` reads and writes, lifecycle transitions, adapter resolution, artifact-completion checks, baseline conflict detection, delta merge, coherence validation, archive moves, and plan CRUD.
 
 The CLI itself is built in the in-tree Cargo workspace at the repo root. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
@@ -43,7 +43,14 @@ Refinement is the standalone `emery plan refine` drain (slice directories are mi
 
 ### Journal
 
-- `emery journal show` — the observability surface over `.emery/events/<writer>.jsonl`: the read-only union projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events).
+- `emery journal show` — the observability surface over `.emery/events/<writer>.jsonl`: the read-only union projection — `--filter <event-id-prefix>` keeps a dotted-prefix family, `--limit N` tails the most recent matches, text mode emits the canonical JSONL lines (probes pipe them to `jq -c .payload`), and `--format json` wraps the same events in the standard envelope. There is no emit verb — every write is a CLI-verb or orchestration side effect. See [Journal events](#journal-events). `journal show` reads the product change home only; definition-home fact logs (`<system>/events/`) are projected by `emery system status`.
+
+### Definition loop (`emery system *`, RFC-104)
+
+- `emery system survey [--dir <home>]` — the coverage-accounted estate survey over a definition home the operator authors by hand (`scope.yaml` + `coverage.yaml`; there is no `system init`). Materializes each included source, runs `survey` + `extract` with continue-on-failure accounting (`survey-error` on the row, never an auto-promotion), persists Evidence by `(source, lead)`, and correlates the `as-is` state into `system.yaml` under the lead/claim gates (`system-survey-lead-limit`, `system-correlation-claim-limit`). Re-running is resume.
+- `emery system plan [--dir <home>]` — validates the definition, runs the initial-plan proposal judgment only when `system.yaml` has no `target` (writing `target`, optional `transition-*` states, and a first `migration.yaml` — operator-owned afterwards), reprojects every named state's document + diagram views, and projects each wave's content-addressed `handoffs/<digest>.yaml`. Later runs never add named states or overwrite operator edits.
+- `emery system review <wave> --handoff <digest> [--dir <home>]` — records architectural authority: selects the wave's current handoff (the unique projection whose covered digests all match the live files; zero → `system-review-handoff-stale`, more than one → `system-review-ambiguous`), refuses a stale digest (`system-review-stale`), and appends `system.wave.reviewed` to `<system>/events/`. Same-handoff re-entry is a read-only no-op.
+- `emery system status [--dir <home>]` — the read-only projection: coverage accounting, model states, per-wave review standing, and the computed next action (`survey` → `plan` → `review <wave>` → reviewed). Writes nothing.
 
 Today the read-only per-slice projections live under `emery slice *` and every workflow verb lives under `emery plan *`.
 
@@ -128,6 +135,7 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed`, `slice.build.phase-completed` | the execute loop's build phase (`phase-completed` is per-attempt ordinal evidence for each engine-selected build phase — RFC-90 D6) |
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created`, `target.merge.wave-committed`, `target.merge.wave-succeeded`, `target.merge.wave-postflight-failed` | the execute loop's merge phase (wave commit + postflight; RFC-86 D9) |
 | Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent`, `target.wave.opened` | `emery source survey` / `extract`, the build phase's request-assembly leg, one-member target-wave open (RFC-86 D9) |
+| System | `system.wave.reviewed` | `emery system review` — architectural authority over one exact wave handoff (RFC-104 D10). Definition-home writers only (`<system>/events/<writer>.jsonl`, never `.emery/events/`); grants no product mutation authority and does not replace `plan.execute.started` |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills never append — there is no emit verb, and nothing writes the file by hand. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `emery journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`emery plan status`'s stop classification); nothing re-parses the JSONL by hand.
 

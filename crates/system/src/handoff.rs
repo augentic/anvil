@@ -1,7 +1,8 @@
-//! `handoffs/<digest>.yaml` — the immutable, content-addressed
-//! projection of one migration wave (RFC-104 D10). A handoff carries
-//! identities and closed digest references, never copied architecture
-//! prose; historical handoffs are never deleted.
+//! `handoffs/<digest>.yaml` (RFC-104 D10).
+//!
+//! The immutable, content-addressed projection of one migration wave.
+//! A handoff carries identities and closed digest references, never
+//! copied architecture prose; historical handoffs are never deleted.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -241,8 +242,8 @@ pub fn decisions_digest(decisions: &[Decision]) -> Result<SnapshotId, Error> {
 /// scopes do not resolve against the live definition; propagates
 /// digest and I/O failures.
 pub fn project(
-    layout: &Layout<'_>, scope: &Scope, coverage: &Coverage, model: &Model,
-    migration: &Migration, decisions: &[Decision], wave: &Wave,
+    layout: &Layout<'_>, scope: &Scope, coverage: &Coverage, model: &Model, migration: &Migration,
+    decisions: &[Decision], wave: &Wave,
 ) -> Result<Projected, Error> {
     let architecture = architecture_refs(model, wave)?;
     let handoff = Handoff {

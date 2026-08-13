@@ -50,14 +50,22 @@ fn author_home(home: &Path, coverage_yaml: &str) {
     fs::write(home.join("orders/main.ts"), "export {};\n").expect("orders file");
 }
 
+/// Dispatch one `system *` argv in JSON format against `home`, with
+/// `answers` scripted onto the judgment model.
+async fn dispatch_json(home: &Path, answers: Vec<String>, argv: &[&str]) -> (u8, String) {
+    let router =
+        transport::command::router(Invoker::new("emery", provider(home, answers))).expect("router");
+    let mut full = vec!["emery", "--format", "json"];
+    full.extend_from_slice(argv);
+    let response = router.execute(full).await;
+    let stream = if response.exit == 0 { response.stdout } else { response.stderr };
+    (response.exit, String::from_utf8(stream).expect("output is UTF-8"))
+}
+
 /// Dispatch `system survey` argv in JSON format against `home`, with
 /// `answers` scripted onto the correlation model.
 async fn survey_json(home: &Path, answers: Vec<String>) -> (u8, String) {
-    let router =
-        transport::command::router(Invoker::new("emery", provider(home, answers))).expect("router");
-    let response = router.execute(["emery", "--format", "json", "system", "survey"]).await;
-    let stream = if response.exit == 0 { response.stdout } else { response.stderr };
-    (response.exit, String::from_utf8(stream).expect("output is UTF-8"))
+    dispatch_json(home, answers, &["system", "survey"]).await
 }
 
 #[tokio::test]
@@ -230,6 +238,165 @@ async fn claim_gate_stops() {
     let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
     assert_eq!(envelope["error"], "system-correlation-claim-limit");
     assert!(!home.path().join("system.yaml").exists(), "a gate stop writes no as-is");
+}
+
+/// A minimal valid initial-plan proposal: one-element target, one
+/// disposition, one wave selecting the surveyed `greeting` lead.
+const PROPOSED: &str = r#"{"version":1,"kind":"response","target":{"elements":[{"id":"orders","kind":"service","status":"inferred","claims":[]}],"relationships":[]},"dispositions":[{"id":"keep-orders","treatment":"preserve","applies-to":["orders"],"reason":"orders behaviour survives"}],"wave":{"id":"wave-1","outcome":"replatform orders","architecture":{"before":"as-is","after":"target"},"affected-elements":["orders"],"evidence-scopes":[{"source":"orders-code","lead":"greeting"}]}}"#;
+
+#[tokio::test]
+async fn plan_requires_survey() {
+    // Plan projects from the surveyed model; a home that never
+    // surveyed fails typed before any judgment.
+    let home = tempfile::tempdir().expect("tempdir");
+    author_home(home.path(), &coverage("mock"));
+    let (exit, stderr) = dispatch_json(home.path(), Vec::new(), &["system", "plan"]).await;
+    assert_ne!(exit, 0);
+    let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
+    assert_eq!(envelope["error"], "system-model-missing");
+    assert!(
+        envelope["message"].as_str().expect("message").contains("emery system survey"),
+        "{envelope}"
+    );
+}
+
+#[tokio::test]
+async fn plan_review_loop() {
+    let home = tempfile::tempdir().expect("tempdir");
+    author_home(home.path(), &coverage("mock"));
+    let (exit, _stdout) = survey_json(home.path(), vec![CORRELATED.to_string()]).await;
+    assert_eq!(exit, 0);
+
+    // First plan: the proposal judgment writes `target` and mints
+    // migration.yaml; every view and the wave handoff project.
+    let (exit, stdout) =
+        dispatch_json(home.path(), vec![PROPOSED.to_string()], &["system", "plan"]).await;
+    assert_eq!(exit, 0, "plan proposes: {stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["proposed"], true);
+    let states: Vec<&str> = body["states"]
+        .as_array()
+        .expect("states")
+        .iter()
+        .map(|state| state.as_str().expect("name"))
+        .collect();
+    assert_eq!(states, ["as-is", "target"]);
+    assert_eq!(body["waves"][0]["wave"], "wave-1");
+    let digest = body["waves"][0]["handoff-digest"].as_str().expect("digest on the body");
+    let stem = digest.strip_prefix("sha256:").expect("scheme-prefixed digest");
+
+    let system = fs::read_to_string(home.path().join("system.yaml")).expect("system.yaml");
+    assert!(system.contains("target:"), "the proposal persisted: {system}");
+    let migration = fs::read_to_string(home.path().join("migration.yaml")).expect("migration");
+    assert!(migration.contains("keep-orders"), "{migration}");
+    assert!(home.path().join("architecture/target.md").is_file(), "target view projected");
+    assert!(home.path().join("architecture/diagrams/target.svg").is_file());
+    assert!(home.path().join(format!("handoffs/{stem}.yaml")).is_file());
+
+    // Re-running plan is resume: `target` is present, so no judgment
+    // runs (no scripted answers), nothing is overwritten, and the
+    // handoff digest is reproduced deterministically.
+    let (exit, stdout) = dispatch_json(home.path(), Vec::new(), &["system", "plan"]).await;
+    assert_eq!(exit, 0, "re-run is resume: {stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["proposed"], false);
+    assert_eq!(body["waves"][0]["handoff-digest"], digest);
+
+    // Status projects the awaiting-review wave as the next action.
+    let (exit, stdout) = dispatch_json(home.path(), Vec::new(), &["system", "status"]).await;
+    assert_eq!(exit, 0, "{stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["waves"][0]["standing"], "awaiting-review");
+    assert!(body["next"].as_str().expect("next").contains("review wave-1"), "{body}");
+
+    // A stale digest is refused before any fact is written.
+    let (exit, stderr) = dispatch_json(
+        home.path(),
+        Vec::new(),
+        &["system", "review", "wave-1", "--handoff", &"0".repeat(64)],
+    )
+    .await;
+    assert_ne!(exit, 0);
+    let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
+    assert_eq!(envelope["error"], "system-review-stale");
+
+    // Reviewing the current handoff appends the fact once.
+    let (exit, stdout) = dispatch_json(
+        home.path(),
+        Vec::new(),
+        &["system", "review", "wave-1", "--handoff", digest],
+    )
+    .await;
+    assert_eq!(exit, 0, "{stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["recorded"], true);
+    let log = fs::read_to_string(home.path().join("events/local.jsonl")).expect("fact log");
+    assert!(log.contains("system.wave.reviewed"), "{log}");
+    assert!(log.contains(digest), "the fact pins the exact handoff: {log}");
+
+    // Same-handoff re-entry is a read-only no-op.
+    let (exit, stdout) = dispatch_json(
+        home.path(),
+        Vec::new(),
+        &["system", "review", "wave-1", "--handoff", digest],
+    )
+    .await;
+    assert_eq!(exit, 0, "{stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["recorded"], false);
+    let log = fs::read_to_string(home.path().join("events/local.jsonl")).expect("fact log");
+    assert_eq!(log.lines().count(), 1, "no duplicate fact: {log}");
+
+    // Status now projects the reviewed loop end.
+    let (exit, stdout) = dispatch_json(home.path(), Vec::new(), &["system", "status"]).await;
+    assert_eq!(exit, 0, "{stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["waves"][0]["standing"], "reviewed");
+    assert_eq!(body["next"], "reviewed");
+}
+
+#[tokio::test]
+async fn operator_plan_edit_moves_handoff() {
+    // An operator edit to migration.yaml is never overwritten: the
+    // next plan reprojects a new handoff beside the historical one,
+    // and a review of the old digest is refused.
+    let home = tempfile::tempdir().expect("tempdir");
+    author_home(home.path(), &coverage("mock"));
+    let (exit, _stdout) = survey_json(home.path(), vec![CORRELATED.to_string()]).await;
+    assert_eq!(exit, 0);
+    let (exit, stdout) =
+        dispatch_json(home.path(), vec![PROPOSED.to_string()], &["system", "plan"]).await;
+    assert_eq!(exit, 0, "{stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    let first = body["waves"][0]["handoff-digest"].as_str().expect("digest").to_string();
+
+    let path = home.path().join("migration.yaml");
+    let edited = fs::read_to_string(&path)
+        .expect("migration.yaml")
+        .replace("replatform orders", "rewrite orders in place");
+    fs::write(&path, &edited).expect("operator edit");
+
+    let (exit, stdout) = dispatch_json(home.path(), Vec::new(), &["system", "plan"]).await;
+    assert_eq!(exit, 0, "{stdout}");
+    let body: serde_json::Value = serde_json::from_str(&stdout).expect("success envelope");
+    assert_eq!(body["proposed"], false);
+    let second = body["waves"][0]["handoff-digest"].as_str().expect("digest").to_string();
+    assert_ne!(second, first, "the edited wave projects a new handoff");
+    let migration = fs::read_to_string(&path).expect("migration.yaml");
+    assert!(migration.contains("rewrite orders in place"), "operator edit survives: {migration}");
+
+    // Both content-addressed files remain; only the current reviews.
+    let handoffs = fs::read_dir(home.path().join("handoffs")).expect("handoffs").count();
+    assert_eq!(handoffs, 2, "historical handoffs are never deleted");
+    let (exit, stderr) = dispatch_json(
+        home.path(),
+        Vec::new(),
+        &["system", "review", "wave-1", "--handoff", &first],
+    )
+    .await;
+    assert_ne!(exit, 0);
+    let envelope: serde_json::Value = serde_json::from_str(&stderr).expect("error envelope");
+    assert_eq!(envelope["error"], "system-review-stale");
 }
 
 #[tokio::test]

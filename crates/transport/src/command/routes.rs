@@ -295,6 +295,27 @@ where
         "Survey the declared coverage of a definition home (RFC-104).\n\nAnchors at `--dir` (or the current directory) with no `project.yaml` walk — a definition home is durable client architecture, not a product checkout. Fails closed when `scope.yaml` or `coverage.yaml` is missing; the operator authors both by hand (there is no `system init`)."
     );
     route!(
+        ["system", "plan"],
+        system::PlanArgs,
+        ::system::handlers::Plan,
+        "Project the migration plan's views and canonical wave handoffs",
+        "Project the definition home's architecture views and canonical wave handoffs (RFC-104).\n\nWhen `system.yaml` has no `target` state, one initial-plan proposal judgment writes `target`, optional `transition-*` states, and a first `migration.yaml` — once; both files are operator-owned afterwards and later runs never overwrite operator edits. Every run reprojects each named state's document and diagram views and each wave's content-addressed `handoffs/<digest>.yaml`; historical handoffs are never deleted. Re-running is resume."
+    );
+    route!(
+        ["system", "review"],
+        system::ReviewArgs,
+        ::system::handlers::Review,
+        "Record architectural authority over one exact wave handoff",
+        "Record architectural authority over one exact wave handoff (RFC-104 D10).\n\nSelects the wave's current handoff — the unique `handoffs/<digest>.yaml` whose covered digests all match the live definition files (zero matches means re-run `emery system plan`; two fail closed; never resolved by recency) — compares it against `--handoff`, and appends the `system.wave.reviewed` fact to `<system>/events/`. Reviewing the same handoff twice is a read-only no-op. The fact grants no product mutation authority and does not replace `plan.execute.started`."
+    );
+    route!(
+        ["system", "status"],
+        system::StatusArgs,
+        ::system::handlers::Status,
+        "Read-only definition-home projection: coverage, model, waves, next action",
+        "Read-only definition-home projection (RFC-104).\n\nProjects the declared coverage accounting, the named `system.yaml` states with their sizes, each migration wave's review standing against its current handoff, and the computed next operator action (`survey` → `plan` → `review <wave>` → reviewed). Reads files and the `<system>/events/` fact union only; writes nothing."
+    );
+    route!(
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
@@ -366,6 +387,36 @@ impl TryFrom<system::SurveyArgs> for ::system::handlers::SurveyInput {
 
     fn try_from(args: system::SurveyArgs) -> Result<Self, Self::Error> {
         let system::SurveyArgs { dir } = args;
+        drop(dir);
+        Ok(Self {})
+    }
+}
+
+impl TryFrom<system::PlanArgs> for ::system::handlers::PlanInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::PlanArgs) -> Result<Self, Self::Error> {
+        let system::PlanArgs { dir } = args;
+        drop(dir);
+        Ok(Self {})
+    }
+}
+
+impl TryFrom<system::ReviewArgs> for ::system::handlers::ReviewInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::ReviewArgs) -> Result<Self, Self::Error> {
+        let system::ReviewArgs { wave, handoff, dir } = args;
+        drop(dir);
+        Ok(Self { wave, handoff })
+    }
+}
+
+impl TryFrom<system::StatusArgs> for ::system::handlers::StatusInput {
+    type Error = error::Error;
+
+    fn try_from(args: system::StatusArgs) -> Result<Self, Self::Error> {
+        let system::StatusArgs { dir } = args;
         drop(dir);
         Ok(Self {})
     }

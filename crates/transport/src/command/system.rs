@@ -14,3 +14,36 @@ pub struct SurveyArgs {
     #[arg(long)]
     pub dir: Option<PathBuf>,
 }
+
+/// Arguments for `system plan`.
+#[derive(Debug, Args)]
+pub struct PlanArgs {
+    /// Definition-home directory (defaults to the current directory).
+    /// Deployment-consumed, as on `system survey`.
+    #[arg(long)]
+    pub dir: Option<PathBuf>,
+}
+
+/// Arguments for `system review`.
+#[derive(Debug, Args)]
+pub struct ReviewArgs {
+    /// The wave to review (`migration.yaml` `waves[].id`).
+    pub wave: String,
+    /// The exact handoff digest reviewed (the `handoffs/<digest>.yaml`
+    /// filename stem, or the full `sha256:…` form).
+    #[arg(long)]
+    pub handoff: String,
+    /// Definition-home directory (defaults to the current directory).
+    /// Deployment-consumed, as on `system survey`.
+    #[arg(long)]
+    pub dir: Option<PathBuf>,
+}
+
+/// Arguments for `system status`.
+#[derive(Debug, Args)]
+pub struct StatusArgs {
+    /// Definition-home directory (defaults to the current directory).
+    /// Deployment-consumed, as on `system survey`.
+    #[arg(long)]
+    pub dir: Option<PathBuf>,
+}

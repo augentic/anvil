@@ -1371,6 +1371,7 @@ dependencies = [
  "emery-error",
  "emery-project",
  "emery-prose",
+ "jiff",
  "layout-rs",
  "omnia-guest",
  "schemars",

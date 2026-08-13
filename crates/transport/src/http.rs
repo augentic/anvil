@@ -126,4 +126,7 @@ where
         .route("/journal", get!(project::journal::handlers::Show))
         .route("/debt", get!(::slice::handlers::Debt))
         .route("/system/survey", post!(::system::handlers::Survey))
+        .route("/system/plan", post!(::system::handlers::Plan))
+        .route("/system/review", post!(::system::handlers::Review))
+        .route("/system/status", get!(::system::handlers::Status))
 }
