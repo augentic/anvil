@@ -138,6 +138,15 @@ impl Error {
                 "slice-already-exists" => Some(
                     "continue the existing slice (`emery slice list` shows its status) or abandon it with `emery plan drop <slice>`",
                 ),
+                "binding-budget-exhausted" => Some(
+                    "narrow or split the reviewed wave upstream; delivery-binding budgets are engine constants and cannot be raised per project",
+                ),
+                "git-revision-unavailable" => Some(
+                    "the recorded commit is gone from the repository host; update the reviewed wave with a reachable exact revision",
+                ),
+                "locator-private-network" => Some(
+                    "use a public HTTPS locator; delivery binding does not read private-network targets",
+                ),
                 _ => None,
             },
             Self::Validation { code, .. } => match code.as_ref() {
