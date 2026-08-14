@@ -121,3 +121,23 @@ async fn ignore_policy_parity() {
         store.snapshot(&tree).await.expect("store snapshot")
     );
 }
+
+#[tokio::test]
+async fn dir_cid_honors_gitignore() {
+    let root = tempfile::tempdir().expect("tempdir");
+    let dirty = root.path().join("dirty");
+    std::fs::create_dir_all(dirty.join("target")).expect("mkdir");
+    std::fs::write(dirty.join("src.rs"), b"code").expect("write");
+    std::fs::write(dirty.join(".gitignore"), b"target/\n").expect("write");
+    std::fs::write(dirty.join("target/foo.o"), b"junk").expect("write");
+
+    let clean = root.path().join("clean");
+    std::fs::create_dir_all(&clean).expect("mkdir");
+    std::fs::write(clean.join("src.rs"), b"code").expect("write");
+    std::fs::write(clean.join(".gitignore"), b"target/\n").expect("write");
+
+    let store = Store::new(root.path().join("snapshots"));
+    let pinned = dir_cid(&dirty).expect("dir cid");
+    assert_eq!(pinned, store.snapshot(&dirty).await.expect("store snapshot"));
+    assert_eq!(pinned, dir_cid(&clean).expect("clean cid"), "ignored output leaves the identity");
+}

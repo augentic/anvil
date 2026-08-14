@@ -7,7 +7,7 @@ use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
 use project::adapter::{Inventory, Resolver};
 use project::handler::{Anchor, Render};
 use project::profile::Profiles;
-use project::seam::{Ingest, Source, Target, Workspaces};
+use project::seam::{Ingest, Origins, Source, Target, Workspaces};
 use serde::Serialize;
 use tracing::Instrument as _;
 
@@ -25,6 +25,7 @@ mod routes;
 pub mod selectors;
 mod slice;
 mod source;
+mod system;
 mod target;
 
 /// Arguments shared by every command route.
@@ -119,7 +120,8 @@ where
         + Source
         + Target
         + Workspaces
-        + Ingest,
+        + Ingest
+        + Origins,
 {
     let span = tracing::info_span!(
         "emery.command",

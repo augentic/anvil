@@ -18,6 +18,7 @@ pub mod init;
 pub mod journal;
 pub mod judgment;
 pub mod name;
+pub mod origins;
 pub mod plan;
 pub mod platform;
 pub mod profile;

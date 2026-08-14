@@ -229,6 +229,9 @@ fn diag_hint(code: &str) -> Option<&'static str> {
         "adapter-unversioned" => Some(
             "detached topology records only exact package pins (`emery:<name>@<semver>`); seed a local component with `emery adapter add` for in-place work",
         ),
+        "system-scope-missing" | "system-coverage-missing" => Some(
+            "the operator creates the definition home by hand (there is no `system init`) — two declared files at the root:\n\nscope.yaml:\n  version: 1\n  id: <system>\n  decision: <the decision this survey must support>\n\ncoverage.yaml:\n  version: 1\n  candidates:\n    - key: <source>\n      location: <URL or path>\n      adapter: <name>          # required iff disposition is included\n      disposition: included    # included | excluded | inaccessible | unsupported | unresolved\n      reason: <why>",
+        ),
         "source-intent-locator" => {
             Some("bind `intent` as an inline value under the reserved key; locators are refused")
         }

@@ -248,13 +248,17 @@ pub enum MergePhase {
 }
 
 /// Plan-time discovery and slice-time extraction for a source adapter.
+///
+/// Every dispatch carries the caller's source `key` and a prepared
+/// [`SourceInput`] — the adapter never recovers a source location from
+/// `plan.yaml` or the `"."` preopen.
 pub trait Source: Send + Sync {
     /// Lightly survey the source into a lead set.
     fn survey(
         &self, id: String, input: SourceInput,
     ) -> impl Future<Output = Result<SurveyResult, Error>> + Send;
 
-    /// Thoroughly extract evidence from the source for one lead.
+    /// Thoroughly extract evidence from the prepared input for one lead.
     fn extract(
         &self, id: String, input: SourceInput,
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;
@@ -327,6 +331,12 @@ pub trait Workspaces: Send + Sync {
     /// freezes the product tree.
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, Error>> + Send;
 
+    /// Freeze an arbitrary deployment-local tree (a directory, or a
+    /// single file as a one-file tree) as an immutable snapshot — the
+    /// source-input preparation leg. Unlike [`Self::freeze`], the
+    /// caller names the tree.
+    fn snapshot(&self, path: String) -> impl Future<Output = Result<SnapshotId, Error>> + Send;
+
     /// Materialize `base` into a fresh private workspace.
     /// `writable: false` prepares a read-only source view — same
     /// preparation, discarded without capture.
@@ -377,6 +387,36 @@ pub trait Ingest: Send + Sync {
     fn fetch(
         &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
     ) -> impl Future<Output = Result<Fetched, Error>> + Send;
+}
+
+/// One fetched origin: the deployment-local tree the fetch
+/// materialized plus the origin's revision report.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OriginFetched {
+    /// Deployment-local root of the fetched tree, beneath the
+    /// deployment's workspaces mount. The caller snapshots it and
+    /// then discards it via [`Origins::discard_fetched`].
+    pub root: String,
+    /// The commit the fetch reports, when the origin is Git.
+    pub revision: Option<String>,
+}
+
+/// The host-owned origin-fetch capability (RFC-104).
+///
+/// Resolves a remote coverage locator (Git or HTTPS) into a
+/// deployment-local tree: the native provider runs host `git` /
+/// HTTPS fetch in-process; the engine guest maps the
+/// host-implemented `emery:origins` import (the guest has no network
+/// or git). Private Git uses ambient host credentials — no secrets
+/// surface in the definition home. Only system survey dispatches it.
+pub trait Origins: Send + Sync {
+    /// Fetch `locator` into a deployment-local tree: a Git origin
+    /// clones, any other HTTPS locator downloads as a one-file tree.
+    fn fetch(&self, locator: String) -> impl Future<Output = Result<OriginFetched, Error>> + Send;
+
+    /// Discard a fetched tree by its deployment-local root.
+    /// Best-effort and idempotent.
+    fn discard_fetched(&self, root: String) -> impl Future<Output = Result<(), Error>> + Send;
 }
 
 /// The borrowed capability bundle one orchestration run dispatches

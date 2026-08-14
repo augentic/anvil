@@ -1,6 +1,6 @@
 # Emery on Omnia — The Effect-Oriented Architecture
 
-> Status: This is the standing architecture — the agreed direction being worked toward. It sequences the work into independently valuable stages and lives alongside [roadmap.md](roadmap.md).
+> Status: This is the standing architecture — the agreed direction being worked toward. It sequences the work into independently valuable stages and lives alongside [roadmap.md](roadmap.md). Visual map: [Shape of the system](../docs/explanation/system-shape.md).
 >
 > Terminology (**runtime core**, Law 2, host-injected tools): [Omnia glossary](../../omnia/docs/glossary.md).
 

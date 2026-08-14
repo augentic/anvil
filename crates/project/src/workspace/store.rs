@@ -54,8 +54,9 @@ impl<O: Objects> Store<O> {
     }
 
     /// Snapshot the complete tree at `dir` into the store and return
-    /// its identity. Ignored paths (`.git`, `.emery/change`) are
-    /// excluded; empty directories are not tracked.
+    /// its identity. Ignored paths (`.git`, `.emery/change`) plus the
+    /// tree's own `.gitignore` rules are excluded; empty directories
+    /// are not tracked.
     ///
     /// # Errors
     ///
@@ -66,6 +67,43 @@ impl<O: Objects> Store<O> {
         let exec = self.exec.read(dir)?;
         let own_root = self.exclude.as_deref().and_then(|root| std::path::absolute(root).ok());
         self.walk(dir, own_root.as_deref(), &exec, &mut manifest).await?;
+        let digest = self.put(manifest.encode().as_bytes()).await?;
+        Ok(SnapshotId::from_digest(&digest))
+    }
+
+    /// [`Self::snapshot`] over a path that may be a single file: a
+    /// file snapshots as a one-file tree named by its file name
+    /// (mode `100644`, matching the plan-pin `file_cid` encoding); a
+    /// directory delegates to [`Self::snapshot`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::snapshot`], plus `workspace-path-unsupported` for a
+    /// non-UTF-8 or newline-bearing file name.
+    pub async fn snapshot_path(&self, path: &Path) -> Result<SnapshotId, Error> {
+        let meta = std::fs::symlink_metadata(path).map_err(|source| Error::Filesystem {
+            op: "stat",
+            path: path.to_path_buf(),
+            source,
+        })?;
+        if meta.is_dir() {
+            return self.snapshot(path).await;
+        }
+        let name = path.file_name().and_then(|name| name.to_str()).filter(|n| !n.contains('\n'));
+        let Some(name) = name else {
+            return Err(Error::Diag {
+                code: "workspace-path-unsupported",
+                detail: format!("path `{}` is not a snapshot-safe UTF-8 name", path.display()),
+            });
+        };
+        let bytes = std::fs::read(path).map_err(|source| Error::Filesystem {
+            op: "read",
+            path: path.to_path_buf(),
+            source,
+        })?;
+        let blob = self.put(&bytes).await?;
+        let mut manifest = Manifest::default();
+        manifest.entries.insert(name.to_string(), Entry::File { exec: false, blob });
         let digest = self.put(manifest.encode().as_bytes()).await?;
         Ok(SnapshotId::from_digest(&digest))
     }
@@ -100,7 +138,7 @@ impl<O: Objects> Store<O> {
         remove_entry(&target)?;
         match entry {
             Entry::File { blob, .. } => {
-                std::fs::write(&target, self.get(blob).await?)?;
+                self.copy_file(blob, &target).await?;
             }
             Entry::Link { blob } => {
                 let link_target =
@@ -193,31 +231,50 @@ impl<O: Objects> Store<O> {
         Ok(digest)
     }
 
+    /// Stream-hash `path` and store it as an object, returning its
+    /// digest. Same identity as [`Self::put`] of the file's bytes.
+    async fn put_file(&self, path: &Path) -> Result<String, Error> {
+        let digest = hash_path(path)?;
+        self.objects.put_file(&digest, path).await?;
+        Ok(digest)
+    }
+
     /// Read the object named `digest`, verifying its content hashes
     /// back to the name.
     async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
         let bytes = self.objects.get(digest).await?;
         if diagnostics::digest::sha256_hex(&bytes) != digest {
-            return Err(Error::Diag {
-                code: "snapshot-object-corrupt",
-                detail: format!("object `{digest}` failed digest verification"),
-            });
+            return Err(corrupt(digest));
         }
         Ok(bytes)
+    }
+
+    /// Stream object `digest` into `dest` and verify the written
+    /// bytes hash back to the name.
+    async fn copy_file(&self, digest: &str, dest: &Path) -> Result<(), Error> {
+        self.objects.copy_file(digest, dest).await?;
+        if hash_path(dest)? != digest {
+            drop(std::fs::remove_file(dest));
+            return Err(corrupt(digest));
+        }
+        Ok(())
     }
 
     /// Depth-first walk folding `root` into `manifest`, driven by an
     /// explicit directory stack (awaiting inside recursion would need
     /// boxed futures). `own_root` is a nested filesystem store's
     /// absolute root, skipped when present; `exec` is the tree's
-    /// bulk-read exec set. Manifest entries are keyed by relative
-    /// path, so visit order does not affect snapshot identity.
+    /// bulk-read exec set. Each pending directory carries its
+    /// gitignore stack (RFC-105); an ignored directory is neither
+    /// hashed nor descended. Entries are keyed by relative path, so
+    /// visit order does not affect snapshot identity.
     async fn walk(
         &self, root: &Path, own_root: Option<&Path>, exec: &BTreeSet<String>,
         manifest: &mut Manifest,
     ) -> Result<(), Error> {
-        let mut pending = vec![(root.to_path_buf(), String::new())];
-        while let Some((dir, prefix)) = pending.pop() {
+        let mut pending = vec![(root.to_path_buf(), String::new(), super::Ignores::default())];
+        while let Some((dir, prefix, ignores)) = pending.pop() {
+            let ignores = ignores.descend(&dir);
             for entry in crate::fs::dir_entries(&dir)? {
                 let name = entry.file_name();
                 let Some(name) = name.to_str() else {
@@ -238,6 +295,9 @@ impl<O: Objects> Store<O> {
                 // `symlink_metadata` so a link to a directory records as a
                 // link instead of being followed into a foreign tree.
                 let meta = std::fs::symlink_metadata(&path)?;
+                if ignores.excluded(&path, meta.is_dir()) {
+                    continue;
+                }
                 if meta.file_type().is_symlink() {
                     let target = std::fs::read_link(&path)?;
                     let Some(target) = target.to_str() else {
@@ -258,14 +318,9 @@ impl<O: Objects> Store<O> {
                     let blob = self.put(target.as_bytes()).await?;
                     manifest.entries.insert(rel, Entry::Link { blob });
                 } else if meta.is_dir() {
-                    pending.push((path, rel));
+                    pending.push((path, rel, ignores.clone()));
                 } else {
-                    let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
-                        op: "read",
-                        path: path.clone(),
-                        source,
-                    })?;
-                    let blob = self.put(&bytes).await?;
+                    let blob = self.put_file(&path).await?;
                     let exec = exec.contains(&rel);
                     manifest.entries.insert(rel, Entry::File { exec, blob });
                 }
@@ -305,6 +360,21 @@ fn remove_entry(path: &Path) -> Result<(), Error> {
         Ok(_) => std::fs::remove_file(path),
     };
     removed.map_err(Error::Io)
+}
+
+fn hash_path(path: &Path) -> Result<String, Error> {
+    diagnostics::digest::sha256_path(path).map_err(|source| Error::Filesystem {
+        op: "read",
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
+fn corrupt(digest: &str) -> Error {
+    Error::Diag {
+        code: "snapshot-object-corrupt",
+        detail: format!("object `{digest}` failed digest verification"),
+    }
 }
 
 fn unsupported(prefix: &str, name: &str) -> Error {

@@ -11,7 +11,7 @@ use omnia_guest::http::header::{CONTENT_TYPE, HeaderValue};
 use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
 use project::profile::Profiles;
-use project::seam::{Ingest, Source, Target, Workspaces};
+use project::seam::{Ingest, Origins, Source, Target, Workspaces};
 use serde::Serialize;
 
 /// Emery's JSON HTTP output and error policy.
@@ -96,7 +96,8 @@ where
         + Source
         + Target
         + Workspaces
-        + Ingest,
+        + Ingest
+        + Origins,
 {
     macro_rules! get {
         ($operation:ty) => {
@@ -135,4 +136,8 @@ where
         .route("/plan/archive", post!(::change::plan::handlers::Archive))
         .route("/journal", get!(project::journal::handlers::Show))
         .route("/debt", get!(::slice::handlers::Debt))
+        .route("/system/survey", post!(::system::handlers::Survey))
+        .route("/system/plan", post!(::system::handlers::Plan))
+        .route("/system/review", post!(::system::handlers::Review))
+        .route("/system/status", get!(::system::handlers::Status))
 }

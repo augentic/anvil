@@ -20,6 +20,7 @@ cfg-if.workspace = true
 emery-launcher.workspace = true
 emery-wasi-exec-bits.workspace = true
 emery-wasi-ingest.workspace = true
+emery-wasi-origins.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-wasi-blobstore.workspace = true
@@ -171,7 +172,9 @@ cfg-if = "1.0.4"
 clap = { version = "4.6.6", features = ["derive", "env"] }
 clap_complete = "4.6.9"
 glob = "0.3.4"
+ignore = "0.4.23"
 jiff = { version = "0.2.35", default-features = false, features = ["serde", "std"] }
+layout-rs = "0.1.3"
 oci-client = { version = "0.17.0", default-features = false, features = ["rustls-tls"] }
 oci-wasm = { version = "0.6.0", default-features = false, features = ["rustls-tls"] }
 petgraph = "0.8.3"
@@ -211,9 +214,11 @@ emery-probe = { path = "crates/probe" }
 emery-project = { path = "crates/project" }
 emery-prose = { path = "crates/prose" }
 emery-slice = { path = "crates/slice" }
+emery-system = { path = "crates/system" }
 emery-transport = { path = "crates/transport" }
 emery-wasi-exec-bits = { path = "crates/wasi-exec-bits" }
 emery-wasi-ingest = { path = "crates/wasi-ingest" }
+emery-wasi-origins = { path = "crates/wasi-origins" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }
 omnia-cursor = "0.29.0"

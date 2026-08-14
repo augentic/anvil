@@ -27,6 +27,7 @@ use project::seam::{
 use project::snapshot::{CodePatch, SnapshotId};
 
 use crate::bindings::emery::adapter::{source, target, types};
+use crate::bindings::emery::origins::origins;
 
 /// Workflow capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -209,6 +210,15 @@ impl seam::Workspaces for Provider {
         }
     }
 
+    fn snapshot(
+        &self, path: String,
+    ) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
+        async move {
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
+            store.snapshot_path(Path::new(&path)).await.map_err(|err| workspace_failure(&err))
+        }
+    }
+
     fn prepare(
         &self, base: SnapshotId, writable: bool,
     ) -> impl Future<Output = Result<Workspace, seam::Error>> + Send {
@@ -290,6 +300,39 @@ fn ingest_error(err: crate::bindings::emery::ingest::types::Error) -> seam::Erro
         crate::bindings::emery::ingest::types::Error::Internal(detail) => {
             seam::Error::Internal(detail)
         }
+    }
+}
+
+/// Origin fetch is host-implemented (`emery:origins`): the engine
+/// guest has no network or git, so the host materializes the locator
+/// beneath the workspaces mount and the guest snapshots it.
+impl seam::Origins for Provider {
+    fn fetch(
+        &self, locator: String,
+    ) -> impl Future<Output = Result<seam::OriginFetched, seam::Error>> + Send {
+        async move {
+            let fetched = origins::fetch(locator).await.map_err(origin_failure)?;
+            Ok(seam::OriginFetched {
+                root: fetched.root,
+                revision: fetched.revision,
+            })
+        }
+    }
+
+    fn discard_fetched(
+        &self, root: String,
+    ) -> impl Future<Output = Result<(), seam::Error>> + Send {
+        async move { origins::discard(root).await.map_err(origin_failure) }
+    }
+}
+
+/// Map an `emery:origins` failure onto the seam error contract; an
+/// origin that cannot be reached is I/O, not an internal fault.
+fn origin_failure(error: origins::Error) -> seam::Error {
+    match error {
+        origins::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
+        origins::Error::Access(detail) => seam::Error::Io(detail),
+        origins::Error::Internal(detail) => seam::Error::Internal(detail),
     }
 }
 

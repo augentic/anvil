@@ -1,0 +1,21 @@
+flowchart TB
+    subgraph plan["Plan"]
+        survey[survey] --> leads[leads / plan.yaml]
+    end
+
+    subgraph refine["Refine"]
+        extract[extract] --> evidence[evidence]
+        evidence --> spec[spec.md]
+        guidance[guidance] --> spec
+    end
+
+    subgraph execute["Execute"]
+        workspace[private workspace]
+        build[build · verify · repair · review]
+        merge[merge]
+        facts[facts / archive]
+        workspace --> build --> merge --> facts
+    end
+
+    survey -.-> extract
+    spec --> workspace

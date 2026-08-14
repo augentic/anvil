@@ -156,6 +156,7 @@ fn append_refuses_review() {
     let event = Event::new(
         jiff::Timestamp::from_second(1_700_000_000).expect("ts"),
         EventKind::SystemWaveReviewed {
+            wave: "deliver".into(),
             handoff_digest: pin(0xa),
         },
     );
@@ -170,6 +171,7 @@ fn review_event_round_trip() {
         writer: "local".into(),
         sequence: 1,
         kind: EventKind::SystemWaveReviewed {
+            wave: "deliver".into(),
             handoff_digest: pin(0xa),
         },
     };

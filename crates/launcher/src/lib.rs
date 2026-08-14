@@ -12,19 +12,23 @@ use project::handler::{
     CHANGE_ROOT_ENV, DETACHED_ENV, ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT,
     Locations, PROJECT_ROOT_ENV,
 };
-use transport::command::selectors::{SeedRequest, change_request, refresh_request, seed_request};
+use transport::command::selectors::{
+    SeedRequest, change_request, refresh_request, seed_request, system_request,
+};
 
 mod anchor;
 mod blobstore;
 mod exec_bits;
 mod ingest;
 mod install;
+mod origins;
 mod resolver;
 
 pub use blobstore::Blobstore;
 pub use exec_bits::ExecBits;
 pub use ingest::{Ingest, checkout, fetch, ingest};
 pub use install::Registry;
+pub use origins::Origins;
 pub use resolver::Resolver;
 
 /// Compiled first-party adapter catalog for detached binding.
@@ -96,19 +100,37 @@ impl Policy {
         let argv: Vec<String> =
             argv.iter().filter(|arg| *arg != "--debug" && *arg != "--quiet").cloned().collect();
         let seed = seed_request(&argv);
+        let system = system_request(&argv);
         let change = change_request(&argv);
-        let roots = anchor::roots(invoked_dir, seed.as_ref(), change.change_dir.as_deref());
-        let paths = ExecutionPaths::from_roots(&roots, locations);
+        let (paths, system_invocation) = if let Some(system) = system.as_ref() {
+            // A `system *` invocation mounts a definition home: the cache
+            // stays under `$EMERY_HOME` on one shared tenant (never keyed
+            // off the mounted root), and the home is never created.
+            let root = anchor::system_root(invoked_dir, system);
+            let locations = locations.shared_cache("system");
+            (ExecutionPaths::new(root, locations), true)
+        } else {
+            let roots = anchor::roots(invoked_dir, seed.as_ref(), change.change_dir.as_deref());
+            (ExecutionPaths::from_roots(&roots, locations), false)
+        };
         // The global store is host-owned (no guest mount); the install
         // leg creates it on demand. Same for the snapshot store. The
         // `.` mount is product (in-place) or the change home (detached).
         let workspaces_dir = paths.locations().workspaces_root().to_path_buf();
-        for dir in [paths.project_root().to_path_buf(), paths.cache_dir(), workspaces_dir] {
+        let mut dirs = vec![paths.cache_dir(), workspaces_dir];
+        if !system_invocation {
+            dirs.push(paths.project_root().to_path_buf());
+        }
+        for dir in dirs {
             drop(std::fs::create_dir_all(dir));
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
         let definition_dir = change.from.as_ref().and_then(|from| {
-            let resolved = roots.definition_root(from);
+            let resolved = if from.is_absolute() {
+                from.clone()
+            } else {
+                paths.project_root().join(from)
+            };
             resolved.is_dir().then(|| std::path::absolute(&resolved).unwrap_or(resolved))
         });
         let refresh = refresh_names(&argv, paths.project_root());

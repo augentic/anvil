@@ -1,5 +1,7 @@
 //! RFC-104 handoff contract: closed DTO, canonical digest, and
 //! definition-home read of the current reviewed wave projection.
+//! Session 2 deletes this module once `plan author` consumes
+//! `system::review::current_handoff`.
 
 mod handoff;
 mod resolve;

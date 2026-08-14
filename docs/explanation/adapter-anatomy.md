@@ -103,6 +103,7 @@ Neither system references the other, neither loader probes for the other, and ne
 
 ## See also
 
+- [Shape of the system](system-shape.md) — visual map of engine, source, and target
 - [Adapter contract](../reference/adapter-contract.md) — the precise authoring contract: identity, metadata, operations, sandboxing, resolver, checklist
 - [From sources to slices](reconciliation.md) — how leads and evidence become slices and specs
 - [Source adapters](../reference/sources/index.md) / [Target adapters](../reference/targets/index.md) — per-adapter catalogs

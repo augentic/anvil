@@ -5,7 +5,7 @@ use std::path::Path;
 
 use error::Error;
 
-use super::{Event, EventKind, validate_writer, writer_log_path};
+use super::{Event, EventKind, JournalRoot, validate_writer, writer_log_path};
 use crate::config::Layout;
 
 /// Project-relative path of the dropped-event recovery sidecar.
@@ -49,7 +49,6 @@ pub fn append_one(layout: Layout<'_>, event: &Event) -> Result<(), Error> {
 /// `journal-writer-invalid` when `writer` is empty or contains a path
 /// separator.
 pub fn append_for(layout: Layout<'_>, writer: &str, events: &[Event]) -> Result<(), Error> {
-    validate_writer(writer)?;
     if events.iter().any(|event| matches!(event.kind, EventKind::SystemWaveReviewed { .. })) {
         return Err(Error::Diag {
             code: "journal-event-read-only",
@@ -58,10 +57,21 @@ pub fn append_for(layout: Layout<'_>, writer: &str, events: &[Event]) -> Result<
                 .into(),
         });
     }
+    append_for_at(&JournalRoot::from(layout), writer, events)
+}
+
+/// Append `events` to one explicit writer's log under an explicit
+/// [`JournalRoot`] — the shared kernel behind both event roots.
+///
+/// # Errors
+///
+/// Same failure surface as [`append_for`].
+pub fn append_for_at(root: &JournalRoot, writer: &str, events: &[Event]) -> Result<(), Error> {
+    validate_writer(writer)?;
     if events.is_empty() {
         return Ok(());
     }
-    let writer_path = writer_log_path(layout, writer);
+    let writer_path = root.writer_path(writer);
     if let Some(parent) = writer_path.parent() {
         std::fs::create_dir_all(parent)?;
     }

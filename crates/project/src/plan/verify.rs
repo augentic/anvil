@@ -244,7 +244,7 @@ fn imports(layout: &Layout<'_>, def: &DefinitionIdentity) -> Result<(), Error> {
         ));
     }
     match &event.kind {
-        EventKind::SystemWaveReviewed { handoff_digest }
+        EventKind::SystemWaveReviewed { handoff_digest, .. }
             if handoff_digest == &def.handoff_digest =>
         {
             Ok(())

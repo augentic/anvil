@@ -180,7 +180,8 @@ The default rhythm:
 
 - [From sources to slices](reconciliation.md) — the two reconciliation moments (leads → slices at plan time, evidence → spec at slice time) end to end
 - [Anatomy of an adapter](adapter-anatomy.md) — how source and target adapters compose with core synthesis
-- [The layered stack](layered-stack.md) — the architectural framing
+- [Shape of the system](system-shape.md) — visual map of the framework
+- [The layered stack](layered-stack.md) — invocation layers
 - [Quick reference card](../reference/quick-reference.md) — every verb at a glance
 </div>
 

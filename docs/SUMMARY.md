@@ -36,6 +36,7 @@
 # Understanding Emery
 
 - [Core concepts](explanation/concepts.md)
+- [Shape of the system](explanation/system-shape.md)
 - [Workflow, standards, and artifacts](explanation/standards-layer.md)
 - [The layered stack](explanation/layered-stack.md)
 - [Artifacts in depth](explanation/artifacts.md)

@@ -249,6 +249,77 @@ fn from_system_preopen() {
 }
 
 // ---------------------------------------------------------------------------
+// `system *` anchoring: the definition home mounts as `.` — no
+// `project.yaml` walk, no mkdir (the operator authors the home by
+// hand), and a cache never keyed off the mounted root.
+
+#[test]
+fn system_mounts_dir() {
+    let sandbox = Sandbox::new();
+    let home = sandbox.root.join("client-a");
+    std::fs::create_dir_all(&home).expect("mkdir definition home");
+
+    let policy = Policy::new(
+        &sandbox.root,
+        &argv(&["system", "survey", "--dir", "client-a"]),
+        sandbox.locations.clone(),
+    );
+    assert_eq!(policy.project_root(), home);
+}
+
+#[test]
+fn system_skips_walk() {
+    // Invoking inside a product checkout must not anchor the walked
+    // project root: the definition home is the invocation directory.
+    let sandbox = Sandbox::new();
+    let emery = sandbox.root.join(".emery");
+    std::fs::create_dir_all(&emery).expect("mkdir .emery");
+    std::fs::write(
+        emery.join("project.yaml"),
+        format!(
+            "name: fixture\nadapter: mock\nemery: {}\nrules: {{}}\n",
+            env!("CARGO_PKG_VERSION")
+        ),
+    )
+    .expect("write project.yaml");
+    let nested = sandbox.root.join("clients/acme");
+    std::fs::create_dir_all(&nested).expect("mkdir definition home");
+
+    let policy = Policy::new(&nested, &argv(&["system", "survey"]), sandbox.locations);
+    assert_eq!(policy.project_root(), nested);
+}
+
+#[test]
+fn system_never_creates_home() {
+    // A missing home is left for the runtime's own preopen error —
+    // creating it here would be `system init`, which does not exist.
+    let sandbox = Sandbox::new();
+    let missing = sandbox.root.join("absent-home");
+
+    let policy = Policy::new(
+        &sandbox.root,
+        &argv(&["system", "survey", "--dir", "absent-home"]),
+        sandbox.locations.clone(),
+    );
+    assert_eq!(policy.project_root(), missing);
+    assert!(!missing.exists(), "the launcher never creates the definition home");
+}
+
+#[test]
+fn system_cache_shared() {
+    // One shared tenant under the cache parent — never a per-home
+    // tenant keyed off the mounted root's digest.
+    let sandbox = Sandbox::new();
+    let policy = sandbox.policy(&["system", "survey"]);
+    assert!(
+        policy.cache_dir().ends_with("cache/system"),
+        "system cache must be the shared tenant, got {}",
+        policy.cache_dir().display()
+    );
+    assert!(policy.cache_dir().is_dir(), "the cache mount directory is created pre-run");
+}
+
+// ---------------------------------------------------------------------------
 // The `adapter add` seed preopen: the operator's component directory,
 // named by its own absolute host path so the guest opens the argv path
 // unchanged.

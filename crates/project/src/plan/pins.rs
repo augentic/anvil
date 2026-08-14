@@ -11,6 +11,7 @@ use error::Error;
 
 use super::model::{Plan, SourceBinding};
 use crate::snapshot::{self, SnapshotId};
+use crate::workspace::Ignores;
 
 /// Entry path used for the one-file tree of a value binding.
 const VALUE_ENTRY: &str = "content";
@@ -157,11 +158,14 @@ fn resolve(project_root: &Path, raw: &str) -> PathBuf {
 
 fn tree_cid(dir: &Path) -> Result<SnapshotId, Error> {
     let mut entries = BTreeMap::new();
-    walk(dir, "", &mut entries)?;
+    walk(dir, "", &mut entries, &Ignores::default())?;
     Ok(SnapshotId::from_digest(&sha256_hex(encode(&entries).as_bytes())))
 }
 
-fn walk(dir: &Path, prefix: &str, entries: &mut BTreeMap<String, Entry>) -> Result<(), Error> {
+fn walk(
+    dir: &Path, prefix: &str, entries: &mut BTreeMap<String, Entry>, ignores: &Ignores,
+) -> Result<(), Error> {
+    let ignores = ignores.descend(dir);
     for entry in crate::fs::dir_entries(dir)? {
         let name = entry.file_name();
         let Some(name) = name.to_str() else {
@@ -176,6 +180,9 @@ fn walk(dir: &Path, prefix: &str, entries: &mut BTreeMap<String, Entry>) -> Resu
         }
         let path = entry.path();
         let meta = std::fs::symlink_metadata(&path)?;
+        if ignores.excluded(&path, meta.is_dir()) {
+            continue;
+        }
         if meta.file_type().is_symlink() {
             let target = std::fs::read_link(&path)?;
             let Some(target) = target.to_str() else {
@@ -184,7 +191,7 @@ fn walk(dir: &Path, prefix: &str, entries: &mut BTreeMap<String, Entry>) -> Resu
             let blob = sha256_hex(target.as_bytes());
             entries.insert(rel, Entry::Link { blob });
         } else if meta.is_dir() {
-            walk(&path, &rel, entries)?;
+            walk(&path, &rel, entries, &ignores)?;
         } else {
             let bytes = std::fs::read(&path).map_err(|source| Error::Filesystem {
                 op: "read",

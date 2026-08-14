@@ -19,6 +19,21 @@ fn empty_digest_kat() {
 }
 
 #[test]
+fn streamed_digest_parity() {
+    use std::io::Cursor;
+
+    use diagnostics::digest::sha256_reader;
+
+    let payload: Vec<u8> = (0_u8..=250).cycle().take(200_000).collect();
+    let mut cursor = Cursor::new(&payload);
+    assert_eq!(
+        sha256_reader(&mut cursor).expect("stream"),
+        sha256_hex(&payload),
+        "streamed SHA-256 equals hashing the same bytes as a slice"
+    );
+}
+
+#[test]
 fn fp_is_deterministic() {
     let d = sample_diagnostic();
     let fp = fingerprint(&d);

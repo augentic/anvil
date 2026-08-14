@@ -4,6 +4,7 @@
 
 mod exec;
 mod manifest;
+mod membership;
 mod objects;
 mod store;
 
@@ -13,6 +14,7 @@ use std::time::SystemTime;
 
 use error::Error;
 pub use exec::{ExecBits, FsExecBits};
+pub(crate) use membership::Ignores;
 pub use objects::{FsObjects, Objects};
 use serde::{Deserialize, Serialize};
 pub use store::Store;

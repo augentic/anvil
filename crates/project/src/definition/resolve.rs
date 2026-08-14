@@ -120,7 +120,7 @@ fn matching_review(home: &Home<'_>, digest: &SnapshotId) -> Result<Event, Error>
         .find(|event| {
             matches!(
                 &event.kind,
-                EventKind::SystemWaveReviewed { handoff_digest } if handoff_digest == digest
+                EventKind::SystemWaveReviewed { handoff_digest, .. } if handoff_digest == digest
             )
         })
         .ok_or_else(|| Error::Diag {

@@ -66,3 +66,22 @@ fn bytes_empty() {
 
     assert_eq!(std::fs::read(&path).expect("read").len(), 0, "empty file is written");
 }
+
+#[test]
+fn copy_matches_bytes() {
+    use artifacts::atomic::copy_write;
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let src = dir.path().join("src.bin");
+    let dest = dir.path().join("nested").join("dest.bin");
+    let payload: Vec<u8> = (0_u8..=250).cycle().take(200_000).collect();
+    std::fs::write(&src, &payload).expect("src");
+
+    copy_write(&dest, &src).expect("copy_write succeeds");
+
+    assert_eq!(
+        std::fs::read(&dest).expect("read"),
+        payload,
+        "copy_write streams src bytes verbatim"
+    );
+}

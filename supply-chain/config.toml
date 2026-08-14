@@ -130,6 +130,10 @@ criteria = "safe-to-deploy"
 version = "0.2.4"
 criteria = "safe-to-deploy"
 
+[[exemptions.bstr]]
+version = "1.13.1"
+criteria = "safe-to-deploy"
+
 [[exemptions.bytecount]]
 version = "0.6.9"
 criteria = "safe-to-deploy"
@@ -414,6 +418,10 @@ criteria = "safe-to-deploy"
 version = "0.3.4"
 criteria = "safe-to-deploy"
 
+[[exemptions.globset]]
+version = "0.4.20"
+criteria = "safe-to-deploy"
+
 [[exemptions.granit-parser]]
 version = "1.0.1"
 criteria = "safe-to-deploy"
@@ -502,6 +510,10 @@ criteria = "safe-to-deploy"
 version = "1.2.2"
 criteria = "safe-to-deploy"
 
+[[exemptions.ignore]]
+version = "0.4.33"
+criteria = "safe-to-deploy"
+
 [[exemptions.io-extras]]
 version = "0.19.0"
 criteria = "safe-to-deploy"
@@ -584,6 +596,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.konst_macro_rules]]
 version = "0.2.19"
+criteria = "safe-to-deploy"
+
+[[exemptions.layout-rs]]
+version = "0.1.3"
 criteria = "safe-to-deploy"
 
 [[exemptions.leb128]]

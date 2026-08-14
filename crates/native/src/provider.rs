@@ -404,6 +404,13 @@ impl seam::Workspaces for Provider {
             .map_err(|err| workspace_failure(&err))
     }
 
+    async fn snapshot(&self, path: String) -> Result<SnapshotId, seam::Error> {
+        self.store()
+            .snapshot_path(std::path::Path::new(&path))
+            .await
+            .map_err(|err| workspace_failure(&err))
+    }
+
     async fn prepare(&self, base: SnapshotId, writable: bool) -> Result<Workspace, seam::Error> {
         let prepared = workspace_kernel::prepare(
             &self.store(),
@@ -464,6 +471,48 @@ impl seam::Ingest for Provider {
         project::binding::fetch_locator(&mut session, &locator, recorded.as_ref(), prior.as_deref())
             .await
             .map_err(|err| seam::Error::Internal(err.to_string()))
+    }
+}
+
+/// Origin fetch runs in-process (RFC-104): host `git` / HTTPS
+/// through the native kernel, trees minted beneath the workspaces
+/// root and reported as host paths.
+impl seam::Origins for Provider {
+    async fn fetch(&self, locator: String) -> Result<seam::OriginFetched, seam::Error> {
+        let fetched =
+            project::origins::fetch(self.workspaces_root(), &locator).map_err(origin_failure)?;
+        Ok(seam::OriginFetched {
+            root: fetched.dir.display().to_string(),
+            revision: fetched.revision,
+        })
+    }
+
+    async fn discard_fetched(&self, root: String) -> Result<(), seam::Error> {
+        let parent = self.workspaces_root();
+        let name = std::path::Path::new(&root)
+            .strip_prefix(parent)
+            .ok()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| {
+                seam::Error::InvalidRequest(format!("`{root}` is not a fetched origin tree"))
+            })?;
+        project::origins::discard(parent, name).map_err(origin_failure)
+    }
+}
+
+/// Map an origin-kernel failure onto the seam error contract: a
+/// refused locator is the caller's, a failed fetch is I/O.
+fn origin_failure(err: Error) -> seam::Error {
+    match err {
+        Error::Diag {
+            code: "origin-locator-unsupported",
+            detail,
+        } => seam::Error::InvalidRequest(detail),
+        Error::Diag {
+            code: "origin-fetch-failed",
+            detail,
+        } => seam::Error::Io(detail),
+        other => seam::Error::Internal(other.to_string()),
     }
 }
 

@@ -2,7 +2,14 @@
 //!
 //! One digest implementation, so consumers never depend on `sha2` directly.
 
+use std::io::{self, Read};
+use std::path::Path;
+
 use sha2::{Digest, Sha256};
+
+/// Stream buffer for [`Hasher::update_reader`]: large enough to keep
+/// syscall count down, small enough for the stack.
+const STREAM_CHUNK: usize = 16 * 1024;
 
 /// Lowercase hex encoding of a SHA-256 digest over `bytes`.
 ///
@@ -56,9 +63,56 @@ impl Hasher {
         self.0.update(chunk);
     }
 
+    /// Fold every byte from `reader` into the running digest.
+    ///
+    /// # Errors
+    ///
+    /// Returns the reader's I/O error. Bytes consumed before the
+    /// failure remain in the hasher.
+    pub fn update_reader(&mut self, reader: &mut impl Read) -> io::Result<()> {
+        let mut buf = [0_u8; STREAM_CHUNK];
+        loop {
+            let n = reader.read(&mut buf)?;
+            if n == 0 {
+                return Ok(());
+            }
+            self.update(&buf[..n]);
+        }
+    }
+
     /// Consume the hasher and return the lowercase hex digest.
     #[must_use]
     pub fn finalize_hex(self) -> String {
         sha256_output_hex(self.0.finalize())
     }
+}
+
+/// SHA-256 of every byte from `reader`, streamed.
+///
+/// ```
+/// use std::io::Cursor;
+///
+/// use diagnostics::digest::{sha256_hex, sha256_reader};
+///
+/// let mut cursor = Cursor::new(b"emery");
+/// assert_eq!(sha256_reader(&mut cursor).unwrap(), sha256_hex(b"emery"));
+/// ```
+///
+/// # Errors
+///
+/// Returns the reader's I/O error.
+pub fn sha256_reader(reader: &mut impl Read) -> io::Result<String> {
+    let mut hasher = Hasher::new();
+    hasher.update_reader(reader)?;
+    Ok(hasher.finalize_hex())
+}
+
+/// SHA-256 of the file at `path`, streamed so the contents need not
+/// fit in memory.
+///
+/// # Errors
+///
+/// Returns an I/O error when the file cannot be opened or read.
+pub fn sha256_path(path: &Path) -> io::Result<String> {
+    sha256_reader(&mut std::fs::File::open(path)?)
 }

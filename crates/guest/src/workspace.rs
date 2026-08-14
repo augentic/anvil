@@ -3,6 +3,7 @@
 //! over `emery:exec-bits`; tree I/O runs over the preopens.
 
 use std::collections::BTreeSet;
+use std::io::{Read, Write as _};
 use std::path::Path;
 
 use error::Error;
@@ -52,6 +53,14 @@ impl Objects for BlobObjects {
         BlobStore::put(self, CONTAINER, &name, bytes).await.map_err(store_error)
     }
 
+    async fn put_file(&self, digest: &str, src: &Path) -> Result<(), Error> {
+        let name = object_name(digest);
+        if BlobStore::has(self, CONTAINER, &name).await.unwrap_or(false) {
+            return Ok(());
+        }
+        put_stream(&name, src).await
+    }
+
     async fn get(&self, digest: &str) -> Result<Vec<u8>, Error> {
         BlobStore::get(self, CONTAINER, &object_name(digest))
             .await
@@ -60,6 +69,10 @@ impl Objects for BlobObjects {
                 code: "snapshot-store-io",
                 detail: format!("object `{digest}` is not in the store"),
             })
+    }
+
+    async fn copy_file(&self, digest: &str, dest: &Path) -> Result<(), Error> {
+        copy_stream(&object_name(digest), dest).await
     }
 
     async fn has(&self, digest: &str) -> bool {
@@ -100,6 +113,77 @@ fn guest_root(root: &Path) -> Result<&str, Error> {
         code: "workspace-path-unsupported",
         detail: format!("root `{}` is not UTF-8", root.display()),
     })
+}
+
+/// Stream `src` into blobstore object `name` without buffering the
+/// file. `wasi:io` write budget is 4096 bytes per call.
+async fn put_stream(name: &str, src: &Path) -> Result<(), Error> {
+    use omnia_guest::anyhow::anyhow;
+    use omnia_guest::omnia_wasi_blobstore::types::OutgoingValue;
+
+    const WRITE_CHUNK: usize = 4096;
+
+    let mut file = std::fs::File::open(src).map_err(|source| Error::Filesystem {
+        op: "read",
+        path: src.to_path_buf(),
+        source,
+    })?;
+    let ctr = omnia_guest::omnia_wasi_blobstore::blobstore::get_container(CONTAINER.to_string())
+        .await
+        .map_err(|e| store_error(anyhow!("opening container: {e}")))?;
+    let outgoing = OutgoingValue::new_outgoing_value();
+    {
+        let body = outgoing
+            .outgoing_value_write_body()
+            .await
+            .map_err(|e| store_error(anyhow!("getting write body: {e:?}")))?;
+        let mut buf = [0_u8; WRITE_CHUNK];
+        loop {
+            let n = file.read(&mut buf).map_err(|source| Error::Filesystem {
+                op: "read",
+                path: src.to_path_buf(),
+                source,
+            })?;
+            if n == 0 {
+                break;
+            }
+            body.blocking_write_and_flush(&buf[..n])
+                .map_err(|e| store_error(anyhow!("writing data: {e}")))?;
+        }
+    }
+    ctr.write_data(name.to_string(), &outgoing)
+        .await
+        .map_err(|e| store_error(anyhow!("writing object: {e}")))?;
+    OutgoingValue::finish(outgoing).map_err(|e| store_error(anyhow!("finishing write: {e}")))
+}
+
+/// Stream blobstore object `name` into `dest` via ranged reads.
+async fn copy_stream(name: &str, dest: &Path) -> Result<(), Error> {
+    const RANGE_CHUNK: u64 = 64 * 1024;
+    let objects = BlobObjects;
+    let info = BlobStore::object_info(&objects, CONTAINER, name).await.map_err(store_error)?;
+    let mut file = std::fs::File::create(dest).map_err(|source| Error::Filesystem {
+        op: "write",
+        path: dest.to_path_buf(),
+        source,
+    })?;
+    if info.size == 0 {
+        return Ok(());
+    }
+    let mut offset = 0_u64;
+    while offset < info.size {
+        let end = offset.saturating_add(RANGE_CHUNK - 1).min(info.size - 1);
+        let chunk = BlobStore::get_range(&objects, CONTAINER, name, offset, end)
+            .await
+            .map_err(store_error)?;
+        file.write_all(&chunk).map_err(|source| Error::Filesystem {
+            op: "write",
+            path: dest.to_path_buf(),
+            source,
+        })?;
+        offset = end + 1;
+    }
+    Ok(())
 }
 
 fn store_error(error: omnia_guest::anyhow::Error) -> Error {

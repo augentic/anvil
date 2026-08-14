@@ -233,6 +233,7 @@ pub fn mint(root: &Path, spec: &Spec) -> Result<Minted, Error> {
         writer: DEFAULT_WRITER.into(),
         sequence: 1,
         kind: EventKind::SystemWaveReviewed {
+            wave: spec.wave.clone(),
             handoff_digest: digest.clone(),
         },
     };

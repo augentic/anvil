@@ -558,11 +558,17 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         proposal: Option<SnapshotId>,
     },
-    /// RFC-104 wave-review fact. Parsed from a definition home's
-    /// `events/<writer>.jsonl`; the change journal never appends it.
+    /// `emery system review` recorded architectural authority over one
+    /// exact wave handoff (RFC-104 D10). Definition-home writers only
+    /// (`<system>/events/`, never `.emery/change/events/`); the fact
+    /// grants no product mutation authority and does not replace
+    /// `plan.execute.started`. The change journal refuses append.
     #[serde(rename = "system.wave.reviewed", rename_all = "kebab-case")]
     SystemWaveReviewed {
-        /// Canonical digest of the reviewed handoff (`sha256:…`).
+        /// The reviewed wave's id in `migration.yaml`.
+        wave: String,
+        /// Content digest (`sha256:…`) of the exact reviewed
+        /// `handoffs/<digest>.yaml` projection.
         handoff_digest: SnapshotId,
     },
 }

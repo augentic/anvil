@@ -1,9 +1,9 @@
 //! Project-root and change-home anchoring for one invocation.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use project::config::Roots;
-use transport::command::selectors::SeedRequest;
+use transport::command::selectors::{SeedRequest, SystemRequest};
 
 /// Resolve in-place vs detached roots: `adapter add --project-dir`
 /// always selects that product tree (in-place, even before init);
@@ -16,4 +16,15 @@ pub fn roots(invoked_dir: &Path, seed: Option<&SeedRequest>, change_dir: Option<
         return Roots::InPlace { product };
     }
     Roots::resolve(invoked_dir, change_dir)
+}
+
+/// Definition-home mount for a `system *` invocation: `--dir` else CWD,
+/// never a `project.yaml` walk.
+#[must_use]
+pub fn system_root(invoked_dir: &Path, system: &SystemRequest) -> PathBuf {
+    match &system.dir {
+        Some(dir) if dir.is_absolute() => dir.clone(),
+        Some(dir) => invoked_dir.join(dir),
+        None => invoked_dir.to_path_buf(),
+    }
 }
