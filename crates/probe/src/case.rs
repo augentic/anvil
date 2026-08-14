@@ -77,7 +77,7 @@ async fn execute(
     if dir.exists() && !restart {
         bail!(
             "sandbox {} already exists; rerun from fresh state with `--restart`, or \
-             continue/debug it explicitly with `cargo make lab -- --project-dir {} …`",
+             continue/debug it explicitly with `cargo make lab -- --change-dir {} …`",
             dir.display(),
             dir.display()
         );
@@ -92,6 +92,10 @@ async fn execute(
     if let Some(fixture) = fixture_dir(root, id, case)? {
         evalfs::copy_tree(&fixture, &scratch)
             .with_context(|| format!("materializing the fixture {}", fixture.display()))?;
+    }
+    if let Some(home) = case_definition_dir(root, id, case) {
+        evalfs::copy_tree(&home, &scratch.join("definition"))
+            .with_context(|| format!("materializing the definition home {}", home.display()))?;
     }
 
     let telemetry = Telemetry::new(factory(&scratch)?);
@@ -119,8 +123,18 @@ async fn run_workflow(
     id: &str, case: &Workflow, until: WorkflowUntil, root: &Path, model: &DynModel,
     catalog: &Catalog, telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
-    invoke(root, model, catalog, &["init", &case.target]).await?;
+    let supplied = definition_home(root, case);
+    if supplied.is_none() {
+        ensure!(
+            !case.target.trim().is_empty(),
+            "in-place workflow mint needs `target` for `emery init`"
+        );
+        invoke(root, model, catalog, &["init", &case.target]).await?;
+    }
     let (from, wave) = seed_definition(root, case)?;
+    if supplied.is_some() {
+        ensure_target_trees(root, &from, &wave, model, catalog).await?;
+    }
     invoke(
         root,
         model,
@@ -129,24 +143,36 @@ async fn run_workflow(
     )
     .await?;
 
+    let authored = case_layout(root);
     let plan = sandbox::read_plan(root)?;
     ensure!(!plan.entries.is_empty(), "plan author produced no entries");
-    let events = project::plan::collect_events(Layout::new(root))?;
+    let events = project::plan::collect_events(authored)?;
     let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
         ladders.values().all(|status| *status == Status::Pending),
         "plan author must leave every entry pending: ladders={ladders:?}; entries={:?}",
         plan.entries
     );
-    let slices_dir = Layout::new(root).slices_dir();
+    let slices_dir = authored.slices_dir();
     let no_slices = fs::read_dir(&slices_dir).map_or(true, |mut entries| entries.next().is_none());
-    ensure!(no_slices, "plan author must not create slices — execution belongs to `plan execute`");
+    ensure!(no_slices, "plan author must not create slices — refinement belongs to `plan refine`");
 
     if until == WorkflowUntil::Plan {
         telemetry::report(&telemetry.counts(), plan.entries.len());
         println!(
             "eval case {id}: stopped after plan author; continue with \
-             `cargo make lab -- --project-dir {} plan execute`",
+             `cargo make lab -- --change-dir {} plan refine`",
+            root.display()
+        );
+        return Ok(());
+    }
+
+    invoke(root, model, catalog, &["plan", "refine"]).await?;
+    if until == WorkflowUntil::Refine {
+        telemetry::report(&telemetry.counts(), plan.entries.len());
+        println!(
+            "eval case {id}: stopped after plan refine; continue with \
+             `cargo make lab -- --change-dir {} plan execute`",
             root.display()
         );
         return Ok(());
@@ -154,14 +180,15 @@ async fn run_workflow(
 
     invoke(root, model, catalog, &["plan", "execute"]).await?;
 
+    let executed = case_layout(root);
     let plan = sandbox::read_plan(root)?;
-    let events = project::plan::collect_events(Layout::new(root))?;
+    let events = project::plan::collect_events(executed)?;
     let ladders = project::plan::project_ladders(&plan, &events);
     ensure!(
         ladders.values().all(|status| *status == Status::Done),
         "execute must drain the plan (projected done): ladders={ladders:?}"
     );
-    grade::provenance(&grade::baseline(root)?)?;
+    grade_accepted(root).await?;
     telemetry::report(&telemetry.counts(), plan.entries.len());
 
     if until == WorkflowUntil::Finalize {
@@ -205,33 +232,99 @@ async fn run_build(
     Ok(())
 }
 
-/// Mint a reviewed definition home from the case, or reuse a fixture
-/// `definition/` tree. Wave-binding `plan author` consumes `--from` /
-/// `--wave`.
+/// Resolve the case's definition home: explicit `definition` path,
+/// sibling `definition/`, or a mint from `intent` / `[sources]`.
 ///
 /// # Errors
 ///
-/// Fixture mint failures.
+/// Missing home with no mint inputs; fixture mint failures.
 fn seed_definition(root: &Path, case: &Workflow) -> Result<(PathBuf, String)> {
-    let from = root.join("definition");
-    if project::definition::Home::new(&from).handoffs_dir().is_dir() {
+    if let Some(from) = definition_home(root, case) {
         return Ok((from, case.wave.clone().unwrap_or_else(|| "deliver".into())));
     }
-    let intent = case.intent.clone().or_else(|| single_value_source(case));
-    let intent = intent.context(
-        "workflow case needs `intent`, a single `adapter:value:…` source, or a `definition/` \
-         fixture home to drive `plan author --from/--wave`",
-    )?;
+    let from = root.join("definition");
+    let spec = mint_spec(root, case)?;
+    mock::definition::mint(&from, &spec).context("mint definition home")?;
+    Ok((from, spec.wave))
+}
+
+fn definition_home(root: &Path, _case: &Workflow) -> Option<PathBuf> {
+    let candidate = root.join("definition");
+    project::definition::Home::new(&candidate).handoffs_dir().is_dir().then_some(candidate)
+}
+
+fn case_definition_dir(cases: &Path, id: &str, case: &Case) -> Option<PathBuf> {
+    let Case::Workflow(workflow) = case else {
+        return None;
+    };
+    let dir = cases.join(id);
+    if let Some(rel) = &workflow.definition {
+        let path = if rel.is_absolute() { rel.clone() } else { dir.join(rel) };
+        return path.is_dir().then_some(path);
+    }
+    let sibling = dir.join("definition");
+    sibling.is_dir().then_some(sibling)
+}
+
+fn mint_spec(root: &Path, case: &Workflow) -> Result<mock::definition::Spec> {
+    let explicit_intent = case.intent.clone();
+    let intent = explicit_intent.clone().or_else(|| single_value_source(case));
     let adapter = project::config::ProjectConfig::load(root)
         .ok()
         .and_then(|config| config.adapter)
         .unwrap_or_else(|| case.target.clone());
-    let mut spec = mock::definition::Spec::degenerate(&intent);
+    ensure!(
+        !adapter.trim().is_empty(),
+        "workflow case needs `definition`, `intent`, a `[sources]` binding, or `target` to mint"
+    );
+    let mut spec = mock::definition::Spec::degenerate(intent.as_deref().unwrap_or_default());
+    if intent.is_none() {
+        spec.scopes.clear();
+        spec.mappings.clear();
+    }
     spec.targets[0].locator = root.display().to_string();
     spec.targets[0].adapter = format!("emery:{adapter}@0.0.0");
     spec.wave = case.wave.clone().unwrap_or(spec.wave);
-    mock::definition::mint(&from, &spec).context("mint definition home")?;
-    Ok((from, spec.wave))
+    let target = spec.targets[0].id.clone();
+    let fold_single_value = explicit_intent.is_none() && case.sources.len() == 1;
+    for (index, (key, raw)) in case.sources.iter().enumerate() {
+        if fold_single_value {
+            continue;
+        }
+        let Some((adapter, rest)) = raw.split_once(':') else {
+            bail!("source `{key}` must be `adapter:value:…` or `adapter:<locator>`");
+        };
+        if let Some(value) = rest.strip_prefix("value:") {
+            if key == project::definition::INTENT && intent.is_some() {
+                continue;
+            }
+            spec.scopes.push(mock::definition::value_scope(
+                key,
+                format!("emery:{adapter}@0.0.0"),
+                value,
+                key,
+                u8::try_from(index).unwrap_or(0xf) % 16,
+            ));
+        } else {
+            spec.scopes.push(mock::definition::location_scope(
+                key,
+                format!("emery:{adapter}@0.0.0"),
+                rest,
+                key,
+                u8::try_from(index).unwrap_or(0xf) % 16,
+            ));
+        }
+        spec.mappings.push(project::definition::Mapping {
+            source: key.clone(),
+            lead: key.clone(),
+            target: target.clone(),
+        });
+    }
+    ensure!(
+        !spec.scopes.is_empty(),
+        "workflow case needs `intent`, a `[sources]` binding, or a `definition/` fixture home"
+    );
+    Ok(spec)
 }
 
 fn single_value_source(case: &Workflow) -> Option<String> {
@@ -241,6 +334,61 @@ fn single_value_source(case: &Workflow) -> Option<String> {
     case.sources.values().next().and_then(|raw| {
         raw.split_once(':').and_then(|(_, rest)| rest.strip_prefix("value:")).map(str::to_string)
     })
+}
+
+async fn ensure_target_trees(
+    root: &Path, from: &Path, wave: &str, model: &DynModel, catalog: &Catalog,
+) -> Result<()> {
+    let reviewed = project::definition::resolve(from, wave).context("resolve definition home")?;
+    for target in &reviewed.handoff.wave.targets {
+        let location = project::binding::Location::parse(&target.locator, None)
+            .with_context(|| format!("target `{}` locator", target.id))?;
+        let project::binding::Locator::Path(rel) = location.locator else {
+            continue;
+        };
+        let tree = if rel.is_absolute() { rel } else { root.join(rel) };
+        if project::config::ProjectConfig::load(&tree).is_ok() {
+            continue;
+        }
+        let pin = project::adapter::catalog::Pin::parse(&target.adapter)
+            .with_context(|| format!("target `{}` adapter pin", target.id))?;
+        fs::create_dir_all(&tree)
+            .with_context(|| format!("creating target tree {}", tree.display()))?;
+        invoke(&tree, model, catalog, &["init", &pin.name, "--name", &target.id]).await?;
+    }
+    Ok(())
+}
+
+async fn grade_accepted(root: &Path) -> Result<()> {
+    let paths = paths(root);
+    let layout = paths.layout();
+    let plan = project::plan::Plan::load(&layout.plan_path()).context("loading plan.yaml")?;
+    let events = project::plan::collect_events(layout).context("collecting journal events")?;
+    let store = project::workspace::Store::new(paths.locations().snapshots_root());
+    let mut requirements = Vec::new();
+    for id in plan.targets.keys() {
+        let Some(cid) = project::wave::accepted_cid(layout, &events, id)
+            .with_context(|| format!("accepted CID for target `{id}`"))?
+        else {
+            continue;
+        };
+        let dest = root.join(format!("accepted-{id}"));
+        store
+            .materialize(&cid, &dest)
+            .await
+            .with_context(|| format!("materializing accepted CID for target `{id}`"))?;
+        requirements.extend(grade::baseline(&dest)?);
+    }
+    ensure!(!requirements.is_empty(), "execute produced no accepted-CID baseline to grade");
+    grade::provenance(&requirements)
+}
+
+fn case_layout(root: &Path) -> Layout<'_> {
+    if in_place(root) { Layout::new(root) } else { Layout::detached(root) }
+}
+
+fn in_place(root: &Path) -> bool {
+    root.join(".emery").join("project.yaml").is_file()
 }
 
 // One build phase over the case's refined fixture, driven straight
@@ -282,7 +430,11 @@ fn paths(root: &Path) -> ExecutionPaths {
         root.join("adapter-store"),
         CachePlacement::Parent(root.join("project-cache")),
     );
-    ExecutionPaths::new(root, locations)
+    if in_place(root) {
+        ExecutionPaths::new(root, locations)
+    } else {
+        ExecutionPaths::detached(root, locations)
+    }
 }
 
 // One `emery` verb through the native command surface, which owns

@@ -87,8 +87,23 @@ mod config {
     #[test]
     fn workflow_requires_input() {
         let err = case::parse("kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n")
-            .expect_err("a workflow case without intent or sources refuses");
-        assert!(format!("{err:#}").contains("intent"), "{err:#}");
+            .expect_err("a workflow case without definition, intent, or sources refuses");
+        assert!(format!("{err:#}").contains("definition"), "{err:#}");
+    }
+
+    #[test]
+    fn definition_parses() {
+        let case = case::parse(
+            "kind = \"workflow\"\nchange = \"demo\"\nwave = \"deliver\"\ndefinition = \"definition\"\n",
+        )
+        .expect("a definition-home workflow case parses");
+        let Case::Workflow(workflow) = case else {
+            panic!("workflow kind parses to a workflow case");
+        };
+        assert_eq!(workflow.definition.as_deref(), Some(Path::new("definition")));
+        assert_eq!(workflow.wave.as_deref(), Some("deliver"));
+        assert!(workflow.intent.is_none());
+        assert!(workflow.sources.is_empty());
     }
 
     #[test]
@@ -458,6 +473,48 @@ async fn build_case_reaches_built() {
 }
 
 #[tokio::test]
+async fn definition_home_authors() {
+    let tmp = TempDir::new().expect("tempdir");
+    let cases = tmp.path().join("cases");
+    stage_case(
+        &cases,
+        "from-home",
+        "kind = \"workflow\"\nchange = \"demo\"\nwave = \"deliver\"\ndefinition = \"definition\"\n",
+    );
+    let mut spec = mock::definition::Spec::degenerate("The greeting service.");
+    spec.targets[0].locator = "product".into();
+    spec.targets[0].adapter = "emery:mock@0.0.0".into();
+    spec.scopes[0].adapter = Some("emery:intent@0.0.0".into());
+    mock::definition::mint(&cases.join("from-home/definition"), &spec).expect("mint");
+
+    let sandbox = tmp.path().join("sandbox");
+    case::run(
+        &cases,
+        &sandbox,
+        Some("from-home"),
+        Some(WorkflowUntil::Plan),
+        false,
+        &catalog(),
+        &scripted(mock::answers::greeting_author()),
+    )
+    .await
+    .expect("a definition-home workflow case authors");
+
+    let root = sandbox.join("from-home");
+    assert!(
+        !root.join(".emery/project.yaml").is_file(),
+        "a supplied definition home stays detached"
+    );
+    assert!(
+        root.join("product/.emery/project.yaml").is_file(),
+        "the runner inits the handoff target tree"
+    );
+    let layout = project::config::Layout::detached(&root);
+    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
+    assert!(!plan.entries.is_empty(), "the authored plan carries entries");
+}
+
+#[tokio::test]
 async fn until_plan_leaves_entries() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
@@ -572,7 +629,7 @@ async fn existing_sandbox_refuses() {
     .expect_err("an existing sandbox refuses before mutation");
     let message = format!("{err:#}");
     assert!(message.contains("--restart"), "{message}");
-    assert!(message.contains("--project-dir"), "{message}");
+    assert!(message.contains("--change-dir"), "{message}");
 }
 
 #[tokio::test]

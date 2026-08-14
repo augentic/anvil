@@ -564,7 +564,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Archive already keeps accepted CIDs as live GC roots (step 3); no extra store CIDs were added for plan/discovery file digests (those are not snapshot objects).
 - **Step 19 leftover:** when execute is detached, the guest `.` mount *is* the change home, so adapter preflight that still reads `.emery/change/slices/…` is wrong. Detached preflight must read `slices/<slice>/…` relative to that mount (or the engine must pass the staged path). Do not invent a dual-path probe in the engine.
 
-### Step 19 — Definition-home fixtures, eval and wasm cases (adapters repo) [ ]
+### Step 19 — Definition-home fixtures, eval and wasm cases (adapters repo) [x]
 
 **RFC anchors:** implementation requirement "Integration tests use reviewed definition fixtures, local repository-host, HTTP, content-addressed store, and component fixtures"; adapters-repo testing map.
 
@@ -580,6 +580,17 @@ The first cut lands the execution-substrate change while everything is still in-
 
 **Notes (from step 18):** Detached execute is live in the engine. When updating adapter preflight for wasm/eval cases, read `slices/<slice>/…` relative to the change-home `.` mount (or consume a staged path the engine passes). The in-place `.emery/change/slices/…` prefix is wrong once `.` is the change home. Do not add a dual-path probe.
 
+**Notes (2026-08-14):**
+
+- Case shape: `definition` + `wave` (opaque supplied home) is the live path. `intent` / `[sources]` remain mint fallback for engine probe tests (`greeting`, `auth`). Validation is `definition` OR `intent` OR `[sources]`. A single `adapter:value:…` source still folds into degenerate intent (one lead); multi-source mint emits every value scope. `WorkflowUntil::Refine` is the new stop after `plan refine`.
+- Runner: a supplied `definition/` is copied into the sandbox; root `init` is skipped (detached). Each handoff path locator is inited under the change home (`product/`, …). Drive is `plan author --from --wave → plan refine → plan execute`. Grade materializes each target's accepted CID in-process via `Store::materialize` into `accepted-<target>/` — no shipped or lab materialize verb (closed Open Question 2; darkness did not bite). `ExecutionPaths::detached` / `Layout::detached` when the sandbox root has no `.emery/project.yaml`.
+- Fixtures: `orders-contracts`, `omnia-r9k`, and new two-target `orders-omnia` (docs→contracts, intent→omnia) ship committed `definition/handoffs/` + `definition/events/` trees. Pins are `emery:*@0.12.0`. Locators: `product` / `product/orders` / `product/health`, `docs`, `legacy/at_r9k_position_adapter`. Regenerate with `RFC88_MINT=<adapters>/examples/eval/cases cargo test -p emery-mock write_eval_homes -- --ignored`. Engine `auth` stays `[sources]` mint — no committed home.
+- Adapter preflight: `change_home(project_root)` is the project root when `plan.yaml` is there (detached), else `.emery/change` (in-place). Contracts staged delta and vectis composition / `slice_stage` both use it. No engine dual-path probe.
+- Wasm scripts (`wasm-contracts`, `wasm-omnia-r9k`) are detached: `change/` + `product/`, `--from` definition, `plan refine` then `plan execute`. Observable outcome is exit code / journal / `build/report.yaml` (closed Open Question 2).
+- RFC-104 write surface has not landed — no live `emery system survey → plan → review` case.
+- **Step 20 leftover:** build-case `expect` paths (e.g. `contracts-design`) still name `.emery/slices/…`. Sweep with the docs/path rename. Wasm handoff pins are package refs (`emery:<name>@0.12.0`, store pull-on-miss); `emery adapter add` seeds the bare project cache, so detached wasm may pull GHCR instead of the just-built local `.wasm` (pre-existing after step 9).
+- `cargo make ci` passed in both repos. `wasm-contracts` was not run this session (operator-invoked, live model). Native probe `definition_home_authors` and adapter `merge_preflight` tests passed.
+
 ### Step 20 — Documentation closure and final gates (both repos) [ ]
 
 **Scope:**
@@ -593,6 +604,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Notes (from step 16):** Synthesis persist-tail in `docs/standards/workflow.md` still says `kind: response`. The wire is v3 `proceed | boundary-escalation`. Sweep that plus `planning/proposals/`, `slice.refinement.parked`, and the new stop reasons (`boundary-escalation`, `refine-budget-exhausted`).
 
 **Notes (from step 17):** Sweep `emery plan amend --proposal`, `plan.amend.applied`, status resume `emery plan amend --proposal <digest>`, and the new refusals (`plan-proposal-*`, `plan-mutation-ambiguous`, `plan-ownership-overlap`). `plan add`/`amend`/`remove` now reproject through `decomposition.yaml` when it exists. Envelope / definition-revision documents are inert (not applied).
+
+**Notes (from step 19):** Build-case `expect` paths still name `.emery/slices/…` (e.g. `contracts-design`) — sweep with the artifact-path rename. Wasm detached homes pin `emery:<name>@0.12.0` (store pull-on-miss); `adapter add` seeds the bare cache, so wasm may pull GHCR instead of the just-built component. RFC-104 has not landed — no live `emery system *` case to document as a required rung. No lab materialize verb was added.
 
 ---
 

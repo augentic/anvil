@@ -129,6 +129,40 @@ impl Spec {
     }
 }
 
+/// Inline-value evidence scope (`intent` or another value-backed source).
+#[must_use]
+pub fn value_scope(
+    source: impl Into<String>, adapter: impl Into<String>, value: impl Into<String>,
+    lead: impl Into<String>, digit: u8,
+) -> Scope {
+    Scope {
+        source: source.into(),
+        source_cid: None,
+        value: Some(value.into()),
+        adapter: Some(adapter.into()),
+        locator: None,
+        lead: lead.into(),
+        evidence_digest: pin(digit),
+    }
+}
+
+/// Location-backed evidence scope (CID placeholder; ingest fetches).
+#[must_use]
+pub fn location_scope(
+    source: impl Into<String>, adapter: impl Into<String>, locator: impl Into<String>,
+    lead: impl Into<String>, digit: u8,
+) -> Scope {
+    Scope {
+        source: source.into(),
+        source_cid: Some(pin(digit & 0xf)),
+        value: None,
+        adapter: Some(adapter.into()),
+        locator: Some(locator.into()),
+        lead: lead.into(),
+        evidence_digest: pin(digit.wrapping_add(1) & 0xf),
+    }
+}
+
 impl From<&Spec> for Handoff {
     fn from(spec: &Spec) -> Self {
         Self {

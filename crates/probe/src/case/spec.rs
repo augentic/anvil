@@ -27,23 +27,32 @@ enum Kind {
     Build,
 }
 
-/// A workflow case: `init` and `plan author` always run; `until`
+/// A workflow case: `plan author --from --wave` always runs; `until`
 /// selects how far past authoring the run continues.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 pub struct Workflow {
-    /// Target adapter passed to `emery init`.
+    /// Target adapter passed to `emery init` when the case is in-place
+    /// (no supplied definition home). Detached cases init each handoff
+    /// target tree instead.
+    #[serde(default)]
     pub target: String,
     /// Change name passed to `plan author`.
     pub change: String,
-    /// Optional operator intent used to mint a degenerate handoff.
-    #[serde(default)]
-    pub intent: Option<String>,
     /// Wave id passed to `plan author --wave`. Defaults to `deliver`.
     #[serde(default)]
     pub wave: Option<String>,
-    /// Source bindings used to mint a degenerate handoff when `intent`
-    /// is absent (`key = "adapter:value:…"`).
+    /// Definition home relative to `case.toml`. Absent means the
+    /// sibling `definition/` directory when it exists, else a mint
+    /// from `intent` / `[sources]`.
+    #[serde(default)]
+    pub definition: Option<PathBuf>,
+    /// Optional operator intent used to mint a degenerate handoff
+    /// when no definition home is supplied.
+    #[serde(default)]
+    pub intent: Option<String>,
+    /// Source bindings used to mint a handoff when no definition home
+    /// is supplied (`key = "adapter:value:…"` or `key = "adapter:path"`).
     #[serde(default)]
     pub sources: BTreeMap<String, String>,
     /// Tree copied into the fresh sandbox, relative to `case.toml`;
@@ -98,7 +107,9 @@ pub struct Build {
 pub enum WorkflowUntil {
     /// Stop after `plan author`, leaving every entry `pending`.
     Plan,
-    /// Author, then run the genuine drained `plan execute`.
+    /// Author, then drain `plan refine`.
+    Refine,
+    /// Author, refine, then run the genuine drained `plan execute`.
     #[default]
     Execute,
     /// Execute, then `plan archive`.
@@ -111,6 +122,7 @@ impl WorkflowUntil {
     pub const fn label(self) -> &'static str {
         match self {
             Self::Plan => "plan",
+            Self::Refine => "refine",
             Self::Execute => "execute",
             Self::Finalize => "finalize",
         }
@@ -175,11 +187,15 @@ pub fn load(root: &Path, id: &str) -> Result<Case> {
 fn validate(case: &Case) -> Result<()> {
     match case {
         Case::Workflow(workflow) => {
-            ensure!(!workflow.target.trim().is_empty(), "empty target adapter");
             ensure!(!workflow.change.trim().is_empty(), "empty change name");
+            if let Some(definition) = &workflow.definition {
+                validate_entry(&definition.to_string_lossy()).context("definition")?;
+            }
             ensure!(
-                workflow.intent.is_some() || !workflow.sources.is_empty(),
-                "a workflow case requires `intent` or at least one `[sources]` binding"
+                workflow.definition.is_some()
+                    || workflow.intent.is_some()
+                    || !workflow.sources.is_empty(),
+                "a workflow case requires `definition`, `intent`, or at least one `[sources]` binding"
             );
             if let Some(clone) = &workflow.clone {
                 ensure!(
