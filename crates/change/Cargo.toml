@@ -27,6 +27,7 @@ emery-error.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 emery-project.workspace = true
+emery-system.workspace = true
 semver.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true

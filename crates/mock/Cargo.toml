@@ -24,6 +24,7 @@ emery-artifacts.workspace = true
 emery-error.workspace = true
 emery-native.workspace = true
 emery-project.workspace = true
+emery-system.workspace = true
 jiff.workspace = true
 omnia-testkit.workspace = true
 serde_json.workspace = true

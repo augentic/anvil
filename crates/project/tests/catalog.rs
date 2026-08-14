@@ -59,7 +59,7 @@ mod pins {
         let scope = &spec.scopes[0];
         let pin = catalog::select(
             &catalog(),
-            Hint::Pin(scope.adapter.as_deref().expect("pinned")),
+            Hint::Pin(&scope.adapter),
             &Origin::Value(scope.value.clone().expect("intent value")),
         )
         .expect("reuse");
@@ -69,12 +69,22 @@ mod pins {
         let scope = &spec.scopes[0];
         let pin = catalog::select(
             &catalog(),
-            Hint::Pin(scope.adapter.as_deref().expect("pinned")),
+            Hint::Pin(&scope.adapter),
             &loc("https://github.com/example/orders@main"),
         )
         .expect("reuse typescript");
         assert_eq!(pin.wire(), "emery:typescript@1.0.0");
         assert_ne!(pin.version, semver::Version::new(0, 12, 0));
+    }
+
+    #[test]
+    fn fill_bare_name() {
+        let pin = catalog::fill(&catalog(), "typescript").expect("fill");
+        assert_eq!(pin.wire(), "emery:typescript@0.12.0");
+        let kept = catalog::fill(&catalog(), "emery:omnia@1.0.0").expect("pin");
+        assert_eq!(kept.wire(), "emery:omnia@1.0.0");
+        let err = catalog::fill(&catalog(), "ghost").expect_err("missing");
+        assert!(code(&err).contains("adapter-catalog-invalid"), "{err}");
     }
 }
 

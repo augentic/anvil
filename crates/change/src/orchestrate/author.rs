@@ -3,19 +3,18 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use artifacts::leads::{Lead, Leads};
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
-use project::adapter::catalog::{self, Hint, Pin, Row};
+use project::adapter::catalog::{self, INTENT, Pin};
 use project::adapter::{Inventory, Resolver};
-use project::binding::{Location, Origin, Policy};
+use project::binding::{Location, Locator};
 use project::config::{Layout, ProjectConfig};
-use project::definition::{self, Home, INTENT, Reviewed, Scope};
 use project::handler::ExecutionPaths;
-use project::journal::{self, Event, EventKind};
+use project::journal::{self, Event, EventKind, JournalRoot, read_union_at};
 use project::plan::{
     DISCOVERY_VERSION, DefinitionIdentity, Discovery, GateProse, Plan, ReviewIdentity,
     SourceBinding, TargetBinding, build_request, resolve_from, resolve_topology,
@@ -24,6 +23,7 @@ use project::plan::{
 use project::profile::Profiles;
 use project::seam::{self, Ingest, Source, Workspaces};
 use project::snapshot::SnapshotId;
+use system::handoff::{self, EvidenceScopeRef, Handoff};
 
 use super::decompose;
 use crate::judgment::propose::{self, GateContext};
@@ -47,6 +47,15 @@ pub struct AuthorOutcome {
     pub slices: Vec<String>,
 }
 
+/// Current reviewed handoff plus its `system.wave.reviewed` envelope.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Reviewed {
+    handoff: Handoff,
+    digest: SnapshotId,
+    review: Event,
+    event_digest: SnapshotId,
+}
+
 /// Bind a reviewed handoff, decompose it, and publish the leaf plan.
 ///
 /// # Errors
@@ -63,7 +72,7 @@ where
 {
     project::name::validate_name(name)?;
     let from = resolve_from(paths, from);
-    let reviewed = definition::resolve(&from, wave)?;
+    let reviewed = load_reviewed(&from, wave)?;
     let layout = paths.layout();
     let plan_path = layout.plan_path();
     let existing = load_existing(&plan_path)?;
@@ -74,32 +83,17 @@ where
 
     let catalog = provider.inventory();
     let mut intern = BTreeMap::new();
-    let mut targets = bind_targets(provider, &reviewed, existing.as_ref(), &mut intern).await?;
-    let (source_rows, source_pins) =
-        bind_sources(provider, catalog, paths, &reviewed, existing.as_ref(), &mut intern).await?;
-    let prior = prior_keys(existing.as_ref());
-    let keys = catalog::assign(&source_rows, &prior)?;
-    let scopes = &reviewed.handoff.wave.evidence_scopes;
-    let mut sources = BTreeMap::new();
-    let mut imported = Vec::with_capacity(keys.len());
-    for ((key, row), scope) in keys.into_iter().zip(source_rows).zip(scopes) {
-        let binding = match row.origin {
-            Origin::Value(value) => SourceBinding::intent(row.pin, value),
-            Origin::Location(_) => {
-                let (locator, cid) = source_pins
-                    .get(&catalog::identity(&row))
-                    .cloned()
-                    .ok_or_else(|| Error::Diag {
-                        code: "source-pin-missing",
-                        detail: format!("source `{key}` has no cid pin after ingest"),
-                    })?;
-                SourceBinding::located(row.pin, locator, cid)
-            }
-        };
-        binding.validate(&key)?;
-        imported.push(import_lead(&key, scope));
-        sources.insert(key, binding);
-    }
+    let mut targets =
+        bind_targets(provider, catalog, &reviewed, existing.as_ref(), &mut intern).await?;
+    let sources =
+        bind_sources(provider, catalog, &reviewed, existing.as_ref(), &mut intern).await?;
+    let imported = reviewed
+        .handoff
+        .wave
+        .evidence_scopes
+        .iter()
+        .map(|scope| import_lead(&scope.source, scope, &sources))
+        .collect();
 
     let definition = identity(&reviewed, &from);
     let discovery = Discovery {
@@ -128,6 +122,91 @@ where
     plan.save(&plan_path)?;
 
     finish(provider, paths, layout, now, name, discovery_digest, leads_digest).await
+}
+
+/// Fail closed when the live definition home no longer projects the
+/// bound handoff. Lives in `change` so `project` does not depend on
+/// `system`.
+///
+/// # Errors
+///
+/// `plan-definition-stale` when the home is gone or its current
+/// handoff is not the bound digest.
+pub fn current_definition(paths: &ExecutionPaths, plan: &Plan) -> Result<(), Error> {
+    let Some(def) = &plan.definition else {
+        return Ok(());
+    };
+    let Some(root) = definition_root(paths, def) else {
+        return Ok(());
+    };
+    if !root.is_dir() {
+        return Err(stale(format!("definition home `{}` is gone", root.display())));
+    }
+    let layout = system::Layout::new(&root);
+    let current = system::review::current_handoff(&layout, &def.wave_id).map_err(|err| {
+        stale(format!(
+            "definition home current handoff is not the bound `{bound}`: {err}",
+            bound = def.handoff_digest
+        ))
+    })?;
+    if current.digest != def.handoff_digest {
+        return Err(stale(format!(
+            "definition home current handoff `{}` is not the bound `{bound}`",
+            current.digest,
+            bound = def.handoff_digest
+        )));
+    }
+    Ok(())
+}
+
+fn definition_root(paths: &ExecutionPaths, def: &DefinitionIdentity) -> Option<PathBuf> {
+    if let Some(from) = &def.from {
+        return Some(resolve_from(paths, Path::new(from)));
+    }
+    if paths.is_detached() {
+        return None;
+    }
+    let colocated = paths.project_root().join(".emery/system");
+    colocated.is_dir().then_some(colocated)
+}
+
+const fn stale(detail: String) -> Error {
+    Error::Diag {
+        code: "plan-definition-stale",
+        detail,
+    }
+}
+
+fn load_reviewed(from: &Path, wave: &str) -> Result<Reviewed, Error> {
+    let layout = system::Layout::new(from);
+    let projected = system::review::current_handoff(&layout, wave)?;
+    let verified = handoff::load(&layout.handoff_path(projected.digest.digest()))?;
+    let review = matching_review(&layout, wave, &verified.digest)?;
+    let event_digest = review.digest()?;
+    Ok(Reviewed {
+        handoff: verified.handoff,
+        digest: verified.digest,
+        review,
+        event_digest,
+    })
+}
+
+fn matching_review(
+    layout: &system::Layout<'_>, wave: &str, digest: &SnapshotId,
+) -> Result<Event, Error> {
+    read_union_at(&JournalRoot::new(layout.events_dir()))?
+        .into_iter()
+        .find(|event| {
+            matches!(
+                &event.kind,
+                EventKind::SystemWaveReviewed { wave: reviewed, handoff_digest }
+                    if reviewed == wave && handoff_digest == digest
+            )
+        })
+        .ok_or_else(|| Error::Diag {
+            code: "definition-review-missing",
+            detail: format!("no system.wave.reviewed fact names handoff `{digest}`"),
+        })
 }
 
 async fn finish<P>(
@@ -240,17 +319,16 @@ fn orientation(plan: &Plan, leads: &Leads) -> String {
     out
 }
 
-/// One catalog row from a handoff evidence scope. Synopsis is the
-/// inline value for `intent`, otherwise the lead id — the handoff
-/// carries no survey-grade headline.
-fn import_lead(key: &str, scope: &Scope) -> Lead {
-    let synopsis = scope
-        .value
-        .as_deref()
-        .map(str::trim)
+/// One catalog row from a handoff surface lead. Synopsis is the bound
+/// intent value when present, otherwise the lead id.
+fn import_lead(
+    key: &str, scope: &EvidenceScopeRef, sources: &BTreeMap<String, SourceBinding>,
+) -> Lead {
+    let synopsis = sources
+        .get(key)
+        .and_then(|binding| binding.value.clone())
         .filter(|value| !value.is_empty())
-        .unwrap_or(scope.lead.as_str())
-        .to_string();
+        .unwrap_or_else(|| scope.lead.clone());
     Lead::new(scope.lead.clone(), key, synopsis)
 }
 
@@ -291,8 +369,8 @@ fn refuse_overwrite(
 }
 
 fn copy_imports(from: &Path, layout: &Layout<'_>, reviewed: &Reviewed) -> Result<(), Error> {
-    let home = Home::new(from);
-    let handoff_src = home.handoff_path(&reviewed.digest);
+    let home = system::Layout::new(from);
+    let handoff_src = home.handoff_path(reviewed.digest.digest());
     let handoff_dest = layout.import_handoff_path(&reviewed.digest);
     std::fs::create_dir_all(handoff_dest.parent().unwrap_or(&handoff_dest))?;
     std::fs::copy(&handoff_src, &handoff_dest).map_err(|source| Error::Filesystem {
@@ -302,8 +380,7 @@ fn copy_imports(from: &Path, layout: &Layout<'_>, reviewed: &Reviewed) -> Result
     })?;
     let review_dest = layout.import_review_path(&reviewed.event_digest);
     std::fs::create_dir_all(review_dest.parent().unwrap_or(&review_dest))?;
-    let events_dir = home.events_dir();
-    let line = review_line(&events_dir, reviewed)?;
+    let line = review_line(&home.events_dir(), reviewed)?;
     std::fs::write(&review_dest, line).map_err(|source| Error::Filesystem {
         op: "write",
         path: review_dest,
@@ -381,127 +458,124 @@ fn stamp_profiles(
 }
 
 async fn bind_targets<P: Ingest>(
-    ingest: &P, reviewed: &Reviewed, existing: Option<&Plan>,
+    ingest: &P, catalog: &catalog::Catalog, reviewed: &Reviewed, existing: Option<&Plan>,
     intern: &mut BTreeMap<String, SnapshotId>,
 ) -> Result<BTreeMap<String, TargetBinding>, Error> {
     let mut targets = BTreeMap::new();
     for target in &reviewed.handoff.wave.targets {
-        let recorded = intern.get(&target.locator).cloned().or_else(|| {
+        let locator = target.locator.clone();
+        let recorded = intern.get(&locator).cloned().or_else(|| {
             existing.and_then(|plan| plan.targets.get(&target.id).map(|row| row.cid.clone()))
         });
         let prior = existing
             .and_then(|plan| plan.targets.get(&target.id).and_then(|row| git_sha(&row.locator)));
         let fetched = ingest
-            .fetch(target.locator.clone(), recorded, prior)
+            .fetch(locator.clone(), recorded, prior)
             .await
             .map_err(|err| seam::seam_failure("fetch", "ingest", &err))?;
-        intern.insert(target.locator.clone(), fetched.cid.clone());
+        intern.insert(locator, fetched.cid.clone());
         intern.insert(fetched.locator.clone(), fetched.cid.clone());
-        let pin = Pin::parse(&target.adapter)?;
+        let pin = catalog::fill(catalog, &target.adapter)?;
         validate_target_tree(&fetched.root, &pin)?;
         targets.insert(target.id.clone(), TargetBinding::new(pin, fetched.locator, fetched.cid));
     }
     Ok(targets)
 }
 
-async fn bind_sources<P: Ingest + Resolver>(
-    provider: &P, catalog: &catalog::Catalog, paths: &ExecutionPaths, reviewed: &Reviewed,
-    existing: Option<&Plan>, intern: &mut BTreeMap<String, SnapshotId>,
-) -> Result<(Vec<Row>, BTreeMap<String, (String, SnapshotId)>), Error> {
-    let mut rows = Vec::new();
-    let mut pins = BTreeMap::new();
-    let policy = Policy::standard();
-    let mut meter = project::binding::Meter::new();
+async fn bind_sources<P: Ingest>(
+    provider: &P, catalog: &catalog::Catalog, reviewed: &Reviewed, existing: Option<&Plan>,
+    intern: &mut BTreeMap<String, SnapshotId>,
+) -> Result<BTreeMap<String, SourceBinding>, Error> {
+    let mut sources = BTreeMap::new();
     for scope in &reviewed.handoff.wave.evidence_scopes {
-        if scope.source == INTENT || scope.value.is_some() {
-            let value = scope.value.clone().ok_or_else(|| Error::Diag {
-                code: "source-intent-locator",
-                detail: "adapter `intent` is inline `value` only; a locator is refused".into(),
-            })?;
-            if scope.locator.as_ref().is_some_and(|locator| !locator.is_empty()) {
-                return Err(Error::Diag {
-                    code: "source-intent-locator",
-                    detail: "adapter `intent` is inline `value` only; a locator is refused".into(),
-                });
-            }
-            let pin = intent_pin(scope, catalog)?;
-            rows.push(Row {
-                origin: Origin::Value(value),
-                pin,
-            });
+        if sources.contains_key(&scope.source) {
             continue;
         }
-        let locator =
-            scope.locator.as_deref().filter(|locator| !locator.is_empty()).ok_or_else(|| {
-                Error::Diag {
-                    code: "source-locator-missing",
-                    detail: format!(
-                        "evidence scope `{}` is location-backed and needs a locator",
-                        scope.source
-                    ),
-                }
-            })?;
-        let recorded =
-            intern.get(locator).cloned().or_else(|| scope.source_cid.clone()).or_else(|| {
-                existing.and_then(|plan| {
-                    plan.sources.values().find_map(|row| {
-                        (row.locator.as_deref() == Some(locator)).then(|| row.cid.clone()).flatten()
-                    })
+        let pin = catalog::fill(catalog, &scope.adapter)?;
+        let locator = scope.location.clone();
+        let recorded = intern.get(&locator).cloned().or_else(|| {
+            existing.and_then(|plan| {
+                plan.sources.values().find_map(|row| {
+                    (row.locator.as_deref() == Some(locator.as_str()))
+                        .then(|| row.cid.clone())
+                        .flatten()
                 })
-            });
+            })
+        });
         let fetched = provider
-            .fetch(locator.to_string(), recorded, None)
+            .fetch(locator.clone(), recorded, None)
             .await
             .map_err(|err| seam::seam_failure("fetch", "ingest", &err))?;
-        intern.insert(locator.to_string(), fetched.cid.clone());
+        intern.insert(locator, fetched.cid.clone());
         intern.insert(fetched.locator.clone(), fetched.cid.clone());
-        let origin = Origin::Location(Location::parse(&fetched.locator, None)?);
-        let pin = select_source(
-            provider,
-            catalog,
-            paths,
-            scope,
-            Path::new(&fetched.root),
-            &origin,
-            Some((&mut meter, &policy)),
-        )?;
-        let row = Row { origin, pin };
-        let id = catalog::identity(&row);
-        pins.insert(id, (fetched.locator, fetched.cid));
-        rows.push(row);
+        let binding = if pin.name == INTENT || scope.source == INTENT {
+            let value = read_intent_value(Path::new(&fetched.root))?;
+            SourceBinding::intent(pin, value)
+        } else {
+            SourceBinding::located(pin, fetched.locator, fetched.cid)
+        };
+        binding.validate(&scope.source)?;
+        sources.insert(scope.source.clone(), binding);
     }
-    Ok((rows, pins))
+    Ok(sources)
 }
 
-fn intent_pin(scope: &Scope, catalog: &catalog::Catalog) -> Result<Pin, Error> {
-    scope.adapter.as_deref().map(str::trim).filter(|adapter| !adapter.is_empty()).map_or_else(
-        || {
-            catalog
-                .sources
-                .iter()
-                .find(|source| source.pin.name == INTENT)
-                .map(|source| source.pin.clone())
-                .ok_or_else(|| Error::Diag {
-                    code: "adapter-catalog-invalid",
-                    detail: "catalog has no `intent` source".into(),
-                })
-        },
-        Pin::parse,
-    )
-}
-
-fn select_source<R: Resolver>(
-    resolver: &R, catalog: &catalog::Catalog, paths: &ExecutionPaths, scope: &Scope, root: &Path,
-    origin: &Origin, budget: Option<(&mut project::binding::Meter, &Policy)>,
-) -> Result<Pin, Error> {
-    let adapter = scope.adapter.as_deref().map(str::trim).filter(|adapter| !adapter.is_empty());
-    let hint = adapter.map_or(Hint::Open(root), Hint::Pin);
-    let pin = catalog::select_metered(catalog, hint, origin, budget)?;
-    if adapter.is_none() {
-        let bound = resolver.resolve_source(&pin.selector(), paths)?;
-        return Ok(catalog::overlay(pin, bound.manifest.version));
+fn read_intent_value(root: &Path) -> Result<String, Error> {
+    let path = if root.is_file() {
+        root.to_path_buf()
+    } else {
+        let mut files = Vec::new();
+        let entries = std::fs::read_dir(root).map_err(|source| Error::Filesystem {
+            op: "readdir",
+            path: root.to_path_buf(),
+            source,
+        })?;
+        for entry in entries {
+            let path = entry
+                .map_err(|source| Error::Filesystem {
+                    op: "readdir",
+                    path: root.to_path_buf(),
+                    source,
+                })?
+                .path();
+            if path.is_file() {
+                files.push(path);
+            }
+        }
+        match files.len() {
+            1 => files.remove(0),
+            0 => {
+                return Err(Error::Diag {
+                    code: "source-intent-locator",
+                    detail: format!(
+                        "intent location `{}` has no file to read as value",
+                        root.display()
+                    ),
+                });
+            }
+            n => {
+                return Err(Error::Diag {
+                    code: "source-intent-locator",
+                    detail: format!(
+                        "intent location `{}` has {n} files; bind needs a single file",
+                        root.display()
+                    ),
+                });
+            }
+        }
+    };
+    let value = std::fs::read_to_string(&path).map_err(|source| Error::Filesystem {
+        op: "read",
+        path: path.clone(),
+        source,
+    })?;
+    if value.trim().is_empty() {
+        return Err(Error::Diag {
+            code: "source-intent-locator",
+            detail: format!("intent location `{}` is empty", path.display()),
+        });
     }
-    Ok(pin)
+    Ok(value)
 }
 
 fn validate_target_tree(root: &str, pin: &Pin) -> Result<(), Error> {
@@ -557,43 +631,10 @@ fn validate_target_tree(root: &str, pin: &Pin) -> Result<(), Error> {
     Ok(())
 }
 
-fn prior_keys(existing: Option<&Plan>) -> BTreeMap<String, String> {
-    let Some(existing) = existing else {
-        return BTreeMap::new();
-    };
-    existing
-        .sources
-        .iter()
-        .map(|(key, binding)| {
-            let origin = binding_origin(binding);
-            let row = Row {
-                origin,
-                pin: binding.adapter.clone(),
-            };
-            (catalog::identity(&row), key.clone())
-        })
-        .collect()
-}
-
-fn binding_origin(binding: &SourceBinding) -> Origin {
-    if let Some(value) = &binding.value {
-        return Origin::Value(value.clone());
-    }
-    binding
-        .locator
-        .as_deref()
-        .and_then(|locator| Location::parse(locator, None).ok())
-        .map_or_else(|| Origin::Value(String::new()), Origin::Location)
-}
-
 fn git_sha(locator: &str) -> Option<String> {
     let parsed = Location::parse(locator, None).ok()?;
     match parsed.locator {
-        project::binding::Locator::Git { revision, .. }
-            if project::binding::Locator::is_sha(&revision) =>
-        {
-            Some(revision)
-        }
+        Locator::Git { revision, .. } if Locator::is_sha(&revision) => Some(revision),
         _ => None,
     }
 }

@@ -41,6 +41,7 @@ emery-slice.workspace = true
 jiff.workspace = true
 omnia-guest.workspace = true
 emery-project.workspace = true
+emery-system.workspace = true
 serde.workspace = true
 serde-saphyr.workspace = true
 toml.workspace = true

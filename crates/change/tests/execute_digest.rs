@@ -75,6 +75,7 @@ async fn stale_definition() {
 
     fs::remove_dir_all(definition.join("handoffs")).expect("clear current handoffs");
     let mut spec = Spec::degenerate("Ship a different greeting.");
+    spec.outcome = "Deliver a different greeting".into();
     spec.targets[0].locator = session.root().join("target-app").display().to_string();
     mint(&definition, &spec).expect("remint");
 

@@ -2,14 +2,12 @@
 //! multi-target, repair, overlap, and judgment-budget parking.
 
 use change::plan;
-use mock::definition::{Spec, mint};
+use mock::definition::{Scope, Spec, Target, mint};
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
-use project::definition::{Scope, Target};
 use project::handler::Anchor;
 use project::plan::{Decomposition, Plan};
-use project::snapshot::SnapshotId;
 use serde_json::json;
 
 fn seed_target(root: &std::path::Path, name: &str) -> std::path::PathBuf {
@@ -42,10 +40,6 @@ fn code(err: &impl std::fmt::Display) -> String {
     err.to_string()
 }
 
-fn pin(digit: u8) -> SnapshotId {
-    SnapshotId::from_digest(&format!("{digit:x}").repeat(64))
-}
-
 fn quiet() -> serde_json::Value {
     json!({
         "behavioural-breadth": 1,
@@ -76,21 +70,17 @@ fn mint_two_target(root: &std::path::Path, intent: &str) -> (std::path::PathBuf,
     });
     spec.scopes.push(Scope {
         source: "docs".into(),
-        source_cid: Some(pin(0x1)),
-        value: None,
-        adapter: Some("emery:mock-docs@0.0.0".into()),
-        locator: Some(docs_src.display().to_string()),
+        adapter: "emery:mock-docs@0.0.0".into(),
+        location: docs_src.display().to_string(),
         lead: "login-flow".into(),
-        evidence_digest: pin(0x2),
+        value: None,
     });
     spec.scopes.push(Scope {
         source: "code".into(),
-        source_cid: Some(pin(0x3)),
-        value: None,
-        adapter: Some("emery:mock-code@0.0.0".into()),
-        locator: Some(code_src.display().to_string()),
+        adapter: "emery:mock-code@0.0.0".into(),
+        location: code_src.display().to_string(),
         lead: "login-flow".into(),
-        evidence_digest: pin(0x4),
+        value: None,
     });
     mint(&definition, &spec).expect("mint");
     (definition, spec.wave)

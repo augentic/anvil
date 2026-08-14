@@ -28,6 +28,7 @@ use crate::plan::wire::load_leads;
 /// `plan-refinement-required` before any epoch append.
 pub(super) fn open(paths: &ExecutionPaths, plan: &Plan, now: Timestamp) -> Result<(), Error> {
     project::plan::closed_plan(paths, plan)?;
+    super::author::current_definition(paths, plan)?;
     append_started(paths.layout(), plan, now)
 }
 

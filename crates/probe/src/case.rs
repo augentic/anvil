@@ -250,7 +250,7 @@ fn seed_definition(root: &Path, case: &Workflow) -> Result<(PathBuf, String)> {
 
 fn definition_home(root: &Path, _case: &Workflow) -> Option<PathBuf> {
     let candidate = root.join("definition");
-    project::definition::Home::new(&candidate).handoffs_dir().is_dir().then_some(candidate)
+    candidate.join("handoffs").is_dir().then_some(candidate)
 }
 
 fn case_definition_dir(cases: &Path, id: &str, case: &Case) -> Option<PathBuf> {
@@ -295,7 +295,7 @@ fn mint_spec(root: &Path, case: &Workflow) -> Result<mock::definition::Spec> {
             bail!("source `{key}` must be `adapter:value:…` or `adapter:<locator>`");
         };
         if let Some(value) = rest.strip_prefix("value:") {
-            if key == project::definition::INTENT && intent.is_some() {
+            if key == project::adapter::catalog::INTENT && intent.is_some() {
                 continue;
             }
             spec.scopes.push(mock::definition::value_scope(
@@ -314,7 +314,7 @@ fn mint_spec(root: &Path, case: &Workflow) -> Result<mock::definition::Spec> {
                 u8::try_from(index).unwrap_or(0xf) % 16,
             ));
         }
-        spec.mappings.push(project::definition::Mapping {
+        spec.mappings.push(mock::definition::Mapping {
             source: key.clone(),
             lead: key.clone(),
             target: target.clone(),
@@ -339,7 +339,8 @@ fn single_value_source(case: &Workflow) -> Option<String> {
 async fn ensure_target_trees(
     root: &Path, from: &Path, wave: &str, model: &DynModel, catalog: &Catalog,
 ) -> Result<()> {
-    let reviewed = project::definition::resolve(from, wave).context("resolve definition home")?;
+    let reviewed =
+        mock::definition::load_reviewed(from, wave).context("resolve definition home")?;
     for target in &reviewed.handoff.wave.targets {
         let location = project::binding::Location::parse(&target.locator, None)
             .with_context(|| format!("target `{}` locator", target.id))?;
@@ -350,8 +351,12 @@ async fn ensure_target_trees(
         if project::config::ProjectConfig::load(&tree).is_ok() {
             continue;
         }
-        let pin = project::adapter::catalog::Pin::parse(&target.adapter)
-            .with_context(|| format!("target `{}` adapter pin", target.id))?;
+        let pin = project::adapter::catalog::fill(
+            &project::adapter::catalog::Catalog::first_party(),
+            &target.adapter,
+        )
+        .or_else(|_| project::adapter::catalog::Pin::parse(&target.adapter))
+        .with_context(|| format!("target `{}` adapter pin", target.id))?;
         fs::create_dir_all(&tree)
             .with_context(|| format!("creating target tree {}", tree.display()))?;
         invoke(&tree, model, catalog, &["init", &pin.name, "--name", &target.id]).await?;

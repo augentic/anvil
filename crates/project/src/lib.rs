@@ -10,7 +10,6 @@ pub mod binding;
 pub mod build_record;
 pub mod config;
 pub mod decisions;
-pub mod definition;
 pub mod fs;
 pub mod handler;
 pub mod identity;

@@ -484,7 +484,7 @@ async fn definition_home_authors() {
     let mut spec = mock::definition::Spec::degenerate("The greeting service.");
     spec.targets[0].locator = "product".into();
     spec.targets[0].adapter = "emery:mock@0.0.0".into();
-    spec.scopes[0].adapter = Some("emery:intent@0.0.0".into());
+    spec.scopes[0].adapter = "emery:intent@0.0.0".into();
     mock::definition::mint(&cases.join("from-home/definition"), &spec).expect("mint");
 
     let sandbox = tmp.path().join("sandbox");

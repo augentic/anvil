@@ -394,3 +394,37 @@ fn release_clears_live_claim() {
     let ownership = claim::project(&read_union(layout).expect("union"));
     assert_eq!(ownership.owner(&"orders-api".into()), Some("bob"), "slice free after release");
 }
+
+#[test]
+fn append_refuses_review() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let layout = layout(tmp.path());
+    let event = Event::new(
+        ts(0),
+        EventKind::SystemWaveReviewed {
+            wave: "deliver".into(),
+            handoff_digest: cid('a'),
+        },
+    );
+    let err = append_for(layout, "local", &[event]).expect_err("refused");
+    assert!(err.to_string().contains("journal-event-read-only"), "{err}");
+}
+
+#[test]
+fn review_event_round_trip() {
+    let event = Event {
+        timestamp: ts(0),
+        writer: "local".into(),
+        sequence: 1,
+        kind: EventKind::SystemWaveReviewed {
+            wave: "deliver".into(),
+            handoff_digest: cid('a'),
+        },
+    };
+    let wire = serde_json::to_string(&event).expect("serialize");
+    assert!(wire.contains(r#""event":"system.wave.reviewed""#), "{wire}");
+    assert!(wire.contains(r#""handoff-digest""#), "{wire}");
+    assert_eq!(serde_json::from_str::<Event>(&wire).expect("parse"), event);
+    let digest = event.digest().expect("digest");
+    SnapshotId::parse(digest.as_str()).expect("sha256");
+}

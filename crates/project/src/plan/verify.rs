@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use artifacts::leads::Leads;
+use diagnostics::digest::sha256_hex;
 use diagnostics::has_blocking;
 use error::Error;
 
@@ -13,7 +14,6 @@ use super::decomposition::{self, Decomposition};
 use super::discovery::Discovery;
 use super::model::{DefinitionIdentity, Plan, TargetBinding};
 use crate::config::Layout;
-use crate::definition::{self, Handoff};
 use crate::handler::ExecutionPaths;
 use crate::journal::{Event, EventKind};
 use crate::refinement::{self, Manifest};
@@ -31,7 +31,6 @@ pub fn closed_plan(paths: &ExecutionPaths, plan: &Plan) -> Result<(), Error> {
     decomposition(&layout, plan)?;
     if let Some(def) = &plan.definition {
         imports(&layout, def)?;
-        current(paths, def)?;
     }
     pins(plan)?;
     profiles(&layout, plan)?;
@@ -195,21 +194,16 @@ fn imports(layout: &Layout<'_>, def: &DefinitionIdentity) -> Result<(), Error> {
             format!("imported handoff `{digest}` is absent", digest = def.handoff_digest),
         ));
     }
-    let handoff = Handoff::load(&handoff_path)?;
-    if handoff.digest()? != def.handoff_digest {
+    let bytes = std::fs::read(&handoff_path).map_err(|source| Error::Filesystem {
+        op: "read",
+        path: handoff_path.clone(),
+        source,
+    })?;
+    let digest = SnapshotId::from_digest(&sha256_hex(&bytes));
+    if digest != def.handoff_digest {
         return Err(diag(
             "plan-handoff-import-mismatch",
             "imported handoff bytes do not match plan.yaml.definition.handoff-digest",
-        ));
-    }
-    if handoff.wave.id != def.wave_id
-        || handoff.system_model_digest != def.system_model_digest
-        || handoff.migration_plan_digest != def.migration_plan_digest
-        || handoff.definition != def.system
-    {
-        return Err(diag(
-            "plan-handoff-import-mismatch",
-            "imported handoff identity drifted from plan.yaml.definition",
         ));
     }
     let review_path = layout.import_review_path(&def.review.event_digest);
@@ -254,41 +248,6 @@ fn imports(layout: &Layout<'_>, def: &DefinitionIdentity) -> Result<(), Error> {
             "imported review is not system.wave.reviewed for the bound handoff",
         )),
     }
-}
-
-fn current(paths: &ExecutionPaths, def: &DefinitionIdentity) -> Result<(), Error> {
-    let Some(root) = definition_root(paths, def) else {
-        return Ok(());
-    };
-    if !root.is_dir() {
-        return Err(diag(
-            "plan-definition-stale",
-            format!("definition home `{}` is gone", root.display()),
-        ));
-    }
-    let reviewed = definition::resolve(&root, &def.wave_id)?;
-    if reviewed.digest != def.handoff_digest {
-        return Err(diag(
-            "plan-definition-stale",
-            format!(
-                "definition home current handoff `{}` is not the bound `{bound}`",
-                reviewed.digest,
-                bound = def.handoff_digest
-            ),
-        ));
-    }
-    Ok(())
-}
-
-fn definition_root(paths: &ExecutionPaths, def: &DefinitionIdentity) -> Option<PathBuf> {
-    if let Some(from) = &def.from {
-        return Some(resolve_from(paths, Path::new(from)));
-    }
-    if paths.is_detached() {
-        return None;
-    }
-    let colocated = paths.project_root().join(".emery/system");
-    colocated.is_dir().then_some(colocated)
 }
 
 fn pins(plan: &Plan) -> Result<(), Error> {

@@ -15,7 +15,7 @@ pub use pin::Pin;
 pub use profile::Profile;
 
 use crate::Platform;
-use crate::adapter::PlatformsCapability;
+use crate::adapter::{AdapterSelector, PlatformsCapability};
 use crate::binding::{Meter, Origin, Policy};
 
 /// Reserved source-adapter name and source key.
@@ -152,6 +152,42 @@ pub fn overlay(mut pin: Pin, version: Option<semver::Version>) -> Pin {
         pin.version = version;
     }
     pin
+}
+
+/// Fill a declared adapter identity: a package pin is kept verbatim;
+/// a bare name is filled from the catalog.
+///
+/// # Errors
+///
+/// `adapter-unversioned` for a local component; `adapter-catalog-invalid`
+/// when the catalog has no row for a declared name; package-ref
+/// codes from [`AdapterSelector::parse`].
+pub fn fill(catalog: &Catalog, declared: &str) -> Result<Pin, Error> {
+    match AdapterSelector::parse(declared)? {
+        AdapterSelector::Package {
+            namespace,
+            name,
+            version,
+        } => Ok(Pin {
+            namespace,
+            name,
+            version,
+        }),
+        AdapterSelector::Bare { name } => catalog
+            .sources
+            .iter()
+            .map(|source| &source.pin)
+            .chain(catalog.targets.iter().map(|target| &target.pin))
+            .find(|pin| pin.name == name)
+            .cloned()
+            .ok_or_else(|| {
+                invalid(format!("catalog has no adapter `{name}` to fill from the declared name"))
+            }),
+        AdapterSelector::Component { path } => Err(pin::unversioned(format!(
+            "local component `{}` cannot enter detached topology; pin `emery:<name>@<semver>`",
+            path.display()
+        ))),
+    }
 }
 
 fn reuse(raw: &str, origin: &Origin) -> Result<Pin, Error> {

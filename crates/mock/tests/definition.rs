@@ -1,18 +1,20 @@
 //! Fixture-builder self-checks: degenerate intent form and multi-target.
 
-use mock::definition::{Spec, mint};
-use project::definition::{INTENT, resolve};
+use mock::definition::{Mapping, Spec, Target, load_reviewed, mint};
+use project::adapter::catalog::INTENT;
 
 #[test]
 fn degenerate_intent_value() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let minted = mint(tmp.path(), &Spec::degenerate("operator brief")).expect("mint");
-    let reviewed = resolve(tmp.path(), &minted.wave).expect("resolve");
+    let reviewed = load_reviewed(tmp.path(), &minted.wave).expect("resolve");
     assert_eq!(reviewed.digest, minted.digest);
     let scope = &reviewed.handoff.wave.evidence_scopes[0];
     assert_eq!(scope.source, INTENT);
-    assert_eq!(scope.value.as_deref(), Some("operator brief"));
-    assert!(scope.source_cid.is_none(), "intent carries value, not a CID");
+    assert_eq!(scope.adapter, "emery:intent@1.0.0");
+    assert!(!scope.location.is_empty(), "RFC-104 coverage always has a location");
+    let value = std::fs::read_to_string(&scope.location).expect("intent file");
+    assert_eq!(value, "operator brief");
     assert_eq!(reviewed.handoff.wave.targets.len(), 1);
 }
 
@@ -20,15 +22,18 @@ fn degenerate_intent_value() {
 fn multi_target_home() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let minted = mint(tmp.path(), &Spec::multi_target()).expect("mint");
-    let reviewed = resolve(tmp.path(), "extract-orders").expect("resolve");
+    let reviewed = load_reviewed(tmp.path(), "extract-orders").expect("resolve");
     assert_eq!(reviewed.digest, minted.digest);
     assert_eq!(reviewed.handoff.wave.targets.len(), 2);
     assert_eq!(reviewed.handoff.wave.evidence_scopes.len(), 2);
     assert!(
-        reviewed.handoff.wave.evidence_scopes.iter().all(|scope| {
-            scope.source_cid.is_some() && scope.value.is_none() && scope.source != INTENT
-        }),
-        "location-backed scopes carry source-cid only"
+        reviewed
+            .handoff
+            .wave
+            .evidence_scopes
+            .iter()
+            .all(|scope| { !scope.location.is_empty() && scope.source != INTENT }),
+        "location-backed scopes carry a coverage location"
     );
 }
 
@@ -37,7 +42,7 @@ fn eval_case_specs_mint() {
     for spec in [orders_contracts(), omnia_r9k(), orders_omnia()] {
         let tmp = tempfile::TempDir::new().expect("tempdir");
         mint(tmp.path(), &spec).expect("mint");
-        resolve(tmp.path(), &spec.wave).expect("resolve");
+        load_reviewed(tmp.path(), &spec.wave).expect("resolve");
     }
 }
 
@@ -64,7 +69,7 @@ fn orders_contracts() -> Spec {
     spec.targets[0].id = "orders".into();
     spec.targets[0].locator = "product".into();
     spec.targets[0].adapter = "emery:contracts@0.12.0".into();
-    spec.scopes[0].adapter = Some("emery:intent@0.12.0".into());
+    spec.scopes[0].adapter = "emery:intent@0.12.0".into();
     spec.mappings[0].target = "orders".into();
     spec.scopes.push(mock::definition::location_scope(
         "docs",
@@ -73,7 +78,7 @@ fn orders_contracts() -> Spec {
         "docs",
         0x2,
     ));
-    spec.mappings.push(project::definition::Mapping {
+    spec.mappings.push(Mapping {
         source: "docs".into(),
         lead: "docs".into(),
         target: "orders".into(),
@@ -93,7 +98,7 @@ fn omnia_r9k() -> Spec {
     spec.targets[0].id = "service".into();
     spec.targets[0].locator = "product".into();
     spec.targets[0].adapter = "emery:omnia@0.12.0".into();
-    spec.scopes[0].adapter = Some("emery:intent@0.12.0".into());
+    spec.scopes[0].adapter = "emery:intent@0.12.0".into();
     spec.mappings[0].target = "service".into();
     spec.scopes.push(mock::definition::location_scope(
         "legacy",
@@ -102,7 +107,7 @@ fn omnia_r9k() -> Spec {
         "legacy",
         0x6,
     ));
-    spec.mappings.push(project::definition::Mapping {
+    spec.mappings.push(Mapping {
         source: "legacy".into(),
         lead: "legacy".into(),
         target: "service".into(),
@@ -114,7 +119,7 @@ fn orders_omnia() -> Spec {
     let mut spec = orders_contracts();
     spec.definition = "orders-and-health".into();
     spec.outcome = "Author orders contracts, then a health crate that consumes them".into();
-    spec.targets.push(project::definition::Target {
+    spec.targets.push(Target {
         id: "health".into(),
         locator: "product/health".into(),
         adapter: "emery:omnia@0.12.0".into(),
@@ -125,7 +130,7 @@ fn orders_omnia() -> Spec {
          depends on those contracts. Two targets: contracts first, then omnia."
             .into(),
     );
-    spec.mappings.push(project::definition::Mapping {
+    spec.mappings.push(Mapping {
         source: "intent".into(),
         lead: "intent".into(),
         target: "health".into(),

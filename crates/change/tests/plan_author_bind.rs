@@ -1,12 +1,11 @@
 //! Wave-binding `plan author`: discovery.yaml, imports, --force, AC1/AC4.
 
 use change::plan;
-use mock::definition::{Spec, mint};
+use mock::definition::{Spec, load_reviewed, mint};
 use mock::invoke::run;
 use mock::session::Session;
 use project::adapter::catalog::INTENT;
 use project::config::Layout;
-use project::definition::Home;
 use project::plan::{Discovery, Plan};
 
 fn seed_target(root: &std::path::Path) -> std::path::PathBuf {
@@ -80,11 +79,12 @@ async fn binds_degenerate_intent() {
     let current = std::fs::read(layout.leads_path()).expect("current");
     assert_eq!(retained, current, "retention copies exact leads.md bytes");
 
-    let reviewed = project::definition::resolve(&from, &wave).expect("resolve");
+    let reviewed = load_reviewed(&from, &wave).expect("resolve");
     let handoff =
         std::fs::read(layout.import_handoff_path(&reviewed.digest)).expect("handoff import");
     let original =
-        std::fs::read(Home::new(&from).handoff_path(&reviewed.digest)).expect("handoff src");
+        std::fs::read(from.join("handoffs").join(format!("{}.yaml", reviewed.digest.digest())))
+            .expect("handoff src");
     assert_eq!(handoff, original, "byte-identical handoff import");
 
     let compiled = project::profile::Table::compiled();
@@ -112,23 +112,33 @@ async fn missing_handoff_blocks() {
     let err = author(&session, &session.root().join("missing"), "deliver", false)
         .await
         .expect_err("missing definition");
-    assert!(code(&err).contains("definition") || code(&err).contains("handoff"), "{err}");
+    let text = code(&err);
+    assert!(
+        text.contains("scope") || text.contains("handoff") || text.contains("definition"),
+        "{err}"
+    );
 }
 
 #[tokio::test]
 async fn intent_locator_refused() {
-    let session = Session::scripted("mock", Vec::new());
+    let session = Session::scripted("mock", mock::answers::greeting_author());
     let target = seed_target(session.root());
     let definition = session.root().join("definition");
+    let intent_file = definition.join("brief.txt");
+    std::fs::create_dir_all(&definition).expect("definition");
+    std::fs::write(&intent_file, "inline").expect("intent file");
     let mut spec = Spec::degenerate("inline");
     spec.targets[0].locator = target.display().to_string();
-    spec.scopes[0].locator = Some("/tmp/intent".into());
-    let err = mint(&definition, &spec).expect_err("locator");
-    assert!(
-        code(&err).contains("definition-intent-form")
-            || code(&err).contains("source-intent-locator"),
-        "{err}"
-    );
+    spec.scopes[0].location = intent_file.display().to_string();
+    spec.scopes[0].value = Some("inline".into());
+    mint(&definition, &spec).expect("mint");
+    author(&session, &definition, &spec.wave, false).await.expect("bind");
+    let discovery =
+        Discovery::load(&Layout::new(session.root()).discovery_yaml_path()).expect("discovery");
+    let intent = discovery.sources.get(INTENT).expect("intent");
+    assert_eq!(intent.value.as_deref(), Some("inline"));
+    assert!(intent.locator.is_none(), "intent must not record a locator");
+    assert!(intent.cid.is_none(), "intent must not record a delivery CID");
 }
 
 #[tokio::test]
