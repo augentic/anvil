@@ -392,7 +392,12 @@ fn symlink(original: &Path, link: &Path) -> Result<(), Error> {
 
 #[cfg(windows)]
 fn symlink(original: &Path, link: &Path) -> Result<(), Error> {
-    std::os::windows::fs::symlink_file(original, link)?;
+    // Windows distinguishes directory from file symlinks; follow the
+    // target's metadata the way `crate::fs::symlink` does.
+    match std::fs::metadata(original) {
+        Ok(meta) if meta.is_dir() => std::os::windows::fs::symlink_dir(original, link)?,
+        _ => std::os::windows::fs::symlink_file(original, link)?,
+    }
     Ok(())
 }
 

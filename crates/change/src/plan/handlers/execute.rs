@@ -1,5 +1,6 @@
-//! `plan execute` — the drained refine → build → merge loop. At start
-//! appends `plan.execute.started` with typed `closed-plan` coverage.
+//! `plan execute` — the drained build → merge loop (refinement runs
+//! only in `emery plan refine`; RFC-91 D5). At start appends
+//! `plan.execute.started` with typed `closed-plan` coverage.
 
 use std::io::Write;
 
@@ -24,7 +25,7 @@ use crate::orchestrate::{self, ExecuteOutcome};
 pub struct ExecuteInput {}
 
 /// `emery plan execute` → the internal execute orchestration — the
-/// drained refine → build → merge loop.
+/// drained build → merge loop (execute never refines).
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 

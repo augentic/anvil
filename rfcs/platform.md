@@ -53,7 +53,7 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 
 **Definition:** implemented. [RFC-104](rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
 
-**Delivery gap:** RFC-95 seals results for publication; RFC-96 supplies bounded concurrent scheduling. Merged code exists only as store snapshots until RFC-95 — there is no shipped materialize verb.
+**Delivery gap:** RFC-95 exports each final accepted CID into a publication worktree; RFC-96 supplies bounded concurrent scheduling. Merged code exists only as store snapshots until RFC-95 — there is no shipped publication worktree.
 
 **Evidence gap** — asserted rather than demonstrated; may proceed beside or after the product cut:
 
@@ -88,7 +88,7 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 - [RFC-104](rfc-104-system-archaeology.md) — implemented definition predecessor. Three internal cuts (coverage and Evidence; correlation and as-is; plan, handoff, and review); the accepted loop through `system.wave.reviewed` holds. The definition loop may finish without product execution: that is a paid archaeology or readiness outcome, not a failed attempt to produce slices.
 - [RFC-88](rfc-88-detached-changes.md) — implemented delivery contract after that reviewed handoff. Internal cuts: accepted-CID merge and deletion of interim `apply`; detached change home importing one RFC-104 wave; capability-profile-bound decomposition and refinement feedback; deterministic accepted-CID execution. Complete-tree publication stays the reference policy.
-- [RFC-95](rfc-95-publication-sets.md) — local project seals, publication identity, ordered landing, and archive verification after RFC-88 member derivation. Forge writes remain operator-owned; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts when manual publication is a measured bottleneck.
+- [RFC-95](rfc-95-publication-sets.md) — publication worktrees, publication identity, ordered landing, and archive verification after RFC-88 member derivation. The operator authors the Git commit and every forge write; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts when manual publication is a measured bottleneck.
 
 ### Parallel — measure and quote honestly
 
@@ -169,7 +169,7 @@ emery plan refine     → extract and synthesize every leaf;
 operator may review   → inspect specifications, gaps, and conservation inputs
 emery plan execute    → cover exact refinements; defer open gaps out of build scope;
                          build, verify/review, and commit target waves
-operator publishes    → push sealed branches; open and merge PRs
+operator publishes    → review each publication worktree; commit, push, open and merge PRs
 emery plan archive    → verify publication, project outcome, archive
 ```
 

@@ -42,8 +42,8 @@ fn adapter_too_old_display() {
     );
     let hint = err.hint().expect("exit-3 errors carry a recovery hint");
     assert!(
-        hint.contains("install.sh") && hint.contains("emery adapter update"),
-        "the hint names the install channel and the adapter-update fallback: {hint}"
+        hint.contains("install.sh") && hint.contains("emery adapter upgrade"),
+        "the hint names the install channel and the adapter-upgrade fallback: {hint}"
     );
 }
 

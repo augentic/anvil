@@ -64,15 +64,15 @@ pub enum ExecuteOutcome {
     },
 }
 
-/// Run the drained execute loop: advance → refine → build → merge
-/// per entry until `plan status` projects `drained` or a stop.
+/// Run the drained execute loop: advance → build → merge per entry
+/// until `plan status` projects `drained` or a stop. Execute never
+/// refines — refinement runs only in `emery plan refine` (RFC-91 D5).
 ///
-/// Re-entry is safe: a refine / build / preflight-merge failure leaves
-/// the entry `in-progress`, so the next run resumes (or re-reports the
+/// Re-entry is safe: a build / preflight-merge failure leaves the
+/// entry `in-progress`, so the next run resumes (or re-reports the
 /// stop); a postflight failure stamps `done` (non-rollback) and
 /// projects a sticky stop the next execute acknowledges. The bound
-/// target adapter resolves once in loop setup (before the marker),
-/// giving every dispatch one identity.
+/// target adapter resolves once in loop setup, before the marker.
 ///
 /// # Errors
 ///

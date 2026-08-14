@@ -89,7 +89,7 @@ emery plan run --publication progressive --through built --policy <profile>
 
 `plan run` accepts the same authoring criterion when no plan exists and resumes the retained run when planning artifacts already exist. `/emery:run` is an ultrathin invoke-and-relay wrapper.
 
-`--through refined` creates no code-work grant and requires no policy profile. `--through built` requires a resolved run policy and may prepare private workspaces, but it cannot merge, seal, publish, or mutate an accepted CID.
+`--through refined` creates no code-work grant and requires no policy profile. `--through built` requires a resolved run policy and may prepare private workspaces, but it cannot merge, materialize a publication worktree, publish, or mutate an accepted CID.
 
 The concurrency cap is deployment policy with an optional operator reduction. A cap of one follows the same scheduler and remains the deterministic reference path.
 
@@ -306,7 +306,7 @@ Every fact references schema-validated content. Claims select who performs admit
 6. **Unattended candidate build.** One progressive run reaches `built` without a human pause when every manifest is exact, the gap inventory is clean, policy admission succeeds, and required verification passes.
 7. **Gap refusal.** A conflict or unknown stops unattended build before workspace preparation; no policy field or model answer can waive it.
 8. **Candidate dependency chain.** A three-leaf serial chain advances three exact candidate bases, while two independent same-base leaves compose as one disjoint batch. Neither opens a target wave or advances the accepted CID. A cross-target dependency contributes identity and readiness without tree composition.
-9. **No implicit commit.** A completed progressive run cannot merge, seal, publish, or project accepted results. Closed `plan execute` reuses only candidates that pass full revalidation.
+9. **No implicit commit.** A completed progressive run cannot merge, materialize a publication worktree, publish, or project accepted results. Closed `plan execute` reuses only candidates that pass full revalidation.
 10. **Assurance truthfulness.** Operator output and facts distinguish model-assisted, protected, and host-attested checks and never label candidate-authored tests as protected.
 11. **Quality and economics.** Repository gates pass, cap-one/cap-four candidate snapshots remain equivalent, and the live fixture reports first-refinement latency, first-build latency, discarded speculative work, and model cost when available.
 

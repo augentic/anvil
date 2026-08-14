@@ -436,7 +436,7 @@ fn gap_from_model(entry: &Entry, req: ModelReq) -> Option<RawFinding> {
         status,
         summary: req.title,
         digest: Some(digest),
-        leads: contributing_leads(entry, &req.sources),
+        leads: requirement_leads(entry, &req.sources),
     })
 }
 
@@ -469,7 +469,7 @@ fn findings_from_specs(entry: &Entry, specs_dir: &Path) -> Vec<RawFinding> {
                 status,
                 summary: req.name,
                 digest: None,
-                leads: contributing_leads(entry, &req.sources),
+                leads: requirement_leads(entry, &req.sources),
             });
         }
     }
@@ -483,7 +483,7 @@ const fn is_gap(status: RequirementStatus) -> bool {
     )
 }
 
-fn contributing_leads(entry: &Entry, sources: &[String]) -> BTreeSet<(String, String)> {
+fn requirement_leads(entry: &Entry, sources: &[String]) -> BTreeSet<(String, String)> {
     let mut leads = BTreeSet::new();
     for source in sources {
         let lead = entry

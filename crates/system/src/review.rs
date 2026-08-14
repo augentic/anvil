@@ -5,6 +5,7 @@
 use error::Error;
 use jiff::Timestamp;
 use project::journal::{self, Event, EventKind, JournalRoot};
+use project::snapshot::SnapshotId;
 
 use crate::coverage::Coverage;
 use crate::decision;
@@ -26,6 +27,80 @@ pub struct ReviewOutcome {
     pub recorded: bool,
 }
 
+/// Digests of the live definition files — the handoff-selection key
+/// [`select`] matches projections against.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Live {
+    scope: SnapshotId,
+    coverage: SnapshotId,
+    model: SnapshotId,
+    migration: SnapshotId,
+    decisions: SnapshotId,
+}
+
+impl Live {
+    /// Load and digest every live definition file, fail-closed.
+    ///
+    /// # Errors
+    ///
+    /// Fail-closed loads of the live definition files.
+    pub(crate) fn load(layout: &Layout<'_>) -> Result<Self, Error> {
+        let scope = Scope::load(&layout.scope_path())?;
+        let coverage = Coverage::load(&layout.coverage_path())?;
+        let model = Model::load(&layout.system_path())?;
+        let migration = Migration::load(&layout.migration_path())?;
+        let decisions = decision::load_all(&layout.decisions_dir())?;
+        Ok(Self {
+            scope: scope.digest()?,
+            coverage: coverage.digest()?,
+            model: model.digest()?,
+            migration: migration.digest()?,
+            decisions: handoff::decisions_digest(&decisions)?,
+        })
+    }
+}
+
+/// Select `wave`'s current handoff from already-loaded projections:
+/// the unique one whose covered digests all match `live`.
+///
+/// # Errors
+///
+/// - `system-review-handoff-stale` when no current handoff exists for
+///   the wave (re-run `emery system plan`).
+/// - `system-review-ambiguous` when more than one matches (fail
+///   closed, never resolved by time).
+pub(crate) fn select(live: &Live, handoffs: &[Projected], wave: &str) -> Result<Projected, Error> {
+    let mut current: Vec<&Projected> = handoffs
+        .iter()
+        .filter(|projected| {
+            let handoff = &projected.handoff;
+            handoff.wave.id == wave
+                && handoff.scope_digest == live.scope
+                && handoff.coverage_digest == live.coverage
+                && handoff.system_model_digest == live.model
+                && handoff.migration_plan_digest == live.migration
+                && handoff.decisions_digest == live.decisions
+        })
+        .collect();
+    match current.len() {
+        0 => Err(Error::Diag {
+            code: "system-review-handoff-stale",
+            detail: format!(
+                "no handoff for wave `{wave}` matches the live definition files — run `emery \
+                 system plan` to project the current handoff, review it, then re-run the review"
+            ),
+        }),
+        1 => Ok(current.remove(0).clone()),
+        _ => Err(Error::Diag {
+            code: "system-review-ambiguous",
+            detail: format!(
+                "more than one handoff for wave `{wave}` matches the live definition files; \
+                 review cannot choose between them"
+            ),
+        }),
+    }
+}
+
 /// Select the wave's current handoff: the unique projection whose
 /// covered digests all match the live definition files.
 ///
@@ -37,45 +112,9 @@ pub struct ReviewOutcome {
 ///   closed, never resolved by time).
 /// - Fail-closed loads of the live definition files.
 pub fn current_handoff(layout: &Layout<'_>, wave: &str) -> Result<Projected, Error> {
-    let scope = Scope::load(&layout.scope_path())?;
-    let coverage = Coverage::load(&layout.coverage_path())?;
-    let model = Model::load(&layout.system_path())?;
-    let migration = Migration::load(&layout.migration_path())?;
-    let decisions = decision::load_all(&layout.decisions_dir())?;
-    let scope_digest = scope.digest()?;
-    let coverage_digest = coverage.digest()?;
-    let model_digest = model.digest()?;
-    let migration_digest = migration.digest()?;
-    let decisions_digest = handoff::decisions_digest(&decisions)?;
-    let mut current: Vec<Projected> = handoff::load_all(layout)?
-        .into_iter()
-        .filter(|projected| {
-            let handoff = &projected.handoff;
-            handoff.wave.id == wave
-                && handoff.scope_digest == scope_digest
-                && handoff.coverage_digest == coverage_digest
-                && handoff.system_model_digest == model_digest
-                && handoff.migration_plan_digest == migration_digest
-                && handoff.decisions_digest == decisions_digest
-        })
-        .collect();
-    match current.len() {
-        0 => Err(Error::Diag {
-            code: "system-review-handoff-stale",
-            detail: format!(
-                "no handoff for wave `{wave}` matches the live definition files — run `emery \
-                 system plan` to project the current handoff, review it, then re-run the review"
-            ),
-        }),
-        1 => Ok(current.remove(0)),
-        _ => Err(Error::Diag {
-            code: "system-review-ambiguous",
-            detail: format!(
-                "more than one handoff for wave `{wave}` matches the live definition files; \
-                 review cannot choose between them"
-            ),
-        }),
-    }
+    let live = Live::load(layout)?;
+    let handoffs = handoff::load_all(layout)?;
+    select(&live, &handoffs, wave)
 }
 
 /// Record architectural authority over one exact handoff.

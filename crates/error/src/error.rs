@@ -111,7 +111,7 @@ impl Error {
                 "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`), then rerun the command",
             ),
             Self::AdapterCliTooOld { .. } => Some(
-                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`); if the adapter itself is stale instead, `emery adapter update <name>` pulls its newest published version",
+                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`); if the adapter itself is stale instead, `emery adapter upgrade <name>` pulls its newest published version",
             ),
             Self::Diag { code, .. } => diag_hint(code),
             Self::Validation { code, .. } => match code.as_ref() {

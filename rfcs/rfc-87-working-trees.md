@@ -81,7 +81,7 @@ The code patch contains the base snapshot id, result snapshot id, and derived to
 
 A snapshot is one project repository tree: product code plus the repository's own durable Emery state — `project.yaml`, the `specs/` baseline, and `decisions/`. Change artifacts are what stays out. Plans, slice specs, designs, tasks, Evidence, facts, and build records live in the change home, are granted as explicit read-only inputs, and are never copied into the workspace or captured in its result snapshot.
 
-[RFC-88](rfc-88-detached-changes.md) amends this decision, which originally excluded all of `.emery/`, and fixes the tree boundary as `.git` plus the change home when nested. The exclusion was safe only while every operation ran in the operator's checkout, where the baseline had somewhere else to live; a detached change has no such place, and a sealed commit whose tree omitted the baseline would silently drop every merged spec.
+[RFC-88](rfc-88-detached-changes.md) amends this decision, which originally excluded all of `.emery/`, and fixes the tree boundary as `.git` plus the change home when nested. The exclusion was safe only while every operation ran in the operator's checkout, where the baseline had somewhere else to live; a detached change has no such place, and a publication commit whose tree omitted the baseline would silently drop every merged spec.
 
 The caller authors the access manifest, but the touched paths derived by `capture` are the authoritative record of what changed. RFC-87 enforces the grants and reports that record; it does not decide how work is partitioned or how an overlap is repaired.
 
@@ -99,13 +99,13 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-96](rfc-96-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-100](rfc-100-distributed-execution.md) supplies placement, fencing, and transport. [RFC-95](rfc-95-publication-sets.md) seals each final project snapshot into a commit and supplies branches, pull requests, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-96](rfc-96-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-100](rfc-100-distributed-execution.md) supplies placement, fencing, and transport. [RFC-95](rfc-95-publication-sets.md) exports each final accepted CID into a publication worktree and supplies branches, pull-request markers, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 
 ### D8 — Hard cut
 
-`WorkingTree::live()`, operator-checkout writes, persistent holds, tree recovery, dirty-tree lifecycle states, stored patch blobs, and workspace-layer branch commits are removed rather than adapted. Callers use `prepare` / `capture` / `discard`; RFC-95 owns the one final project seal.
+`WorkingTree::live()`, operator-checkout writes, persistent holds, tree recovery, dirty-tree lifecycle states, stored patch blobs, and workspace-layer branch commits are removed rather than adapted. Callers use `prepare` / `capture` / `discard`; RFC-95 owns publication-worktree materialize. This kernel owns no branch, worktree path, or Git commit.
 
 The interim `apply`, which writes an accepted patch's touched paths onto an ambient product tree, is a stand-in for that completion. [RFC-88](rfc-88-detached-changes.md) deletes it: once the baseline folds inside a workspace, the accepted project snapshot is the whole result and there is nothing left to write back.
 
@@ -116,7 +116,7 @@ The interim `apply`, which writes an accepted patch's touched paths onto an ambi
 - Give the agent one writable code root plus explicit read-only artifact roots.
 - Keep local snapshot objects and workspaces under host-owned storage; persist no workspace path.
 - Discard on completion and garbage-collect abandoned workspaces.
-- Leave verification, code-patch composition, remote transport, project sealing, and publication to their owning RFCs.
+- Leave verification, code-patch composition, remote transport, publication-worktree materialize, and publication to their owning RFCs.
 
 ## Acceptance criteria
 

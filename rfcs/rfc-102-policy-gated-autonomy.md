@@ -2,7 +2,7 @@
 
 > Status: **Parked.** Reopen only after RFC-99 Phase B, RFC-97 Phase B, RFC-103 outcome promotion, RFC-94 target execution readiness, and RFC-93 operator grants have landed **and** a client engagement requires unattended accepted-state mutation. Owns promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](rfc-95-publication-sets.md).
 >
-> Patch ownership: this RFC amends RFC-88 D7 / D8 after RFC-88 lands by adding policy-gated commit authorization beside closed `plan execute`; it does not revise RFC-88. It extends RFC-95's seal gate without granting forge publication.
+> Patch ownership: this RFC amends RFC-88 D7 / D8 after RFC-88 lands by adding policy-gated commit authorization beside closed `plan execute`; it does not revise RFC-88. It extends RFC-95's worktree-materialize gate without granting a Git commit or forge publication.
 
 ## Intent
 
@@ -88,7 +88,7 @@ risk-classes:
 amendments:
   allow: [boundary-split]
 publication:
-  seal: true
+  materialize: true
   forge: false
 ```
 
@@ -232,10 +232,10 @@ An autonomous run projects success only when:
 - every in-scope leaf is merged or legally excluded;
 - every target root domain passes its complete round;
 - every commit admission and merge fact remains current;
-- required project seals exist;
+- required publication worktrees exist;
 - no postflight acknowledgement or policy stop remains.
 
-RFC-95 forge publication remains a separate operator act. This RFC may create local seals but cannot push branches, open pull requests, merge pull requests, or delete the change home.
+RFC-95 forge publication remains a separate operator act. This RFC may authorize publication-worktree materialize but cannot author a Git commit, push branches, open pull requests, merge pull requests, or delete the change home.
 
 ## Failure and restart
 

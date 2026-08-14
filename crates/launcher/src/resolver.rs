@@ -81,7 +81,7 @@ impl Resolver {
 
     /// Pinned identity: the immutable store entry, installed on miss.
     /// An entry that fails store verification (a torn install, drifted
-    /// bytes) is unlinked and reinstalled once before failing closed.
+    /// bytes) is reinstalled in place once before failing closed.
     async fn resolve_pinned(
         &self, routed: &RoutedId, version: semver::Version,
     ) -> Result<Vec<u8>, Error> {
@@ -158,20 +158,13 @@ impl Resolver {
         Ok(std::fs::read(location.path())?)
     }
 
-    /// Unlink an unverifiable store entry and reinstall its pin — the
-    /// recovery for a torn install or drifted bytes. When the entry
-    /// cannot be unlinked or the reinstall fails (offline, tag gone),
-    /// the original verification refusal stands and the failed attempt
-    /// is logged to stderr.
+    /// Reinstall an unverifiable store entry's pin over the stale
+    /// files — the recovery for a torn install or drifted bytes. The
+    /// install writes sidecar-then-entry atomically only after a
+    /// successful pull, so a failed reinstall (offline, tag gone)
+    /// leaves the local artifact in place and the original
+    /// verification refusal stands, logged to stderr.
     async fn heal(&self, name: &str, version: &str, refused: Error) -> Result<(), Error> {
-        let locations = self.paths.locations();
-        for stale in [locations.store_entry(name, version), locations.store_meta(name, version)] {
-            match std::fs::remove_file(&stale) {
-                Ok(()) => {}
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-                Err(_) => return Err(refused),
-            }
-        }
         if let Err(err) = install::install(&self.registry, name, version, &self.paths).await {
             eprintln!(
                 "emery {}: reinstalling unverifiable `{name}@{version}` failed: {err}",
