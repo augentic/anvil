@@ -1,6 +1,6 @@
 # Services Delivery Programme
 
-> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88 and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. Next gaps are RFC-96 and RFC-95. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
+> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88 and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. Next gaps are RFC-95 and RFC-96. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
 >
 > Business direction: Propellerhead builds and changes critical software without losing the behaviour, knowledge, and trust the organisation depends on.
 >
@@ -41,8 +41,8 @@ flowchart TD
     classDef nearterm fill:#fed7aa,stroke:#c2410c,color:#7c2d12,stroke-width:3px
     classDef later fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
     class R86,R87,R88,R90,R91,R104 done
-    class R96 nearterm
-    class R94,R95,R97,R98 later
+    class R95,R96 nearterm
+    class R94,R97,R98 later
 ```
 
 RFC-92 patches the model-capability profile shape owned by implemented RFC-88: routes and usage facts land on the implemented substrate and fold into the profile.
@@ -53,7 +53,7 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 
 **Definition:** implemented. [RFC-104](rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
 
-**Delivery gap:** RFC-96 supplies bounded concurrent scheduling; RFC-95 seals results for publication. Merged code exists only as store snapshots until RFC-95 — there is no shipped materialize verb.
+**Delivery gap:** RFC-95 seals results for publication; RFC-96 supplies bounded concurrent scheduling. Merged code exists only as store snapshots until RFC-95 — there is no shipped materialize verb.
 
 **Evidence gap** — asserted rather than demonstrated; may proceed beside or after the product cut:
 
