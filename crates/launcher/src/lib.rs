@@ -126,11 +126,8 @@ impl Policy {
         }
         let seed_dir = seed.as_ref().and_then(|request| seed_dir(request, paths.project_root()));
         let definition_dir = change.from.as_ref().and_then(|from| {
-            let resolved = if from.is_absolute() {
-                from.clone()
-            } else {
-                paths.project_root().join(from)
-            };
+            let resolved =
+                if from.is_absolute() { from.clone() } else { paths.project_root().join(from) };
             resolved.is_dir().then(|| std::path::absolute(&resolved).unwrap_or(resolved))
         });
         let refresh = refresh_names(&argv, paths.project_root());

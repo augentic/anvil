@@ -74,6 +74,27 @@ mod system {
     }
 
     #[test]
+    fn verbs_project_dir() {
+        // Every `system *` verb carries `--dir` for the same
+        // definition-home mount; plan author `--from` is a different
+        // projection and must not leak onto this request.
+        let digest = "0".repeat(64);
+        let review = ["system", "review", "w1", "--handoff", digest.as_str(), "--dir", "client-b"];
+        for (args, dir) in [
+            (&["system", "plan", "--dir", "client-a"][..], "client-a"),
+            (&review[..], "client-b"),
+            (&["system", "status", "--dir", "client-c"][..], "client-c"),
+        ] {
+            let request = system_request(&argv(args)).expect("system verb projects");
+            assert_eq!(request.dir, Some(std::path::PathBuf::from(dir)), "{args:?}");
+        }
+        assert_eq!(
+            system_request(&argv(&["plan", "author", "demo", "--from", "def", "--wave", "w1"])),
+            None
+        );
+    }
+
+    #[test]
     fn routes_project_nothing() {
         for args in [
             &["plan", "status"][..],

@@ -166,6 +166,17 @@ async fn detailed_help() {
             .contains("Read-only viewer over a slice's `model.yaml`")
     );
 
+    let system = router.execute(["emery", "system", "--help"]).await;
+    assert_eq!(system.exit, 0);
+    let system = String::from_utf8_lossy(&system.stdout);
+    assert!(system.contains("Definition-loop operations over a definition home"), "{system}");
+    for verb in ["survey", "plan", "review", "status"] {
+        assert!(
+            system.lines().any(|line| line.trim_start().starts_with(verb)),
+            "system help must list {verb}: {system}"
+        );
+    }
+
     for removed in [
         &["emery", "adapters", "sync"][..],
         &["emery", "plugins", "doctor"][..],

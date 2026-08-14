@@ -25,8 +25,9 @@ pub struct SeedRequest {
 }
 
 /// Change-home facts argv carries: `--change-dir` and `plan author
-/// --from`. Relative values join the invocation directory at the
-/// launcher; the guest `.` mount is already the resolved home.
+/// --from`. Relative `--change-dir` joins the invocation directory;
+/// relative `--from` joins the resolved `.` mount (product in-place,
+/// change home when detached).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ChangeRequest {
     /// Detached change-home override, when supplied.

@@ -248,6 +248,40 @@ fn from_system_preopen() {
     assert_eq!(policy.definition_mount_name(), policy.definition_dir().display().to_string());
 }
 
+#[test]
+fn detached_from_preopen() {
+    // Detached `--change-dir` mounts the change home as `.`; `--from`
+    // stays a read-only extra preopen and must not walk `project.yaml`.
+    let sandbox = Sandbox::new();
+    let base = sandbox.root.parent().expect("sandbox base");
+    let home = base.join("change-home");
+    let definition = base.join("definition");
+    std::fs::create_dir(&home).expect("mkdir change home");
+    std::fs::create_dir(&definition).expect("mkdir definition");
+
+    let policy = Policy::new(
+        &sandbox.root,
+        &argv(&[
+            "plan",
+            "author",
+            "demo",
+            "--from",
+            definition.to_str().expect("utf-8"),
+            "--wave",
+            "w1",
+            "--change-dir",
+            home.to_str().expect("utf-8"),
+        ]),
+        sandbox.locations.clone(),
+    );
+    assert!(policy.is_detached());
+    assert_eq!(policy.project_root(), home.as_path());
+    assert_eq!(policy.change_root(), home.as_path());
+    let expected = std::fs::canonicalize(&definition).expect("definition");
+    assert_eq!(std::fs::canonicalize(policy.definition_dir()).expect("definition"), expected);
+    assert_ne!(policy.definition_dir(), policy.project_root());
+}
+
 // ---------------------------------------------------------------------------
 // `system *` anchoring: the definition home mounts as `.` — no
 // `project.yaml` walk, no mkdir (the operator authors the home by
