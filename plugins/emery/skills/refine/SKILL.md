@@ -11,8 +11,10 @@ The CLI orchestration owns the whole drain — the guest marker, topological ord
 ## Invocation
 
 ```bash
-emery plan refine
+emery plan refine [--change-dir <dir>]
 ```
+
+The drain inherits the Cursor workspace cwd as the change root. When that is not the change home, elicit `--change-dir` and pass it through.
 
 The drain is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract.
 

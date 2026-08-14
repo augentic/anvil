@@ -1,7 +1,6 @@
 //! Lead-reconciliation envelope DTOs and the plan-time `propose` core.
 //!
-//! One wire envelope discriminated by the closed `kind: request | response`;
-//! `topology` is the only submodule that touches the filesystem.
+//! One wire envelope discriminated by the closed `kind: request | response`.
 
 mod catalog;
 mod kernel;

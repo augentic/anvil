@@ -15,6 +15,55 @@
         }
       ]
     },
+    "Assessment": {
+      "additionalProperties": false,
+      "description": "Judgment-supplied integers (0–[`DIM_MAX`]) for the five dimensions.",
+      "properties": {
+        "behavioural-breadth": {
+          "description": "Behavioural-breadth score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "context-volume": {
+          "description": "Context-volume score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "coupling": {
+          "description": "Coupling score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "uncertainty": {
+          "description": "Uncertainty score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "verification-surface": {
+          "description": "Verification-surface score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "behavioural-breadth",
+        "coupling",
+        "uncertainty",
+        "context-volume",
+        "verification-surface"
+      ],
+      "type": "object"
+    },
     "ClaimKind": {
       "description": "Closed claim-kind enum on Evidence claims.\n\nThe per-slice authority override map in `plan.yaml.slices[]` keys\nagainst this same closed set. `example` (runtime capture claim) is\nthe runtime capture kind emitted by the `captures` source adapter.",
       "oneOf": [
@@ -109,6 +158,25 @@
           "type": "string"
         }
       ]
+    },
+    "FocusParent": {
+      "additionalProperties": false,
+      "description": "One catalog parent named for focused survey.",
+      "properties": {
+        "lead": {
+          "description": "Catalog lead id within that source.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Plan source key.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "lead"
+      ],
+      "type": "object"
     },
     "ModelClaim": {
       "description": "One inline claim under [`ModelRequirement::claims`].\n\nThe stable `(source, id, kind)` triple traces the claim to its\nEvidence (the claim contract). The single-line `value` and\n`path` anchor are read from `evidence/<source>.yaml` by the\nprovenance projection rather than copied here.",
@@ -296,15 +364,8 @@
       ]
     },
     "SliceModel": {
-      "description": "In-memory view of `model.yaml`, holding the header, the requirement\nset with inline provenance, and the task list.\n\nThe model carries only the earned core today — `requirements[]` and\n`tasks[]`; the deferred non-requirements sections (`domain`, `apis`,\n…) are not modeled yet and are ignored on deserialise. `target` is\nnot persisted — it is resolved on demand from the bound `project`.",
+      "description": "In-memory view of `model.yaml`, holding the header, the requirement\nset with inline provenance, and the task list.\n\nThe model carries only the earned core today — `requirements[]` and\n`tasks[]`; the deferred non-requirements sections (`domain`, `apis`,\n…) are not modeled yet and are ignored on deserialise. `target` is\npersisted as the slice's `plan.yaml.targets` key.",
       "properties": {
-        "project": {
-          "description": "Bound project, optional.",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "requirements": {
           "default": [],
           "description": "The requirement set with inline provenance.",
@@ -315,6 +376,13 @@
         },
         "slice": {
           "description": "Slice name. Kernel-stamped on the persisted file.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "target": {
+          "description": "Bound `plan.yaml.targets` key. Kernel-stamped from the plan entry.",
           "type": [
             "string",
             "null"
@@ -440,11 +508,16 @@
       "type": "object"
     },
     "SynthesisKind": {
-      "description": "Synthesis response envelope kind.\n\nSerialises to the literal `\"response\"`. Mirrors\n`project::plan::propose`'s\n`ProposalKind`, but synthesis has only the response kind — there is\nno request wire.",
+      "description": "Synthesis response envelope kind.\n\nSerialises to `proceed` or `boundary-escalation`.",
       "oneOf": [
         {
-          "const": "response",
-          "description": "The agent's synthesis result.",
+          "const": "proceed",
+          "description": "Promote the synthesized bundle and continue refinement.",
+          "type": "string"
+        },
+        {
+          "const": "boundary-escalation",
+          "description": "Evidence supports separately acceptable child boundaries; do\nnot promote artifacts.",
           "type": "string"
         }
       ]
@@ -472,19 +545,51 @@
   "$id": "https://github.com/augentic/emery/answers/synthesis.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Generated judgment-answer schema — generated from the Rust wire types by slice::answers; do not edit. Validates the schema-gated answer to the slice synthesis judgment: the `kind: response` envelope carrying the structured model and the prose-only Markdown artifacts. The deterministic tail re-parses the answer and runs the projection kernel.",
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by slice::answers; do not edit. Validates the schema-gated answer to the slice synthesis judgment: the typed `proceed | boundary-escalation` envelope. `proceed` carries the structured model and the prose-only Markdown artifacts; `boundary-escalation` names affected terminal pairs and a typed rationale. The deterministic tail re-parses the answer and runs the projection kernel only on `proceed`.",
   "properties": {
+    "affected": {
+      "description": "Terminal `(source, lead)` pairs — required on\n[`SynthesisKind::BoundaryEscalation`].",
+      "items": {
+        "$ref": "#/$defs/FocusParent"
+      },
+      "type": "array"
+    },
     "artifacts": {
-      "$ref": "#/$defs/SynthesisArtifacts",
-      "description": "Prose-only Markdown artifacts (no `ID:` / `Sources:` / `Status:`\nlines — the render step injects those)."
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SynthesisArtifacts"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Prose-only Markdown artifacts — required on [`SynthesisKind::Proceed`]."
+    },
+    "assessment": {
+      "$ref": "#/$defs/Assessment",
+      "description": "Closed five-dimension complexity assessment."
     },
     "kind": {
       "$ref": "#/$defs/SynthesisKind",
       "description": "Envelope kind."
     },
     "model": {
-      "$ref": "#/$defs/SliceModel",
-      "description": "The agent's structured model — the kernel-owned and header\nfields are optional in [`SliceModel`], so the agent's\nkernel-omitted model deserialises cleanly."
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SliceModel"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The agent's structured model — required on [`SynthesisKind::Proceed`]."
+    },
+    "rationale": {
+      "description": "Why the Evidence supports a split — required on\n[`SynthesisKind::BoundaryEscalation`].",
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "slice": {
       "description": "Slice name (kebab-case).",
@@ -501,8 +606,7 @@
     "version",
     "kind",
     "slice",
-    "model",
-    "artifacts"
+    "assessment"
   ],
   "title": "Emery synthesis answer",
   "type": "object"

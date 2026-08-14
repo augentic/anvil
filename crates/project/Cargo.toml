@@ -40,9 +40,9 @@ tracing.workspace = true
 [target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
 wasip2.workspace = true
 
-# The native origin-fetch kernel (RFC-104): host `git` runs via
-# process spawn, HTTPS document origins download over `reqwest`. The
-# engine guest fetches through the `emery:origins` import instead.
+# Native host fetch: RFC-104 origin re-fetch (ambient credentials) and
+# RFC-88 D9 ingest (credential-free bind) both run `git` / HTTPS here.
+# The engine guest uses `emery:origins` / `emery:ingest` imports instead.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 reqwest = { workspace = true, features = ["blocking"] }
 

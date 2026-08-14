@@ -4,12 +4,15 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use diagnostics::digest::sha256_hex;
 use error::Error;
 use project::adapter::BuildInputDeclaration;
+use project::adapter::catalog::Pin;
 use project::config::Layout;
-use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, close_source_pins};
+use project::plan::{
+    Entry, Plan, SliceSourceBinding, SourceBinding, TargetBinding, close_source_pins,
+};
 use project::snapshot::SnapshotId;
 use slice::refinement::{
     self, Dependency, Freshness, Inputs, Kind, Manifest, Planning, TargetInputs, empty_digest,
@@ -28,7 +31,7 @@ fn fixture() -> (tempfile::TempDir, Plan, Vec<Lead>) {
     std::fs::create_dir_all(&baseline).expect("mkdir baseline");
     std::fs::write(baseline.join("spec.md"), b"login baseline").expect("write baseline");
 
-    let slice_dir = root.path().join(".emery/slices").join(SLICE);
+    let slice_dir = root.path().join(".emery/change/slices").join(SLICE);
     std::fs::create_dir_all(slice_dir.join("specs/orders")).expect("mkdir slice");
     std::fs::write(slice_dir.join("proposal.md"), b"proposal").expect("write");
     std::fs::write(slice_dir.join("design.md"), b"design").expect("write");
@@ -36,39 +39,30 @@ fn fixture() -> (tempfile::TempDir, Plan, Vec<Lead>) {
     std::fs::write(slice_dir.join("specs/orders/spec.md"), b"spec").expect("write");
     std::fs::write(slice_dir.join("notes.md"), b"notes").expect("write");
 
-    let mut plan = Plan {
-        name: "demo".into(),
-        sources: BTreeMap::from([(
-            "docs".to_string(),
-            SourceBinding {
-                adapter: "documentation".into(),
-                version: None,
-                path: Some("docs".into()),
-                value: None,
-                cid: None,
-            },
-        )]),
-        entries: vec![Entry {
-            name: SLICE.into(),
-            project: Some("default".into()),
-            depends_on: vec![],
-            sources: vec![SliceSourceBinding::structured("docs", "orders-lead")],
-            context: vec![],
-            description: None,
-            divergence: None,
-            disagreements: Vec::new(),
-            authority_override: project::plan::AuthorityOverride::default(),
-            allow_composition_replace: false,
-        }],
-    };
+    let mut plan = Plan::named("demo");
+    plan.targets.insert(
+        "default".into(),
+        TargetBinding::new(
+            Pin::parse("emery:mock@0.0.0").expect("pin"),
+            ".",
+            SnapshotId::from_digest(&"0".repeat(64)),
+        ),
+    );
+    plan.sources.insert(
+        "docs".into(),
+        SourceBinding {
+            adapter: Pin::parse("emery:documentation@0.12.0").expect("pin"),
+            locator: Some("docs".into()),
+            value: None,
+            cid: None,
+        },
+    );
+    let mut entry = Entry::named(SLICE, "default");
+    entry.sources = vec![SliceSourceBinding::structured("docs", "orders-lead")];
+    plan.entries.push(entry);
     close_source_pins(&mut plan, root.path()).expect("close pins");
 
-    let inventory = vec![Lead {
-        lead: "orders-lead".into(),
-        source: "docs".into(),
-        synopsis: "orders endpoint".into(),
-        topics: vec![],
-    }];
+    let inventory = vec![Lead::new("orders-lead", "docs", "orders endpoint")];
     (root, plan, inventory)
 }
 
@@ -193,6 +187,43 @@ fn empty_optional_ids() {
     assert_eq!(manifest.inputs.observations, empty_digest());
     assert_eq!(manifest.inputs.target_guidance, guidance());
     assert_eq!(manifest.inputs.sources.get("docs"), plan.sources["docs"].cid.as_ref());
+}
+
+#[test]
+fn bound_profile() {
+    let (root, mut plan, inventory) = fixture();
+    let bound = project::profile::Table::compiled()
+        .resolve()
+        .expect("compiled")
+        .reference()
+        .expect("reference");
+    plan.targets.get_mut("default").expect("default").model_capability_profile =
+        Some(bound.clone());
+    let manifest = assemble(root.path(), &plan, &inventory, vec![]);
+    assert_eq!(manifest.inputs.profile, bound.digest);
+}
+
+#[test]
+fn profile_stales() {
+    let (root, mut plan, inventory) = fixture();
+    let bound = project::profile::Table::compiled()
+        .resolve()
+        .expect("compiled")
+        .reference()
+        .expect("reference");
+    plan.targets.get_mut("default").expect("default").model_capability_profile =
+        Some(bound.clone());
+    let slice_dir = Layout::new(root.path()).slice_dir(SLICE);
+    assemble(root.path(), &plan, &inventory, vec![]).write(&slice_dir).expect("write");
+    assert!(matches!(freshness_of(root.path(), &plan, &inventory), Freshness::Fresh { .. }));
+
+    plan.targets.get_mut("default").expect("default").model_capability_profile =
+        Some(project::plan::ProfileRef {
+            id: bound.id,
+            digest: SnapshotId::from_digest(&"ab".repeat(32)),
+        });
+    let freshness = freshness_of(root.path(), &plan, &inventory);
+    assert!(stale_reasons(&freshness).iter().any(|r| r.contains("profile")), "{freshness:?}");
 }
 
 #[test]
@@ -336,7 +367,7 @@ fn predecessor_binding() {
 #[test]
 fn archived_pred_fresh() {
     // A merged (or dropped) predecessor's slice tree moves to
-    // `.emery/archive/<stamp>-<slice>/` with its manifest; the archived
+    // `.emery/change/archive/<stamp>-<slice>/` with its manifest; the archived
     // digest satisfies the dependent's pin (RFC-91 D3). The newest
     // archive entry wins.
     let (root, plan, inventory) = fixture();
@@ -379,7 +410,9 @@ fn merged_baseline_fresh() {
         project::journal::EventKind::TargetMergeWaveCommitted {
             target: "demo".into(),
             digest: "sha256:0000".into(),
-            slice_name: "billing-api".into(),
+            members: vec!["billing-api".into()],
+            base: SnapshotId::from_digest(&"a".repeat(64)),
+            result: SnapshotId::from_digest(&"b".repeat(64)),
             commit_authorization: project::journal::FactEpochRef {
                 writer: "local".into(),
                 sequence: 1,
@@ -409,18 +442,7 @@ fn amend_stales_entry() {
     assemble(root.path(), &plan, &inventory, vec![]).write(&slice_dir).expect("write");
 
     // Unrelated sibling entry: still fresh.
-    plan.entries.push(Entry {
-        name: "billing-api".into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources: vec![],
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    });
+    plan.entries.push(Entry::named("billing-api", "default"));
     assert!(matches!(freshness_of(root.path(), &plan, &inventory), Freshness::Fresh { .. }));
 
     // Amending the leaf's own entry stales through the planning digests.

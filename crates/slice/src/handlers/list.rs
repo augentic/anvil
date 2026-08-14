@@ -1,5 +1,5 @@
 //! `slice list` — read-only listing of every slice under
-//! `.emery/slices/` with its lifecycle status.
+//! `.emery/change/slices/` with its lifecycle status.
 
 use std::io::Write;
 
@@ -57,7 +57,7 @@ impl<P: Anchor> Operation<P> for List {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct ListBody {
-    /// Every slice under `.emery/slices/`, sorted by name.
+    /// Every slice under `.emery/change/slices/`, sorted by name.
     pub slices: Vec<ListEntry>,
 }
 

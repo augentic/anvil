@@ -1,6 +1,7 @@
 //! [`Ctx`] — the shared project context every project-scoped verb
 //! handler loads once inside `handle`.
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use error::Error;
@@ -10,9 +11,9 @@ use super::{Anchor, ExecutionPaths};
 use crate::adapter::{ResolvedTarget, Resolver};
 use crate::config::{Layout, ProjectConfig};
 
-/// Shared context for every verb that operates inside an initialised
-/// `.emery/` project. Created at the top of each `handle` body via
-/// [`Ctx::load`] against the provider's [`Anchor`].
+/// Shared context for change-scoped verbs. Created at the top of each
+/// `handle` body via [`Ctx::load`] against the provider's [`Anchor`].
+/// Detached homes skip `project.yaml`.
 #[derive(Debug)]
 pub struct Ctx {
     /// Resolved project root — the nearest ancestor of the anchor
@@ -34,10 +35,25 @@ impl Ctx {
     /// Returns `Err(Error)` when no project root is found walking up
     /// from the anchor or the project config fails to load.
     pub fn load(anchor: &impl Anchor) -> Result<Self, Error> {
+        let incoming = anchor.paths();
+        if incoming.is_detached() {
+            return Ok(Self {
+                project_dir: incoming.project_root().to_path_buf(),
+                config: ProjectConfig {
+                    name: String::new(),
+                    description: None,
+                    adapter: None,
+                    emery_version: None,
+                    rules: BTreeMap::new(),
+                    platforms: Vec::new(),
+                },
+                paths: incoming.clone(),
+            });
+        }
         let project_dir =
             ProjectConfig::find_root(anchor.project_root()).ok_or(Error::NotInitialized)?;
         let config = ProjectConfig::load(&project_dir)?;
-        let paths = anchor.paths().with_root(&project_dir);
+        let paths = incoming.with_root(&project_dir);
         Ok(Self {
             project_dir,
             config,
@@ -63,7 +79,7 @@ impl Ctx {
     /// `plan.yaml`.
     #[must_use]
     pub fn layout(&self) -> Layout<'_> {
-        Layout::new(&self.project_dir)
+        self.paths.layout()
     }
 
     /// Single handler-boundary read of the wall clock. Library crates

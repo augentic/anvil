@@ -1,6 +1,6 @@
 # Skills
 
-The six `/emery:*` skills drive the operator rhythm: one-time init, then plan → operator review → refine → operator review → execute → finalize, with a read-only status probe available at any point.
+The delivery `/emery:*` skills drive the operator rhythm: one-time init, then plan → operator review → refine → operator review → execute → finalize, with a read-only status probe available at any point. When an engagement starts from an estate, the RFC-104 `/emery:system-*` skills run upstream and produce the reviewed handoff `plan author --from --wave` consumes.
 
 ## The change rhythm
 
@@ -22,11 +22,14 @@ Canonical skill bodies live under [`plugins/emery/skills/`](../../../plugins/eme
 | Skill | Purpose | Canonical body | CLI |
 | ----- | ------- | -------------- | --- |
 | `/emery:init` | One-time project setup (`.emery/`, `project.yaml`, cache, `AGENTS.md`) | [`init/SKILL.md`](../../../plugins/emery/skills/init/SKILL.md) | [emery init](../cli/init.md) |
-| `/emery:plan` | Survey sources, propose slices, exit at `pending` | [`plan/SKILL.md`](../../../plugins/emery/skills/plan/SKILL.md) | [emery plan](../cli/plan.md) |
+| `/emery:plan` | Bind a reviewed handoff (`--from` / `--wave`), import surface leads, decompose, exit at `pending` | [`plan/SKILL.md`](../../../plugins/emery/skills/plan/SKILL.md) | [emery plan](../cli/plan.md) |
 | `/emery:refine` | Drain specification refinement over the closed plan (no code work) | [`refine/SKILL.md`](../../../plugins/emery/skills/refine/SKILL.md) | [plan refine](../cli/plan.md#emery-plan-refine) |
 | `/emery:execute` | Drive the plan through build → merge (opens the authorization epoch over the refinement digests) | [`execute/SKILL.md`](../../../plugins/emery/skills/execute/SKILL.md) | [plan execute](../cli/plan.md#emery-plan-execute) |
 | `/emery:status` | Report where the plan stands and the literal next command (read-only) | [`status/SKILL.md`](../../../plugins/emery/skills/status/SKILL.md) | [plan status](../cli/plan.md#emery-plan-status) |
 | `/emery:finalize` | Confirm publication is complete, then archive the plan (publication is operator-owned, outside Emery) | [`finalize/SKILL.md`](../../../plugins/emery/skills/finalize/SKILL.md) | [emery plan](../cli/plan.md) |
+| `/emery:system-survey` | Survey a definition home's declared coverage and correlate the `as-is` architecture | [`system-survey/SKILL.md`](../../../plugins/emery/skills/system-survey/SKILL.md) | `emery system survey` |
+| `/emery:system-plan` | Propose the initial architecture once, then reproject views and wave handoffs | [`system-plan/SKILL.md`](../../../plugins/emery/skills/system-plan/SKILL.md) | `emery system plan` |
+| `/emery:system-review` | Record architectural authority over one exact wave handoff | [`system-review/SKILL.md`](../../../plugins/emery/skills/system-review/SKILL.md) | `emery system review` |
 
 ## How skills delegate
 

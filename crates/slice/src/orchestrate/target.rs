@@ -8,7 +8,7 @@ use artifacts::atomic::bytes_write;
 use error::Error;
 use jiff::Timestamp;
 use project::adapter::{AdapterSelector, TargetAdapter};
-use project::config::{Layout, ProjectConfig};
+use project::config::Layout;
 use project::journal::{self, EventKind};
 use project::name::SliceName;
 use project::plan::Plan;
@@ -119,12 +119,11 @@ pub async fn build(
 }
 
 /// Bracket [`finalize`] with the workspace lifecycle: gate on the
-/// slice's refinement manifest, freeze the current product snapshot
-/// as the wave base (RFC-91 D6), persist + open the one-member wave,
-/// prepare a writable private workspace from that base, run the
-/// dispatch + finalize tail against it, and discard the workspace on
-/// every exit (best-effort — captured snapshots survive by digest and
-/// a leaked directory is GC territory, never a build failure).
+/// slice's refinement manifest, select the wave base (accepted CID or
+/// `plan.yaml.targets[].cid`; in-place fixture plans may still freeze
+/// an unbound seed), persist + open the one-member wave, prepare a
+/// writable private workspace from that base, run the dispatch +
+/// finalize tail against it, and discard the workspace on every exit.
 async fn in_workspace(
     seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
@@ -136,13 +135,29 @@ async fn in_workspace(
              `emery plan refine` before building"
         ),
     })?;
-    let base = seam.freeze().await.map_err(|err| Error::Diag {
-        code: "target-base-freeze-failed",
-        detail: format!(
-            "freezing the product tree as the wave base for slice `{slice}` failed: {err}"
-        ),
-    })?;
-    let wave_digest = open_wave(layout, now, slice, &base, &refinement)?;
+    project::plan::epoch::require_for_claim(layout, slice)?;
+    let plan = Plan::load(&layout.plan_path())?;
+    let entry =
+        plan.entries.iter().find(|e| e.name.as_str() == slice).ok_or_else(|| Error::Diag {
+            code: "target-wave-entry-missing",
+            detail: format!(
+                "slice `{slice}` has no plan.yaml entry; cannot open a target wave without \
+                 depends-on / membership"
+            ),
+        })?;
+    let events = journal::read_union(layout)?;
+    let seed = project::wave::wave_base(layout, &events, &plan, &entry.target)?;
+    let base = if layout.is_detached() || !seed.is_unbound() {
+        seed
+    } else {
+        seam.freeze().await.map_err(|err| Error::Diag {
+            code: "target-base-freeze-failed",
+            detail: format!(
+                "freezing the product tree as the wave base for slice `{slice}` failed: {err}"
+            ),
+        })?
+    };
+    let wave_digest = open_wave(layout, now, slice, &entry.target, &base, &refinement)?;
     let workspace =
         seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;
     let outcome =
@@ -157,10 +172,9 @@ async fn in_workspace(
 /// Open the one-member target wave for this build (RFC-86 D9),
 /// binding the wave-open base and the member's refinement digest.
 fn open_wave(
-    layout: Layout<'_>, now: Timestamp, slice: &str, base: &project::snapshot::SnapshotId,
-    refinement: &project::snapshot::SnapshotId,
+    layout: Layout<'_>, now: Timestamp, slice: &str, target: &str,
+    base: &project::snapshot::SnapshotId, refinement: &project::snapshot::SnapshotId,
 ) -> Result<project::snapshot::SnapshotId, Error> {
-    let config = ProjectConfig::load(layout.project_dir())?;
     let plan = Plan::load(&layout.plan_path())?;
     let entry =
         plan.entries.iter().find(|e| e.name.as_str() == slice).ok_or_else(|| Error::Diag {
@@ -171,7 +185,7 @@ fn open_wave(
             ),
         })?;
     let wave = Wave::one_member(
-        config.name,
+        target,
         base.clone(),
         SliceName::from(slice),
         refinement.clone(),
@@ -227,7 +241,8 @@ async fn finalize(
 ) -> Result<BuildOutcome, Error> {
     let context = build_context(layout, slice)?;
     let id = target_id(adapter);
-    let config = ProjectConfig::load(layout.project_dir())?;
+    let plan = Plan::load(&layout.plan_path())?;
+    let change = plan.name.to_string();
 
     let attempt = attempt::allocate(slice_dir)?;
     attempt::copy_request(&attempt, slice_dir)?;
@@ -262,7 +277,7 @@ async fn finalize(
         stamp: Stamp {
             target_adapter: &adapter.name,
             slice,
-            change: Some(&config.name),
+            change: Some(&change),
         },
         grants: &adapter.writable_artifacts,
         deferred: &request.deferred,
@@ -316,7 +331,7 @@ fn restage_input(input: Input, slice_prefix: &str, stage_prefix: &str) -> Input 
 
 /// Assemble the build request from the declared inputs and persist it
 /// atomically to
-/// `.emery/slices/<slice>/build/request.yaml` — the native prepare
+/// `.emery/change/slices/<slice>/build/request.yaml` — the native prepare
 /// leg verbatim, minus the shell hooks.
 fn write_request(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
@@ -417,10 +432,11 @@ fn build_context(layout: Layout<'_>, slice: &str) -> Result<BuildContext, Error>
     };
     let mut sources = Vec::new();
     for binding in &entry.sources {
-        if let Some(bound) = plan.sources.get(&binding.source)
-            && !sources.contains(&bound.adapter)
-        {
-            sources.push(bound.adapter.clone());
+        if let Some(bound) = plan.sources.get(&binding.source) {
+            let name = bound.adapter.name.clone();
+            if !sources.contains(&name) {
+                sources.push(name);
+            }
         }
     }
     Ok(BuildContext { sources })

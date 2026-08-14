@@ -7,12 +7,15 @@ use diagnostics::Diagnostic;
 use error::Error;
 use omnia_guest::Model;
 use omnia_guest::model::{Reply, Request};
+use project::adapter::catalog::Catalog as Adapters;
 use project::adapter::{
-    AdapterSelector, Axis, FIRST_PARTY_NAMESPACE, Origin, ResolvedSource, ResolvedTarget, Resolver,
+    AdapterSelector, Axis, FIRST_PARTY_NAMESPACE, Inventory, Origin, ResolvedSource,
+    ResolvedTarget, Resolver,
 };
 use project::handler::ExecutionPaths;
+use project::profile::{self, Profiles};
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
-use project::seam::{self, Evidence, Input, Lead, Source, Target, Workspace};
+use project::seam::{self, Evidence, Input, Source, SourceInput, SurveyResult, Target, Workspace};
 use project::snapshot::{CodePatch, SnapshotId};
 use project::workspace::{self as workspace_kernel, Access, Store};
 
@@ -49,6 +52,8 @@ pub struct Provider {
     paths: ExecutionPaths,
     model: DynModel,
     catalog: Catalog,
+    inventory: Option<std::sync::Arc<Adapters>>,
+    profiles: Option<std::sync::Arc<profile::Table>>,
     references: References,
 }
 
@@ -81,8 +86,24 @@ impl Provider {
             paths,
             model,
             catalog,
+            inventory: None,
+            profiles: None,
             references,
         }
+    }
+
+    /// Replace the compiled first-party inventory.
+    #[must_use]
+    pub fn with_inventory(mut self, inventory: Adapters) -> Self {
+        self.inventory = Some(std::sync::Arc::new(inventory));
+        self
+    }
+
+    /// Replace the compiled model-capability profile table.
+    #[must_use]
+    pub fn with_profiles(mut self, profiles: profile::Table) -> Self {
+        self.profiles = Some(std::sync::Arc::new(profiles));
+        self
     }
 
     /// The native adapter catalog.
@@ -133,8 +154,26 @@ impl Provider {
             adapter_id: id,
             project_root: self.paths.project_root(),
             mcp_url: url,
-            lend: self.paths.project_root().display().to_string(),
-            source_key: None,
+            lend: Some(self.paths.project_root().display().to_string()),
+        }
+    }
+
+    fn source_ctx<'a>(
+        id: &'a str, url: Option<String>, input: &'a aseam::SourceInput,
+    ) -> Context<'a> {
+        match &input.content {
+            aseam::SourceContent::Workspace(view) => Context {
+                adapter_id: id,
+                project_root: std::path::Path::new(&view.root),
+                mcp_url: url,
+                lend: Some(view.root.clone()),
+            },
+            aseam::SourceContent::Value(_) => Context {
+                adapter_id: id,
+                project_root: std::path::Path::new(""),
+                mcp_url: url,
+                lend: None,
+            },
         }
     }
 
@@ -167,16 +206,9 @@ impl Provider {
                 }
                 let entry = self.catalog.get(axis, name)?;
                 let linked = entry_version(&entry)?;
-                // Unpublished adapters carry the `0.0.0` development
-                // placeholder; they remain bare-only identities for
-                // pin matching.
-                if linked == PLACEHOLDER {
-                    return Err(not_linked(format!(
-                        "adapter `{selector}` (axis `{axis}`): the linked `{name}` carries the \
-                         development placeholder version {PLACEHOLDER} and matches only a bare \
-                         reference"
-                    )));
-                }
+                // Detached topology records every binding as an exact
+                // pin, including native mock identities compiled at
+                // `0.0.0`. Match the compiled version exactly.
                 if linked == *version {
                     Ok(entry)
                 } else {
@@ -229,6 +261,22 @@ impl Resolver for Provider {
     }
 }
 
+impl Inventory for Provider {
+    fn inventory(&self) -> &Adapters {
+        static FIRST: std::sync::LazyLock<Adapters> =
+            std::sync::LazyLock::new(Adapters::first_party);
+        self.inventory.as_deref().unwrap_or(&FIRST)
+    }
+}
+
+impl Profiles for Provider {
+    fn profiles(&self) -> &profile::Table {
+        static FIRST: std::sync::LazyLock<profile::Table> =
+            std::sync::LazyLock::new(profile::Table::compiled);
+        self.profiles.as_deref().unwrap_or(&FIRST)
+    }
+}
+
 impl Model for Provider {
     async fn create(&self, request: Request) -> Result<Reply, omnia_guest::model::Error> {
         self.model.create(request).await
@@ -236,27 +284,19 @@ impl Model for Provider {
 }
 
 impl Source for Provider {
-    async fn survey(
-        &self, id: String, key: String, input: seam::SourceInput,
-    ) -> Result<Vec<Lead>, seam::Error> {
+    async fn survey(&self, id: String, input: SourceInput) -> Result<SurveyResult, seam::Error> {
         let input = convert::narrow_source_input(input);
-        let ctx = self.ctx(&id, self.mcp_url(&id).await?).keyed(key, &input);
-        let leads =
+        let ctx = Self::source_ctx(&id, self.mcp_url(&id).await?, &input);
+        let result =
             self.catalog.survey(&self.model, &ctx, &id, &input).await.map_err(convert::error)?;
-        Ok(leads.into_iter().map(convert::lead).collect())
+        Ok(convert::survey_result(result))
     }
 
-    async fn extract(
-        &self, id: String, key: String, input: seam::SourceInput, lead: Lead,
-    ) -> Result<Evidence, seam::Error> {
+    async fn extract(&self, id: String, input: SourceInput) -> Result<Evidence, seam::Error> {
         let input = convert::narrow_source_input(input);
-        let ctx = self.ctx(&id, self.mcp_url(&id).await?).keyed(key, &input);
-        let lead = convert::narrow_lead(lead);
-        let evidence = self
-            .catalog
-            .extract(&self.model, &ctx, &id, &input, &lead)
-            .await
-            .map_err(convert::error)?;
+        let ctx = Self::source_ctx(&id, self.mcp_url(&id).await?, &input);
+        let evidence =
+            self.catalog.extract(&self.model, &ctx, &id, &input).await.map_err(convert::error)?;
         Ok(convert::evidence(evidence))
     }
 }
@@ -350,8 +390,14 @@ impl Target for Provider {
 
 impl seam::Workspaces for Provider {
     /// Freeze the project root's product tree (the kernel excludes
-    /// `.git` and `.emery`) into the local snapshot store.
+    /// `.git` and a nested `.emery/change/` home) into the local
+    /// snapshot store.
     async fn freeze(&self) -> Result<SnapshotId, seam::Error> {
+        if self.paths.is_detached() {
+            return Err(seam::Error::InvalidRequest(
+                "target-base-freeze-detached: detached change home is not a product tree".into(),
+            ));
+        }
         self.store()
             .snapshot(self.paths.project_root())
             .await
@@ -395,13 +441,6 @@ impl seam::Workspaces for Provider {
             .map_err(|err| workspace_failure(&err))
     }
 
-    async fn apply(&self, patch: CodePatch) -> Result<(), seam::Error> {
-        self.store()
-            .apply(&patch, self.paths.project_root())
-            .await
-            .map_err(|err| workspace_failure(&err))
-    }
-
     async fn sweep(
         &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
     ) -> Result<usize, seam::Error> {
@@ -409,14 +448,40 @@ impl seam::Workspaces for Provider {
     }
 }
 
+impl seam::Ingest for Provider {
+    async fn fetch(
+        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
+    ) -> Result<seam::Fetched, seam::Error> {
+        let store = self.store();
+        let scratch = self.workspaces_root().join("ingest");
+        std::fs::create_dir_all(&scratch).map_err(|source| {
+            seam::Error::Io(format!("create ingest scratch {}: {source}", scratch.display()))
+        })?;
+        let policy = project::binding::Policy::standard();
+        let mut meter = project::binding::Meter::new();
+        let mut cache = project::binding::Cache::new();
+        let mut session = project::binding::Session {
+            store: &store,
+            scratch: &scratch,
+            change_root: self.paths.change_root(),
+            cache: &mut cache,
+            policy: &policy,
+            meter: &mut meter,
+        };
+        project::binding::fetch_locator(&mut session, &locator, recorded.as_ref(), prior.as_deref())
+            .await
+            .map_err(|err| seam::Error::Internal(err.to_string()))
+    }
+}
+
 /// Origin fetch runs in-process (RFC-104): host `git` / HTTPS
 /// through the native kernel, trees minted beneath the workspaces
 /// root and reported as host paths.
 impl seam::Origins for Provider {
-    async fn fetch(&self, locator: String) -> Result<seam::Fetched, seam::Error> {
+    async fn fetch(&self, locator: String) -> Result<seam::OriginFetched, seam::Error> {
         let fetched =
             project::origins::fetch(self.workspaces_root(), &locator).map_err(origin_failure)?;
-        Ok(seam::Fetched {
+        Ok(seam::OriginFetched {
             root: fetched.dir.display().to_string(),
             revision: fetched.revision,
         })
@@ -462,10 +527,6 @@ fn workspace_failure(err: &Error) -> seam::Error {
 fn host_absolute(path: &std::path::Path) -> String {
     std::path::absolute(path).unwrap_or_else(|_io| path.to_path_buf()).display().to_string()
 }
-
-/// The development placeholder version unpublished adapters compile
-/// with; placeholder identities match only bare references.
-const PLACEHOLDER: semver::Version = semver::Version::new(0, 0, 0);
 
 /// The exact compiled version a catalog entry resolves as.
 fn entry_version(entry: &Entry) -> Result<semver::Version, Error> {

@@ -19,7 +19,7 @@ use crate::orchestrate;
 pub struct ExtractInput {
     /// Source key from `plan.yaml.sources.<key>`.
     pub source: String,
-    /// Lead id from `discovery.md`.
+    /// Lead id from `leads.md`.
     pub lead: String,
     /// Slice the Evidence is extracted into.
     pub slice: String,
@@ -40,6 +40,7 @@ impl<P: Anchor + Source + Resolver + Workspaces> Operation<P> for Extract {
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
         let outcome = orchestrate::extract(
+            context.provider,
             context.provider,
             context.provider,
             &cx.paths,

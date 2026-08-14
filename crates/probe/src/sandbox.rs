@@ -65,5 +65,10 @@ pub fn replace(root: &Path) -> Result<PathBuf> {
 ///
 /// Returns a missing or unparseable plan.
 pub fn read_plan(root: &Path) -> Result<Plan> {
-    Plan::load(&Layout::new(root).plan_path()).context("loading plan.yaml")
+    let layout = if root.join(".emery").join("project.yaml").is_file() {
+        Layout::new(root)
+    } else {
+        Layout::detached(root)
+    };
+    Plan::load(&layout.plan_path()).context("loading plan.yaml")
 }

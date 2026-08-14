@@ -11,19 +11,7 @@ use error::Error;
 use super::exec::{ExecBits, FsExecBits};
 use super::manifest::{Entry, Manifest};
 use super::objects::{FsObjects, Objects};
-use crate::snapshot::{CodePatch, SnapshotId};
-
-/// Path components excluded from every snapshot walk: version-control
-/// state and the Emery change tree are never product code (RFC-87 D4).
-/// Kernel excludes win over any `.gitignore` negation (RFC-105 D1).
-pub const IGNORED: [&str; 2] = [".git", ".emery"];
-
-/// Root-level names excluded from every snapshot walk: the plan
-/// artifacts living at the repo root (`change.md` + `plan.yaml` and
-/// the authored `discovery.md`) are change-tree state, not product
-/// code — capturing them would let the interim apply rewind live plan
-/// state.
-pub const IGNORED_ROOT: [&str; 3] = ["change.md", "discovery.md", "plan.yaml"];
+use crate::snapshot::{self, SnapshotId};
 
 /// The snapshot store: tree walks and manifests in the kernel, object
 /// bytes behind [`Objects`], exec bits behind [`ExecBits`].
@@ -66,9 +54,9 @@ impl<O: Objects> Store<O> {
     }
 
     /// Snapshot the complete tree at `dir` into the store and return
-    /// its identity. Membership is kernel excludes (`.git`, `.emery`,
-    /// the root plan files) plus the tree's own `.gitignore` rules
-    /// (RFC-105); empty directories are not tracked.
+    /// its identity. Ignored paths (`.git`, `.emery/change`) plus the
+    /// tree's own `.gitignore` rules are excluded; empty directories
+    /// are not tracked.
     ///
     /// # Errors
     ///
@@ -137,33 +125,6 @@ impl<O: Objects> Store<O> {
             modes.record(path, entry);
         }
         self.exec.apply(dest, &modes.exec, &modes.plain)
-    }
-
-    /// Apply `patch` to the tree at `dir`: rewrite each touched path
-    /// from the result snapshot, deleting touched paths the result no
-    /// longer carries.
-    ///
-    /// Only the patch's touched paths are written — everything else in
-    /// `dir` (including paths the engine's own deterministic merge just
-    /// folded) is left untouched.
-    ///
-    /// # Errors
-    ///
-    /// `snapshot-missing` for an unknown result identity, filesystem
-    /// failures.
-    pub async fn apply(&self, patch: &CodePatch, dir: &Path) -> Result<(), Error> {
-        let target = self.manifest(&patch.result).await?;
-        let mut modes = ModeSets::default();
-        for path in &patch.touched {
-            if let Some(entry) = target.entries.get(path) {
-                self.write_entry(dir, path, entry).await?;
-                modes.record(path, entry);
-            } else {
-                remove_entry(&dir.join(path))?;
-                prune_empty_parents(dir, path);
-            }
-        }
-        self.exec.apply(dir, &modes.exec, &modes.plain)
     }
 
     /// Write one manifest entry beneath `root`, replacing whatever is
@@ -322,11 +283,11 @@ impl<O: Objects> Store<O> {
                 if name.contains('\n') {
                     return Err(unsupported(&prefix, name));
                 }
-                if IGNORED.contains(&name) || (prefix.is_empty() && IGNORED_ROOT.contains(&name)) {
-                    continue;
-                }
                 let rel =
                     if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
+                if snapshot::ignored(&rel) {
+                    continue;
+                }
                 let path = entry.path();
                 if own_root.is_some() && std::path::absolute(&path).ok().as_deref() == own_root {
                     continue;
@@ -399,18 +360,6 @@ fn remove_entry(path: &Path) -> Result<(), Error> {
         Ok(_) => std::fs::remove_file(path),
     };
     removed.map_err(Error::Io)
-}
-
-/// Best-effort removal of directories left empty by a deletion, walking
-/// `path`'s parents up to (never including) `root`.
-fn prune_empty_parents(root: &Path, path: &str) {
-    let mut parent = Path::new(path).parent();
-    while let Some(rel) = parent {
-        if rel.as_os_str().is_empty() || std::fs::remove_dir(root.join(rel)).is_err() {
-            return;
-        }
-        parent = rel.parent();
-    }
 }
 
 fn hash_path(path: &Path) -> Result<String, Error> {

@@ -4,7 +4,8 @@ use adapter::answers::{EVIDENCE_ANSWER_SCHEMA, LEADS_ANSWER_SCHEMA, evidence_tai
 use adapter::registry::Doc;
 use adapter::seam::{
     BuildContext, Context, Error, Evidence, Input, Lead, MergePhase, PhaseFinding, PhaseReport,
-    PhaseSource, RepairOrigin, Report, SourceInput, SourceMetadata, TargetMetadata, Workspace,
+    PhaseSource, RepairOrigin, Report, SourceInput, SourceMetadata, SurveyResult, TargetMetadata,
+    Workspace,
 };
 use adapter::{AdapterIdentity, Model, Source, Target, references, repaired};
 use omnia_testkit::model::Harness;
@@ -32,7 +33,7 @@ impl Source for Probe {
 
     async fn survey<P: Model>(
         model: &P, ctx: &Context<'_>, _input: &SourceInput,
-    ) -> Result<Vec<Lead>, Error> {
+    ) -> Result<SurveyResult, Error> {
         repaired(
             model,
             ctx,
@@ -46,13 +47,14 @@ impl Source for Probe {
     }
 
     async fn extract<P: Model>(
-        model: &P, ctx: &Context<'_>, _input: &SourceInput, lead: &Lead,
+        model: &P, ctx: &Context<'_>, input: &SourceInput,
     ) -> Result<Evidence, Error> {
+        let prompt = input.focus.as_ref().map_or(String::new(), Lead::render);
         repaired(
             model,
             ctx,
             "SYSTEM".to_string(),
-            lead.render(),
+            prompt,
             "evidence",
             EVIDENCE_ANSWER_SCHEMA,
             evidence_tail,
@@ -126,22 +128,23 @@ fn ctx() -> Context<'static> {
         adapter_id: "source:probe",
         project_root: std::path::Path::new("."),
         mcp_url: None,
-        lend: ".".to_string(),
-        source_key: None,
+        lend: Some(".".to_string()),
     }
 }
 
-async fn survey_of<A: Source, M: Model>(model: &M, ctx: &Context<'_>) -> Result<Vec<Lead>, Error> {
-    A::survey(model, ctx, &SourceInput::Workspace(".".to_string())).await
+async fn survey_of<A: Source, M: Model>(
+    model: &M, ctx: &Context<'_>,
+) -> Result<SurveyResult, Error> {
+    A::survey(model, ctx, &SourceInput::value("main", "")).await
 }
 
 #[tokio::test]
 async fn source_dispatch() {
     let model = Harness::answering([r#"{"leads":[{"lead":"one","synopsis":"the lead"}]}"#]);
 
-    let leads = survey_of::<Probe, _>(&model, &ctx()).await.expect("scripted survey succeeds");
-    assert_eq!(leads.len(), 1);
-    assert_eq!(leads[0].lead, "one");
+    let result = survey_of::<Probe, _>(&model, &ctx()).await.expect("scripted survey succeeds");
+    assert_eq!(result.leads.len(), 1);
+    assert_eq!(result.leads[0].lead, "one");
 
     assert_eq!(<Probe as Source>::IDENTITY.name, "probe");
     assert_eq!(<Probe as Source>::IDENTITY.version, "0.0.0");
@@ -182,8 +185,7 @@ async fn guidance_failure() {
         adapter_id: "target:probe-fail-guidance",
         project_root: std::path::Path::new("."),
         mcp_url: None,
-        lend: ".".to_string(),
-        source_key: None,
+        lend: Some(".".to_string()),
     };
     let err = Probe::guidance(&model, &failing).await.expect_err("guidance fails");
     assert!(matches!(err, Error::Internal(detail) if detail.contains("probe-fail-guidance")));

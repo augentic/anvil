@@ -32,6 +32,7 @@ pub fn doc(path: &str) -> &'static str {
 /// `synthesize.md` body, in citation order.
 const SYNTHESIS_SECTIONS: &[&str] = &[
     "synthesis/substeps.md",
+    "synthesis/boundary.md",
     "synthesis/requirement-block.md",
     "synthesis/authority.md",
     "synthesis/claim-reconciliation.md",

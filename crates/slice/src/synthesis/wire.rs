@@ -7,6 +7,8 @@ use std::path::Path;
 
 use error::Result;
 use project::identity::{Decision, Surface};
+use project::plan::FocusParent;
+use project::profile::Assessment;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
@@ -17,26 +19,31 @@ use crate::synthesis::baseline::BaselineIndex;
 /// v2: `sources[]` entries carry a project-relative `evidence-path`
 /// instead of inlined `claims[]` — the agent reads each Evidence
 /// document from the lent tree.
-const SYNTHESIS_VERSION: u32 = 2;
+/// v3: typed `proceed | boundary-escalation` outcome plus a closed
+/// complexity assessment, scored against the bound target's profile.
+pub const SYNTHESIS_VERSION: u32 = 3;
 
 /// Synthesis response envelope kind.
 ///
-/// Serialises to the literal `"response"`. Mirrors
-/// `project::plan::propose`'s
-/// `ProposalKind`, but synthesis has only the response kind — there is
-/// no request wire.
+/// Serialises to `proceed` or `boundary-escalation`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum SynthesisKind {
-    /// The agent's synthesis result.
-    Response,
+    /// Promote the synthesized bundle and continue refinement.
+    Proceed,
+    /// Evidence supports separately acceptable child boundaries; do
+    /// not promote artifacts.
+    BoundaryEscalation,
 }
 
-/// `kind: response` envelope — the agent's synthesis result.
+/// Typed `proceed | boundary-escalation` envelope — the agent's
+/// synthesis result.
 ///
 /// The DTO is shape-only and the source of the generated
 /// judgment-answer schema; the projection kernel re-derives every
-/// kernel-owned field after the parse.
+/// kernel-owned field after the parse. `proceed` requires `model` and
+/// `artifacts`; `boundary-escalation` requires `affected` and
+/// `rationale`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SynthesisResponse {
@@ -46,13 +53,22 @@ pub struct SynthesisResponse {
     pub kind: SynthesisKind,
     /// Slice name (kebab-case).
     pub slice: String,
-    /// The agent's structured model — the kernel-owned and header
-    /// fields are optional in [`SliceModel`], so the agent's
-    /// kernel-omitted model deserialises cleanly.
-    pub model: SliceModel,
-    /// Prose-only Markdown artifacts (no `ID:` / `Sources:` / `Status:`
-    /// lines — the render step injects those).
-    pub artifacts: SynthesisArtifacts,
+    /// Closed five-dimension complexity assessment.
+    pub assessment: Assessment,
+    /// The agent's structured model — required on [`SynthesisKind::Proceed`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<SliceModel>,
+    /// Prose-only Markdown artifacts — required on [`SynthesisKind::Proceed`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artifacts: Option<SynthesisArtifacts>,
+    /// Terminal `(source, lead)` pairs — required on
+    /// [`SynthesisKind::BoundaryEscalation`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub affected: Vec<FocusParent>,
+    /// Why the Evidence supports a split — required on
+    /// [`SynthesisKind::BoundaryEscalation`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rationale: Option<String>,
 }
 
 /// The prose-only Markdown artifacts under a [`SynthesisResponse`].
@@ -193,7 +209,7 @@ pub struct DependencyContext {
     /// Predecessor refinement digest (`sha256:…`).
     pub refinement: String,
     /// Project-relative readable artifact root
-    /// (`.emery/slices/<predecessor>/`).
+    /// (`.emery/change/slices/<predecessor>/`).
     pub artifacts_root: String,
 }
 
@@ -243,7 +259,7 @@ pub struct SourceInput {
     /// The source's discovery lead id (from `evidence/<source>.yaml`).
     pub lead: String,
     /// Project-relative path to the source's Evidence document
-    /// (`.emery/slices/<slice>/evidence/<source>.yaml`), resolvable in
+    /// (`.emery/change/slices/<slice>/evidence/<source>.yaml`), resolvable in
     /// the lent tree the agent works in.
     pub evidence_path: String,
 }

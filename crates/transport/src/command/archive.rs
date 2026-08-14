@@ -3,8 +3,10 @@
 
 use clap::Args;
 
+use super::change_dir::ChangeDir;
+
 /// Arguments for `archive prune`.
-#[derive(Clone, Copy, Debug, Args)]
+#[derive(Clone, Debug, Args)]
 pub struct PruneArgs {
     /// Keep at most this many most-recent archived slices.
     #[arg(long)]
@@ -15,4 +17,6 @@ pub struct PruneArgs {
     /// Report what would be pruned without removing anything.
     #[arg(long)]
     pub dry_run: bool,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }

@@ -8,7 +8,6 @@ mod support;
 
 use std::fs;
 
-use change::plan;
 use mock::invoke::run;
 use mock::session::Session;
 use serde_json::json;
@@ -18,9 +17,16 @@ use serde_json::json;
 /// kernel resolves documentation over behaviour.
 fn session_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "session-policy",
+        "assessment": {
+            "behavioural-breadth": 1,
+            "coupling": 1,
+            "uncertainty": 1,
+            "context-volume": 1,
+            "verification-surface": 1
+        },
         "model": {
             "requirements": [{
                 "title": "sessions expire after inactivity",
@@ -53,9 +59,16 @@ fn session_synthesis_answer() -> String {
 /// unanchored requirement (zero claims) the kernel marks `[unknown]`.
 fn reset_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "password-reset",
+        "assessment": {
+            "behavioural-breadth": 1,
+            "coupling": 1,
+            "uncertainty": 1,
+            "context-volume": 1,
+            "verification-surface": 1
+        },
         "model": {
             "requirements": [{
                 "title": "password reset behaviour",
@@ -78,34 +91,24 @@ fn reset_synthesis_answer() -> String {
     .expect("synthesis serialises")
 }
 
-async fn author(session: &Session) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: support::adversarial_bindings(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author walks to pending");
+fn author(session: &Session) {
+    support::write_adversarial_plan(session.root());
 }
 
 // A documentation-vs-behaviour disagreement resolves as a divergence
 // with the docs claim winning.
 #[tokio::test]
 async fn divergence_docs_wins() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), session_synthesis_answer()],
-    );
-    author(&session).await;
+    let session = Session::scripted("mock", vec![session_synthesis_answer()]);
+    author(&session);
 
     let refined = support::refine(&session, "session-policy")
         .await
         .expect("refine synthesises the divergent slice");
-    assert_eq!(refined.slice, "session-policy");
+    let slice::orchestrate::RefineOutcome::Refined { slice, .. } = refined else {
+        panic!("expected proceed, got {refined:?}");
+    };
+    assert_eq!(slice, "session-policy");
 
     // The synthesis prompt is path-first: each source row carries the
     // project-relative `evidence-path` into the lent tree, and no
@@ -113,11 +116,15 @@ async fn divergence_docs_wins() {
     let requests = session.model().requests();
     let prompt = &requests.last().expect("synthesis request recorded").messages[0].content;
     assert!(
-        prompt.contains("\"evidence-path\": \".emery/slices/session-policy/evidence/docs.yaml\""),
+        prompt.contains(
+            "\"evidence-path\": \".emery/change/slices/session-policy/evidence/docs.yaml\""
+        ),
         "{prompt}"
     );
     assert!(
-        prompt.contains("\"evidence-path\": \".emery/slices/session-policy/evidence/code.yaml\""),
+        prompt.contains(
+            "\"evidence-path\": \".emery/change/slices/session-policy/evidence/code.yaml\""
+        ),
         "{prompt}"
     );
     assert!(!prompt.contains("\"claims\""), "claims must not be inlined: {prompt}");
@@ -146,7 +153,7 @@ async fn divergence_docs_wins() {
 
     // The written spec carries the inline `[divergence]` tag.
     let spec = fs::read_to_string(
-        session.root().join(".emery/slices/session-policy/specs/session/spec.md"),
+        session.root().join(".emery/change/slices/session-policy/specs/session/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[divergence]"), "{spec}");
@@ -192,14 +199,8 @@ fn synthesis_with_decision() -> String {
 // *different* answer from the script.
 #[tokio::test]
 async fn decisions_exact_set() {
-    let session = Session::scripted(
-        "mock",
-        vec![
-            mock::answers::adversarial_grouping(),
-            synthesis_with_decision(),
-            session_synthesis_answer(),
-        ],
-    );
+    let session =
+        Session::scripted("mock", vec![synthesis_with_decision(), session_synthesis_answer()]);
     let root = session.root().to_path_buf();
 
     // A baseline Decision Record the slice can legally supersede — and
@@ -214,7 +215,7 @@ async fn decisions_exact_set() {
     )
     .expect("write baseline decision");
 
-    author(&session).await;
+    author(&session);
 
     support::refine(&session, "session-policy")
         .await
@@ -222,7 +223,7 @@ async fn decisions_exact_set() {
 
     // The sidecar carries only slice-authored fields; the engine stamps
     // `id` / `slice` / `date` at merge.
-    let sidecar = root.join(".emery/slices/session-policy/decisions/session-ttl-source.md");
+    let sidecar = root.join(".emery/change/slices/session-policy/decisions/session-ttl-source.md");
     let record = fs::read_to_string(&sidecar).expect("decision sidecar written");
     assert!(record.contains("slug: session-ttl-source"), "{record}");
     assert!(record.contains("status: accepted"), "{record}");
@@ -233,7 +234,7 @@ async fn decisions_exact_set() {
 
     // Re-refine with a decision-free response: the exact-set
     // replacement clears both the generated record and any stray file.
-    let slice_dir = root.join(".emery/slices/session-policy");
+    let slice_dir = root.join(".emery/change/slices/session-policy");
     fs::write(slice_dir.join("decisions/stale.md"), "stale").expect("plant stray file");
     support::refine(&session, "session-policy").await.expect("re-refine replaces the decision set");
 
@@ -248,11 +249,8 @@ async fn decisions_exact_set() {
 
 #[tokio::test]
 async fn evidence_gap_projects() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), reset_synthesis_answer()],
-    );
-    author(&session).await;
+    let session = Session::scripted("mock", vec![reset_synthesis_answer()]);
+    author(&session);
 
     support::refine(&session, "password-reset").await.expect("refine synthesises the gapped slice");
 
@@ -269,7 +267,7 @@ async fn evidence_gap_projects() {
     assert!(requirement.claims.is_empty(), "{requirement:?}");
 
     let spec = fs::read_to_string(
-        session.root().join(".emery/slices/password-reset/specs/password-reset/spec.md"),
+        session.root().join(".emery/change/slices/password-reset/specs/password-reset/spec.md"),
     )
     .expect("slice spec written");
     assert!(spec.contains("[unknown]"), "{spec}");

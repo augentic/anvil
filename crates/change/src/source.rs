@@ -21,6 +21,9 @@ pub struct SurveyInput {
     /// Plan name guard; when set, must match `plan.yaml.name`.
     #[serde(default)]
     pub plan: Option<String>,
+    /// Parent lead to survey for stable child leads.
+    #[serde(default)]
+    pub focus: Option<String>,
 }
 
 /// `emery source survey <source>` → the internal survey orchestration.
@@ -39,10 +42,12 @@ impl<P: Anchor + Source + Resolver + Workspaces> Operation<P> for Survey {
         let outcome = orchestrate::survey(
             context.provider,
             context.provider,
+            context.provider,
             &cx.paths,
             cx.now(),
             &input.source,
             input.plan.as_deref(),
+            input.focus.as_deref(),
         )
         .await?;
         Ok(SurveyBody {
@@ -61,7 +66,7 @@ pub struct SurveyBody {
     pub source: String,
     /// The bound adapter that answered.
     pub adapter: String,
-    /// Lead ids merged into `discovery.md`.
+    /// Lead ids merged into `leads.md`.
     pub leads: Vec<String>,
 }
 

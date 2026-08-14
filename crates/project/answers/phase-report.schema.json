@@ -30,7 +30,7 @@
         },
         {
           "const": "decisions",
-          "description": "Decision Records (`.emery/slices/<slice>/decisions/<slug>.md`,\npromoted to `.emery/decisions/DEC-NNNN-<slug>.md`).",
+          "description": "Decision Records (`.emery/change/slices/<slice>/decisions/<slug>.md`,\npromoted to `.emery/decisions/DEC-NNNN-<slug>.md`).",
           "type": "string"
         },
         {
@@ -55,7 +55,7 @@
         },
         {
           "const": "plan",
-          "description": "Plan or workflow artifact (`plan.yaml`, `discovery.md`).",
+          "description": "Plan or workflow artifact (`plan.yaml`, `leads.md`).",
           "type": "string"
         },
         {

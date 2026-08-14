@@ -259,7 +259,7 @@ Tasks are implemented by the active target adapter's `build` operation (`targets
 
 ## Decision Records (design "why")
 
-A slice may author zero or more **Decision Records** at `.emery/slices/<name>/decisions/<slug>.md` -- the durable *why* behind a design choice plus the alternatives it rejected. Each record is a YAML front-matter header (the author writes only `slug` and `status: accepted | rejected`) followed by a [Nygard-shaped](https://github.com/joelparkerhenderson/architecture-decision-record) body:
+A slice may author zero or more **Decision Records** at `.emery/change/slices/<name>/decisions/<slug>.md` -- the durable *why* behind a design choice plus the alternatives it rejected. Each record is a YAML front-matter header (the author writes only `slug` and `status: accepted | rejected`) followed by a [Nygard-shaped](https://github.com/joelparkerhenderson/architecture-decision-record) body:
 
 ````markdown
 ---

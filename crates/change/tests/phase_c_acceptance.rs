@@ -16,9 +16,7 @@ use std::collections::BTreeMap;
 use std::fs;
 
 use change::orchestrate::enforce_before_build;
-use change::plan::handlers::{
-    Author, AuthorInput, Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput,
-};
+use change::plan::handlers::{Execute, ExecuteInput, Gaps, GapsInput, Status, StatusInput};
 use change::{LoopStep, Plan};
 use diagnostics::digest::sha256_hex;
 use jiff::Timestamp;
@@ -32,9 +30,7 @@ use project::journal::{
 use support::plan_with_changes;
 
 fn leaf(name: &str) -> change::Entry {
-    let mut entry = support::change(name);
-    entry.project = None;
-    entry
+    support::change(name)
 }
 
 fn write_plan(root: &std::path::Path, plan: &Plan) {
@@ -46,7 +42,7 @@ fn write_refined(root: &std::path::Path, slice: &str, model: &str) {
 }
 
 fn write_refined_meta(root: &std::path::Path, slice: &str, model: &str, dropped: bool) {
-    let dir = root.join(".emery/slices").join(slice);
+    let dir = root.join(".emery/change/slices").join(slice);
     fs::create_dir_all(dir.join("specs")).expect("slice/specs");
     fs::write(dir.join("model.yaml"), model).expect("model.yaml");
     let mut meta = String::from(
@@ -77,7 +73,7 @@ async fn init_mock(session: &Session) {
 }
 
 fn suite_answers() -> Vec<String> {
-    vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
+    vec![mock::answers::greeting_synthesis()]
 }
 
 fn started_event(root: &std::path::Path) -> Event {
@@ -273,17 +269,7 @@ async fn coverage_wire_shape_stale() {
     let root = session.root().to_path_buf();
     init_mock(&session).await;
 
-    run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
 
     // The refinement drain writes the manifest coverage stamps.
     support::refine_plan(&session).await;
@@ -337,7 +323,7 @@ async fn coverage_wire_shape_stale() {
     stamp_epoch(session2.root(), &live_plan_digest(session2.root()), refinements);
     // A hand edit changes the manifest's byte identity out from under
     // the covering epoch.
-    let manifest_path = session2.root().join(".emery/slices/a/refinement.yaml");
+    let manifest_path = session2.root().join(".emery/change/slices/a/refinement.yaml");
     let mut manifest = fs::read_to_string(&manifest_path).expect("manifest");
     manifest.push_str("# drift\n");
     fs::write(&manifest_path, manifest).expect("drift");
@@ -360,36 +346,15 @@ async fn coverage_wire_shape_stale() {
 async fn post_author_resume_names() {
     let session = Session::bare(suite_answers());
     init_mock(&session).await;
-
-    let authored = run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
 
     assert!(
-        authored.hint.contains("emery plan refine"),
-        "author hint must name plan refine: {}",
-        authored.hint
+        !session.root().join(".emery/change/slices/greeting/model.yaml").exists(),
+        "fixture plan is topology-only"
     );
     assert!(
-        !authored.hint.contains("plan approve"),
-        "hint must not invent plan approve: {}",
-        authored.hint
-    );
-    assert!(
-        !session.root().join(".emery/slices/greeting/model.yaml").exists(),
-        "author stays topology-only"
-    );
-    assert!(
-        !session.root().join(".emery/slices/greeting/refinement.yaml").exists(),
-        "author writes no refinement manifest"
+        !session.root().join(".emery/change/slices/greeting/refinement.yaml").exists(),
+        "fixture plan writes no refinement manifest"
     );
 
     let status = run::<Status, _, _>(session.provider(), StatusInput {}).await.expect("status");
@@ -414,17 +379,7 @@ async fn wave_opened_build_execute() {
     let root = session.root().to_path_buf();
     init_mock(&session).await;
 
-    run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
     support::refine_plan(&session).await;
 
     // Happy wave ordering under execute (build → merge only).
@@ -444,23 +399,13 @@ async fn wave_opened_build_execute() {
     assert!(opened < built, "wave opens before build: {kinds:?}");
     assert!(built < committed, "commit after build: {kinds:?}");
     assert!(kinds.iter().any(|k| k == "target.merge.wave-succeeded"), "{kinds:?}");
-    assert!(!root.join(".emery/slices/greeting/build/patch.yaml").exists());
+    assert!(!root.join(".emery/change/slices/greeting/build/patch.yaml").exists());
 
     // Fresh tree: postflight failure after wave-committed is non-rollback.
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     init_mock(&session).await;
-    run::<Author, _, _>(
-        session.provider(),
-        AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
     support::refine_plan(&session).await;
     fs::write(root.join(behaviour::POSTFLIGHT_FAIL), "").expect("marker");
 
@@ -474,6 +419,11 @@ async fn wave_opened_build_execute() {
     assert!(kinds.iter().any(|k| k == "target.merge.wave-committed"), "{kinds:?}");
     assert!(kinds.iter().any(|k| k == "target.merge.wave-postflight-failed"), "{kinds:?}");
     assert!(!kinds.iter().any(|k| k == "target.merge.wave-succeeded"), "{kinds:?}");
-    assert!(root.join(".emery/specs/greeting/spec.md").is_file(), "merge stands");
-    assert!(!root.join(".emery/slices/greeting").exists(), "slice archived");
+    assert!(!root.join(".emery/specs/greeting/spec.md").exists(), "checkout untouched");
+    let accepted = session.materialize_accepted("default").await;
+    assert!(
+        accepted.path().join(".emery/specs/greeting/spec.md").is_file(),
+        "merge stands on the accepted CID"
+    );
+    assert!(!root.join(".emery/change/slices/greeting").exists(), "slice archived");
 }

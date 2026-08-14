@@ -11,17 +11,18 @@ use diagnostics::{Artifact, Confidence, Diagnostic, DiagnosticKind, DiagnosticSo
 use error::Error;
 use project::adapter::metadata::{Metadata, Request};
 use project::adapter::{
-    AdapterSelector, ArtifactDeclaration, Axis, BuildInputDeclaration, PlatformsCapability,
-    ResolvedSource, ResolvedTarget, Resolver, WritableArtifactKind,
+    AdapterSelector, ArtifactDeclaration, Axis, BuildInputDeclaration, Inventory,
+    PlatformsCapability, ResolvedSource, ResolvedTarget, Resolver, WritableArtifactKind,
 };
 use project::handler::{Anchor, ExecutionPaths, GUEST_WORKSPACES_MOUNT, PROJECT_ROOT_ENV};
+use project::profile::Profiles;
 use project::seam::wire::{
     BuildOutput, BuildReport, BuildStatus, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource,
     PhaseWrite, RepairOrigin, UiSurface, build_finding,
 };
 use project::seam::{
-    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Source, SourceInput,
-    Target, Workspace,
+    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Source, SourceContent,
+    SourceInput, SourceWorkspace, SurveyResult, Target, Workspace,
 };
 use project::snapshot::{CodePatch, SnapshotId};
 
@@ -37,6 +38,10 @@ pub struct Provider;
 /// grants as the carried locations — no environment reads and no
 /// project-id keying in-guest.
 static PATHS: LazyLock<ExecutionPaths> = LazyLock::new(ExecutionPaths::guest);
+static INVENTORY: LazyLock<project::adapter::catalog::Catalog> =
+    LazyLock::new(project::adapter::catalog::Catalog::first_party);
+static PROFILES: LazyLock<project::profile::Table> =
+    LazyLock::new(project::profile::Table::compiled);
 
 impl omnia_guest::Model for Provider {}
 
@@ -72,29 +77,36 @@ impl Resolver for Provider {
     }
 }
 
+impl Inventory for Provider {
+    fn inventory(&self) -> &project::adapter::catalog::Catalog {
+        &INVENTORY
+    }
+}
+
+impl Profiles for Provider {
+    fn profiles(&self) -> &project::profile::Table {
+        &PROFILES
+    }
+}
+
 impl Source for Provider {
     fn survey(
-        &self, id: String, key: String, input: SourceInput,
-    ) -> impl Future<Output = Result<Vec<Lead>, seam::Error>> + Send {
+        &self, id: String, input: SourceInput,
+    ) -> impl Future<Output = Result<SurveyResult, seam::Error>> + Send {
         async move {
-            let leads =
-                source::survey(id, key, wire_source_input(input)).await.map_err(map_error)?;
-            Ok(leads.into_iter().map(map_lead).collect())
+            let result = source::survey(id, map_source_input(input)).await.map_err(map_error)?;
+            Ok(SurveyResult {
+                leads: result.leads.into_iter().map(map_lead).collect(),
+                children: result.children.into_iter().map(map_lead).collect(),
+            })
         }
     }
 
     fn extract(
-        &self, id: String, key: String, input: SourceInput, lead: Lead,
+        &self, id: String, input: SourceInput,
     ) -> impl Future<Output = Result<Evidence, seam::Error>> + Send {
         async move {
-            let wire = source::Lead {
-                lead: lead.lead,
-                synopsis: lead.synopsis,
-                topics: lead.topics,
-            };
-            let evidence = source::extract(id, key, wire_source_input(input), wire)
-                .await
-                .map_err(map_error)?;
+            let evidence = source::extract(id, map_source_input(input)).await.map_err(map_error)?;
             Ok(Evidence {
                 authority: map_authority(evidence.authority),
                 claims: evidence.claims.into_iter().map(map_claim).collect(),
@@ -183,8 +195,16 @@ impl Target for Provider {
 /// workspaces preopens, objects through `wasi:blobstore` (Omnia's
 /// `BlobStore` capability), exec bits through `emery:exec-bits`.
 impl seam::Workspaces for Provider {
+    /// Freeze the project root's product tree (the kernel excludes
+    /// `.git` and a nested `.emery/change/` home).
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
         async move {
+            if PATHS.is_detached() {
+                return Err(seam::Error::InvalidRequest(
+                    "target-base-freeze-detached: detached change home is not a product tree"
+                        .into(),
+                ));
+            }
             let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
             store.snapshot(PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
         }
@@ -239,13 +259,6 @@ impl seam::Workspaces for Provider {
         }
     }
 
-    fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), seam::Error>> + Send {
-        async move {
-            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
-            store.apply(&patch, PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
-        }
-    }
-
     fn sweep(
         &self, dead: Vec<SnapshotId>, live: Vec<SnapshotId>,
     ) -> impl Future<Output = Result<usize, seam::Error>> + Send {
@@ -256,16 +269,50 @@ impl seam::Workspaces for Provider {
     }
 }
 
+impl seam::Ingest for Provider {
+    fn fetch(
+        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
+    ) -> impl Future<Output = Result<seam::Fetched, seam::Error>> + Send {
+        async move {
+            use crate::bindings::emery::ingest::ingest;
+            let fetched = ingest::fetch(locator, recorded.as_ref().map(ToString::to_string), prior)
+                .await
+                .map_err(ingest_error)?;
+            let cid = SnapshotId::parse(&fetched.cid).map_err(|err| {
+                seam::Error::InvalidRequest(format!("host ingest returned a malformed cid: {err}"))
+            })?;
+            Ok(seam::Fetched {
+                locator: fetched.locator,
+                cid,
+                root: fetched.root,
+                warning: fetched.warning,
+            })
+        }
+    }
+}
+
+fn ingest_error(err: crate::bindings::emery::ingest::types::Error) -> seam::Error {
+    match err {
+        crate::bindings::emery::ingest::types::Error::InvalidRequest(detail) => {
+            seam::Error::InvalidRequest(detail)
+        }
+        crate::bindings::emery::ingest::types::Error::Io(detail) => seam::Error::Io(detail),
+        crate::bindings::emery::ingest::types::Error::Internal(detail) => {
+            seam::Error::Internal(detail)
+        }
+    }
+}
+
 /// Origin fetch is host-implemented (`emery:origins`): the engine
 /// guest has no network or git, so the host materializes the locator
 /// beneath the workspaces mount and the guest snapshots it.
 impl seam::Origins for Provider {
     fn fetch(
         &self, locator: String,
-    ) -> impl Future<Output = Result<seam::Fetched, seam::Error>> + Send {
+    ) -> impl Future<Output = Result<seam::OriginFetched, seam::Error>> + Send {
         async move {
             let fetched = origins::fetch(locator).await.map_err(origin_failure)?;
-            Ok(seam::Fetched {
+            Ok(seam::OriginFetched {
                 root: fetched.root,
                 revision: fetched.revision,
             })
@@ -380,18 +427,32 @@ fn map_error(error: types::Error) -> seam::Error {
     }
 }
 
-fn wire_source_input(input: SourceInput) -> source::SourceInput {
-    match input {
-        SourceInput::Workspace(root) => source::SourceInput::Workspace(root),
-        SourceInput::Inline(content) => source::SourceInput::Inline(content),
-    }
-}
-
 fn map_lead(lead: source::Lead) -> Lead {
     Lead {
         lead: lead.lead,
         synopsis: lead.synopsis,
         topics: lead.topics,
+        parent: lead.parent,
+        focus: lead.focus,
+    }
+}
+
+fn map_source_input(input: SourceInput) -> source::Input {
+    source::Input {
+        key: input.key,
+        content: match input.content {
+            SourceContent::Workspace(SourceWorkspace { id, root }) => {
+                source::Content::Workspace(source::Workspace { id, root })
+            }
+            SourceContent::Value(value) => source::Content::Value(value),
+        },
+        focus: input.focus.map(|lead| source::Lead {
+            lead: lead.lead,
+            synopsis: lead.synopsis,
+            topics: lead.topics,
+            parent: lead.parent,
+            focus: lead.focus,
+        }),
     }
 }
 

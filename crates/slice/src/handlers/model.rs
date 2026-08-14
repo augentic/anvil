@@ -64,9 +64,9 @@ impl<P: Anchor> Operation<P> for ModelShow {
 impl Render for SliceModel {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         let slice = self.slice.as_deref().unwrap_or("<unnamed>");
-        let project = self.project.as_deref().unwrap_or("<none>");
+        let target = self.target.as_deref().unwrap_or("<none>");
         let version = self.version.map_or_else(|| "<none>".to_string(), |v| v.to_string());
-        writeln!(w, "slice: {slice}  project: {project}  version: {version}")?;
+        writeln!(w, "slice: {slice}  target: {target}  version: {version}")?;
 
         writeln!(w, "requirements ({}):", self.requirements.len())?;
         for req in &self.requirements {

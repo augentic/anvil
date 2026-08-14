@@ -8,12 +8,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use artifacts::atomic::bytes_write;
-use artifacts::discovery::{Lead as DiscoveryLead, validate_leads};
+use artifacts::leads::{Lead as CatalogLead, validate_leads};
 use error::Error;
 use omnia_guest::Model;
 use project::adapter::{AdapterSelector, Resolver};
 use project::handler::ExecutionPaths;
-use project::seam::{Origins, Source, SourceInput, Workspaces, source_id};
+use project::seam::{
+    Origins, Source, SourceContent, SourceInput, SourceWorkspace, Workspaces, source_id,
+};
 use project::snapshot::SnapshotId;
 
 use crate::coverage::{self, Coverage, Row, RowPatch, SurveyError, SurveyErrorKind};
@@ -348,8 +350,15 @@ async fn survey_source(
         })?;
 
     let id = source_id(&adapter);
-    let input = SourceInput::Workspace(observed.workspace.root.clone());
-    let raw = seam.survey(id.clone(), row.key.clone(), input.clone()).await;
+    let input = SourceInput {
+        key: row.key.clone(),
+        content: SourceContent::Workspace(SourceWorkspace {
+            id: observed.workspace.id.clone(),
+            root: observed.workspace.root.clone(),
+        }),
+        focus: None,
+    };
+    let raw = seam.survey(id.clone(), input.clone()).await;
     let raw = match raw {
         Ok(raw) => raw,
         Err(err) => {
@@ -363,13 +372,16 @@ async fn survey_source(
 
     // The lead grammar gate mirrors the live survey path: an invalid
     // lead set never reaches extract or the evidence tree.
-    let stamped: Vec<DiscoveryLead> = raw
+    let stamped: Vec<CatalogLead> = raw
+        .leads
         .iter()
-        .map(|lead| DiscoveryLead {
+        .map(|lead| CatalogLead {
             lead: lead.lead.clone(),
             source: row.key.clone(),
             synopsis: lead.synopsis.clone(),
             topics: lead.topics.clone(),
+            parent: lead.parent.clone(),
+            focus: lead.focus.clone(),
         })
         .collect();
     if let Err(err) = validate_leads(&stamped) {
@@ -385,7 +397,7 @@ async fn survey_source(
         workspace: observed.workspace.id,
         cid: observed.cid,
         revision: observed.revision,
-        leads: raw,
+        leads: raw.leads,
     })
 }
 
@@ -397,7 +409,14 @@ async fn extract_source(
     let mut documents = Vec::with_capacity(source.leads.len());
     for lead in &source.leads {
         let evidence = seam
-            .extract(source.id.clone(), source.key.clone(), source.input.clone(), lead.clone())
+            .extract(
+                source.id.clone(),
+                SourceInput {
+                    key: source.key.clone(),
+                    content: source.input.content.clone(),
+                    focus: Some(lead.clone()),
+                },
+            )
             .await
             .map_err(|err| SurveyError {
                 kind: SurveyErrorKind::Adapter,

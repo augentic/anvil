@@ -11,39 +11,6 @@ use mock::invoke::run;
 use mock::session::Session;
 use serde_json::json;
 
-/// A grouping response over `(slice, source)` pairs; every source
-/// surveys the minimal profile's single `greeting` lead.
-fn grouping(slices: &[(&str, &str)]) -> String {
-    let rows: Vec<serde_json::Value> = slices
-        .iter()
-        .map(|(name, source)| {
-            json!({
-                "name": name,
-                "sources": [{ "source": source, "lead": "greeting" }],
-                "rationale": format!("The {source} source's lead."),
-            })
-        })
-        .collect();
-    let inventory: Vec<String> = slices
-        .iter()
-        .map(|(_, source)| format!("| {source} | mock | \"The greeting service.\" |"))
-        .collect();
-    serde_json::to_string(&json!({
-        "version": 1,
-        "kind": "response",
-        "slices": rows,
-        "gate": {
-            "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nSlices.",
-            "discovery-summary": format!("Sources: {}. Leads: {}.", slices.len(), slices.len()),
-            "discovery-source-inventory": format!(
-                "| key | adapter | binding |\n|---|---|---|\n{}",
-                inventory.join("\n")
-            ),
-        }
-    }))
-    .expect("grouping serialises")
-}
-
 /// The greeting synthesis answer re-slotted for `slice`, claim
 /// anchored on `source`; each slice owns its own spec domain so the
 /// leaves merge into disjoint baselines.
@@ -62,39 +29,20 @@ fn synthesis_for(slice: &str, source: &str) -> String {
     serde_json::to_string(&answer).expect("answer serialises")
 }
 
-/// One `value` binding per source key onto the minimal mock profile.
-fn bindings(keys: &[&str]) -> Vec<plan::wire::SourceAssign> {
-    keys.iter()
-        .map(|key| {
-            serde_json::from_value(json!({
-                "key": key,
-                "adapter": "mock",
-                "value": "The greeting service.",
-            }))
-            .expect("mock binding parses")
-        })
-        .collect()
-}
-
-async fn author(session: &Session, sources: Vec<plan::wire::SourceAssign>) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources,
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author exits for review");
+fn chain_plan(root: &std::path::Path, slices: &[(&str, &str)]) {
+    let sources: Vec<(&str, &str, &str)> =
+        slices.iter().map(|(_, source)| (*source, "mock", "The greeting service.")).collect();
+    let entries: Vec<(&str, &str, &str)> =
+        slices.iter().map(|(name, source)| (*name, *source, "greeting")).collect();
+    support::write_plan_fixture(root, "demo", &sources, &entries);
 }
 
 async fn depend(session: &Session, slice: &str, on: &str) {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: slice.to_string(),
+            name: Some(slice.to_string()),
+            proposal: None,
             depends_on: Some(vec![on.to_string()]),
             sources: None,
             add_source: Vec::new(),
@@ -138,7 +86,6 @@ async fn chain_drains() {
     let session = Session::scripted(
         "mock",
         vec![
-            grouping(&[("alpha", "main"), ("beta", "aux"), ("gamma", "ter")]),
             synthesis_for("alpha", "main"),
             synthesis_for("beta", "aux"),
             synthesis_for("gamma", "ter"),
@@ -146,7 +93,7 @@ async fn chain_drains() {
     );
     let root = session.root().to_path_buf();
 
-    author(&session, bindings(&["main", "aux", "ter"])).await;
+    chain_plan(&root, &[("alpha", "main"), ("beta", "aux"), ("gamma", "ter")]);
     depend(&session, "beta", "alpha").await;
     depend(&session, "gamma", "beta").await;
 
@@ -181,27 +128,50 @@ async fn chain_drains() {
         ]
     );
     session.model().assert_exhausted();
+
+    // Dependent waves open against the prior accepted CID, not a fresh freeze.
+    let layout = project::config::Layout::new(&root);
+    let events = project::journal::read_union(layout).expect("union");
+    let commits: Vec<_> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            project::journal::EventKind::TargetMergeWaveCommitted {
+                base,
+                result,
+                members,
+                ..
+            } => Some((members.clone(), base.clone(), result.clone())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(commits.len(), 3, "one commit per leaf: {commits:?}");
+    assert_eq!(
+        commits[0].0.iter().map(project::name::SliceName::as_str).collect::<Vec<_>>(),
+        ["alpha"]
+    );
+    assert_eq!(
+        commits[1].0.iter().map(project::name::SliceName::as_str).collect::<Vec<_>>(),
+        ["beta"]
+    );
+    assert_eq!(commits[1].1, commits[0].2, "beta's wave opened against alpha's accepted result");
+    assert_eq!(commits[2].1, commits[1].2, "gamma's wave opened against beta's accepted result");
 }
 
 // (AC7) Execute re-entry after a plan-local merge: alpha merges and
-// archives (moving the baseline), execute stops on beta's failed
-// build, and the re-run assembles fresh coverage — alpha is done and
-// excluded, and beta's manifest is still fresh because the live
-// baseline matches the journaled post-merge digest (D4). Without the
-// plan-local carve-out the re-run would fail `plan-refinement-required`.
+// archives, execute stops on beta's failed build, and the re-run
+// assembles fresh coverage — alpha is done and excluded, and beta's
+// manifest is still fresh because checkout `.emery/specs/` no longer
+// moves on merge (recorded refine pins still match live). Without
+// that, the re-run would fail `plan-refinement-required`.
 #[tokio::test]
 async fn merge_stop_reentry() {
     let session = Session::scripted(
         "mock",
-        vec![
-            grouping(&[("alpha", "main"), ("beta", "aux")]),
-            synthesis_for("alpha", "main"),
-            synthesis_for("beta", "aux"),
-        ],
+        vec![synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],
     );
     let root = session.root().to_path_buf();
 
-    author(&session, bindings(&["main", "aux"])).await;
+    chain_plan(&root, &[("alpha", "main"), ("beta", "aux")]);
     support::refine_plan(&session).await;
     let beta_digest = support::manifest_digest(&root, "beta");
 
@@ -211,7 +181,7 @@ async fn merge_stop_reentry() {
     let stopped = execute(&session).await.expect_err("preflight failure stops").to_string();
     assert!(stopped.contains("plan-execute-stopped"), "{stopped}");
     assert!(stopped.contains("merge-conflict"), "{stopped}");
-    assert!(root.join(".emery/slices/alpha").is_dir(), "alpha not merged yet");
+    assert!(root.join(".emery/change/slices/alpha").is_dir(), "alpha not merged yet");
 
     // Run 2: alpha merges and archives (the baseline moves), then
     // beta's build fails on the marker — the stop leaves beta unbuilt
@@ -220,7 +190,7 @@ async fn merge_stop_reentry() {
     support::marker(&root, mock::behaviour::FAIL_BUILD_MARKER);
     let stopped = execute(&session).await.expect_err("build failure stops").to_string();
     assert!(stopped.contains("build-failed"), "{stopped}");
-    assert!(!root.join(".emery/slices/alpha").exists(), "alpha merged and archived");
+    assert!(!root.join(".emery/change/slices/alpha").exists(), "alpha merged and archived");
 
     // Run 3: fresh coverage over the moved baseline — alpha is done
     // and excluded, beta's untouched manifest still projects fresh —
@@ -247,7 +217,6 @@ async fn dependent_rerefine() {
     let session = Session::scripted(
         "mock",
         vec![
-            grouping(&[("alpha", "main"), ("beta", "aux")]),
             synthesis_for("alpha", "main"),
             synthesis_for("beta", "aux"),
             synthesis_for("beta", "aux"),
@@ -255,7 +224,7 @@ async fn dependent_rerefine() {
     );
     let root = session.root().to_path_buf();
 
-    author(&session, bindings(&["main", "aux"])).await;
+    chain_plan(&root, &[("alpha", "main"), ("beta", "aux")]);
     depend(&session, "beta", "alpha").await;
     support::refine_plan(&session).await;
     let alpha_digest = support::manifest_digest(&root, "alpha");
@@ -271,14 +240,15 @@ async fn dependent_rerefine() {
     let stopped = execute(&session).await.expect_err("beta build fails").to_string();
     assert!(stopped.contains("build-failed"), "{stopped}");
     std::fs::remove_file(root.join(mock::behaviour::FAIL_BUILD_MARKER)).expect("rm marker");
-    assert!(!root.join(".emery/slices/alpha").exists(), "alpha merged and archived");
+    assert!(!root.join(".emery/change/slices/alpha").exists(), "alpha merged and archived");
 
     // Amend the dependent post-merge: the entry projection drifts and
     // the manifest goes stale.
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "beta".to_string(),
+            name: Some("beta".to_string()),
+            proposal: None,
             depends_on: None,
             sources: None,
             add_source: Vec::new(),

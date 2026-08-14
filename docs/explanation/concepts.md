@@ -119,10 +119,10 @@ Refinement generates four documents in dependency order. Each one answers a diff
 
 | Artifact      | Question it answers                                                                | Location                            |
 | ------------- | ---------------------------------------------------------------------------------- | ----------------------------------- |
-| `proposal.md` | *Why* does this slice exist? What is in scope?                                     | `.emery/slices/<name>/proposal.md` |
-| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.emery/slices/<name>/specs/<domain>/spec.md` |
-| `design.md`   | *How* will the behaviour be implemented?                                            | `.emery/slices/<name>/design.md`   |
-| `tasks.md`    | In what *sequence* should it be built?                                              | `.emery/slices/<name>/tasks.md`    |
+| `proposal.md` | *Why* does this slice exist? What is in scope?                                     | `.emery/change/slices/<name>/proposal.md` |
+| `spec.md`     | *What* must the system do? (behavioural requirements with `ID:`/`Sources:`/`Status:`) | `.emery/change/slices/<name>/specs/<domain>/spec.md` |
+| `design.md`   | *How* will the behaviour be implemented?                                            | `.emery/change/slices/<name>/design.md`   |
+| `tasks.md`    | In what *sequence* should it be built?                                              | `.emery/change/slices/<name>/tasks.md`    |
 
 Synthesis is owned by **core**, not by adapters. Source adapters supply `Evidence`; target adapters supply a `guidance` prompt that core synthesis reads as idiom guidance. The four canonical artifacts are written by core in a fixed substep order (`proposal → specs → design → tasks`).
 
@@ -134,7 +134,7 @@ Future slices read from the baseline. When you describe a new piece of work, ref
 
 ## Slice vs change
 
-A **slice** is one trip through the refine → build → merge rhythm. It lives at `.emery/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
+A **slice** is one trip through the refine → build → merge rhythm. It lives at `.emery/change/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
 
 A **change** is the operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. The change owns the dependency order; each slice still goes through the same per-slice loop. `change` is on-disk vocabulary, not a slash-command namespace; every change is driven through `/emery:plan`, `emery plan refine`, `emery plan execute`, `/emery:finalize`.
 
@@ -152,7 +152,7 @@ You pick the target at scaffolding time (`/emery:init <target>`). You bind sourc
 
 ## Evidence, provenance, authority
 
-When refinement runs, each bound source produces an `Evidence` document at `.emery/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)) and a list of `claims:` with structured kinds.
+When refinement runs, each bound source produces an `Evidence` document at `.emery/change/slices/<name>/evidence/<source>.yaml`. Each `Evidence` carries `authority:` (closed enum `intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)) and a list of `claims:` with structured kinds.
 
 Core synthesis reconciles `Evidence[]` into the slice's per-domain `specs/<domain>/spec.md` (the full leads → evidence → `model.yaml` → spec trail is walked in [From sources to slices](reconciliation.md)). Every requirement header carries:
 

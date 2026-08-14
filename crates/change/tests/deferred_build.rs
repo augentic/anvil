@@ -20,7 +20,7 @@ use project::seam::wire::BuildRequest;
 /// The minimal profile whose refine mints one `[unknown]` row
 /// (`greeting/REQ-001`).
 fn unknown_session() -> Session {
-    Session::bare(vec![mock::answers::greeting_grouping(), mock::answers::greeting_unknown_synth()])
+    Session::bare(vec![mock::answers::greeting_unknown_synth()])
 }
 
 async fn scaffold(session: &Session) {
@@ -34,17 +34,7 @@ async fn scaffold(session: &Session) {
     )
     .await
     .expect("init");
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
 }
 
 /// Cover `greeting/REQ-001` with a pre-existing durable deferral fact

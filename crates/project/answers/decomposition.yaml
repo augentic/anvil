@@ -1,0 +1,38 @@
+version: 1
+leads-digest: sha256:abababababababababababababababababababababababababababababababab
+model-capability-profiles:
+  orders:
+    id: frontier-large-v1
+    digest: sha256:38d14cc3887f3e02a1b6805856f2aef707d0550544e609bbc4b3d18616ab7398
+    version: 1
+    weights:
+      behavioural-breadth: 3
+      coupling: 4
+      uncertainty: 2
+      context-volume: 1
+      verification-surface: 3
+    thresholds:
+      slice-split: 80
+      task: 35
+root: root
+nodes:
+  orders-api:
+    parent: root
+    sources:
+    - source: code
+      lead: orders-api
+    target: orders
+    ownership:
+    - src/orders/**
+    kind: leaf
+    slice: orders-api
+    acceptance: acceptance
+  root:
+    children:
+    - orders-api
+    sources:
+    - source: code
+      lead: orders-api
+    targets:
+    - orders
+    kind: split

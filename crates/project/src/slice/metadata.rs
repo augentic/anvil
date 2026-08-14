@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::adapter::TargetOperation;
 use crate::slice::OutcomeKind;
 
-/// Basename of the slice working directory under `.emery/`.
+/// Basename of the slice working directory under the change home.
 pub const SLICES_DIR_NAME: &str = "slices";
 
 /// On-disk representation of `<slice_dir>/metadata.yaml`.
@@ -68,7 +68,7 @@ pub struct SliceMetadata {
     /// Audit stamp written by the merge commit tail (stamps `Success`
     /// before the archive move). Nothing reads it back — progress is
     /// projected from journal facts and slice artifacts (RFC-86 D2 /
-    /// D11). History lives in `.emery/events/<writer>.jsonl`
+    /// D11). History lives in `.emery/change/events/<writer>.jsonl`
     /// (workflow §Observability).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome: Option<Outcome>,

@@ -26,7 +26,7 @@ fn model() -> DynModel {
 fn project() -> (TempDir, PathBuf) {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path().canonicalize().expect("canonical tempdir");
-    for sub in [".emery/slices", ".emery/specs"] {
+    for sub in [".emery/change/slices", ".emery/specs"] {
         fs::create_dir_all(root.join(sub)).expect("mkdir");
     }
     fs::write(root.join(".emery/project.yaml"), "name: demo\nadapter: mock\nrules: {}\n")
@@ -44,9 +44,9 @@ fn argv(args: &[&str]) -> Vec<String> {
 async fn executes_a_verb() {
     let (_tmp, root) = project();
     let paths = paths(&root);
-    fs::create_dir_all(root.join(".emery/events")).expect("events dir");
+    fs::create_dir_all(root.join(".emery/change/events")).expect("events dir");
     fs::write(
-        root.join(".emery/events/local.jsonl"),
+        root.join(".emery/change/events/local.jsonl"),
         "{\"timestamp\":\"2026-01-01T00:00:00Z\",\"writer\":\"local\",\"sequence\":1,\
          \"event\":\"slice.build.started\",\"payload\":{\"slice-name\":\"demo\"}}\n",
     )

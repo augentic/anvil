@@ -1,153 +1,15 @@
-//! Wire DTOs and payload parsers shared by `plan add`, `plan author`,
-//! and `plan amend` on both transports. The clap-only argv grammars
-//! (`--source` / `--sources` string forms) live in the transport crate.
+//! Wire DTOs and payload parsers shared by `plan add` and `plan amend`
+//! on both transports. The clap-only argv grammars (`--sources` /
+//! `--add-source` string forms) live in the transport crate.
 
-use std::collections::BTreeMap;
 use std::str::FromStr;
 
-use artifacts::discovery::{Discovery, DiscoveryResolveError};
 use artifacts::evidence::ClaimKind;
+use artifacts::leads::{Leads, LeadsResolveError};
 use error::{Error, Result};
-use project::adapter::{AdapterSelector, FIRST_PARTY_NAMESPACE};
 use project::config::Layout;
-use project::plan::{Divergence, SliceSourceBinding, SourceBinding};
+use project::plan::{Divergence, SliceSourceBinding};
 use serde::{Deserialize, Serialize};
-
-/// One top-level plan source binding as it crosses the wire.
-///
-/// The key from `plan.yaml.sources.<key>` plus the adapter and its
-/// path- or value-binding; the source-map converter desugars the list
-/// into the structured `plan.yaml.sources` map ([`SourceBinding`]) at
-/// the operation boundary. The `--source` argv grammar parsing into
-/// this type is transport-owned.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct SourceAssign {
-    /// Source key (left of `=`).
-    pub key: String,
-    /// Kebab-case source-adapter name (parsed out of the `<adapter>:…`
-    /// prefix after `=`).
-    pub adapter: String,
-    /// Mutually exclusive with `value`. `Some(path)` for the
-    /// `<adapter>:<path>` form.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub path: Option<String>,
-    /// Mutually exclusive with `path`. `Some(literal)` for the
-    /// `<adapter>:value:<literal>` form.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-}
-
-impl SourceAssign {
-    /// The desugared `plan author --intent <string>` binding —
-    /// byte-identical to parsing `intent=intent:value:<string>`.
-    #[must_use]
-    pub(crate) fn intent(value: String) -> Self {
-        Self {
-            key: "intent".to_string(),
-            adapter: "intent".to_string(),
-            path: None,
-            value: Some(value),
-        }
-    }
-}
-
-/// Desugar the `plan author` raw source surface into the structured
-/// binding map [`project::plan::Plan::init`] expects.
-///
-/// Runs at the operation boundary so every transport shares the
-/// duplicate-key gate and the `--intent` sugar.
-///
-/// `intent` appends the value-bound intent binding before the
-/// duplicate-key gate, so an explicit `--source intent=...` in the
-/// same invocation trips `plan-source-duplicate-key` — the same
-/// refusal two conflicting `--source intent=...` occurrences get.
-///
-/// # Errors
-///
-/// `Error::Diag` with the stable `plan-source-duplicate-key`
-/// discriminant on a duplicate source key, or
-/// `plan-source-adapter-invalid` when the adapter token is neither a
-/// bare name nor a first-party `<name>@<semver>` pin.
-pub(crate) fn source_map(
-    mut sources: Vec<SourceAssign>, intent: Option<String>,
-) -> Result<BTreeMap<String, SourceBinding>> {
-    if let Some(value) = intent {
-        sources.push(SourceAssign::intent(value));
-    }
-    let mut map: BTreeMap<String, SourceBinding> = BTreeMap::new();
-    for SourceAssign {
-        key,
-        adapter,
-        path,
-        value,
-    } in sources
-    {
-        if map.contains_key(&key) {
-            let detail = if key == "intent" {
-                format!(
-                    "duplicate key `{key}` in --source arguments; note `--intent <string>` is \
-                     sugar for `--source intent=intent:value:<string>` — pass one or the other"
-                )
-            } else {
-                format!("duplicate key `{key}` in --source arguments")
-            };
-            return Err(Error::Diag {
-                code: "plan-source-duplicate-key",
-                detail,
-            });
-        }
-        let (adapter, version) = parse_source_adapter(&key, &adapter)?;
-        map.insert(
-            key,
-            SourceBinding {
-                adapter,
-                version,
-                path,
-                value,
-                cid: None,
-            },
-        );
-    }
-    Ok(map)
-}
-
-/// Parse the `<adapter>` half of a source binding: a bare development
-/// name (`typescript`) or a first-party exact pin
-/// (`typescript@1.2.0`, sugar for `emery:typescript@1.2.0`). The pin
-/// lands in the binding's existing `version` field — `SourceBinding`
-/// carries no namespace, so only the implicit `emery` namespace is
-/// representable.
-///
-/// # Errors
-///
-/// `plan-source-adapter-invalid` for component paths and foreign
-/// namespaces; selector parse failures (malformed pins, GitHub URLs)
-/// propagate with their own discriminants.
-fn parse_source_adapter(key: &str, raw: &str) -> Result<(String, Option<semver::Version>)> {
-    match AdapterSelector::parse(raw)? {
-        AdapterSelector::Bare { name } => Ok((name, None)),
-        AdapterSelector::Package {
-            namespace,
-            name,
-            version,
-        } if namespace == FIRST_PARTY_NAMESPACE => Ok((name, Some(version))),
-        AdapterSelector::Package { namespace, .. } => Err(Error::Diag {
-            code: "plan-source-adapter-invalid",
-            detail: format!(
-                "source `{key}` binds adapter `{raw}` in namespace `{namespace}`; source \
-                 bindings accept only bare names or first-party pins (`<name>@<semver>`)"
-            ),
-        }),
-        AdapterSelector::Component { .. } => Err(Error::Diag {
-            code: "plan-source-adapter-invalid",
-            detail: format!(
-                "source `{key}` binds adapter `{raw}`, which is not a source-adapter name; \
-                 source bindings accept only bare names or first-party pins (`<name>@<semver>`)"
-            ),
-        }),
-    }
-}
 
 /// One per-slice source binding as it crosses the wire: the key from
 /// `plan.yaml.sources.<key>` plus an optional lead id. `lead: None` is
@@ -161,7 +23,7 @@ fn parse_source_adapter(key: &str, raw: &str) -> Result<(String, Option<semver::
 pub struct BindingArg {
     /// Source key.
     pub key: String,
-    /// Lead id from `discovery.md`; `None` for the bare shorthand.
+    /// Lead id from `leads.md`; `None` for the bare shorthand.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lead: Option<String>,
 }
@@ -208,26 +70,26 @@ impl FromStr for KindAssign {
 /// when the lead id equals the slice's name (workflow
 /// §`Slice.sources`).
 ///
-/// When `discovery` is `Some(_)`, the supplied lead value must match a
-/// canonical `lead` id in `discovery.md`. With `discovery` `None` (no
-/// `discovery.md` on disk) the supplied value is used verbatim.
+/// When `leads` is `Some(_)`, the supplied lead value must match a
+/// canonical `lead` id in `leads.md`. With `leads` `None` (no
+/// `leads.md` on disk) the supplied value is used verbatim.
 ///
 /// # Errors
 ///
 /// Unknown lead tokens surface as `Error::validation_failed` (exit 2)
-/// with the discriminant `discovery-lead-unknown`.
+/// with the discriminant `leads-lead-unknown`.
 pub(crate) fn bindings_from_args(
-    args: &[BindingArg], slice_name: &str, discovery: Option<&Discovery>,
+    args: &[BindingArg], slice_name: &str, leads: Option<&Leads>,
 ) -> Result<Vec<SliceSourceBinding>> {
-    args.iter().map(|a| binding_from_arg(a, slice_name, discovery)).collect()
+    args.iter().map(|a| binding_from_arg(a, slice_name, leads)).collect()
 }
 
 fn binding_from_arg(
-    arg: &BindingArg, slice_name: &str, discovery: Option<&Discovery>,
+    arg: &BindingArg, slice_name: &str, leads: Option<&Leads>,
 ) -> Result<SliceSourceBinding> {
     let lead = match &arg.lead {
         None => None,
-        Some(value) => Some(resolve_lead_token(value, discovery)?),
+        Some(value) => Some(resolve_lead_token(value, leads)?),
     };
     Ok(match lead {
         None => SliceSourceBinding::bare(arg.key.clone()),
@@ -237,40 +99,39 @@ fn binding_from_arg(
 }
 
 /// Rewrite a `<key>=<lead>` binding's lead token to the canonical
-/// `lead` id discovered in `discovery.md`.
+/// `lead` id in `leads.md`.
 ///
-/// When `discovery` is `None` (no `discovery.md` on disk), the token
+/// When `leads` is `None` (no `leads.md` on disk), the token
 /// round-trips unchanged.
-fn resolve_lead_token(token: &str, discovery: Option<&Discovery>) -> Result<String> {
-    let Some(discovery) = discovery else {
+fn resolve_lead_token(token: &str, leads: Option<&Leads>) -> Result<String> {
+    let Some(leads) = leads else {
         return Ok(token.to_string());
     };
-    match discovery.resolve_lead(token) {
+    match leads.resolve_lead(token) {
         Ok(lead) => Ok(lead.lead.clone()),
-        Err(DiscoveryResolveError::Unknown { token }) => Err(Error::validation_failed(
-            "discovery-lead-unknown",
-            "source bindings (`<key>=<lead>`) must resolve to a lead in discovery.md",
+        Err(LeadsResolveError::Unknown { token }) => Err(Error::validation_failed(
+            "leads-lead-unknown",
+            "source bindings (`<key>=<lead>`) must resolve to a lead in leads.md",
             format!(
-                "no lead in discovery.md has an id matching `{token}`; inspect discovery.md \
+                "no lead in leads.md has an id matching `{token}`; inspect leads.md \
                  directly to review the inventory"
             ),
         )),
     }
 }
 
-/// Best-effort load of `<project_dir>/discovery.md`. Returns
-/// `Ok(None)` when the file is absent so plan scaffolding works
-/// without a `discovery.md`.
+/// Best-effort load of `<change>/leads.md`. Returns `Ok(None)` when
+/// the file is absent so plan scaffolding works without a catalog.
 ///
 /// # Errors
 ///
-/// Propagates `discovery.md` parse and I/O failures.
-pub(crate) fn load_discovery(layout: Layout<'_>) -> Result<Option<Discovery>> {
-    let path = layout.discovery_path();
+/// Propagates `leads.md` parse and I/O failures.
+pub(crate) fn load_leads(layout: Layout<'_>) -> Result<Option<Leads>> {
+    let path = layout.leads_path();
     if !path.exists() {
         return Ok(None);
     }
-    Ok(Some(Discovery::load(&path)?))
+    Ok(Some(Leads::load(&path)?))
 }
 
 /// Parse the `--divergence` flag value.

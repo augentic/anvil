@@ -10,6 +10,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
+use project::profile::Profiles;
 use project::seam::{Source, Target, Workspaces};
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +30,9 @@ pub struct RefineInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Refine;
 
-impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> for Refine {
+impl<P: Anchor + Model + Profiles + Resolver + Source + Target + Workspaces> Operation<P>
+    for Refine
+{
     type Error = project::handler::Error;
     type Input = RefineInput;
     type Output = RefineBody;
@@ -99,7 +102,7 @@ impl Render for RefineBody {
         }
         writeln!(
             w,
-            "refinement complete — review the slice artifacts under .emery/slices/, then run \
+            "refinement complete — review the slice artifacts under .emery/change/slices/, then run \
              emery plan execute"
         )
     }

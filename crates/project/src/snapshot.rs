@@ -1,7 +1,6 @@
-//! Snapshot identity and code-patch vocabulary.
-//!
-//! Facts and build records reference snapshot identities, never
-//! workspace paths; this module is the wasm-safe wire vocabulary only.
+//! Snapshot identity, code-patch vocabulary, and the tree-walk ignore
+//! policy. Facts and build records reference snapshot identities, never
+//! workspace paths; this module is the wasm-safe wire vocabulary.
 
 use std::fmt;
 
@@ -55,6 +54,12 @@ impl SnapshotId {
     pub fn digest(&self) -> &str {
         &self.0[SCHEME.len()..]
     }
+
+    /// Fixture / unbound seed: every digest nibble is `0`.
+    #[must_use]
+    pub fn is_unbound(&self) -> bool {
+        self.digest().bytes().all(|b| b == b'0')
+    }
 }
 
 impl fmt::Display for SnapshotId {
@@ -75,6 +80,27 @@ impl From<SnapshotId> for String {
     fn from(id: SnapshotId) -> Self {
         id.0
     }
+}
+
+/// Whether a walk-relative path is excluded from a snapshot.
+///
+/// `.git` at any depth, and a nested change home (`.emery/change`) at
+/// any depth. Durable `.emery/` state (`project.yaml`, `specs/`,
+/// `decisions/`) is product tree.
+#[must_use]
+pub fn ignored(rel: &str) -> bool {
+    component(rel, ".git") || path(rel, ".emery/change")
+}
+
+fn component(rel: &str, name: &str) -> bool {
+    rel == name || rel.rsplit_once('/').is_some_and(|(_, last)| last == name)
+}
+
+fn path(rel: &str, suffix: &str) -> bool {
+    rel == suffix
+        || (rel.len() > suffix.len()
+            && rel.ends_with(suffix)
+            && rel.as_bytes()[rel.len() - suffix.len() - 1] == b'/')
 }
 
 /// The immutable relation between a base and result snapshot.

@@ -20,8 +20,8 @@ pub struct ProjectionHeader {
     pub version: u32,
     /// Slice name (kebab-case).
     pub slice: String,
-    /// Bound project name, when one is bound.
-    pub project: Option<String>,
+    /// Bound `plan.yaml.targets` key.
+    pub target: Option<String>,
 }
 
 /// Project an agent synthesis response into a persisted [`SliceModel`].
@@ -80,7 +80,7 @@ pub fn project(
 
     model.version = Some(header.version);
     model.slice = Some(header.slice);
-    model.project = header.project;
+    model.target = header.target;
 
     check_cross_refs(&model)?;
     check_unique_ids(&model)?;

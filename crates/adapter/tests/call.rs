@@ -19,8 +19,7 @@ fn ctx<'a>(mcp_url: Option<&str>, root: &'a Path) -> Context<'a> {
         adapter_id: "target:contracts",
         project_root: root,
         mcp_url: mcp_url.map(str::to_owned),
-        lend: ".".to_string(),
-        source_key: None,
+        lend: Some(".".to_string()),
     }
 }
 
@@ -256,8 +255,7 @@ fn pinned_grant_strips() {
         adapter_id: "target:contracts@1.0.0",
         project_root: Path::new("."),
         mcp_url: url,
-        lend: ".".to_string(),
-        source_key: None,
+        lend: Some(".".to_string()),
     };
     let grants = context.grants();
     assert_eq!(grants.len(), 1);
@@ -277,4 +275,16 @@ async fn lending_overrides_lend() {
         .expect("lent leg succeeds");
 
     assert_eq!(model.requests()[0].workspace.as_deref(), Some("/emery-workspaces/ws-1"));
+}
+
+#[tokio::test]
+async fn value_omits_workspace() {
+    let model = Harness::answering([r#"{"done":true}"#]);
+    let context = ctx(None, Path::new(".")).without_lend();
+
+    let _: Answer = judgment(&model, &context, String::new(), "USER".to_string(), "probe", "{}")
+        .await
+        .expect("value leg succeeds");
+
+    assert_eq!(model.requests()[0].workspace, None);
 }

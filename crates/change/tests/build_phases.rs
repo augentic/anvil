@@ -20,16 +20,13 @@ use slice::{BuildStatus, LifecycleStatus};
 
 /// Author + refine the greeting fixture against `target_adapter`.
 async fn ready(target_adapter: &str) -> Session {
-    let session = Session::scripted(
-        target_adapter,
-        vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()],
-    );
+    let session = Session::scripted(target_adapter, vec![mock::answers::greeting_synthesis()]);
     support::greeting_ready(&session).await;
     session
 }
 
 fn slice_dir(session: &Session) -> std::path::PathBuf {
-    session.root().join(".emery/slices/greeting")
+    session.root().join(".emery/change/slices/greeting")
 }
 
 fn operations(events: &[(u32, u32, String, String)]) -> Vec<&str> {
@@ -329,7 +326,7 @@ mod gate_profiles {
         let root = session.root().to_path_buf();
         let dir = slice_dir(&session);
 
-        let err = support::build(&session, "greeting").await.expect_err("gate rejects");
+        let err = Box::pin(support::build(&session, "greeting")).await.expect_err("gate rejects");
         assert_eq!(err.variant_str(), code);
 
         let report = support::canonical_report(&root, "greeting");

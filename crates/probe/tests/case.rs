@@ -87,8 +87,23 @@ mod config {
     #[test]
     fn workflow_requires_input() {
         let err = case::parse("kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\n")
-            .expect_err("a workflow case without intent or sources refuses");
-        assert!(format!("{err:#}").contains("intent"), "{err:#}");
+            .expect_err("a workflow case without definition, intent, or sources refuses");
+        assert!(format!("{err:#}").contains("definition"), "{err:#}");
+    }
+
+    #[test]
+    fn definition_parses() {
+        let case = case::parse(
+            "kind = \"workflow\"\nchange = \"demo\"\nwave = \"deliver\"\ndefinition = \"definition\"\n",
+        )
+        .expect("a definition-home workflow case parses");
+        let Case::Workflow(workflow) = case else {
+            panic!("workflow kind parses to a workflow case");
+        };
+        assert_eq!(workflow.definition.as_deref(), Some(Path::new("definition")));
+        assert_eq!(workflow.wave.as_deref(), Some("deliver"));
+        assert!(workflow.intent.is_none());
+        assert!(workflow.sources.is_empty());
     }
 
     #[test]
@@ -309,13 +324,44 @@ async fn stage_refined_fixture(root: &Path) {
         mock::answers::greeting_synthesis(),
     ]));
     invoke(root, &model, &["init", "mock"]).await;
-    invoke(
-        root,
-        &model,
-        &["plan", "author", "demo", "--source", "main=mock:value:The greeting service."],
-    )
-    .await;
+    seed_greeting_plan(root);
     refine_phase(root, &model, "greeting").await;
+}
+
+// Build-case fixtures still write a plan tree — they do not run
+// `plan author`. Workflow cases drive `--from`/`--wave` instead.
+fn seed_greeting_plan(root: &Path) {
+    use artifacts::leads::{Lead, Leads};
+    use project::adapter::catalog::Pin;
+    use project::config::Layout;
+    use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, TargetBinding};
+    use project::snapshot::SnapshotId;
+
+    let layout = Layout::new(root);
+    fs::create_dir_all(layout.change_root()).expect("change home");
+    let mut plan = Plan::named("demo");
+    plan.targets.insert(
+        "default".into(),
+        TargetBinding::new(
+            Pin::parse("emery:mock@0.0.0").expect("target pin"),
+            ".",
+            SnapshotId::from_digest(&"0".repeat(64)),
+        ),
+    );
+    plan.sources.insert(
+        "main".into(),
+        SourceBinding::intent(
+            Pin::parse("emery:mock@0.0.0").expect("source pin"),
+            "The greeting service.",
+        ),
+    );
+    let mut entry = Entry::named("greeting", "default");
+    entry.sources = vec![SliceSourceBinding::structured("main", "greeting")];
+    plan.entries.push(entry);
+    plan.save(&layout.plan_path()).expect("plan.yaml");
+    Leads::from_leads(vec![Lead::new("greeting", "main", "greeting")])
+        .write_atomic(&layout.leads_path())
+        .expect("leads.md");
 }
 
 fn git(dir: &Path, args: &[&str]) {
@@ -353,7 +399,7 @@ fn stage_case(cases: &Path, id: &str, body: &str) {
 }
 
 fn journal(root: &Path) -> String {
-    let dir = root.join(".emery/events");
+    let dir = root.join(".emery/change/events");
     let Ok(entries) = fs::read_dir(&dir) else {
         return String::new();
     };
@@ -395,22 +441,22 @@ async fn build_case_reaches_built() {
     .expect("the build case passes");
 
     let root = sandbox.join("greeting-build");
-    let metadata = SliceMetadata::load(&root.join(".emery/slices/greeting"))
+    let metadata = SliceMetadata::load(&root.join(".emery/change/slices/greeting"))
         .expect("slice metadata after build");
     assert!(
         metadata.completed_at.is_some(),
         "build stamps completed_at (LifecycleStatus is not authority)"
     );
     assert!(
-        root.join(".emery/slices/greeting/build/report.yaml").is_file(),
+        root.join(".emery/change/slices/greeting/build/report.yaml").is_file(),
         "the authoritative build report is persisted"
     );
     assert!(
-        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
+        project::build_record::BuildRecord::present(&root.join(".emery/change/slices/greeting")),
         "the fact-substrate build record is persisted"
     );
     assert!(
-        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/build/patch.yaml").exists(),
         "patch.yaml is not build-outcome authority"
     );
     assert!(
@@ -424,6 +470,48 @@ async fn build_case_reaches_built() {
     let journal = journal(&root);
     assert!(journal.contains("slice.build.started"), "{journal}");
     assert!(journal.contains("slice.build.succeeded"), "{journal}");
+}
+
+#[tokio::test]
+async fn definition_home_authors() {
+    let tmp = TempDir::new().expect("tempdir");
+    let cases = tmp.path().join("cases");
+    stage_case(
+        &cases,
+        "from-home",
+        "kind = \"workflow\"\nchange = \"demo\"\nwave = \"deliver\"\ndefinition = \"definition\"\n",
+    );
+    let mut spec = mock::definition::Spec::degenerate("The greeting service.");
+    spec.targets[0].locator = "product".into();
+    spec.targets[0].adapter = "emery:mock@0.0.0".into();
+    spec.scopes[0].adapter = "emery:intent@0.0.0".into();
+    mock::definition::mint(&cases.join("from-home/definition"), &spec).expect("mint");
+
+    let sandbox = tmp.path().join("sandbox");
+    case::run(
+        &cases,
+        &sandbox,
+        Some("from-home"),
+        Some(WorkflowUntil::Plan),
+        false,
+        &catalog(),
+        &scripted(mock::answers::greeting_author()),
+    )
+    .await
+    .expect("a definition-home workflow case authors");
+
+    let root = sandbox.join("from-home");
+    assert!(
+        !root.join(".emery/project.yaml").is_file(),
+        "a supplied definition home stays detached"
+    );
+    assert!(
+        root.join("product/.emery/project.yaml").is_file(),
+        "the runner inits the handoff target tree"
+    );
+    let layout = project::config::Layout::detached(&root);
+    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
+    assert!(!plan.entries.is_empty(), "the authored plan carries entries");
 }
 
 #[tokio::test]
@@ -445,7 +533,7 @@ async fn until_plan_leaves_entries() {
         Some(WorkflowUntil::Plan),
         false,
         &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping()]),
+        &scripted(mock::answers::greeting_author()),
     )
     .await
     .expect("the plan-stopped workflow case passes");
@@ -488,7 +576,7 @@ async fn clone_populates_cache() {
         Some(WorkflowUntil::Plan),
         false,
         &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping()]),
+        &scripted(mock::answers::greeting_author()),
     )
     .await
     .expect("the cloning workflow case passes");
@@ -508,7 +596,7 @@ async fn clone_populates_cache() {
         Some(WorkflowUntil::Plan),
         true,
         &catalog(),
-        &scripted(vec![mock::answers::greeting_grouping()]),
+        &scripted(mock::answers::greeting_author()),
     )
     .await
     .expect("a restart runs offline over the cached fixture");
@@ -541,7 +629,7 @@ async fn existing_sandbox_refuses() {
     .expect_err("an existing sandbox refuses before mutation");
     let message = format!("{err:#}");
     assert!(message.contains("--restart"), "{message}");
-    assert!(message.contains("--project-dir"), "{message}");
+    assert!(message.contains("--change-dir"), "{message}");
 }
 
 #[tokio::test]

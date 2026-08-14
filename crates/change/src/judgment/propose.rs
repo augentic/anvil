@@ -16,7 +16,7 @@ use crate::judgment::prose;
 /// requires.
 ///
 /// Carries the plan name and its `plan.yaml.sources` bindings, so the
-/// model can author the `discovery.md` source-inventory rows without
+/// model can author the `change.md` review prose without
 /// widening the pinned [`ProposalRequest`] envelope. Rendered as a
 /// `## Plan context` section appended to the user message.
 #[derive(Debug, Clone, Copy)]
@@ -31,8 +31,8 @@ impl GateContext<'_> {
     fn render(&self) -> String {
         let mut out = format!("## Plan context\n\n- plan: {}\n- sources:\n", self.plan);
         for (key, binding) in self.sources {
-            let bound = match (&binding.path, &binding.value) {
-                (Some(path), _) => format!("path `{path}`"),
+            let bound = match (&binding.locator, &binding.value) {
+                (Some(locator), _) => format!("locator `{locator}`"),
                 (None, Some(value)) => format!("value \"{value}\""),
                 (None, None) => "no binding".to_string(),
             };

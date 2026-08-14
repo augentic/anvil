@@ -13,19 +13,22 @@ The pause between plan authoring and refinement is the topology-review step. `/e
 | Rethink cross-source grouping | Re-run `emery plan author --force` (or `/emery:plan`, which confirms) — replaces a pending plan wholesale |
 | Defer a [lead](../appendices/glossary.md#l) out of this change | `emery plan remove <entry>` |
 | Split or merge entries | `emery plan add` + `emery plan amend` + `emery plan remove` — see the [plan command reference](../reference/cli/plan.md) |
+| Apply a retained amendment | `emery plan amend --proposal <digest>` (journals `plan.amend.applied`) |
 | Divergence stamp, authority override, single-source fix | `emery plan amend <entry>` (the scalpel) |
 
 There is one active `plan.yaml` per project. `emery plan amend` takes **one positional — the entry (slice) name** — not a plan name plus entry name.
 
 ## Step 1 — Read the plan artifacts
 
-Open these files at the project root:
+Open these files under `.emery/change/`:
 
 | File | Check |
 | ---- | ----- |
 | `change.md` | Intent, scope, tentative merge notes |
 | `plan.yaml` | Slice names, targets, source bindings, order |
-| `discovery.md` | Lead inventory matches your expectations |
+| `discovery.yaml` | Reviewed handoff and pinned CIDs |
+| `leads.md` | Lead inventory matches your expectations |
+| `decomposition.yaml` | Conflict-domain hierarchy the projector reads |
 
 ## Step 2 — Amend entries if needed
 
@@ -48,7 +51,10 @@ emery plan amend <entry> --divergence accepted
 # Override authority for a claim kind on this entry
 emery plan amend <entry> --authority-override <kind>=<source>
 
-# Defer an entry's lead(s) without re-surveying discovery.md
+# Apply a retained boundary or ownership proposal
+emery plan amend --proposal <digest>
+
+# Defer an entry's lead(s) without re-surveying leads.md
 emery plan remove <entry>
 ```
 
@@ -73,7 +79,7 @@ emery plan execute
 
 ## Splitting one slice into two
 
-When review shows a slice should split, add a second row with `emery plan add`, narrow the original with `emery plan amend <original> --sources …`, and `emery plan remove <original>` when the original entry is empty.
+When review shows a slice should split, add a second row with `emery plan add <name> --target <key>`, narrow the original with `emery plan amend <original> --sources …`, and `emery plan remove <original>` when the original entry is empty. Hierarchy-shaped edits reproject through `decomposition.yaml`; if that is ambiguous, apply a retained proposal or re-run `emery plan author --force`.
 
 ## See also
 

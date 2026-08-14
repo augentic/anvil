@@ -25,9 +25,7 @@ pub use model::SliceModel;
 pub(crate) use project::seam::wire::BuildRequest;
 pub use project::seam::wire::{BUILD_VERSION, BuildOutput, BuildReport, BuildStatus, UiSurface};
 pub use project::slice::LifecycleStatus;
-pub(crate) use project::slice::{
-    Outcome, OutcomeKind, SLICES_DIR_NAME, SliceMetadata, SpecKind, TouchedSpec,
-};
+pub(crate) use project::slice::{Outcome, OutcomeKind, SliceMetadata, SpecKind, TouchedSpec};
 pub use synthesis::baseline::{BaselineIndex, DomainKind};
 pub(crate) use synthesis::evidence::{read_evidence_index, read_source_inputs};
 pub(crate) use synthesis::persist::{

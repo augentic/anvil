@@ -1,15 +1,12 @@
 # Directory Layout
 
-Emery draws a clear boundary between **operator-facing platform artifacts**, generated repo context, and **framework-managed workflow state**. Operator artifacts (the change-level `change.md` / `plan.yaml` / `discovery.md`, and `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. `AGENTS.md` also lives at the root; Emery owns only its fenced generated block.
+Emery draws a clear boundary between **durable product state**, **change-scoped workflow state**, the **RFC-104 definition home**, generated repo context, and operator-owned source. Durable product state (`project.yaml`, `specs/`, `decisions/`) lives under `.emery/` and ships with the repository. Change-scoped artifacts (`plan.yaml`, `change.md`, `discovery.yaml`, `leads.md`, `decomposition.yaml`, `slices/`, `events/`, `targets/`, `archive/`) live under `.emery/change/` in-place, or at the change-home root when detached. A definition home (`scope.yaml`, `coverage.yaml`, `system.yaml`, `migration.yaml`, `handoffs/`, `events/`) is a separate tree — `--dir` else CWD for `emery system *`, or a colocated degenerate at `.emery/system/` bound by `plan author --from`. `contracts/` and `AGENTS.md` stay at the project root; Emery owns only the fenced generated block in `AGENTS.md`.
 
-`.emery/` is **Emery's directory: committed configuration plus the system-of-record** — project config, every active slice, the baseline specs, the archive, and the journal. Its lone gitignored in-tree tenant is `.emery/scratch/`. Everything regenerable and machine-owned lives *outside* the working tree, in a per-project directory under the Emery home (`$EMERY_HOME`, default `~/.emery`).
+`.emery/` is **Emery's directory: committed configuration plus the system-of-record**. Its lone gitignored in-tree tenant is `.emery/scratch/`. Everything regenerable and machine-owned lives *outside* the working tree, in a per-project directory under the Emery home (`$EMERY_HOME`, default `~/.emery`).
 
 ## Tree overview
 
 ```text
-change.md                                   # Operator brief for the active change
-plan.yaml                                   # Change plan (topology + slices[]; progress is projected)
-discovery.md                                # Plan-time lead inventory
 AGENTS.md                                   # Generated agent context with operator prose outside fences
 
 contracts/                                  # Baseline API contracts
@@ -23,53 +20,64 @@ contracts/                                  # Baseline API contracts
 .emery/
 ├── project.yaml                            # Project configuration (target, sources, emery-version)
 ├── context.lock                            # Sidecar for init-time AGENTS.md scaffold
-├── guest.lock                              # Create-exclusive marker held by guest orchestrations
 │
 ├── scratch/                                # Transient working state (per-run lanes; wiped freely; gitignored)
 │   ├── <adapter>/{survey,<slice>}/         # Per-operation agent scratch lanes ($SCRATCH_DIR)
 │
-├── slices/                                 # Active slices (one directory per slice)
-│   └── <slice-name>/
-│       ├── metadata.yaml                  # Phase timestamps + target (managed by CLI; no stored status)
-│       ├── refinement.yaml                 # Refinement manifest: exact inputs + covered output bundle (RFC-91)
-│       ├── proposal.md                     # Why this slice exists
-│       ├── model.yaml                      # Structured synthesis model (inline provenance; spec.md is authoritative)
-│       ├── design.md                       # Technical design
-│       ├── tasks.md                        # Implementation checklist
-│       ├── evidence/                       # Per-source extract output (managed by CLI)
-│       │   └── <source>.yaml
-│       ├── specs/                          # Behavioral specs (one per domain)
-│       │   └── <domain>/spec.md
-│       ├── builds/                         # Content-addressed fact-substrate build records
-│       │   └── <digest>.yaml
-│       └── contracts/                      # Per-slice contract delta (when API interactions exist)
-│           ├── schemas/
-│           ├── http/
-│           └── messages/
-│
-├── targets/                                # Target-wave manifests (RFC-86 D9 stand-in under flat `.emery/`)
-│   └── <target>/waves/<digest>.yaml
-│
 ├── specs/                                  # Merged baseline specs (committable; system of record)
 │   └── <domain>/spec.md                    # Accumulated behavioral requirements
 │
-├── events/                                 # Per-writer append-only fact logs (union via `emery journal show`)
-│   └── <writer>.jsonl                      #   (slice.archive.created, plan.execute.started, claims, waves, …)
+├── decisions/                              # Append-only Decision Record catalogue
+│   └── DEC-NNNN-<slug>.md
 │
-└── archive/                                # Prunable cache of merged/dropped slices + finalized plans
-    ├── YYYY-MM-DD-<slice-name>/            # Merged or dropped slices (prune via `emery archive prune`)
-    │   ├── metadata.yaml
-    │   ├── proposal.md
-    │   ├── design.md
-    │   ├── tasks.md
-    │   ├── specs/...
-    │   └── evidence/...
-    └── plans/
-        └── YYYYMMDD-<plan-name>/           # Archived plans
-            ├── plan.yaml
-            ├── change.md
-            ├── discovery.md
-            └── ...
+├── design-system/                          # Shared UI catalog (opt-in; Vectis)
+│
+└── change/                                 # In-place change home (temporary; archived or deleted)
+    ├── guest.lock                          # Create-exclusive marker held by guest orchestrations
+    ├── plan.yaml                           # Change plan (topology + slices[]; progress is projected)
+    ├── change.md                           # Operator brief for the active change
+    ├── discovery.yaml                      # Reviewed handoff + pinned delivery targets and sources
+    ├── imports/                            # Byte-identical RFC-104 handoff + review envelopes
+    │   ├── handoffs/
+    │   │   └── <digest>.yaml
+    │   └── reviews/
+    │       └── <digest>.json
+    ├── leads.md                            # Imported surface leads + focused child leads
+    ├── leads/                              # Retained catalog revisions (`<digest>.md`)
+    ├── decomposition.yaml                  # Conflict-domain hierarchy; plan.yaml is its leaf projection
+    ├── planning/proposals/                 # Validated but unapplied amendments (`<digest>.yaml`)
+    ├── slices/                             # Active slices (one directory per slice)
+    │   └── <slice-name>/
+    │       ├── metadata.yaml               # Phase timestamps + target (managed by CLI; no stored status)
+    │       ├── refinement.yaml             # Refinement manifest: exact inputs + covered output bundle (RFC-91)
+    │       ├── proposal.md                 # Why this slice exists
+    │       ├── model.yaml                  # Structured synthesis model (inline provenance; spec.md is authoritative)
+    │       ├── design.md                   # Technical design
+    │       ├── tasks.md                    # Implementation checklist
+    │       ├── evidence/                   # Per-source extract output (managed by CLI)
+    │       │   └── <source>.yaml
+    │       ├── specs/                      # Behavioral specs (one per domain)
+    │       │   └── <domain>/spec.md
+    │       ├── builds/                     # Content-addressed fact-substrate build records
+    │       │   └── <digest>.yaml
+    │       └── contracts/                  # Per-slice contract delta (when API interactions exist)
+    │           ├── schemas/
+    │           ├── http/
+    │           └── messages/
+    ├── targets/                            # Target-wave manifests (RFC-86 D9)
+    │   └── <target>/waves/<digest>.yaml
+    ├── events/                             # Per-writer append-only fact logs (union via `emery journal show`)
+    │   └── <writer>.jsonl
+    └── archive/                            # Prunable cache of merged/dropped slices + finalized plans
+        ├── YYYY-MM-DD-<slice-name>/        # Merged or dropped slices (prune via `emery archive prune`)
+        └── plans/
+            └── YYYYMMDD-<plan-name>/       # Archived plans
+                ├── plan.yaml
+                ├── change.md
+                ├── discovery.yaml
+                ├── leads.md
+                ├── decomposition.yaml
+                └── ...
 ```
 
 The regenerable **cache** lives outside the working tree, in a per-project directory under the Emery home (keyed by a digest of the project path):
@@ -110,8 +118,27 @@ The transient working-state root and the lone gitignored tenant *inside* `.emery
 
 ### `archive/`
 
-A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.emery/specs/` baseline plus the append-only **outcome ledger** in `.emery/events/<writer>.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `emery archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound.
+A **prunable convenience cache** of merged slices, dropped slices, and archived plans — not the system of record. Nothing in `archive/` is read by the active workflow. The durable record of merged work is git history of the committed `.emery/specs/` baseline plus the append-only **outcome ledger** in `.emery/change/events/<writer>.jsonl` (one `slice.archive.created` entry per merge, carrying the slice name, touched baseline specs, a one-line outcome summary, and the git SHA the baseline sat at). Because the ledger and baseline already capture history, `archive/` folders can be reclaimed at will with `emery archive prune --keep <n>` / `--older-than <days>` (add `--dry-run` to preview); a folder is pruned when it falls outside any supplied retention bound.
 
 ## Files that do not live under `.emery/`
 
-Operator-facing platform artifacts (the change-level `change.md` / `plan.yaml` / `discovery.md`, `contracts/`), generated context (`AGENTS.md`), and source code generated by the build phase (e.g. `crates/<name>/` for Omnia, `shared/src/` for Vectis) all live at the repo root, alongside the project's normal directory structure. Emery owns `.emery/` and the fenced generated block in `AGENTS.md`; everything else is yours.
+`contracts/`, generated context (`AGENTS.md`), and source code generated by the build phase (e.g. `crates/<name>/` for Omnia, `shared/src/` for Vectis) all live at the repo root, alongside the project's normal directory structure. Change-scoped artifacts live under `.emery/change/` in-place. A **detached** change home is the working directory itself (or `--change-dir`): `plan.yaml`, `discovery.yaml`, `imports/`, `leads.md`, `decomposition.yaml`, `slices/`, `events/`, and `targets/` sit at that root — no marker, no ancestor walk, no synthetic `project.yaml`.
+
+### Definition home (RFC-104)
+
+`emery system {survey, plan, review, status}` anchors at `--dir` else CWD. There is no `system init` and no `project.yaml` walk. The operator authors `scope.yaml` and `coverage.yaml` by hand. There is no `sources.yaml`.
+
+```text
+<definition>/
+  scope.yaml                 # Declared boundary
+  coverage.yaml              # Every candidate + disposition; included rows carry location, declared adapter, observed-cid
+  system.yaml                # Structured architecture authority (identities, as-is, target, transitions)
+  migration.yaml             # Dispositions, waves, handoff references
+  evidence/<source>/<lead>.yaml
+  architecture/              # Projected documents and diagrams
+  handoffs/<digest>.yaml     # Content-addressed wave projections (verify-on-read)
+  decisions/
+  events/<writer>.jsonl      # Definition-home journal; sole writer of system.wave.reviewed
+```
+
+In-place delivery may bind `--from .emery/system/` for a colocated degenerate definition. `plan author` copies byte-identical handoff and review envelopes into the change home's `imports/`.

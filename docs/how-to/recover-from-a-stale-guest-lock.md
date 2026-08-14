@@ -2,7 +2,7 @@
 <div class="eyebrow">How-to</div>
 <h1 class="hero-title">Recover from a stale guest lock</h1>
 
-Clear a leftover `.emery/guest.lock` marker after a driver session died without releasing it.
+Clear a leftover `.emery/change/guest.lock` marker after a driver session died without releasing it.
 
 <div class="meta-row">
 
@@ -26,7 +26,7 @@ Use this guide when `emery plan refine` or `emery plan execute` exits with `gues
 
 <h2><span class="num">1</span> Understand the marker</h2>
 
-The guest-routed drivers (`emery plan refine`, `emery plan execute`) each create and hold the `.emery/guest.lock` marker for the run's lifetime, so two driver runs cannot interleave writes. A second driver session refuses with `guest-marker-held`.
+The guest-routed drivers (`emery plan refine`, `emery plan execute`) each create and hold the `.emery/change/guest.lock` marker for the run's lifetime, so two driver runs cannot interleave writes. A second driver session refuses with `guest-marker-held`.
 
 Because only the run that created the marker removes it, a driver that dies without cleanup leaves it behind, and every later `emery plan refine` / `emery plan execute` refuses until it is removed.
 </section>
@@ -54,10 +54,10 @@ If a live session shows up, do not remove the marker — wait for it to finish o
 <h2><span class="num">3</span> Remove the marker</h2>
 
 > [!WARNING]
-> Removing `.emery/guest.lock` while a driver loop is still running lets a second loop start against the same plan, and the two will interleave lifecycle writes. Only remove the marker after step 2 confirms the holder is gone.
+> Removing `.emery/change/guest.lock` while a driver loop is still running lets a second loop start against the same plan, and the two will interleave lifecycle writes. Only remove the marker after step 2 confirms the holder is gone.
 
 ```bash
-rm .emery/guest.lock
+rm .emery/change/guest.lock
 ```
 
 This is the one sanctioned hand-edit inside `.emery/` — the marker carries no state beyond its own existence.

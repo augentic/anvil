@@ -1,0 +1,79 @@
+{
+  "$defs": {
+    "FocusParent": {
+      "additionalProperties": false,
+      "description": "One catalog parent named for focused survey.",
+      "properties": {
+        "lead": {
+          "description": "Catalog lead id within that source.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Plan source key.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "lead"
+      ],
+      "type": "object"
+    },
+    "ReviewVerdict": {
+      "description": "Boundary-review outcome.",
+      "oneOf": [
+        {
+          "const": "close",
+          "description": "Close the leaf and record the rationale.",
+          "type": "string"
+        },
+        {
+          "const": "focus",
+          "description": "Run focused survey for [`BoundaryReview::focus`] and requeue.",
+          "type": "string"
+        },
+        {
+          "const": "unready",
+          "description": "Over-envelope leaf that cannot split; blocks authoring.",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "$id": "https://github.com/augentic/emery/answers/boundary-review.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated boundary review after a provisional complexity score exceeds the slice-split threshold: `close | focus | unready`.",
+  "properties": {
+    "focus": {
+      "description": "Parents to focused-survey when [`ReviewVerdict::Focus`].",
+      "items": {
+        "$ref": "#/$defs/FocusParent"
+      },
+      "type": "array"
+    },
+    "rationale": {
+      "description": "Close-with-rationale prose, or why the leaf is unready.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "verdict": {
+      "$ref": "#/$defs/ReviewVerdict",
+      "description": "Review verdict."
+    },
+    "version": {
+      "description": "Schema version ([`PARTITION_VERSION`]).",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "verdict"
+  ],
+  "title": "Emery decomposition boundary-review answer",
+  "type": "object"
+}

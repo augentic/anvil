@@ -1,6 +1,6 @@
 //! Source-adapter Evidence shapes.
 //!
-//! Per-source `extract` output at `.emery/slices/<slice>/evidence/<source>.yaml`:
+//! Per-source `extract` output at `.emery/change/slices/<slice>/evidence/<source>.yaml`:
 //! typed [`Document`] / [`Claim`] plus the closed [`AuthorityClass`] / [`ClaimKind`] enums.
 
 pub mod authority;
@@ -25,7 +25,7 @@ pub fn is_kebab(value: &str) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct Document {
-    /// Lead id (matches a `## Lead inventory` block in `discovery.md`)
+    /// Lead id (matches a `## Lead inventory` block in `leads.md`)
     /// the Evidence is bound to.
     pub lead: String,
     /// Document-level authority class for this Evidence.

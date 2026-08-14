@@ -15,12 +15,13 @@ pub use freshness::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::plan::{Entry, Plan};
 use crate::snapshot::SnapshotId;
 
 /// Manifest wire version.
 pub const VERSION: u32 = 1;
 
-/// On-disk `.emery/slices/<slice>/refinement.yaml`.
+/// On-disk `.emery/change/slices/<slice>/refinement.yaml`.
 ///
 /// The canonical bytes are the YAML serialization written by
 /// [`Manifest::write`]; [`file_digest`] over the untouched on-disk
@@ -46,8 +47,8 @@ pub struct Inputs {
     /// Slice-local canonical planning projections
     /// ([`crate::plan::Projections`]).
     pub planning: Planning,
-    /// RFC-88 profile identity — the canonical empty digest
-    /// ([`empty_digest`]) until profiles land.
+    /// Bound-target profile digest from `plan.yaml.targets`, or
+    /// [`empty_digest`] when the row has none.
     pub profile: SnapshotId,
     /// RFC-93 advisory-observation identity — the canonical empty
     /// digest ([`empty_digest`]) until observations land.
@@ -170,12 +171,20 @@ pub fn file_digest(slice_dir: &Path) -> Result<Option<SnapshotId>, Error> {
     }
 }
 
-/// Canonical empty digest for `profile` and `observations`: the
-/// SHA-256 of zero bytes, until RFC-88 profiles / RFC-93 observations
-/// define their own canonical encodings.
+/// Canonical empty digest for an unbound profile or for
+/// `observations` (RFC-93): the SHA-256 of zero bytes.
 #[must_use]
 pub fn empty_digest() -> SnapshotId {
     SnapshotId::from_digest(&sha256_hex(b""))
+}
+
+/// Bound-target profile digest for `entry`, or [`empty_digest`].
+#[must_use]
+pub fn live_profile(plan: &Plan, entry: &Entry) -> SnapshotId {
+    plan.targets
+        .get(&entry.target)
+        .and_then(|row| row.model_capability_profile.as_ref())
+        .map_or_else(empty_digest, |bound| bound.digest.clone())
 }
 
 /// Content digest of one bundle file's raw bytes. `None` when the file

@@ -14,7 +14,7 @@ mod list {
     async fn sorted_with_status() {
         let project = Session::scripted("mock", Vec::new());
         for (name, refined) in [("beta", true), ("alpha", false)] {
-            let slice = project.root().join(".emery/slices").join(name);
+            let slice = project.root().join(".emery/change/slices").join(name);
             fs::create_dir_all(&slice).expect("create slice");
             fs::write(slice.join("metadata.yaml"), "target: demo@1.0.0\ntouched-specs: []\n")
                 .expect("stage metadata");
@@ -22,7 +22,7 @@ mod list {
                 fs::write(slice.join("model.yaml"), "requirements: []\n").expect("model");
             }
         }
-        fs::create_dir_all(project.root().join(".emery/slices/not-a-slice"))
+        fs::create_dir_all(project.root().join(".emery/change/slices/not-a-slice"))
             .expect("stage stray dir");
 
         let body = run::<slice::handlers::List, _, _>(
@@ -57,7 +57,7 @@ mod timestamps {
     #[test]
     fn round_trip_rfc3339() {
         let project = Session::scripted("mock", Vec::new());
-        let slice_dir = project.root().join(".emery/slices/demo");
+        let slice_dir = project.root().join(".emery/change/slices/demo");
         fs::create_dir_all(&slice_dir).expect("create slice");
         fs::write(
             slice_dir.join("metadata.yaml"),
@@ -67,7 +67,7 @@ mod timestamps {
         )
         .expect("stage metadata");
 
-        let archive = project.root().join(".emery/archive");
+        let archive = project.root().join(".emery/change/archive");
         slice::discard(&slice_dir, &archive, None, now())
             .expect("metadata parses and the drop saves");
 
@@ -85,7 +85,7 @@ mod timestamps {
     #[test]
     fn malformed_rejected() {
         let project = Session::scripted("mock", Vec::new());
-        let slice_dir = project.root().join(".emery/slices/demo");
+        let slice_dir = project.root().join(".emery/change/slices/demo");
         fs::create_dir_all(&slice_dir).expect("create slice");
         fs::write(
             slice_dir.join("metadata.yaml"),
@@ -93,7 +93,7 @@ mod timestamps {
         )
         .expect("stage metadata");
 
-        let archive = project.root().join(".emery/archive");
+        let archive = project.root().join(".emery/change/archive");
         let err = slice::discard(&slice_dir, &archive, None, now())
             .expect_err("malformed timestamp must fail");
 

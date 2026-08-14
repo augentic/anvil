@@ -18,7 +18,6 @@ pub(crate) use membership::Ignores;
 pub use objects::{FsObjects, Objects};
 use serde::{Deserialize, Serialize};
 pub use store::Store;
-pub(crate) use store::{IGNORED, IGNORED_ROOT};
 
 use crate::snapshot::{CodePatch, SnapshotId};
 

@@ -1,7 +1,6 @@
-//! One-member target wave manifests.
-//!
-//! Before build, the engine writes an immutable manifest at
-//! `.emery/targets/<target>/waves/<digest>.yaml`, then appends `target.wave.opened`.
+//! One-member target wave manifests at
+//! `.emery/change/targets/<target>/waves/<digest>.yaml`, written
+//! before build then journalled as `target.wave.opened`.
 
 use std::path::{Path, PathBuf};
 
@@ -15,6 +14,10 @@ use crate::config::Layout;
 use crate::journal::{self, Event, EventKind, FactEpochRef};
 use crate::name::SliceName;
 use crate::snapshot::SnapshotId;
+
+mod accepted;
+
+pub use accepted::{accepted_cid, wave_base};
 
 /// Fact-log identity of a `plan.execute.started` authorization epoch
 /// (`writer` + 1-based `sequence` of that line in the union).
@@ -40,7 +43,7 @@ pub struct Member {
 
 /// Immutable target-wave manifest (RFC-86 D9).
 ///
-/// On disk under `.emery/targets/<target>/waves/<digest>.yaml` where
+/// On disk under `.emery/change/targets/<target>/waves/<digest>.yaml` where
 /// `digest` is the bare hex of the canonical YAML bytes. This cut
 /// accepts exactly one [`Member`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,8 +52,7 @@ pub struct Wave {
     /// Target key (current project name in the in-place cut).
     pub target: String,
     /// Target-base tree identity selected when the wave opened
-    /// (RFC-91 D6: the current product snapshot in closed in-place
-    /// execution).
+    /// (the current accepted CID, or `plan.yaml.targets[].cid`).
     pub base: SnapshotId,
     /// Ordered member set — length must be 1 before open.
     pub members: Vec<Member>,
@@ -223,22 +225,20 @@ impl Wave {
     }
 
     /// Revalidate this manifest against a build record at merge time
-    /// (RFC-86 D9): one member naming `slice`, content digest matching
+    /// (RFC-86 D9): `slice` is a named member, content digest matching
     /// `record.wave`, and `base` matching the recorded build base.
     ///
     /// # Errors
     ///
-    /// `target-wave-member-count`, `target-wave-member-mismatch`,
-    /// `target-wave-digest-mismatch`, or `target-wave-base-mismatch`.
+    /// `target-wave-member-mismatch`, `target-wave-digest-mismatch`, or
+    /// `target-wave-base-mismatch`.
     pub fn revalidate(&self, slice: &str, record: &BuildRecord) -> Result<(), Error> {
-        self.enforce_one_member()?;
-        let member = &self.members[0];
-        if member.slice.as_str() != slice {
+        if !self.members.iter().any(|member| member.slice.as_str() == slice) {
             return Err(Error::Diag {
                 code: "target-wave-member-mismatch",
                 detail: format!(
-                    "wave for target `{}` names member `{}`, but merge ran for `{slice}`",
-                    self.target, member.slice
+                    "wave for target `{}` does not name `{slice}` as a member",
+                    self.target
                 ),
             });
         }
@@ -275,6 +275,36 @@ impl Wave {
         let wave = Self::load(layout, target, record.wave.as_str())?;
         wave.revalidate(slice, record)?;
         Ok(wave)
+    }
+
+    /// Load each member's build record for this wave, in stable member
+    /// order. Refuses when any member result is missing.
+    ///
+    /// # Errors
+    ///
+    /// `slice-build-record-missing` (or `-ambiguous`) per member;
+    /// `target-wave-base-mismatch` when a record's base is not this
+    /// wave's base.
+    pub fn load_member_records(
+        &self, layout: Layout<'_>,
+    ) -> Result<Vec<(Member, BuildRecord)>, Error> {
+        let digest = self.digest()?;
+        let mut out = Vec::with_capacity(self.members.len());
+        for member in &self.members {
+            let slice_dir = layout.slice_dir(member.slice.as_str());
+            let record = BuildRecord::load_for_wave(&slice_dir, &digest)?;
+            if self.base != record.base {
+                return Err(Error::Diag {
+                    code: "target-wave-base-mismatch",
+                    detail: format!(
+                        "wave base `{}` does not match build record base `{}` for member `{}`",
+                        self.base, record.base, member.slice
+                    ),
+                });
+            }
+            out.push((member.clone(), record));
+        }
+        Ok(out)
     }
 }
 

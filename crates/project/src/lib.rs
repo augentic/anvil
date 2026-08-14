@@ -6,6 +6,7 @@
 pub mod adapter;
 pub(crate) mod agents;
 pub mod answers;
+pub mod binding;
 pub mod build_record;
 pub mod config;
 pub mod decisions;
@@ -19,6 +20,7 @@ pub mod name;
 pub mod origins;
 pub mod plan;
 pub mod platform;
+pub mod profile;
 pub mod refinement;
 pub mod seam;
 pub mod serde_time;

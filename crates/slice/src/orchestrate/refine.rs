@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use artifacts::spec::provenance::RequirementTag;
 use diagnostics::has_blocking;
 use error::Error;
@@ -16,7 +16,8 @@ use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
 use project::identity::{Decision, Surface};
 use project::journal::{self, EventKind};
-use project::plan::{Entry, Plan, resolve_topology};
+use project::plan::{Entry, FocusParent, Plan, resolve_topology};
+use project::profile::{Profile, Profiles};
 use project::seam::{Source, Target, Workspaces};
 use project::snapshot::SnapshotId;
 
@@ -24,6 +25,7 @@ use super::synthesize::SynthesizeRequest;
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
 use crate::refinement::{self, Dependency};
+use crate::synthesis::wire::SynthesisKind;
 use crate::validate::{Validation, append_synthesis_journal};
 use crate::{
     BaselineIndex, CreateIfExists, DependencyContext, DomainDetail, LifecycleStatus,
@@ -33,16 +35,35 @@ use crate::{
 
 /// The result of a completed [`refine`].
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RefineOutcome {
-    /// Slice that was refined.
-    pub slice: String,
-    /// Slice-relative artifact paths persisted by the synthesis tail.
-    pub artifacts: Vec<String>,
-    /// `(source, lead)` pairs extracted, in binding order.
-    pub extracted: Vec<(String, String)>,
-    /// Synthesis-tag counts from the validate sweep's spec scan —
-    /// review signals, never a park.
-    pub tags: TagCounts,
+pub enum RefineOutcome {
+    /// Synthesis promoted the bundle and the slice is `refined`.
+    Refined {
+        /// Slice that was refined.
+        slice: String,
+        /// Slice-relative artifact paths persisted by the synthesis tail.
+        artifacts: Vec<String>,
+        /// `(source, lead)` pairs extracted, in binding order.
+        extracted: Vec<(String, String)>,
+        /// Synthesis-tag counts from the validate sweep's spec scan —
+        /// review signals, never a park.
+        tags: TagCounts,
+    },
+    /// Evidence-informed boundary escalation: no promotion, no
+    /// `refined` transition. The caller persists an inert proposal.
+    Escalated {
+        /// Slice that escalated.
+        slice: String,
+        /// Closed assessment from the judgment.
+        assessment: project::profile::Assessment,
+        /// Named terminal pairs.
+        affected: Vec<FocusParent>,
+        /// Typed rationale.
+        rationale: String,
+        /// Bound profile identity the assessment was scored against.
+        profile: project::plan::ProfileRef,
+        /// `(source, lead)` pairs extracted, in binding order.
+        extracted: Vec<(String, String)>,
+    },
 }
 
 /// Per-tag requirement counts gathered by the validate sweep.
@@ -71,14 +92,14 @@ impl TagCounts {
     }
 }
 
-/// Refine one plan entry's slice to `refined`.
+/// Refine one plan entry's slice: extract, synthesize, then either
+/// promote to `refined` or return a validated boundary escalation.
 ///
 /// `target_value` is the caller-resolved target recorded in
 /// `metadata.yaml`; `dependencies` are the ordered predecessor
 /// `(slice, refinement-digest)` pairs (RFC-91 D3); `declarations` is
 /// the bound target's build-inputs list the manifest bundle mirrors.
-/// The manifest is written atomically only after validation and the
-/// `refined` transition — a failed refinement writes no manifest.
+/// A failed or escalated refinement writes no manifest.
 ///
 /// # Errors
 ///
@@ -95,11 +116,11 @@ impl TagCounts {
 /// - `slice-refinement-*` / `target-build-input-missing` from the
 ///   manifest assembly, and filesystem failures from its write.
 #[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
-pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
+pub async fn refine<P: Model + Profiles, S: Source + Workspaces, T: Target, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str, dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration],
 ) -> Result<RefineOutcome, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     tracing::info!("refine started");
     let (plan, entry) = load_entry(layout, slice)?;
     let parent_dir = layout.slices_dir();
@@ -116,20 +137,32 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     let (authority, evidence_claims) = read_evidence_index(&slice_dir, &entry)?;
     let overrides = entry.authority_override.by_kind.clone();
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
-    let (baseline, baseline_decisions) = baseline_identity(caps.resolver, paths, &entry)?;
+    let (baseline, baseline_decisions) = baseline_identity(paths, &entry);
     let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
     let dependency_context = dependency_context(layout, &dependencies);
     let header = ProjectionHeader {
         version: 1,
         slice: slice.to_string(),
-        project: entry.project.clone(),
+        target: Some(entry.target.clone()),
     };
+    let profile = bound_profile(caps.model, &plan, &entry)?;
+    let profile_ref = profile.reference()?;
+    let terminals: Vec<FocusParent> = entry
+        .sources
+        .iter()
+        .map(|binding| FocusParent {
+            source: binding.source().to_string(),
+            lead: binding.lead(slice).to_string(),
+        })
+        .collect();
     let kernel = Kernel {
         header,
         authority: &authority,
         overrides: &overrides,
         evidence_claims: &evidence_claims,
         baseline_index: &baseline_index,
+        profile,
+        terminals,
     };
     let request = SynthesizeRequest {
         slice,
@@ -141,9 +174,6 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
         dependencies: &dependency_context,
     };
 
-    // Synthesis is model-dispatched: record the handoff, then bracket
-    // the judgment-plus-persist leg. Emits are best-effort — a journal
-    // hiccup never shadows the synthesis outcome.
     journal::emit_best_effort(
         layout,
         now,
@@ -152,6 +182,13 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
         },
         SYNTHESIZE_SCOPE,
     );
+    let (synthesized, guidance_digest) =
+        super::synthesize(caps.model, caps.targets, &request, &kernel).await?;
+    if synthesized.response.kind == SynthesisKind::BoundaryEscalation {
+        tracing::info!("refine escalated");
+        return Ok(escalated(slice, synthesized, profile_ref, extracted));
+    }
+
     let (artifacts, guidance_digest) = journal::bracket(
         layout,
         now,
@@ -159,14 +196,12 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
         EventKind::SliceSynthesizeStarted {
             slice_name: slice.into(),
         },
-        synthesize_and_persist(
-            caps.model,
-            caps.targets,
-            &request,
-            &kernel,
+        std::future::ready(persist_proceed(
+            &synthesized,
             &slice_dir,
             &baseline_index,
-        ),
+            guidance_digest,
+        )),
         |out: &(Vec<String>, SnapshotId)| EventKind::SliceSynthesizeCompleted {
             slice_name: slice.into(),
             artifacts: out.0.clone(),
@@ -185,7 +220,7 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     write_manifest(layout, &plan, &entry, guidance_digest, dependencies, declarations, &slice_dir)?;
     tracing::info!(artifacts = artifacts.len(), "refine completed");
 
-    Ok(RefineOutcome {
+    Ok(RefineOutcome::Refined {
         slice: slice.to_string(),
         artifacts,
         extracted,
@@ -204,7 +239,17 @@ async fn extract_all<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     for binding in &entry.sources {
         let source = binding.source().to_string();
         let lead = binding.lead(slice).to_string();
-        super::extract(caps.sources, caps.resolver, paths, now, &source, &lead, slice).await?;
+        super::extract(
+            caps.sources,
+            caps.resolver,
+            caps.sources,
+            paths,
+            now,
+            &source,
+            &lead,
+            slice,
+        )
+        .await?;
         extracted.push((source, lead));
     }
     Ok(extracted)
@@ -217,8 +262,8 @@ fn write_manifest(
     layout: Layout<'_>, plan: &Plan, entry: &Entry, guidance: SnapshotId,
     dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration], slice_dir: &Path,
 ) -> Result<(), Error> {
-    let inventory = Discovery::load(&layout.discovery_path())?;
-    let config = ProjectConfig::load(layout.project_dir())?;
+    let inventory = Leads::load(&layout.leads_path())?;
+    let reference = ProjectConfig::load(layout.project_dir()).ok().and_then(|c| c.adapter);
     refinement::assemble(
         layout,
         plan,
@@ -227,28 +272,49 @@ fn write_manifest(
         refinement::TargetInputs {
             guidance,
             declarations,
-            reference: config.adapter.as_deref(),
+            reference: reference.as_deref(),
         },
         dependencies,
     )?
     .write(slice_dir)
 }
 
-/// The judgment leg plus the native persist tail — one fallible unit
-/// so the `slice.synthesize.*` pair brackets both. Carries the
-/// guidance digest out for manifest assembly.
-async fn synthesize_and_persist<P: Model, T: Target>(
-    model: &P, targets: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>, slice_dir: &Path,
-    baseline_index: &BaselineIndex,
+fn escalated(
+    slice: &str, synthesized: crate::judgment::synthesize::Synthesized,
+    profile: project::plan::ProfileRef, extracted: Vec<(String, String)>,
+) -> RefineOutcome {
+    RefineOutcome::Escalated {
+        slice: slice.to_string(),
+        assessment: synthesized.response.assessment,
+        affected: synthesized.response.affected,
+        rationale: synthesized.response.rationale.unwrap_or_default(),
+        profile,
+        extracted,
+    }
+}
+
+/// Persist a validated `proceed` answer. Guidance digest is already
+/// known from the synthesize dispatch.
+fn persist_proceed(
+    synthesized: &crate::judgment::synthesize::Synthesized, slice_dir: &Path,
+    baseline_index: &BaselineIndex, guidance_digest: SnapshotId,
 ) -> Result<(Vec<String>, SnapshotId), Error> {
-    let (synthesized, guidance_digest) = super::synthesize(model, targets, request, kernel).await?;
-    let artifacts = persist_synthesized(
-        slice_dir,
-        synthesized.response.artifacts,
-        &synthesized.projected,
-        baseline_index,
-    )?;
-    Ok((artifacts, guidance_digest))
+    let artifacts = synthesized.response.artifacts.clone().ok_or_else(|| {
+        Error::validation_failed(
+            "slice-synthesize-proceed-incomplete",
+            "a proceed answer carries the prose artifacts",
+            "proceed omitted `artifacts`",
+        )
+    })?;
+    let projected = synthesized.projected.as_ref().ok_or_else(|| {
+        Error::validation_failed(
+            "slice-synthesize-proceed-incomplete",
+            "a proceed answer projects a model",
+            "proceed omitted the projected model",
+        )
+    })?;
+    let written = persist_synthesized(slice_dir, artifacts, projected, baseline_index)?;
+    Ok((written, guidance_digest))
 }
 
 /// Shape the ordered predecessor pairs into the synthesis inputs'
@@ -352,17 +418,24 @@ fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
 /// Decision Record projection (`decisions[]`). Baseline is advisory
 /// context, so any topology resolution miss degrades to empty vectors
 /// (the native handler's posture).
-fn baseline_identity(
-    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry,
-) -> Result<(Vec<Surface>, Vec<Decision>), Error> {
-    let config = ProjectConfig::load(Layout::new(paths.project_root()).project_dir())?;
-    let topology = resolve_topology(resolver, &config, paths)?;
-    let bound = match entry.project.as_deref() {
-        Some(name) => topology.iter().find(|p| p.name == name),
-        None if topology.len() == 1 => topology.first(),
-        None => None,
+fn baseline_identity(paths: &ExecutionPaths, entry: &Entry) -> (Vec<Surface>, Vec<Decision>) {
+    let layout = paths.layout();
+    let Ok(plan) = Plan::load(&layout.plan_path()) else {
+        return Default::default();
     };
-    Ok(bound.map(|p| (p.surface.clone(), p.decisions.clone())).unwrap_or_default())
+    let topology = resolve_topology(&plan);
+    let bound = topology.iter().find(|row| row.name == entry.target);
+    bound.map(|row| (row.surface.clone(), row.decisions.clone())).unwrap_or_default()
+}
+
+fn bound_profile<P: Profiles>(provider: &P, plan: &Plan, entry: &Entry) -> Result<Profile, Error> {
+    let table = provider.profiles();
+    if let Some(pin) =
+        plan.targets.get(&entry.target).and_then(|row| row.model_capability_profile.as_ref())
+    {
+        return Ok(table.pinned(pin)?.clone());
+    }
+    Ok(table.resolve()?.clone())
 }
 
 /// Warning scope for the best-effort `slice.synthesize.*` brackets.

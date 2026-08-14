@@ -10,7 +10,8 @@ use serde::Deserialize;
 mod source;
 
 pub use source::{
-    Authority, Backing, Claim, ClaimKind, Evidence, Lead, SourceInput, SourceMetadata,
+    Authority, Backing, Claim, ClaimKind, Evidence, Lead, SourceContent, SourceInput,
+    SourceMetadata, SourceWorkspace, SurveyResult,
 };
 
 /// Operation error — mirrors the WIT `types.error` variant.
@@ -47,13 +48,11 @@ pub struct Context<'a> {
     /// agent so it can fetch `doc://` references lazily.
     pub mcp_url: Option<String>,
     /// Deployment-local path every judgment leg lends through
-    /// `grants.workspace`. Defaults to the `"."` project mount (target
-    /// guidance); source and build/merge legs lend their prepared
-    /// input or workspace via [`Self::lending`].
-    pub lend: String,
-    /// The caller's source-binding key, interpolated into source
-    /// prompts. `None` on target dispatches.
-    pub source_key: Option<String>,
+    /// `grants.workspace`. Defaults to the `"."` project mount
+    /// (guidance); build and merge lend their prepared workspace via
+    /// [`Self::lending`]. Source legs lend the CID view or [`None`]
+    /// for an inline value — never the change home.
+    pub lend: Option<String>,
 }
 
 impl<'a> Context<'a> {
@@ -66,8 +65,7 @@ impl<'a> Context<'a> {
             adapter_id,
             project_root: Path::new("."),
             mcp_url: mcp_url(adapter_id),
-            lend: ".".to_string(),
-            source_key: None,
+            lend: Some(".".to_string()),
         }
     }
 
@@ -76,18 +74,14 @@ impl<'a> Context<'a> {
     /// `"."` project mount.
     #[must_use]
     pub fn lending(mut self, path: impl Into<String>) -> Self {
-        self.lend = path.into();
+        self.lend = Some(path.into());
         self
     }
 
-    /// Carry the caller's source-binding key onto a source dispatch,
-    /// lending the prepared input tree when the input is tree-form.
+    /// Issue the judgment call with no workspace lend (inline `value`).
     #[must_use]
-    pub fn keyed(mut self, key: impl Into<String>, input: &SourceInput) -> Self {
-        self.source_key = Some(key.into());
-        if let SourceInput::Workspace(root) = input {
-            self.lend.clone_from(root);
-        }
+    pub fn without_lend(mut self) -> Self {
+        self.lend = None;
         self
     }
 

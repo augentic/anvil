@@ -40,15 +40,17 @@ impl Event {
     }
 }
 
-/// Stage `plan.yaml` at the project root.
+/// Stage `plan.yaml` in the change home.
 fn write_plan(project: &Session, plan: &Plan) {
+    let path = project.root().join(".emery/change/plan.yaml");
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("change home");
     let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
-    std::fs::write(project.root().join("plan.yaml"), yaml).expect("write plan.yaml");
+    std::fs::write(&path, yaml).expect("write plan.yaml");
 }
 
 /// Digest of the staged `plan.yaml`, as an epoch would stamp it.
 fn live_plan_digest(root: &std::path::Path) -> String {
-    let bytes = std::fs::read(root.join("plan.yaml")).expect("read plan.yaml");
+    let bytes = std::fs::read(root.join(".emery/change/plan.yaml")).expect("read plan.yaml");
     format!("sha256:{}", sha256_hex(&bytes))
 }
 
@@ -61,7 +63,7 @@ async fn status(project: &Session, plan: &Plan) -> StatusBody {
 /// Stage a live slice directory with optional abandon / refine / build
 /// artifact signals (not lifecycle status — projection ignores that).
 fn write_slice(root: &std::path::Path, name: &str, kind: SliceArt) {
-    let slice_dir = root.join(".emery").join("slices").join(name);
+    let slice_dir = root.join(".emery/change/slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("create slice dir");
     let mut meta = String::from("target: demo-target@1.0.0\n");
     match kind {
@@ -393,7 +395,7 @@ mod postflight_debt {
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                    slice_name: "a".into(),
+                    members: vec!["a".into()],
                     reason: "target-merge-postflight-failed".to_string(),
                 },
             )],
@@ -426,7 +428,7 @@ mod postflight_debt {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                        slice_name: "a".into(),
+                        members: vec!["a".into()],
                         reason: "target-merge-postflight-failed".to_string(),
                     },
                 ),
@@ -458,7 +460,7 @@ mod postflight_debt {
                     digest:
                         "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                    slice_name: "a".into(),
+                    members: vec!["a".into()],
                     reason: "target-merge-postflight-failed".to_string(),
                 },
             )],
@@ -481,7 +483,7 @@ mod postflight_debt {
                         target: "demo".into(),
                         digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                             .into(),
-                        slice_name: "a".into(),
+                        members: vec!["a".into()],
                         reason: "target-merge-postflight-failed".to_string(),
                     },
                 ),
@@ -575,7 +577,7 @@ mod milestones {
     use super::*;
 
     fn write_model(root: &std::path::Path, name: &str, model: &str) {
-        let slice_dir = root.join(".emery").join("slices").join(name);
+        let slice_dir = root.join(".emery/change/slices").join(name);
         std::fs::create_dir_all(&slice_dir).expect("slice dir");
         std::fs::write(slice_dir.join("metadata.yaml"), "target: demo-target@1.0.0\n")
             .expect("metadata");
@@ -676,7 +678,7 @@ mod milestones {
         // blocks Ready and dispatches build like any open row.
         let project = Session::scripted("demo", Vec::new());
         write_model(project.root(), "a", "requirements: []\n");
-        let specs = project.root().join(".emery/slices/a/specs/auth");
+        let specs = project.root().join(".emery/change/slices/a/specs/auth");
         std::fs::create_dir_all(&specs).expect("specs dir");
         std::fs::write(
             specs.join("spec.md"),
@@ -852,7 +854,7 @@ mod milestones {
         );
         let plan = plan_with_changes(vec![change("a"), change("b")]);
         write_plan(&project, &plan);
-        if project.root().join(".emery/slices/b/model.yaml").is_file() {
+        if project.root().join(".emery/change/slices/b/model.yaml").is_file() {
             support::stage_manifest(project.root(), "b");
         }
         let body = status(&project, &plan).await;
@@ -978,7 +980,7 @@ mod milestones {
         let fresh = status(&project, &plan).await;
         assert!(fresh.authorized, "covering epoch authorizes");
 
-        let path = project.root().join(".emery/slices/a/refinement.yaml");
+        let path = project.root().join(".emery/change/slices/a/refinement.yaml");
         let mut body = std::fs::read_to_string(&path).expect("manifest");
         body.push_str(
             "# drift
@@ -1015,7 +1017,7 @@ mod milestones {
     sources: [intent]
 ",
         );
-        let slice_dir = project.root().join(".emery/slices/a");
+        let slice_dir = project.root().join(".emery/change/slices/a");
         let plan = plan_with_changes(vec![change("a")]);
         write_plan(&project, &plan);
         support::stage_manifest(project.root(), "a");

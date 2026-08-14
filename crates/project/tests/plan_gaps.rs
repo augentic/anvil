@@ -2,41 +2,40 @@
 //! (Gaps / D18 / D19 / D24) and the RFC-86a D2 disposition projection
 //! (deferral facts joined under the `(slice, digest)` match key).
 
-use std::collections::BTreeMap;
 use std::path::Path;
 
 use artifacts::spec::provenance::RequirementStatus;
 use jiff::Timestamp;
+use project::adapter::catalog::Pin;
 use project::config::Layout;
 use project::journal::{Event, EventKind};
 use project::plan::{
     DebtCounts, Deferral, Disposition, Entry, GapRow, Plan, SharedLeadRollup, SliceSourceBinding,
-    in_scope, plan_gaps_body,
+    TargetBinding, in_scope, plan_gaps_body,
 };
 use project::slice::{RequirementBody, SliceMetadata};
+use project::snapshot::SnapshotId;
 use tempfile::TempDir;
 
+fn stub_target() -> TargetBinding {
+    TargetBinding::new(
+        Pin::emery("mock", semver::Version::new(0, 0, 0)),
+        ".",
+        SnapshotId::from_digest(&"0".repeat(64)),
+    )
+}
+
 fn entry(name: &str, sources: Vec<SliceSourceBinding>) -> Entry {
-    Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources,
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    }
+    let mut entry = Entry::named(name, "default");
+    entry.sources = sources;
+    entry
 }
 
 fn plan(entries: Vec<Entry>) -> Plan {
-    Plan {
-        name: "test".into(),
-        sources: BTreeMap::new(),
-        entries,
-    }
+    let mut plan = Plan::named("test");
+    plan.targets.insert("default".into(), stub_target());
+    plan.entries = entries;
+    plan
 }
 
 fn write_meta(slice_dir: &Path, dropped: bool) {
@@ -86,14 +85,14 @@ fn deferred(second: i64, writer: &str, sequence: u64, slice: &str, digest: &str)
 fn multi_homed_lead() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices");
 
     let staged = plan(vec![
         entry("auth-login", vec![SliceSourceBinding::structured("docs", "conventions")]),
         entry("payments", vec![SliceSourceBinding::structured("docs", "conventions")]),
     ]);
 
-    let auth = root.join(".emery/slices/auth-login");
+    let auth = root.join(".emery/change/slices/auth-login");
     write_meta(&auth, false);
     write_model(
         &auth,
@@ -111,7 +110,7 @@ fn multi_homed_lead() {
 "#,
     );
 
-    let payments = root.join(".emery/slices/payments");
+    let payments = root.join(".emery/change/slices/payments");
     write_meta(&payments, false);
     write_model(
         &payments,
@@ -189,14 +188,14 @@ fn multi_homed_lead() {
 fn dropped_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices");
 
     let staged = plan(vec![
         entry("live", vec![SliceSourceBinding::structured("docs", "conventions")]),
         entry("abandoned", vec![SliceSourceBinding::structured("docs", "conventions")]),
     ]);
 
-    let live = root.join(".emery/slices/live");
+    let live = root.join(".emery/change/slices/live");
     write_meta(&live, false);
     write_model(
         &live,
@@ -209,7 +208,7 @@ fn dropped_slice() {
 ",
     );
 
-    let abandoned = root.join(".emery/slices/abandoned");
+    let abandoned = root.join(".emery/change/slices/abandoned");
     write_meta(&abandoned, true);
     write_model(
         &abandoned,
@@ -238,10 +237,10 @@ fn dropped_slice() {
 fn unrefined_scope_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices");
 
     let staged = plan(vec![entry("pending-work", vec![])]);
-    write_meta(&root.join(".emery/slices/pending-work"), false);
+    write_meta(&root.join(".emery/change/slices/pending-work"), false);
 
     let body = plan_gaps_body(&staged, Layout::new(root), &[]).expect("gaps");
     assert!(body.is_empty());
@@ -251,9 +250,9 @@ fn unrefined_scope_slice() {
 /// model carries an `[unknown]`, a `[conflict]`, and a `[divergence]`
 /// row.
 fn disposition_fixture(root: &Path) -> Plan {
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices");
     let staged = plan(vec![entry("auth-login", vec![])]);
-    let slice_dir = root.join(".emery/slices/auth-login");
+    let slice_dir = root.join(".emery/change/slices/auth-login");
     write_meta(&slice_dir, false);
     write_model(
         &slice_dir,
@@ -308,7 +307,7 @@ fn digest_lapse_revive() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
     let staged = disposition_fixture(root);
-    let slice_dir = root.join(".emery/slices/auth-login");
+    let slice_dir = root.join(".emery/change/slices/auth-login");
 
     // Deferral minted against the original body.
     let events =
@@ -495,7 +494,7 @@ fn rollup_both_disps() {
     // annotation and the rollup selectors intact.
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices");
     let staged = plan(vec![
         entry("auth-login", vec![SliceSourceBinding::structured("docs", "conventions")]),
         entry("payments", vec![SliceSourceBinding::structured("docs", "conventions")]),
@@ -503,7 +502,7 @@ fn rollup_both_disps() {
     for (slice, title) in
         [("auth-login", "reset path not evidenced"), ("payments", "reset copy not evidenced")]
     {
-        let dir = root.join(".emery/slices").join(slice);
+        let dir = root.join(".emery/change/slices").join(slice);
         write_meta(&dir, false);
         write_model(
             &dir,
@@ -589,9 +588,9 @@ fn missing_stmt_rejects() {
     // over an empty statement.
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices");
     let staged = plan(vec![entry("auth-login", vec![])]);
-    let slice_dir = root.join(".emery/slices/auth-login");
+    let slice_dir = root.join(".emery/change/slices/auth-login");
     write_meta(&slice_dir, false);
     write_model(
         &slice_dir,
@@ -610,7 +609,7 @@ fn missing_stmt_rejects() {
 fn deferral_scoped_by_slice() {
     let tmp = TempDir::new().expect("tempdir");
     let root = tmp.path();
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices");
     let staged = plan(vec![entry("auth-login", vec![]), entry("payments", vec![])]);
     // Identical bodies in two slices: the match key is `(slice,
     // digest)`, so a deferral on one slice leaves the other open.
@@ -621,7 +620,7 @@ fn deferral_scoped_by_slice() {
     status: unknown
 ";
     for slice in ["auth-login", "payments"] {
-        let dir = root.join(".emery/slices").join(slice);
+        let dir = root.join(".emery/change/slices").join(slice);
         write_meta(&dir, false);
         write_model(&dir, model);
     }

@@ -102,15 +102,16 @@ pub fn review(
     crate::model::overlay::validate(&model, &decisions)?;
     crate::architecture::validate(layout, &model)?;
     let current = current_handoff(layout, wave)?;
-    let digest = current.digest.as_str();
+    let handoff_digest = current.digest;
+    let digest = handoff_digest.as_str().to_owned();
     let reviewed = supplied.strip_prefix("sha256:").unwrap_or(supplied);
-    if reviewed != current.digest.digest() {
+    if reviewed != handoff_digest.digest() {
         return Err(Error::Diag {
             code: "system-review-stale",
             detail: format!(
                 "the reviewed handoff `{supplied}` is not wave `{wave}`'s current handoff \
                  `{digest}` — re-read handoffs/{}.yaml and review that projection",
-                current.digest.digest()
+                handoff_digest.digest()
             ),
         });
     }
@@ -118,14 +119,14 @@ pub fn review(
     let already = journal::read_union_at(&root)?.into_iter().any(|event| {
         matches!(
             &event.kind,
-            EventKind::SystemWaveReviewed { wave: w, handoff_digest }
-                if w == wave && handoff_digest == digest
+            EventKind::SystemWaveReviewed { wave: w, handoff_digest: d }
+                if w == wave && d == &handoff_digest
         )
     });
     if already {
         return Ok(ReviewOutcome {
             wave: wave.to_string(),
-            handoff_digest: digest.to_string(),
+            handoff_digest: digest,
             recorded: false,
         });
     }
@@ -135,13 +136,13 @@ pub fn review(
         sequence: 0,
         kind: EventKind::SystemWaveReviewed {
             wave: wave.to_string(),
-            handoff_digest: digest.to_string(),
+            handoff_digest,
         },
     };
     journal::append_for_at(&root, &journal::writer_id(), std::slice::from_ref(&event))?;
     Ok(ReviewOutcome {
         wave: wave.to_string(),
-        handoff_digest: digest.to_string(),
+        handoff_digest: digest,
         recorded: true,
     })
 }

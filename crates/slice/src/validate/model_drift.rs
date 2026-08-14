@@ -154,13 +154,8 @@ fn render_status(status: Option<RequirementStatus>) -> String {
     status.map_or_else(|| "<none>".to_string(), |s| s.to_string())
 }
 
-/// `slice-model-target-drift` — the persisted `model.yaml.project` must
-/// agree with the slice's `plan.yaml` entry `project`. Only flagged
-/// when both carry an explicit value and they differ; an omitted plan
-/// `project` resolves to the sole topology project, so it cannot
-/// disagree. Skipped when no `plan.yaml` exists or the slice has no
-/// matching entry. `target` is never persisted, so there is no
-/// target-vs-resolved-target half.
+/// `slice-model-target-drift` — the persisted `model.yaml.target` must
+/// agree with the slice's required `plan.yaml` entry `target`.
 fn target_drift(plan_path: &Path, model: &SliceModel, name: &str) -> Result<Vec<Diagnostic>> {
     if !plan_path.exists() {
         return Ok(Vec::new());
@@ -169,19 +164,18 @@ fn target_drift(plan_path: &Path, model: &SliceModel, name: &str) -> Result<Vec<
     let Some(entry) = plan.entries.iter().find(|e| e.name == name) else {
         return Ok(Vec::new());
     };
-    match (model.project.as_deref(), entry.project.as_deref()) {
-        (Some(model_project), Some(plan_project)) if model_project != plan_project => {
-            Ok(vec![Diagnostic::violation(
-                "slice-model-target-drift",
-                "model.yaml `project` agrees with the slice's plan entry",
-                format!(
-                    "model.yaml `project: {model_project}` disagrees with plan.yaml slice \
-                     `{name}` `project: {plan_project}`"
-                ),
-                Artifact::Plan,
-                None,
-            )])
-        }
+    match model.target.as_deref() {
+        Some(model_target) if model_target != entry.target => Ok(vec![Diagnostic::violation(
+            "slice-model-target-drift",
+            "model.yaml `target` agrees with the slice's plan entry",
+            format!(
+                "model.yaml `target: {model_target}` disagrees with plan.yaml slice `{name}` \
+                 `target: {}`",
+                entry.target
+            ),
+            Artifact::Plan,
+            None,
+        )]),
         _ => Ok(Vec::new()),
     }
 }

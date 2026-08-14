@@ -4,12 +4,15 @@
 //! payload fields; Rust variants reach the wire via `#[serde(rename)]`.
 
 use artifacts::spec::provenance::RequirementStatus;
+use diagnostics::digest::sha256_hex;
+use error::Error;
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::adapter::operation::SourceOperation;
 use crate::name::{PlanName, SliceName};
 use crate::plan::Divergence;
+use crate::snapshot::SnapshotId;
 
 /// One row of a per-writer event log.
 ///
@@ -27,7 +30,7 @@ pub struct Event {
     /// [`super::append_for`] stamps the wire fields.
     ///
     /// Deserialise accepts the prior `actor` wire key so existing
-    /// `.emery/events/*.jsonl` lines remain in the union after the rename.
+    /// `.emery/change/events/*.jsonl` lines remain in the union after the rename.
     #[serde(alias = "actor")]
     pub writer: String,
     /// Monotonic per-writer sequence (1-based) inside that writer's
@@ -55,6 +58,19 @@ impl Event {
             sequence: 0,
             kind,
         }
+    }
+
+    /// Canonical digest of this envelope's JSON bytes.
+    ///
+    /// # Errors
+    ///
+    /// `journal-event-serialise-failed` when the envelope cannot be serialised.
+    pub fn digest(&self) -> Result<SnapshotId, Error> {
+        let bytes = serde_json::to_vec(self).map_err(|err| Error::Diag {
+            code: "journal-event-serialise-failed",
+            detail: format!("failed to serialise journal event: {err}"),
+        })?;
+        Ok(SnapshotId::from_digest(&sha256_hex(&bytes)))
     }
 }
 
@@ -285,51 +301,45 @@ pub enum EventKind {
         /// Affected slice.
         slice_name: SliceName,
     },
-    /// Interim code delivery (RFC-87, pre-RFC-95): after the target's
-    /// postflight gate passed, the merge orchestration materialized
-    /// the slice's accepted result snapshot onto the product tree.
-    /// Deleted when publication sets (RFC-95) own the final seal.
-    #[serde(rename = "slice.code.applied", rename_all = "kebab-case")]
-    SliceCodeApplied {
-        /// Affected slice.
-        slice_name: SliceName,
-        /// The applied result snapshot (`sha256:<hex>`).
-        snapshot: String,
-    },
     /// The target's postflight merge gate raised a blocking finding
     /// **after** `target.merge.wave-committed` (RFC-86 D9): the member
-    /// is already merged, so this is a terminal diagnostic — never a
+    /// set is already merged, so this is a terminal diagnostic — never a
     /// rollback. `reason` carries a short human reason or finding code;
-    /// the merged baseline stands.
+    /// the accepted CID stands. Names every failed member.
     #[serde(rename = "target.merge.wave-postflight-failed", rename_all = "kebab-case")]
     MergeWavePostflightFailed {
-        /// Target key under `.emery/targets/`.
+        /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
-        /// Sole member's slice — already merged and archived.
-        slice_name: SliceName,
+        /// Failed members (stable wave order).
+        members: Vec<SliceName>,
         /// Short human reason / finding code for the failed gate.
         reason: String,
     },
-    /// Deterministic wave commit finalized requirement identity maps
-    /// (RFC-86 D5 / D9). Projects the member merged; failures before
-    /// this fact leave no merged projection. Carries every local→
-    /// baseline `REQ-NNN` mapping for the wave's sole member.
+    /// Deterministic wave commit: the accepted-CID transition for this
+    /// target. Projects every named member `merged`; failures before
+    /// this fact leave no merged projection and leave the prior
+    /// accepted CID authoritative.
     #[serde(rename = "target.merge.wave-committed", rename_all = "kebab-case")]
     TargetMergeWaveCommitted {
-        /// Target key under `.emery/targets/`.
+        /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
-        /// Sole member's slice name.
-        slice_name: SliceName,
+        /// Frozen member set in stable wave order.
+        members: Vec<SliceName>,
+        /// Accepted CID the wave opened against (`wave.base`).
+        base: SnapshotId,
+        /// Captured CID after folding every member's delta inside the
+        /// workspace — the new accepted CID.
+        result: SnapshotId,
         /// Closed-plan commit-authorization epoch (may differ from the
         /// wave's build-authorization; serial execution normally reuses
         /// the same epoch).
         commit_authorization: FactEpochRef,
         /// Slice-local id → final baseline `REQ-NNN` for every
-        /// requirement in the member.
+        /// requirement across the member set.
         identity_maps: Vec<IdentityMap>,
         /// Post-merge `.emery/specs/` tree digest (RFC-91 D4): the
         /// accepted baseline this commit advanced to. Freshness treats
@@ -337,7 +347,7 @@ pub enum EventKind {
         /// plan-local drift, not staleness. Optional and additive —
         /// absent on rows written before the field existed.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        baseline: Option<crate::snapshot::SnapshotId>,
+        baseline: Option<SnapshotId>,
         /// Deferred member set the wave carried into the baseline
         /// (RFC-86a D5) — the committed audit trail names exactly
         /// which debt this wave accepted. Empty when nothing was
@@ -348,7 +358,7 @@ pub enum EventKind {
     /// Target postflight gate succeeded after wave commit (RFC-86 D9).
     #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
     TargetMergeWaveSucceeded {
-        /// Target key under `.emery/targets/`.
+        /// Target key under `.emery/change/targets/`.
         target: String,
         /// Wave manifest content digest (`sha256:<64 hex>`).
         digest: String,
@@ -356,7 +366,7 @@ pub enum EventKind {
         slice_name: SliceName,
     },
     /// The `source survey` finalize tail validated and merged
-    /// one source's lead set into `discovery.md`. The plan-time peer
+    /// one source's lead set into `leads.md`. The plan-time peer
     /// of [`Self::SliceExtractCompleted`]; one event per `(source,
     /// survey)` run. CLI-owned.
     #[serde(rename = "source.survey.completed", rename_all = "kebab-case")]
@@ -445,7 +455,7 @@ pub enum EventKind {
     /// append-only journal records what merged, when, which baseline
     /// specs it touched, a one-line outcome summary, and the git SHA
     /// the baseline sat at. The archived slice folder under
-    /// `.emery/archive/` is a prunable convenience cache
+    /// `.emery/change/archive/` is a prunable convenience cache
     /// (`emery archive prune`), not the system of record — this
     /// event plus git history of `.emery/specs/` is.
     #[serde(rename = "slice.archive.created", rename_all = "kebab-case")]
@@ -488,12 +498,12 @@ pub enum EventKind {
     },
     /// An immutable one-member target wave was written before build
     /// (RFC-86 D9). The manifest lives at
-    /// `.emery/targets/<target>/waves/<digest>.yaml`; `digest` is the
+    /// `.emery/change/targets/<target>/waves/<digest>.yaml`; `digest` is the
     /// content address (`sha256:…`) of that YAML.
     #[serde(rename = "target.wave.opened", rename_all = "kebab-case")]
     TargetWaveOpened {
-        /// Target key under `.emery/targets/` (project name in the
-        /// in-place cut).
+        /// Target key under `.emery/change/targets/` (`plan.yaml`
+        /// entry target; standalone fixtures may use the project name).
         target: String,
         /// Manifest content digest (`sha256:<64 hex>`).
         digest: String,
@@ -527,19 +537,80 @@ pub enum EventKind {
         /// The synthesized gate-time reason.
         reason: String,
     },
+    /// `emery plan amend --proposal` applied a retained amendment.
+    /// Invalidates the old closed-plan epoch by changing `plan.yaml`;
+    /// status skips the digest as unapplied.
+    #[serde(rename = "plan.amend.applied", rename_all = "kebab-case")]
+    PlanAmendApplied {
+        /// Content digest of the applied proposal document.
+        digest: SnapshotId,
+    },
+    /// Refinement parked this leaf: an inert boundary proposal, or
+    /// exhausted resurvey / re-decomposition budgets. No `refined`
+    /// transition and no synthesis promotion.
+    #[serde(rename = "slice.refinement.parked", rename_all = "kebab-case")]
+    SliceRefinementParked {
+        /// Parked leaf.
+        slice_name: SliceName,
+        /// Why refinement stopped.
+        reason: ParkReason,
+        /// Boundary-proposal digest when [`ParkReason::BoundaryEscalation`].
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        proposal: Option<SnapshotId>,
+    },
     /// `emery system review` recorded architectural authority over one
     /// exact wave handoff (RFC-104 D10). Definition-home writers only
-    /// (`<system>/events/`, never `.emery/events/`); the fact grants
-    /// no product mutation authority and does not replace
-    /// `plan.execute.started`.
+    /// (`<system>/events/`, never `.emery/change/events/`); the fact
+    /// grants no product mutation authority and does not replace
+    /// `plan.execute.started`. The change journal refuses append.
     #[serde(rename = "system.wave.reviewed", rename_all = "kebab-case")]
     SystemWaveReviewed {
         /// The reviewed wave's id in `migration.yaml`.
         wave: String,
         /// Content digest (`sha256:…`) of the exact reviewed
         /// `handoffs/<digest>.yaml` projection.
-        handoff_digest: String,
+        handoff_digest: SnapshotId,
     },
+}
+
+/// Closed reason on [`EventKind::SliceRefinementParked`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ParkReason {
+    /// Inert boundary proposal written; planning artifacts unchanged.
+    BoundaryEscalation,
+    /// Focused resurvey or nearest-domain re-decomposition exhausted
+    /// the compiled judgment budget.
+    BudgetExhausted,
+}
+
+impl EventKind {
+    /// Member slices a `target.merge.wave-committed` fact projects
+    /// `merged` for.
+    #[must_use]
+    pub fn committed_members(&self) -> Option<&[SliceName]> {
+        match self {
+            Self::TargetMergeWaveCommitted { members, .. } => Some(members),
+            _ => None,
+        }
+    }
+
+    /// Whether this wave-commit fact names `slice` in its frozen
+    /// member set.
+    #[must_use]
+    pub fn commits_member(&self, slice: &str) -> bool {
+        self.committed_members().is_some_and(|members| members.iter().any(|m| m.as_str() == slice))
+    }
+
+    /// Failed members named by a `target.merge.wave-postflight-failed`
+    /// fact.
+    #[must_use]
+    pub fn postflight_failed_members(&self) -> Option<&[SliceName]> {
+        match self {
+            Self::MergeWavePostflightFailed { members, .. } => Some(members),
+            _ => None,
+        }
+    }
 }
 
 /// Typed `closed-plan` coverage on [`EventKind::PlanExecuteStarted`].
@@ -558,7 +629,7 @@ pub enum ClosedPlanCoverage {
         plan_digest: String,
         /// Sorted per-leaf refinement digests (`sha256:…` of each
         /// leaf's covered `refinement.yaml`).
-        refinements: std::collections::BTreeMap<String, crate::snapshot::SnapshotId>,
+        refinements: std::collections::BTreeMap<String, SnapshotId>,
     },
 }
 

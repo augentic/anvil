@@ -13,7 +13,7 @@ fn header() -> ProjectionHeader {
     ProjectionHeader {
         version: 1,
         slice: "auth-login".into(),
-        project: Some("demo".into()),
+        target: Some("demo".into()),
     }
 }
 
@@ -193,7 +193,7 @@ tasks:
         ProjectionHeader {
             version: 1,
             slice: "left".into(),
-            project: None,
+            target: None,
         },
         &BTreeMap::new(),
         &BTreeMap::new(),
@@ -206,7 +206,7 @@ tasks:
         ProjectionHeader {
             version: 1,
             slice: "right".into(),
-            project: None,
+            target: None,
         },
         &BTreeMap::new(),
         &BTreeMap::new(),

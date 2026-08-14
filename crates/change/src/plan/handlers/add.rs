@@ -9,12 +9,12 @@ use omnia_guest::api::operation::Operation;
 use project::config::with_state;
 use project::handler::{Anchor, Ctx};
 use project::journal;
-use project::plan::{AuthorityOverride, Entry, Plan, authority_override, entry_mut};
+use project::plan::{AuthorityOverride, Entry, Plan, authority_override, entry_mut, proposal};
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
 use super::plan_ref;
-use crate::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_discovery};
+use crate::plan::wire::{BindingArg, KindAssign, bindings_from_args, load_leads};
 
 /// Wire input for `plan add`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -39,6 +39,8 @@ pub struct AddInput {
     /// added.
     #[serde(default)]
     pub authority_override: Vec<KindAssign>,
+    /// Required `plan.yaml.targets` key this slice binds to.
+    pub target: String,
 }
 
 /// `emery plan add <name> [flags]` — append one `pending` entry.
@@ -61,14 +63,15 @@ impl<P: Anchor> Operation<P> for Add {
             description,
             context,
             authority_override,
+            target,
         } = input;
         let name = name.as_str();
 
-        // When `discovery.md` exists, resolve `--sources <key>=<lead>` to the
-        // canonical lead id before persisting. Absence of `discovery.md`
+        // When `leads.md` exists, resolve `--sources <key>=<lead>` to the
+        // canonical lead id before persisting. Absence of `leads.md`
         // short-circuits to the verbatim path.
-        let discovery = load_discovery(cx.layout())?;
-        let sources = bindings_from_args(&sources, name, discovery.as_ref())?;
+        let leads = load_leads(cx.layout())?;
+        let sources = bindings_from_args(&sources, name, leads.as_ref())?;
         let authority_override_map = AuthorityOverride {
             by_kind: authority_override
                 .iter()
@@ -77,7 +80,7 @@ impl<P: Anchor> Operation<P> for Add {
         };
         let entry = Entry {
             name: name.into(),
-            project: None,
+            target,
             depends_on: depends_on.into_iter().map(Into::into).collect(),
             sources,
             context,
@@ -89,6 +92,24 @@ impl<P: Anchor> Operation<P> for Add {
         };
         let plan_path = cx.layout().plan_path();
         let now = cx.now();
+        let layout = cx.layout();
+        if proposal::has_tree(layout) {
+            let mut plan = Plan::load(&plan_path)?;
+            proposal::add(layout, &mut plan, &entry)?;
+            let created_entry = plan
+                .entries
+                .iter()
+                .find(|row| row.name == name)
+                .cloned()
+                .ok_or_else(|| project::plan::unknown_slice_err(&plan.name, name))?;
+            let events = authority_override::emit_seed_events(&plan.name, &created_entry, now);
+            journal::append_batch(layout, &events)?;
+            return Ok(EntryBody {
+                plan: plan_ref(&plan, &plan_path),
+                action: Action::Create,
+                entry: created_entry,
+            });
+        }
         let (body, override_events) =
             with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
                 plan.create(entry)?;

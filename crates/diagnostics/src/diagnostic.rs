@@ -92,7 +92,7 @@ pub enum Artifact {
     Specs,
     /// Design notes (`design.md`).
     Design,
-    /// Decision Records (`.emery/slices/<slice>/decisions/<slug>.md`,
+    /// Decision Records (`.emery/change/slices/<slice>/decisions/<slug>.md`,
     /// promoted to `.emery/decisions/DEC-NNNN-<slug>.md`).
     Decisions,
     /// Task list (`tasks.md`).
@@ -103,7 +103,7 @@ pub enum Artifact {
     Tokens,
     /// Per-shell composition manifest.
     Composition,
-    /// Plan or workflow artifact (`plan.yaml`, `discovery.md`).
+    /// Plan or workflow artifact (`plan.yaml`, `leads.md`).
     Plan,
     /// Artifact category not classified.
     Unknown,

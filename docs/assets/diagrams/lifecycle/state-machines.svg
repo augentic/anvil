@@ -33,5 +33,5 @@
   <rect x="140" y="196" width="80" height="36" rx="8" fill="#fbe6e6" stroke="#b03030"/>
   <text x="158" y="220" font-family="ui-monospace, monospace" font-size="11" fill="#1c1c1c">dropped</text>
   <text x="20" y="268" font-family="ui-monospace, monospace" font-size="11" fill="#888">All transitions enforced by emery CLI &#8212; skills never write state directly.</text>
-  <text x="20" y="288" font-family="ui-monospace, monospace" font-size="11" fill="#888">Terminal slices archive to .emery/archive/YYYY-MM-DD-&lt;name&gt;/</text>
+  <text x="20" y="288" font-family="ui-monospace, monospace" font-size="11" fill="#888">Terminal slices archive to .emery/change/archive/YYYY-MM-DD-&lt;name&gt;/</text>
 </svg>

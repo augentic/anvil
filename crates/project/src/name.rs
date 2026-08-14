@@ -160,7 +160,7 @@ macro_rules! identifier_newtype {
 
 identifier_newtype! {
     /// A slice identifier — `plan.yaml.slices[].name` and the
-    /// `.emery/slices/<name>/` directory stem.
+    /// `.emery/change/slices/<name>/` directory stem.
     SliceName
 }
 

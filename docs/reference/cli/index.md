@@ -39,7 +39,8 @@ The CLI owns correctness (deterministic structural invariants); the agent owns j
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
-| [emery plan](plan.md) | Author, refine, execute, curate, and archive change plans (`plan refine` drains refinement; the build → merge loop runs inside `plan execute`) | The workflow spine |
+| [emery plan](plan.md) | Author from a reviewed handoff (`--from` / `--wave`), refine, execute, curate, and archive change plans (`plan refine` drains refinement; the build → merge loop runs inside `plan execute`) | The delivery spine |
+| emery system | Definition loop: `survey`, `plan`, `review`, `status` over a hand-authored definition home (`--dir` else CWD) | RFC-104; wraps are `/emery:system-*` |
 | [emery slice](slice.md) | Read-only per-slice projections: list, validate, provenance, model show | Slice inspection |
 | [emery debt](debt.md) | Read-only baseline debt projection: the carried `unknown` / `conflict` backlog with reason, origin, originating change, and age | Boundary review |
 | [emery adapter / source / target resolve](adapter.md) | Seed the project component cache and resolve adapters by axis | Adapter infrastructure |

@@ -5,7 +5,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::config::{Mutation, with_state};
 use project::handler::{Anchor, Ctx};
-use project::plan::{Plan, collect_events, project_ladders};
+use project::plan::{Plan, collect_events, project_ladders, proposal};
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -35,7 +35,8 @@ impl<P: Anchor> Operation<P> for Remove {
         let name = input.name;
         let plan_path = require_file(&cx)?;
         let events = collect_events(cx.layout())?;
-        let body = with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
+        let layout = cx.layout();
+        let body = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
             let removed = plan
                 .entries
                 .iter()
@@ -43,7 +44,11 @@ impl<P: Anchor> Operation<P> for Remove {
                 .cloned()
                 .ok_or_else(|| plan.entry_not_found(&name))?;
             let ladders = project_ladders(plan, &events);
-            plan.remove(&name, &ladders)?;
+            if proposal::has_tree(layout) && Plan::is_replaceable(&ladders) {
+                proposal::remove(layout, plan, &name)?;
+            } else {
+                plan.remove(&name, &ladders)?;
+            }
             Ok(Mutation::changed(EntryBody {
                 plan: plan_ref(plan, &plan_path),
                 action: Action::Remove,

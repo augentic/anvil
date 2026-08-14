@@ -1,6 +1,8 @@
-//! The change loop's judgment leg: plan-time lead reconciliation.
-//! The schema-gated kernel lives in [`project::judgment`]; this module
-//! carries the propose leg plus the embedded prompt corpus it cites.
+//! The change loop's judgment legs: partition, boundary review, and
+//! plan-time lead reconciliation. Schema-gated kernels live in
+//! [`project::judgment`]; this crate owns the prompt corpus.
 
+pub mod partition;
 pub mod propose;
 pub mod prose;
+pub mod review;

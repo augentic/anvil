@@ -19,7 +19,7 @@ Canonical JSON envelope shapes for `emery *` commands that skills shell out to. 
 Every `Render` impl follows one convention so operators can scan any command's output the same way:
 
 - **Result line first, lowercase, verb-first**: `created plan entry `foo``, `dropped `checkout``, `archived plan `demo``. Reports keep their `PASS` / `FAIL` banner — the one uppercase exception, shared by `plan validate` and `slice validate`.
-- **Detail lines are indented `label: value` pairs** with kebab-case labels: `  plan: .emery/plan.yaml`, `  archived: .emery/archive/slices/…`, `  reason: superseded`.
+- **Detail lines are indented `label: value` pairs** with kebab-case labels: `  plan: .emery/plan.yaml`, `  archived: .emery/change/archive/slices/…`, `  reason: superseded`.
 - **Names in backticks**, paths bare: `merged `checkout``, `  plan: <path>`.
 - **No trailing periods** on result or detail lines.
 - **`hint:` is recovery guidance** (what to fix); **`resume:` is the literal next command** (what to run). A line is one or the other, never both.
@@ -76,16 +76,17 @@ Replaces a field on an existing plan entry. The `entry` body mirrors the post-am
 
 ### `emery plan author`
 
-The guest-routed authoring orchestration: survey per bound source, reconcile leads into `slices[]`, persist the review prose, validate, exit for operator review. `hint` is the literal closing line the `/emery:plan` skill relays.
+The guest-routed authoring phase: import a reviewed handoff, decompose the bound catalog into a complete tree, and publish `decomposition.yaml` + `plan.yaml` together. `slices` is the projected leaf list in tree order.
 
 ```json
 {
   "plan": "identity-revamp",
-  "surveyed": [
-    { "source": "docs", "adapter": "documentation", "leads": ["identity-api"] }
-  ],
-  "slices": ["identity-contracts", "identity-service"],
-  "hint": "Plan `identity-revamp` is authored. Review it, then run `emery plan refine` to generate every slice's specification bundle; `emery plan execute` builds the refined slices afterwards."
+  "discovery-digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "leads-digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "decomposition-digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "targets": ["app"],
+  "sources": ["intent"],
+  "slices": ["identity-contracts", "identity-service"]
 }
 ```
 
@@ -120,9 +121,9 @@ The drained loop's success body — a stop surfaces on the error envelope instea
 
 On `plan-execute-stopped`, stdout carries the canonical plan-status stop card beside the stderr envelope — the same `StatusBody` shape `emery plan status` projects (text renders `stop: <reason>` / `hint:` / `resume:`; JSON carries the structured body), so drivers need no follow-up `emery plan status` call. A `refinement-required` stop card's `resume:` is `emery plan refine` — execute never refines.
 
-### Lead-reconciliation request envelope {#plan-reconcile-request}
+### Decomposition request envelope {#plan-reconcile-request}
 
-The reconcile leg inside the guest-routed `emery plan author` assembles the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
+The propose gate inside the guest-routed `emery plan author` assembles a **request** envelope for grouping and `change.md` orientation: a flat `(source, lead)` catalog read 1:1 from `leads.md`, plus the `projects[]` topology synthesised from `plan.yaml.targets` (`name` is the handoff target id; `target` is that row's adapter pin). Read-only — nothing is written and no journal event fires. `description` is omitted when the target carries none.
 
 ```json
 {
@@ -141,7 +142,7 @@ The reconcile leg inside the guest-routed `emery plan author` assembles the lead
 
 ### Lead-reconciliation write summary {#plan-reconcile-write}
 
-Success summary after the reconcile kernel projects the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
+Success summary after decomposition projects `plan.yaml.slices[]`. `slice-names` is the slice set in projection order and `slice-count` is its length.
 
 ```json
 {
@@ -158,7 +159,7 @@ Abandons one entry's slice without merging. The body carries the archive destina
 ```json
 {
   "name": "identity-service",
-  "archive-path": "<TEMPDIR>/.emery/archive/2026-07-31-identity-service",
+  "archive-path": "<TEMPDIR>/.emery/change/archive/2026-07-31-identity-service",
   "drop-reason": "superseded by identity-contracts"
 }
 ```
@@ -233,11 +234,11 @@ A failed run carries one object per finding in `findings`, each with `rule-id` (
 
 ### `emery plan archive`
 
-Sweeps a closed plan into `.emery/archive/plans/`, then runs the change-scoped snapshot collection. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept; `swept-objects` counts the snapshot-store objects the collection deleted (objects whose GC roots belonged only to the archived change, RFC-88 D2). Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
+Sweeps a closed plan into `.emery/change/archive/plans/`, then runs the change-scoped snapshot collection. The `archived` field is the destination path; `archived-plans-dir` is non-null when the plan had a per-plan authoring directory that also got swept; `swept-objects` counts the snapshot-store objects the collection deleted (objects whose GC roots belonged only to the archived change, RFC-88 D2). Errors use the standard envelope: `plan-has-outstanding-work` (exit 1) when the plan still has non-terminal entries.
 
 ```json
 {
-  "archived": "<TEMPDIR>/.emery/archive/plans/demo-<YYYYMMDD>.yaml",
+  "archived": "<TEMPDIR>/.emery/change/archive/plans/demo-<YYYYMMDD>.yaml",
   "archived-plans-dir": null,
   "swept-objects": 7,
   "plan": {
@@ -255,7 +256,7 @@ The merge phase inside `emery plan execute` folds the slice's spec deltas into t
   "slice": "login",
   "merged": ["login"],
   "decisions": ["DEC-0001"],
-  "archive-path": "<TEMPDIR>/.emery/archive/2026-07-31-login"
+  "archive-path": "<TEMPDIR>/.emery/change/archive/2026-07-31-login"
 }
 ```
 
@@ -272,12 +273,12 @@ The synthesis leg inside the `emery plan refine` drain assembles the agent **inp
     {
       "source": "docs",
       "lead": "password-reset",
-      "evidence-path": ".emery/slices/identity-service/evidence/docs.yaml"
+      "evidence-path": ".emery/change/slices/identity-service/evidence/docs.yaml"
     },
     {
       "source": "legacy",
       "lead": "password-reset",
-      "evidence-path": ".emery/slices/identity-service/evidence/legacy.yaml"
+      "evidence-path": ".emery/change/slices/identity-service/evidence/legacy.yaml"
     }
   ],
   "guidance-brief": "# Guidance brief\n…"

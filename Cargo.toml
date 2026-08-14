@@ -19,6 +19,7 @@ anyhow.workspace = true
 cfg-if.workspace = true
 emery-launcher.workspace = true
 emery-wasi-exec-bits.workspace = true
+emery-wasi-ingest.workspace = true
 emery-wasi-origins.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
@@ -216,6 +217,7 @@ emery-slice = { path = "crates/slice" }
 emery-system = { path = "crates/system" }
 emery-transport = { path = "crates/transport" }
 emery-wasi-exec-bits = { path = "crates/wasi-exec-bits" }
+emery-wasi-ingest = { path = "crates/wasi-ingest" }
 emery-wasi-origins = { path = "crates/wasi-origins" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }

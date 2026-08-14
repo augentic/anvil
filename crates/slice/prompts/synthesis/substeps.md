@@ -58,7 +58,7 @@ Every task MUST match `- [ ] X.Y <description>` under a `## ` heading (`tasks.us
 
 ## What synthesis never does
 
-- **Never edit** `metadata.yaml`, `plan.yaml`, or `discovery.md`.
+- **Never edit** `metadata.yaml`, `plan.yaml`, or `leads.md`.
 - **Never rewrite** an earlier response section.
 - **Never author kernel-owned fields** — record claims + `agreement`; orphan `(source, id)` → `slice-model-source-orphan`.
 - **Never park on uncertainty** — record the verdict; kernel derives `[unknown]` / `[conflict]` / `[divergence]`.

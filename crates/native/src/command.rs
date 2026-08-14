@@ -7,7 +7,9 @@ use std::process::ExitCode;
 
 use omnia_guest::api::command::CommandResponse;
 use omnia_guest::api::invoke::Invoker;
+use project::config::Roots;
 use project::handler::ExecutionPaths;
+use transport::command::selectors::change_request;
 
 use crate::catalog::Catalog;
 use crate::error::Error;
@@ -24,6 +26,7 @@ use crate::provider::{Provider, ReferenceMode};
 pub async fn execute(
     paths: ExecutionPaths, model: DynModel, catalog: Catalog, argv: Vec<String>,
 ) -> Result<CommandResponse, Error> {
+    let paths = reanchor(paths, &argv);
     let provider = Provider::new(paths, model, catalog, ReferenceMode::Online);
     let router =
         transport::command::router(Invoker::new("emery", provider.clone())).map_err(|err| {
@@ -34,6 +37,17 @@ pub async fn execute(
     let response = transport::command::execute(&router, argv).await;
     provider.shutdown().await;
     Ok(response)
+}
+
+/// Apply `--change-dir` when argv names it; otherwise keep the
+/// caller's paths (native tests pass a tempdir while cwd is the crate).
+fn reanchor(paths: ExecutionPaths, argv: &[String]) -> ExecutionPaths {
+    let rest: Vec<String> = argv.iter().skip(1).cloned().collect();
+    let Some(dir) = change_request(&rest).change_dir else {
+        return paths;
+    };
+    let roots = Roots::resolve(paths.project_root(), Some(&dir));
+    ExecutionPaths::from_roots(&roots, paths.locations().clone())
 }
 
 /// [`execute`], then write the response to this process's standard

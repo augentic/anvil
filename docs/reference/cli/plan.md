@@ -6,60 +6,60 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 
 | Verb | When to use |
 |------|-------------|
-| [`author`](#emery-plan-author) | Guest-routed authoring orchestration: scaffold `plan.yaml` (refuses an existing plan unless `--force` recreates it), survey every bound source, reconcile leads into `slices[]`, validate, exit with the review hint (the literal `emery plan refine` command). Invoked by `/emery:plan`. |
+| [`author`](#emery-plan-author) | Bind a reviewed handoff from `emery system review` (`--from` / `--wave`), import its surface leads, decompose it, and publish `decomposition.yaml` + `plan.yaml` together. Refuses an existing plan unless `--force` rebinds the same reviewed handoff. Invoked by `/emery:plan`. |
 | [`refine`](#emery-plan-refine) | Guest-routed serial refinement drain: per in-scope leaf in dependency order, extract every bound source, synthesize + validate the slice artifacts, atomically write `refinement.yaml`. Fresh manifests are skipped; no code work. Invoked by `/emery:refine`. Optional repeated `--slice` selectors. |
-| [`execute`](#emery-plan-execute) | Guest-routed driver loop: requires a fresh refinement manifest per in-scope leaf, at start appends `plan.execute.started` (authorization epoch covering the exact refinement digests), then claims → builds → merges per entry under gap gates until `drained` or a stop. Holds the `.emery/guest.lock` marker. |
+| [`execute`](#emery-plan-execute) | Guest-routed driver loop: requires a fresh refinement manifest per in-scope leaf, at start appends `plan.execute.started` (authorization epoch covering the exact refinement digests), then claims → builds → merges per entry under gap gates until `drained` or a stop. Holds the `.emery/change/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan (projects `pending` until claimed). |
-| [`amend`](#emery-plan-amend) | Edit topology fields (`description`, `depends-on`, `sources`), divergence stamps, authority overrides, and the `allow-composition-replace` merge authorization on an existing entry. |
+| [`amend`](#emery-plan-amend) | Edit topology fields (`description`, `depends-on`, `sources`), divergence stamps, authority overrides, the `allow-composition-replace` merge authorization, or apply a retained amendment (`--proposal`). |
 | [`remove`](#emery-plan-remove) | Drop an entry while the plan is still replaceable (every entry still projects `pending`). |
 | [`drop`](#emery-plan-drop) | Abandon one entry's already-refined slice without merging — stamps `dropped` and archives the slice tree. |
-| [reconciliation](#lead-reconciliation-inside-emery-plan-author) | The reconcile leg inside `emery plan author`: validates the agent grouping and replaces `slices[]` on a replaceable plan. |
+| [decomposition](#decomposition-inside-emery-plan-author) | The decompose + propose legs inside `emery plan author`: survey the bound catalog, write `decomposition.yaml`, and project `slices[]`. |
 | [`validate`](#emery-plan-validate) | Structural and referential integrity check (cycles, unknown deps) plus health diagnostics (`cycle-in-depends-on`, `orphan-source`). First triage step when `emery plan execute` reports `stuck`. |
 | [`status`](#emery-plan-status) | Read-only projection into a deterministic `next-action` (`refine|build|merge <slice>` / `stop <reason>` / `drained`) plus Ready / Authorized. |
 | [`gaps`](#emery-plan-gaps) | Read-only typed gap inventory (`unknown` / `conflict` / `divergence`) with shared-lead grouping annotations. |
-| [`archive`](#emery-plan-archive) | Move a completed `plan.yaml` and `.emery/plans/<name>/` to `.emery/archive/plans/`. Usually invoked by `/emery:finalize` after the operator confirms publication (commits, PRs, review) is complete — publication itself stays operator-owned, outside Emery. |
+| [`archive`](#emery-plan-archive) | Move a completed `plan.yaml` and `.emery/change/plans/<name>/` to `.emery/change/archive/plans/`. Usually invoked by `/emery:finalize` after the operator confirms publication (commits, PRs, review) is complete — publication itself stays operator-owned, outside Emery. |
 
 ## Subcommands
 
 ### emery plan author
 
-Guest-routed authoring orchestration — scaffold, survey, reconcile, validate, exit for operator review. Invoked by `/emery:plan`.
+Bind a reviewed handoff, decompose the bound catalog, and publish `decomposition.yaml` + `plan.yaml` together. Invoked by `/emery:plan`.
 
 ```bash
-emery plan author <name> [--source <key>=<adapter>:<binding>]... [--intent "<string>"] [--force]
+emery plan author <name> --from <definition-home> --wave <id> [--force] [--change-dir <dir>]
 ```
 
 | Argument | Description |
 |----------|-------------|
 | `name` | Kebab-case change name. |
-| `--source` | Repeatable structured binding `<key>=<adapter>:<binding>`. `<key>` is an operator-chosen label for the binding — it becomes the slot name in `plan.yaml.sources` that plan entries and evidence files reference (e.g. `legacy`, `docs`); pick anything kebab-case and memorable. `<adapter>` is an explicit kebab-case source adapter name. `<binding>` is either a path (`<adapter>:<path>` — URLs containing `:` like `git@github.com:org/foo.git` round-trip cleanly because only the first colon is significant) or a `value:`-prefixed literal (`<adapter>:value:<literal>` — used by `intent`). Example: `--source legacy=typescript:./legacy`. |
-| `--intent` | Sugar for a single implicit `intent` value binding. |
-| `--force` | Recreate an existing plan unconditionally, whatever its entry statuses (no archive — the previous `plan.yaml` is simply overwritten). `/emery:plan` confirms before passing it. |
+| `--from` | Reviewed definition home. Relative values join the product root in-place (`.emery/system/` for a colocated degenerate definition) or the change home when detached. |
+| `--wave` | Wave id inside the definition named by `--from`. |
+| `--force` | Rebind the same reviewed handoff. A changed wave needs a new handoff and review fact (`plan-author-handoff-changed`). Without `--force` an existing `plan.yaml` refuses with `plan-already-exists`. `/emery:plan` confirms before passing it. |
+| `--change-dir <dir>` | Optional detached change root. Omitted, the nearest ancestor with `.emery/project.yaml` is in-place (`<product>/.emery/change/`); else cwd is the change home. No marker, no walk. |
 
-Exit codes: `0` success (exits with the review hint); `2` for `plan-already-exists` (present plan without `--force`) and reconcile validation failures (see [Lead reconciliation](#lead-reconciliation-inside-emery-plan-author)); `1` for adapter resolution and I/O failures.
+Exit codes: `0` success; `2` for `plan-already-exists`, missing/ambiguous handoff, binding validation failures, and decomposition stops (`plan-author-budget-exhausted`, `plan-author-unready`, `plan-author-definition-revision`); `1` for ingest and I/O failures.
 
-JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-plan-author) — surveyed sources, slice count, and the literal review `hint`.
+JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-plan-author) — bound targets and sources, the discovery / leads / decomposition digests, and the projected `slices[]`.
 
 Behavior notes:
 
-- **Order of operations.** Every binding is resolved up front, then `plan.yaml` is scaffolded at the repo root, then the survey and reconcile legs run. An unresolvable adapter (unpublished name, `emery_floor`) fails fast with nothing on disk.
-- **Bare adapter names** persist bare in `plan.yaml` (no auto version stamp). A cache-seeded binding (`emery adapter add`) resolves the seed; an unseeded bare name resolves local-first — newest installed store version, else pull-latest provisioning. The resolved version is logged to stderr; the survey fan-out and every later `plan refine` extract dispatch the same local resolution.
-- **Explicit pins** (`emery:<name>@<semver>`) stamp `version:` on the binding and install through the standard pull-on-miss path.
-- **`--intent`** creates an implicit `intent` value binding that rides the same resolution rules.
+- **Order of operations.** Resolve the current reviewed handoff (`system::review::current_handoff`, verify-on-read), copy byte-identical envelopes under `imports/`, re-resolve each coverage locator and pin the delivery CID (a handoff `observed-cid` is imported provenance and does not authorize the pin), fill a declared adapter name and keep a handoff pin, write `discovery.yaml`, import the wave's surface leads (focused child survey only when an imported lead is still coarser than a buildable boundary), decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together (complete-tree policy).
+- **Intent** arrives only through the handoff (reserved key `intent`, value-only, no locator, no CID). There is no `--intent` or `--source` authoring flag.
+- **Exact pins.** Every bound source and target records `emery:<name>@<semver>`. A handoff pin is frozen; a declared name is filled at bind time. Bare names are refused on the persisted plan topology.
 
 ### emery plan refine
 
 Guest-routed serial refinement drain — the specification stage between `plan author` and `plan execute` (RFC-91). Invoked by `/emery:refine`.
 
 ```bash
-emery plan refine [--slice <slice>]...
+emery plan refine [--slice <slice>]... [--change-dir <dir>]
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--slice <slice>` | Repeatable. Target specific in-scope leaves; selectors also include the stale-or-missing predecessor closure the selected work needs. Omitted, every in-scope leaf is targeted. |
 
-The drain walks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts (`proposal.md`, `specs/<domain>/spec.md`, `design.md`, `tasks.md`, `model.yaml`), and atomically writes `.emery/slices/<slice>/refinement.yaml` — the canonical record of the refinement's exact inputs and complete output bundle, identified by its content digest. Dependent refinement requires every direct predecessor's manifest currently fresh; the fresh digests are recorded as the dependent's ordered `dependencies[]` pins. Fresh leaves are skipped (`fresh <slice> (skipped)`), so re-running resumes missing or stale work. The drain holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime.
+The drain walks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts (`proposal.md`, `specs/<domain>/spec.md`, `design.md`, `tasks.md`, `model.yaml`), and atomically writes `.emery/change/slices/<slice>/refinement.yaml` — the canonical record of the refinement's exact inputs and complete output bundle, identified by its content digest. Dependent refinement requires every direct predecessor's manifest currently fresh; the fresh digests are recorded as the dependent's ordered `dependencies[]` pins. Fresh leaves are skipped (`fresh <slice> (skipped)`), so re-running resumes missing or stale work. The drain holds the create-exclusive `.emery/change/guest.lock` marker for the run's lifetime.
 
 No target build operation, product workspace, target wave, `BuildRecord`, merge gate, or authorization epoch is created — `plan refine` writes planning artifacts only. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs; those are persisted, not failures, and the output points at `emery plan gaps`. Bundle artifacts are engine-owned between refine and execute: a direct edit is detected as staleness and re-refinement replaces it — durable corrections travel through inputs (source material, `emery plan amend`, authority overrides).
 
@@ -95,16 +95,16 @@ Exit code: `0` when no blocking finding fires (suggestions are non-fatal); `2` w
 Drive the plan through build → merge per entry under the guest lock, consuming the exact refinement manifests `emery plan refine` wrote. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests — there is no separate `plan approve` verb and no projected `approved` rung. Re-entry on an already-drained plan is a read-only no-op (no new epoch); on any other resume the fresh epoch replaces the previous one. Deferrals are durable facts, not epoch payload — nothing needs re-supplying on a resume.
 
 ```bash
-emery plan execute
+emery plan execute [--change-dir <dir>]
 ```
 
 Before each build the gap gate joins durable dispositions from the deferral fact union: deferred rows (`[unknown]` and `[conflict]` alike) leave build scope and proceed. Every remaining open row is dispositioned at build time by minting one `gap.deferred` fact per requirement (synthesized reason) and the build proceeds — nothing blocks. `[divergence]` rows are listed and allowed. Stale covered artifacts refuse with `plan-epoch-stale`. Execute never parks on gaps — review them ahead of the run with [`emery plan gaps`](#emery-plan-gaps), and after it through the fact log, the archive summary, and [`emery debt`](debt.md).
 
 **Coverage requires fresh refinement.** The start-of-run coverage assembly requires a fresh refinement manifest for every in-scope leaf and covers its exact refinement digest — `{plan-digest, refinements: {<slice>: <digest>}}`. A missing or stale manifest fails typed (`plan-refinement-required`) **before** any epoch, workspace, or wave; execute never refines. The iteration loop after any input change is simply: fix inputs → `emery plan refine` → review gaps → `emery plan execute`.
 
-The loop claims the next eligible entry, runs the build and merge phases (the build phase freezes the current product tree as the wave base when it opens the one-member wave), and repeats until `emery plan status` projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). The merge phase reads the entry's [`allow-composition-replace`](#emery-plan-amend) field to decide whether a whole-document composition may overwrite a non-empty baseline. The loop holds the create-exclusive `.emery/guest.lock` marker for the run's lifetime — a second driver session exits with `guest-marker-held`.
+The loop claims the next eligible entry, runs the build and merge phases (the build phase freezes the current product tree as the wave base when it opens the one-member wave), and repeats until `emery plan status` projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`). The merge phase reads the entry's [`allow-composition-replace`](#emery-plan-amend) field to decide whether a whole-document composition may overwrite a non-empty baseline. The loop holds the create-exclusive `.emery/change/guest.lock` marker for the run's lifetime — a second driver session exits with `guest-marker-held`.
 
-Stops render the `emery plan status` projection verbatim: the closed reason (`refinement-required`, `refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`), the failure detail from the journal, a one-line hint, and the literal resume command. Re-running `emery plan execute` after a build / preflight-merge stop resumes from the same active entry; a `refinement-required` stop resumes through `emery plan refine`. After `merge-postflight-failed`, the entry already projects `done` (non-rollback); re-running execute acknowledges the sticky stop (`plan.merge-postflight.acknowledged`) and continues the queue — or drains when no pending entries remain.
+Stops render the `emery plan status` projection verbatim: the closed reason (`refinement-required`, `refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`, `boundary-escalation`, `refine-budget-exhausted`), the failure detail from the journal, a one-line hint, and the literal resume command. Re-running `emery plan execute` after a build / preflight-merge stop resumes from the same active entry; a `refinement-required` stop resumes through `emery plan refine`. A `boundary-escalation` stop resumes through `emery plan amend --proposal <digest>` (then `emery plan refine` on the new children); `refine-budget-exhausted` resumes through `emery plan refine`. After `merge-postflight-failed`, the entry already projects `done` (non-rollback); re-running execute acknowledges the sticky stop (`plan.merge-postflight.acknowledged`) and continues the queue — or drains when no pending entries remain.
 
 Exit codes: `0` when the loop drains; `2` for a stop (`plan-execute-stopped`), a missing/stale refinement (`plan-refinement-required`), an epoch refusal (`plan-epoch-stale`), or a held marker (`guest-marker-held`).
 
@@ -126,7 +126,7 @@ The projection reads plan topology, slice artifacts / phase timestamps, and the 
 | `stop <reason>` | Halt the loop; the `stop` sub-body carries the closed reason, optional journal `detail`, and a one-line operator hint. |
 | `drained` | No `pending` or `in-progress` entries remain — text mode renders the literal `drained — run /emery:finalize <name>` string. |
 
-Text mode also prints `ready:` / `authorized:` milestones (RFC-86 D22) — never an `approved` label — and a debt line counting deferred gaps with conflicts broken out (e.g. `3 deferred gaps (2 unknown, 1 conflict)`). Ready stays clean-only: zero open **and** zero deferred findings; a debt-carrying plan reaches build via Authorized. Stop reasons are a closed set: `refine-failed` / `build-failed` / `merge-conflict` (the awaited phase's most recent journal terminal — `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` — is a failure, scoped to the active entry's active window), `merge-postflight-failed` (the target's postflight gate failed after wave commit — entry projects `done` and is archived; sticky until `emery plan execute` acknowledges), `slice-dropped`, `merge-incomplete`, and `stuck` (pending entries blocked on unmet dependencies).
+Text mode also prints `ready:` / `authorized:` milestones (RFC-86 D22) — never an `approved` label — and a debt line counting deferred gaps with conflicts broken out (e.g. `3 deferred gaps (2 unknown, 1 conflict)`). Ready stays clean-only: zero open **and** zero deferred findings; a debt-carrying plan reaches build via Authorized. Stop reasons are a closed set: `refine-failed` / `build-failed` / `merge-conflict` (the awaited phase's most recent journal terminal — `slice.synthesize.failed` / `slice.build.failed` / `slice.merge.failed` — is a failure, scoped to the active entry's active window), `merge-postflight-failed` (the target's postflight gate failed after wave commit — entry projects `done` and is archived; sticky until `emery plan execute` acknowledges), `slice-dropped`, `merge-incomplete`, `stuck` (pending entries blocked on unmet dependencies), `boundary-escalation` (inert proposal at `planning/proposals/<digest>.yaml`; resume is `emery plan amend --proposal <digest>`), and `refine-budget-exhausted` (resume is `emery plan refine`).
 
 With `--format json` the body carries `plan`, `counts` (`pending` / `in-progress` / `done`), `active`, `next-action` (the rendered string), `action` (the closed verb), `slice`, `project`, `ready`, `authorized`, `gaps`, the optional `stop` sub-body, and the re-entry fields: `current-step` / `last-completed` (the candidate slice's position in the `refine → build → merge` loop, `null` outside a dispatchable slice) and `resume` — the literal command or skill invocation that makes progress (`emery plan refine`, `emery plan execute`, `/emery:finalize <name>`, …), `null` when no single command does (`stuck`, `slice-dropped`). A fresh plan's `resume` (nothing done, nothing in progress) is `/emery:refine` while refinement is outstanding, then `/emery:execute`; refinement resumes through `emery plan refine`, build and merge through the execute loop.
 
@@ -145,10 +145,10 @@ Lists `(slice, req, status)` rows for `unknown` / `conflict` / `divergence` from
 Append a new entry to the plan.
 
 ```bash
-emery plan add <name> [--description "<text>"] [--depends-on <entry>...] [--sources <key>...]
+emery plan add <name> --target <key> [--description "<text>"] [--depends-on <entry>...] [--source <key>=<lead>...]
 ```
 
-Creates the entry; it projects `pending` until claimed.
+Creates the entry; it projects `pending` until claimed. `--target` is required and must name a key in `plan.yaml.targets`. When `decomposition.yaml` exists, add/amend/remove reproject through it; otherwise a hierarchy-shaped edit refuses `plan-mutation-ambiguous`.
 
 Exit codes: `0` success; `2` for validation refusals (duplicate entry name, unknown `depends-on` or source references).
 
@@ -156,7 +156,7 @@ JSON output: the [`emery plan add` envelope](../cli-output-shapes.md#emery-plan-
 
 ### emery plan amend
 
-Edit topology fields on an existing **entry** (one positional — the slice name; there is a single active `plan.yaml`). Use for divergence stamps, authority overrides, the composition-replace merge authorization, and surgical source/depends-on edits. For grouping changes prefer re-running `emery plan author --force` (wholesale replace of a still-replaceable plan); for deferral use `emery plan remove`.
+Edit topology fields on an existing **entry** (one positional — the slice name; there is a single active `plan.yaml`), or apply a retained amendment with `--proposal`. Use for divergence stamps, authority overrides, the composition-replace merge authorization, and surgical source/depends-on edits. Topology edits reproject through `decomposition.yaml` when it exists. For grouping changes prefer re-running `emery plan author --force` (wholesale replace of a still-replaceable plan); for deferral use `emery plan remove`.
 
 ```bash
 emery plan amend <entry> [--description "<text>"] [--depends-on <entry>...]
@@ -165,7 +165,10 @@ emery plan amend <entry> --remove-source <key>
 emery plan amend <entry> --divergence likely|accepted|rejected
 emery plan amend <entry> --authority-override <kind>=<source>
 emery plan amend <entry> --allow-composition-replace true|false
+emery plan amend --proposal <digest>
 ```
+
+`--proposal <digest>` applies a retained document at `planning/proposals/<digest>.yaml` (`Boundary` / `Ownership`). Envelope and definition-revision documents refuse `plan-proposal-kind` — they are not amendments. A successful apply journals `plan.amend.applied` and invalidates the closed-plan epoch. Compare-and-set refusals: `plan-proposal-stale`, `plan-proposal-live`, `plan-proposal-preserve`, `plan-proposal-cycle`, `plan-proposal-not-found`, `plan-proposal-malformed`. Combining `--proposal` with entry-edit flags is `Error::Argument`.
 
 `--allow-composition-replace` sets the entry's `allow-composition-replace` field: it authorizes a whole-document (`screens:`) slice composition to overwrite a non-empty baseline when the execute loop merges this slice. Reserved for intentional full-baseline rewrites; routine per-screen edits flow through `delta:` and never need it. Omit the flag to leave the field unchanged.
 
@@ -177,7 +180,7 @@ JSON output: the [`emery plan amend` envelope](../cli-output-shapes.md#emery-pla
 
 ### emery plan remove
 
-Drop a plan entry while the plan is still replaceable (every entry still projects `pending`). Pre-execution only — defers the entry's lead(s) without re-surveying `discovery.md`.
+Drop a plan entry while the plan is still replaceable (every entry still projects `pending`). Pre-execution only — defers the entry's lead(s) without re-surveying `leads.md`.
 
 ```bash
 emery plan remove <entry>
@@ -193,36 +196,35 @@ Abandon one plan entry's slice without merging.
 emery plan drop <entry> [--reason "<rationale>"]
 ```
 
-Stamps the slice `dropped` (persisting the reason in `metadata.yaml.drop_reason`) and moves the slice tree to `.emery/archive/`. The entry stays on the plan and projects the `slice-dropped` stop — a dropped slice remains in-scope for gap accounting (RFC-86 D24).
+Stamps the slice `dropped` (persisting the reason in `metadata.yaml.drop_reason`) and moves the slice tree to `.emery/change/archive/`. The entry stays on the plan and projects the `slice-dropped` stop — a dropped slice remains in-scope for gap accounting (RFC-86 D24).
 
 Exit codes: `0` success (the body carries the archive path); `1` for an unknown entry (`plan-entry-not-found`) or a never-refined entry with no slice tree (`plan-drop-no-slice` — curate that entry with `emery plan remove` instead).
 
-### Lead reconciliation (inside `emery plan author`)
+### Decomposition (inside `emery plan author`)
 
-The reconcile leg inside the guest-routed `emery plan author` groups the surveyed `discovery.md` leads into the plan's `slices[]` rows.
+Authoring binds the reviewed handoff, surveys every source into `leads.md`, decomposes the catalog into `decomposition.yaml`, and projects `plan.yaml.slices[]` from that tree. `slices[].target` is required and names a key in `plan.yaml.targets`. `plan add` / topology `amend` / `remove` reproject through `decomposition.yaml` when it exists.
 
-- The **request** side is a flat catalog of raw `(source, lead)` leads read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter).
-- The **write** side is the **only slice writer**. It schema-validates the judgment response (`proposal-schema`), re-reads `discovery.md`, rebuilds the lead catalog, validates the agent's `slices[]` grouping, enforces total lead coverage, validates the explicit slice names, binds projects (auto-binding the sole project and deriving each slice's `target` from the bound project), atomically replaces `plan.yaml.slices[]`, then emits a single `plan.reconcile.completed` journal event. It never trusts a stale snapshot — `discovery.md` and the topology are re-read every invocation.
+The propose gate authors `change.md` orientation (counts + binding table) through the typed proposal DTOs (kebab wire fields, closed `kind: request | response`). Cross-source matching is agent judgment inside decomposition; the operator curates during plan review.
 
-**Replaceable gate.** The write runs only while the plan is replaceable — every entry `pending`; otherwise it fails with `plan-reconcile-plan-not-replaceable`. Re-authoring a still-replaceable plan wholesale-replaces every slice.
+**Replaceable gate.** Re-authoring with `--force` rebinds the same reviewed handoff. A still-replaceable plan wholesale-replaces every slice; a non-pending plan refuses `plan-reconcile-plan-not-replaceable`.
 
 Validation codes (all exit 2):
 
 | Code | Meaning |
 |------|---------|
 | `proposal-schema` | The judgment response failed JSON-Schema validation. |
-| `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
+| `plan-reconcile-empty-catalog` | `leads.md` surfaced no leads to decompose. |
 | `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
 | `lead-coverage-orphan` | The grouped leads do not achieve total coverage — a surveyed lead is referenced by no slice. (A lead referenced by more than one slice is legal fan-out.) |
 | `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
 | `plan-reconcile-slice-name-invalid` | A slice `name` is not kebab-case. |
 | `plan-reconcile-slice-name-collision` | Two slices resolve to the same plan slice name. |
 | `plan-reconcile-depends-on-cycle` | The projected `depends-on` edges form a cycle. |
-| `plan-reconcile-project-binding-required` | A slice omits `project` when more than one project exists. |
-| `plan-reconcile-project-orphan` | A slice binds a `project` absent from the request topology. |
+| `plan-reconcile-target-unknown` | A slice names a `target` absent from `plan.yaml.targets`. |
 | `plan-reconcile-plan-not-replaceable` | The plan carries a non-pending entry. |
+| `plan-mutation-ambiguous` | A direct `plan add` / `amend` / `remove` cannot uniquely reproject through `decomposition.yaml`. |
 
-Both envelopes are owned by the typed wire DTOs in [`crates/project/src/plan/propose.rs`](../../../crates/project/src/plan/propose.rs) (closed `kind: request | response`); the response's judgment-answer schema is generated from them by `project::answers::proposal`. See [CLI output shapes](../cli-output-shapes.md) for the envelope bodies.
+The propose envelopes are owned by the typed wire DTOs in [`crates/project/src/plan/propose.rs`](../../../crates/project/src/plan/propose.rs) (closed `kind: request | response`); the response's judgment-answer schema is generated from them by `project::answers::proposal`. See [CLI output shapes](../cli-output-shapes.md) for the envelope bodies.
 
 ### emery plan archive
 
@@ -232,7 +234,7 @@ Archive a completed plan.
 emery plan archive
 ```
 
-Moves `plan.yaml` and `.emery/plans/<name>/` to `.emery/archive/plans/<YYYYMMDD>-<name>/`, then runs the change-scoped snapshot collection: the archived change's pins (wave bases, `builds/<digest>.yaml`) stop being GC roots, so snapshot-store objects reachable only from them are deleted (RFC-88 D2). Objects still reachable from a live slice tree survive.
+Moves `plan.yaml` and `.emery/change/plans/<name>/` to `.emery/change/archive/plans/<YYYYMMDD>-<name>/`, then runs the change-scoped snapshot collection: the archived change's pins (wave bases, `builds/<digest>.yaml`) stop being GC roots, so snapshot-store objects reachable only from them are deleted (RFC-88 D2). Objects still reachable from a live slice tree survive.
 
 When the change carried deferred debt into the baseline, the archive prints the carried-debt summary (slice, requirement, reason, age) — advisory only; archiving never blocks on debt. The rows stay in the baseline, projected by [`emery debt`](debt.md).
 

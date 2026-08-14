@@ -33,10 +33,10 @@ The WIT package also defines an additive combined `adapter` world (`export sourc
 
 ## How the roles meet the loop
 
-A source adapter participates twice: `survey` at plan time (one [lead](../appendices/glossary.md#l) per slice-sized unit into `discovery.md`) and `extract` at refine time (one `Evidence` document per bound source, inside the `emery plan refine` drain). A target adapter participates at every downstream phase: its `guidance` prompt is read into synthesis context at refine; its four build-loop operations — `build` (generation), `verify` (one check pass), `repair` (one findings-directed pass), `review` (one standards pass) — are dispatched one pass at a time by the engine's build phase machine, which owns operation order, repair budgets, and the final build report; and its `merge` operation gates the landing. The engine owns everything between — lifecycle, artifact schemas, synthesis, and state transitions — so an adapter contributes specialist behaviour without ever driving the workflow.
+A source adapter participates twice: `survey` at plan time (one [lead](../appendices/glossary.md#l) per slice-sized unit into `leads.md`) and `extract` at refine time (one `Evidence` document per bound source, inside the `emery plan refine` drain). A target adapter participates at every downstream phase: its `guidance` prompt is read into synthesis context at refine; its four build-loop operations — `build` (generation), `verify` (one check pass), `repair` (one findings-directed pass), `review` (one standards pass) — are dispatched one pass at a time by the engine's build phase machine, which owns operation order, repair budgets, and the final build report; and its `merge` operation gates the landing. The engine owns everything between — lifecycle, artifact schemas, synthesis, and state transitions — so an adapter contributes specialist behaviour without ever driving the workflow.
 
 ```text
-/emery:plan    →  source.survey     (leads into discovery.md)
+/emery:plan    →  source.survey     (leads into leads.md)
 /emery:refine  →  source.extract    (evidence/<source>.yaml)
                →  target.guidance   (idiom guidance for synthesis)
 build phase    →  target.build → verify ⇄ repair → review ⇄ repair

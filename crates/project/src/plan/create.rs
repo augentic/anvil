@@ -26,11 +26,9 @@ impl Plan {
         name: &str, sources: BTreeMap<String, SourceBinding>,
     ) -> Result<Self, Error> {
         validate_name(name)?;
-        Ok(Self {
-            name: name.into(),
-            sources,
-            entries: vec![],
-        })
+        let mut plan = Self::named(name);
+        plan.sources = sources;
+        Ok(plan)
     }
 
     /// Append a new entry to the plan, rejecting duplicate names and

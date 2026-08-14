@@ -27,28 +27,16 @@ interface types {
 }
 
 /// The source adapter contract. Both operations are judgment legs: the guest
-/// assembles a prompt from its compiled-in prompt fragments, issues `create` with an MCP
-/// grant naming its own reference route and a workspace lend of the prepared
-/// `source-input` tree, and deserializes the schema-gated answer into the
-/// records below. Adapters never recover a source location themselves — the
-/// engine prepares the input and names the source key on every call.
+/// assembles a prompt from its compiled-in prompt fragments, issues `create`
+/// with an MCP grant naming its own reference route and a workspace lend of
+/// the source CID view (or no lend for an inline value), and deserializes
+/// the schema-gated answer into the records below.
 interface source {
   use types.{ adapter-id, error };
 
-  /// The prepared input a source operation reads. The wire carries the
-  /// tree, never the origin locator and never a snapshot identity:
-  /// `workspace` is the deployment-local root of a prepared read-only
-  /// materialization (RFC-87), resolved against the adapter's own
-  /// preopens and lent to its agent; `inline` is the raw content of a
-  /// single-value binding, interpolated into the prompt rather than lent.
-  variant source-input {
-    workspace(string),
-    inline(string),
-  }
-
-  /// The lead returned by the survey operation: the discovery lead
-  /// minus the envelope `source` key — the workflow guest attributes
-  /// every lead a survey produces to the surveyed source itself.
+  /// The lead returned by the survey operation: the catalog lead minus
+  /// the envelope `source` key — the workflow guest attributes every
+  /// lead a survey produces to the surveyed source itself.
   record lead {
     /// Stable kebab-case lead identifier, unique only within its source;
     /// identity is the `(source, lead)` pair. Named `lead` to match the
@@ -60,6 +48,50 @@ interface source {
     /// unclassified (an answer may omit the key); never blocks
     /// reconciliation.
     topics: list<string>,
+    /// Parent lead id within the same source. Absent on a top-level lead.
+    parent: option<string>,
+    /// Source-local focus that produced this lead. Absent on an
+    /// unfocused import or survey row.
+    focus: option<string>,
+  }
+
+  /// Read-only CID view for a location-backed source. No artifacts
+  /// grant and no writable stage — the change home is not on this record.
+  record workspace {
+    /// Opaque identity of the preparation.
+    id: string,
+    /// Deployment-local path of the read-only view root.
+    root: string,
+  }
+
+  /// Either a read-only CID view or an inline value. Never a
+  /// change-home path, catalog file, or slice-artifact root.
+  variant content {
+    workspace(workspace),
+    value(string),
+  }
+
+  /// Typed source-operation input: the plan source key, workspace-or-value,
+  /// and optional catalog `lead` (parent focus on survey; terminal lead
+  /// on extract).
+  record input {
+    /// Plan source-binding key (`plan.yaml.sources.<key>`).
+    key: string,
+    /// Read-only CID view or inline value.
+    content: content,
+    /// Parent-lead focus (survey) or terminal lead (extract). Absent
+    /// on an unfocused survey. The engine fills parent/focus from the
+    /// catalog; adapters do not read `leads.md`.
+    focus: option<lead>,
+  }
+
+  /// Survey response: unfocused returns the complete current set in
+  /// `leads`; focused returns stable children under the named parent.
+  record survey-result {
+    /// Top-level leads from an unfocused survey. Empty when focused.
+    leads: list<lead>,
+    /// Stable child leads under the focused parent. Empty when unfocused.
+    children: list<lead>,
   }
 
   /// Document-level authority class for an Evidence document, per the
@@ -147,15 +179,17 @@ interface source {
   /// compiled-in constants — no model call, no filesystem access.
   metadata: func(id: adapter-id) -> adapter-metadata;
 
-  /// Lightly survey the prepared input to create a map of its contents
-  /// (decompose into adapter-native surface leads). `source-key` names
-  /// the caller's binding for prompt interpolation. An `async func`
-  /// like every judgment operation — a sync-lifted export cannot block
-  /// on the pending `completion.create` host future.
-  survey: async func(id: adapter-id, source-key: string, input: source-input) -> result<list<lead>, error>;
+  /// Lightly survey the source to create a map of its contents
+  /// (decompose into leads). An `async func` like every judgment
+  /// operation — a sync-lifted export cannot block on the pending
+  /// `completion.create` host future. Unfocused (`focus` absent)
+  /// returns the complete current set; focused returns children.
+  survey: async func(id: adapter-id, input: input) -> result<survey-result, error>;
 
-  /// Thoroughly extract evidence from the prepared input for one lead.
-  extract: async func(id: adapter-id, source-key: string, input: source-input, lead: lead) -> result<evidence, error>;
+  /// Thoroughly extract evidence from a source for a given lead.
+  /// `input.focus` is the terminal catalog lead, carrying parent/focus
+  /// so a child extraction inherits catalog context on the wire.
+  extract: async func(id: adapter-id, input: input) -> result<evidence, error>;
 }
 
 /// The target adapter contract. The build-loop operations (`build` /
@@ -678,13 +712,12 @@ world adapter {
 
 /// The workflow guest: the deployment's only `wasi:cli/run` exporter.
 /// The `source` / `target` imports route to adapter guests by
-/// `adapter-id`; `emery:exec-bits` and `emery:origins` are
-/// host-implemented (the workspace kernel runs in-guest over
-/// `wasi:blobstore` + `wasi:filesystem`; origin fetch needs the
-/// host's network and git).
+/// `adapter-id`; `emery:exec-bits` is host-implemented (the workspace
+/// kernel runs in-guest over `wasi:blobstore` + `wasi:filesystem`).
 world workflow {
   import source;
   import target;
   import emery:exec-bits/exec-bits@0.1.0;
+  import emery:ingest/ingest@0.1.0;
   import emery:origins/origins@0.1.0;
 }

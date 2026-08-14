@@ -69,43 +69,47 @@ Write `password-reset.md` (reset link, expiry window) and `audit-log.md` (append
 <div class="step-label">02</div>
 <h3 class="step-title">Plan with a documentation source</h3>
 
-Bind the notes tree instead of inline intent. The binding grammar is `source <key>=<adapter>:<path>` — you choose the key (`docs` here), and `documentation` is the adapter:
+Sources arrive through the reviewed handoff (`--from` / `--wave`). Intent is the reserved key with an inline `value`; a documentation tree is a locator plus CID. There is no `--intent` or `--source` authoring flag:
 
 ```text
-/emery:plan account-revamp source docs=documentation:./design-notes/account
+/emery:plan account-revamp --from .emery/system/ --wave deliver
 ```
 
-The plan surveys the documentation adapter — one [lead](../appendices/glossary.md#l) per slice-sized unit it finds — and reconciles the leads into slices. Expected `plan.yaml` shape:
+The plan surveys each bound source — one [lead](../appendices/glossary.md#l) per slice-sized unit — and decomposes the catalog into slices. Expected `plan.yaml` shape:
 
 ```yaml
-version: 1
 name: account-revamp
+targets:
+  default:
+    adapter: emery:omnia@0.12.0
+    locator: "."
+    cid: sha256:…
 sources:
   docs:
-    adapter: documentation
-    path: ./design-notes/account
+    adapter: emery:documentation@0.12.0
+    locator: ./design-notes/account
+    cid: sha256:…
 slices:
   - name: account-registration
+    target: default
     sources:
       - source: docs
         lead: account-registration
   - name: password-reset
+    target: default
     sources:
       - source: docs
         lead: password-reset
   - name: account-audit-log
+    target: default
     sources:
       - source: docs
         lead: account-audit-log
 ```
 
-Each slice row maps one lead from `discovery.md` to a unit of work. `discovery.md` (at the project root) lists the full lead inventory the survey found:
+Each slice row maps one lead from `leads.md` to a unit of work. `leads.md` (under `.emery/change/`) is catalog-only:
 
 ```markdown
-## Summary
-
-Sources: 1. Leads: 3.
-
 ## Lead inventory
 
 ### docs:account-registration
@@ -115,7 +119,7 @@ Sources: 1. Leads: 3.
 - synopsis: Email/password registration with confirmation flow
 ```
 
-Survey and reconciliation are model-driven, so your lead names and synopses will vary with your notes — the *shape* is what to check: one lead per note, one slice per lead (entries project `pending` until claimed).
+Survey and decomposition are model-driven, so your lead names and synopses will vary with your notes — the *shape* is what to check: one lead per note, one slice per lead (entries project `pending` until claimed).
 </div>
 
 
@@ -123,13 +127,15 @@ Survey and reconciliation are model-driven, so your lead names and synopses will
 <div class="step-label">03</div>
 <h3 class="step-title">Review the plan</h3>
 
-`/emery:plan` exits after authoring. Before executing, read the three plan artifacts at the project root:
+`/emery:plan` exits after authoring. Before executing, read the plan artifacts under `.emery/change/`:
 
 | File | Check |
 | ---- | ----- |
 | `change.md` | Intent and scope match what you asked for |
-| `plan.yaml` | Three slices, sensible names, each bound to one `docs` lead |
-| `discovery.md` | The lead inventory matches your three notes |
+| `plan.yaml` | Three slices, required `target`, each bound to one `docs` lead |
+| `discovery.yaml` | Reviewed handoff and pinned CIDs |
+| `leads.md` | The lead inventory matches your three notes |
+| `decomposition.yaml` | Conflict-domain hierarchy the projector reads |
 
 This pause is the topology review step. If the grouping is wrong — say survey merged two notes into one lead — fix the notes and re-run `/emery:plan` (it confirms before replacing), or curate entries with the CLI; see [Amend a plan before executing](../how-to/amend-a-plan.md).
 </div>
@@ -143,7 +149,7 @@ This pause is the topology review step. If the grouping is wrong — say survey 
 emery plan refine
 ```
 
-The drain refines all three slices serially in plan order: each extraction reads the bound `docs` source, synthesis writes the slice artifacts under `.emery/slices/<name>/`, and the refinement manifest (`refinement.yaml`) records the exact inputs and output bundle. When the drain completes, read the three `specs/<domain>/spec.md` files — this pause is the specification review step. If a spec is wrong, fix the note (or amend the plan) and re-run `emery plan refine`; only the staled slices re-refine.
+The drain refines all three slices serially in plan order: each extraction reads the bound `docs` source, synthesis writes the slice artifacts under `.emery/change/slices/<name>/`, and the refinement manifest (`refinement.yaml`) records the exact inputs and output bundle. When the drain completes, read the three `specs/<domain>/spec.md` files — this pause is the specification review step. If a spec is wrong, fix the note (or amend the plan) and re-run `emery plan refine`; only the staled slices re-refine.
 </div>
 
 
@@ -155,7 +161,7 @@ The drain refines all three slices serially in plan order: each extraction reads
 emery plan execute
 ```
 
-Execute opens the authorization epoch over the plan and refinement digests, then drives each slice through build → merge in plan order (a single execute process walks entries one-by-one; other journal writers may still claim different slices). Execute never refines — a missing or stale manifest stops it with `plan-refinement-required`. Each slice keeps its directory under `.emery/slices/<name>/` while active, then moves to `.emery/archive/` when merged.
+Execute opens the authorization epoch over the plan and refinement digests, then drives each slice through build → merge in plan order (a single execute process walks entries one-by-one; other journal writers may still claim different slices). Execute never refines — a missing or stale manifest stops it with `plan-refinement-required`. Each slice keeps its directory under `.emery/change/slices/<name>/` while active, then moves to `.emery/change/archive/` when merged.
 
 Check progress at any time from a second terminal:
 
@@ -187,7 +193,7 @@ When all three entries are `done`, publish the repository changes through your n
 /emery:finalize account-revamp
 ```
 
-Finalize confirms publication is complete and archives the [drained](../appendices/glossary.md#d) plan — `plan.yaml`, `change.md`, and `discovery.md` move to `.emery/archive/plans/`.
+Finalize confirms publication is complete and archives the [drained](../appendices/glossary.md#d) plan — `plan.yaml`, `change.md`, `discovery.yaml`, `leads.md`, and `decomposition.yaml` move to `.emery/change/archive/plans/`.
 </div>
 
 
@@ -199,8 +205,8 @@ Finalize confirms publication is complete and archives the [drained](../appendic
 
 ## What you learned
 
-- Documentation sources bind at plan time with `source <key>=<adapter>:<path>` — here, `docs=documentation:./design-notes/account`.
-- One lead per slice-sized unit: survey turns each note into a lead, and reconciliation turns each lead into a plan entry.
+- Documentation sources bind through the reviewed handoff (`--from` / `--wave`); a locator plus CID identifies the notes tree — here, `docs` → `emery:documentation@…` + `./design-notes/account`.
+- One lead per slice-sized unit: survey turns each note into a lead, and decomposition turns each lead into a plan entry with a required `target`.
 - Multi-slice plans share one `change.md`, one plan review, and one refinement drain; per-entry status (`pending → in-progress → done`) tracks progress through the execute loop.
 
 <div class="see-also">

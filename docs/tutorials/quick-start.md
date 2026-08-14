@@ -58,7 +58,7 @@ The skill runs `emery init omnia`, which scaffolds:
 ```text
 .emery/
 ├── project.yaml
-├── slices/
+├── change/         ← in-place change home (plan.yaml, slices/, …)
 ├── specs/          ← baseline accumulates here after merge
 └── archive/
 AGENTS.md           ← generated when absent
@@ -72,10 +72,10 @@ See [Directory layout](../reference/directory-layout.md) for the full tree.
 <div class="step-label">02</div>
 <h3 class="step-title">Plan the change</h3>
 
-Describe what you want in one line:
+Author from a reviewed definition home. Intent arrives through that handoff (reserved key `intent`); there is no `--intent` or `--source` flag. `emery system {survey, plan, review}` writes the handoff; a colocated degenerate lives at `.emery/system/`:
 
 ```text
-/emery:plan fix-typo source intent=intent:value:"fix typo in user.rs"
+/emery:plan fix-typo --from .emery/system/ --wave deliver
 ```
 
 `/emery:plan` writes three plan-time artifacts:
@@ -97,24 +97,25 @@ fix typo in user.rs
 **`plan.yaml`** — slice table of contents:
 
 ```yaml
-version: 1
 name: fix-typo
+targets:
+  default:
+    adapter: emery:omnia@0.12.0
+    locator: "."
+    cid: sha256:…
 sources:
   intent:
-    adapter: intent
+    adapter: emery:intent@0.12.0
     value: "fix typo in user.rs"
 slices:
   - name: fix-typo
+    target: default
     sources: [intent]
 ```
 
-**`discovery.md`** — what sources surveyed:
+**`leads.md`** — what sources surveyed:
 
 ```markdown
-## Summary
-
-Sources: 1. Leads: 1.
-
 ## Lead inventory
 
 ### intent:fix-typo
@@ -150,7 +151,7 @@ emery plan refine
 
 (`/emery:refine` runs this same drain.)
 
-Refinement extracts evidence from each bound source, synthesizes the slice artifacts, and records the exact inputs and outputs in `refinement.yaml`. Under `.emery/slices/fix-typo/` you will find:
+Refinement extracts evidence from each bound source, synthesizes the slice artifacts, and records the exact inputs and outputs in `refinement.yaml`. Under `.emery/change/slices/fix-typo/` you will find:
 
 | File | Purpose |
 | ---- | ------- |
@@ -209,7 +210,7 @@ Source code changes land in your project tree (not under `.emery/`). Task checkb
 ##### After merge
 
 - Spec deltas apply to `.emery/specs/`
-- The slice directory moves to `.emery/archive/`
+- The slice directory moves to `.emery/change/archive/`
 - Facts project the entry `done` (no stored status field on `plan.yaml`)
 
 ##### Watching progress

@@ -14,6 +14,7 @@ use context::Skip;
 use error::Error;
 
 use crate::adapter::{AdapterSelector, PlatformsSurface, ResolvedTarget};
+use crate::config::Layout;
 use crate::handler::ExecutionPaths;
 use crate::platform::Platform;
 
@@ -136,6 +137,26 @@ pub(crate) fn resolve_version() -> String {
 
 pub(crate) fn upsert_gitignore(project_dir: &Path) -> Result<(), Error> {
     gitignore::ensure_gitignore(project_dir)
+}
+
+/// Ensure the durable `.emery/` tree and the in-place change home exist.
+/// Returns directories this call created (already-present dirs omitted).
+pub(crate) fn ensure_scaffold_dirs(layout: &Layout<'_>) -> Result<Vec<PathBuf>, Error> {
+    let mut created = Vec::new();
+    for dir in [
+        layout.emery_dir(),
+        layout.specs_dir(),
+        layout.change_root(),
+        layout.slices_dir(),
+        layout.archive_dir(),
+    ] {
+        let already = dir.exists();
+        std::fs::create_dir_all(&dir)?;
+        if !already {
+            created.push(dir);
+        }
+    }
+    Ok(created)
 }
 
 /// Validate the operator's `--platforms` set against the target's

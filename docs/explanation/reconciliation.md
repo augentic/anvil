@@ -4,25 +4,25 @@ Emery turns raw inputs — operator intent, written documentation, legacy code, 
 
 There are two distinct reconciliation moments, and they answer different questions:
 
-- **Plan time — what work exists?** `/emery:plan` surveys each bound source for *leads* and reconciles them into the *slices* that make up the change.
+- **Plan time — what work exists?** `/emery:plan` binds a reviewed handoff (`--from` / `--wave`), imports the wave's surface leads (focused child survey only when an imported lead is still coarser than a buildable boundary), and decomposes them into the *slices* that make up the change.
 - **Slice time — what must each domain do?** The `emery plan refine` drain extracts *evidence* from each source and synthesizes it into the domain's `specs/<domain>/spec.md`, recording exactly which source contributed each requirement.
 
 ## Plan time: leads become slices
 
 ### A lead is a unit of work a source can see
 
-When you run `/emery:plan`, each bound source runs its `survey` operation and emits **leads** — one block per slice-sized unit of work it can identify, written under `## Lead inventory` in `discovery.md`. A lead is identified by its `(source, lead)` pair, because the same lead name can appear in more than one source.
+When you run `/emery:plan`, each bound source runs its `survey` operation against a typed `SourceInput` (workspace-or-value, optional parent focus) and emits **leads** — one block per slice-sized unit of work it can identify, written under `## Lead inventory` in `leads.md`. Catalog context is typed on the call; sources do not read `plan.yaml`. A lead is identified by its `(source, lead)` pair, because the same lead name can appear in more than one source.
 
 For example, a legacy-code source and a design-notes source might each surface a `user-registration` lead. They are describing the same feature, but `survey` does not yet know that — it only reports what each source sees on its own.
 
-### Propose reconciles leads across sources
+### Decomposition groups leads across sources
 
-The cross-source matching happens in the **propose** sub-step of `/emery:plan`. The agent reads every lead, judges which ones describe the same piece of work, and emits the `slices[]` rows directly — each row naming its matched leads, *at most one per source*.
+The cross-source matching happens in **decomposition** inside `/emery:plan`. The agent reads every lead, judges which ones describe the same piece of work, and the projector writes `decomposition.yaml` plus `plan.yaml.slices[]` — each row naming its matched leads, *at most one per source*, and a required `target` key in `plan.yaml.targets`. The propose gate then authors `change.md` orientation.
 
 Three rules keep this predictable:
 
 - **One lead per source, per slice.** A slice never fuses two leads from the *same* source. Re-sizing same-source work is an operator action during plan review, not something the agent does silently.
-- **Coverage is at-least-once, not exactly-once.** Every surveyed lead must be referenced by at least one slice, and a lead may appear in more than one. Work that lands in more than one project becomes multiple slices joined by `depends-on`; a cross-cutting lead — say a conventions document that informs several features surfaced by another source — is bound into every slice it informs (the one-lead-per-source rule still applies inside each slice), with no `depends-on` implied. Multi-homed leads are listed in `change.md` under `## Cross-cutting leads` for plan review.
+- **Coverage is at-least-once, not exactly-once.** Every surveyed lead must be referenced by at least one slice, and a lead may appear in more than one. Work that lands in more than one target becomes multiple slices joined by `depends-on`; a cross-cutting lead — say a conventions document that informs several features surfaced by another source — is bound into every slice it informs (the one-lead-per-source rule still applies inside each slice), with no `depends-on` implied. Multi-homed leads are listed in `change.md` under `## Cross-cutting leads` for plan review.
 - **Uncertain matches are surfaced, not hidden.** When the agent is unsure whether two leads are the same work, it records the pair under `## Tentative merges` in `change.md` so you can confirm or split them. When two matched leads materially disagree, the slice is flagged `divergence: likely`.
 
 This is why a one-source, one-lead change and a twelve-slice migration use exactly the same machinery — the only difference is how many leads `survey` produced.
@@ -33,7 +33,7 @@ You review and adjust the proposed slices before running `emery plan refine` —
 
 ### Extract gathers evidence per source
 
-When refinement runs for a slice, each bound source runs its `extract` operation against its matched lead and returns an **Evidence** document, persisted to `.emery/slices/<slice>/evidence/<source>.yaml`. Evidence is structured: a list of `claims` (requirements, criteria, decisions, code excerpts, and so on) plus a top-level `authority` that records how much weight the source carries.
+When refinement runs for a slice, each bound source runs its `extract` operation against its matched lead and returns an **Evidence** document, persisted to `.emery/change/slices/<slice>/evidence/<source>.yaml`. Evidence is structured: a list of `claims` (requirements, criteria, decisions, code excerpts, and so on) plus a top-level `authority` that records how much weight the source carries.
 
 ### Synthesize reconciles evidence into one spec
 
@@ -62,7 +62,7 @@ Tags never park the slice. Synthesis tags the requirement and proceeds. The oper
 
 ## model.yaml and the provenance trail
 
-`model.yaml` (at `.emery/slices/<slice>/model.yaml`) is the single structured record of a refined slice. It holds the requirement set with **inline provenance** — for each requirement, which claims contributed and which one won — plus the task list and a small header. It is the artifact `emery slice validate` checks for drift, and it is what later steps read instead of re-parsing the markdown.
+`model.yaml` (at `.emery/change/slices/<slice>/model.yaml`) is the single structured record of a refined slice. It holds the requirement set with **inline provenance** — for each requirement, which claims contributed and which one won — plus the task list and a small header. It is the artifact `emery slice validate` checks for drift, and it is what later steps read instead of re-parsing the markdown.
 
 There is no separate `provenance.yaml` on disk. The full audit view is *projected on demand* from `model.yaml` and the Evidence files by `emery slice provenance`, so the trail can never drift out of sync with the spec.
 

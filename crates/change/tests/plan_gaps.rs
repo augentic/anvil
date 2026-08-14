@@ -9,12 +9,14 @@ use mock::session::Session;
 use support::{change, plan_with_changes};
 
 fn write_plan(project: &Session, plan: &Plan) {
+    let path = project.root().join(".emery/change/plan.yaml");
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("change home");
     let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
-    std::fs::write(project.root().join("plan.yaml"), yaml).expect("write plan.yaml");
+    std::fs::write(&path, yaml).expect("write plan.yaml");
 }
 
 fn write_slice_model(root: &std::path::Path, name: &str, model: &str) {
-    let slice_dir = root.join(".emery").join("slices").join(name);
+    let slice_dir = root.join(".emery/change/slices").join(name);
     std::fs::create_dir_all(&slice_dir).expect("slice dir");
     std::fs::write(slice_dir.join("metadata.yaml"), "target: demo-target@1.0.0\n")
         .expect("metadata");

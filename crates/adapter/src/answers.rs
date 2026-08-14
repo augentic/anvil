@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::seam::{
     BuildOutput, ClaimKind, Error, Evidence, Finding, Lead, PhaseFinding, PhaseOutcome,
-    PhaseReport, PhaseSource, PhaseWrite, Report, Severity, Status, UiSurface,
+    PhaseReport, PhaseSource, PhaseWrite, Report, Severity, Status, SurveyResult, UiSurface,
 };
 
 /// Answer schema gating `survey` replies.
@@ -20,18 +20,26 @@ pub const REPORT_ANSWER_SCHEMA: &str = include_str!("../schemas/answers/report.s
 /// / `verify` / `review`).
 pub const PHASE_REPORT_ANSWER: &str = include_str!("../schemas/answers/phase-report.schema.json");
 
-/// `survey` answer envelope (`{ "leads": [...] }`).
+/// `survey` answer envelope (`{ "leads": [...], "children": [...] }`).
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
 pub struct LeadsAnswer {
-    /// Leads in source order.
+    /// Top-level leads from an unfocused survey.
+    #[serde(default)]
     pub leads: Vec<Lead>,
+    /// Stable child leads under a focused parent.
+    #[serde(default)]
+    pub children: Vec<Lead>,
 }
 
 /// # Errors
 ///
-/// When the answer does not parse into `{ "leads": [...] }`.
-pub fn parse_leads(answer: &str) -> Result<Vec<Lead>, serde_json::Error> {
-    serde_json::from_str::<LeadsAnswer>(answer).map(|envelope| envelope.leads)
+/// When the answer does not parse into `{ "leads": [...], "children": [...] }`.
+pub fn parse_leads(answer: &str) -> Result<SurveyResult, serde_json::Error> {
+    serde_json::from_str::<LeadsAnswer>(answer).map(|envelope| SurveyResult {
+        leads: envelope.leads,
+        children: envelope.children,
+    })
 }
 
 /// # Errors
@@ -66,7 +74,7 @@ fn enforce(operation: &str, findings: &[String]) -> Result<(), Error> {
     )))
 }
 
-/// Deterministic post-host-gate check: kebab lead/topic ids, non-empty synopsis.
+/// Deterministic post-host-gate check: kebab lead/topic/parent/focus ids, non-empty synopsis.
 ///
 /// # Errors
 ///
@@ -88,6 +96,22 @@ pub fn validate_leads(leads: &[Lead]) -> Result<(), Error> {
                 ));
             }
         }
+        if let Some(parent) = &lead.parent
+            && !is_kebab(parent)
+        {
+            findings.push(format!(
+                "- lead `{}`: parent `{parent}` does not match `{KEBAB_PATTERN}`",
+                lead.lead
+            ));
+        }
+        if let Some(focus) = &lead.focus
+            && !is_kebab(focus)
+        {
+            findings.push(format!(
+                "- lead `{}`: focus `{focus}` does not match `{KEBAB_PATTERN}`",
+                lead.lead
+            ));
+        }
     }
     enforce("survey", &findings)
 }
@@ -97,11 +121,12 @@ pub fn validate_leads(leads: &[Lead]) -> Result<(), Error> {
 /// # Errors
 ///
 /// [`Error::Internal`] on parse or validation failure.
-pub fn leads_tail(answer: &str) -> Result<Vec<Lead>, Error> {
-    let leads = parse_leads(answer)
+pub fn leads_tail(answer: &str) -> Result<SurveyResult, Error> {
+    let result = parse_leads(answer)
         .map_err(|err| Error::Internal(format!("leads answer did not deserialize: {err}")))?;
-    validate_leads(&leads)?;
-    Ok(leads)
+    validate_leads(&result.leads)?;
+    validate_leads(&result.children)?;
+    Ok(result)
 }
 
 /// Deterministic post-host-gate check: dotted-kebab claim ids where required.

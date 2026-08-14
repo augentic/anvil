@@ -227,31 +227,31 @@ mod upgrade {
 
     #[tokio::test]
     async fn all_collects_bare() {
-        // `--all` walks the project's recorded bindings: the
-        // `project.yaml` target plus every `plan.yaml.sources.<key>`
-        // adapter — keeping bare names and skipping pins.
+        // `--all` walks the project's recorded bare bindings: the
+        // `project.yaml` target. Plan source rows are exact pins and
+        // never contribute.
         let project = Provider::bare();
         stage_project(&project, "demo");
+        let plan_path = project.root.join(".emery/change/plan.yaml");
+        std::fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
         std::fs::write(
-            project.root.join("plan.yaml"),
+            &plan_path,
             "name: demo-plan\n\
              sources:\n\
              \x20 brief:\n\
-             \x20   adapter: demo-source\n\
+             \x20   adapter: emery:demo-source@0.0.0\n\
              \x20   value: operator brief\n\
              \x20 pinned:\n\
-             \x20   adapter: demo\n\
-             \x20   version: 9.9.9\n\
-             \x20   path: src/\n\
+             \x20   adapter: emery:demo@9.9.9\n\
+             \x20   locator: src/\n\
              slices: []\n",
         )
         .expect("write plan.yaml");
 
         let body = upgrade(&project, all()).await.expect("--all resolves the bare bindings");
         let names: Vec<&str> = body.adapters.iter().map(|a| a.name.as_str()).collect();
-        assert_eq!(names, ["demo", "demo-source"], "sorted bare set; the pin is skipped");
+        assert_eq!(names, ["demo"], "only the project.yaml bare target");
         assert_eq!(body.adapters[0].axis, "targets");
-        assert_eq!(body.adapters[1].axis, "sources");
     }
 
     #[tokio::test]

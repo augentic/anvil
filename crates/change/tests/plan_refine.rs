@@ -9,38 +9,10 @@
 mod support;
 
 use change::plan;
-use change::plan::wire::{BindingArg, SourceAssign};
+use change::plan::wire::BindingArg;
 use mock::invoke::run;
 use mock::session::Session;
 use serde_json::json;
-
-/// The two-source grouping: `alpha` bound to `main`, `beta` bound to
-/// `aux` — both sources survey the minimal profile's single
-/// `greeting` lead.
-fn pair_grouping() -> String {
-    serde_json::to_string(&json!({
-        "version": 1,
-        "kind": "response",
-        "slices": [
-            {
-                "name": "alpha",
-                "sources": [{ "source": "main", "lead": "greeting" }],
-                "rationale": "The main source's lead."
-            },
-            {
-                "name": "beta",
-                "sources": [{ "source": "aux", "lead": "greeting" }],
-                "rationale": "The aux source's lead."
-            }
-        ],
-        "gate": {
-            "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nTwo slices.",
-            "discovery-summary": "Sources: 2. Leads: 2.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| main | mock | \"The greeting service.\" |\n| aux | mock | \"The greeting service.\" |"
-        }
-    }))
-    .expect("grouping serialises")
-}
 
 /// The greeting synthesis answer re-slotted for `slice`, with its
 /// claim anchored on the `source` binding key. The spec domain is the
@@ -60,38 +32,17 @@ fn synthesis_for(slice: &str, source: &str) -> String {
     serde_json::to_string(&answer).expect("answer serialises")
 }
 
-/// Two bindings over the minimal mock profile; `aux_adapter` selects
-/// the behaviour of the second source (`mock` or a failure profile).
-fn pair_bindings(aux_adapter: &str) -> Vec<SourceAssign> {
-    ["main", "aux"]
-        .map(|key| {
-            let adapter = if key == "aux" { aux_adapter } else { "mock" };
-            serde_json::from_value(json!({
-                "key": key,
-                "adapter": adapter,
-                "value": "The greeting service.",
-            }))
-            .expect("mock binding parses")
-        })
-        .to_vec()
-}
-
-async fn author(session: &Session, sources: Vec<SourceAssign>) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources,
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author exits for review");
+fn pair_plan(root: &std::path::Path, aux_adapter: &str) {
+    support::write_plan_fixture(
+        root,
+        "demo",
+        &[("main", "mock", "The greeting service."), ("aux", aux_adapter, "The greeting service.")],
+        &[("alpha", "main", "greeting"), ("beta", "aux", "greeting")],
+    );
 }
 
 fn manifest_path(root: &std::path::Path, slice: &str) -> std::path::PathBuf {
-    root.join(".emery/slices").join(slice).join("refinement.yaml")
+    root.join(".emery/change/slices").join(slice).join("refinement.yaml")
 }
 
 // (1) + (2): a fresh closed plan drains every leaf in entry order and
@@ -101,11 +52,11 @@ fn manifest_path(root: &std::path::Path, slice: &str) -> std::path::PathBuf {
 async fn drains_then_skips() {
     let session = Session::scripted(
         "mock",
-        vec![pair_grouping(), synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],
+        vec![synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],
     );
     let root = session.root().to_path_buf();
 
-    author(&session, pair_bindings("mock")).await;
+    pair_plan(&root, "mock");
 
     let drained = support::refine_plan(&session).await;
     assert_eq!(drained.status, "refined");
@@ -139,15 +90,11 @@ async fn drains_then_skips() {
 async fn amend_goes_stale() {
     let session = Session::scripted(
         "mock",
-        vec![
-            mock::answers::greeting_grouping(),
-            mock::answers::greeting_synthesis(),
-            mock::answers::greeting_synthesis(),
-        ],
+        vec![mock::answers::greeting_synthesis(), mock::answers::greeting_synthesis()],
     );
     let root = session.root().to_path_buf();
 
-    author(&session, support::greeting_binding()).await;
+    support::write_greeting_plan(&root);
     let drained = support::refine_plan(&session).await;
     assert_eq!(drained.refined, ["greeting"]);
     let before = support::manifest_digest(&root, "greeting");
@@ -156,7 +103,8 @@ async fn amend_goes_stale() {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "greeting".to_string(),
+            name: Some("greeting".to_string()),
+            proposal: None,
             depends_on: None,
             sources: None,
             add_source: Vec::new(),
@@ -188,31 +136,18 @@ async fn amend_goes_stale() {
 async fn slice_closure() {
     let session = Session::scripted(
         "mock",
-        vec![
-            mock::answers::adversarial_grouping(),
-            mock::answers::login_flow_synthesis(),
-            mock::answers::password_reset_synthesis(),
-        ],
+        vec![mock::answers::login_flow_synthesis(), mock::answers::password_reset_synthesis()],
     );
     let root = session.root().to_path_buf();
 
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: support::adversarial_bindings(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author exits for review");
+    support::write_adversarial_plan(&root);
 
     // Give the selected leaf a predecessor so the closure has work.
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "password-reset".to_string(),
+            name: Some("password-reset".to_string()),
+            proposal: None,
             depends_on: Some(vec!["login-flow".to_string()]),
             sources: None,
             add_source: Vec::new(),
@@ -237,7 +172,7 @@ async fn slice_closure() {
     assert_eq!(drained.refined, ["login-flow", "password-reset"]);
     assert!(drained.skipped.is_empty(), "{:?}", drained.skipped);
     assert!(
-        !root.join(".emery/slices/session-policy").exists(),
+        !root.join(".emery/change/slices/session-policy").exists(),
         "the unselected sibling is untouched"
     );
     // The password-reset evidence gap surfaces as an open `[unknown]`.
@@ -261,12 +196,12 @@ async fn slice_closure() {
 async fn stop_then_resume() {
     let session = Session::scripted(
         "mock",
-        vec![pair_grouping(), synthesis_for("alpha", "main"), synthesis_for("beta", "main")],
+        vec![synthesis_for("alpha", "main"), synthesis_for("beta", "main")],
     );
     let root = session.root().to_path_buf();
 
     // `beta`'s bound source fails extract; `alpha`'s succeeds.
-    author(&session, pair_bindings("mock-fail-extract")).await;
+    pair_plan(&root, "mock-fail-extract");
 
     let stopped = support::refine_slices(&session, &[])
         .await
@@ -297,7 +232,8 @@ async fn stop_then_resume() {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "beta".to_string(),
+            name: Some("beta".to_string()),
+            proposal: None,
             depends_on: None,
             sources: Some(vec![BindingArg {
                 key: "main".to_string(),
@@ -333,9 +269,9 @@ async fn stop_then_resume() {
 async fn pair_execute_drains() {
     let session = Session::scripted(
         "mock",
-        vec![pair_grouping(), synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],
+        vec![synthesis_for("alpha", "main"), synthesis_for("beta", "aux")],
     );
-    author(&session, pair_bindings("mock")).await;
+    pair_plan(session.root(), "mock");
     let drained = support::refine_plan(&session).await;
     assert_eq!(drained.refined, ["alpha", "beta"]);
 

@@ -34,11 +34,21 @@ fn leads_deserialize() {
     )
     .expect("leads envelope parses");
 
-    assert_eq!(leads.len(), 2);
-    assert_eq!(leads[0].lead, "password-reset");
-    assert_eq!(leads[0].topics, vec!["auth", "email"]);
-    assert_eq!(leads[1].synopsis, "Sessions expire after 30 minutes.");
-    assert!(leads[1].topics.is_empty(), "omitted topics defaults to empty");
+    assert_eq!(leads.leads.len(), 2);
+    assert_eq!(leads.leads[0].lead, "password-reset");
+    assert_eq!(leads.leads[0].topics, vec!["auth", "email"]);
+    assert_eq!(leads.leads[1].synopsis, "Sessions expire after 30 minutes.");
+    assert!(leads.leads[1].topics.is_empty(), "omitted topics defaults to empty");
+    assert!(leads.children.is_empty(), "unfocused envelope has no children");
+
+    let focused = parse_leads(
+        r#"{"children":[{"lead":"login-lockout","synopsis":"Five failures lock out.","parent":"login-flow","focus":"login-flow"}]}"#,
+    )
+    .expect("focused envelope parses");
+    assert!(focused.leads.is_empty(), "focused envelope has no top-level leads");
+    assert_eq!(focused.children[0].lead, "login-lockout");
+    assert_eq!(focused.children[0].parent.as_deref(), Some("login-flow"));
+    assert_eq!(focused.children[0].focus.as_deref(), Some("login-flow"));
 
     assert!(parse_leads(r#"[{"lead":"bare"}]"#).is_err(), "a bare array is not the envelope");
 }
@@ -112,20 +122,33 @@ fn leads_tail() {
         r#"{"leads":[{"lead":"password-reset","synopsis":"Reset flow with expiry."}]}"#,
     )
     .expect("clean leads parse");
-    validate_leads(&clean).expect("clean leads pass the tail");
+    validate_leads(&clean.leads).expect("clean leads pass the tail");
 
     let malformed = parse_leads(
         r#"{"leads":[
             {"lead":"Bad_Id","synopsis":"Casing and underscore violate the pattern."},
             {"lead":"blank-synopsis","synopsis":"   "}
+        ],"children":[
+            {"lead":"login-lockout","synopsis":"ok","parent":"Not_Kebab","focus":"Also_Bad"}
         ]}"#,
     )
     .expect("the tail, not the parser, rejects malformed ids");
-    let Err(Error::Internal(detail)) = validate_leads(&malformed) else {
+    let Err(Error::Internal(detail)) = validate_leads(&malformed.leads) else {
         panic!("malformed leads must fail the tail");
     };
     assert!(detail.contains("lead `Bad_Id`"), "finding names the malformed id: {detail}");
     assert!(detail.contains("synopsis is empty"), "finding names the empty synopsis: {detail}");
+    let Err(Error::Internal(child_detail)) = validate_leads(&malformed.children) else {
+        panic!("malformed children must fail the tail");
+    };
+    assert!(
+        child_detail.contains("parent `Not_Kebab`"),
+        "finding names the malformed parent: {child_detail}"
+    );
+    assert!(
+        child_detail.contains("focus `Also_Bad`"),
+        "finding names the malformed focus: {child_detail}"
+    );
 }
 
 #[test]

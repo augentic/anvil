@@ -22,14 +22,13 @@ type SurveyFn = for<'a> fn(
     &'a DynModel,
     &'a Context<'a>,
     &'a aseam::SourceInput,
-) -> BoxFuture<'a, Result<Vec<aseam::Lead>, aseam::Error>>;
+) -> BoxFuture<'a, Result<aseam::SurveyResult, aseam::Error>>;
 type GuidanceFn =
     for<'a> fn(&'a DynModel, &'a Context<'a>) -> BoxFuture<'a, Result<String, aseam::Error>>;
 type ExtractFn = for<'a> fn(
     &'a DynModel,
     &'a Context<'a>,
     &'a aseam::SourceInput,
-    &'a aseam::Lead,
 ) -> BoxFuture<'a, Result<aseam::Evidence, aseam::Error>>;
 type BuildFn = for<'a> fn(
     &'a DynModel,
@@ -250,7 +249,7 @@ impl Catalog {
     /// routes to no linked source.
     pub(crate) async fn survey(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, input: &aseam::SourceInput,
-    ) -> Result<Vec<aseam::Lead>, aseam::Error> {
+    ) -> Result<aseam::SurveyResult, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
             Some(Ops::Source { survey, .. }) => survey(model, ctx, input).await,
             _ => Err(unlinked(id)),
@@ -265,10 +264,9 @@ impl Catalog {
     /// routes to no linked source.
     pub(crate) async fn extract(
         &self, model: &DynModel, ctx: &Context<'_>, id: &str, input: &aseam::SourceInput,
-        lead: &aseam::Lead,
     ) -> Result<aseam::Evidence, aseam::Error> {
         match self.find(id).map(|entry| entry.ops) {
-            Some(Ops::Source { extract, .. }) => extract(model, ctx, input, lead).await,
+            Some(Ops::Source { extract, .. }) => extract(model, ctx, input).await,
             _ => Err(unlinked(id)),
         }
     }
@@ -392,7 +390,7 @@ impl Builder {
             docs: A::docs,
             ops: Ops::Source {
                 survey: |model, ctx, input| Box::pin(A::survey(model, ctx, input)),
-                extract: |model, ctx, input, lead| Box::pin(A::extract(model, ctx, input, lead)),
+                extract: |model, ctx, input| Box::pin(A::extract(model, ctx, input)),
             },
         });
         self

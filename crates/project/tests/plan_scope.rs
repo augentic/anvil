@@ -2,37 +2,35 @@
 //! plan-wide single-active-entry gate (D23), and fact-based advance
 //! with no stored status fields (D2 / D11).
 
-use std::collections::BTreeMap;
-
 use jiff::Timestamp;
 use mock::session::Session;
-use project::config::{Layout, ProjectConfig};
+use project::adapter::catalog::Pin;
+use project::config::Layout;
 use project::handler::Anchor;
 use project::journal::{self, Event, EventKind};
-use project::plan::{Entry, Plan, Status, advance_gate, advance_next, in_scope, project_ladders};
+use project::plan::{
+    Entry, Plan, Status, TargetBinding, advance_gate, advance_next, in_scope, project_ladders,
+};
 use project::slice::SliceMetadata;
+use project::snapshot::SnapshotId;
+
+fn stub_target() -> TargetBinding {
+    TargetBinding::new(
+        Pin::emery("mock", semver::Version::new(0, 0, 0)),
+        ".",
+        SnapshotId::from_digest(&"0".repeat(64)),
+    )
+}
 
 fn entry(name: &str) -> Entry {
-    Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources: vec![],
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    }
+    Entry::named(name, "default")
 }
 
 fn plan(entries: Vec<Entry>) -> Plan {
-    Plan {
-        name: "test".into(),
-        sources: BTreeMap::new(),
-        entries,
-    }
+    let mut plan = Plan::named("test");
+    plan.targets.insert("default".into(), stub_target());
+    plan.entries = entries;
+    plan
 }
 
 fn meta() -> SliceMetadata {
@@ -50,9 +48,11 @@ fn meta() -> SliceMetadata {
 }
 
 fn write_plan(root: &std::path::Path, plan: &Plan) {
+    let path = root.join(".emery/change/plan.yaml");
+    std::fs::create_dir_all(path.parent().expect("parent")).expect("change home");
     let yaml = serde_saphyr::to_string(plan).expect("serialize plan");
-    std::fs::write(root.join("plan.yaml"), yaml).expect("write plan.yaml");
-    std::fs::create_dir_all(root.join(".emery/slices")).expect("slices dir");
+    std::fs::write(&path, yaml).expect("write plan.yaml");
+    std::fs::create_dir_all(root.join(".emery/change/slices")).expect("slices dir");
 }
 
 fn seed_in_progress(root: &std::path::Path, plan_name: &str, slice: &str, seconds: i64) {
@@ -118,15 +118,15 @@ fn advance_starts_second() {
     write_plan(session.root(), &staged);
     seed_in_progress(session.root(), "test", "a", 1_700_000_000);
 
-    let config = ProjectConfig::load(session.root()).expect("project.yaml");
     let now = Timestamp::from_second(1_700_000_001).expect("timestamp");
-    let body = advance_next(session.provider(), session.provider().paths(), now, &config)
-        .expect("advance sibling");
+    let body =
+        advance_next(session.provider(), session.provider().paths(), now).expect("advance sibling");
     assert_eq!(body.advanced.as_deref(), Some("b"));
     assert!(body.active.is_none(), "fresh advance, not a mid-slice resume");
 
     let loaded = Plan::load(&Layout::new(session.root()).plan_path()).expect("reload plan");
-    let yaml = std::fs::read_to_string(session.root().join("plan.yaml")).expect("plan.yaml");
+    let yaml =
+        std::fs::read_to_string(session.root().join(".emery/change/plan.yaml")).expect("plan.yaml");
     assert!(!yaml.contains("status:"), "plan.yaml must not carry a stored status field: {yaml}");
     let events = project::plan::collect_events(Layout::new(session.root())).expect("events");
     let ladders = project_ladders(&loaded, &events);
@@ -149,10 +149,9 @@ fn advance_resumes_progress() {
     write_plan(session.root(), &staged);
     seed_in_progress(session.root(), "test", "a", 1_700_000_000);
 
-    let config = ProjectConfig::load(session.root()).expect("project.yaml");
     let now = Timestamp::from_second(1_700_000_001).expect("timestamp");
-    let body = advance_next(session.provider(), session.provider().paths(), now, &config)
-        .expect("resume active");
+    let body =
+        advance_next(session.provider(), session.provider().paths(), now).expect("resume active");
     assert_eq!(body.active.as_deref(), Some("a"));
     assert_eq!(body.reason, Some(project::plan::AdvanceReason::InProgress));
     assert!(body.advanced.is_none());

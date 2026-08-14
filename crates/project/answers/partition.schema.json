@@ -1,0 +1,227 @@
+{
+  "$defs": {
+    "Assessment": {
+      "additionalProperties": false,
+      "description": "Judgment-supplied integers (0–[`DIM_MAX`]) for the five dimensions.",
+      "properties": {
+        "behavioural-breadth": {
+          "description": "Behavioural-breadth score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "context-volume": {
+          "description": "Context-volume score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "coupling": {
+          "description": "Coupling score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "uncertainty": {
+          "description": "Uncertainty score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "verification-surface": {
+          "description": "Verification-surface score.",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "behavioural-breadth",
+        "coupling",
+        "uncertainty",
+        "context-volume",
+        "verification-surface"
+      ],
+      "type": "object"
+    },
+    "Child": {
+      "additionalProperties": false,
+      "description": "One child of a split.",
+      "properties": {
+        "depends-on": {
+          "description": "Predecessors among siblings or earlier domains.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "description": "Stable node id (kebab-case).",
+          "type": "string"
+        },
+        "ownership": {
+          "description": "Ownership envelope when this child is already a leaf.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rationale": {
+          "description": "Why this child is a separate domain.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sources": {
+          "description": "Contributing `(source, lead)` scopes.",
+          "items": {
+            "$ref": "#/$defs/Scope"
+          },
+          "type": "array"
+        },
+        "target": {
+          "description": "Singular target binding.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "targets": {
+          "description": "Multi-target binding on an internal child.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "sources"
+      ],
+      "type": "object"
+    },
+    "PartitionKind": {
+      "description": "Local gate kind on a partition answer.",
+      "oneOf": [
+        {
+          "const": "split",
+          "description": "Internal partition; [`PartitionResponse::children`] is the cut.",
+          "type": "string"
+        },
+        {
+          "const": "leaf",
+          "description": "Terminal domain.",
+          "type": "string"
+        }
+      ]
+    },
+    "Scope": {
+      "additionalProperties": false,
+      "description": "One contributing `(source, lead)` pair.",
+      "properties": {
+        "lead": {
+          "description": "Catalog lead id within that source.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Plan source key.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "lead"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/augentic/emery/answers/partition.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Generated judgment-answer schema — generated from the Rust wire types by project::answers; do not edit. Validates the schema-gated `split | leaf` partition of one open delivery domain. The deterministic tail applies the answer to a tentative tree and runs Decomposition::check.",
+  "properties": {
+    "acceptance": {
+      "description": "Reviewable acceptance boundary. Required on a leaf.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assessment": {
+      "$ref": "#/$defs/Assessment",
+      "description": "Closed five-dimension complexity assessment."
+    },
+    "children": {
+      "description": "Child domains of a split. Empty on a leaf.",
+      "items": {
+        "$ref": "#/$defs/Child"
+      },
+      "type": "array"
+    },
+    "depends-on": {
+      "description": "Domain or leaf predecessors.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "kind": {
+      "$ref": "#/$defs/PartitionKind",
+      "description": "Partition kind."
+    },
+    "ownership": {
+      "description": "Ownership envelope. Required on a leaf.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "rationale": {
+      "description": "Why this partition (or leaf close) is the right cut.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "slice": {
+      "description": "Terminal slice name on a leaf.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sources": {
+      "description": "Contributing `(source, lead)` scopes. Empty inherits the domain.",
+      "items": {
+        "$ref": "#/$defs/Scope"
+      },
+      "type": "array"
+    },
+    "target": {
+      "description": "Singular target on a leaf (or a single-target child).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "version": {
+      "description": "Schema version ([`PARTITION_VERSION`]).",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "kind",
+    "assessment"
+  ],
+  "title": "Emery decomposition partition answer",
+  "type": "object"
+}

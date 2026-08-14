@@ -61,16 +61,16 @@ The same steps run manually:
 ```bash
 emery init contracts
 emery plan author first-contract \
-  --intent "Author an HTTP API contract for a health endpoint that returns status and version."
-# review change.md, discovery.md, plan.yaml
+  --from .emery/system/ --wave deliver
+# review change.md, leads.md, plan.yaml, decomposition.yaml
 emery plan refine    # drains refinement; writes each slice's specs
-# review .emery/slices/*/specs/
+# review .emery/change/slices/*/specs/
 emery plan execute   # opens authorization epoch; drives build → merge
 emery plan status    # must be drained
 emery plan archive   # after you publish via git
 ```
 
-What you should see after execute: slice artifacts under `.emery/slices/…`, generated files under `contracts/`, and merged baseline specs under `.emery/specs/`.
+What you should see after execute: slice artifacts under `.emery/change/slices/…`, generated files under `contracts/`, and merged baseline specs under `.emery/specs/`.
 
 ## How it works: The rhythm
 

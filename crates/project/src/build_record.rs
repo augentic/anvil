@@ -1,6 +1,6 @@
 //! Content-addressed per-slice build records.
 //!
-//! Build outcomes live at `.emery/slices/<slice>/builds/<digest>.yaml`;
+//! Build outcomes live at `.emery/change/slices/<slice>/builds/<digest>.yaml`;
 //! "built" projects from these records and facts, never from a path check.
 
 use std::path::{Path, PathBuf};

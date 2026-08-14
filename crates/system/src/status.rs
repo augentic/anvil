@@ -198,7 +198,9 @@ fn reviewed_facts(layout: &Layout<'_>) -> Result<Vec<(String, String)>, Error> {
     Ok(journal::read_union_at(&root)?
         .into_iter()
         .filter_map(|event| match event.kind {
-            EventKind::SystemWaveReviewed { wave, handoff_digest } => Some((wave, handoff_digest)),
+            EventKind::SystemWaveReviewed { wave, handoff_digest } => {
+                Some((wave, handoff_digest.as_str().to_string()))
+            }
             _other => None,
         })
         .collect())

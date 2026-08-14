@@ -74,6 +74,12 @@ pub enum StopReason {
     MergeIncomplete,
     /// Pending entries remain but every one waits on unmet dependencies.
     Stuck,
+    /// Refinement Evidence produced an inert boundary proposal. The
+    /// leaf is parked until the operator applies it.
+    BoundaryEscalation,
+    /// Focused resurvey or nearest-domain re-decomposition exhausted
+    /// its compiled budget. The leaf is parked.
+    RefineBudgetExhausted,
 }
 
 impl StopReason {
@@ -115,6 +121,16 @@ impl StopReason {
             Self::Stuck => {
                 "Remaining entries wait on unmet dependencies; complete or amend the blocking \
                  entries."
+            }
+            Self::BoundaryEscalation => {
+                "Refinement wrote an inert boundary proposal under planning/proposals/. Apply it \
+                 with emery plan amend --proposal <digest> after quiescing affected work, then \
+                 re-run emery plan refine on the new child slices. Re-running refine on this \
+                 leaf does not re-synthesize."
+            }
+            Self::RefineBudgetExhausted => {
+                "Focused resurvey or nearest-domain re-decomposition exhausted its budget. \
+                 Adjust sources or the bound profile, then re-run emery plan refine."
             }
         }
     }
@@ -164,8 +180,8 @@ pub struct StatusBody {
     /// Slice the action targets; `None` on `stop`-without-slice
     /// and `drained`.
     pub slice: Option<String>,
-    /// Bound project of the targeted entry, when set.
-    pub project: Option<String>,
+    /// Bound target of the targeted entry.
+    pub target: Option<String>,
     /// Step the targeted slice is currently at — the awaited
     /// phase, including a phase the loop is stopped on. `None` when no
     /// slice is targeted (`stuck`, `slice-dropped`, `drained`).
@@ -231,7 +247,7 @@ impl crate::handler::Render for StatusBody {
                 writeln!(w, "stop: {}", stop.reason)?;
                 if let Some(slice) = &self.slice {
                     writeln!(w, "  slice: {slice}")?;
-                    writeln!(w, "  project: {}", self.project.as_deref().unwrap_or("-"))?;
+                    writeln!(w, "  target: {}", self.target.as_deref().unwrap_or("-"))?;
                 }
                 if let Some(detail) = &stop.detail {
                     writeln!(w, "  detail: {detail}")?;

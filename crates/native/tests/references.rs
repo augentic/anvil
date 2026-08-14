@@ -7,7 +7,7 @@ mod support;
 use native::{Catalog, DynModel, Provider, ReferenceMode, references};
 use omnia_testkit::model::Scripted;
 use project::handler::{CachePlacement, ExecutionPaths, Locations};
-use project::seam::Source as _;
+use project::seam::{Source as _, SourceInput};
 use support::{Probe, Reflect};
 
 // Explicit tempdir-rooted layout: hermetic carried locations, no
@@ -50,10 +50,10 @@ async fn grant_routing_shutdown() {
     let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Online);
 
     let leads = provider
-        .survey("source:reflect".to_string(), "reflect".to_string(), inline())
+        .survey("source:reflect".to_string(), SourceInput::value("main", ""))
         .await
         .expect("survey dispatches");
-    let url = &leads[0].lead;
+    let url = &leads.leads[0].lead;
     assert!(url.starts_with("http://127.0.0.1:"), "loopback-only listener, got {url}");
     assert!(url.ends_with("/mcp/reflect"), "per-adapter shelf path, got {url}");
 
@@ -77,15 +77,10 @@ async fn offline_never_serves() {
     let provider = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Offline);
 
     let leads = provider
-        .survey("source:reflect".to_string(), "reflect".to_string(), inline())
+        .survey("source:reflect".to_string(), SourceInput::value("main", ""))
         .await
         .expect("survey dispatches");
-    assert_eq!(leads[0].lead, "none");
-}
-
-/// A minimal inline source input for dispatch-threading asserts.
-fn inline() -> project::seam::SourceInput {
-    project::seam::SourceInput::Inline("content".to_string())
+    assert_eq!(leads.leads[0].lead, "none");
 }
 
 // A document-free catalog keeps online reference hosting a no-op.

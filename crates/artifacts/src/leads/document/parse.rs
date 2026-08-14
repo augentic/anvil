@@ -1,12 +1,12 @@
-//! Line-oriented `discovery.md` parser.
+//! Line-oriented `leads.md` parser.
 //!
-//! [`Parser`] preserves all prose outside `## Lead inventory` verbatim and
-//! collects each `### <id>` block plus its bullet list as a [`Lead`].
+//! Catalog-only: optional `## Lead inventory` heading, then `###`
+//! blocks. Prefix or suffix prose is a parse failure.
 
 use error::{Error, Result};
 
-use super::Discovery;
-use crate::discovery::lead::Lead;
+use super::Leads;
+use crate::leads::lead::Lead;
 
 pub struct Parser<'a> {
     lines: Vec<&'a str>,
@@ -21,35 +21,36 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn run(mut self) -> Result<Discovery> {
-        let prefix = self.consume_until_inventory();
-        let has_inventory_heading = self.cursor < self.lines.len();
-        let leads = if has_inventory_heading {
+    pub fn run(mut self) -> Result<Leads> {
+        self.skip_blank();
+        if self.cursor < self.lines.len() && is_inventory_heading(self.lines[self.cursor]) {
             self.cursor += 1;
-            self.parse_leads()?
-        } else {
-            Vec::new()
-        };
-        let suffix = self.lines[self.cursor..].concat();
-        Ok(Discovery {
-            prefix,
-            leads,
-            suffix,
-            has_inventory_heading,
-        })
+            self.skip_blank();
+        } else if self.cursor < self.lines.len() && !is_lead_heading(self.lines[self.cursor]) {
+            return Err(parse_err(
+                "leads.md is catalog-only: start with `## Lead inventory` or a `###` lead block"
+                    .into(),
+            ));
+        }
+        let leads = self.parse_leads()?;
+        self.skip_blank();
+        if self.cursor < self.lines.len() {
+            return Err(parse_err(
+                "leads.md is catalog-only: trailing prose after the lead inventory is refused"
+                    .into(),
+            ));
+        }
+        Ok(Leads { leads })
     }
 
-    fn consume_until_inventory(&mut self) -> String {
-        let mut out = String::new();
+    fn skip_blank(&mut self) {
         while self.cursor < self.lines.len() {
-            let line = self.lines[self.cursor];
-            if is_inventory_heading(line) {
-                return out;
+            let trimmed = strip_newline(self.lines[self.cursor]).trim();
+            if !trimmed.is_empty() {
+                break;
             }
-            out.push_str(line);
             self.cursor += 1;
         }
-        out
     }
 
     fn parse_leads(&mut self) -> Result<Vec<Lead>> {
@@ -60,11 +61,17 @@ impl<'a> Parser<'a> {
                 break;
             }
             if is_lead_heading(line) {
-                let lead = self.parse_lead_block()?;
-                out.push(lead);
+                out.push(self.parse_lead_block()?);
                 continue;
             }
-            self.cursor += 1;
+            let trimmed = strip_newline(line).trim();
+            if trimmed.is_empty() {
+                self.cursor += 1;
+                continue;
+            }
+            return Err(parse_err(format!(
+                "leads.md is catalog-only: unexpected line `{trimmed}`"
+            )));
         }
         Ok(out)
     }
@@ -78,6 +85,8 @@ impl<'a> Parser<'a> {
         let mut source: Option<String> = None;
         let mut synopsis: Option<String> = None;
         let mut topics: Vec<String> = Vec::new();
+        let mut parent: Option<String> = None;
+        let mut focus: Option<String> = None;
 
         while self.cursor < self.lines.len() {
             let raw = self.lines[self.cursor];
@@ -85,37 +94,50 @@ impl<'a> Parser<'a> {
                 break;
             }
             let trimmed = strip_newline(raw).trim_start();
-            if let Some(bullet_body) = bullet_body(trimmed) {
-                let (key, value) = split_bullet(bullet_body)?;
-                match key {
-                    "lead" => {
-                        if lead.is_some() {
-                            return Err(parse_err(format!(
-                                "lead `{heading_label}`: duplicate `lead:` bullet"
-                            )));
-                        }
-                        lead = Some(value.to_string());
-                    }
-                    "source" => {
-                        source = Some(value.to_string());
-                    }
-                    "synopsis" => {
-                        synopsis = Some(value.to_string());
-                    }
-                    "topics" => {
-                        topics = parse_topics(value);
-                    }
-                    "aliases" => {
+            if trimmed.is_empty() {
+                self.cursor += 1;
+                continue;
+            }
+            let Some(bullet_body) = bullet_body(trimmed) else {
+                return Err(parse_err(format!(
+                    "lead `{heading_label}`: unexpected line `{trimmed}`"
+                )));
+            };
+            let (key, value) = split_bullet(bullet_body)?;
+            match key {
+                "lead" => {
+                    if lead.is_some() {
                         return Err(parse_err(format!(
-                            "lead `{heading_label}`: `aliases:` is not supported; remove the bullet \
-                             and use the canonical `lead` id in plan bindings"
+                            "lead `{heading_label}`: duplicate `lead:` bullet"
                         )));
                     }
-                    other => {
-                        return Err(parse_err(format!(
-                            "lead `{heading_label}`: unknown bullet `{other}`"
-                        )));
-                    }
+                    lead = Some(value.to_string());
+                }
+                "source" => {
+                    source = Some(value.to_string());
+                }
+                "synopsis" => {
+                    synopsis = Some(value.to_string());
+                }
+                "topics" => {
+                    topics = parse_topics(value);
+                }
+                "parent" => {
+                    parent = empty_to_none(value);
+                }
+                "focus" => {
+                    focus = empty_to_none(value);
+                }
+                "aliases" => {
+                    return Err(parse_err(format!(
+                        "lead `{heading_label}`: `aliases:` is not supported; remove the bullet \
+                         and use the canonical `lead` id in plan bindings"
+                    )));
+                }
+                other => {
+                    return Err(parse_err(format!(
+                        "lead `{heading_label}`: unknown bullet `{other}`"
+                    )));
                 }
             }
             self.cursor += 1;
@@ -132,16 +154,18 @@ impl<'a> Parser<'a> {
             source,
             synopsis,
             topics,
+            parent,
+            focus,
         })
     }
 }
 
+fn empty_to_none(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
+}
+
 /// Parse an inline `topics:` bullet value into kebab slugs.
-///
-/// Accepts the flow-sequence form `[a, b, c]` (matching the lead schema
-/// example) as well as a bare comma-separated list; brackets are
-/// stripped, entries are trimmed, and empties are dropped. Slug shape is
-/// enforced downstream by schema validation, not here.
 fn parse_topics(value: &str) -> Vec<String> {
     value
         .trim()
@@ -191,7 +215,7 @@ fn split_bullet(body: &str) -> Result<(&str, &str)> {
 
 const fn parse_err(detail: String) -> Error {
     Error::Diag {
-        code: "discovery-parse-failed",
+        code: "leads-parse-failed",
         detail,
     }
 }
