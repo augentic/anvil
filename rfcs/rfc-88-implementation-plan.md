@@ -591,7 +591,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - **Step 20 leftover:** build-case `expect` paths (e.g. `contracts-design`) still name `.emery/slices/…`. Sweep with the docs/path rename. Wasm handoff pins are package refs (`emery:<name>@0.12.0`, store pull-on-miss); `emery adapter add` seeds the bare project cache, so detached wasm may pull GHCR instead of the just-built local `.wasm` (pre-existing after step 9).
 - `cargo make ci` passed in both repos. `wasm-contracts` was not run this session (operator-invoked, live model). Native probe `definition_home_authors` and adapter `merge_preflight` tests passed.
 
-### Step 20 — Documentation closure and final gates (both repos) [ ]
+### Step 20 — Documentation closure and final gates (both repos) [x]
 
 **Scope:**
 
@@ -606,6 +606,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Notes (from step 17):** Sweep `emery plan amend --proposal`, `plan.amend.applied`, status resume `emery plan amend --proposal <digest>`, and the new refusals (`plan-proposal-*`, `plan-mutation-ambiguous`, `plan-ownership-overlap`). `plan add`/`amend`/`remove` now reproject through `decomposition.yaml` when it exists. Envelope / definition-revision documents are inert (not applied).
 
 **Notes (from step 19):** Build-case `expect` paths still name `.emery/slices/…` (e.g. `contracts-design`) — sweep with the artifact-path rename. Wasm detached homes pin `emery:<name>@0.12.0` (store pull-on-miss); `adapter add` seeds the bare cache, so wasm may pull GHCR instead of the just-built component. RFC-104 has not landed — no live `emery system *` case to document as a required rung. No lab materialize verb was added.
+
+**Notes (2026-08-14):** Documentation closure across both repos. Operator prose now names `discovery.yaml` / `leads.md` / `decomposition.yaml`, required `slices[].target`, `--from` / `--wave` authoring, `--change-dir` / cwd-as-change-root, `plan amend --proposal`, synthesis `proceed | boundary-escalation`, and the source seam as typed `SourceInput` with no `$PROJECT_DIR` or change-home grant. RFC-86/87/88 status headers and `platform.md` “Where we are” were already on the implemented-foundation wording. RFC-90/91 historical body paths (`.emery/slices/`) left untouched. Propose request envelope still carries `projects[]` synthesised from `plan.yaml.targets` (judgment wire, not the stored Plan DTO). RFC-104 write surface still absent — tutorials document the colocated degenerate `--from .emery/system/`; eval/wasm continue to consume fixture homes. Wasm GHCR vs local `.wasm` leftover from step 9 unchanged. Gates: `cargo make ci` green in emery and emery-adapters; `cargo check --lib -p emery --examples --target wasm32-wasip2` green; `cargo make links` green (inside emery ci). `cargo make wasm-contracts` not run (operator-invoked; not a required gate).
 
 ---
 

@@ -41,7 +41,7 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
     <div class="rhythm-num">01</div>
     <div class="rhythm-label">Plan</div>
     <div class="rhythm-title">Define the change</div>
-    <p>Bind sources, survey leads, and produce <code>change.md</code>, <code>plan.yaml</code>, and <code>discovery.md</code>.</p>
+    <p>Bind sources, survey leads, and produce <code>change.md</code>, <code>plan.yaml</code>, and <code>leads.md</code>.</p>
   </div>
   <div class="rhythm-step">
     <div class="rhythm-num">02</div>
@@ -118,12 +118,15 @@ Emery turns AI-assisted delivery into a repeatable docs-first workflow. Plans, s
 ```text
 /emery:init omnia
 
-/emery:plan fix-typo source intent=intent:value:"fix typo in user.rs"
-  --> writes change.md + plan.yaml + discovery.md, exits for review
+/emery:plan fix-typo --from .emery/system/ --wave deliver
+  --> writes change.md + discovery.yaml + leads.md + decomposition.yaml + plan.yaml, exits for review
+
+emery plan refine
+  --> extracts, synthesizes, writes refinement.yaml per slice
 
 emery plan execute
   --> opens plan.execute.started, then
-      refine + build + merge per slice until drained
+      build + merge per slice until drained
 
 /emery:finalize fix-typo
   --> publish outside Emery, archive plan

@@ -1,6 +1,6 @@
 # Configuration Files
 
-Emery uses several YAML and Markdown files for configuration. All are managed through the CLI or skills — direct editing is supported for `project.yaml` and `change.md`, but `metadata.yaml`, `plan.yaml`, `discovery.md`, `sources.yaml`, and `targets.yaml` must only be written by the CLI.
+Emery uses several YAML and Markdown files for configuration. Direct editing is supported for `project.yaml` and `change.md`. `metadata.yaml`, `plan.yaml`, `discovery.yaml`, `leads.md`, `decomposition.yaml`, `sources.yaml`, and `targets.yaml` must only be written by the CLI.
 
 ## Contents
 
@@ -47,25 +47,37 @@ A project's routing identity (the `surface[]` of owned domains and a `recent[]` 
 The change's table of contents — an ordered, dependency-aware list of slices.
 
 ```yaml
-version: 1
 name: identity-revamp
+discovery-digest: sha256:…
+leads-digest: sha256:…
+decomposition-digest: sha256:…
+targets:
+  identity-svc:
+    adapter: emery:omnia@0.12.0
+    locator: "."
+    cid: sha256:…
 sources:
+  intent:
+    adapter: emery:intent@0.12.0
+    value: "Bring legacy authentication into Omnia."
   identity-design-notes:
-    adapter: documentation
-    path: ./design-notes/identity
+    adapter: emery:documentation@0.12.0
+    locator: ./design-notes/identity
+    cid: sha256:…
   legacy-monolith:
-    adapter: typescript
-    path: ./vendor/legacy-monolith
+    adapter: emery:typescript@0.12.0
+    locator: ./vendor/legacy-monolith
+    cid: sha256:…
 slices:
   - name: identity-user-registration
-    project: identity-svc
+    target: identity-svc
     sources:
       - source: identity-design-notes
         lead: user-registration
       - source: legacy-monolith
         lead: user-registration
   - name: identity-password-reset
-    project: identity-svc
+    target: identity-svc
     sources:
       - source: identity-design-notes
         lead: password-reset
@@ -76,17 +88,20 @@ slices:
 
 | Field (top-level)        | Required | Description |
 | ------------------------ | -------- | ----------- |
-| `version`                | Yes      | Schema version (currently `1`). |
 | `name`                   | Yes      | Change name (kebab-case). |
-| `sources`                | No       | Map of source → `{ adapter, path or value, cid? }`. The keys are operator-chosen and referenced by `slices[].sources[].source`. After author, each binding carries a closed tree `cid`. |
+| `targets`                | Yes      | Map of target key → `{ adapter, locator, cid, model-capability-profile? }`. Every slice names one of these keys. |
+| `sources`                | Yes      | Map of source key → `{ adapter, locator xor value, cid? }`. The reserved `intent` row is value-only (no locator, no CID). Location rows carry a closed tree `cid`. |
 | `slices`                 | Yes      | Ordered list of slice entries (see below). |
+| `discovery-digest`       | Yes after author | Canonical digest of `discovery.yaml`. |
+| `leads-digest`           | Yes after survey | Canonical digest of `leads.md`. |
+| `decomposition-digest`   | Yes after decompose | Canonical digest of `decomposition.yaml`. |
 
 | Field (per slice)        | Required | Description |
 | ------------------------ | -------- | ----------- |
 | `name`                   | Yes      | Slice name (kebab-case, unique within the plan). |
-| `project`                | No       | Project this slice binds (an omitted value resolves to the sole topology project). The target adapter is resolved on demand from this project — it is not stored per slice. |
+| `target`                 | Yes      | Key in `plan.yaml.targets`. Required; there is no omit-and-auto-bind. |
 | `sources`                | Yes      | List of `{ source, lead }` bindings; cardinality ≥ 1. Bare `<source>` shorthand allowed when the lead id equals the slice's `name`. |
-| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `emery plan amend <entry> --divergence`, staged after `propose --from` since slices do not exist until it runs. Advisory metadata in v1. |
+| `divergence`             | No       | Closed enum: `none` (default; absent), `likely` / `accepted` / `rejected` — all set by `emery plan amend <entry> --divergence`. Advisory metadata in v1. |
 | `depends-on`             | No       | List of slice names that must project `done` first. |
 | `allow-composition-replace` | No    | `false` by default. Set via `emery plan amend <entry> --allow-composition-replace true`; authorizes a whole-document composition to overwrite a non-empty baseline when the execute loop merges this slice. |
 | `context`                | No       | List of baseline paths relevant to the slice; used as a focus hint by briefs. |

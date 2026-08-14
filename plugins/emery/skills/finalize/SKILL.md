@@ -12,7 +12,7 @@ Composition only — the skill writes nothing under `.emery/` directly, and bran
 
 1. **Drainage gate** — run `emery plan status --quiet` (read-only); only `drained` may continue. On any other status, surface the output verbatim and stop.
 2. **Publication gate** — ask the operator to confirm that affected repositories have been committed, published, and completed through their required review/merge workflow. If not confirmed, stop without archiving.
-3. **Archive** — run `emery plan archive --quiet`. Both verbs are short deterministic operations — they run with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).
+3. **Archive** — run `emery plan archive --quiet`. Both verbs are short deterministic operations — they run with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug). When the Cursor workspace is not the change home, elicit `--change-dir` and pass it on both verbs.
 
 ## Relay
 

@@ -50,7 +50,7 @@ Every change flows through one rhythm:
 
 Without Emery, a coding agent can produce an answer without preserving which source supported it, where sources disagreed, what remained unknown, or which exact result an operator authorized. Reasoning lives in the chat and disappears when the session ends.
 
-Emery carries that reasoning in version-controlled files under `.emery/`. Evidence records what each source says; specifications preserve provenance and visible gaps; plan-time artifacts (`change.md`, `plan.yaml`, `discovery.md`) coordinate the change; per-slice artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`) capture requirements and implementation sequencing. See [Artifacts in depth](../explanation/artifacts.md) for the full dependency chain.
+Emery carries that reasoning in version-controlled files under `.emery/`. Evidence records what each source says; specifications preserve provenance and visible gaps; plan-time artifacts (`change.md`, `plan.yaml`, `leads.md`) coordinate the change; per-slice artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`) capture requirements and implementation sequencing. See [Artifacts in depth](../explanation/artifacts.md) for the full dependency chain.
 
 ## Emery and git
 

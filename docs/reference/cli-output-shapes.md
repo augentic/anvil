@@ -121,9 +121,9 @@ The drained loop's success body — a stop surfaces on the error envelope instea
 
 On `plan-execute-stopped`, stdout carries the canonical plan-status stop card beside the stderr envelope — the same `StatusBody` shape `emery plan status` projects (text renders `stop: <reason>` / `hint:` / `resume:`; JSON carries the structured body), so drivers need no follow-up `emery plan status` call. A `refinement-required` stop card's `resume:` is `emery plan refine` — execute never refines.
 
-### Lead-reconciliation request envelope {#plan-reconcile-request}
+### Decomposition request envelope {#plan-reconcile-request}
 
-The reconcile leg inside the guest-routed `emery plan author` assembles the lead-reconciliation **request** envelope for the agent to group: a flat `(source, lead)` lead catalog read 1:1 from `discovery.md`, plus the project topology (always at least one project, each carrying its normalized `target` adapter). Read-only — nothing is written and no journal event fires. `description` is omitted when the project carries none.
+The propose gate inside the guest-routed `emery plan author` assembles a **request** envelope for grouping and `change.md` orientation: a flat `(source, lead)` catalog read 1:1 from `leads.md`, plus the `projects[]` topology synthesised from `plan.yaml.targets` (`name` is the handoff target id; `target` is that row's adapter pin). Read-only — nothing is written and no journal event fires. `description` is omitted when the target carries none.
 
 ```json
 {
@@ -142,7 +142,7 @@ The reconcile leg inside the guest-routed `emery plan author` assembles the lead
 
 ### Lead-reconciliation write summary {#plan-reconcile-write}
 
-Success summary after the reconcile kernel projects the agent **response** onto `plan.yaml.slices[]`. `slice-names` is the slice set in response order and `slice-count` is its length.
+Success summary after decomposition projects `plan.yaml.slices[]`. `slice-names` is the slice set in projection order and `slice-count` is its length.
 
 ```json
 {

@@ -74,4 +74,4 @@ Both terminal slice states (`merged` and `dropped`) result in the slice director
 
 The full slice directory is preserved, including all artifacts and `metadata.yaml`. This is a **prunable convenience cache**, not the system of record: at merge time the CLI also appends a `slice.archive.created` entry to the per-writer **outcome ledger** (`.emery/change/events/<writer>.jsonl`) capturing the slice name, touched baseline specs, a one-line outcome summary, and the git SHA. The durable history is git of the committed `.emery/specs/` baseline plus that ledger, so archived folders can be reclaimed with `emery archive prune --keep <n>` / `--older-than <days>` without losing the audit trail.
 
-For plans, `emery plan archive` moves a drained `plan.yaml` and its associated `change.md` / `discovery.md` to `.emery/change/archive/plans/<YYYYMMDD>-<name>/`.
+For plans, `emery plan archive` moves a drained `plan.yaml` and its associated `change.md` / `discovery.yaml` / `leads.md` / `leads/` / `decomposition.yaml` to `.emery/change/archive/plans/<YYYYMMDD>-<name>/`.

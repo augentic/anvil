@@ -6,14 +6,14 @@
 
 For what a source adapter *is* and how it fits a change, see [Understanding Emery](../../explanation/concepts.md) and [From sources to slices](../../explanation/reconciliation.md). The contract facts:
 
-- `survey` — plan-time. Reads the operator-bound source and emits one **lead** block per slice-sized unit of work under `## Lead inventory` in `discovery.md`. Runs inside `/emery:plan`.
-- `extract` — slice-time. Reads one matched lead plus the bound source and returns an `Evidence` document the CLI persists to `.emery/change/slices/<slice>/evidence/<source>.yaml`. Runs inside the `emery plan refine` drain.
+- `survey` — plan-time. Reads the typed `SourceInput` (key, workspace-or-value, optional parent focus) and returns lead values the engine persists under `## Lead inventory` in `leads.md`. Unfocused returns the complete current set; focused returns children. Runs inside `/emery:plan`.
+- `extract` — slice-time. Reads one matched lead on `input.focus` plus the bound source and returns an `Evidence` document the CLI persists to `.emery/change/slices/<slice>/evidence/<source>.yaml`. Runs inside the `emery plan refine` drain.
 
 Source adapters do not write `spec.md` — that is core synthesis's responsibility. A source supplies evidence; synthesis reconciles evidence from every bound source into one spec.
 
 ## First-party source adapters
 
-You bind sources per change at plan time (`/emery:plan <name> source docs=documentation:./design-notes source legacy=typescript:./repo`). Each source declares the **authority** its evidence carries, which decides who wins when two sources disagree (`intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../../crates/slice/prompts/synthesis/authority.md)).
+You bind sources per change through the reviewed handoff (`/emery:plan` elicits `--from` / `--wave`). Each source declares the **authority** its evidence carries, which decides who wins when two sources disagree (`intent` > `documentation` > `behaviour` — canonical: [Authority hierarchy](../../../crates/slice/prompts/synthesis/authority.md)).
 
 | Adapter | Reads | Evidence authority | Typical use |
 | ------- | ----- | ------------------ | ----------- |
@@ -34,11 +34,11 @@ The operation set is not declared anywhere on the wire — it derives from the c
 ## How a source adapter participates in the loop
 
 ```text
-/emery:plan    →  runs source.survey    (emits leads into discovery.md)
+/emery:plan    →  runs source.survey    (emits leads into leads.md)
 /emery:refine  →  runs source.extract   (emits evidence/<source>.yaml)
 ```
 
-Both operations run sandboxed under the WASI Preview 2 posture — directory preopens only, no inherited host environment, no network. The host gives `survey` and `extract` read-only access to the bound source path and a write-only scratch directory, and denies access to the project root. See [Sandboxing](../adapter-contract.md#sandboxing) for the preopened roots and the guest orchestration that drives each operation.
+Both operations run sandboxed under the WASI Preview 2 posture — directory preopens only, no inherited host environment, no network. The host gives `survey` and `extract` a read-only CID view of a location-backed source (or nothing for inline `value`) and a write-only scratch directory, and denies access to the project root and the change home. See [Sandboxing](../adapter-contract.md#sandboxing) for the preopened roots and the guest orchestration that drives each operation.
 
 ## Validation
 

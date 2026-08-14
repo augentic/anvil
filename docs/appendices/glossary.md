@@ -23,7 +23,7 @@ The `.emery/change/archive/` directory where finalized plans (one per change) an
 Closed enum that decides who wins when two `Evidence` rows disagree about the same claim. Order: `intent` > `documentation` > `behaviour` (canonical: [Authority hierarchy](../../crates/slice/prompts/synthesis/authority.md)). Set on each `Evidence` document during `extract`, applied during slice-time synthesis. See `Provenance`, `Divergence`, `Conflict`.
 
 **Artifact**
-A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, and `discovery.md`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
+A structured document that defines part of a slice. The core slice artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`, all written by core synthesis. The change-level artifacts are `change.md`, `plan.yaml`, `discovery.yaml`, `leads.md`, and `decomposition.yaml`. Target-specific structured outputs (e.g. Vectis `composition.yaml`) are produced by the target adapter's `build` operation, not by core synthesis.
 
 ## B
 
@@ -36,7 +36,7 @@ A markdown prompt file shipped by a source or target adapter that drives one ope
 ## C
 
 **Change**
-The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. Driven through `/emery:plan`, `emery plan refine`, `emery plan execute`, `/emery:finalize`.
+The operator-defined umbrella that coordinates one or more slices through `change.md` and `plan.yaml`. On-disk vocabulary, not a slash-command namespace. In-place the change home is `.emery/change/`; detached, cwd (or `--change-dir`) *is* the change home. Driven through `/emery:plan`, `emery plan refine`, `emery plan execute`, `/emery:finalize`.
 
 **Command**
 One operator-facing `emery` invocation (`emery plan status`). Implemented by exactly one command **operation** and exposed through the typed command router. Distinct from a shell command, a source/target adapter operation, and a slash **skill**. See [Operation shape](../standards/handler-shape.md).
@@ -59,13 +59,19 @@ An Augentic product: a cross-platform application framework (Rust core, native i
 **Cursor plugin**
 A marketplace package under `plugins/<name>/` that registers slash-command skill wrappers with Cursor. Invisible to the `emery` CLI. See [Cursor operator plugins](../contributing/operator-plugins.md).
 
+**CID**
+Content-addressed tree identity (`sha256:` + hex of the RFC-87 tree manifest; wire field `cid`). Location-backed sources and targets pin a CID at authoring; each successful merge records an **accepted CID** for that target.
+
 ## D
 
 **Diagnostic**
 The neutral finding currency every check surface emits (`emery slice validate`, build reports). Each carries a `source` (`deterministic` / `model-assisted` / `hybrid` / `human` / `tool`) and a `kind`: `violation` (a structural defect; open critical/important violations block a gate) or `review` (a deterministically-raised request for agent judgment, never blocking). A `DiagnosticReport` is a collection of them.
 
+**Decomposition**
+The conflict-domain hierarchy at `decomposition.yaml`. `plan.yaml.slices[]` is its executable leaf projection. Written by `emery plan author`; `plan add` / topology `amend` / `remove` reproject through it when it exists.
+
 **Discovery**
-The plan-time discovery artifact at `.emery/change/discovery.md`. Three required sections: `## Summary`, `## Source inventory`, `## Lead inventory`. Written by `/emery:plan` through CLI helpers.
+The delivery-binding artifact at `discovery.yaml`: reviewed handoff digest, pinned targets and sources (CIDs and exact adapter pins). Distinct from `leads.md` (the catalog). Written by `emery plan author`.
 
 **Divergence**
 Authority-resolved disagreement between two `Evidence` rows. The higher-authority claim wins as the operative requirement; the loser is preserved as inline commentary; the requirement header gets a `[divergence]` tag and `Status: divergence`. The slice-level `divergence:` enum (`none` / `likely` / `accepted` / `rejected`) carries the operator's plan-review acknowledgement; the field is advisory in v1.
@@ -124,7 +130,7 @@ A stable identity with exclusive append authority over one `.emery/change/events
 ## L
 
 **Lead**
-A slice-sized unit of work emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `discovery.md`, identified by its `(source, lead)` pair. Re-surveying the same source replaces that source's blocks. Cross-source lead matching happens later, in `propose`. See [From sources to slices](../explanation/reconciliation.md).
+A slice-sized unit of work emitted by a source adapter's `survey`. One block per lead under `## Lead inventory` in `leads.md`, identified by its `(source, lead)` pair. Re-surveying the same source replaces that source's blocks. Cross-source lead matching happens later, in decomposition. See [From sources to slices](../explanation/reconciliation.md).
 
 **Lifecycle**
 Two stacked projected ladders: per-entry (`pending → in-progress → done` — no per-entry `dropped`) from claims / merge-archive facts, and per-slice (`refining → refined → built → merged`, or terminal `dropped` via `emery plan drop`) from phase timestamps and artifacts. Neither is a stored status field. Starting `emery plan execute` opens the authorization epoch — there is no projected `approved` rung. See [Lifecycle](../reference/lifecycle.md).
@@ -157,19 +163,19 @@ The transport-neutral `omnia_guest::api::operation::Operation<P>` implementation
 ## P
 
 **Parked**
-Informal term for `emery plan execute` having stopped mid-loop on a stop condition (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`). The plan keeps its on-disk state; `emery plan status` names the stop reason and the literal resume command — usually re-running `emery plan execute` after fixing the reported problem.
+Informal term for a drain having stopped mid-loop on a stop condition (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`, `boundary-escalation`, `refine-budget-exhausted`). The plan keeps its on-disk state; `emery plan status` names the stop reason and the literal resume command.
 
 **Plan**
-The change's table of contents in `plan.yaml`. Contains `sources:` (top-level source bindings) and `slices[]` (per-slice rows with `project`, `sources[]`, `status`, optional `divergence`; the target adapter is resolved on demand from the bound `project`, not stored). Written through `emery plan {author, add, amend, remove, drop, archive}` and the merge stamp only.
+The change's table of contents in `plan.yaml`. Contains `targets:` (pinned delivery topology), `sources:` (top-level source bindings), and `slices[]` (per-slice rows with required `target`, `sources[]`, optional `divergence`; the target adapter is resolved on demand from `plan.yaml.targets.<key>`). Written through `emery plan {author, add, amend, remove, drop, archive}` and the merge stamp only.
 
 **Plugin** (adapter vocabulary)
 The shared shape for either adapter role. Loader `crates/project/src/adapter/`; metadata comes from the component's `metadata` export (no adapter manifest file). Source and target adapters share the same resolver; the axis decides which WIT operations the component exports. The vocabulary noun "plugin" survives where source + target authors share an audience tag. Distinct from [Cursor plugins](#c) under `plugins/` (the IDE distribution surface for `/emery:*` skill wrappers).
 
-**Project (plan routing)**
-The `project` field on a slice entry that names the project a slice targets. The reconcile leg auto-binds the sole project; the field exists so a slice's `target` adapter can be derived from its bound project.
+**Proposal (amendment)**
+A validated but unapplied amendment at `planning/proposals/<digest>.yaml` (`Boundary` / `Ownership` / `Envelope` / `Revision`). Envelope and definition-revision documents are inert (`plan-proposal-kind`). Apply with `emery plan amend --proposal <digest>` (journals `plan.amend.applied`).
 
 **Propose**
-The `/emery:plan` sub-step that reconciles `Lead[]` from each source's `survey` into `slices[]` rows in `plan.yaml` via the reconcile leg inside `emery plan author`. The agent returns `slices[]`, each row carrying an explicit kebab-case `name`, its matched `sources[]` (at most one lead per source), and a bound `project`. Coverage is at-least-once: a lead may appear in more than one slice — cross-project work becomes multiple slices joined by `depends-on`, and a cross-cutting lead is multi-homed across the slices it informs (surfaced in `change.md` under `## Cross-cutting leads`). Agent-default with operator override during plan review. Uncertain cross-source matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `emery plan amend`.
+The `/emery:plan` gate that authors `change.md` orientation after decomposition projects `slices[]`. Cross-source matching lives in decomposition; the operator curates during plan review. Uncertain matches surface in `change.md` under `## Tentative merges`; materially-disagreeing synopsis pairs set `slices[].divergence: likely` via `emery plan amend`.
 
 **Provenance**
 The `Sources:` list on a requirement block — one or more source keys, highest authority first. Records which sources contributed the requirement.
@@ -177,7 +183,7 @@ The `Sources:` list on a requirement block — one or more source keys, highest 
 ## R
 
 **Refine**
-The first phase the execute loop runs per slice: slice create (re-entry safe, inside the orchestration), serial `extract` per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md`, validate, transition to `refined`.
+The first-class specification stage (`emery plan refine`): serial extract per bound source, synthesize `proposal.md` / `spec.md` / `design.md` / `tasks.md` / `model.yaml`, validate, write `refinement.yaml`, transition to `refined`. Execute never refines.
 
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, …) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
@@ -197,13 +203,13 @@ The single unit that flows through the fixed `refine → build → merge` rhythm
 Input adapter role. Operations: `survey` + `extract`. First-party defaults: `intent`, `documentation`, `typescript`, `screenshots`, `captures`. Published as `emery:<name>@<semver>`; the guest crate lives at `sources/<name>/` in the adapters repo. See the [Source adapters](../reference/sources/index.md) reference.
 
 **Source binding**
-An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `path:` or `value:`. The source key is what `slices[].sources[]` references.
+An entry under `plan.yaml.sources.<key>` that pairs a source key (operator-chosen) with an adapter and a `locator:` or `value:` (exactly one). Location-backed rows carry a CID; reserved `intent` is value-only. The source key is what `slices[].sources[]` references.
 
 **Spec**
 A behavioral specification at `specs/<domain>/spec.md`. Contains requirements with stable IDs, `Sources:` and `Status:` provenance lines, scenarios (WHEN/THEN), error conditions, and optional metrics.
 
 **Survey**
-The plan-time operation declared by a source adapter. Reads the operator-bound source and emits one `Lead` block per slice-sized unit under `## Lead inventory` in `discovery.md`. Runs inside `/emery:plan`.
+The plan-time operation declared by a source adapter. Takes a typed `SourceInput` and returns lead values the engine persists under `## Lead inventory` in `leads.md`. Unfocused returns the complete current set; focused returns children. Runs inside `/emery:plan`.
 
 ## T
 

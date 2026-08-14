@@ -10,8 +10,10 @@ The CLI orchestration owns the whole loop — the run lock, the `plan.execute.st
 ## Invocation
 
 ```bash
-emery plan execute
+emery plan execute [--change-dir <dir>]
 ```
+
+The loop inherits the Cursor workspace cwd as the change root. When that is not the change home, elicit `--change-dir` and pass it through.
 
 The loop is a long-running orchestration — it runs bare (or with `--debug` when the operator asks) per the plugin rule's *Tracing and output* contract.
 

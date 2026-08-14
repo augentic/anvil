@@ -20,11 +20,11 @@ The north-star architecture remains capable of scaling beyond one node and one r
 
 ## Where we are
 
-**Implemented foundation:** RFC-86 (Change Facts), RFC-87 (Private Workspaces), RFC-90 (Build Verification), and RFC-91 (Refinement Stage). The engine runs a fact-based workflow over private workspaces with an engine-owned build phase machine and a fenced specification-refinement stage.
+**Implemented foundation:** RFC-86 (Change Facts), RFC-87 (Private Workspaces), RFC-88 (Detached Changes), RFC-90 (Build Verification), and RFC-91 (Refinement Stage). The engine runs a fact-based workflow over private workspaces with an engine-owned build phase machine, a fenced specification-refinement stage, and detached multi-target execution over accepted CIDs. Merge-time `apply` is deleted; each touched target ends with one accepted CID.
 
-**Current definition gap:** the implemented workflow begins with change authoring. It can recover slice specifications from explicitly bound sources, but it cannot yet produce a coverage-accounted system inventory, evidence-linked as-is architecture, deterministic diagram projections, target and transition architecture, or a migration plan that can finish as a paid client deliverable. [RFC-104](rfc-104-system-archaeology.md) supplies that predecessor and hands one reviewed wave to RFC-88.
+**Current definition gap:** the implemented workflow begins with change authoring from a reviewed handoff. It can recover slice specifications from bound sources, but it cannot yet produce a coverage-accounted system inventory, evidence-linked as-is architecture, deterministic diagram projections, target and transition architecture, or a migration plan that can finish as a paid client deliverable. [RFC-104](rfc-104-system-archaeology.md) supplies that predecessor and hands one reviewed wave to RFC-88. Until that write surface lands, `plan author --from --wave` consumes fixture-built definition homes.
 
-**Current delivery gap:** RFC-88 must retire merge-time `apply`, establish accepted-CID execution, and deliver the detached multi-repository change loop over the selected wave. RFC-96 then supplies the bounded concurrent scheduler, task decomposition, deterministic composition, and domain convergence required for practical delivery; RFC-95 seals results for publication.
+**Current delivery gap:** RFC-96 supplies the bounded concurrent scheduler, task decomposition, deterministic composition, and domain convergence required for practical delivery; RFC-95 seals results for publication. Merged code exists only as store snapshots until RFC-95 — there is no shipped materialize verb.
 
 **Current evidence gap:** properties material to services delivery that are asserted rather than demonstrated, and that can proceed beside or after the product cut:
 
@@ -64,8 +64,8 @@ flowchart TD
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef critical fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:3px
-    class R86,R87,R90,R91 done
-    class R104,R88,R94,R95,R96,R97,R98 critical
+    class R86,R87,R88,R90,R91 done
+    class R104,R94,R95,R96,R97,R98 critical
 ```
 
 RFC-92 patches the model-capability profile shape owned by RFC-88, but it does not wait for RFC-88 to finish: routes and usage facts land on the implemented substrate and fold into the profile when that cut lands.

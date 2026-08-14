@@ -1,6 +1,6 @@
 # RFC-88: Detached Changes
 
-> Status: Active product contract in the [Services Delivery Programme](platform.md)
+> Status: Implemented foundation of the [Services Delivery Programme](platform.md)
 >
 > Owns: the detached change home; delivery-scoped binding and immutable pinning of targets, sources, and adapters from one reviewed migration wave; capability-profile-bound conflict-domain decomposition; refinement feedback into focused child leads; the deterministic buildable-leaf projection into `plan.yaml`; and per-target execution over accepted CIDs.
 >

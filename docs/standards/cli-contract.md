@@ -10,7 +10,7 @@ Skills are ultrathin invoke-and-relay wrappers: they elicit missing arguments, i
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. See [AGENTS.md § Skill / CLI responsibility split](../../AGENTS.md#skill--cli-responsibility-split).
 
-Never hand-edit `metadata.yaml`, never `mkdir -p .emery/...`, and never `mv` anything into `.emery/change/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
+Never hand-edit `metadata.yaml`, `plan.yaml`, `discovery.yaml`, `leads.md`, or `decomposition.yaml`; never `mkdir -p .emery/...`; and never `mv` anything into `.emery/change/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
 ## Verb tree
 
@@ -19,7 +19,7 @@ The CLI surface the skills depend on, grouped by resource:
 ### Project
 
 - `emery init <adapter>` — scaffold `.emery/`, resolve/cache the adapter identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `adapter:` set. `emery init` invoked without an adapter exits `2` with `init-adapter-required`.
-- Read-only state inspection is direct file inspection (`plan.yaml`, `metadata.yaml`, `model.yaml`, `discovery.md`) rather than formatted dashboard commands. The provenance audit view is projected on demand by `emery slice provenance`, not a persisted file.
+- Read-only state inspection is direct file inspection (`plan.yaml`, `metadata.yaml`, `model.yaml`, `leads.md`) rather than formatted dashboard commands. The provenance audit view is projected on demand by `emery slice provenance`, not a persisted file.
 
 ### Slice (read-only projections)
 
@@ -31,7 +31,7 @@ Refinement is the standalone `emery plan refine` drain (slice directories are mi
 
 ### Change plan
 
-- `emery plan {author, refine, execute, status, gaps, validate, add, amend, remove, drop, archive}` — the whole plan surface. `author` scaffolds `plan.yaml` and is the guest-routed authoring orchestration and the default slice writer (surveys bound sources, closes source `cid` pins, reconciles leads, validates the partition, derives slice names and per-slice `target`, and replaces `slices[]` on a replaceable plan — topology-only; no refine); `refine` is the guest-routed serial refinement drain — per in-scope leaf in dependency order it extracts every bound source, synthesizes + validates the slice artifacts, and atomically writes the slice's `refinement.yaml` manifest, skipping fresh manifests and stopping typed on the first failure (`plan-refine-stopped`) — no epoch, no workspace, no wave, no code work; `execute` is the guest-routed driver loop — it requires a fresh refinement manifest for every in-scope leaf (typed `plan-refinement-required` otherwise; execute never refines), at start appends `plan.execute.started` (authorization epoch covering the exact per-leaf refinement digests), then claims → builds → merges per entry under gap gates; `add` appends an entry, `remove` drops a pending entry, and `drop` abandons an already-refined entry's slice without merging; `amend` edits topology fields, divergence stamps, authority overrides, and the `allow-composition-replace` merge authorization; `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` health diagnostics; `status` is the read-only next-action projection (`refine|build|merge <slice>` / `stop <reason>` / `drained`, plus Ready / Authorized) over artifacts and the fact union; `gaps` is the typed gap inventory; status also carries `current-step` / `last-completed` / `resume`. Driver mutual exclusion is guest-owned: the guest-routed verbs hold the `.emery/change/guest.lock` marker for the run's lifetime; per-slice exclusivity is claims.
+- `emery plan {author, refine, execute, status, gaps, validate, add, amend, remove, drop, archive}` — the whole plan surface. `author` binds a reviewed handoff (`--from` / `--wave`), surveys bound sources into `leads.md`, decomposes the catalog, and publishes `decomposition.yaml` + `plan.yaml` together (required `slices[].target`; topology-only; no refine). `--change-dir` selects a detached change root; omitted, cwd is the change home when no ancestor carries `.emery/project.yaml`. `refine` is the guest-routed serial refinement drain — per in-scope leaf in dependency order it extracts every bound source, synthesizes + validates the slice artifacts, and atomically writes the slice's `refinement.yaml` manifest, skipping fresh manifests and stopping typed on the first failure (`plan-refine-stopped`) — no epoch, no workspace, no wave, no code work; `execute` is the guest-routed driver loop — it requires a fresh refinement manifest for every in-scope leaf (typed `plan-refinement-required` otherwise; execute never refines), at start appends `plan.execute.started` (authorization epoch covering the exact per-leaf refinement digests), then claims → builds → merges per entry under gap gates; `add` appends an entry (`--target` required), `remove` drops a pending entry, and `drop` abandons an already-refined entry's slice without merging; `amend` edits topology fields (reprojecting through `decomposition.yaml` when it exists), divergence stamps, authority overrides, the `allow-composition-replace` merge authorization, and `emery plan amend --proposal <digest>` (journals `plan.amend.applied`); `validate` checks plan structure plus the `cycle-in-depends-on` / `orphan-source` health diagnostics; `status` is the read-only next-action projection (`refine|build|merge <slice>` / `stop <reason>` / `drained`, plus Ready / Authorized) over artifacts and the fact union; `gaps` is the typed gap inventory; status also carries `current-step` / `last-completed` / `resume`. Driver mutual exclusion is guest-owned: the guest-routed verbs hold the `.emery/change/guest.lock` marker for the run's lifetime; per-slice exclusivity is claims.
 
 ### Change umbrella
 
@@ -39,7 +39,7 @@ Refinement is the standalone `emery plan refine` drain (slice directories are mi
 
 ### Source / target adapters
 
-- `emery source {resolve, survey, extract}` and `emery target {resolve}` — the axis-split adapter debug surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `discovery.md` and persist Evidence. The `plan author` and `plan refine` orchestrations run these legs themselves; the standalone verbs exist for debugging. There is no declared-tool surface; adapter helpers are in-guest library code.
+- `emery source {resolve, survey, extract}` and `emery target {resolve}` — the axis-split adapter debug surface. `resolve` locates the adapter component and reports its axis-derived operations; `survey` / `extract` are guest-routed workflow operations that merge leads into `leads.md` and persist Evidence. The `plan author` and `plan refine` orchestrations run these legs themselves; the standalone verbs exist for debugging. There is no declared-tool surface; adapter helpers are in-guest library code.
 
 ### Journal
 
@@ -51,7 +51,7 @@ Today the read-only per-slice projections live under `emery slice *` and every w
 
 When a change is coordinated through a `plan.yaml`, the recommended skill / CLI composition is:
 
-1. **Author.** `/emery:plan <change-name> source <key>=<path-or-url> ...` runs each bound source adapter's `survey` operation, reconciles leads across sources into proposed `slices[]` rows, validates the plan, and exits after authoring. The skill stops at the operator review seam — execution does not start automatically and the literal `emery plan execute` command is printed for the operator.
+1. **Author.** `/emery:plan <change-name> --from <definition-home> --wave <id>` binds the reviewed handoff, surveys each bound source, decomposes the catalog into `decomposition.yaml` + `plan.yaml`, and exits after authoring. The skill stops at the operator review seam — execution does not start automatically. Later skills inherit the Cursor workspace cwd as the change root and may elicit `--change-dir`.
 2. **Execute.** Invoking `emery plan execute` opens the authorization epoch (`plan.execute.started` with typed `closed-plan` coverage carrying per-leaf refinement digests; a leaf without a fresh refinement manifest refuses `plan-refinement-required` before the epoch, pointing at `emery plan refine` — execute never refines) and drives the loop. Before each build the gap gate joins durable deferral dispositions — deferred rows leave build scope, and every remaining open row is auto-deferred at the gate as a journaled `gap.deferred` fact, so build always proceeds. `/emery:plan` never runs it; `/emery:execute` wraps it. Under the guest lock the loop claims → builds → merges per entry (gap gate before each build). Per-entry `done` projects from merge / archive facts. Exits on the first `stop <reason>` (the `plan-execute-stopped` error envelope on stderr, exit 2, with the canonical plan-status stop card on stdout — no follow-up `emery plan status` call needed), on a hard epoch refusal (`plan-epoch-stale`), or on `drained` (the success body carries `plan` and `phases[]`; text mode prints the phase lines and closes with the canonical `drained — run /emery:finalize <plan>` line). A fresh plan's `plan status` projection exposes `/emery:execute` as its `resume` so the operator path starts with execute.
 3. **Publish and finalize.** After execution drains, the operator commits, publishes, and completes the required repository workflow. `/emery:finalize <change-name>` confirms publication is complete, then runs `emery plan archive`, which sweeps `plan.yaml` and the `.emery/change/plans/<name>/` authoring trail into `.emery/change/archive/plans/<YYYYMMDD>-<name>/`.
 
@@ -70,7 +70,7 @@ That makes the following a **wire contract**, on the same footing as the exit-co
 | Surface | Closed set | Source of truth |
 |---|---|---|
 | `plan status` `action` | `refine`, `build`, `merge`, `stop`, `drained` | `NextActionKind` in `crates/project/src/plan/status.rs` |
-| `plan status` `stop.reason` | `refine-failed`, `refinement-required`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck` | `StopReason`, same module |
+| `plan status` `stop.reason` | `refine-failed`, `refinement-required`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`, `boundary-escalation`, `refine-budget-exhausted` | `StopReason`, same module |
 | `plan status` `resume` | literal command string, or absent when no single command resumes | `StatusBody::resume` |
 | Failure discriminant | kebab-case `error` on the flat body | [JSON envelope](#json-envelope) |
 | Failure class | four-slot table | [Exit codes](#exit-codes) |
@@ -106,6 +106,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 - `plan-refine-stopped` — the refinement drain halted on a failed refinement; the stop card names the slice, and re-running `emery plan refine` resumes the missing or stale work.
 - `plan-refinement-required` — execute reached an in-scope leaf without a fresh refinement manifest; run `emery plan refine` first — execute never refines.
 - `plan-execute-stopped` — the execute loop halted on a stop condition; the stop card names the reason and the resume command.
+- `plan-proposal-*` / `plan-mutation-ambiguous` / `plan-ownership-overlap` — amendment application refusals (`emery plan amend --proposal`).
 - `cycle-in-depends-on` / `orphan-source` — `emery plan validate` health diagnostics.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 

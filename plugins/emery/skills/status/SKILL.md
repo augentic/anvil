@@ -10,8 +10,10 @@ description: Report where the plan stands and the literal next command by invoki
 ## Invocation
 
 ```bash
-emery plan status --quiet
+emery plan status --quiet [--change-dir <dir>]
 ```
+
+Status inherits the Cursor workspace cwd as the change root. When that is not the change home, elicit `--change-dir` and pass it through.
 
 Status is a short deterministic verb — it runs with `--quiet` per the plugin rule's *Tracing and output* contract (`--debug` replaces it when the operator asks for debug).
 

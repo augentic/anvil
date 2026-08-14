@@ -61,8 +61,8 @@ The same steps run manually:
 ```bash
 emery init contracts
 emery plan author first-contract \
-  --intent "Author an HTTP API contract for a health endpoint that returns status and version."
-# review change.md, discovery.md, plan.yaml
+  --from .emery/system/ --wave deliver
+# review change.md, leads.md, plan.yaml, decomposition.yaml
 emery plan refine    # drains refinement; writes each slice's specs
 # review .emery/change/slices/*/specs/
 emery plan execute   # opens authorization epoch; drives build → merge

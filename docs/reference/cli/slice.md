@@ -52,7 +52,7 @@ Read-only view of the persisted typed model.
 emery slice model show <name> [--format json]
 ```
 
-Loads `.emery/change/slices/<name>/model.yaml` and renders it (text, or the schema-shaped object under `--format json`). The model carries the earned core — `requirements` (with inline provenance: `claims[]`, `winner` markers, rendered `sources`, `status`) and `tasks` — plus the `version` / `slice` / `project` header. `target` is not a `model.yaml` field; it is resolved on demand from the bound project.
+Loads `.emery/change/slices/<name>/model.yaml` and renders it (text, or the schema-shaped object under `--format json`). The model carries the earned core — `requirements` (with inline provenance: `claims[]`, `winner` markers, rendered `sources`, `status`) and `tasks` — plus the `version` / `slice` / `target` header. `target` is the slice's `plan.yaml.targets` key, kernel-stamped from the plan entry.
 
 ### emery slice provenance
 
