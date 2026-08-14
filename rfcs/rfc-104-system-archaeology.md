@@ -2,6 +2,8 @@
 
 > Status: Implemented definition predecessor to [RFC-88](rfc-88-detached-changes.md) in the [Services Delivery Programme](platform.md). The definition loop through `system.wave.reviewed` holds.
 >
+> Depends on implemented [RFC-87](rfc-87-working-trees.md) for content-addressed trees and private workspaces used as survey `source-input`.
+>
 > Owns the durable definition home and the `emery system *` loop: declared boundary and coverage, source materialization with observed-tree provenance, the source WIT change (source key + prepared input on `survey` / `extract`, no `focus`), estate Evidence and correlation into the reviewed as-is model, architecture and diagram projections, dispositions, target and transition architecture, the migration plan, the immutable wave handoff, and the `system.wave.reviewed` fact. It pins no delivery CIDs; [RFC-88](rfc-88-detached-changes.md) consumes one reviewed wave and owns delivery. Must-apply consumption patches are folded into RFC-88; the patch record remains in [rfc-104-rfc-88-patches.md](rfc-104-rfc-88-patches.md).
 
 ## Intent

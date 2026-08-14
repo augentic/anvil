@@ -4,7 +4,7 @@
 >
 > **Owns:** the typed **actor record** carried by every fact — the closed actor class (`human | agent`), declared driver identity, and **attestation level** (`unattested | declared | attested`) — plus the deployment-owned **operator grant** that may refuse an otherwise legal CLI act before guest dispatch. Attribution answers who acted; authorization answers what that caller was allowed to request. Neither becomes lifecycle state.
 >
-> **Builds on** RFC-86's fact substrate (per-writer logs, closed event taxonomy, computed status) and [RFC-86a](rfc-86a-gap-deferral.md)'s durable gate-minted disposition facts.
+> **Builds on** RFC-86's fact substrate (per-writer logs, closed event taxonomy, computed status). [RFC-86a](rfc-86a-gap-deferral.md)'s durable gate-minted disposition facts ride that substrate.
 >
 > **Patch ownership:** this RFC amends RFC-86's event shape after RFC-86 has landed by adding required actor and grant records to every appended fact and clarifying D23 (the writer id is a claim-ownership and log-partitioning key, never an actor identity). It adds a host-dispatch refusal before the guest sees an invocation. RFC-86 D2 (status computed, not stored), D6 (no `approve` verb, no projected `approved` rung), and the non-goal on multi-operator countersign remain unchanged.
 
