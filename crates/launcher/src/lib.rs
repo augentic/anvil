@@ -18,14 +18,14 @@ use transport::command::selectors::{
 
 mod anchor;
 mod blobstore;
-mod exec_bits;
+mod exec_mode;
 mod ingest;
 mod install;
 mod origins;
 mod resolver;
 
 pub use blobstore::Blobstore;
-pub use exec_bits::ExecBits;
+pub use exec_mode::ExecMode;
 pub use ingest::{Ingest, checkout, fetch, ingest};
 pub use install::Registry;
 pub use origins::Origins;

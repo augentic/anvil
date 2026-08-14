@@ -1,22 +1,22 @@
-//! Deployment backend for the exec-bits host capability: guest-visible
-//! roots validated onto the captured layout, bits round-tripped by the
-//! kernel's native exec seam. Filesystem-heavy legs run blocking.
+//! Deployment backend for the exec-mode host capability: guest-visible
+//! roots validated onto the captured layout, mode bits round-tripped
+//! by the kernel's native exec seam. Filesystem-heavy legs run blocking.
 
 use std::path::PathBuf;
 
 use anyhow::bail;
 use omnia::Backend;
-use omnia_wasi_execbits::{FutureResult, WasiExecBitsCtx, blocking};
+use omnia_wasi_execmode::{FutureResult, WasiExecModeCtx, blocking};
 use project::handler::{ExecutionPaths, GUEST_WORKSPACES_MOUNT};
-use project::workspace::{ExecBits as _, FsExecBits};
+use project::workspace::{ExecMode as _, FsExecMode};
 
-/// The exec-bits backend over this invocation's captured layout.
+/// The exec-mode backend over this invocation's captured layout.
 #[derive(Clone, Debug)]
-pub struct ExecBits {
+pub struct ExecMode {
     paths: ExecutionPaths,
 }
 
-impl Backend for ExecBits {
+impl Backend for ExecMode {
     type ConnectOptions = omnia::NoOptions;
 
     async fn connect_with(_options: omnia::NoOptions) -> anyhow::Result<Self> {
@@ -26,12 +26,12 @@ impl Backend for ExecBits {
     }
 }
 
-impl WasiExecBitsCtx for ExecBits {
+impl WasiExecModeCtx for ExecMode {
     fn read(&self, root: String) -> FutureResult<Vec<String>> {
         let paths = self.paths.clone();
         blocking(move || {
             let dir = resolve_root(&paths, &root)?;
-            Ok(FsExecBits.read(&dir)?.into_iter().collect())
+            Ok(FsExecMode.read(&dir)?.into_iter().collect())
         })
     }
 
@@ -42,7 +42,7 @@ impl WasiExecBitsCtx for ExecBits {
             for path in exec.iter().chain(plain.iter()) {
                 check_rel(path)?;
             }
-            Ok(FsExecBits.apply(&dir, &exec, &plain)?)
+            Ok(FsExecMode.apply(&dir, &exec, &plain)?)
         })
     }
 }
@@ -62,7 +62,7 @@ fn resolve_root(paths: &ExecutionPaths, root: &str) -> anyhow::Result<PathBuf> {
     {
         return Ok(paths.locations().workspaces_root().join(id));
     }
-    bail!("exec-bits root `{root}` is not a deployment-local tree root")
+    bail!("exec-mode root `{root}` is not a deployment-local tree root")
 }
 
 /// Refuse anything but a plain `/`-separated relative path.
@@ -70,5 +70,5 @@ fn check_rel(path: &str) -> anyhow::Result<()> {
     let plain = !path.is_empty()
         && !path.starts_with('/')
         && path.split('/').all(|segment| !segment.is_empty() && segment != "." && segment != "..");
-    if plain { Ok(()) } else { bail!("exec-bits path `{path}` is not a tree-relative path") }
+    if plain { Ok(()) } else { bail!("exec-mode path `{path}` is not a tree-relative path") }
 }

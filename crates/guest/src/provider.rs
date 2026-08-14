@@ -193,7 +193,7 @@ impl Target for Provider {
 
 /// The in-guest workspace kernel: tree I/O over the `.` and
 /// workspaces preopens, objects through `wasi:blobstore` (Omnia's
-/// `BlobStore` capability), exec bits through `emery:exec-bits`.
+/// `BlobStore` capability), exec mode through `emery:exec-mode`.
 impl seam::Workspaces for Provider {
     /// Freeze the project root's product tree (the kernel excludes
     /// `.git` and a nested `.emery/change/` home).

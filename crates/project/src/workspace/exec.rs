@@ -1,4 +1,4 @@
-//! The exec-bit seam: the one mode distinction the snapshot contract
+//! The exec-mode seam: the one mode distinction the snapshot contract
 //! round-trips (the Git precedent, `100755` vs `100644`).
 
 use std::collections::BTreeSet;
@@ -7,14 +7,14 @@ use std::path::Path;
 
 use error::Error;
 
-/// Bulk exec-bit access beneath one tree root — one read per snapshot
+/// Bulk exec-mode access beneath one tree root — one read per snapshot
 /// walk, one apply per materialization.
 ///
 /// Split from the tree walk because `wasi:filesystem` carries no
 /// permission bits: the in-guest kernel reads and applies exec sets
 /// through a host capability, while native deployments touch the
 /// filesystem directly.
-pub trait ExecBits: Debug + Send + Sync {
+pub trait ExecMode: Debug + Send + Sync {
     /// The `/`-separated relative paths of executable regular files
     /// beneath `root`. Never follows symlinks. May skip the store's
     /// ignored paths (`.git`, `.emery/change`) and `.gitignore`
@@ -35,13 +35,13 @@ pub trait ExecBits: Debug + Send + Sync {
     fn apply(&self, root: &Path, exec: &[String], plain: &[String]) -> Result<(), Error>;
 }
 
-/// Direct-filesystem exec bits for native deployments. A no-op on
+/// Direct-filesystem exec mode for native deployments. A no-op on
 /// platforms without unix mode bits, matching the manifest's
 /// `exec: false` default there.
 #[derive(Clone, Copy, Debug)]
-pub struct FsExecBits;
+pub struct FsExecMode;
 
-impl ExecBits for FsExecBits {
+impl ExecMode for FsExecMode {
     fn read(&self, root: &Path) -> Result<BTreeSet<String>, Error> {
         let mut set = BTreeSet::new();
         if cfg!(unix) {
@@ -116,7 +116,10 @@ fn set_exec(path: &Path, exec: bool) -> Result<(), Error> {
     if std::fs::symlink_metadata(path)?.file_type().is_symlink() {
         return Err(Error::Diag {
             code: "workspace-path-unsupported",
-            detail: format!("`{}` is a symlink; exec bits apply to regular files", path.display()),
+            detail: format!(
+                "`{}` is a symlink; exec mode applies to regular files",
+                path.display()
+            ),
         });
     }
     let mode = if exec { 0o755 } else { 0o644 };

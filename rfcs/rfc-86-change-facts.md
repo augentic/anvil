@@ -537,7 +537,7 @@ For engine contributors. Not required to evaluate the product intent.
 **Already landed (RFC-87 + Phases A–C) — consume, do not reinvent**
 
 - Value vocabulary: `project::snapshot::{SnapshotId, CodePatch}` (`sha256:…` tree digest; code patch = `{ base, result, touched paths }`). Wire documents say `cid` for the same identity ([RFC-88](rfc-88-detached-changes.md)).
-- Workspace capability: `project::seam::Workspaces` — `freeze` (refine pin authorship) / `prepare` / `capture` / `discard` / interim `apply`; the wasm-clean kernel in `project::workspace` runs in-guest over `wasi:blobstore` + `emery:exec-bits` (and in-process in the native provider) — see the deployment note in [RFC-87](rfc-87-working-trees.md).
+- Workspace capability: `project::seam::Workspaces` — `freeze` (refine pin authorship) / `prepare` / `capture` / `discard` / interim `apply`; the wasm-clean kernel in `project::workspace` runs in-guest over `wasi:blobstore` + `emery:exec-mode` (and in-process in the native provider) — see the deployment note in [RFC-87](rfc-87-working-trees.md).
 - Build orchestration (`crates/slice/src/orchestrate/target.rs`) opens a one-member wave, prepares from the recorded `base.yaml` `target_base` pin, dispatches `target.build`, captures, and persists `builds/<digest>.yaml` (`BuildRecord`). No ambient freeze-at-build; no `build/patch.yaml` authority.
 - Merge orchestration loads the `BuildRecord`, revalidates the wave, commits `target.merge.wave-committed`, and still calls interim `apply` for write-back (deleted by [RFC-88](rfc-88-detached-changes.md), not by this RFC). Do not reintroduce ambient checkout writes.
 

@@ -1,14 +1,14 @@
-/// The host-owned executable-bit capability. Exists solely because
+/// The host-owned executable-mode capability. Exists solely because
 /// `wasi:filesystem` (through 0.3.0) carries no permission bits: an
 /// in-guest snapshot walk or materialization over the filesystem
 /// preopens would silently lose the executable bit — the one mode
 /// distinction the snapshot manifest round-trips (`100755` vs
 /// `100644`). Deletes if upstream permission bits ever land in Omnia's
 /// filesystem host. Imported by the workflow guest only.
-package emery:exec-bits@0.1.0;
+package emery:exec-mode@0.1.0;
 
 interface types {
-  /// The error returned by exec-bit operations.
+  /// The error returned by exec-mode operations.
   variant error {
     invalid-request(string),
     io(string),
@@ -16,7 +16,7 @@ interface types {
   }
 }
 
-interface exec-bits {
+interface exec-mode {
   use types.{ error };
 
   /// The `/`-separated relative paths of executable regular files
@@ -32,9 +32,9 @@ interface exec-bits {
   apply: async func(root: string, exec: list<string>, plain: list<string>) -> result<_, error>;
 }
 
-/// Host-side bindgen world for the `exec-bits` capability: the shipped
+/// Host-side bindgen world for the `exec-mode` capability: the shipped
 /// runtime links a host implementation of this interface into the
 /// engine deployment. Never exported by a guest.
-world exec-bits-host {
-  import exec-bits;
+world exec-mode-host {
+  import exec-mode;
 }

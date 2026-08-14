@@ -4,7 +4,7 @@
 >
 > Owns: one publication worktree per publication member, the shared branch and pull-request markers, landing order, archive-time publication observation, and the typed publication projection. Does not own the operator's Git commit, forge writes, atomic cross-repository submission, automated rollback, or parallel member preparation.
 >
-> Builds on implemented [RFC-88](rfc-88-detached-changes.md); adds a read-only host forge capability for publication reads. [RFC-100](rfc-100-distributed-execution.md) may execute across nodes first. RFC-81 in `augentic/remedium` is the first external producer.
+> Builds on implemented [RFC-88](rfc-88-detached-changes.md). Host Git and forge access use Omnia generic interfaces — [host surface](rfc-95-host-surface.md) — not new `emery:*` packages. [RFC-100](rfc-100-distributed-execution.md) may execute across nodes first. RFC-81 in `augentic/remedium` is the first external producer.
 
 ## Intent
 
@@ -172,16 +172,16 @@ Archive reads resolved plan bindings and forge state serially. It does not prepa
 
 That keeps verification deterministic and decoupled from checkout state. Parallel member preparation is RFC-96.
 
-### D10 — The forge provider owns publication reads
+### D10 — Archive observes the forge over HTTP
 
-This RFC creates a read-only host forge capability with `find-pull-request` and `read-pull-request`. The shipped GitHub binding implements both. It does not extend an RFC-88 type. Keep it host-side (launcher / `emery:…` import on the origins/ingest shape), not an adapter-axis WIT.
+Archive reconstructs publication state by reading the forge. The lookup contract is product policy; the transport is `wasi:http` plus `omnia:identity`, not a new `emery:forge` (or `emery:publication`) host package. See [host surface](rfc-95-host-surface.md).
 
-- `find-pull-request(repository, branch)` where `branch` is `change/<plan>`. Exactly one open-or-merged pull request succeeds; zero is `unpublished`; several fail closed.
-- `read-pull-request` returns URL, body, `publication` (`unpublished | open | merged | closed`), and `merged-at` when merged.
+- Find by `(repository, branch)` where `branch` is `change/<plan>`. Exactly one open-or-merged pull request succeeds; zero is `unpublished`; several fail closed.
+- Read returns URL, body, `publication` (`unpublished | open | merged | closed`), and `merged-at` when merged.
 - Trailer check is on the body (`Emery-Change: <plan>`). A forge label may exist; it is not the lookup key.
 - Landing order is `merged-at` compared along D4's contracted partial order.
 
-There is no `gh` subprocess path and no dependency on RM-17. The provider gains no forge write capability.
+Those checks run in the engine over HTTP responses. There is no `gh` subprocess path, no `emery:*` forge import, and no dependency on RM-17. This RFC grants no forge write.
 
 ### D11 — One publication worktree per committable result
 
@@ -203,7 +203,7 @@ Placement uses RFC-88's in-place versus detached layouts. This RFC does not reco
 - **Otherwise** — `git worktree add -b change/<plan>` from an existing clone of the target, or a first-time clone the operator then owns (deployment layout, e.g. `$EMERY_HOME/publication/<target>/`).
 - Never the current branch. Never a dirty tree (`publication-worktree-dirty`). Never an RFC-87 workspace, the change home, or an ambient CWD that fails the in-place rule.
 
-RFC-88 already includes code and the merged `.emery/specs/` baseline in the accepted tree, so the worktree assembles no new content. Build the Git tree from the accepted snapshot: blobs by file content, trees with Git's sorted-name encoding, executable bits from the `ExecBits` seam; `.git` and nested change homes already excluded. Empty directories are omitted — Git stores no empty tree without a child. Snapshot objects stay in the RFC-87 store; Git objects live only in the worktree's repository. The two digest schemes are not aliased. The accepted CID remains the deterministic identity.
+RFC-88 already includes code and the merged `.emery/specs/` baseline in the accepted tree, so the worktree assembles no new content. The host provisions the Git checkout and mounts it; the guest writes the accepted CID as files onto that mount; the host stages the index. The engine does not encode Git objects and does not import a Git library. `.git` and nested change homes stay excluded. Empty directories are omitted — Git stores no empty tree without a child. Snapshot objects stay in the RFC-87 store; Git objects live only in the worktree's repository. The two digest schemes are not aliased. The accepted CID remains the deterministic identity. Implementation: [host surface](rfc-95-host-surface.md).
 
 Idempotency: if the worktree still matches the CID, re-entry is a no-op. If the operator has edited and not committed, fail `publication-worktree-dirty`. If the operator has already committed, do not rewind.
 
@@ -215,9 +215,9 @@ The idempotent `plan.publication.materialized` fact records target, parent revis
 
 ## Implementation requirements
 
-- Implement the idempotent publication worktree over the final accepted CID, local `change/<plan>` branch, D11 placement rules, and `plan.publication.materialized` fact.
+- Implement the idempotent publication worktree over the final accepted CID, local `change/<plan>` branch, D11 placement rules, and `plan.publication.materialized` fact, on the [host surface](rfc-95-host-surface.md) (mounted worktree + git-aware blobstore, one cut).
 - Document the ordinary Git loop (`cd`, `git diff`, `git commit`, `git push`) and the `Emery-Change` trailer in operator guidance.
-- Create the read-only host forge capability and shipped GitHub binding with `find-pull-request` and `read-pull-request`.
+- Observe the forge over `wasi:http` + `omnia:identity` with D10's find/read contract. Do not add `emery:forge` or `emery:publication`.
 - Implement one typed projector over terminal plan bindings, materialize facts, and forge state. Derive its partial order only from projected leaf `depends-on`; do not add a second decomposition reader.
 - Share one target-contraction and cycle-validation kernel between RFC-88 plan validation and archive. Reject `publication-target-cycle` before materialize or forge reads.
 - Render the projection before archive mutation; gate unverified publication with `publication-unverified`; journal the `--unverified` bypass.
@@ -228,13 +228,13 @@ The idempotent `plan.publication.materialized` fact records target, parent revis
 ## Acceptance criteria
 
 1. Draining a target materializes its final accepted CID as exactly one publication worktree on `change/<plan>`, with `HEAD` at the recorded initial revision and the tree uncommitted, and records an idempotent fact. It may run before unrelated targets drain, but never before the final terminal projection fixes that target's complete entry set and a covering `plan.execute.started` epoch exists. Completing one leaf creates no worktree and no commit. The worktree is not an RFC-87 workspace and is not a forge write. Re-entry is a no-op when the tree still matches the CID, fails `publication-worktree-dirty` when the operator has unpublished edits, and does not rewind an operator commit.
-2. Before changing archive state, `emery plan archive` derives members and repository locations from RFC-88 plan bindings, worktrees from their facts, and branch, pull-request, and commit state from the forge provider.
+2. Before changing archive state, `emery plan archive` derives members and repository locations from RFC-88 plan bindings, worktrees from their facts, and branch, pull-request, and commit state from forge HTTP reads (D10).
 3. Unchanged facts, plan, and forge state produce a byte-stable projection. A single-repository plan uses the same schema with one member and one publication worktree.
 4. Publication order derives only from cross-target leaf `depends-on` edges, including RFC-88's projection of domain dependencies. Unrelated members carry no extra constraint; archive does not reread internal domains. A leaf-acyclic fixture whose target contraction contains a two-target cycle fails `publication-target-cycle` at plan validation and archive.
 5. Archive verifies trailers, merged state, and landing order. Failures name every affected member. `--unverified` archives only after appending its fact.
 6. External records validate against `crates/project/answers/publication.schema.json` (the schemars golden of the projector wire type) and project through the same read surface without acquiring plan lifecycle authority.
 7. A WIT-breaking engine and adapter release fixture is represented and verified as a multi-member publication set.
-8. `cargo make ci` passes with crate-level integration coverage for the publication worktree (in-place single-member, linked worktree, first-time clone, dirty refusal, already-committed no-rewind), one and many members, missing/open/closed/merged pull requests, ordering, trailer mismatch, provider failure, external records, and the unverified bypass.
+8. `cargo make ci` passes with crate-level integration coverage for the publication worktree (in-place single-member, linked worktree, first-time clone, dirty refusal, already-committed no-rewind), one and many members, missing/open/closed/merged pull requests, ordering, trailer mismatch, HTTP/identity failure, external records, and the unverified bypass.
 
 ## Rejected alternatives
 
@@ -252,3 +252,6 @@ The idempotent `plan.publication.materialized` fact records target, parent revis
 - **Restoring `apply` onto ambient CWD** — a dirty checkout, a detached change with no product tree, and a two-target plan are why RFC-88 deleted it. The dedicated `change/<plan>` worktree is the git-native substitute.
 - **Recording a local clone path on the target binding** — laptop-specific deployment state, not delivery-binding authority.
 - **Building or verifying inside the publication worktree** — restores shared Git state during execute. RFC-87 workspaces stay private; this RFC exports the final CID once.
+- **`emery:publication` / `emery:forge` host packages** — workflow nouns in WIT. Git and forge access use `wasi:blobstore`, a mounted `wasi:filesystem` preopen, and `wasi:http` + `omnia:identity` ([host surface](rfc-95-host-surface.md)).
+- **A `wasi-git` WIT, or guest-visible `wasi:exec` as a Git placeholder** — Git stays in the backend and in host worktree provision.
+- **Sequencing the git-aware blobstore and the mounted worktree as separate cuts** — one host-surface implementation.

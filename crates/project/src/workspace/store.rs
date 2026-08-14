@@ -1,5 +1,5 @@
 //! The content-addressed snapshot store over the [`Objects`] and
-//! [`ExecBits`] seams. The kernel owns hashing: objects are named by
+//! [`ExecMode`] seams. The kernel owns hashing: objects are named by
 //! the SHA-256 it computed and reads verify the digest.
 
 use std::collections::BTreeSet;
@@ -8,17 +8,17 @@ use std::sync::Arc;
 
 use error::Error;
 
-use super::exec::{ExecBits, FsExecBits};
+use super::exec::{ExecMode, FsExecMode};
 use super::manifest::{Entry, Manifest};
 use super::objects::{FsObjects, Objects};
 use crate::snapshot::{self, SnapshotId};
 
 /// The snapshot store: tree walks and manifests in the kernel, object
-/// bytes behind [`Objects`], exec bits behind [`ExecBits`].
+/// bytes behind [`Objects`], exec mode behind [`ExecMode`].
 #[derive(Clone, Debug)]
 pub struct Store<O: Objects> {
     objects: O,
-    exec: Arc<dyn ExecBits>,
+    exec: Arc<dyn ExecMode>,
     /// Self-exclusion root for nested filesystem stores (test and lab
     /// layouts): the walk must never snapshot its own objects.
     exclude: Option<PathBuf>,
@@ -33,7 +33,7 @@ impl Store<FsObjects> {
         let exclude = Some(objects.root().to_path_buf());
         Self {
             objects,
-            exec: Arc::new(FsExecBits),
+            exec: Arc::new(FsExecMode),
             exclude,
         }
     }
@@ -41,11 +41,11 @@ impl Store<FsObjects> {
 
 impl<O: Objects> Store<O> {
     /// Compose a store over explicit seams (the in-guest deployment:
-    /// blobstore-backed objects, capability-backed exec bits). No
+    /// blobstore-backed objects, capability-backed exec mode). No
     /// self-exclusion — the object store is not beneath any walked
     /// tree.
     #[must_use]
-    pub fn over(objects: O, exec: impl ExecBits + 'static) -> Self {
+    pub fn over(objects: O, exec: impl ExecMode + 'static) -> Self {
         Self {
             objects,
             exec: Arc::new(exec),
@@ -331,7 +331,7 @@ impl<O: Objects> Store<O> {
 }
 
 /// The exec/plain path sets one materialization accumulates for the
-/// single bulk [`ExecBits::apply`] call.
+/// single bulk [`ExecMode::apply`] call.
 #[derive(Default)]
 struct ModeSets {
     exec: Vec<String>,

@@ -110,7 +110,7 @@ Snapshot and adapter objects may live in a shared blobstore. `prepare` still mat
 - separation of **node-local workspace GC** from **shared object GC** rooted by live claims, open attachments, and unpublished CIDs;
 - transfer economics behind the value capability (central store and optional peer verified streaming), without changing guest contracts.
 
-`emery:exec-bits` remains required wherever native tools execute inside a materialized tree (RFC-97). Blobstore does not replace a materialization root.
+`emery:exec-mode` remains required wherever native tools execute inside a materialized tree (RFC-97). Blobstore does not replace a materialization root.
 
 ### D5 — Workers advertise capability profiles; offers are capability-scoped
 

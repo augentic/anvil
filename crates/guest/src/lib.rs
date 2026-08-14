@@ -10,12 +10,12 @@ mod bindings {
         world: "workflow",
         path: "../../wit",
         generate_all,
-        // The exec-bits legs are sync-lowered: the kernel's `ExecBits`
+        // The exec-mode legs are sync-lowered: the kernel's `ExecMode`
         // seam is synchronous, and each leg is one quick host
         // stat/chmod pass.
         async: [
-            "-import:emery:exec-bits/exec-bits@0.1.0#read",
-            "-import:emery:exec-bits/exec-bits@0.1.0#apply",
+            "-import:emery:exec-mode/exec-mode@0.1.0#read",
+            "-import:emery:exec-mode/exec-mode@0.1.0#apply",
         ],
     });
 }

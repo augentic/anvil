@@ -61,6 +61,8 @@ Omnia is built on Wasmtime. Its design centers on pluggable host services behind
 
 Emery extends this surface through provider-backed host capabilities: a snapshot-backed workspace provider that prepares the [private workspace](#the-private-workspace), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core. Future [host verification](rfc-97-native-verification.md) adds a third deployment-provider capability through an Emery-owned host-verification interface and native sandbox contract.
 
+Locator fetch, publication worktrees, and forge reads do not add `emery:*` host packages. They use `wasi:blobstore` (including a git-aware backend), a mounted `wasi:filesystem` preopen, and `wasi:http` + `omnia:identity` — [RFC-95 host surface](rfc-95-host-surface.md). `emery:adapter` remains the product contract; `emery:exec-mode` remains the WASI mode-bit gap.
+
 ## Judgment: the `wasi-model` host
 
 Model evaluation is a host capability like any other. Omnia exposes a `wasi-model` host whose `eval` export a guest calls to have a prompt evaluated:

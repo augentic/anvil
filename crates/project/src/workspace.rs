@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
 use error::Error;
-pub use exec::{ExecBits, FsExecBits};
+pub use exec::{ExecMode, FsExecMode};
 pub(crate) use membership::Ignores;
 pub use objects::{FsObjects, Objects};
 use serde::{Deserialize, Serialize};

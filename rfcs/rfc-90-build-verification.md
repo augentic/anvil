@@ -22,7 +22,7 @@ What this RFC changes is the **adapter call shape**, not that substrate. Inside 
 
 That shape hides the most important control loop from lifecycle policy and makes RFC-96 concurrency unsafe: splitting writers before replacing the loop would remove the only mechanism that currently returns failed checks to the code writer.
 
-The engine guest also cannot execute the target project's native toolchain. Its `workflow` world imports `source`, `target`, and `emery:exec-bits` (plus the standard `wasi:blobstore` for snapshot objects — the workspace kernel itself runs in-guest); neither Emery nor Omnia currently supplies native process execution. The `wasi-model` `verify` grant authorizes model tooling but is not an execution capability.
+The engine guest also cannot execute the target project's native toolchain. Its `workflow` world imports `source`, `target`, and `emery:exec-mode` (plus the standard `wasi:blobstore` for snapshot objects — the workspace kernel itself runs in-guest); neither Emery nor Omnia currently supplies native process execution. The `wasi-model` `verify` grant authorizes model tooling but is not an execution capability.
 
 ### Goal
 
@@ -235,7 +235,7 @@ The adapter repository continues to own prompts, engineering standards, target c
 
 Closed command profiles, native process execution, sandbox and resource policy, trusted tool-output parsing, protected-oracle classification, verification-lineage caches, execution grants, and typed toolchain unavailability are not part of this RFC. [RFC-97](rfc-97-native-verification.md) owns that follow-on.
 
-RFC-97 runs tools in the trusted native deployment below the component boundary and exposes only a custom host-verification WIT import (on the `emery:exec-bits` capability-crate shape). It does not wait on [`wasi:exec`](https://github.com/WebAssembly/WASI/issues/899) or any other standardized WASI process API. When landed, it replaces the model-assisted evidence inside `verify` while retaining this RFC's lifecycle, budgets, bounded repair-brief projection, target repair routing, and final report assembly. Its optional host mechanical-repair rung is an explicit phase-machine and write-authority amendment rather than an implicit part of `verify`.
+RFC-97 runs tools in the trusted native deployment below the component boundary and exposes only a custom host-verification WIT import (on the `emery:exec-mode` capability-crate shape). It does not wait on [`wasi:exec`](https://github.com/WebAssembly/WASI/issues/899) or any other standardized WASI process API. When landed, it replaces the model-assisted evidence inside `verify` while retaining this RFC's lifecycle, budgets, bounded repair-brief projection, target repair routing, and final report assembly. Its optional host mechanical-repair rung is an explicit phase-machine and write-authority amendment rather than an implicit part of `verify`.
 
 ## Implementation requirements
 

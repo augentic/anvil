@@ -1119,7 +1119,7 @@ dependencies = [
  "emery-mock",
  "emery-native",
  "emery-probe",
- "emery-wasi-exec-bits",
+ "emery-wasi-exec-mode",
  "emery-wasi-ingest",
  "emery-wasi-origins",
  "omnia",
@@ -1241,7 +1241,7 @@ dependencies = [
  "emery-error",
  "emery-project",
  "emery-transport",
- "emery-wasi-exec-bits",
+ "emery-wasi-exec-mode",
  "emery-wasi-ingest",
  "emery-wasi-origins",
  "oci-client",
@@ -1425,7 +1425,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "emery-wasi-exec-bits"
+name = "emery-wasi-exec-mode"
 version = "0.38.0"
 dependencies = [
  "anyhow",

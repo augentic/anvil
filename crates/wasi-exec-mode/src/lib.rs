@@ -1,4 +1,4 @@
-//! Host side of the `emery:exec-bits` capability. Exists solely
+//! Host side of the `emery:exec-mode` capability. Exists solely
 //! because `wasi:filesystem` carries no permission bits (still true
 //! at 0.3.0); deletes if upstream bits ever land in Omnia's host.
 
@@ -10,16 +10,16 @@ mod generated {
         reason = "wasmtime bindgen generated bindings are not hand-maintained"
     )]
 
-    pub use self::emery::exec_bits::types::Error;
+    pub use self::emery::exec_mode::types::Error;
 
     wasmtime::component::bindgen!({
-        world: "exec-bits-host",
+        world: "exec-mode-host",
         path: "wit",
         imports: {
             default: store | tracing | trappable,
         },
         trappable_error_type: {
-            "emery:exec-bits/types.error" => Error,
+            "emery:exec-mode/types.error" => Error,
         },
     });
 }
@@ -31,27 +31,27 @@ use omnia::{Host, Server};
 use wasmtime::component::{Accessor, HasData, Linker};
 
 pub use self::generated::Error;
-use self::generated::emery::exec_bits::exec_bits;
+use self::generated::emery::exec_mode::exec_mode;
 
-/// Host-side service for the exec-bits capability (a linked-only
+/// Host-side service for the exec-mode capability (a linked-only
 /// effect host).
 #[derive(Clone, Copy, Debug)]
-pub struct WasiExecBits;
+pub struct WasiExecMode;
 
-impl HasData for WasiExecBits {
-    type Data<'a> = WasiExecBitsCtxView<'a>;
+impl HasData for WasiExecMode {
+    type Data<'a> = WasiExecModeCtxView<'a>;
 }
 
-impl<T> Host<T> for WasiExecBits
+impl<T> Host<T> for WasiExecMode
 where
-    T: WasiExecBitsView + 'static,
+    T: WasiExecModeView + 'static,
 {
     fn add_to_linker(linker: &mut Linker<T>) -> anyhow::Result<()> {
-        Ok(exec_bits::add_to_linker::<_, Self>(linker, T::execbits)?)
+        Ok(exec_mode::add_to_linker::<_, Self>(linker, T::execmode)?)
     }
 }
 
-impl<B> Server<B> for WasiExecBits {}
+impl<B> Server<B> for WasiExecMode {}
 
 /// The backend trait — the one place the deployment's root-mapping
 /// policy lives.
@@ -59,7 +59,7 @@ impl<B> Server<B> for WasiExecBits {}
 /// Roots ride the WIT wire shape: deployment-local tree roots (`.` or
 /// a workspace root beneath the deployment's workspaces mount); paths
 /// are `/`-separated and relative to the root.
-pub trait WasiExecBitsCtx: Debug + Send + Sync + 'static {
+pub trait WasiExecModeCtx: Debug + Send + Sync + 'static {
     /// The relative paths of executable regular files beneath `root`.
     fn read(&self, root: String) -> FutureResult<Vec<String>>;
 
@@ -76,7 +76,7 @@ pub fn blocking<T: Send + 'static>(
     async move { tokio::task::spawn_blocking(task).await? }.boxed()
 }
 
-impl<T> exec_bits::HostWithStore<T> for WasiExecBits
+impl<T> exec_mode::HostWithStore<T> for WasiExecMode
 where
     T: 'static,
 {
@@ -91,9 +91,9 @@ where
     }
 }
 
-impl exec_bits::Host for WasiExecBitsCtxView<'_> {}
+impl exec_mode::Host for WasiExecModeCtxView<'_> {}
 
-impl generated::emery::exec_bits::types::Host for WasiExecBitsCtxView<'_> {
+impl generated::emery::exec_mode::types::Host for WasiExecModeCtxView<'_> {
     fn convert_error(&mut self, err: Error) -> wasmtime::Result<Error> {
         Ok(err)
     }
@@ -101,4 +101,4 @@ impl generated::emery::exec_bits::types::Host for WasiExecBitsCtxView<'_> {
 
 // An untyped host failure is an `internal` error at the boundary.
 omnia::host_error!(Error, Internal);
-omnia::wasi_view!(ExecBits);
+omnia::wasi_view!(ExecMode);
