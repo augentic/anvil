@@ -4,16 +4,18 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use artifacts::discovery::{Discovery, Lead};
+use artifacts::leads::{Lead, Leads};
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::{Layout, ProjectConfig};
 use project::handler::ExecutionPaths;
+use project::journal::{self, Event, EventKind, ParkReason};
 use project::plan::{
-    Entry, Plan, Status, collect_events, in_scope, plan_gaps_body, project_ladders,
+    Entry, Plan, Proposal, Status, collect_events, in_scope, plan_gaps_body, project_ladders,
 };
+use project::profile::Profiles;
 use project::seam::{Source, Target, Workspaces};
 use project::slice::SliceMetadata;
 use slice::refinement::{self, Dependency, Freshness, Live};
@@ -65,21 +67,27 @@ pub enum RefineOutcome {
 ///   marker.
 /// - [`Error::Argument`] when a `--slice` selector names no in-scope
 ///   plan entry.
-/// - Plan / discovery / config load and freshness-projection failures.
+/// - Plan / leads-catalog / config load and freshness-projection failures.
 ///
 /// Per-slice refinement failures do **not** surface here — they return
 /// as [`RefineOutcome::Stopped`].
-pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
+pub async fn refine<
+    P: Model + Profiles + Resolver + Source + Workspaces,
+    S: Source + Workspaces,
+    T: Target,
+    R: Resolver,
+>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     selectors: &[String],
 ) -> Result<RefineOutcome, Error> {
-    let layout = Layout::new(paths.project_root());
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
+    let layout = paths.layout();
+    if !paths.is_detached() {
+        drop(ProjectConfig::load(paths.project_root())?);
+    }
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
-    let discovery = Discovery::load(&layout.discovery_path())?;
-    let inventory = discovery.leads();
+    let catalog = Leads::load(&layout.leads_path())?;
+    let inventory = catalog.leads();
 
     let ordered = topological(layout, &plan)?;
     // One shared freshness cache per drain: baseline, journaled
@@ -121,7 +129,17 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
             Some(meta) => meta.target,
             None => project::target_policy::fresh(caps.resolver, paths, entry, name, "refining")?,
         };
+        if Proposal::boundary_for(layout, name)?.is_some() {
+            return Ok(RefineOutcome::Stopped {
+                slice: name.to_string(),
+                detail: format!(
+                    "inert boundary proposal already parks `{name}`; apply it with emery plan \
+                     amend --proposal before re-refining this leaf"
+                ),
+            });
+        }
         tracing::info!("refine {name} …");
+        let adapter = leaf_adapter(caps.resolver, paths, entry)?;
         match slice::orchestrate::refine(
             caps,
             paths,
@@ -133,13 +151,15 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
         )
         .await
         {
-            Ok(_) => {
+            Ok(slice::orchestrate::RefineOutcome::Refined { .. }) => {
                 tracing::info!("refine {name} — completed");
                 refined.push(name.to_string());
             }
+            Ok(escalation @ slice::orchestrate::RefineOutcome::Escalated { .. }) => {
+                return persist_escalation(caps.model, paths, now, &plan, layout, name, escalation)
+                    .await;
+            }
             Err(err) => {
-                // Stop on the first failed refinement; prior manifests
-                // stay and a re-run resumes here.
                 tracing::info!("refine {name} — stopped: {err}");
                 return Ok(RefineOutcome::Stopped {
                     slice: name.to_string(),
@@ -157,6 +177,52 @@ pub async fn refine<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
         skipped,
         gaps,
     })
+}
+
+async fn persist_escalation<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, layout: Layout<'_>,
+    name: &str, escalation: slice::orchestrate::RefineOutcome,
+) -> Result<RefineOutcome, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    tracing::info!("refine {name} — boundary-escalation");
+    match super::escalate::persist(provider, paths, now, plan, escalation).await {
+        Ok(digest) => Ok(RefineOutcome::Stopped {
+            slice: name.to_string(),
+            detail: format!(
+                "boundary-escalation wrote inert proposal `{digest}`; planning artifacts unchanged"
+            ),
+        }),
+        Err(err) => {
+            if matches!(
+                &err,
+                Error::Validation { code, .. }
+                    if code.as_ref() == "plan-refine-budget-exhausted"
+            ) {
+                journal_budget_park(layout, now, name)?;
+            }
+            tracing::info!("refine {name} — stopped: {err}");
+            Ok(RefineOutcome::Stopped {
+                slice: name.to_string(),
+                detail: err.to_string(),
+            })
+        }
+    }
+}
+
+fn journal_budget_park(layout: Layout<'_>, now: Timestamp, slice: &str) -> Result<(), Error> {
+    journal::append_one(
+        layout,
+        &Event::new(
+            now,
+            EventKind::SliceRefinementParked {
+                slice_name: slice.into(),
+                reason: ParkReason::BudgetExhausted,
+                proposal: None,
+            },
+        ),
+    )
 }
 
 /// Ordered `(slice, refinement-digest)` pins over `entry.depends_on`.
@@ -302,4 +368,13 @@ fn target_set(
         }
     }
     Ok(targets)
+}
+
+fn leaf_adapter(
+    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry,
+) -> Result<project::adapter::ResolvedTarget, Error> {
+    let layout = paths.layout();
+    let plan = Plan::load(&layout.plan_path())?;
+    let binding = plan.target(&entry.target)?;
+    resolver.resolve_target(&binding.adapter.selector(), paths)
 }

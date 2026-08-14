@@ -25,6 +25,15 @@ async fn merge(session: &Session, slice: &str) -> Result<MergeOutcome, error::Er
     slice::orchestrate::merge(session.provider(), layout, ts(), slice, false).await
 }
 
+async fn accepted_spec(session: &Session, rel: &str) -> String {
+    let tree = session.materialize_accepted("demo").await;
+    fs::read_to_string(tree.path().join(rel)).expect("accepted spec")
+}
+
+fn checkout_spec(session: &Session, rel: &str) -> Option<String> {
+    fs::read_to_string(session.root().join(rel)).ok()
+}
+
 const fn baseline_body() -> &'static str {
     "### Requirement: User can log in\n\n\
      ID: REQ-007\n\n\
@@ -105,7 +114,7 @@ fn stage_wave_and_record(session: &Session, slice: &str, base: SnapshotId) -> Sn
 
 fn stage_built_slice(session: &Session, digest: &str) {
     let root = session.root();
-    let slice_dir = root.join(".emery/slices/login-flow");
+    let slice_dir = root.join(".emery/change/slices/login-flow");
     let specs = slice_dir.join("specs/auth");
     fs::create_dir_all(&specs).expect("slice specs");
     fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline specs");
@@ -172,14 +181,19 @@ tasks:
 #[tokio::test]
 async fn wave_commit_assigns() {
     let session = Session::scripted("mock", Vec::new());
+    stage_built_slice(&session, "");
     let snapshot = session.provider().freeze().await.expect("freeze");
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
-    stage_built_slice(&session, wave_digest.as_str());
+    let before = checkout_spec(&session, ".emery/specs/auth/spec.md");
 
     merge(&session, "login-flow").await.expect("merge succeeds");
 
-    let merged = fs::read_to_string(session.root().join(".emery/specs/auth/spec.md"))
-        .expect("merged baseline");
+    assert_eq!(
+        checkout_spec(&session, ".emery/specs/auth/spec.md"),
+        before,
+        "merge must not write the operator checkout"
+    );
+    let merged = accepted_spec(&session, ".emery/specs/auth/spec.md").await;
     // MODIFIED keeps baseline REQ-007; ADDED takes the next free number (REQ-009).
     assert!(merged.contains("ID: REQ-007"), "{merged}");
     assert!(merged.contains("ID: REQ-008"), "{merged}");
@@ -193,12 +207,12 @@ async fn wave_commit_assigns() {
     let committed = events.iter().find_map(|event| match &event.kind {
         EventKind::TargetMergeWaveCommitted {
             digest,
-            slice_name,
+            members,
             identity_maps,
             ..
         } => {
             assert_eq!(digest, wave_digest.as_str());
-            assert_eq!(slice_name.as_str(), "login-flow");
+            assert_eq!(members.iter().map(SliceName::as_str).collect::<Vec<_>>(), ["login-flow"]);
             Some(identity_maps.clone())
         }
         _ => None,
@@ -223,6 +237,7 @@ async fn wave_commit_assigns() {
 async fn stale_mtime_not_merged() {
     let session = Session::scripted("mock", Vec::new());
     let layout = project::config::Layout::new(session.root());
+    stage_built_slice(&session, "");
     let snapshot = session.provider().freeze().await.expect("freeze");
 
     // A stale wave from an earlier epoch, opened first.
@@ -241,7 +256,6 @@ async fn stale_mtime_not_merged() {
 
     // The authorized wave + record (the newest `target.wave.opened`).
     let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot.clone());
-    stage_built_slice(&session, wave_digest.as_str());
 
     // Write the stale record last so it carries the newest mtime.
     let stale_record = project::build_record::BuildRecord::from_capture(
@@ -316,12 +330,18 @@ async fn two_slices_merge_without() {
          - WHEN the user opens reset\n\
          - THEN the reset flow starts\n";
 
+    let first = session.provider().freeze().await.expect("freeze");
+    let before = checkout_spec(&session, ".emery/specs/auth/spec.md");
     for (slice, delta, title) in
         [("slice-a", added_a, "Passkey login"), ("slice-b", added_b, "Reset entry")]
     {
-        let snapshot = session.provider().freeze().await.expect("freeze");
+        let layout = project::config::Layout::new(root);
+        let events = read_union(layout).expect("union");
+        let snapshot = project::wave::accepted_cid(layout, &events, "demo")
+            .expect("accepted")
+            .unwrap_or_else(|| first.clone());
         stage_wave_and_record(&session, slice, snapshot);
-        let slice_dir = root.join(".emery/slices").join(slice);
+        let slice_dir = root.join(".emery/change/slices").join(slice);
         let specs = slice_dir.join("specs/auth");
         fs::create_dir_all(&specs).expect("specs");
         fs::write(specs.join("spec.md"), delta).expect("delta");
@@ -362,7 +382,12 @@ tasks:
         merge(&session, slice).await.unwrap_or_else(|err| panic!("merge {slice}: {err}"));
     }
 
-    let merged = fs::read_to_string(root.join(".emery/specs/auth/spec.md")).expect("merged");
+    assert_eq!(
+        checkout_spec(&session, ".emery/specs/auth/spec.md"),
+        before,
+        "merge must not write the operator checkout"
+    );
+    let merged = accepted_spec(&session, ".emery/specs/auth/spec.md").await;
     assert!(merged.contains("ID: REQ-007"), "{merged}");
     assert!(merged.contains("ID: REQ-008"), "{merged}");
     // Both ADDED rows take distinct next-free baseline ids.
@@ -410,7 +435,7 @@ fn stage_overlap_ids(session: &Session) {
     fs::create_dir_all(root.join(".emery/specs/auth")).expect("baseline specs");
     fs::write(root.join(".emery/specs/auth/spec.md"), baseline).expect("baseline");
 
-    let slice_dir = root.join(".emery/slices/login-flow");
+    let slice_dir = root.join(".emery/change/slices/login-flow");
     let specs = slice_dir.join("specs/auth");
     fs::create_dir_all(&specs).expect("slice specs");
     // Local REQ-001 modifies baseline REQ-002; local REQ-002 is ADDED.
@@ -495,14 +520,14 @@ tasks:
 #[tokio::test]
 async fn task_tokens_no_chain() {
     let session = Session::scripted("mock", Vec::new());
+    stage_overlap_ids(&session);
     let snapshot = session.provider().freeze().await.expect("freeze");
     stage_wave_and_record(&session, "login-flow", snapshot);
-    stage_overlap_ids(&session);
 
     merge(&session, "login-flow").await.expect("merge succeeds");
 
     let date = ts().strftime("%Y-%m-%d").to_string();
-    let archived = session.root().join(".emery/archive").join(format!("{date}-login-flow"));
+    let archived = session.root().join(".emery/change/archive").join(format!("{date}-login-flow"));
     let tasks = fs::read_to_string(archived.join("tasks.md")).expect("archived tasks");
     assert!(tasks.contains("TASK-001 satisfies REQ-002"), "{tasks}");
     assert!(tasks.contains("TASK-002 satisfies REQ-003"), "{tasks}");
@@ -515,10 +540,7 @@ async fn task_tokens_no_chain() {
 async fn omit_domain_default() {
     let session = Session::scripted("mock", Vec::new());
     let root = session.root();
-    let snapshot = session.provider().freeze().await.expect("freeze");
-    stage_wave_and_record(&session, "login-flow", snapshot);
-
-    let slice_dir = root.join(".emery/slices/login-flow");
+    let slice_dir = root.join(".emery/change/slices/login-flow");
     let specs = slice_dir.join("specs/default");
     fs::create_dir_all(&specs).expect("slice specs");
     fs::create_dir_all(root.join(".emery/specs/default")).expect("baseline specs");
@@ -572,10 +594,11 @@ tasks:
     fs::write(slice_dir.join("tasks.md"), "# Tasks\n\n- TASK-001 satisfies REQ-001\n")
         .expect("tasks");
 
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    stage_wave_and_record(&session, "login-flow", snapshot);
     merge(&session, "login-flow").await.expect("domain-omitted MODIFIED merges");
 
-    let merged =
-        fs::read_to_string(root.join(".emery/specs/default/spec.md")).expect("merged baseline");
+    let merged = accepted_spec(&session, ".emery/specs/default/spec.md").await;
     assert!(merged.contains("ID: REQ-007"), "{merged}");
     assert!(merged.contains("passkey"), "{merged}");
 }
@@ -585,10 +608,8 @@ tasks:
 #[tokio::test]
 async fn related_ids_finalize() {
     let session = Session::scripted("mock", Vec::new());
-    let snapshot = session.provider().freeze().await.expect("freeze");
-    let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
-    stage_built_slice(&session, wave_digest.as_str());
-    let decisions = session.root().join(".emery/slices/login-flow/decisions");
+    stage_built_slice(&session, "");
+    let decisions = session.root().join(".emery/change/slices/login-flow/decisions");
     fs::create_dir_all(&decisions).expect("slice decisions");
     fs::write(
         decisions.join("passkey-auth.md"),
@@ -597,12 +618,12 @@ async fn related_ids_finalize() {
          ## Consequences\n\nConsequences.\n",
     )
     .expect("decision");
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    stage_wave_and_record(&session, "login-flow", snapshot);
 
     merge(&session, "login-flow").await.expect("merge succeeds");
 
-    let promoted =
-        fs::read_to_string(session.root().join(".emery/decisions/DEC-0001-passkey-auth.md"))
-            .expect("promoted decision");
+    let promoted = accepted_spec(&session, ".emery/decisions/DEC-0001-passkey-auth.md").await;
     // MODIFIED REQ-001 → baseline REQ-007; ADDED REQ-002 → REQ-009.
     assert!(promoted.contains("REQ-007"), "{promoted}");
     assert!(promoted.contains("REQ-009"), "{promoted}");
@@ -614,11 +635,10 @@ async fn related_ids_finalize() {
 #[tokio::test]
 async fn drifted_modified_rejects() {
     let session = Session::scripted("mock", Vec::new());
-    let snapshot = session.provider().freeze().await.expect("freeze");
-    stage_wave_and_record(&session, "login-flow", snapshot);
     stage_built_slice(&session, "");
 
-    // Drift the live baseline body after refine recorded its digest.
+    // Drift the live baseline body after refine recorded its digest,
+    // then freeze so the merge workspace carries the drifted tree.
     fs::write(
         session.root().join(".emery/specs/auth/spec.md"),
         "### Requirement: User can log in\n\n\
@@ -637,6 +657,8 @@ async fn drifted_modified_rejects() {
          - THEN the session is invalidated\n",
     )
     .expect("drift baseline");
+    let snapshot = session.provider().freeze().await.expect("freeze");
+    stage_wave_and_record(&session, "login-flow", snapshot);
 
     let err = merge(&session, "login-flow").await.expect_err("drifted MODIFIED must fail");
     let text = err.to_string();
@@ -650,7 +672,7 @@ async fn drifted_modified_rejects() {
         "no wave-committed on pre-commit failure"
     );
     assert!(
-        session.root().join(".emery/slices/login-flow").exists(),
+        session.root().join(".emery/change/slices/login-flow").exists(),
         "slice still present (not archived)"
     );
     let baseline = fs::read_to_string(session.root().join(".emery/specs/auth/spec.md"))
@@ -662,9 +684,10 @@ async fn drifted_modified_rejects() {
 #[tokio::test]
 async fn postflight_failure_keeps() {
     let session = Session::scripted("mock", Vec::new());
+    stage_built_slice(&session, "");
     let snapshot = session.provider().freeze().await.expect("freeze");
-    let wave_digest = stage_wave_and_record(&session, "login-flow", snapshot);
-    stage_built_slice(&session, wave_digest.as_str());
+    stage_wave_and_record(&session, "login-flow", snapshot);
+    let before = checkout_spec(&session, ".emery/specs/auth/spec.md");
     fs::write(session.root().join(mock::behaviour::POSTFLIGHT_FAIL), "")
         .expect("postflight marker");
 
@@ -685,9 +708,13 @@ async fn postflight_failure_keeps() {
         !events.iter().any(|e| matches!(e.kind, EventKind::TargetMergeWaveSucceeded { .. })),
         "no wave-succeeded"
     );
-    // Non-rollback: baseline fold stands with finalized ids.
-    let merged = fs::read_to_string(session.root().join(".emery/specs/auth/spec.md"))
-        .expect("merged baseline");
+    // Non-rollback: the accepted CID stands with finalized ids; checkout is untouched.
+    assert_eq!(
+        checkout_spec(&session, ".emery/specs/auth/spec.md"),
+        before,
+        "merge must not write the operator checkout"
+    );
+    let merged = accepted_spec(&session, ".emery/specs/auth/spec.md").await;
     assert!(merged.contains("ID: REQ-009"), "{merged}");
-    assert!(!session.root().join(".emery/slices/login-flow").exists());
+    assert!(!session.root().join(".emery/change/slices/login-flow").exists());
 }

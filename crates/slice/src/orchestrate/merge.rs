@@ -1,17 +1,18 @@
 //! The merge orchestrator: target merge gates around the deterministic
-//! core merge, with RFC-86 D9 one-member wave commit + identity maps.
+//! core merge. The wave-commit fact is the accepted-CID transition.
 
 use std::path::{Path, PathBuf};
 
 use error::Error;
 use jiff::Timestamp;
 use project::build_record::BuildRecord;
-use project::config::{Layout, ProjectConfig};
-use project::journal::{self, EventKind, FactEpochRef, IdentityMap};
+use project::config::Layout;
+use project::journal::{self, DeferredMember, Event, EventKind, FactEpochRef, IdentityMap};
+use project::name::SliceName;
 use project::plan::{Plan, Status, collect_events, project_ladders};
 use project::seam::{self, MergePhase, Target, Workspaces};
-use project::snapshot::{CodePatch, SnapshotId};
-use project::wave::Wave;
+use project::snapshot::SnapshotId;
+use project::wave::{Member, Wave};
 
 use crate::merge::{
     MergeCommit, PreviewEntry, artifact_classes, debt, identity, slice as slice_merge,
@@ -38,18 +39,19 @@ struct WaveCommit {
     wave: Wave,
     /// Content digest of the wave (`sha256:…`).
     digest: String,
-    /// Code patch projected from the build record.
-    patch: CodePatch,
+    /// Member records in stable wave order.
+    members: Vec<(Member, BuildRecord)>,
 }
 
 /// Merge one built slice (the execute loop's merge phase).
 ///
-/// Runs preflight gate → identity finalization → deterministic commit
-/// → wave-committed fact → postflight gate. A preflight failure
-/// aborts with the slice still built; a postflight failure is terminal
-/// but non-rollback — the merge stands once `target.merge.wave-committed`
-/// is appended, and a parseable failed report is persisted to the
-/// archive first. Re-entry heals a torn merge without a second commit.
+/// Resolves the named slice's frozen wave, refuses until every member
+/// result is present, prepares a writable workspace from the composed
+/// member-result, runs per-member preflight, folds every delta inside
+/// that workspace, captures the candidate CID, appends
+/// `target.merge.wave-committed`, archives, then per-member postflight.
+/// A crash before the commit fact leaves the prior accepted CID
+/// authoritative; a crash after it is a resumable postflight stop.
 ///
 /// # Errors
 ///
@@ -68,14 +70,24 @@ pub async fn merge<T: Target + Workspaces>(
 ) -> Result<MergeOutcome, Error> {
     tracing::info!("merge started");
     preflight_completion(layout, slice)?;
-    if let Some(outcome) = heal_torn_merge(layout, slice) {
-        tracing::info!("merge completed: torn merge healed (archive already present)");
+    project::plan::epoch::require_for_claim(layout, slice)?;
+    if layout.plan_path().exists()
+        && let Some(digest) =
+            project::plan::author_overlap(layout, &Plan::load(&layout.plan_path())?)?
+    {
+        return Err(Error::validation_failed(
+            "plan-ownership-overlap",
+            "runtime ownership overlap writes an inert proposal",
+            format!(
+                "apply with `emery plan amend --proposal {digest}` after quiescing affected work"
+            ),
+        ));
+    }
+    if let Some(outcome) = already_complete(layout, slice) {
+        tracing::info!("merge completed: commit and postflight already settled");
         return Ok(outcome);
     }
     let slice_dir = layout.slice_dir(slice);
-    // The recorded slice target keeps its `name@version` pin: the
-    // routed id dispatches the exact identity, never a reduced bare
-    // name.
     let target = project::target_policy::resumed(layout, slice)?;
     tracing::Span::current().record("target", target.as_str());
     let id =
@@ -91,41 +103,23 @@ pub async fn merge<T: Target + Workspaces>(
         "slice.merge",
     );
 
-    // One read-only view of the built result snapshot serves both
-    // gates; discarded on every exit (best-effort — a leaked view is
-    // GC territory, never a merge failure).
-    let view =
-        journal_on_failure(layout, now, slice, prepare_view(targets, slice, &commit.patch).await)?;
-    let run = gated(
-        targets,
+    if wave_committed(layout, &commit.digest) {
+        return resume_postflight(targets, layout, now, slice, &id, &commit).await;
+    }
+
+    let composed = composed_result(&commit)?;
+    let view = journal_on_failure(
         layout,
         now,
         slice,
-        &slice_dir,
-        &id,
-        allow_composition_replace,
-        &view,
-        &commit,
-    )
-    .await;
+        prepare_workspace(targets, slice, &composed, true).await,
+    )?;
+    let run =
+        gated(targets, layout, now, slice, &id, allow_composition_replace, &view, &commit).await;
     if let Err(err) = targets.discard(view.id.clone()).await {
-        tracing::warn!(workspace = %view.id, "merge view discard failed: {err}");
+        tracing::warn!(workspace = %view.id, "merge workspace discard failed: {err}");
     }
     let outcome = run?;
-
-    // Interim code delivery (deleted by RFC-88): the postflight gate
-    // passed, so materialize the accepted result snapshot onto the
-    // product tree and journal the apply.
-    journal_on_failure(layout, now, slice, apply_result(targets, slice, &commit.patch).await)?;
-    journal::emit_best_effort(
-        layout,
-        now,
-        EventKind::SliceCodeApplied {
-            slice_name: slice.into(),
-            snapshot: commit.patch.result.to_string(),
-        },
-        "slice.merge",
-    );
 
     journal::emit_best_effort(
         layout,
@@ -139,65 +133,205 @@ pub async fn merge<T: Target + Workspaces>(
     Ok(outcome)
 }
 
-/// The gate-bracketed core: preflight → identity + commit →
-/// wave-committed → postflight, all over the shared read-only `view`.
+/// Preflight → identity + fold inside the workspace → capture →
+/// wave-committed → archive → postflight.
 #[expect(
     clippy::too_many_arguments,
-    reason = "internal merge kernel bracketed by the view lifecycle; callers use `merge`"
+    reason = "internal merge kernel bracketed by the workspace lifecycle; callers use `merge`"
 )]
-async fn gated<T: Target>(
-    targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, slice_dir: &Path, id: &str,
+async fn gated<T: Target + Workspaces>(
+    targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, id: &str,
     allow_composition_replace: bool, view: &seam::Workspace, commit: &WaveCommit,
 ) -> Result<MergeOutcome, Error> {
-    // Target preflight: a failure aborts with the slice still `built`.
-    let preflight = run_gate(targets, id, slice, MergePhase::Preflight, view).await;
-    let preflight = journal_on_failure(layout, now, slice, preflight)?;
-    persist_gate_report(&slice_dir.join("merge"), MergePhase::Preflight, &preflight)?;
+    let product = Path::new(&view.root);
+    let specs_dir = Layout::new(product).specs_dir();
 
-    // Identity finalization before the deterministic fold — rewrites
-    // slice-local ids to baseline numbers; drifted MODIFIED aborts
-    // before any baseline write or wave-committed fact.
-    let identity_maps =
-        journal_on_failure(layout, now, slice, identity::finalize(&layout.specs_dir(), slice_dir))?;
+    for (member, _) in &commit.members {
+        let name = member.slice.as_str();
+        let preflight = run_gate(targets, id, name, MergePhase::Preflight, view).await;
+        let preflight = journal_on_failure(layout, now, slice, preflight)?;
+        persist_gate_report(
+            &layout.slice_dir(name).join("merge"),
+            MergePhase::Preflight,
+            &preflight,
+        )?;
+    }
 
-    // Debt conservation (RFC-86a D5): project the deferred rows after
-    // identity finalization (final baseline ids) and stamp each staged
-    // debt row with its self-describing note before the fold.
-    let slice_debt = journal_on_failure(layout, now, slice, debt::carried(layout, slice))?;
-    journal_on_failure(layout, now, slice, debt::annotate(slice_dir, &slice_debt))?;
+    let mut identity_maps = Vec::new();
+    let mut deferred = Vec::new();
+    let mut folded: Vec<(SliceName, MergeCommit)> = Vec::new();
+    for (member, _) in &commit.members {
+        let name = member.slice.as_str();
+        let slice_dir = layout.slice_dir(name);
+        let maps =
+            journal_on_failure(layout, now, slice, identity::finalize(&specs_dir, &slice_dir))?;
+        identity_maps.extend(maps);
+        let slice_debt = journal_on_failure(layout, now, slice, debt::carried(layout, name))?;
+        journal_on_failure(layout, now, slice, debt::annotate(&slice_dir, &slice_debt))?;
+        deferred.extend(slice_debt.rows.iter().map(|row| DeferredMember {
+            req: row.req.clone(),
+            status: row.status,
+            requirement_digest: row.requirement_digest.clone(),
+        }));
 
-    // The deterministic core: validators, spec fold, Decision Record
-    // promotion, lifecycle, and archive.
-    let outcome = journal_on_failure(
+        let classes = artifact_classes(product, &slice_dir);
+        let outcome = journal_on_failure(
+            layout,
+            now,
+            slice,
+            slice_merge::commit(&slice_dir, product, &classes, now, allow_composition_replace),
+        )?;
+        folded.push((member.slice.clone(), outcome));
+    }
+
+    let captured =
+        journal_on_failure(layout, now, slice, capture_result(targets, slice, &view.id).await)?;
+    let baseline = project::plan::dir_cid(&specs_dir)?;
+    emit_wave_committed(
         layout,
         now,
-        slice,
-        commit_run(layout, now, slice, allow_composition_replace),
+        commit,
+        &identity_maps,
+        &deferred,
+        &captured.result,
+        baseline,
     )?;
 
-    // Wave commit fact — merge authority (RFC-86 D9 / D27). Strict
-    // append: failures before this fact must not project merged.
-    emit_wave_committed(layout, now, slice, commit, &identity_maps, &slice_debt)?;
+    let mut named_archive = None;
+    let mut named_fold = None;
+    for (name, outcome) in &folded {
+        let archive_path = journal_on_failure(
+            layout,
+            now,
+            slice,
+            archive_member(layout, now, name.as_str(), outcome),
+        )?;
+        if name.as_str() == slice {
+            named_archive = Some(archive_path);
+            named_fold = Some(outcome.clone());
+        }
+    }
+    let archive_path = named_archive.ok_or_else(|| Error::Diag {
+        code: "target-wave-member-mismatch",
+        detail: format!(
+            "wave for target `{}` does not name `{slice}` as a member",
+            commit.wave.target
+        ),
+    })?;
+    postflight_members(targets, layout, now, slice, id, commit, view).await?;
 
-    // The slice is already merged and archived, so postflight failure
-    // is terminal, never a rollback; persist any parseable report first
-    // and route every post-commit error via `postflight_terminal`.
-    let archive_merge = outcome.archive_path.join("merge");
-    match fetch_gate_report(targets, id, slice, MergePhase::Postflight, view).await {
-        Ok(report) => {
-            let persist_err =
-                persist_gate_report(&archive_merge, MergePhase::Postflight, &report).err();
-            if let Err(err) = enforce_gate(&report, MergePhase::Postflight, slice) {
-                return postflight_terminal(layout, now, slice, commit, &err);
+    let fold = named_fold.unwrap_or_else(|| MergeCommit {
+        specs: vec![],
+        decisions: vec![],
+    });
+    Ok(MergeOutcome {
+        merged: fold.specs,
+        decisions: fold.decisions,
+        archive_path,
+    })
+}
+
+/// Resume postflight after a commit fact: prepare a view of the
+/// committed result, archive any member still in `slices/`, and run
+/// remaining postflight gates.
+async fn resume_postflight<T: Target + Workspaces>(
+    targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, id: &str, commit: &WaveCommit,
+) -> Result<MergeOutcome, Error> {
+    let result = committed_result(layout, &commit.digest).ok_or_else(|| Error::Diag {
+        code: "target-merge-resume-missing-result",
+        detail: format!(
+            "wave `{}` has a commit fact but no result CID; cannot resume postflight",
+            commit.digest
+        ),
+    })?;
+    let view = prepare_workspace(targets, slice, &result, false).await?;
+    let run = resume_after_commit(targets, layout, now, slice, id, commit, &view).await;
+    if let Err(err) = targets.discard(view.id.clone()).await {
+        tracing::warn!(workspace = %view.id, "merge resume discard failed: {err}");
+    }
+    let outcome = run?;
+    journal::emit_best_effort(
+        layout,
+        now,
+        EventKind::SliceMergeSucceeded {
+            slice_name: slice.into(),
+        },
+        "slice.merge",
+    );
+    Ok(outcome)
+}
+
+async fn resume_after_commit<T: Target>(
+    targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, id: &str, commit: &WaveCommit,
+    view: &seam::Workspace,
+) -> Result<MergeOutcome, Error> {
+    for (member, _) in &commit.members {
+        let name = member.slice.as_str();
+        let slice_dir = layout.slice_dir(name);
+        if slice_dir.exists() {
+            let empty = MergeCommit {
+                specs: vec![],
+                decisions: vec![],
+            };
+            journal_on_failure(layout, now, slice, archive_member(layout, now, name, &empty))?;
+        }
+    }
+    postflight_members(targets, layout, now, slice, id, commit, view).await?;
+    let archive_path = project::refinement::latest_archive(&layout.archive_dir(), slice)
+        .ok_or_else(|| Error::Diag {
+            code: "merge-archive-failed",
+            detail: format!("slice `{slice}` has no archive after wave commit"),
+        })?;
+    Ok(MergeOutcome {
+        merged: vec![],
+        decisions: vec![],
+        archive_path,
+    })
+}
+
+/// Per-member postflight in stable order; resumes at the first missing
+/// report. Aggregates every failed member onto one fact.
+async fn postflight_members<T: Target>(
+    targets: &T, layout: Layout<'_>, now: Timestamp, slice: &str, id: &str, commit: &WaveCommit,
+    view: &seam::Workspace,
+) -> Result<(), Error> {
+    let mut failed: Vec<SliceName> = Vec::new();
+    let mut last_err: Option<Error> = None;
+    for (member, _) in &commit.members {
+        let name = member.slice.as_str();
+        let Some(archive) = project::refinement::latest_archive(&layout.archive_dir(), name) else {
+            failed.push(member.slice.clone());
+            last_err = Some(Error::Diag {
+                code: "merge-archive-failed",
+                detail: format!("slice `{name}` has no archive for postflight"),
+            });
+            continue;
+        };
+        let report_dir = archive.join("merge");
+        if report_dir.join("postflight.yaml").is_file() {
+            continue;
+        }
+        match fetch_gate_report(targets, id, name, MergePhase::Postflight, view).await {
+            Ok(report) => {
+                let persist_err =
+                    persist_gate_report(&report_dir, MergePhase::Postflight, &report).err();
+                if let Err(err) = enforce_gate(&report, MergePhase::Postflight, name) {
+                    failed.push(member.slice.clone());
+                    last_err = Some(err);
+                }
+                if let Some(err) = persist_err {
+                    failed.push(member.slice.clone());
+                    last_err = Some(err);
+                }
             }
-            if let Some(err) = persist_err {
-                return postflight_terminal(layout, now, slice, commit, &err);
+            Err(err) => {
+                failed.push(member.slice.clone());
+                last_err = Some(err);
             }
         }
-        Err(err) => {
-            // Seam / dispatch / slice-mismatch — no report to persist.
-            return postflight_terminal(layout, now, slice, commit, &err);
-        }
+    }
+    if let Some(err) = last_err {
+        return postflight_terminal(layout, now, commit, failed, &err);
     }
     journal::emit_best_effort(
         layout,
@@ -209,40 +343,40 @@ async fn gated<T: Target>(
         },
         "slice.merge",
     );
-    Ok(outcome)
+    Ok(())
 }
 
-/// Resolve the slice's authorized wave from the fact union, load the
-/// build record that wave names, revalidate the manifest, and project
-/// the code patch merge still applies. Record selection is by wave
-/// fact, never file mtime, so a stale record cannot shadow the
-/// authorized build.
+/// Resolve the named slice's wave, load every member result, and
+/// revalidate the named slice's record against the manifest.
 fn load_wave_commit(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
 ) -> Result<WaveCommit, Error> {
-    let opened = opened_wave_digest(layout, slice)?;
+    let (target, opened) = opened_wave(layout, slice)?;
     let record = BuildRecord::load_for_wave(slice_dir, &opened)?;
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let wave = Wave::load_for_merge(layout, &config.name, slice, &record)?;
+    let wave = Wave::load_for_merge(layout, &target, slice, &record)?;
     let digest = wave.digest()?.as_str().to_string();
+    let members = wave.load_member_records(layout)?;
     Ok(WaveCommit {
         wave,
         digest,
-        patch: record.to_patch(),
+        members,
     })
 }
 
-/// The newest `target.wave.opened` fact naming `slice` in the ordered
-/// event union — the wave the build phase authorized (RFC-86 D9).
-fn opened_wave_digest(layout: Layout<'_>, slice: &str) -> Result<SnapshotId, Error> {
+/// Newest `target.wave.opened` naming `slice` — the recorded target
+/// key and digest. Merge does not re-read `plan.yaml` for the key
+/// (standalone fixtures have no plan; D9 does not re-bind).
+fn opened_wave(layout: Layout<'_>, slice: &str) -> Result<(String, SnapshotId), Error> {
     let events = collect_events(layout)?;
-    let digest = events
+    let (target, digest) = events
         .iter()
         .rev()
         .find_map(|event| match &event.kind {
             EventKind::TargetWaveOpened {
-                digest, slice_name, ..
-            } if slice_name.as_str() == slice => Some(digest.clone()),
+                target,
+                digest,
+                slice_name,
+            } if slice_name.as_str() == slice => Some((target.clone(), digest.clone())),
             _ => None,
         })
         .ok_or_else(|| {
@@ -255,102 +389,93 @@ fn opened_wave_digest(layout: Layout<'_>, slice: &str) -> Result<SnapshotId, Err
                 ),
             )
         })?;
-    SnapshotId::parse(&digest)
+    Ok((target, SnapshotId::parse(&digest)?))
 }
 
-/// Prepare the read-only workspace view of the slice's result snapshot.
-async fn prepare_view(
-    workspaces: &impl Workspaces, slice: &str, patch: &CodePatch,
+/// This cut's composed member-result: the sole `BuildRecord.result`,
+/// loaded through the member list.
+fn composed_result(commit: &WaveCommit) -> Result<SnapshotId, Error> {
+    commit.wave.enforce_one_member()?;
+    commit.members.iter().map(|(_, record)| record.result.clone()).next().ok_or_else(|| {
+        Error::Diag {
+            code: "target-wave-member-count",
+            detail: format!(
+                "target wave for `{}` must have exactly one member; found 0",
+                commit.wave.target
+            ),
+        }
+    })
+}
+
+async fn prepare_workspace(
+    workspaces: &impl Workspaces, slice: &str, base: &SnapshotId, writable: bool,
 ) -> Result<seam::Workspace, Error> {
-    workspaces.prepare(patch.result.clone(), false).await.map_err(|err| Error::Diag {
+    workspaces.prepare(base.clone(), writable).await.map_err(|err| Error::Diag {
         code: "target-merge-workspace-failed",
         detail: format!(
-            "preparing the read-only result view for slice `{slice}` failed \
-             (result `{}`): {err}",
-            patch.result
+            "preparing the merge workspace for slice `{slice}` failed (base `{base}`): {err}"
         ),
     })
 }
 
-/// Interim apply (deleted by RFC-88): write the accepted patch's
-/// touched paths onto the product tree — never a full-tree sync, so
-/// the deterministic commit's own baseline fold stands.
-async fn apply_result(
-    workspaces: &impl Workspaces, slice: &str, patch: &CodePatch,
-) -> Result<(), Error> {
-    workspaces.apply(patch.clone()).await.map_err(|err| Error::Diag {
-        code: "slice-merge-apply-failed",
-        detail: format!(
-            "applying result snapshot `{}` for merged slice `{slice}` failed after the \
-             commit (the baseline, archive, and wave-committed fact stand): {err}",
-            patch.result
-        ),
+async fn capture_result(
+    workspaces: &impl Workspaces, slice: &str, id: &str,
+) -> Result<project::snapshot::CodePatch, Error> {
+    workspaces.capture(id.to_string()).await.map_err(|err| Error::Diag {
+        code: "target-merge-workspace-failed",
+        detail: format!("capturing the merge workspace for slice `{slice}` failed: {err}"),
     })
 }
 
-/// Append `target.merge.wave-committed` with identity maps and the
-/// post-merge baseline identity (RFC-91 D4) and deferred member-set
-/// snapshot (RFC-86a D5).
-///
-/// Commit-authorization reuses the wave's build-authorization
-/// (serial execution normally uses the covering `plan.execute.started`
-/// epoch bound at wave open).
 fn emit_wave_committed(
-    layout: Layout<'_>, now: Timestamp, slice: &str, commit: &WaveCommit, maps: &[IdentityMap],
-    slice_debt: &debt::SliceDebt,
+    layout: Layout<'_>, now: Timestamp, commit: &WaveCommit, maps: &[IdentityMap],
+    deferred: &[DeferredMember], result: &SnapshotId, baseline: SnapshotId,
 ) -> Result<(), Error> {
     let auth = &commit.wave.build_authorization;
-    let baseline = project::plan::dir_cid(&layout.specs_dir())?;
+    let members: Vec<SliceName> = commit.wave.members.iter().map(|m| m.slice.clone()).collect();
     journal::append_one(
         layout,
-        &journal::Event::new(
+        &Event::new(
             now,
             EventKind::TargetMergeWaveCommitted {
                 target: commit.wave.target.clone(),
                 digest: commit.digest.clone(),
-                slice_name: slice.into(),
+                members,
+                base: commit.wave.base.clone(),
+                result: result.clone(),
                 commit_authorization: FactEpochRef {
                     writer: auth.writer.clone(),
                     sequence: auth.sequence,
                 },
                 identity_maps: maps.to_vec(),
                 baseline: Some(baseline),
-                deferred: slice_debt
-                    .rows
-                    .iter()
-                    .map(|row| journal::DeferredMember {
-                        req: row.req.clone(),
-                        status: row.status,
-                        requirement_digest: row.requirement_digest.clone(),
-                    })
-                    .collect(),
+                deferred: deferred.to_vec(),
             },
         ),
     )
 }
 
-/// Journal `target.merge.wave-postflight-failed` and return the terminal
-/// non-rollback diagnostic.
-///
-/// The journal event is control-plane for sticky plan status (not
-/// lifecycle observability), so the append is strict. A journal I/O
-/// failure still returns `target-merge-postflight-failed` so execute
-/// classifies correctly; the detail names the journal error too.
 fn postflight_terminal(
-    layout: Layout<'_>, now: Timestamp, slice: &str, commit: &WaveCommit, err: &Error,
-) -> Result<MergeOutcome, Error> {
+    layout: Layout<'_>, now: Timestamp, commit: &WaveCommit, failed: Vec<SliceName>, err: &Error,
+) -> Result<(), Error> {
+    let members = if failed.is_empty() {
+        commit.wave.members.iter().map(|m| m.slice.clone()).collect()
+    } else {
+        failed
+    };
+    let named = members.iter().map(SliceName::as_str).collect::<Vec<_>>().join(", ");
     let detail = format!(
-        "target postflight merge gate failed for slice `{slice}` after the wave \
-         committed — the baseline, archive, and `target.merge.wave-committed` fact stand \
+        "target postflight merge gate failed for member(s) `{named}` after the wave \
+         committed — the accepted CID and `target.merge.wave-committed` fact stand \
          (non-rollback); inspect the archive `merge/postflight.yaml` when present \
          and land a follow-up slice: {err}"
     );
-    let event = journal::Event::new(
+    let event = Event::new(
         now,
         EventKind::MergeWavePostflightFailed {
             target: commit.wave.target.clone(),
             digest: commit.digest.clone(),
-            slice_name: slice.into(),
+            members,
             reason: err.variant_str().into_owned(),
         },
     );
@@ -366,8 +491,6 @@ fn postflight_terminal(
     })
 }
 
-/// Journal a `slice.merge.failed` terminal on the error arm — the
-/// pre-commit phases share one failure event.
 fn journal_on_failure<V>(
     layout: Layout<'_>, now: Timestamp, slice: &str, result: Result<V, Error>,
 ) -> Result<V, Error> {
@@ -385,18 +508,27 @@ fn journal_on_failure<V>(
     result
 }
 
-/// Detect a torn merge left by a crash after the deterministic commit:
-/// the slice tree is gone from `.emery/slices/` and its newest archive
-/// carries `merged_at`. Returns the outcome without re-running merge
-/// work. Detection is best-effort read-only — any unreadable archive
-/// falls through to the normal merge path and its errors.
-fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
-    if layout.slice_dir(slice).exists() {
+/// Commit fact exists and postflight has settled (succeeded or the
+/// aggregate failed fact). Re-entry is a no-op.
+fn already_complete(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
+    let events = collect_events(layout).ok()?;
+    let digest = events.iter().rev().find_map(|event| match &event.kind {
+        EventKind::TargetMergeWaveCommitted { digest, members, .. }
+            if members.iter().any(|m| m.as_str() == slice) =>
+        {
+            Some(digest.clone())
+        }
+        _ => None,
+    })?;
+    let settled = events.iter().any(|event| match &event.kind {
+        EventKind::TargetMergeWaveSucceeded { digest: d, .. } if *d == digest => true,
+        EventKind::MergeWavePostflightFailed { digest: d, .. } if *d == digest => true,
+        _ => false,
+    });
+    if !settled {
         return None;
     }
     let archive_path = project::refinement::latest_archive(&layout.archive_dir(), slice)?;
-    let metadata = project::slice::SliceMetadata::load(&archive_path).ok()?;
-    metadata.merged_at?;
     Some(MergeOutcome {
         merged: vec![],
         decisions: vec![],
@@ -404,12 +536,24 @@ fn heal_torn_merge(layout: Layout<'_>, slice: &str) -> Option<MergeOutcome> {
     })
 }
 
-/// Read-only completion preflight, run before the `slice.merge.*`
-/// bracket and any baseline write: a plan-owned merge requires the
-/// entry to project `in-progress` from the fact union (claim /
-/// advance), so an absent or not-yet-advanced entry refuses here
-/// instead of failing after the baseline and archive have already been
-/// mutated. Standalone merges (no `plan.yaml`) skip the gate entirely.
+fn wave_committed(layout: Layout<'_>, digest: &str) -> bool {
+    collect_events(layout).ok().is_some_and(|events| {
+        events.iter().any(|event| match &event.kind {
+            EventKind::TargetMergeWaveCommitted { digest: d, .. } => d == digest,
+            _ => false,
+        })
+    })
+}
+
+fn committed_result(layout: Layout<'_>, digest: &str) -> Option<SnapshotId> {
+    collect_events(layout).ok()?.into_iter().rev().find_map(|event| match event.kind {
+        EventKind::TargetMergeWaveCommitted {
+            digest: d, result, ..
+        } if d == digest => Some(result),
+        _ => None,
+    })
+}
+
 fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     if !layout.plan_path().exists() {
         return Ok(());
@@ -434,21 +578,10 @@ fn preflight_completion(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
     Ok(())
 }
 
-/// Validator + apply core: commit the deltas, journal the skipped git
-/// leg, and append the outcome-ledger entry (`slice.archive.created`).
-fn commit_run(
-    layout: Layout<'_>, now: Timestamp, slice: &str, allow_composition_replace: bool,
-) -> Result<MergeOutcome, Error> {
+fn archive_member(
+    layout: Layout<'_>, now: Timestamp, slice: &str, folded: &MergeCommit,
+) -> Result<PathBuf, Error> {
     let slice_dir = layout.slice_dir(slice);
-    let archive_dir = layout.archive_dir();
-    let classes = artifact_classes(layout.project_dir(), &slice_dir);
-
-    let merged =
-        slice_merge::commit(&slice_dir, &classes, &archive_dir, now, allow_composition_replace)?;
-
-    // D2: the guest owns no git surface, so the native workspace-clone
-    // auto-commit leg is skipped — explicitly, so a journal reader can
-    // tell a guest merge from a native merge that ran outside a clone.
     journal::emit_best_effort(
         layout,
         now,
@@ -457,22 +590,17 @@ fn commit_run(
         },
         "slice.merge",
     );
-
-    emit_archive_created(layout, now, slice, &merged);
-
-    let today = now.strftime("%Y-%m-%d").to_string();
-    let archive_path = archive_dir.join(format!("{today}-{slice}"));
-    Ok(MergeOutcome {
-        merged: merged.specs,
-        decisions: merged.decisions,
-        archive_path,
-    })
+    let archive_path =
+        crate::actions::archive(&slice_dir, &layout.archive_dir(), now).map_err(|err| {
+            Error::Diag {
+                code: "merge-archive-failed",
+                detail: format!("archive move failed: {err}"),
+            }
+        })?;
+    emit_archive_created(layout, now, slice, folded);
+    Ok(archive_path)
 }
 
-/// Append the durable `slice.archive.created` outcome-ledger entry.
-/// `merge-sha` stays absent — there is no git leg in-guest.
-/// Best-effort: a journal-write failure must not undo a committed
-/// merge.
 fn emit_archive_created(layout: Layout<'_>, now: Timestamp, slice: &str, merged: &MergeCommit) {
     let touched_specs: Vec<String> = merged.specs.iter().map(|e| e.name.clone()).collect();
     let outcome_summary = if merged.specs.is_empty() {

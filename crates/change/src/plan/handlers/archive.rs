@@ -1,7 +1,7 @@
 //! `plan archive` — move the current plan into the archive and run
 //! the change-scoped snapshot sweep.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
@@ -31,10 +31,11 @@ pub struct ArchiveInput {
 /// `emery plan archive` — close the change.
 ///
 /// Moves the current plan to
-/// `.emery/archive/plans/<name>-<YYYYMMDD>.yaml`, then sweeps the
+/// `.emery/change/archive/plans/<name>-<YYYYMMDD>.yaml`, then sweeps the
 /// snapshot store: the archived change's pins stop being GC roots
 /// (RFC-88 D2), so objects reachable only from archived slice trees
-/// are deleted.
+/// are deleted. Each target's accepted CID stays as a live root — it
+/// is the merged product (checkout is never written).
 #[derive(Clone, Copy, Debug)]
 pub struct Archive;
 
@@ -56,23 +57,23 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
             }
             .into());
         }
-        let archive_dir = layout.archive_dir().join("plans");
-        let brief_path = layout.change_brief_path();
         let plan = Plan::load(&plan_path)?;
         let plan_name = plan.name.to_string();
 
         // Carried-debt summary (RFC-86a D5/D9): read before the plan
         // moves; advisory only — archiving never blocks on debt.
         let debt = carried_debt(layout, &plan, cx.now())?;
+        let binding = binding_cids(&plan);
+        let (archived, archived_plans_dir) = Plan::archive(layout, input.force, cx.now())?;
 
-        let (archived, archived_plans_dir) =
-            Plan::archive(&plan_path, &brief_path, &archive_dir, input.force, cx.now())?;
-
-        // Change-scoped collection: pins under the archive tree are
-        // dead roots; pins under any slice tree still live (a forced
-        // archive leaves unfinished slices in place) are kept.
-        let dead = collect_pins(&layout.archive_dir())?;
-        let live = collect_pins(&layout.slices_dir())?;
+        // Change-scoped collection: archive pins and unbound delivery
+        // CIDs are dead; live roots are leftover slice trees plus every
+        // target's accepted CID (the merged product, no longer on checkout).
+        let mut dead = collect_pins(&layout.archive_dir())?;
+        let accepted = accepted_roots(layout)?;
+        dead.extend(binding.into_iter().filter(|cid| !accepted.contains(cid)));
+        let mut live = collect_pins(&layout.slices_dir())?;
+        live.extend(accepted);
         let swept_objects =
             context.provider.sweep(dead, live).await.map_err(|err| Error::Diag {
                 code: "snapshot-sweep-failed",
@@ -148,8 +149,8 @@ fn latest_wave_deferred<'e>(
 ) -> Option<&'e [project::journal::DeferredMember]> {
     events.iter().rev().find_map(|event| match &event.kind {
         EventKind::TargetMergeWaveCommitted {
-            slice_name, deferred, ..
-        } if slice_name.as_str() == slice => Some(deferred.as_slice()),
+            members, deferred, ..
+        } if members.iter().any(|m| m.as_str() == slice) => Some(deferred.as_slice()),
         _ => None,
     })
 }
@@ -209,6 +210,45 @@ fn collect_pins(root: &Path) -> Result<Vec<SnapshotId>, Error> {
         }
     }
     Ok(pins)
+}
+
+/// Delivery-binding CIDs recorded on the live plan. After archive they
+/// join the dead set unless they are also an accepted product CID.
+fn binding_cids(plan: &Plan) -> Vec<SnapshotId> {
+    let mut pins = Vec::new();
+    for target in plan.targets.values() {
+        pins.push(target.cid.clone());
+    }
+    for source in plan.sources.values() {
+        if let Some(cid) = &source.cid {
+            pins.push(cid.clone());
+        }
+    }
+    pins
+}
+
+/// Current accepted CID for every target that has opened a wave or
+/// committed a merge — live GC roots so `plan archive` does not
+/// collect the merged product (checkout is never written).
+fn accepted_roots(layout: project::config::Layout<'_>) -> Result<Vec<SnapshotId>, Error> {
+    let events = collect_events(layout)?;
+    let mut targets = BTreeSet::new();
+    for event in &events {
+        match &event.kind {
+            EventKind::TargetWaveOpened { target, .. }
+            | EventKind::TargetMergeWaveCommitted { target, .. } => {
+                targets.insert(target.clone());
+            }
+            _ => {}
+        }
+    }
+    let mut roots = Vec::new();
+    for target in targets {
+        if let Some(cid) = project::wave::accepted_cid(layout, &events, &target)? {
+            roots.push(cid);
+        }
+    }
+    Ok(roots)
 }
 
 /// Success envelope for `plan archive`.

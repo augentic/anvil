@@ -52,6 +52,16 @@ pub const GUEST_WORKSPACES_MOUNT: &str = "/emery-workspaces";
 /// change-tree artifacts.
 pub const PROJECT_ROOT_ENV: &str = "EMERY_PROJECT_ROOT";
 
+/// Environment key set to any value when the `.` mount is a detached
+/// change home. Unset for in-place. The engine guest reads it once
+/// when constructing [`super::ExecutionPaths::guest`].
+pub const DETACHED_ENV: &str = "EMERY_DETACHED";
+
+/// Environment key carrying the host-absolute change home into the
+/// engine guest (in-place: `<product>/.emery/change/`; detached: the
+/// change directory itself).
+pub const CHANGE_ROOT_ENV: &str = "EMERY_CHANGE_ROOT";
+
 /// How the cache root carried by [`Locations`] is interpreted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CachePlacement {

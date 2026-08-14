@@ -7,14 +7,15 @@ use std::hash::BuildHasher;
 use std::ops::ControlFlow;
 use std::path::Path;
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use error::Error;
 
 use super::model::{Entry, Plan, Status};
+use super::proposal::Proposal;
 use super::status::{LoopStep, NextActionKind, StopBody, StopReason};
 use crate::build_record::BuildRecord;
 use crate::config::Layout;
-use crate::journal::{self, Event, EventKind, claim};
+use crate::journal::{self, Event, EventKind, ParkReason, claim};
 use crate::name::{PlanName, SliceName};
 use crate::refinement::{Freshness, Live};
 use crate::slice::SliceMetadata;
@@ -35,7 +36,7 @@ pub(super) enum JournalOverlay {
 pub(super) struct Resolution {
     pub action: NextActionKind,
     pub slice: Option<String>,
-    pub project: Option<String>,
+    pub target: Option<String>,
     pub last_completed: Option<LoopStep>,
     pub stop: Option<StopBody>,
 }
@@ -45,7 +46,7 @@ impl Resolution {
         Self {
             action: NextActionKind::Stop,
             slice: None,
-            project: None,
+            target: None,
             last_completed: None,
             stop: Some(StopBody {
                 reason,
@@ -59,7 +60,7 @@ impl Resolution {
         Self {
             action: NextActionKind::Drained,
             slice: None,
-            project: None,
+            target: None,
             last_completed: None,
             stop: None,
         }
@@ -69,7 +70,7 @@ impl Resolution {
         Self {
             action,
             slice: Some(entry.name.to_string()),
-            project: entry.project.clone(),
+            target: Some(entry.target.clone()),
             last_completed,
             stop: None,
         }
@@ -81,7 +82,7 @@ impl Resolution {
         Self {
             action: NextActionKind::Stop,
             slice: Some(entry.name.to_string()),
-            project: entry.project.clone(),
+            target: Some(entry.target.clone()),
             last_completed,
             stop: Some(StopBody {
                 reason,
@@ -131,11 +132,17 @@ pub fn project_ladders(plan: &Plan, events: &[Event]) -> HashMap<SliceName, Stat
                 }
             }
             EventKind::SliceArchiveCreated { slice_name, .. }
-            | EventKind::TargetMergeWaveCommitted { slice_name, .. }
-            | EventKind::MergeWavePostflightFailed { slice_name, .. }
                 if ladders.contains_key(slice_name) =>
             {
                 ladders.insert(slice_name.clone(), Status::Done);
+            }
+            EventKind::TargetMergeWaveCommitted { members, .. }
+            | EventKind::MergeWavePostflightFailed { members, .. } => {
+                for name in members {
+                    if ladders.contains_key(name) {
+                        ladders.insert(name.clone(), Status::Done);
+                    }
+                }
             }
             _ => {}
         }
@@ -206,6 +213,12 @@ pub(super) fn resolve_entry(
             Freshness::Stale { .. } => Refined::Stale,
         }
     };
+
+    if matches!(refined, Refined::Missing | Refined::Stale)
+        && let Some(parked) = parked_refinement(layout, events, entry.name.as_str())?
+    {
+        return Ok(parked.into_resolution(entry));
+    }
 
     let phase = match overlay {
         JournalOverlay::Apply => phase_progress(&slice_dir, Some(&facts), refined),
@@ -323,9 +336,11 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
             EventKind::SliceMergeSucceeded { slice_name: s } if s == slice => {
                 facts.merged = true;
             }
-            EventKind::SliceArchiveCreated { slice_name: s, .. }
-            | EventKind::TargetMergeWaveCommitted { slice_name: s, .. }
-                if s == slice =>
+            EventKind::SliceArchiveCreated { slice_name: s, .. } if s == slice => {
+                facts.merged = true;
+            }
+            EventKind::TargetMergeWaveCommitted { members, .. }
+                if members.iter().any(|m| m == slice) =>
             {
                 facts.merged = true;
             }
@@ -370,11 +385,9 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
                 }
                 terminal_seen = true;
             }
-            EventKind::MergeWavePostflightFailed {
-                slice_name: s,
-                reason,
-                ..
-            } if s == slice => {
+            EventKind::MergeWavePostflightFailed { members, reason, .. }
+                if members.iter().any(|m| m == slice) =>
+            {
                 if !terminal_seen {
                     facts.newest_failure = Some((
                         NextActionKind::Merge,
@@ -388,6 +401,53 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
         }
     }
     facts
+}
+
+/// An unrefined leaf parked by boundary escalation or budget exhaustion.
+struct Parked {
+    reason: StopReason,
+    detail: Option<String>,
+}
+
+impl Parked {
+    fn into_resolution(self, entry: &Entry) -> Resolution {
+        Resolution::stop_for(self.reason, self.detail, entry, None)
+    }
+}
+
+fn parked_refinement(
+    layout: Layout<'_>, events: &[Event], slice: &str,
+) -> Result<Option<Parked>, Error> {
+    if let Some((digest, _)) = Proposal::boundary_for(layout, slice)? {
+        return Ok(Some(Parked {
+            reason: StopReason::BoundaryEscalation,
+            detail: Some(digest.to_string()),
+        }));
+    }
+    let mut parked = None;
+    for event in events.iter().rev() {
+        match &event.kind {
+            EventKind::SliceRefinementParked {
+                slice_name,
+                reason: ParkReason::BudgetExhausted,
+                ..
+            } if slice_name.as_str() == slice => {
+                parked = Some(Parked {
+                    reason: StopReason::RefineBudgetExhausted,
+                    detail: None,
+                });
+                break;
+            }
+            EventKind::SliceSynthesizeCompleted { slice_name, .. }
+            | EventKind::SliceTransitionRefined { slice_name }
+                if slice_name.as_str() == slice =>
+            {
+                break;
+            }
+            _ => {}
+        }
+    }
+    Ok(parked)
 }
 
 /// Scan the union newest-first until `select` breaks — shared by the

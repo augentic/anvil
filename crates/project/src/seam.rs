@@ -3,14 +3,12 @@
 //! [`Source`] and [`Target`] mirror the WIT interfaces; their DTOs omit
 //! caller-owned fields such as the orchestrator-added source attribution.
 
-pub mod source_input;
 pub mod wire;
 
 use std::future::Future;
 
 use artifacts::evidence::{AuthorityClass, Claim};
 use serde::{Deserialize, Serialize};
-pub use source_input::{Material, PreparedInput, SourceInput};
 pub use wire::{
     BuildReport, DeferredRequirement, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource,
     PhaseWrite, RepairOrigin,
@@ -34,7 +32,7 @@ pub enum Error {
 
 /// One lead surfaced by a survey.
 ///
-/// The shape is the discovery lead minus the envelope `source` key,
+/// The shape is the catalog lead minus the envelope `source` key,
 /// which the orchestrator stamps. Doubles as the item shape of the
 /// generated `survey` judgment-answer schema.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -49,6 +47,95 @@ pub struct Lead {
     /// unclassified.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub topics: Vec<String>,
+    /// Parent lead id within the same source. Absent on a top-level lead.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+    /// Source-local focus that produced this lead. Absent on an
+    /// unfocused import or survey row.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub focus: Option<String>,
+}
+
+impl Lead {
+    /// A top-level lead with no topics, parent, or focus.
+    #[must_use]
+    pub fn new(lead: impl Into<String>, synopsis: impl Into<String>) -> Self {
+        Self {
+            lead: lead.into(),
+            synopsis: synopsis.into(),
+            topics: Vec::new(),
+            parent: None,
+            focus: None,
+        }
+    }
+
+    /// Project a catalog row onto the seam record (drops `source`).
+    #[must_use]
+    pub fn from_catalog(lead: &artifacts::leads::Lead) -> Self {
+        Self {
+            lead: lead.lead.clone(),
+            synopsis: lead.synopsis.clone(),
+            topics: lead.topics.clone(),
+            parent: lead.parent.clone(),
+            focus: lead.focus.clone(),
+        }
+    }
+}
+
+/// Read-only CID view for a location-backed source. No artifacts
+/// grant — the change home is not on this record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceWorkspace {
+    /// Opaque identity of the preparation.
+    pub id: String,
+    /// Deployment-local path of the read-only view root.
+    pub root: String,
+}
+
+/// Workspace-or-value payload on a source dispatch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SourceContent {
+    /// Read-only CID view of a location-backed source.
+    Workspace(SourceWorkspace),
+    /// Inline value; no filesystem lend.
+    Value(String),
+}
+
+/// Typed source-operation input: source key, workspace-or-value, and
+/// optional catalog lead (parent focus on survey; terminal on extract).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceInput {
+    /// Plan source-binding key (`plan.yaml.sources.<key>`).
+    pub key: String,
+    /// Read-only CID view or inline value.
+    pub content: SourceContent,
+    /// Parent-lead focus (survey) or terminal lead (extract).
+    pub focus: Option<Lead>,
+}
+
+impl SourceInput {
+    /// Inline-value input with no focus — the unfocused survey / value extract shape.
+    #[must_use]
+    pub fn value(key: impl Into<String>, value: impl Into<String>) -> Self {
+        Self {
+            key: key.into(),
+            content: SourceContent::Value(value.into()),
+            focus: None,
+        }
+    }
+}
+
+/// Survey response distinguishing an unfocused top-level set from
+/// focused children under the named parent.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct SurveyResult {
+    /// Top-level leads from an unfocused survey. Empty when focused.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub leads: Vec<Lead>,
+    /// Stable child leads under the focused parent. Empty when unfocused.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<Lead>,
 }
 
 /// Evidence returned by an extract, without the caller-owned `lead` key.
@@ -166,14 +253,14 @@ pub enum MergePhase {
 /// [`SourceInput`] — the adapter never recovers a source location from
 /// `plan.yaml` or the `"."` preopen.
 pub trait Source: Send + Sync {
-    /// Lightly survey the prepared input into a lead set.
+    /// Lightly survey the source into a lead set.
     fn survey(
-        &self, id: String, key: String, input: SourceInput,
-    ) -> impl Future<Output = Result<Vec<Lead>, Error>> + Send;
+        &self, id: String, input: SourceInput,
+    ) -> impl Future<Output = Result<SurveyResult, Error>> + Send;
 
     /// Thoroughly extract evidence from the prepared input for one lead.
     fn extract(
-        &self, id: String, key: String, input: SourceInput, lead: Lead,
+        &self, id: String, input: SourceInput,
     ) -> impl Future<Output = Result<Evidence, Error>> + Send;
 }
 
@@ -219,8 +306,8 @@ pub trait Target: Send + Sync {
 
     /// Run one target-specific merge gate (`phase`) around the engine's
     /// deterministic core merge. Dispatched twice per slice merge —
-    /// preflight before the commit, postflight after it — each over a
-    /// read-only view of the built result snapshot.
+    /// preflight before the commit, postflight after it — each over the
+    /// merge workspace.
     fn merge(
         &self, id: String, slice: String, phase: MergePhase, workspace: Workspace,
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
@@ -237,11 +324,11 @@ pub trait Target: Send + Sync {
 /// [`crate::workspace`] kernel in-process; the engine guest maps the
 /// host-implemented WIT imports.
 pub trait Workspaces: Send + Sync {
-    /// Freeze the product tree (the project root minus VCS and
-    /// change-tree state) as an immutable snapshot. The build phase
-    /// calls this when it opens the target wave: the result is
-    /// persisted as the wave base before any workspace is prepared
-    /// (RFC-91 D6). Refinement never freezes the product tree.
+    /// Freeze the product tree (the project root minus `.git` and a
+    /// nested change home) as an immutable snapshot. The build phase
+    /// calls this when it opens a target's *first* wave: later waves
+    /// open against the current accepted CID instead. Refinement never
+    /// freezes the product tree.
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, Error>> + Send;
 
     /// Freeze an arbitrary deployment-local tree (a directory, or a
@@ -266,12 +353,6 @@ pub trait Workspaces: Send + Sync {
     /// digest.
     fn discard(&self, id: String) -> impl Future<Output = Result<(), Error>> + Send;
 
-    /// Interim code delivery (pre-RFC-95): write `patch`'s touched
-    /// paths from its result snapshot onto the product tree, leaving
-    /// everything else untouched. Deleted when publication sets own
-    /// the final seal.
-    fn apply(&self, patch: CodePatch) -> impl Future<Output = Result<(), Error>> + Send;
-
     /// Change-scoped snapshot collection (RFC-88 D2): delete the
     /// store objects reachable from `dead` roots but not from `live`
     /// roots. `plan archive` is the collection point — the archived
@@ -282,10 +363,36 @@ pub trait Workspaces: Send + Sync {
     ) -> impl Future<Output = Result<usize, Error>> + Send;
 }
 
+/// Host-staged locator ingest: Git/HTTPS I/O plus CID snapshot.
+///
+/// Path locators are read in-process; Git clone and HTTPS fetch run on
+/// the host (native in-process, guest via WIT). Always uses
+/// [`crate::binding::Policy::standard`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Fetched {
+    /// Exact locator (Git revisions are SHAs).
+    pub locator: String,
+    /// Tree identity of the staged file-or-tree.
+    pub cid: SnapshotId,
+    /// Deployment-local path of the staged tree (fingerprint / `project.yaml`).
+    pub root: String,
+    /// Freshness warning (moved branch); ingest still used the recorded SHA.
+    pub warning: Option<String>,
+}
+
+/// Host ingest capability for wave binding.
+pub trait Ingest: Send + Sync {
+    /// Stage `locator`, snapshot it, and return the exact pin plus a
+    /// local tree the caller can fingerprint.
+    fn fetch(
+        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
+    ) -> impl Future<Output = Result<Fetched, Error>> + Send;
+}
+
 /// One fetched origin: the deployment-local tree the fetch
 /// materialized plus the origin's revision report.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Fetched {
+pub struct OriginFetched {
     /// Deployment-local root of the fetched tree, beneath the
     /// deployment's workspaces mount. The caller snapshots it and
     /// then discards it via [`Origins::discard_fetched`].
@@ -305,7 +412,7 @@ pub struct Fetched {
 pub trait Origins: Send + Sync {
     /// Fetch `locator` into a deployment-local tree: a Git origin
     /// clones, any other HTTPS locator downloads as a one-file tree.
-    fn fetch(&self, locator: String) -> impl Future<Output = Result<Fetched, Error>> + Send;
+    fn fetch(&self, locator: String) -> impl Future<Output = Result<OriginFetched, Error>> + Send;
 
     /// Discard a fetched tree by its deployment-local root.
     /// Best-effort and idempotent.
@@ -378,6 +485,64 @@ pub fn seam_failure(operation: &'static str, id: &str, err: &Error) -> error::Er
     error::Error::Diag {
         code: "seam-dispatch-failed",
         detail: format!("seam `{operation}` dispatch to `{id}` failed: {err}"),
+    }
+}
+
+/// Bind one plan source row into a seam [`SourceInput`].
+///
+/// Location-backed rows prepare a read-only CID view and return its
+/// workspace id for the caller to discard. Inline values carry no view.
+///
+/// # Errors
+///
+/// `source-cid-missing` when a locator row has no recorded CID;
+/// `source-view-prepare-failed` when the read-only prepare fails.
+pub async fn bind_source(
+    workspaces: &impl Workspaces, key: &str, binding: &crate::plan::SourceBinding,
+    focus: Option<Lead>,
+) -> Result<(SourceInput, Option<String>), error::Error> {
+    if let Some(value) = binding.value.as_ref().filter(|value| !value.is_empty()) {
+        return Ok((
+            SourceInput {
+                key: key.to_string(),
+                content: SourceContent::Value(value.clone()),
+                focus,
+            },
+            None,
+        ));
+    }
+    let cid = binding.cid.as_ref().ok_or_else(|| error::Error::Diag {
+        code: "source-cid-missing",
+        detail: format!(
+            "source `{key}` is location-backed but has no recorded cid; re-run plan author \
+             to bind it"
+        ),
+    })?;
+    let prepared =
+        workspaces.prepare(cid.clone(), false).await.map_err(|err| error::Error::Diag {
+            code: "source-view-prepare-failed",
+            detail: format!("preparing a read-only view of source `{key}` failed: {err}"),
+        })?;
+    Ok((
+        SourceInput {
+            key: key.to_string(),
+            content: SourceContent::Workspace(SourceWorkspace {
+                id: prepared.id.clone(),
+                root: prepared.root,
+            }),
+            focus,
+        },
+        Some(prepared.id),
+    ))
+}
+
+/// Discard a source view, warning on failure so a dispatch error stays
+/// the primary result.
+pub async fn discard_source_view(workspaces: &impl Workspaces, id: Option<String>) {
+    if let Some(id) = id
+        && let Err(err) = workspaces.discard(id.clone()).await
+    {
+        tracing::warn!(workspace = %id, "source view discard failed: {err}");
     }
 }
 

@@ -8,7 +8,7 @@ use jiff::Timestamp;
 use project::config::Layout;
 use project::journal::{Event, EventKind, append_one};
 
-use crate::{LifecycleStatus, SLICES_DIR_NAME, SliceMetadata};
+use crate::{LifecycleStatus, SliceMetadata};
 
 /// Stamp the phase timestamp for `target` and, for `Refined`, append
 /// `slice.transition.refined`.
@@ -60,7 +60,7 @@ pub fn transition(
     if target == LifecycleStatus::Refined {
         let slice_name =
             slice_dir.file_name().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
-        if let Some(project_root) = project_root(slice_dir) {
+        if let Some(project_root) = Layout::project_dir_from_slice(slice_dir) {
             let event = Event::new(
                 now,
                 EventKind::SliceTransitionRefined {
@@ -72,14 +72,4 @@ pub fn transition(
     }
 
     Ok(metadata)
-}
-
-/// Resolve the project root from `<project>/.emery/slices/<name>/`.
-fn project_root(slice_path: &Path) -> Option<std::path::PathBuf> {
-    let slices_parent = slice_path.parent()?;
-    if slices_parent.file_name()? != std::ffi::OsStr::new(SLICES_DIR_NAME) {
-        return None;
-    }
-    let emery_dir = slices_parent.parent()?;
-    emery_dir.parent().map(Path::to_path_buf)
 }

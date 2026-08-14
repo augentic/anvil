@@ -135,36 +135,6 @@ mod round_trip {
         assert_eq!(patch.touched, vec!["tool"]);
     }
 
-    #[tokio::test]
-    async fn apply_writes_touched() {
-        let lab = lab();
-        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
-        write(&lab.source, "contracts/api.yaml", b"openapi: 3.1.0\n");
-        let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
-        let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
-            .await
-            .expect("prepare");
-        write(&ws.root, "src/new.rs", b"pub struct New;\n");
-        std::fs::remove_file(ws.root.join("src/lib.rs")).expect("rm");
-        let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
-
-        // Between capture and apply the product tree moves on — the
-        // deterministic merge folds the contracts baseline. Apply must
-        // write only the patch's touched paths and leave the fold.
-        write(&lab.source, "contracts/api.yaml", b"openapi: 3.1.0 # folded\n");
-        lab.store.apply(&patch, &lab.source).await.expect("apply");
-        assert_eq!(
-            std::fs::read_to_string(lab.source.join("contracts/api.yaml")).expect("read"),
-            "openapi: 3.1.0 # folded\n",
-            "apply never rewinds paths the patch did not touch"
-        );
-        assert_eq!(
-            std::fs::read_to_string(lab.source.join("src/new.rs")).expect("read"),
-            "pub struct New;\n"
-        );
-        assert!(!lab.source.join("src/lib.rs").exists(), "touched deletions apply");
-    }
-
     /// Snapshots carry relative links only: an absolute target cannot
     /// be re-created inside a sandboxed guest, so refusal is typed and
     /// symmetric at snapshot time.
@@ -220,8 +190,8 @@ mod golden {
         assert_eq!(base.as_str(), BASE, "canonical tree digest drifted");
     }
 
-    /// An exec → plain flip changes the digest and survives `apply`
-    /// onto a live tree.
+    /// An exec → plain flip changes the digest and survives
+    /// materialization of the captured result.
     #[tokio::test]
     async fn exec_flip_round_trip() {
         use std::os::unix::fs::PermissionsExt as _;
@@ -238,9 +208,10 @@ mod golden {
         assert_eq!(patch.result.as_str(), FLIPPED, "flipped tree digest drifted");
         assert_eq!(patch.touched, vec!["run.sh"]);
 
-        lab.store.apply(&patch, &lab.source).await.expect("apply");
-        let mode = std::fs::metadata(lab.source.join("run.sh")).expect("meta").permissions().mode();
-        assert_eq!(mode & 0o111, 0, "apply must clear the executable bit");
+        let out = lab.source.parent().expect("parent").join("flipped");
+        lab.store.materialize(&patch.result, &out).await.expect("materialize");
+        let mode = std::fs::metadata(out.join("run.sh")).expect("meta").permissions().mode();
+        assert_eq!(mode & 0o111, 0, "captured result must clear the executable bit");
     }
 }
 
@@ -250,8 +221,7 @@ mod membership {
     use super::*;
 
     /// AC1 + AC5 (capture side): an ignored `target/` never reaches
-    /// the result id, `touched`, or a later `apply`; unignored build
-    /// output still lands.
+    /// the result id or `touched`; unignored build output still lands.
     #[tokio::test]
     async fn ignored_output_excluded() {
         let lab = lab();
@@ -273,13 +243,10 @@ mod membership {
         let out = lab.workspaces.join("result");
         lab.store.materialize(&patch.result, &out).await.expect("materialize");
         assert!(!out.join("target").exists(), "ignored output enters no snapshot");
-
-        lab.store.apply(&patch, &lab.source).await.expect("apply");
-        assert!(!lab.source.join("target").exists(), "ignored output is never applied");
         assert_eq!(
-            std::fs::read_to_string(lab.source.join("mock-build/greeting.md")).expect("read"),
+            std::fs::read_to_string(out.join("mock-build/greeting.md")).expect("read"),
             "hello\n",
-            "unignored build output still applies"
+            "unignored build output still lands"
         );
     }
 
@@ -330,14 +297,16 @@ mod membership {
     }
 
     /// AC4: kernel excludes win — a `.gitignore` negation cannot admit
-    /// `.git`, `.emery`, or the root plan files.
+    /// `.git` or a nested change home (`.emery/change`). Durable
+    /// `.emery/` state and root plan files stay in the tree.
     #[tokio::test]
     async fn negation_kernel_excludes() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
-        write(&lab.source, ".gitignore", b"!.git/\n!.emery/\n!plan.yaml\n!change.md\n");
+        write(&lab.source, ".gitignore", b"!.git/\n!.emery/change/\n");
         write(&lab.source, ".git/config", b"[core]");
         write(&lab.source, ".emery/project.yaml", b"emery: 1.0.0");
+        write(&lab.source, ".emery/change/plan.yaml", b"name: demo");
         write(&lab.source, "plan.yaml", b"name: demo");
         write(&lab.source, "change.md", b"# change");
 
@@ -346,9 +315,10 @@ mod membership {
             .await
             .expect("prepare");
         assert!(!ws.root.join(".git").exists());
-        assert!(!ws.root.join(".emery").exists());
-        assert!(!ws.root.join("plan.yaml").exists());
-        assert!(!ws.root.join("change.md").exists());
+        assert!(!ws.root.join(".emery/change").exists());
+        assert!(ws.root.join(".emery/project.yaml").exists());
+        assert!(ws.root.join("plan.yaml").exists());
+        assert!(ws.root.join("change.md").exists());
         assert!(ws.root.join("a.txt").exists());
     }
 
@@ -413,19 +383,90 @@ mod privacy {
         workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
         assert!(!lab.source.join("b.txt").exists(), "the snapshotted tree stays untouched");
     }
+}
 
+mod boundary {
+    use project::snapshot;
+
+    use super::*;
+
+    #[test]
+    fn ignore_policy() {
+        assert!(snapshot::ignored(".git"));
+        assert!(snapshot::ignored("vendor/.git"));
+        assert!(snapshot::ignored(".emery/change"));
+        assert!(snapshot::ignored("nested/.emery/change"));
+        assert!(!snapshot::ignored(".emery"));
+        assert!(!snapshot::ignored(".emery/project.yaml"));
+        assert!(!snapshot::ignored(".emery/specs/a/spec.md"));
+        assert!(!snapshot::ignored(".emery/decisions/d.md"));
+        assert!(!snapshot::ignored("src/lib.rs"));
+        assert!(!snapshot::ignored("change.md"));
+        assert!(!snapshot::ignored("plan.yaml"));
+        assert!(!snapshot::ignored("discovery.md"));
+    }
+
+    /// Durable `.emery/` state survives freeze → prepare → capture;
+    /// `.git` and the nested change home never appear. A prepared
+    /// workspace exposes the baseline.
     #[tokio::test]
-    async fn artifacts_vcs_state() {
+    async fn durable_round_trip() {
         let lab = lab();
-        write(&lab.source, "a.txt", b"a");
-        write(&lab.source, ".git/config", b"[core]");
-        write(&lab.source, ".emery/project.yaml", b"emery: 1.0.0");
+        write(&lab.source, "src/lib.rs", b"pub fn hello() {}\n");
+        write(&lab.source, ".git/config", b"[core]\n");
+        write(&lab.source, ".emery/project.yaml", b"name: demo\nadapter: mock\nrules: {}\n");
+        write(&lab.source, ".emery/specs/greeting/spec.md", b"# Greeting\n");
+        write(&lab.source, ".emery/decisions/ttl.md", b"# TTL\n");
+        write(&lab.source, ".emery/change/plan.yaml", b"name: demo\nsources: {}\nentries: []\n");
+        write(&lab.source, ".emery/change/change.md", b"# Change\n");
+        write(&lab.source, "vendor/.emery/change/plan.yaml", b"name: nested\n");
+        write(&lab.source, "vendor/.emery/project.yaml", b"name: vendor\n");
+
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");
         let ws = workspace::prepare(&lab.store, &lab.workspaces, &base, Access { writable: true })
             .await
             .expect("prepare");
-        assert!(!ws.root.join(".git").exists());
-        assert!(!ws.root.join(".emery").exists());
+
+        assert!(!ws.root.join(".git").exists(), ".git is never product tree");
+        assert!(
+            !ws.root.join(".emery/change").exists(),
+            "the nested change home is never product tree"
+        );
+        assert!(
+            !ws.root.join("vendor/.emery/change").exists(),
+            "a nested change home at any depth is excluded"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join(".emery/project.yaml")).expect("project.yaml"),
+            "name: demo\nadapter: mock\nrules: {}\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join(".emery/specs/greeting/spec.md")).expect("spec"),
+            "# Greeting\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join(".emery/decisions/ttl.md")).expect("decision"),
+            "# TTL\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(ws.root.join("vendor/.emery/project.yaml")).expect("vendor"),
+            "name: vendor\n"
+        );
+
+        // An agent write into the change home is not product tree.
+        write(&ws.root, ".emery/change/sneak.yaml", b"nope\n");
+
+        let patch = workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture");
+        assert_eq!(patch.base, patch.result, "an untouched durable tree re-captures identically");
+        assert!(patch.touched.is_empty(), "change-home writes are not captured");
+
+        let out = lab.source.parent().expect("parent").join("captured");
+        lab.store.materialize(&patch.result, &out).await.expect("materialize");
+        assert!(out.join(".emery/specs/greeting/spec.md").is_file());
+        assert!(out.join(".emery/project.yaml").is_file());
+        assert!(out.join(".emery/decisions/ttl.md").is_file());
+        assert!(!out.join(".emery/change").exists());
+        assert!(!out.join(".git").exists());
     }
 }
 

@@ -76,7 +76,9 @@ impl Plan {
         let mut results = Vec::new();
         results.extend(duplicate_names(&self.entries));
         results.extend(unknown_depends_on(&self.entries));
+        results.extend(unknown_targets(self));
         results.extend(unknown_sources(self));
+        results.extend(source_shape(self));
         results.extend(duplicate_source_keys(&self.entries));
         results.extend(context_paths(&self.entries));
         results.extend(orphan_authority_override(&self.entries));
@@ -141,6 +143,31 @@ fn unknown_depends_on(changes: &[Entry]) -> Vec<Diagnostic> {
                     Some(entry.name.to_string()),
                 ));
             }
+        }
+    }
+    out
+}
+
+fn unknown_targets(plan: &Plan) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for entry in &plan.entries {
+        if !plan.targets.contains_key(&entry.target) {
+            out.push(finding(
+                "unknown-target",
+                Severity::Important,
+                format!("slice '{}' binds unknown target '{}'", entry.name, entry.target),
+                Some(entry.name.to_string()),
+            ));
+        }
+    }
+    out
+}
+
+fn source_shape(plan: &Plan) -> Vec<Diagnostic> {
+    let mut out = Vec::new();
+    for (key, binding) in &plan.sources {
+        if let Err(Error::Diag { code, detail }) = binding.validate(key) {
+            out.push(finding(code, Severity::Important, detail, None));
         }
     }
     out

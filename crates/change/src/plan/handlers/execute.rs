@@ -39,7 +39,8 @@ impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> f
         let ExecuteInput {} = input;
         let cx = Ctx::load(context.provider)?;
         let caps = orchestrate::Capabilities::provider(context.provider);
-        let outcome = orchestrate::execute(caps, &cx.paths, cx.now()).await?;
+        // EventKind's accepted-CID fields push this future past clippy's 16KiB large_futures cap.
+        let outcome = Box::pin(orchestrate::execute(caps, &cx.paths, cx.now())).await?;
         match outcome {
             ExecuteOutcome::Drained { plan, phases } => Ok(ExecuteBody {
                 status: "drained",

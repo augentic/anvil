@@ -5,7 +5,7 @@
 //! projects nothing.
 
 use transport::command::selectors::{
-    RefreshRequest, refresh_request, seed_request, system_request,
+    ChangeRequest, RefreshRequest, change_request, refresh_request, seed_request, system_request,
 };
 
 fn argv(args: &[&str]) -> Vec<String> {
@@ -71,6 +71,27 @@ mod system {
         // invocation directory with no `project.yaml` walk.
         let request = system_request(&argv(&["system", "survey"])).expect("anchoring request");
         assert_eq!(request.dir, None);
+    }
+
+    #[test]
+    fn verbs_project_dir() {
+        // Every `system *` verb carries `--dir` for the same
+        // definition-home mount; plan author `--from` is a different
+        // projection and must not leak onto this request.
+        let digest = "0".repeat(64);
+        let review = ["system", "review", "w1", "--handoff", digest.as_str(), "--dir", "client-b"];
+        for (args, dir) in [
+            (&["system", "plan", "--dir", "client-a"][..], "client-a"),
+            (&review[..], "client-b"),
+            (&["system", "status", "--dir", "client-c"][..], "client-c"),
+        ] {
+            let request = system_request(&argv(args)).expect("system verb projects");
+            assert_eq!(request.dir, Some(std::path::PathBuf::from(dir)), "{args:?}");
+        }
+        assert_eq!(
+            system_request(&argv(&["plan", "author", "demo", "--from", "def", "--wave", "w1"])),
+            None
+        );
     }
 
     #[test]
@@ -155,6 +176,51 @@ mod refresh {
             &["frobnicate"][..],
         ] {
             assert_eq!(refresh_request(&argv(args)), RefreshRequest::default(), "{args:?}");
+        }
+    }
+}
+
+mod change {
+    use super::*;
+
+    #[test]
+    fn author_from_wave_dir() {
+        let request = change_request(&argv(&[
+            "plan",
+            "author",
+            "demo",
+            "--from",
+            ".emery/system/",
+            "--wave",
+            "w1",
+            "--change-dir",
+            "/tmp/change",
+        ]));
+        assert_eq!(
+            request,
+            ChangeRequest {
+                change_dir: Some(std::path::PathBuf::from("/tmp/change")),
+                from: Some(std::path::PathBuf::from(".emery/system/")),
+            }
+        );
+    }
+
+    #[test]
+    fn status_change_dir() {
+        let request = change_request(&argv(&["plan", "status", "--change-dir", "/tmp/change"]));
+        assert_eq!(request.change_dir, Some(std::path::PathBuf::from("/tmp/change")));
+        assert_eq!(request.from, None);
+    }
+
+    #[test]
+    fn routes_project_nothing() {
+        for args in [
+            &["plan", "status"][..],
+            &["adapter", "add", "./demo.wasm"][..],
+            &["init", "omnia"][..],
+            &["frobnicate"][..],
+        ] {
+            assert_eq!(change_request(&argv(args)), ChangeRequest::default(), "{args:?}");
         }
     }
 }

@@ -8,7 +8,7 @@ use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
 use project::adapter::Resolver;
-use project::config::{Layout, ProjectConfig};
+use project::config::Layout;
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{LoopStep, NextActionKind, Plan, StatusBody, StopReason, plan_status_body};
@@ -84,9 +84,10 @@ pub enum ExecuteOutcome {
 pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<ExecuteOutcome, Error> {
-    let layout = Layout::new(paths.project_root());
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
+    let layout = paths.layout();
+    if !paths.is_detached() {
+        drop(project::config::ProjectConfig::load(paths.project_root())?);
+    }
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
     // A drained plan is a read-only no-op: opening a fresh
@@ -98,10 +99,8 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             phases: Vec::new(),
         });
     }
-    // Every non-drained execute path (including resume) appends
-    // `plan.execute.started` at start with typed `closed-plan`
-    // coverage.
-    super::epoch::append_started(layout, &plan, now)?;
+    // Digest chain, then `plan.execute.started` with typed coverage.
+    super::epoch::open(paths, &plan, now)?;
     let mut phases: Vec<PhaseRun> = Vec::new();
 
     loop {
@@ -159,7 +158,7 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
             let plan = Plan::load(&layout.plan_path())?;
             super::enforce_before_build(layout, &plan, &slice, now)?;
         }
-        let result = run_phase(caps, paths, now, &adapter, step, &slice).await;
+        let result = run_phase(caps, paths, now, step, &slice).await;
 
         match result {
             Ok(verification) => {
@@ -193,19 +192,22 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
 /// source.
 async fn run_phase<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
-    adapter: &project::adapter::ResolvedTarget, step: LoopStep, slice: &str,
+    step: LoopStep, slice: &str,
 ) -> Result<Option<PhaseSource>, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     let span = tracing::info_span!("plan.execute.entry", slice = %slice, phase = %step);
     match step {
         LoopStep::Refine => {
             unreachable!("dispatch_status never yields Refine — execute never refines (RFC-91 D5)")
         }
         LoopStep::Build => {
-            slice::orchestrate::build(caps.targets, layout, now, slice, &adapter.manifest)
-                .instrument(span)
-                .await
-                .map(|outcome| outcome.verification)
+            let adapter = entry_adapter(caps.resolver, paths, slice)?;
+            Box::pin(
+                slice::orchestrate::build(caps.targets, layout, now, slice, &adapter.manifest)
+                    .instrument(span),
+            )
+            .await
+            .map(|outcome| outcome.verification)
         }
         LoopStep::Merge => {
             // The composition-replace override lives on the plan
@@ -357,8 +359,20 @@ fn refinement_required(status: StatusBody, phases: &[PhaseRun]) -> ExecuteOutcom
 fn advance(
     resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<Option<String>, Error> {
-    let layout = Layout::new(paths.project_root());
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let body = project::plan::advance_next(resolver, paths, now, &config)?;
+    let body = project::plan::advance_next(resolver, paths, now)?;
     Ok(body.advanced.or(body.active))
+}
+
+fn entry_adapter(
+    resolver: &impl Resolver, paths: &ExecutionPaths, slice: &str,
+) -> Result<project::adapter::ResolvedTarget, Error> {
+    let layout = paths.layout();
+    let plan = Plan::load(&layout.plan_path())?;
+    let entry = plan
+        .entries
+        .iter()
+        .find(|entry| entry.name.as_str() == slice)
+        .ok_or_else(|| plan.entry_not_found(slice))?;
+    let binding = plan.target(&entry.target)?;
+    resolver.resolve_target(&binding.adapter.selector(), paths)
 }

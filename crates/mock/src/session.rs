@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::{Harness, Scripted as ScriptedModel};
-use project::handler::{CachePlacement, ExecutionPaths, Locations};
+use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 
 /// The recording model shape the scripted suites hold beside the
 /// provider: a request-recording [`Harness`] over FIFO `Scripted`
@@ -63,6 +63,37 @@ impl Session {
         }
     }
 
+    /// A detached change home (no `project.yaml`) with `answers`
+    /// behind the judgment legs.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the tempdir cannot be created.
+    #[must_use]
+    pub fn detached(answers: Vec<String>) -> Self {
+        let (tmp, base) = owned_tree();
+        let root = base.join("change");
+        std::fs::create_dir_all(&root).expect("mkdir change home");
+        let locations = Locations::explicit(
+            base.join("adapter-store"),
+            CachePlacement::Parent(base.join("project-cache")),
+        );
+        let paths = ExecutionPaths::detached(&root, locations);
+        let model = Harness::answering(answers);
+        let provider = Provider::new(
+            paths,
+            DynModel::new(model.clone()),
+            crate::catalog(),
+            ReferenceMode::Offline,
+        );
+        Self {
+            root,
+            provider,
+            model,
+            _tmp: tmp,
+        }
+    }
+
     /// A minimal initialised project (`.emery/project.yaml`) bound to
     /// `target_adapter`, with `answers` behind the judgment legs.
     ///
@@ -93,11 +124,51 @@ impl Session {
         &self.provider
     }
 
+    /// Content-addressed snapshot store this session's provider writes to.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the session layout is missing the temp-home parent
+    /// of the project root.
+    #[must_use]
+    pub fn store(&self) -> project::workspace::Store<project::workspace::FsObjects> {
+        let home = self.root.parent().expect("session layout: project sits under the temp home");
+        project::workspace::Store::new(home.join("snapshots"))
+    }
+
+    /// Materialize this target's current accepted CID into a tempdir.
+    ///
+    /// Merge no longer writes the operator checkout; tests inspect
+    /// folded baselines and build outputs from this tree.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the journal cannot be read, the accepted-CID chain
+    /// is broken, no CID exists yet, or materialization fails.
+    pub async fn materialize_accepted(&self, target: &str) -> tempfile::TempDir {
+        let dest = tempfile::TempDir::new().expect("accepted tree");
+        let layout = self.provider.paths().layout();
+        let events = project::journal::read_union(layout).expect("union");
+        let cid = project::wave::accepted_cid(layout, &events, target)
+            .expect("accepted-CID projection")
+            .expect("target has an accepted CID");
+        self.store().materialize(&cid, dest.path()).await.expect("materialize accepted CID");
+        dest
+    }
+
     /// The caller-held recording model handle — for `requests()` and
     /// `assert_exhausted`.
     #[must_use]
     pub const fn model(&self) -> &Scripted {
         &self.model
+    }
+
+    /// Replace the compiled model-capability profile table.
+    #[must_use]
+    pub fn with_profiles(mut self, table: project::profile::Table) -> Self {
+        let provider = self.provider;
+        self.provider = provider.with_profiles(table);
+        self
     }
 }
 

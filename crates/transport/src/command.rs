@@ -4,9 +4,10 @@ use clap::Args;
 use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
-use project::adapter::Resolver;
+use project::adapter::{Inventory, Resolver};
 use project::handler::{Anchor, Render};
-use project::seam::{Origins, Source, Target, Workspaces};
+use project::profile::Profiles;
+use project::seam::{Ingest, Origins, Source, Target, Workspaces};
 use serde::Serialize;
 use tracing::Instrument as _;
 
@@ -16,6 +17,7 @@ pub use self::routes::router;
 
 mod adapter;
 mod archive;
+mod change_dir;
 mod journal;
 mod output;
 mod plan;
@@ -104,12 +106,22 @@ fn operation_response(
 ///
 /// The span carries only the bounded verb label and the response exit
 /// code — never the full argv, which may embed operator prose (e.g.
-/// `plan author --intent …`). Both deployments route through here: the
+/// `plan author --from …`). Both deployments route through here: the
 /// native host's command entry and the engine guest's `wasi:cli/run`
 /// exporter.
 pub async fn execute<P>(router: &Router<P, Globals>, argv: Vec<String>) -> CommandResponse
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces + Origins,
+    P: Provider
+        + Anchor
+        + Model
+        + Resolver
+        + Inventory
+        + Profiles
+        + Source
+        + Target
+        + Workspaces
+        + Ingest
+        + Origins,
 {
     let span = tracing::info_span!(
         "emery.command",

@@ -1,66 +1,38 @@
-//! The judgment repair loop through the public authoring surface: a
-//! malformed reconciliation answer is repaired in-loop with the
-//! findings inlined, and an unrepairable answer exhausts the budget
-//! and surfaces the last failure. The loop only engages when the model
-//! emits schema-violating answers, which the unvalidated script serves
-//! verbatim.
-
-mod support;
+//! `plan author` dispatches partition and change-prose judgments.
 
 use change::plan;
+use mock::definition::{Spec, mint};
 use mock::invoke::run;
 use mock::session::Session;
 
-/// One initial dispatch plus every repair attempt. Mirrors the
-/// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
-/// than widening the module for tests; a budget change shows up here
-/// as an off-by-one request count.
-const JUDGMENT_BUDGET: usize = 3;
-
-/// Schema-invalid on purpose: the envelope misses `slices[]` and the
-/// gate prose entirely.
-fn malformed_answer() -> String {
-    r#"{"version":1,"kind":"response"}"#.to_string()
+fn seed_target(root: &std::path::Path) -> std::path::PathBuf {
+    let target = root.join("target-app");
+    std::fs::create_dir_all(target.join(".emery")).expect("target .emery");
+    std::fs::write(target.join(".emery/project.yaml"), "name: app\nadapter: omnia\nrules: {}\n")
+        .expect("project.yaml");
+    target
 }
 
-async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
-    run::<plan::handlers::Author, _, _>(
+#[tokio::test]
+async fn author_runs_judgment() {
+    let session = Session::scripted("mock", mock::answers::greeting_author());
+    let target = seed_target(session.root());
+    let definition = session.root().join("definition");
+    let mut spec = Spec::degenerate("Ship the greeting.");
+    spec.targets[0].locator = target.display().to_string();
+    mint(&definition, &spec).expect("mint");
+
+    let authored = run::<plan::handlers::Author, _, _>(
         session.provider(),
         plan::handlers::AuthorInput {
             name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
+            from: definition,
+            wave: spec.wave,
             force: false,
         },
     )
     .await
-}
-
-#[tokio::test]
-async fn malformed_repaired_loop() {
-    let session =
-        Session::scripted("mock", vec![malformed_answer(), mock::answers::greeting_grouping()]);
-
-    let authored = author(&session).await.expect("the repaired answer lands");
-    assert_eq!(authored.slices, ["greeting"]);
-
-    // Two dispatches — the failed answer and its repair — drained the
-    // two-answer script exactly.
-    session.model().assert_exhausted();
-}
-
-#[tokio::test]
-async fn unrepairable_exhausts() {
-    let session = Session::scripted("mock", vec![malformed_answer(); JUDGMENT_BUDGET]);
-
-    let err = author(&session).await.expect_err("the budget exhausts");
-    let detail = err.to_string();
-    assert!(
-        detail.contains("plan-propose-response-parse"),
-        "the last schema failure surfaces: {detail}"
-    );
-
-    // One initial dispatch plus MAX_REPAIRS re-prompts drained the
-    // budget-sized script, then the leg gave up — no further call.
+    .expect("author succeeds with scripted partition and change answers");
+    assert!(authored.slices.iter().any(|name| name == "greeting"), "{:?}", authored.slices);
     session.model().assert_exhausted();
 }

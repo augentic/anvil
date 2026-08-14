@@ -8,7 +8,8 @@ use super::execution::project_ladders;
 use super::model::{Plan, Status};
 use super::scope::in_scope;
 use crate::config::Layout;
-use crate::journal::{ClosedPlanCoverage, Event, EventKind};
+use crate::journal::{self, ClosedPlanCoverage, Event, EventKind};
+use crate::name::SliceName;
 use crate::refinement;
 use crate::slice::SliceMetadata;
 
@@ -115,4 +116,27 @@ fn staleness(
         }
     }
     Ok(None)
+}
+
+/// A live claim without `plan.execute.started` cannot build or merge.
+///
+/// # Errors
+///
+/// `plan-epoch-required` when `slice` is claimed and no epoch exists.
+pub fn require_for_claim(layout: Layout<'_>, slice: &str) -> Result<(), Error> {
+    let events = journal::read_union(layout)?;
+    let name = SliceName::from(slice);
+    let claimed = journal::claim::project(&events).owner(&name).is_some();
+    let epoch =
+        events.iter().any(|event| matches!(event.kind, EventKind::PlanExecuteStarted { .. }));
+    if claimed && !epoch {
+        return Err(Error::Diag {
+            code: "plan-epoch-required",
+            detail: format!(
+                "slice `{slice}` is claimed without a plan.execute.started epoch — run \
+                 `emery plan execute`"
+            ),
+        });
+    }
+    Ok(())
 }

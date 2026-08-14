@@ -13,7 +13,7 @@ use native::{Catalog, DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::Scripted;
 use project::adapter::{AdapterSelector, Resolver as _};
 use project::handler::{CachePlacement, ExecutionPaths, Locations};
-use project::seam::{self, Source as _, Target as _};
+use project::seam::{self, Source as _, SourceInput, Target as _};
 use support::{FailGuidance, Floored, Pinned, Probe};
 
 // Explicit tempdir-rooted layout: native ensure performs no component
@@ -66,8 +66,8 @@ fn bare_resolution() {
     assert_eq!(unknown.variant_str(), "adapter-not-linked");
 }
 
-// An exact package pin succeeds only on the exact compiled identity
-// of a published adapter; placeholder identities are bare-only.
+// An exact package pin succeeds on the exact compiled identity,
+// including native mock identities compiled at `0.0.0`.
 #[tokio::test]
 async fn exact_pin_matching() {
     let tmp = tempfile::tempdir().expect("tempdir");
@@ -92,14 +92,16 @@ async fn exact_pin_matching() {
     // The refusal names the linked identity the pin missed.
     assert!(err.to_string().contains("pinned@1.2.3"), "{err}");
 
-    // The mock probe compiles with the `0.0.0` development
-    // placeholder, so even its "exact" pin refuses: unpublished
-    // identities match only bare references.
     let placeholder = AdapterSelector::parse("emery:mock@0.0.0").expect("package selector");
-    let err =
-        provider.ensure_target(&placeholder, &paths).await.expect_err("a placeholder pin refuses");
-    assert_eq!(err.variant_str(), "adapter-not-linked");
-    assert!(err.to_string().contains("placeholder"), "{err}");
+    let resolved = provider
+        .ensure_target(&placeholder, &paths)
+        .await
+        .expect("an exact pin matching the compiled identity ensures");
+    assert_eq!(resolved.manifest.name, "mock");
+    assert_eq!(
+        resolved.manifest.version.as_ref().map(ToString::to_string).as_deref(),
+        Some("0.0.0")
+    );
 }
 
 // A local component selector can never select a same-named compiled
@@ -160,13 +162,13 @@ async fn survey_crosses_workflow() {
     // crossing the seam proves the model reached the adapter leg.
     let provider = provider(tmp.path(), &["greeting"]);
 
-    let leads = provider
-        .survey("source:mock".to_string(), "mock".to_string(), inline())
+    let result = provider
+        .survey("source:mock".to_string(), SourceInput::value("main", ""))
         .await
         .expect("survey dispatches");
-    assert_eq!(leads.len(), 1);
-    assert_eq!(leads[0].lead, "greeting");
-    assert_eq!(leads[0].synopsis, "surveyed by source:mock");
+    assert_eq!(result.leads.len(), 1);
+    assert_eq!(result.leads[0].lead, "greeting");
+    assert_eq!(result.leads[0].synopsis, "surveyed by source:mock");
 }
 
 // The extract leg threads its lead and surfaces the adapter's typed
@@ -176,13 +178,10 @@ async fn extract_crosses_workflow() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let provider = provider(tmp.path(), &[]);
 
-    let lead = seam::Lead {
-        lead: "password-reset".to_string(),
-        synopsis: String::new(),
-        topics: Vec::new(),
-    };
+    let mut input = SourceInput::value("main", "");
+    input.focus = Some(seam::Lead::new("password-reset", ""));
     let err = provider
-        .extract("source:mock".to_string(), "mock".to_string(), inline(), lead)
+        .extract("source:mock".to_string(), input)
         .await
         .expect_err("the probe's extract fails with a typed error naming the lead");
     assert!(
@@ -205,7 +204,7 @@ async fn build_merge_cross_seam() {
     };
 
     let inputs = vec![seam::Input::Proposal(seam::Payload::Path(
-        ".emery/slices/demo/proposal.md".to_string(),
+        ".emery/change/slices/demo/proposal.md".to_string(),
     ))];
     let report = provider
         .build(
@@ -238,7 +237,7 @@ async fn axis_routing() {
     let provider = provider(tmp.path(), &[]);
 
     let err = provider
-        .survey("target:mock".to_string(), "mock".to_string(), inline())
+        .survey("target:mock".to_string(), SourceInput::value("main", ""))
         .await
         .expect_err("a target id never reaches the source legs");
     assert!(matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("target:mock")));
@@ -250,15 +249,10 @@ async fn axis_routing() {
     assert!(matches!(err, seam::Error::InvalidRequest(_)));
 
     let err = provider
-        .survey("source:unknown".to_string(), "unknown".to_string(), inline())
+        .survey("source:unknown".to_string(), SourceInput::value("main", ""))
         .await
         .expect_err("unlinked refuses");
     assert!(
         matches!(err, seam::Error::InvalidRequest(detail) if detail.contains("source:unknown"))
     );
-}
-
-/// A minimal inline source input for dispatch-threading asserts.
-fn inline() -> seam::SourceInput {
-    seam::SourceInput::Inline("content".to_string())
 }

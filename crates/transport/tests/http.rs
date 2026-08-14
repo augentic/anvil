@@ -24,13 +24,15 @@ async fn send(router: Router, request: Request<Body>) -> (StatusCode, serde_json
     (status, value)
 }
 
-/// Stage a minimal two-entry `plan.yaml` at the project root.
+/// Stage a minimal two-entry `plan.yaml` in the change home.
 fn stage_plan(root: &Path) {
+    let path = root.join(".emery/change/plan.yaml");
+    fs::create_dir_all(path.parent().expect("parent")).expect("change home");
     fs::write(
-        root.join("plan.yaml"),
-        "name: demo\nsources: {}\nslices:\n  - name: first\n  - name: second\n",
+        &path,
+        "name: demo\ntargets:\n  default:\n    adapter: emery:mock@0.0.0\n    locator: \".\"\n    cid: sha256:0000000000000000000000000000000000000000000000000000000000000000\nslices:\n  - name: first\n    target: default\n  - name: second\n    target: default\n",
     )
-    .expect("stage plan.yaml");
+        .expect("stage plan.yaml");
 }
 
 mod routing {
@@ -73,7 +75,8 @@ mod routing {
             .expect("build request");
         let (status, value) = send(router(&project), request).await;
         assert_eq!(status, StatusCode::OK, "remove lands: {value}");
-        let plan = fs::read_to_string(project.root().join("plan.yaml")).expect("plan.yaml");
+        let plan =
+            fs::read_to_string(project.root().join(".emery/change/plan.yaml")).expect("plan.yaml");
         assert!(!plan.contains("name: second"), "the remove landed:\n{plan}");
     }
 }

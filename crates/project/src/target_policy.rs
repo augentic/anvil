@@ -8,7 +8,7 @@ use error::Error;
 use crate::adapter::{AdapterSelector, ResolvedTarget, Resolver};
 use crate::config::{Layout, ProjectConfig};
 use crate::handler::ExecutionPaths;
-use crate::plan::{Entry, resolve_target, resolve_topology};
+use crate::plan::Entry;
 use crate::slice::SliceMetadata;
 
 /// Resolve the project's declared target adapter.
@@ -32,26 +32,35 @@ pub fn project_adapter(
 }
 
 /// Fresh policy: resolve `$TARGET` for a slice that does not exist yet
-/// from the bound project's topology. `phase` names the caller's verb
-/// in the operator hint (`refining`, `executing`).
+/// from `plan.yaml.targets[entry.target]`. `phase` names the caller's
+/// verb in the operator hint (`refining`, `executing`).
 ///
 /// # Errors
 ///
-/// `slice-create-target-missing` when the topology does not resolve a
-/// target for `entry`; propagates config-load and topology failures.
+/// `slice-create-target-missing` when the named target is absent from
+/// the plan; propagates plan-load and adapter-resolution failures.
 pub fn fresh(
     resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry, slice: &str, phase: &str,
 ) -> Result<String, Error> {
-    let layout = Layout::new(paths.project_root());
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let topology = resolve_topology(resolver, &config, paths)?;
-    resolve_target(entry, &topology).map(|target| target.to_string()).map_err(|err| Error::Diag {
+    let layout = paths.layout();
+    let plan = crate::plan::Plan::load(&layout.plan_path())?;
+    let binding = plan.target(&entry.target).map_err(|err| Error::Diag {
         code: "slice-create-target-missing",
         detail: format!(
-            "no target resolved for slice `{slice}`: {err}; declare the project adapter (or fix \
-             the bound project's topology) before {phase}"
+            "no target resolved for slice `{slice}`: {err}; bind `{slice}` to a key in \
+             plan.yaml.targets before {phase}"
         ),
-    })
+    })?;
+    let bound =
+        resolver.resolve_target(&binding.adapter.selector(), paths).map_err(|err| Error::Diag {
+            code: "slice-create-target-missing",
+            detail: format!(
+                "no target resolved for slice `{slice}`: {err}; pin `{pin}` must resolve before \
+                 {phase}",
+                pin = binding.adapter
+            ),
+        })?;
+    Ok(crate::identity::target_ref(&bound.manifest.name, bound.manifest.version.as_ref()))
 }
 
 /// Resumed policy: the slice's recorded `metadata.yaml` target —
@@ -65,13 +74,10 @@ pub fn resumed(layout: Layout<'_>, slice: &str) -> Result<String, Error> {
 }
 
 /// Best-effort advance policy: the advisory `$TARGET` for a freshly
-/// advanced entry. `None` when the topology cannot resolve — the
-/// build phase re-resolves the target before use.
+/// advanced entry. `None` when the plan cannot resolve the bound
+/// target — the build phase re-resolves before use.
 pub fn best_effort_advance(
-    resolver: &impl Resolver, config: &ProjectConfig, paths: &ExecutionPaths, entry: &Entry,
+    resolver: &impl Resolver, _config: &ProjectConfig, paths: &ExecutionPaths, entry: &Entry,
 ) -> Option<String> {
-    resolve_topology(resolver, config, paths)
-        .and_then(|topology| resolve_target(entry, &topology))
-        .ok()
-        .map(|target| target.to_string())
+    fresh(resolver, paths, entry, &entry.name, "advancing").ok()
 }

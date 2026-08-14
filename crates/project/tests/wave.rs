@@ -114,8 +114,10 @@ fn digest_filename_matches() {
     let yaml = wave.canonical_yaml().expect("yaml");
     let expected = SnapshotId::from_digest(&diagnostics::digest::sha256_hex(yaml.as_bytes()));
     assert_eq!(digest, expected);
-    let path =
-        tmp.path().join(".emery/targets/demo/waves").join(format!("{}.yaml", digest.digest()));
+    let path = tmp
+        .path()
+        .join(".emery/change/targets/demo/waves")
+        .join(format!("{}.yaml", digest.digest()));
     assert_eq!(layout.target_wave_path("demo", digest.digest()), path);
     assert_eq!(std::fs::read_to_string(&path).expect("bytes"), yaml);
 }

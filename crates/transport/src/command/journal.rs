@@ -3,6 +3,8 @@
 
 use clap::Args;
 
+use super::change_dir::ChangeDir;
+
 /// Arguments for `journal show`.
 #[derive(Debug, Args)]
 pub struct ShowArgs {
@@ -14,4 +16,6 @@ pub struct ShowArgs {
     /// Keep only the most recent N matching events.
     #[arg(long)]
     pub limit: Option<usize>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }

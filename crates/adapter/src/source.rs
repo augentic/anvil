@@ -38,6 +38,8 @@ impl From<crate::seam::Lead> for Lead {
             lead: lead.lead,
             synopsis: lead.synopsis,
             topics: lead.topics,
+            parent: lead.parent,
+            focus: lead.focus,
         }
     }
 }
@@ -48,6 +50,82 @@ impl From<Lead> for crate::seam::Lead {
             lead: lead.lead,
             synopsis: lead.synopsis,
             topics: lead.topics,
+            parent: lead.parent,
+            focus: lead.focus,
+        }
+    }
+}
+
+impl From<crate::seam::SourceWorkspace> for Workspace {
+    fn from(view: crate::seam::SourceWorkspace) -> Self {
+        Self {
+            id: view.id,
+            root: view.root,
+        }
+    }
+}
+
+impl From<Workspace> for crate::seam::SourceWorkspace {
+    fn from(view: Workspace) -> Self {
+        Self {
+            id: view.id,
+            root: view.root,
+        }
+    }
+}
+
+impl From<crate::seam::SourceContent> for Content {
+    fn from(content: crate::seam::SourceContent) -> Self {
+        match content {
+            crate::seam::SourceContent::Workspace(view) => Self::Workspace(view.into()),
+            crate::seam::SourceContent::Value(value) => Self::Value(value),
+        }
+    }
+}
+
+impl From<Content> for crate::seam::SourceContent {
+    fn from(content: Content) -> Self {
+        match content {
+            Content::Workspace(view) => Self::Workspace(view.into()),
+            Content::Value(value) => Self::Value(value),
+        }
+    }
+}
+
+impl From<crate::seam::SourceInput> for Input {
+    fn from(input: crate::seam::SourceInput) -> Self {
+        Self {
+            key: input.key,
+            content: input.content.into(),
+            focus: input.focus.map(Into::into),
+        }
+    }
+}
+
+impl From<Input> for crate::seam::SourceInput {
+    fn from(input: Input) -> Self {
+        Self {
+            key: input.key,
+            content: input.content.into(),
+            focus: input.focus.map(Into::into),
+        }
+    }
+}
+
+impl From<crate::seam::SurveyResult> for SurveyResult {
+    fn from(result: crate::seam::SurveyResult) -> Self {
+        Self {
+            leads: result.leads.into_iter().map(Into::into).collect(),
+            children: result.children.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<SurveyResult> for crate::seam::SurveyResult {
+    fn from(result: SurveyResult) -> Self {
+        Self {
+            leads: result.leads.into_iter().map(Into::into).collect(),
+            children: result.children.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -123,15 +201,6 @@ impl From<crate::seam::Error> for Error {
     }
 }
 
-impl From<SourceInput> for crate::seam::SourceInput {
-    fn from(input: SourceInput) -> Self {
-        match input {
-            SourceInput::Workspace(root) => Self::Workspace(root),
-            SourceInput::Inline(content) => Self::Inline(content),
-        }
-    }
-}
-
 /// Map [`crate::Source::metadata`] onto the WIT record.
 #[must_use]
 pub fn dispatch_metadata<A: crate::Source>() -> AdapterMetadata {
@@ -142,26 +211,31 @@ pub fn dispatch_metadata<A: crate::Source>() -> AdapterMetadata {
 ///
 /// As the implementor's [`survey`](crate::Source::survey).
 pub async fn dispatch_survey<A: crate::Source>(
-    id: AdapterId, source_key: String, input: SourceInput,
-) -> Result<Vec<Lead>, Error> {
+    id: AdapterId, input: Input,
+) -> Result<SurveyResult, Error> {
     let input = crate::seam::SourceInput::from(input);
-    let ctx = crate::seam::Context::guest(&id).keyed(source_key, &input);
-    A::survey(&crate::WasiModel, &ctx, &input)
-        .await
-        .map(|leads| leads.into_iter().map(Into::into).collect())
-        .map_err(Into::into)
+    let ctx = source_ctx(&id, &input);
+    A::survey(&crate::WasiModel, &ctx, &input).await.map(Into::into).map_err(Into::into)
 }
 
 /// # Errors
 ///
 /// As the implementor's [`extract`](crate::Source::extract).
 pub async fn dispatch_extract<A: crate::Source>(
-    id: AdapterId, source_key: String, input: SourceInput, lead: Lead,
+    id: AdapterId, input: Input,
 ) -> Result<Evidence, Error> {
-    let lead = crate::seam::Lead::from(lead);
     let input = crate::seam::SourceInput::from(input);
-    let ctx = crate::seam::Context::guest(&id).keyed(source_key, &input);
-    A::extract(&crate::WasiModel, &ctx, &input, &lead).await.map(Into::into).map_err(Into::into)
+    let ctx = source_ctx(&id, &input);
+    A::extract(&crate::WasiModel, &ctx, &input).await.map(Into::into).map_err(Into::into)
+}
+
+fn source_ctx<'a>(id: &'a str, input: &'a crate::seam::SourceInput) -> crate::seam::Context<'a> {
+    match &input.content {
+        crate::seam::SourceContent::Workspace(view) => {
+            crate::seam::Context::guest(id).lending(view.root.clone())
+        }
+        crate::seam::SourceContent::Value(_) => crate::seam::Context::guest(id).without_lend(),
+    }
 }
 
 /// Wire a [`crate::Source`] implementor into the component exports.
@@ -184,19 +258,16 @@ macro_rules! source {
 
             async fn survey(
                 id: $crate::source::AdapterId,
-                source_key: String,
-                input: $crate::source::SourceInput,
-            ) -> Result<Vec<$crate::source::Lead>, $crate::source::Error> {
-                $crate::source::dispatch_survey::<$adapter>(id, source_key, input).await
+                input: $crate::source::Input,
+            ) -> Result<$crate::source::SurveyResult, $crate::source::Error> {
+                $crate::source::dispatch_survey::<$adapter>(id, input).await
             }
 
             async fn extract(
                 id: $crate::source::AdapterId,
-                source_key: String,
-                input: $crate::source::SourceInput,
-                lead: $crate::source::Lead,
+                input: $crate::source::Input,
             ) -> Result<$crate::source::Evidence, $crate::source::Error> {
-                $crate::source::dispatch_extract::<$adapter>(id, source_key, input, lead).await
+                $crate::source::dispatch_extract::<$adapter>(id, input).await
             }
         }
 

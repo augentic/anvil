@@ -1,17 +1,23 @@
 //! `ProjectConfig` — in-memory model of `.emery/project.yaml` — and
-//! `Layout<'a>`, the typed home for every `.emery/` and repo-root
-//! path helper the CLI reaches for.
+//! `Layout<'a>`, the typed home for every `.emery/` path helper.
+//!
+//! [`Roots`] selects in-place vs detached change homes.
 
 mod atomic;
+mod roots;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub use atomic::{AtomicYaml, Mutation, with_state};
 use error::Error;
+pub use roots::Roots;
 use serde::{Deserialize, Serialize};
 
 use crate::platform::Platform;
+
+/// Directory name of the in-place change home under `.emery/`.
+pub const CHANGE_DIR_NAME: &str = "change";
 
 /// In-memory representation of `.emery/project.yaml`.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -109,25 +115,51 @@ impl ProjectConfig {
     }
 }
 
-/// Typed view over a project root that exposes every `.emery/` and
-/// repo-root path helper as an inherent method.
+/// Typed view over a project root that exposes every `.emery/` path
+/// helper as an inherent method.
 ///
-/// Construct with [`Layout::new`]. The newtype concentrates the
-/// `.emery/` boundary in one place: callers never join
-/// `.emery/...` literally; they ask the layout for the directory
-/// they want. Plan artifacts (`plan.yaml`, `change.md`,
-/// `discovery.md`) anchor at the invoked project directory alongside
-/// everything else.
+/// Construct with [`Layout::new`] (in-place) or [`Layout::with_change_root`].
+/// Callers never join `.emery/...` literally. Durable product state
+/// (`project.yaml`, `specs/`, `decisions/`) stays under `.emery/`;
+/// change-scoped artifacts (`plan.yaml`, `change.md`, `discovery.yaml`,
+/// `slices/`, `events/`, `targets/`, `archive/`, `guest.lock`) live
+/// under [`Self::change_root`].
 #[derive(Debug, Clone, Copy)]
 pub struct Layout<'a> {
     project_dir: &'a Path,
+    change_root: Option<&'a Path>,
 }
 
 impl<'a> Layout<'a> {
-    /// Wrap `project_dir` as the typed root for path lookups.
+    /// Wrap `project_dir` as the typed in-place root for path lookups.
     #[must_use]
     pub const fn new(project_dir: &'a Path) -> Self {
-        Self { project_dir }
+        Self {
+            project_dir,
+            change_root: None,
+        }
+    }
+
+    /// Layout whose change home is `change_root` (detached, or an
+    /// explicit in-place override). `project_dir` is the `.` mount.
+    #[must_use]
+    pub const fn with_change_root(project_dir: &'a Path, change_root: &'a Path) -> Self {
+        Self {
+            project_dir,
+            change_root: Some(change_root),
+        }
+    }
+
+    /// Detached change home: the `.` mount *is* the change directory.
+    #[must_use]
+    pub const fn detached(change_root: &'a Path) -> Self {
+        Self::with_change_root(change_root, change_root)
+    }
+
+    /// Whether this layout has no ambient product root.
+    #[must_use]
+    pub fn is_detached(&self) -> bool {
+        self.change_root() == self.project_dir()
     }
 
     /// Project root the layout is anchored at.
@@ -140,6 +172,32 @@ impl<'a> Layout<'a> {
     #[must_use]
     pub fn emery_dir(&self) -> PathBuf {
         self.project_dir.join(".emery")
+    }
+
+    /// Absolute path to the change home: `<project_dir>/.emery/change/`
+    /// in-place, or the operator directory when detached.
+    #[must_use]
+    pub fn change_root(&self) -> PathBuf {
+        self.change_root.map_or_else(|| self.emery_dir().join(CHANGE_DIR_NAME), Path::to_path_buf)
+    }
+
+    /// Walk `<project>/.emery/change/slices/<name>/` up to the project
+    /// root. `None` when the path is not a change-home slice directory.
+    #[must_use]
+    pub fn project_dir_from_slice(slice_dir: &Path) -> Option<PathBuf> {
+        let slices = slice_dir.parent()?;
+        if slices.file_name()? != std::ffi::OsStr::new(crate::slice::SLICES_DIR_NAME) {
+            return None;
+        }
+        let change_root = slices.parent()?;
+        if change_root.file_name()? != std::ffi::OsStr::new(CHANGE_DIR_NAME) {
+            return None;
+        }
+        let emery_dir = change_root.parent()?;
+        if emery_dir.file_name()? != std::ffi::OsStr::new(".emery") {
+            return None;
+        }
+        emery_dir.parent().map(Path::to_path_buf)
     }
 
     /// Absolute path to `<project_dir>/.emery/project.yaml`.
@@ -155,14 +213,14 @@ impl<'a> Layout<'a> {
         self.emery_dir().join("specs")
     }
 
-    /// Absolute path to `<project_dir>/.emery/slices/`.
+    /// Absolute path to `<project_dir>/.emery/change/slices/`.
     #[must_use]
     pub fn slices_dir(&self) -> PathBuf {
-        self.emery_dir().join(crate::slice::SLICES_DIR_NAME)
+        self.change_root().join(crate::slice::SLICES_DIR_NAME)
     }
 
     /// Absolute path to one slice's working directory,
-    /// `<project_dir>/.emery/slices/<name>/`.
+    /// `<project_dir>/.emery/change/slices/<name>/`.
     #[must_use]
     pub fn slice_dir(&self, name: &str) -> PathBuf {
         self.slices_dir().join(name)
@@ -178,45 +236,42 @@ impl<'a> Layout<'a> {
         self.emery_dir().join("decisions")
     }
 
-    /// Absolute path to `<project_dir>/.emery/archive/`. Centralised
-    /// here so there is exactly one place the convention lives.
+    /// Absolute path to `<project_dir>/.emery/change/archive/`.
     #[must_use]
     pub fn archive_dir(&self) -> PathBuf {
-        self.emery_dir().join("archive")
+        self.change_root().join("archive")
     }
 
-    /// Absolute path to `<project_dir>/.emery/events/` — per-writer
-    /// append-only fact logs (`<writer>.jsonl`). Pre-RFC-88 stand-in
-    /// home (flat `.emery/`); the two-root cut moves these under the
-    /// change tree.
+    /// Absolute path to `<project_dir>/.emery/change/events/` —
+    /// per-writer append-only fact logs (`<writer>.jsonl`).
     #[must_use]
     pub fn events_dir(&self) -> PathBuf {
-        self.emery_dir().join("events")
+        self.change_root().join("events")
     }
 
     /// Absolute path to one writer's event log,
-    /// `<project_dir>/.emery/events/<writer>.jsonl`.
+    /// `<project_dir>/.emery/change/events/<writer>.jsonl`.
     #[must_use]
     pub fn writer_events_path(&self, writer: &str) -> PathBuf {
         self.events_dir().join(format!("{writer}.jsonl"))
     }
 
-    /// Absolute path to `<project_dir>/.emery/targets/` — per-target
-    /// wave manifests (RFC-86 D9). Pre-RFC-88 stand-in home under the
-    /// flat `.emery/` root.
+    /// Absolute path to `<project_dir>/.emery/change/targets/` —
+    /// per-target wave manifests (RFC-86 D9).
     #[must_use]
     pub fn targets_dir(&self) -> PathBuf {
-        self.emery_dir().join("targets")
+        self.change_root().join("targets")
     }
 
-    /// Absolute path to `<project_dir>/.emery/targets/<target>/waves/`.
+    /// Absolute path to
+    /// `<project_dir>/.emery/change/targets/<target>/waves/`.
     #[must_use]
     pub fn target_waves_dir(&self, target: &str) -> PathBuf {
         self.targets_dir().join(target).join("waves")
     }
 
     /// Absolute path to one wave manifest,
-    /// `<project_dir>/.emery/targets/<target>/waves/<digest>.yaml`
+    /// `<project_dir>/.emery/change/targets/<target>/waves/<digest>.yaml`
     /// where `digest` is the bare 64-hex content address (no `sha256:`
     /// scheme).
     #[must_use]
@@ -225,49 +280,110 @@ impl<'a> Layout<'a> {
     }
 
     /// Absolute path to one slice's build-record directory,
-    /// `<project_dir>/.emery/slices/<name>/builds/` (RFC-86 D27).
+    /// `<project_dir>/.emery/change/slices/<name>/builds/` (RFC-86 D27).
     #[must_use]
     pub fn slice_builds_dir(&self, name: &str) -> PathBuf {
         self.slice_dir(name).join("builds")
     }
 
     /// Absolute path to one content-addressed build record,
-    /// `<project_dir>/.emery/slices/<name>/builds/<digest>.yaml`
+    /// `<project_dir>/.emery/change/slices/<name>/builds/<digest>.yaml`
     /// where `digest` is the bare 64-hex content address.
     #[must_use]
     pub fn slice_build_record_path(&self, name: &str, digest: &str) -> PathBuf {
         self.slice_builds_dir(name).join(format!("{digest}.yaml"))
     }
 
-    /// Absolute path to `<project_dir>/plan.yaml` — the change plan.
-    /// Platform-level artifact at the repo root.
+    /// Absolute path to `<project_dir>/.emery/change/plan.yaml`.
     #[must_use]
     pub fn plan_path(&self) -> PathBuf {
-        self.project_dir.join("plan.yaml")
+        self.change_root().join("plan.yaml")
     }
 
-    /// Absolute path to `<project_dir>/.emery/guest.lock` — the
-    /// guest execute loop's create-exclusive advisory marker
-    /// (the engine guest marker), the guest-vs-guest
-    /// breakout refusal fence.
+    /// Absolute path to the guest execute loop's create-exclusive
+    /// advisory marker: `<change-root>/guest.lock`.
     #[must_use]
     pub fn guest_lock_path(&self) -> PathBuf {
-        self.emery_dir().join("guest.lock")
+        self.change_root().join("guest.lock")
     }
 
-    /// Absolute path to `<project_dir>/change.md` — the umbrella
-    /// operator brief beside `plan.yaml`. Platform-level artifact.
+    /// Absolute path to `<project_dir>/.emery/change/change.md` — the
+    /// umbrella operator brief beside `plan.yaml`.
     #[must_use]
     pub fn change_brief_path(&self) -> PathBuf {
-        self.project_dir.join("change.md")
+        self.change_root().join("change.md")
     }
 
-    /// Absolute path to `<project_dir>/discovery.md` — the candidate
-    /// inventory written at `/emery:plan`'s survey step and read during
-    /// lead reconciliation. Lives beside `plan.yaml`.
+    /// Absolute path to `<change>/leads.md` — the authoritative lead catalog.
     #[must_use]
-    pub fn discovery_path(&self) -> PathBuf {
-        self.project_dir.join("discovery.md")
+    pub fn leads_path(&self) -> PathBuf {
+        self.change_root().join("leads.md")
+    }
+
+    /// Absolute path to `<change>/leads/` — retained catalog revisions.
+    #[must_use]
+    pub fn leads_dir(&self) -> PathBuf {
+        self.change_root().join("leads")
+    }
+
+    /// Absolute path to `<change>/leads/<digest>.md`.
+    #[must_use]
+    pub fn leads_revision_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.leads_dir().join(format!("{}.md", digest.digest()))
+    }
+
+    /// Absolute path to `<change>/discovery.yaml` — pinned delivery topology.
+    #[must_use]
+    pub fn discovery_yaml_path(&self) -> PathBuf {
+        self.change_root().join("discovery.yaml")
+    }
+
+    /// Absolute path to `<change>/decomposition.yaml`.
+    #[must_use]
+    pub fn decomposition_path(&self) -> PathBuf {
+        self.change_root().join("decomposition.yaml")
+    }
+
+    /// Absolute path to `<change>/decompositions/` — retained revisions.
+    #[must_use]
+    pub fn decompositions_dir(&self) -> PathBuf {
+        self.change_root().join("decompositions")
+    }
+
+    /// Absolute path to `<change>/decompositions/<digest>.yaml`.
+    #[must_use]
+    pub fn decomp_revision_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.decompositions_dir().join(format!("{}.yaml", digest.digest()))
+    }
+
+    /// Absolute path to `<change>/planning/proposals/`.
+    #[must_use]
+    pub fn proposals_dir(&self) -> PathBuf {
+        self.change_root().join("planning").join("proposals")
+    }
+
+    /// Absolute path to `<change>/planning/proposals/<digest>.yaml`.
+    #[must_use]
+    pub fn proposal_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.proposals_dir().join(format!("{}.yaml", digest.digest()))
+    }
+
+    /// Absolute path to `<change>/imports/`.
+    #[must_use]
+    pub fn imports_dir(&self) -> PathBuf {
+        self.change_root().join("imports")
+    }
+
+    /// Absolute path to `<change>/imports/handoffs/<digest>.yaml`.
+    #[must_use]
+    pub fn import_handoff_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.imports_dir().join("handoffs").join(format!("{}.yaml", digest.digest()))
+    }
+
+    /// Absolute path to `<change>/imports/reviews/<digest>.json`.
+    #[must_use]
+    pub fn import_review_path(&self, digest: &crate::snapshot::SnapshotId) -> PathBuf {
+        self.imports_dir().join("reviews").join(format!("{}.json", digest.digest()))
     }
 }
 

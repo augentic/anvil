@@ -67,7 +67,7 @@ fn ser_dir<S: serde::Serializer>(v: &PathBuf, s: S) -> Result<S::Ok, S::Error> {
 
 /// Create `<parent_dir>/<name>/` and seed an initial `metadata.yaml`.
 ///
-/// - `parent_dir` is expected to be `<project>/.emery/slices/`.
+/// - `parent_dir` is expected to be `<project>/.emery/change/slices/`.
 /// - `now` is plumbed in so tests can pin `created_at` deterministically.
 ///
 /// On success returns a [`Created`] with the resolved directory and

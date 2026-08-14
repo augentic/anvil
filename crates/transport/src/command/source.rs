@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use super::change_dir::ChangeDir;
+
 /// Arguments for `source resolve`.
 #[derive(Debug, Args)]
 pub struct ResolveArgs {
@@ -26,6 +28,11 @@ pub struct SurveyArgs {
     /// Plan name guard. When set, must match `plan.yaml.name`.
     #[arg(long)]
     pub plan: Option<String>,
+    /// Parent lead to survey for stable child leads.
+    #[arg(long)]
+    pub focus: Option<String>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `source extract`.
@@ -33,10 +40,12 @@ pub struct SurveyArgs {
 pub struct ExtractArgs {
     /// Source key from `plan.yaml.sources.<key>`.
     pub source: String,
-    /// Lead id (from `discovery.md`) the Evidence is bound to.
+    /// Lead id (from `leads.md`) the Evidence is bound to.
     pub lead: String,
     /// Slice the Evidence is extracted into; keys the
-    /// `.emery/slices/<slice>/evidence/` target.
+    /// `.emery/change/slices/<slice>/evidence/` target.
     #[arg(long)]
     pub slice: String,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }

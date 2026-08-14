@@ -4,36 +4,42 @@
 
 mod support;
 
+use std::collections::BTreeMap;
 use std::fs;
 
-use change::plan;
 use diagnostics::DiagnosticKind;
+use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
-use project::journal::{EventKind, read_union};
-use project::plan::{Plan, value_cid};
+use project::journal::{ClosedPlanCoverage, Event, EventKind, append_one, read_union};
+use project::plan::Plan;
 use project::slice::{LifecycleStatus, SliceMetadata};
 use slice::refinement::Manifest;
 
 async fn author_and_refine(session: &Session) {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: support::adversarial_bindings(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_adversarial_plan(session.root());
 
     support::refine(session, "login-flow").await.expect("refine");
 
     // Merge (and the plan-owned completion preflight) require a
     // projected in-progress entry — the advance step claims the slice.
     support::advance(session);
+    let layout = Layout::new(session.root());
+    append_one(
+        layout,
+        &Event::new(
+            Timestamp::from_second(1_700_000_000).expect("timestamp"),
+            EventKind::PlanExecuteStarted {
+                coverage: ClosedPlanCoverage::ClosedPlan {
+                    plan_digest: Plan::file_digest(layout).expect("plan digest"),
+                    refinements: BTreeMap::new(),
+                },
+                discovery_digest: Some(project::refinement::empty_digest().to_string()),
+            },
+        ),
+    )
+    .expect("stamp epoch");
 }
 
 fn journal_kinds(root: &std::path::Path) -> Vec<&'static str> {
@@ -44,7 +50,6 @@ fn journal_kinds(root: &std::path::Path) -> Vec<&'static str> {
             EventKind::TargetWaveOpened { .. } => Some("target.wave.opened"),
             EventKind::TargetMergeWaveCommitted { .. } => Some("target.merge.wave-committed"),
             EventKind::TargetMergeWaveSucceeded { .. } => Some("target.merge.wave-succeeded"),
-            EventKind::SliceCodeApplied { .. } => Some("slice.code.applied"),
             EventKind::SliceBuildSucceeded { .. } => Some("slice.build.succeeded"),
             _ => None,
         })
@@ -62,17 +67,18 @@ fn review_ids(body: &project::handler::ReportBody) -> Vec<String> {
 
 #[tokio::test]
 async fn pin_build_record_wave() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
-    );
+    let session = Session::scripted("mock", vec![mock::answers::login_flow_synthesis()]);
     let root = session.root().to_path_buf();
     author_and_refine(&session).await;
 
     let layout = Layout::new(&root);
     let slice_dir = layout.slice_dir("login-flow");
     let manifest = Manifest::load(&slice_dir).expect("refinement.yaml after refine");
-    assert_eq!(manifest.inputs.sources["docs"], value_cid("The docs source."));
+    assert!(
+        manifest.inputs.sources.is_empty(),
+        "inline values stay under the plan digest: {:?}",
+        manifest.inputs.sources
+    );
     assert!(!manifest.bundle.is_empty(), "manifest covers the output bundle");
 
     // Fresh manifest → validate PASSes with no freshness reviews.
@@ -121,7 +127,7 @@ async fn pin_build_record_wave() {
     let kinds = journal_kinds(&root);
     assert!(kinds.contains(&"target.merge.wave-committed"), "{kinds:?}");
     assert!(kinds.contains(&"target.merge.wave-succeeded"), "{kinds:?}");
-    assert!(kinds.contains(&"slice.code.applied"), "interim apply still runs: {kinds:?}");
+    assert!(!kinds.contains(&"slice.code.applied"), "interim apply is gone: {kinds:?}");
 
     let events = read_union(layout).expect("union");
     let maps = events.iter().find_map(|event| match &event.kind {
@@ -132,10 +138,11 @@ async fn pin_build_record_wave() {
     assert!(!maps.is_empty(), "identity maps recorded: {maps:?}");
     assert!(maps.iter().any(|m| m.local == "REQ-001"), "local id mapped: {maps:?}");
 
-    // Merged projection: baseline carries finalized ids; no leftover
-    // patch.yaml authority under the archived slice.
-    assert!(root.join(".emery/specs/auth/spec.md").is_file());
-    let archive = fs::read_dir(root.join(".emery/archive"))
+    // Merged projection: accepted CID carries finalized ids; checkout is untouched.
+    assert!(!root.join(".emery/specs/auth/spec.md").is_file());
+    let tree = session.materialize_accepted("default").await;
+    assert!(tree.path().join(".emery/specs/auth/spec.md").is_file());
+    let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive")
         .map(|e| e.expect("entry").path())
         .find(|p| {
@@ -154,10 +161,7 @@ async fn pin_build_record_wave() {
 
 #[tokio::test]
 async fn validate_staleness() {
-    let session = Session::scripted(
-        "mock",
-        vec![mock::answers::adversarial_grouping(), mock::answers::login_flow_synthesis()],
-    );
+    let session = Session::scripted("mock", vec![mock::answers::login_flow_synthesis()]);
     let root = session.root().to_path_buf();
     author_and_refine(&session).await;
 
@@ -179,6 +183,7 @@ async fn validate_staleness() {
     assert!(ids.iter().any(|id| id == "slice-refinement-stale"), "{ids:?}");
 
     // Restore baseline agreement, then drift a bound source value.
+    // Inline values have no cid pin; the entry projection covers them.
     fs::remove_dir_all(root.join(".emery/specs")).expect("clear drifted baseline");
     let plan_path = Layout::new(&root).plan_path();
     let mut plan = Plan::load(&plan_path).expect("plan");
@@ -206,7 +211,7 @@ async fn validate_staleness() {
         })
         .collect();
     assert!(
-        details.iter().any(|d| d.contains("source `docs`")),
-        "staleness names the drifted source: {details:?}"
+        details.iter().any(|d| d.contains("planning `entry`")),
+        "value drift stales the entry projection: {details:?}"
     );
 }

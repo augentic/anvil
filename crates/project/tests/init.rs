@@ -48,7 +48,16 @@ async fn regular_mode() {
     let config =
         fs::read_to_string(project.root.join(".emery/project.yaml")).expect("project.yaml");
     assert!(config.contains("adapter: demo"), "the adapter is recorded:\n{config}");
-    assert!(project.root.join(".emery/slices").is_dir(), "the slice tree is scaffolded");
+    assert!(project.root.join(".emery/change/slices").is_dir(), "the slice tree is scaffolded");
+    assert!(project.root.join(".emery/change").is_dir(), "the change home is scaffolded");
+    assert!(
+        project.root.join(".emery/specs").is_dir(),
+        "durable specs stay outside the change home"
+    );
+    assert!(
+        !project.root.join("plan.yaml").exists(),
+        "plan.yaml is not scaffolded at the repo root"
+    );
 
     assert!(body.context_generated, "init generates AGENTS.md context when absent");
     let agents = fs::read_to_string(project.root.join("AGENTS.md")).expect("AGENTS.md");

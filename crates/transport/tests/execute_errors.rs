@@ -4,7 +4,6 @@
 //! refines), plus the hard cuts: `--waive` (RFC-86a) and
 //! `--gap-policy` (gap policy deleted) are unknown argv.
 
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -12,8 +11,10 @@ use mock::invoke::run;
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_guest::api::invoke::Invoker;
 use omnia_testkit::model::Harness;
+use project::adapter::catalog::Pin;
 use project::config::Layout;
-use project::plan::{AuthorityOverride, Entry, Plan};
+use project::plan::{Entry, Plan, TargetBinding};
+use project::snapshot::SnapshotId;
 use tempfile::TempDir;
 
 fn provider(root: impl Into<PathBuf>) -> Provider {
@@ -47,7 +48,7 @@ async fn fixture(model: &str) -> (TempDir, Provider) {
     .await
     .expect("init");
 
-    let slice_dir = project.path().join(".emery/slices/a");
+    let slice_dir = project.path().join(".emery/change/slices/a");
     fs::create_dir_all(slice_dir.join("specs")).expect("slice/specs");
     fs::write(slice_dir.join("model.yaml"), model).expect("model.yaml");
     fs::write(
@@ -56,22 +57,16 @@ async fn fixture(model: &str) -> (TempDir, Provider) {
     )
     .expect("metadata");
 
-    let plan = Plan {
-        name: "test".into(),
-        sources: BTreeMap::new(),
-        entries: vec![Entry {
-            name: "a".into(),
-            project: None,
-            depends_on: vec![],
-            sources: vec![],
-            context: vec![],
-            description: None,
-            divergence: None,
-            disagreements: Vec::new(),
-            authority_override: AuthorityOverride::default(),
-            allow_composition_replace: false,
-        }],
-    };
+    let mut plan = Plan::named("test");
+    plan.targets.insert(
+        "default".into(),
+        TargetBinding::new(
+            Pin::parse("emery:mock@0.0.0").expect("pin"),
+            ".",
+            SnapshotId::from_digest(&"0".repeat(64)),
+        ),
+    );
+    plan.entries.push(Entry::named("a", "default"));
     plan.save(&Layout::new(project.path()).plan_path()).expect("save plan");
     (project, provider)
 }

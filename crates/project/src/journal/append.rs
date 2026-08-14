@@ -5,7 +5,7 @@ use std::path::Path;
 
 use error::Error;
 
-use super::{Event, JournalRoot, validate_writer, writer_log_path};
+use super::{Event, EventKind, JournalRoot, validate_writer, writer_log_path};
 use crate::config::Layout;
 
 /// Project-relative path of the dropped-event recovery sidecar.
@@ -15,7 +15,7 @@ pub(super) const DROPPED_FILE_NAME: &str = "journal.dropped";
 ///
 /// Resolves the writer via [`super::writer_id`], stamps monotonic
 /// `writer` / `sequence` on each line, and writes only that writer's
-/// `.emery/events/<writer>.jsonl` file.
+/// `.emery/change/events/<writer>.jsonl` file.
 ///
 /// Empty batches do not create the file.
 ///
@@ -49,6 +49,14 @@ pub fn append_one(layout: Layout<'_>, event: &Event) -> Result<(), Error> {
 /// `journal-writer-invalid` when `writer` is empty or contains a path
 /// separator.
 pub fn append_for(layout: Layout<'_>, writer: &str, events: &[Event]) -> Result<(), Error> {
+    if events.iter().any(|event| matches!(event.kind, EventKind::SystemWaveReviewed { .. })) {
+        return Err(Error::Diag {
+            code: "journal-event-read-only",
+            detail: "`system.wave.reviewed` is definition-scoped and cannot be appended \
+                     to a change journal"
+                .into(),
+        });
+    }
     append_for_at(&JournalRoot::from(layout), writer, events)
 }
 

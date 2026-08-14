@@ -16,7 +16,9 @@ use project::seam::wire::{
     BuildOutput, BuildReport, BuildStatus, PhaseOutcome, PhaseReport, PhaseRoot, PhaseSource,
     PhaseWrite, RepairOrigin, UiSurface, build_finding,
 };
-use project::seam::{self, BuildContext, Evidence, Input, Lead};
+use project::seam::{
+    self, BuildContext, Evidence, Input, Lead, SourceContent, SourceInput, SurveyResult,
+};
 
 /// Widen an SDK operation error to the engine seam error.
 #[must_use]
@@ -35,6 +37,8 @@ pub fn lead(lead: aseam::Lead) -> Lead {
         lead: lead.lead,
         synopsis: lead.synopsis,
         topics: lead.topics,
+        parent: lead.parent,
+        focus: lead.focus,
     }
 }
 
@@ -45,15 +49,35 @@ pub fn narrow_lead(lead: Lead) -> aseam::Lead {
         lead: lead.lead,
         synopsis: lead.synopsis,
         topics: lead.topics,
+        parent: lead.parent,
+        focus: lead.focus,
+    }
+}
+
+/// Widen an SDK survey result to the engine result.
+#[must_use]
+pub fn survey_result(result: aseam::SurveyResult) -> SurveyResult {
+    SurveyResult {
+        leads: result.leads.into_iter().map(lead).collect(),
+        children: result.children.into_iter().map(lead).collect(),
     }
 }
 
 /// Narrow a workflow source input to the SDK input.
 #[must_use]
-pub fn narrow_source_input(input: seam::SourceInput) -> aseam::SourceInput {
-    match input {
-        seam::SourceInput::Workspace(root) => aseam::SourceInput::Workspace(root),
-        seam::SourceInput::Inline(content) => aseam::SourceInput::Inline(content),
+pub fn narrow_source_input(input: SourceInput) -> aseam::SourceInput {
+    aseam::SourceInput {
+        key: input.key,
+        content: match input.content {
+            SourceContent::Workspace(view) => {
+                aseam::SourceContent::Workspace(aseam::SourceWorkspace {
+                    id: view.id,
+                    root: view.root,
+                })
+            }
+            SourceContent::Value(value) => aseam::SourceContent::Value(value),
+        },
+        focus: input.focus.map(narrow_lead),
     }
 }
 

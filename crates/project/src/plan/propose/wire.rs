@@ -26,7 +26,7 @@ pub enum ProposalKind {
 /// `kind: request` envelope — the lead-centric catalog the agent groups.
 ///
 /// Assembled by the guest `plan author` orchestration: a flat
-/// `leads[]` catalog read 1:1 from `discovery.md`, plus the `projects[]`
+/// `leads[]` catalog read 1:1 from `leads.md`, plus the `projects[]`
 /// topology the agent binds slices to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -42,36 +42,32 @@ pub struct ProposalRequest {
     pub leads: Vec<LeadCatalogEntry>,
 }
 
-/// One project the agent may bind a response slice to.
+/// One bound target the agent may bind a response slice to.
 ///
-/// For a workspace this is projected from the committed
-/// `.emery/topology.lock`; for a single regular project the
-/// CLI synthesises one entry from `project.yaml` (name + resolved
-/// target adapter + description) plus the project's own baseline
-/// projection.
+/// Synthesised from `plan.yaml.targets`: `name` is the handoff target
+/// id and `target` is that row's adapter pin.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct ProjectRef {
-    /// Project name — the value the kernel writes to
-    /// `plan.yaml.slices[].project`.
+    /// Topology key the kernel writes to `plan.yaml.slices[].target`.
     pub name: String,
-    /// The project's target adapter ref in the
+    /// The product's target adapter ref in the
     /// `identity::target_ref` grammar: `name@vN` for a
     /// pinned identity (e.g. `omnia@1.0.0`), bare `name` for an
     /// unpinned cache resolve. Resolved on demand by
-    /// [`super::resolve_target`] for a slice bound to this project; it
+    /// [`super::resolve_target`] for a slice bound to this product; it
     /// is not written to `plan.yaml` (a slice stores only its
-    /// `project`).
+    /// `target`).
     pub target: String,
     /// Single-sentence domain characterisation used by the agent when
-    /// more than one project shares a target. Absent stays off the wire.
+    /// more than one product shares a target. Absent stays off the wire.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// Deterministic baseline surface: the domains this project
-    /// owns and a sample of each domain's requirement titles, projected
-    /// from `.emery/specs/` through `.emery/topology.lock`. The
-    /// agent binds a slice on actual owned behaviour. Empty stays off
-    /// the wire (greenfield routes on `description` alone).
+    /// Deterministic baseline surface: the domains this product owns
+    /// and a sample of each domain's requirement titles, projected from
+    /// `.emery/specs/`. The agent binds a slice on actual owned
+    /// behaviour. Empty stays off the wire (greenfield routes on
+    /// `description` alone).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub surface: Vec<Surface>,
     /// Recent per-merge outcome summaries from the project's journal
@@ -100,7 +96,7 @@ pub struct ProjectRef {
 ///
 /// Identity is the `(source, lead)` pair; `lead` repeats
 /// across rows when multiple sources surface the same slug. Mirrors a
-/// single `discovery.md` [`artifacts::discovery::Lead`].
+/// single `leads.md` [`artifacts::leads::Lead`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LeadCatalogEntry {
@@ -124,7 +120,7 @@ pub struct LeadCatalogEntry {
 /// `kind: response` envelope — the agent's slice grouping.
 ///
 /// Consumed by the guest `plan author` orchestration's judgment tail.
-/// The DTO is shape-only; the partition, fan-out, project-binding, and
+/// The DTO is shape-only; the partition, fan-out, target-binding, and
 /// name-derivation invariants are enforced by the projection kernel
 /// (`Plan::propose_from`), not by serde.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
@@ -140,15 +136,15 @@ pub struct ProposalResponse {
     /// Plan review prose authored alongside the grouping.
     /// Canonically optional; the generated judgment-answer schema
     /// requires it, and the collapsed `plan author` orchestration
-    /// persists it into `change.md` / `discovery.md`. The projection
+    /// persists it into `change.md`. The projection
     /// kernel ignores it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gate: Option<GateProse>,
 }
 
 /// Plan review prose riding a [`ProposalResponse`]: section bodies
-/// only — the orchestrator owns every deterministic frame (`# Change —
-/// <name>`, `# Discovery — <name>`, the `##` headings).
+/// only — the orchestrator owns the deterministic `# Change — <name>`
+/// frame.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct GateProse {
@@ -158,14 +154,6 @@ pub struct GateProse {
     /// (`## Tentative merges`, `## Cross-cutting leads`, `## Likely
     /// divergences` when applicable).
     pub change: String,
-    /// The `discovery.md` `## Summary` section body — one-line counts
-    /// (`Sources: N. Leads: M.`). Body only, no heading.
-    pub discovery_summary: String,
-    /// The `discovery.md` `## Source inventory` section body — one row
-    /// per bound source under `plan.yaml.sources.<key>`: key, adapter,
-    /// path or value. Body only, no heading.
-    #[serde(rename = "discovery-source-inventory")]
-    pub discovery_inventory: String,
 }
 
 /// One `slices[]` row in a [`ProposalResponse`]: one slice of work
@@ -195,11 +183,9 @@ pub struct ResponseSlice {
     /// Slice names this row depends on. Empty stays off the wire.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends_on: Vec<String>,
-    /// Project this slice binds to, chosen from the request's
-    /// `projects[]`. Optional only when exactly one project exists, in
-    /// which case the kernel auto-binds it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub project: Option<String>,
+    /// Target this slice binds to, chosen from the request's
+    /// `projects[]` (the stored topology key). Required — never omitted.
+    pub target: String,
     /// Agent-flagged slice-level divergence: `likely` when the matched
     /// leads materially disagree. Absent means no divergence. The kernel
     /// carries it onto `plan.yaml.slices[].divergence`; the operator

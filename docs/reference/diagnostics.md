@@ -19,16 +19,18 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 | `refinement-required` | Execute reached an entry without a fresh refinement manifest (`plan-refinement-required` on the envelope) — execute never refines. | Run `emery plan refine`, then re-run `emery plan execute`. |
 | `build-failed` | The target's build failed; the slice stays `refined`. | Read `failing-task` and `log-path` from the stop hint, fix, then re-run execute. |
 | `merge-conflict` | The baseline drifted since the slice was defined; merge preflight refused. | Fix the conflicting inputs, re-run `emery plan refine` (the manifest is stale against the moved baseline), then re-run execute — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
-| `merge-postflight-failed` | The target's postflight gate failed **after** the merge committed — the entry is already `done` and archived (non-rollback, sticky). | Inspect `.emery/archive/<date>-<slice>/merge/postflight.yaml`, repair the baseline, re-run execute to acknowledge. |
+| `merge-postflight-failed` | The target's postflight gate failed **after** the merge committed — the entry is already `done` and archived (non-rollback, sticky). | Inspect `.emery/change/archive/<date>-<slice>/merge/postflight.yaml`, repair the baseline, re-run execute to acknowledge. |
 | `merge-incomplete` | The merge landed but the entry's `done` stamp is missing (torn stamp). | Re-run `emery plan execute` — it heals the stamp. |
 | `slice-dropped` | The active entry's slice was dropped mid-plan. | Decide the entry's fate: re-plan it (`emery plan author --force` on a replaceable plan) or leave it dropped. |
 | `stuck` | Pending entries remain but every one is blocked on unmet dependencies. | Run `emery plan validate` (first triage step) and fix the dependency structure. |
+| `boundary-escalation` | Refinement wrote an inert boundary proposal at `planning/proposals/<digest>.yaml`; the leaf is parked (`slice.refinement.parked`). | Apply with `emery plan amend --proposal <digest>` after quiescing affected work, then re-run `emery plan refine` on the new children. Re-running refine on this leaf does not re-synthesize. |
+| `refine-budget-exhausted` | Focused resurvey or nearest-domain re-decomposition exhausted its compiled budget. | Adjust sources or the bound profile, then re-run `emery plan refine`. |
 
 ## Driver lock
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `guest-marker-held` | A second driver session tried to start while `.emery/guest.lock` is held (exit 2). | Wait for the running session, or if the holder died, [recover from the stale lock](../how-to/recover-from-a-stale-guest-lock.md). |
+| `guest-marker-held` | A second driver session tried to start while `.emery/change/guest.lock` is held (exit 2). | Wait for the running session, or if the holder died, [recover from the stale lock](../how-to/recover-from-a-stale-guest-lock.md). |
 
 ## Plan authoring and amendment
 
@@ -41,23 +43,31 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 | `plan-drop-no-slice` | `emery plan drop` found no slice tree for the entry (never refined). | Curate the entry with `emery plan remove` instead. |
 | `plan-remove-entry-referenced` | Another entry lists the removal target in `depends-on`. | Amend the dependent entry's `--depends-on` first. |
 | `plan-has-outstanding-work` | `emery plan archive` refused: the plan still has non-terminal entries (exit 1). | Drain the plan (merge or drop every entry) before archiving. |
+| `plan-proposal-stale` | `emery plan amend --proposal` compare-and-set found a drifted frontier. | Quiesce affected claims and waves, then re-run against a fresh proposal. |
+| `plan-proposal-live` | The proposal's affected claims or waves are still live. | Quiesce the affected work, then re-run `emery plan amend --proposal <digest>`. |
+| `plan-proposal-preserve` | Applying the proposal would drop a preservation-required node. | Author a new proposal from the live decomposition. |
+| `plan-proposal-kind` | The named document is an envelope or definition-revision — not an amendment. | Revise the reviewed handoff or wait for RFC-96. |
+| `plan-proposal-cycle` | The candidate tree is cyclic. | Author a new proposal from the live decomposition. |
+| `plan-proposal-not-found` | No file at `planning/proposals/<digest>.yaml`. | Check the digest from the stop card. |
+| `plan-proposal-malformed` | The retained proposal failed its typed parse. | Re-emit the proposal (re-run refine) rather than hand-editing it. |
+| `plan-mutation-ambiguous` | Direct `plan add` / `amend` / `remove` cannot uniquely reproject through `decomposition.yaml`. | Re-run `emery plan author --force` for a hierarchy edit, or apply a retained proposal. |
+| `plan-ownership-overlap` | Merge found overlapping ownership; an inert ownership proposal is waiting. | Quiesce affected work, then apply with `emery plan amend --proposal <digest>`. |
 
-## Plan reconcile (inside `emery plan author`)
+## Plan decompose (inside `emery plan author`)
 
-All exit 2. The reconcile leg validates the proposed `slices[]` grouping before writing it; see [lead reconciliation](cli/plan.md#lead-reconciliation-inside-emery-plan-author) for the full table.
+All exit 2. Decomposition validates the projected `slices[]` grouping before writing it; see [decomposition](cli/plan.md#decomposition-inside-emery-plan-author) for the full table.
 
 | Code | Meaning |
 | ---- | ------- |
 | `proposal-schema` | The judgment response failed JSON-Schema validation. |
-| `plan-reconcile-empty-catalog` | `discovery.md` surfaced no leads to reconcile. |
+| `plan-reconcile-empty-catalog` | `leads.md` surfaced no leads to decompose. |
 | `plan-reconcile-lead-orphan` | A cited `(source, lead)` is not in the surveyed catalog. |
 | `lead-coverage-orphan` | A surveyed lead is referenced by no slice (coverage is at-least-once). |
 | `plan-reconcile-slice-source-collision` | A slice names more than one lead from the same source. |
 | `plan-reconcile-slice-name-invalid` | A slice `name` is not kebab-case. |
 | `plan-reconcile-slice-name-collision` | Two slices resolve to the same name. |
 | `plan-reconcile-depends-on-cycle` | The projected `depends-on` edges form a cycle. |
-| `plan-reconcile-project-binding-required` | A slice omits `project` when more than one project exists. |
-| `plan-reconcile-project-orphan` | A slice binds a `project` absent from the topology. |
+| `plan-reconcile-target-unknown` | A slice names a `target` absent from `plan.yaml.targets`. |
 | `plan-reconcile-plan-not-replaceable` | The plan carries a non-pending entry. |
 
 ## Plan validate findings
@@ -79,7 +89,7 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `slice-spec-provenance-stale` | A kernel-rendered `ID:` / `Sources:` / `Status:` line was hand-edited. | Revert the edit; drive resolution through overrides and re-run `emery plan refine` — see [Resolve spec conflicts](../how-to/resolve-spec-conflicts.md). |
 | `slice-model-schema` | `model.yaml` fails its typed schema. | Re-run `emery plan refine` (the drain re-refines the slice). |
 | `slice-model-source-orphan` | `model.yaml` cites a source the plan no longer binds. | Re-run `emery plan refine` after the plan amendment. |
-| `slice-model-target-drift` | The model's recorded target diverged from the bound project's. | Re-run `emery plan refine`. |
+| `slice-model-target-drift` | The model's recorded target diverged from the bound `plan.yaml.slices[].target`. | Re-run `emery plan refine`. |
 | `slice-model-cross-ref-orphan` | A model cross-reference points at a requirement that no longer exists. | Re-run `emery plan refine`. |
 | `slice-model-claim-kind-mismatch` | A contributing claim's kind does not match its Evidence row. | Re-run `emery plan refine`. |
 | `slice-model-id-grammar` | A requirement or claim id violates the id grammar. | Re-run `emery plan refine`. |

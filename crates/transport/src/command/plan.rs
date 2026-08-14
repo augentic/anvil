@@ -1,59 +1,13 @@
 //! Clap argument types for the `emery plan *` routes, including the
-//! locked argv grammars for `--source` ([`source_assign`]) and
-//! `--sources` / `--add-source` ([`binding_arg`]).
+//! locked argv grammar for `--sources` / `--add-source` ([`binding_arg`]).
 
-use ::change::plan::wire::{BindingArg, KindAssign, SourceAssign};
+use std::path::PathBuf;
+
+use ::change::plan::wire::{BindingArg, KindAssign};
 use artifacts::evidence::ClaimKind;
 use clap::{ArgAction, Args};
 
-/// Parse the locked `--source` argv grammar into a [`SourceAssign`]:
-/// `<key>=<adapter>:<path>` (path-bound) or
-/// `<key>=<adapter>:value:<literal>` (value-bound).
-///
-/// Only the first `:` after `=` splits adapter from binding, so URLs
-/// like `git@github.com:org/foo.git` round-trip; after the `value:`
-/// sentinel the literal may contain anything. Malformed input returns
-/// a `String` error clap surfaces as a usage diagnostic (exit 2).
-fn source_assign(s: &str) -> Result<SourceAssign, String> {
-    let (key, rest) = s.split_once('=').ok_or_else(|| {
-        format!(
-            "--source must be <key>=<adapter>:<path> or <key>=<adapter>:value:<literal>, got `{s}`"
-        )
-    })?;
-    if key.is_empty() {
-        return Err(format!("--source key must be non-empty, got `{s}`"));
-    }
-    let (adapter, body) = rest.split_once(':').ok_or_else(|| {
-        format!(
-            "--source value must be <adapter>:<path> or <adapter>:value:<literal>, got `{rest}` \
-             for key `{key}`"
-        )
-    })?;
-    if adapter.is_empty() {
-        return Err(format!("--source adapter must be non-empty, got `{s}`"));
-    }
-    if body.is_empty() {
-        return Err(format!(
-            "--source binding (path or `value:<literal>`) must be non-empty, got `{s}`"
-        ));
-    }
-    let (path, value) = if let Some(literal) = body.strip_prefix("value:") {
-        if literal.is_empty() {
-            return Err(format!(
-                "--source value-literal must be non-empty after `value:`, got `{s}`"
-            ));
-        }
-        (None, Some(literal.to_string()))
-    } else {
-        (Some(body.to_string()), None)
-    };
-    Ok(SourceAssign {
-        key: key.to_string(),
-        adapter: adapter.to_string(),
-        path,
-        value,
-    })
-}
+use super::change_dir::ChangeDir;
 
 /// Parse the `plan add --source` / `plan amend --sources` /
 /// `--add-source` argv forms into a [`BindingArg`]:
@@ -87,28 +41,25 @@ fn binding_arg(s: &str) -> Result<BindingArg, String> {
 }
 
 /// Arguments for `plan validate`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct ValidateArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct ValidateArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan status`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct StatusArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct StatusArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan gaps`.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct GapsArgs {}
+#[derive(Clone, Debug, Args)]
+pub struct GapsArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan refine`.
 #[derive(Clone, Debug, Args)]
@@ -118,21 +69,24 @@ pub struct RefineArgs {
     /// selected work coherent; fresh siblings are skipped.
     #[arg(long = "slice", action = ArgAction::Append, value_name = "NAME")]
     pub slice: Vec<String>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
-/// Arguments for `plan execute` — none.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub struct ExecuteArgs {}
+/// Arguments for `plan execute`.
+#[derive(Clone, Debug, Args)]
+pub struct ExecuteArgs {
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
 
 /// Arguments for `plan remove`.
 #[derive(Debug, Args)]
 pub struct RemoveArgs {
     /// Kebab-case entry name to remove
     pub name: String,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan drop`.
@@ -144,6 +98,8 @@ pub struct DropArgs {
     /// the archive path.
     #[arg(long)]
     pub reason: Option<String>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan author`.
@@ -151,35 +107,33 @@ pub struct DropArgs {
 pub struct AuthorArgs {
     /// Kebab-case change name
     pub name: String,
-    /// Named source binding, repeatable:
-    /// `--source <key>=<adapter>:<path>` or
-    /// `--source <key>=<adapter>:value:<literal>`.
-    ///
-    /// `<key>` (kebab-case, your label) becomes the slot name in
-    /// `plan.yaml.sources`; `<adapter>` is the source adapter name
-    /// (e.g. `typescript`). Only the first `:` splits adapter from
-    /// binding, so URLs like `git@github.com:org/repo.git` pass
-    /// through unchanged. Example: `--source legacy=typescript:./legacy`
-    #[arg(long = "source", value_parser = source_assign)]
-    pub sources: Vec<SourceAssign>,
-    /// Operator intent as a literal string — pure sugar for
-    /// `--source intent=intent:value:<string>`.
-    #[arg(long = "intent", value_name = "STRING")]
-    pub intent: Option<String>,
+    /// Reviewed definition home. Requires `--wave`. Relative values
+    /// join the product root in-place (`.emery/system/` for a colocated
+    /// degenerate definition) or the change home when detached.
+    #[arg(long = "from", value_name = "DIR", required = true)]
+    pub from: PathBuf,
+    /// Wave id inside the definition named by `--from`.
+    #[arg(long = "wave", value_name = "ID", required = true)]
+    pub wave: String,
     /// Replace an existing plan unconditionally, whatever its entry
     /// statuses. Without --force an existing `plan.yaml` refuses
-    /// with `plan-already-exists`.
+    /// with `plan-already-exists`. Rebind requires the same reviewed
+    /// handoff; a changed wave needs a new handoff and review fact.
     #[arg(long)]
     pub force: bool,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan archive`.
-#[derive(Clone, Copy, Debug, Args)]
+#[derive(Clone, Debug, Args)]
 pub struct ArchiveArgs {
     /// Archive even when the plan has pending or in-progress entries.
     /// Without --force, these non-terminal statuses block the archive.
     #[arg(long)]
     pub force: bool,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan add`.
@@ -192,12 +146,15 @@ pub struct AddArgs {
     #[arg(long = "depends-on", action = ArgAction::Append, value_delimiter = ',')]
     pub depends_on: Vec<String>,
     /// Per-slice source binding (repeatable; one binding per
-    /// occurrence, matching `plan author --source`). Wire form is
+    /// occurrence). Wire form is
     /// `<key>=<lead>`; bare `<key>` is accepted as
     /// shorthand for `{ key: <key>, lead: <slice.name> }`
     /// per workflow §`Slice.sources`.
     #[arg(long = "source", action = ArgAction::Append, value_parser = binding_arg)]
     pub sources: Vec<BindingArg>,
+    /// Required `plan.yaml.targets` key this slice binds to.
+    #[arg(long)]
+    pub target: String,
     /// Free-text scoping hint for the define step
     #[arg(long)]
     pub description: Option<String>,
@@ -213,6 +170,8 @@ pub struct AddArgs {
     /// `plan.amend.authority-override` event fires per resolved entry.
     #[arg(long = "authority-override", action = ArgAction::Append)]
     pub authority_override: Vec<KindAssign>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }
 
 /// Arguments for `plan amend`.
@@ -220,7 +179,14 @@ pub struct AddArgs {
 pub struct AmendArgs {
     /// Kebab-case plan entry (slice) name — the row under `plan.yaml.slices[]`
     /// being edited. There is one active plan file; this is not the plan name.
-    pub name: String,
+    /// Required unless `--proposal` is set.
+    #[arg(required_unless_present = "proposal")]
+    pub name: Option<String>,
+    /// Apply a retained amendment proposal by content digest
+    /// (`sha256:<64 hex>`). Compare-and-sets expected frontiers and
+    /// reprojects `plan.yaml`. Cannot combine with entry-edit flags.
+    #[arg(long = "proposal", value_name = "DIGEST")]
+    pub proposal: Option<String>,
     /// Replace depends-on. Pass `--depends-on` (with no value) to clear the
     /// field; omit the flag to leave it unchanged. Repeat or comma-separate
     /// to supply multiple values.
@@ -293,4 +259,6 @@ pub struct AmendArgs {
     /// `true` or `false`; omit the flag to leave it unchanged.
     #[arg(long = "allow-composition-replace", value_name = "BOOL")]
     pub allow_composition_replace: Option<bool>,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
 }

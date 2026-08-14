@@ -64,12 +64,71 @@ fn http_parity() {
 }
 
 #[tokio::test]
+async fn author_from_wave_grammar() {
+    let router = command_router(".");
+
+    let help = router.execute(["emery", "plan", "author", "--help"]).await;
+    assert_eq!(help.exit, 0);
+    let help = String::from_utf8_lossy(&help.stdout);
+    assert!(help.contains("--from"), "{help}");
+    assert!(help.contains("--wave"), "{help}");
+    assert!(help.contains("--change-dir"), "{help}");
+    assert!(!help.contains("--intent <"), "{help}");
+
+    let status_help = router.execute(["emery", "plan", "status", "--help"]).await;
+    assert_eq!(status_help.exit, 0);
+    assert!(
+        String::from_utf8_lossy(&status_help.stdout).contains("--change-dir"),
+        "change-scoped verbs carry --change-dir"
+    );
+
+    let missing_wave =
+        router.execute(["emery", "plan", "author", "demo", "--from", ".emery/system/"]).await;
+    assert_eq!(missing_wave.exit, 2);
+    let stderr = String::from_utf8_lossy(&missing_wave.stderr);
+    assert!(stderr.contains("--wave") || stderr.contains("required"), "{stderr}");
+}
+
+#[tokio::test]
+async fn missing_definition() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let router = command_router(home.path());
+    let response =
+        router.execute(["emery", "plan", "author", "demo", "--from", "def", "--wave", "w1"]).await;
+    assert_ne!(response.exit, 0);
+    let stderr = String::from_utf8(response.stderr).expect("stderr utf-8");
+    assert!(
+        stderr.contains("definition") || stderr.contains("handoff") || stderr.contains("not found"),
+        "{stderr}"
+    );
+    assert!(!home.path().join("demo").exists(), "name is identity, not a subdirectory");
+    assert!(!home.path().join(".emery/project.yaml").exists(), "no synthetic project.yaml");
+    assert!(!home.path().join("guest.lock").exists(), "missing definition writes no marker");
+    assert!(!home.path().join(".emery/change/guest.lock").exists());
+}
+
+#[tokio::test]
+async fn author_intent_is_unknown() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let router = command_router(home.path());
+    let response = router.execute(["emery", "plan", "author", "demo", "--intent", "Ship it"]).await;
+    assert_eq!(response.exit, 2);
+    let stderr = String::from_utf8_lossy(&response.stderr);
+    assert!(
+        stderr.contains("--from") || stderr.contains("--intent") || stderr.contains("unexpected"),
+        "{stderr}"
+    );
+}
+
+#[tokio::test]
 async fn globals_and_completions() {
     let router = command_router(".");
 
     let help = router.execute(["emery", "plan", "amend", "--help"]).await;
     assert_eq!(help.exit, 0);
-    assert!(String::from_utf8_lossy(&help.stdout).contains("--allow-composition-replace"));
+    let help = String::from_utf8_lossy(&help.stdout);
+    assert!(help.contains("--allow-composition-replace"));
+    assert!(help.contains("--proposal"));
 
     let completions = router.execute(["emery", "completions", "zsh"]).await;
     assert_eq!(completions.exit, 0);
@@ -92,6 +151,7 @@ async fn detailed_help() {
     let route = String::from_utf8_lossy(&route.stdout);
     assert!(route.contains("Read-only projection of the plan's execution state"));
     assert!(route.contains("Stop reasons (`refine-failed`"));
+    assert!(route.contains("boundary-escalation"));
 
     let namespace = router.execute(["emery", "source", "--help"]).await;
     assert_eq!(namespace.exit, 0);
@@ -105,6 +165,17 @@ async fn detailed_help() {
         String::from_utf8_lossy(&nested.stdout)
             .contains("Read-only viewer over a slice's `model.yaml`")
     );
+
+    let system = router.execute(["emery", "system", "--help"]).await;
+    assert_eq!(system.exit, 0);
+    let system = String::from_utf8_lossy(&system.stdout);
+    assert!(system.contains("Definition-loop operations over a definition home"), "{system}");
+    for verb in ["survey", "plan", "review", "status"] {
+        assert!(
+            system.lines().any(|line| line.trim_start().starts_with(verb)),
+            "system help must list {verb}: {system}"
+        );
+    }
 
     for removed in [
         &["emery", "adapters", "sync"][..],
@@ -330,9 +401,11 @@ fn project(fixture: Fixture) -> TempDir {
     )
     .expect("write project config");
     if matches!(fixture, Fixture::Cycle) {
+        let plan_path = project.path().join(".emery/change/plan.yaml");
+        fs::create_dir_all(plan_path.parent().expect("parent")).expect("change home");
         fs::write(
-            project.path().join("plan.yaml"),
-            "name: cycle\nsources: {}\nslices:\n  - name: first\n    depends-on: [second]\n  - name: second\n    depends-on: [first]\n",
+            &plan_path,
+            "name: cycle\ntargets:\n  default:\n    adapter: emery:mock@0.0.0\n    locator: \".\"\n    cid: sha256:0000000000000000000000000000000000000000000000000000000000000000\nslices:\n  - name: first\n    target: default\n    depends-on: [second]\n  - name: second\n    target: default\n    depends-on: [first]\n",
         )
         .expect("write cyclic plan");
     }

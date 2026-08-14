@@ -5,8 +5,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use artifacts::discovery::Lead;
 use artifacts::evidence::ClaimKind;
+use artifacts::leads::Lead;
 use diagnostics::digest::sha256_hex;
 use error::Error;
 use serde::Serialize;
@@ -28,9 +28,9 @@ pub struct Projections {
     /// Digest of exactly the retained contributing lead closure —
     /// the full lead blocks the entry's source bindings reference.
     pub leads: SnapshotId,
-    /// Digest of the decomposition scope. Pre-RFC-88 this is the
-    /// canonical single-node projection: the leaf as its own terminal
-    /// with empty ancestry and the transitive `depends-on` closure.
+    /// Digest of the decomposition scope: retained ancestry,
+    /// dependency closure, and terminal mapping. Absent ancestry is
+    /// canonical-empty, so a tree-less compute stays digest-neutral.
     pub decomposition: SnapshotId,
 }
 
@@ -50,6 +50,20 @@ impl Projections {
     pub fn compute(
         plan: &Plan, entry: &Entry, contributing: &[Lead], target: Option<&str>,
     ) -> Result<Self, Error> {
+        Self::compute_with(plan, entry, contributing, target, None)
+    }
+
+    /// [`Self::compute`] using `tree` for ancestry and compiled
+    /// `depends-on` when a decomposition is present.
+    ///
+    /// # Errors
+    ///
+    /// The same codes as [`Self::compute`], plus tree lookup / compile
+    /// failures when `tree` is `Some`.
+    pub fn compute_with(
+        plan: &Plan, entry: &Entry, contributing: &[Lead], target: Option<&str>,
+        tree: Option<&super::decomposition::Decomposition>,
+    ) -> Result<Self, Error> {
         Ok(Self {
             entry: digest(&entry_projection(plan, entry, target)?)?,
             leads: digest(&LeadsProjection {
@@ -57,24 +71,20 @@ impl Projections {
                 slice: entry.name.as_str().to_string(),
                 leads: contributing.to_vec(),
             })?,
-            decomposition: digest(&DecompositionProjection {
-                version: PROJECTION_VERSION,
-                terminal: entry.name.as_str().to_string(),
-                depends_on: dependency_closure(plan, entry),
-            })?,
+            decomposition: digest(&decomp_projection(plan, entry, tree)?)?,
         })
     }
 }
 
 /// Resolve the entry's contributing lead closure, in binding order.
 ///
-/// `inventory` is the full `discovery.md` lead set. A bare binding's
+/// `inventory` is the full `leads.md` catalog. A bare binding's
 /// lead falls back to the owning slice's name (workflow
 /// §`Slice.sources`).
 ///
 /// # Errors
 ///
-/// `discovery-lead-unknown` when a bound `(source, lead)` pair has no
+/// `leads-lead-unknown` when a bound `(source, lead)` pair has no
 /// matching inventory block.
 pub fn contributing_leads(entry: &Entry, inventory: &[Lead]) -> Result<Vec<Lead>, Error> {
     entry
@@ -88,9 +98,9 @@ pub fn contributing_leads(entry: &Entry, inventory: &[Lead]) -> Result<Vec<Lead>
                 .find(|block| block.source == source && block.lead == lead)
                 .cloned()
                 .ok_or_else(|| Error::Diag {
-                    code: "discovery-lead-unknown",
+                    code: "leads-lead-unknown",
                     detail: format!(
-                        "no lead `{lead}` for source `{source}` in discovery.md; slice `{}` \
+                        "no lead `{lead}` for source `{source}` in leads.md; slice `{}` \
                          binds it as a contributing lead",
                         entry.name
                     ),
@@ -118,12 +128,10 @@ fn digest<T: Serialize>(value: &T) -> Result<SnapshotId, Error> {
 struct EntryProjection {
     version: u32,
     name: String,
+    target: String,
+    /// Declared target-adapter pin from `plan.yaml.targets`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    project: Option<String>,
-    /// Declared target adapter reference from `project.yaml` —
-    /// rebinding or re-pinning the target stales every manifest.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    target: Option<String>,
+    adapter: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     depends_on: Vec<SliceName>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -153,9 +161,7 @@ struct BindingProjection {
     lead: String,
     adapter: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    adapter_version: Option<semver::Version>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    path: Option<String>,
+    locator: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     value: Option<String>,
 }
@@ -170,16 +176,54 @@ struct LeadsProjection {
     leads: Vec<Lead>,
 }
 
-/// Canonical `decomposition` projection bytes — pre-RFC-88 the leaf is
-/// its own terminal.
+/// Canonical `decomposition` projection bytes.
 #[derive(Serialize)]
 #[serde(rename_all = "kebab-case")]
 struct DecompositionProjection {
     version: u32,
     terminal: String,
-    /// Sorted transitive `depends-on` closure from `plan.yaml`.
+    /// Parent-chain from the tree root, excluding the leaf.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    ancestry: Vec<String>,
+    /// Sorted transitive `depends-on` closure.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     depends_on: Vec<SliceName>,
+}
+
+fn decomp_projection(
+    plan: &Plan, entry: &Entry, tree: Option<&super::decomposition::Decomposition>,
+) -> Result<DecompositionProjection, Error> {
+    let Some(tree) = tree else {
+        return Ok(DecompositionProjection {
+            version: PROJECTION_VERSION,
+            terminal: entry.name.as_str().to_string(),
+            ancestry: Vec::new(),
+            depends_on: dependency_closure(plan, entry),
+        });
+    };
+    let id = tree.leaf_id(entry.name.as_str())?;
+    let edges = super::decomposition::compile(tree)?;
+    let depends_on = slice_closure(&edges, &entry.name);
+    Ok(DecompositionProjection {
+        version: PROJECTION_VERSION,
+        terminal: entry.name.as_str().to_string(),
+        ancestry: tree.ancestry(id)?,
+        depends_on,
+    })
+}
+
+fn slice_closure(edges: &BTreeMap<SliceName, Vec<SliceName>>, name: &SliceName) -> Vec<SliceName> {
+    let mut closure: BTreeSet<SliceName> = BTreeSet::new();
+    let mut frontier: Vec<SliceName> = edges.get(name).cloned().unwrap_or_default();
+    while let Some(dep) = frontier.pop() {
+        if dep.as_str() == name.as_str() || !closure.insert(dep.clone()) {
+            continue;
+        }
+        if let Some(next) = edges.get(&dep) {
+            frontier.extend(next.iter().cloned());
+        }
+    }
+    closure.into_iter().collect()
 }
 
 fn entry_projection(
@@ -202,9 +246,8 @@ fn entry_projection(
             Ok(BindingProjection {
                 source: key.to_string(),
                 lead: binding.lead(entry.name.as_str()).to_string(),
-                adapter: bound.adapter.clone(),
-                adapter_version: bound.version.clone(),
-                path: bound.path.clone(),
+                adapter: bound.adapter.wire(),
+                locator: bound.locator.clone(),
                 value: bound.value.clone(),
             })
         })
@@ -212,8 +255,8 @@ fn entry_projection(
     Ok(EntryProjection {
         version: PROJECTION_VERSION,
         name: entry.name.as_str().to_string(),
-        project: entry.project.clone(),
-        target: target.map(str::to_string),
+        target: entry.target.clone(),
+        adapter: target.map(str::to_string),
         depends_on: entry.depends_on.clone(),
         sources,
         context: entry.context.clone(),

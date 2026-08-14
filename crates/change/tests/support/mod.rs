@@ -7,10 +7,32 @@
 
 #![allow(dead_code, reason = "each test binary uses a subset of the shared support surface")]
 
-use change::plan::wire::SourceAssign;
+use artifacts::leads::{Lead, Leads};
 use mock::session::Session;
+use project::adapter::catalog::Pin;
 use project::handler::Anchor as _;
-use serde_json::json;
+use project::plan::{Entry, Plan, SliceSourceBinding, SourceBinding, TargetBinding};
+use project::snapshot::SnapshotId;
+
+/// Stub `plan.yaml.targets.default` row for in-memory plans.
+#[must_use]
+pub fn stub_target() -> TargetBinding {
+    stub_target_named("mock")
+}
+
+fn stub_target_named(adapter: &str) -> TargetBinding {
+    TargetBinding::new(
+        Pin::emery(adapter, semver::Version::new(0, 0, 0)),
+        ".",
+        SnapshotId::from_digest(&"0".repeat(64)),
+    )
+}
+
+/// Value-backed source row with an exact pin.
+#[must_use]
+pub fn source_value(adapter: &str, value: &str) -> SourceBinding {
+    SourceBinding::intent(Pin::emery(adapter, semver::Version::new(0, 0, 0)), value)
+}
 
 /// Drain the serial refinement stage through the public `plan refine`
 /// handler over every in-scope leaf (RFC-91 D1/D7).
@@ -48,24 +70,31 @@ pub async fn refine_slices(
 ///
 /// Panics when the manifest is absent or unreadable.
 #[must_use]
-pub fn manifest_digest(root: &std::path::Path, slice: &str) -> project::snapshot::SnapshotId {
-    slice::refinement::file_digest(&project::config::Layout::new(root).slice_dir(slice))
+pub fn manifest_digest(root: &std::path::Path, slice: &str) -> SnapshotId {
+    slice::refinement::file_digest(&fixture_layout(root).slice_dir(slice))
         .expect("read refinement manifest")
         .expect("refinement manifest present")
 }
 
+/// In-place layout when `project.yaml` exists; detached otherwise.
+#[must_use]
+pub fn fixture_layout(root: &std::path::Path) -> project::config::Layout<'_> {
+    if root.join(".emery/project.yaml").is_file() {
+        project::config::Layout::new(root)
+    } else {
+        project::config::Layout::detached(root)
+    }
+}
+
 /// Hand-stage a fresh refinement manifest for a hand-written slice
-/// tree: write the minimal bundle files (proposal / design / tasks +
-/// one per-domain spec) when absent, then assemble and persist
-/// `refinement.yaml` against the live `plan.yaml`, so execute's
-/// freshness recompute passes without a model-driven refine.
+/// tree.
 ///
 /// # Panics
 ///
 /// Panics when the plan, the entry, or a write is unavailable.
 pub fn stage_manifest(root: &std::path::Path, slice: &str) {
-    let layout = project::config::Layout::new(root);
-    let plan = project::plan::Plan::load(&layout.plan_path()).expect("plan.yaml");
+    let layout = fixture_layout(root);
+    let plan = Plan::load(&layout.plan_path()).expect("plan.yaml");
     let entry =
         plan.entries.iter().find(|e| e.name == slice).expect("plan entry for slice").clone();
     let slice_dir = layout.slice_dir(slice);
@@ -87,11 +116,13 @@ pub fn stage_manifest(root: &std::path::Path, slice: &str) {
     // so assembly must read the same `project.yaml` value freshness
     // recomputes against (an uninitialised root degrades to none).
     let config = project::config::ProjectConfig::load(root).ok();
+    let catalog =
+        Leads::load(&layout.leads_path()).unwrap_or_else(|_| Leads::from_leads(Vec::new()));
     slice::refinement::assemble(
         layout,
         &plan,
         &entry,
-        &[],
+        catalog.leads(),
         slice::refinement::TargetInputs {
             guidance: slice::refinement::empty_digest(),
             declarations: &[],
@@ -122,8 +153,8 @@ pub async fn refine(
     let provider = session.provider();
     let caps = slice::orchestrate::Capabilities::provider(provider);
     let paths = provider.paths();
-    let layout = project::config::Layout::new(paths.project_root());
-    let plan = project::plan::Plan::load(&layout.plan_path())?;
+    let layout = paths.layout();
+    let plan = Plan::load(&layout.plan_path())?;
     let entry = plan
         .entries
         .iter()
@@ -133,8 +164,9 @@ pub async fn refine(
         Some(meta) => meta.target,
         None => project::target_policy::fresh(provider, paths, entry, slice, "refining")?,
     };
-    let config = project::config::ProjectConfig::load(layout.project_dir())?;
-    let adapter = project::target_policy::project_adapter(provider, &config, paths)?;
+    let binding = plan.target(&entry.target)?;
+    let adapter =
+        project::adapter::Resolver::resolve_target(provider, &binding.adapter.selector(), paths)?;
     slice::orchestrate::refine(
         caps,
         paths,
@@ -152,13 +184,10 @@ pub async fn refine(
 ///
 /// # Panics
 ///
-/// Panics when config load or the advance kernel fails.
+/// Panics when the advance kernel fails.
 pub fn advance(session: &Session) -> project::plan::AdvanceBody {
     let provider = session.provider();
-    let paths = provider.paths();
-    let layout = project::config::Layout::new(paths.project_root());
-    let config = project::config::ProjectConfig::load(layout.project_dir()).expect("config loads");
-    project::plan::advance_next(provider, paths, jiff::Timestamp::now(), &config)
+    project::plan::advance_next(provider, provider.paths(), jiff::Timestamp::now())
         .expect("advance claims")
 }
 
@@ -172,11 +201,24 @@ pub async fn build(
 ) -> Result<slice::orchestrate::BuildOutcome, error::Error> {
     let provider = session.provider();
     let paths = provider.paths();
-    let layout = project::config::Layout::new(paths.project_root());
-    let config = project::config::ProjectConfig::load(layout.project_dir())?;
-    let adapter = project::target_policy::project_adapter(provider, &config, paths)?;
-    slice::orchestrate::build(provider, layout, jiff::Timestamp::now(), slice, &adapter.manifest)
-        .await
+    let layout = paths.layout();
+    let plan = Plan::load(&layout.plan_path())?;
+    let entry = plan
+        .entries
+        .iter()
+        .find(|entry| entry.name == slice)
+        .unwrap_or_else(|| panic!("plan entry `{slice}` missing"));
+    let binding = plan.target(&entry.target)?;
+    let adapter =
+        project::adapter::Resolver::resolve_target(provider, &binding.adapter.selector(), paths)?;
+    Box::pin(slice::orchestrate::build(
+        provider,
+        layout,
+        jiff::Timestamp::now(),
+        slice,
+        &adapter.manifest,
+    ))
+    .await
 }
 
 /// Drive the merge phase for one slice the way the execute loop does
@@ -189,109 +231,116 @@ pub async fn merge(
     session: &Session, slice: &str,
 ) -> Result<slice::orchestrate::MergeOutcome, error::Error> {
     let provider = session.provider();
-    let layout = project::config::Layout::new(provider.paths().project_root());
+    let layout = provider.paths().layout();
     slice::orchestrate::merge(provider, layout, jiff::Timestamp::now(), slice, false).await
 }
 
-/// The single `main` binding onto the minimal mock source.
-///
-/// # Panics
-///
-/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
+/// The single `main` value binding onto the minimal mock source.
 #[must_use]
-pub fn greeting_binding() -> Vec<SourceAssign> {
-    greeting_binding_for("mock")
+pub fn greeting_sources() -> Vec<(&'static str, &'static str, &'static str)> {
+    vec![("main", "mock", "The greeting service.")]
 }
 
-/// The single `main` binding onto the named mock source adapter
-/// (for the typed-failure profiles).
+/// Write a fixture `plan.yaml` + `leads.md` for suites that do not
+/// need the full `plan author` judgment path.
+///
+/// `sources` is `(key, adapter, value)`; `slices` is `(name, source, lead)`.
 ///
 /// # Panics
 ///
-/// Panics when the binding JSON stops parsing as a [`SourceAssign`].
-#[must_use]
-pub fn greeting_binding_for(adapter: &str) -> Vec<SourceAssign> {
-    let main: SourceAssign = serde_json::from_value(
-        json!({ "key": "main", "adapter": adapter, "value": "The greeting service." }),
-    )
-    .expect("mock binding parses");
-    vec![main]
-}
-
-/// The adversarial two-source pair: a docs source and a code source,
-/// both served by the mock core under different adapter names.
-///
-/// # Panics
-///
-/// Panics when a binding JSON stops parsing as a [`SourceAssign`].
-#[must_use]
-pub fn adversarial_bindings() -> Vec<SourceAssign> {
-    ["docs", "code"]
-        .map(|key| {
-            serde_json::from_value(json!({
-                "key": key,
-                "adapter": format!("mock-{key}"),
-                "value": format!("The {key} source."),
-            }))
-            .expect("mock binding parses")
-        })
-        .to_vec()
+/// Panics when the fixture write fails.
+pub fn write_plan_fixture(
+    root: &std::path::Path, name: &str, sources: &[(&str, &str, &str)],
+    slices: &[(&str, &str, &str)],
+) {
+    let layout = fixture_layout(root);
+    std::fs::create_dir_all(layout.change_root()).expect("change home");
+    let mut plan = Plan::named(name);
+    let adapter = project::config::ProjectConfig::load(root)
+        .ok()
+        .and_then(|config| config.adapter)
+        .unwrap_or_else(|| "mock".into());
+    plan.targets.insert("default".into(), stub_target_named(&adapter));
+    for (key, adapter, value) in sources {
+        plan.sources.insert((*key).into(), source_value(adapter, value));
+    }
+    let mut imported = Vec::new();
+    for (slice, source, lead) in slices {
+        if plan.entries.iter().any(|entry| entry.name.as_str() == *slice) {
+            let entry =
+                plan.entries.iter_mut().find(|entry| entry.name.as_str() == *slice).expect("slice");
+            entry.sources.push(SliceSourceBinding::structured(*source, *lead));
+        } else {
+            let mut entry = Entry::named(*slice, "default");
+            entry.sources = vec![SliceSourceBinding::structured(*source, *lead)];
+            plan.entries.push(entry);
+        }
+        imported.push(Lead::new(*lead, *source, *lead));
+    }
+    plan.save(&layout.plan_path()).expect("plan.yaml");
+    Leads::from_leads(imported).write_atomic(&layout.leads_path()).expect("leads.md");
 }
 
 /// A minimal in-memory plan named `test` wrapping `changes`.
 #[must_use]
-pub fn plan_with_changes(changes: Vec<project::plan::Entry>) -> project::plan::Plan {
-    project::plan::Plan {
-        name: "test".into(),
-        sources: std::collections::BTreeMap::new(),
-        entries: changes,
-    }
+pub fn plan_with_changes(changes: Vec<Entry>) -> Plan {
+    let mut plan = Plan::named("test");
+    plan.targets.insert("default".into(), stub_target());
+    plan.entries = changes;
+    plan
 }
 
-/// A minimal plan entry bound to project `default`.
+/// A minimal plan entry bound to target `default`.
 #[must_use]
-pub fn change(name: &str) -> project::plan::Entry {
-    project::plan::Entry {
-        name: name.into(),
-        project: Some("default".into()),
-        depends_on: vec![],
-        sources: vec![],
-        context: vec![],
-        description: None,
-        divergence: None,
-        disagreements: Vec::new(),
-        authority_override: project::plan::AuthorityOverride::default(),
-        allow_composition_replace: false,
-    }
+pub fn change(name: &str) -> Entry {
+    Entry::named(name, "default")
 }
 
 /// [`change()`] plus a `depends-on` list.
 #[must_use]
-pub fn change_with_deps(name: &str, deps: &[&str]) -> project::plan::Entry {
+pub fn change_with_deps(name: &str, deps: &[&str]) -> Entry {
     let mut entry = change(name);
     entry.depends_on = deps.iter().map(|s| (*s).into()).collect();
     entry
 }
 
-/// Author the single-slice greeting plan and refine it to Refined —
-/// the fixture floor for the RFC-90 build-phase suites.
+/// Write a fixture greeting plan and refine it to Refined — the floor
+/// for the RFC-90 build-phase suites. These suites stay fixture-driven
+/// so they do not re-enter the author judgment path.
 ///
 /// # Panics
 ///
-/// Panics when author or refine fails.
+/// Panics when the fixture write or refine fails.
 pub async fn greeting_ready(session: &Session) {
-    mock::invoke::run::<change::plan::handlers::Author, _, _>(
-        session.provider(),
-        change::plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    let root = session.provider().paths().project_root();
+    write_greeting_plan(root);
     refine(session, "greeting").await.expect("refine");
+}
+
+/// Adversarial two-source fixture used by refine/execute suites that
+/// previously went through survey-driven authoring.
+pub fn write_adversarial_plan(root: &std::path::Path) {
+    write_plan_fixture(
+        root,
+        "auth",
+        &[("docs", "mock-docs", "The docs source."), ("code", "mock-code", "The code source.")],
+        &[
+            ("login-flow", "docs", "login-flow"),
+            ("login-flow", "code", "login-flow"),
+            ("session-policy", "docs", "session-timeout"),
+            ("session-policy", "code", "session-timeout"),
+            ("password-reset", "docs", "password-reset"),
+        ],
+    );
+}
+
+pub fn write_greeting_plan(root: &std::path::Path) {
+    write_plan_fixture(
+        root,
+        "demo",
+        &[("main", "mock", "The greeting service.")],
+        &[("greeting", "main", "greeting")],
+    );
 }
 
 /// Drop one mock control-plane marker file at the project root.
@@ -304,10 +353,13 @@ pub fn marker(root: &std::path::Path, name: &str) {
 }
 
 /// The attempt directory
-/// `.emery/slices/<slice>/build/attempts/<NNNN>/`.
+/// `.emery/change/slices/<slice>/build/attempts/<NNNN>/`.
 #[must_use]
 pub fn attempt_dir(root: &std::path::Path, slice: &str, attempt: u32) -> std::path::PathBuf {
-    root.join(".emery/slices").join(slice).join("build/attempts").join(format!("{attempt:04}"))
+    root.join(".emery/change/slices")
+        .join(slice)
+        .join("build/attempts")
+        .join(format!("{attempt:04}"))
 }
 
 /// Sorted `phases/` file names of one attempt.
@@ -357,7 +409,7 @@ pub fn phase_events(root: &std::path::Path) -> Vec<(u32, u32, String, String)> {
 /// Panics when the canonical report is absent or stops parsing.
 #[must_use]
 pub fn canonical_report(root: &std::path::Path, slice: &str) -> slice::BuildReport {
-    let path = root.join(".emery/slices").join(slice).join("build/report.yaml");
+    let path = root.join(".emery/change/slices").join(slice).join("build/report.yaml");
     let yaml = std::fs::read_to_string(&path)
         .unwrap_or_else(|err| panic!("canonical report `{}`: {err}", path.display()));
     serde_saphyr::from_str(&yaml).expect("canonical report parses")

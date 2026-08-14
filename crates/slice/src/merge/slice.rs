@@ -1,6 +1,6 @@
-//! Transactional multi-class merge + archive (`commit`), plus the
-//! `conflict_check` baseline drift detector. The filesystem is only
-//! touched after every delta validates.
+//! Transactional multi-class merge (`commit`) and `conflict_check`.
+//! The filesystem is only touched after every delta validates.
+//! The orchestrator archives the slice after the wave-commit fact.
 
 use std::path::{Path, PathBuf};
 
@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use crate::merge::artifact_class::{ArtifactClass, MergeStrategy};
 use crate::merge::engine::MergeResult;
-use crate::{Outcome, OutcomeKind, SliceMetadata, SpecKind, actions};
+use crate::{Outcome, OutcomeKind, SliceMetadata, SpecKind};
 
 mod parse;
 mod read;
@@ -117,23 +117,22 @@ pub struct BaselineConflict {
     pub baseline_modified_at: Timestamp,
 }
 
-/// Atomic multi-class merge plus archive.
+/// Atomic multi-class merge into `product_root`.
 ///
 /// Gates on a fact-substrate build record, writes each merged
-/// baseline, stamps the merge outcome into `metadata.yaml` (before the
-/// archive move, so the archived copy carries the merge-success audit
-/// stamp; progress projection reads journal facts and artifacts, never
-/// this field), then archives the slice directory.
+/// baseline, stamps the merge outcome into `metadata.yaml` (the
+/// orchestrator archives after the wave-commit fact, so the archived
+/// copy carries the merge-success audit stamp; progress projection
+/// reads journal facts and artifacts, never this field).
 /// `allow_composition_replace` threads only as far as the
 /// `overwrite_gate` precondition — never into the pure merge kernel.
 ///
 /// # Errors
 ///
-/// Lifecycle, overwrite, preview, and write failures occur before the
-/// archive move. `merge-archive-failed` means merged metadata and
-/// baselines may already be persisted and require operator recovery.
+/// Lifecycle, overwrite, preview, and write failures occur before any
+/// baseline write is visible as a committed fact.
 pub fn commit(
-    slice_dir: &Path, classes: &[ArtifactClass], archive_dir: &Path, now: Timestamp,
+    slice_dir: &Path, product_root: &Path, classes: &[ArtifactClass], now: Timestamp,
     allow_composition_replace: bool,
 ) -> Result<MergeCommit, Error> {
     let mut metadata = SliceMetadata::load(slice_dir)?;
@@ -161,7 +160,7 @@ pub fn commit(
     // The supersede-orphan re-check aborts before any baseline write,
     // leaving the slice `Built` for a clean retry; the kernel's
     // `(slice, slug)` guard keeps that retry from double-promoting.
-    let decisions = promote_decisions(slice_dir, archive_dir, now)?;
+    let decisions = promote_decisions(slice_dir, product_root, now)?;
 
     write_baselines(&merged)?;
     let opaque_counts = commit_opaque(classes)?;
@@ -182,11 +181,6 @@ pub fn commit(
     });
     metadata.save(slice_dir)?;
 
-    actions::archive(slice_dir, archive_dir, now).map_err(|err| Error::Diag {
-        code: "merge-archive-failed",
-        detail: format!("archive move failed: {err}"),
-    })?;
-
     let mut output: Vec<PreviewEntry> = merged;
     output.sort_by(|a, b| {
         (a.class_name.as_str(), a.name.as_str()).cmp(&(b.class_name.as_str(), b.name.as_str()))
@@ -197,19 +191,13 @@ pub fn commit(
     })
 }
 
-/// Promote the slice's Decision Records into the baseline catalogue.
-/// `archive_dir` is `<project>/.emery/archive`, so its grandparent is
-/// the project root and its parent is `.emery`; the catalogue lives at
-/// `.emery/decisions/`. The slice name is the slice directory's final
-/// component.
+/// Promote the slice's Decision Records into the baseline catalogue
+/// at `product_root` (the merge workspace's `.emery/decisions/`).
 fn promote_decisions(
-    slice_dir: &Path, archive_dir: &Path, now: Timestamp,
+    slice_dir: &Path, product_root: &Path, now: Timestamp,
 ) -> Result<Vec<String>, Error> {
-    let Some(project_dir) = archive_dir.parent().and_then(Path::parent) else {
-        return Ok(Vec::new());
-    };
     let slice_name = slice_dir.file_name().and_then(|n| n.to_str()).unwrap_or_default();
-    project::decisions::promote(slice_dir, project_dir, slice_name, now)
+    project::decisions::promote(slice_dir, product_root, slice_name, now)
 }
 
 /// Check for baseline drift on the modified `touched_specs` and on

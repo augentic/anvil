@@ -1,33 +1,47 @@
-//! Reconciliation through the native mock pair: surveyed leads
-//! become complete, non-duplicated slice assignments — cross-source
-//! overlap merges into one slice, a recorded divergence survives the
-//! projection, and a grouping that drops a lead is refused by the
-//! kernel inside the repair loop.
+//! Propose-kernel `target` binding and the Plan DTO hard cut, without
+//! the retired survey-driven author path.
 
-mod support;
+use std::collections::HashMap;
 
-use std::fs;
+use artifacts::leads::Leads;
+use project::adapter::catalog::Pin;
+use project::plan::{Plan, ProjectRef, ProposalResponse, SourceBinding, TargetBinding};
+use project::snapshot::SnapshotId;
 
-use change::{Divergence, plan};
-use mock::invoke::run;
-use mock::session::Session;
-use serde_json::json;
+fn topology() -> Vec<ProjectRef> {
+    vec![ProjectRef {
+        name: "default".into(),
+        target: "mock@0.0.0".into(),
+        description: None,
+        surface: vec![],
+        recent: vec![],
+        decisions: vec![],
+        decisions_more: None,
+        platforms: vec![],
+    }]
+}
 
-/// One initial dispatch plus every repair attempt. Mirrors the
-/// private `project::judgment::MAX_REPAIRS` (2) — kept local rather
-/// than widening the module for tests; a budget change shows up here
-/// as an off-by-one request count.
-const JUDGMENT_BUDGET: usize = 3;
+fn inventory() -> Leads {
+    Leads::parse(
+        "## Lead inventory\n\n\
+         ### docs:login-flow\n\n- lead: login-flow\n- source: docs\n- synopsis: sign-in\n\n\
+         ### code:login-flow\n\n- lead: login-flow\n- source: code\n- synopsis: sign-in\n\n\
+         ### docs:session-timeout\n\n- lead: session-timeout\n- source: docs\n- synopsis: idle\n\n\
+         ### code:session-timeout\n\n- lead: session-timeout\n- source: code\n- synopsis: idle\n\n\
+         ### docs:password-reset\n\n- lead: password-reset\n- source: docs\n- synopsis: reset\n",
+    )
+    .expect("leads")
+}
 
-/// A defective grouping that never references the `password-reset`
-/// lead — the coverage rule the kernel enforces inside the repair loop.
-fn uncovered_grouping_answer() -> String {
-    serde_json::to_string(&json!({
+#[test]
+fn overlap_merges() {
+    let response: ProposalResponse = serde_json::from_value(serde_json::json!({
         "version": 1,
         "kind": "response",
         "slices": [
             {
                 "name": "login-flow",
+                "target": "default",
                 "sources": [
                     { "source": "docs", "lead": "login-flow" },
                     { "source": "code", "lead": "login-flow" }
@@ -35,98 +49,60 @@ fn uncovered_grouping_answer() -> String {
             },
             {
                 "name": "session-policy",
+                "target": "default",
+                "divergence": "likely",
                 "sources": [
                     { "source": "docs", "lead": "session-timeout" },
                     { "source": "code", "lead": "session-timeout" }
                 ]
+            },
+            {
+                "name": "password-reset",
+                "target": "default",
+                "sources": [{ "source": "docs", "lead": "password-reset" }]
             }
-        ],
-        "gate": {
-            "change": "## Intent\n\nIncomplete grouping.\n\n## Scope\n\nTwo slices.",
-            "discovery-summary": "Sources: 2. Leads: 5.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| docs | mock-docs | x |\n| code | mock-code | x |"
-        }
-    }))
-    .expect("grouping serialises")
-}
-
-async fn author(session: &Session) -> Result<plan::handlers::AuthorBody, project::handler::Error> {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "auth".to_string(),
-            sources: support::adversarial_bindings(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-}
-
-// Cross-source overlap merges into one slice, and a recorded
-// divergence survives the projection.
-#[tokio::test]
-async fn overlap_merges() {
-    let session = Session::scripted("mock", vec![mock::answers::adversarial_grouping()]);
-
-    let authored = author(&session).await.expect("author walks to pending");
-    assert_eq!(authored.slices, ["login-flow", "session-policy", "password-reset"]);
-    // Both mock sources surveyed (key order), docs with its three
-    // leads including the docs-only password-reset.
-    assert_eq!(authored.surveyed.len(), 2);
-    assert_eq!(authored.surveyed[0].source, "code");
-    assert_eq!(authored.surveyed[0].leads, ["login-flow", "session-timeout"]);
-    assert_eq!(authored.surveyed[1].source, "docs");
-    assert_eq!(authored.surveyed[1].leads, ["login-flow", "session-timeout", "password-reset"]);
-
-    let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(session.root().join("plan.yaml")).expect("read plan.yaml"),
-    )
-    .expect("parse plan.yaml");
-
-    // Source set closed at author: each binding carries a tree `cid`
-    // (RFC-86 D4 / D25). Value bindings digest a one-file `content` tree.
-    for (key, value) in [("code", "The code source."), ("docs", "The docs source.")] {
-        let binding = plan.sources.get(key).unwrap_or_else(|| panic!("source `{key}`"));
-        let cid = binding.cid.as_ref().unwrap_or_else(|| panic!("{key} cid"));
-        assert_eq!(cid, &project::plan::value_cid(value), "{key} cid");
-    }
-
-    // The overlap merged: one slice carries both sources' leads.
-    let login = plan.entries.iter().find(|e| e.name == "login-flow").expect("login slice");
-    let mut login_sources: Vec<(String, String)> = login
-        .sources
-        .iter()
-        .map(|b| (b.source.clone(), b.lead.clone().unwrap_or_else(|| "login-flow".to_string())))
-        .collect();
-    login_sources.sort();
-    assert_eq!(
-        login_sources,
-        [
-            ("code".to_string(), "login-flow".to_string()),
-            ("docs".to_string(), "login-flow".to_string())
         ]
+    }))
+    .expect("response");
+    let mut plan = Plan::named("auth");
+    plan.targets.insert(
+        "default".into(),
+        TargetBinding::new(
+            Pin::parse("emery:mock@0.0.0").expect("pin"),
+            ".",
+            SnapshotId::from_digest(&"0".repeat(64)),
+        ),
     );
-
-    // The divergence flag and its recorded disagreement survive.
-    let entry = plan.entries.iter().find(|e| e.name == "session-policy").expect("session slice");
-    assert_eq!(entry.divergence, Some(Divergence::Likely));
-    assert_eq!(entry.disagreements.len(), 1);
-    assert_eq!(entry.disagreements[0].field, "session-timeout-minutes");
+    plan.sources.insert(
+        "docs".into(),
+        SourceBinding::intent(Pin::parse("emery:documentation@0.12.0").expect("pin"), "docs"),
+    );
+    plan.sources.insert(
+        "code".into(),
+        SourceBinding::intent(Pin::parse("emery:typescript@0.12.0").expect("pin"), "code"),
+    );
+    plan.propose_from(response, &inventory(), &topology(), &HashMap::new()).expect("propose");
+    let login = plan.entries.iter().find(|entry| entry.name == "login-flow").expect("login");
+    assert_eq!(login.target, "default");
+    assert_eq!(login.sources.len(), 2);
+    let session =
+        plan.entries.iter().find(|entry| entry.name == "session-policy").expect("session");
+    assert_eq!(session.divergence, Some(change::Divergence::Likely));
 }
 
-#[tokio::test]
-async fn uncovered_lead_exhausts() {
-    // The same defective grouping for the whole budget: the first
-    // dispatch plus every repair attempt, so the leg surfaces the
-    // kernel's refusal.
-    let session = Session::scripted("mock", vec![uncovered_grouping_answer(); JUDGMENT_BUDGET]);
+#[test]
+fn omitted_target_refuses() {
+    let err = serde_json::from_str::<ProposalResponse>(
+        r#"{"version":1,"kind":"response","slices":[{"name":"only","sources":[{"source":"docs","lead":"login-flow"}]}]}"#,
+    )
+    .expect_err("target required");
+    assert!(err.to_string().contains("target"), "{err}");
+}
 
-    let err = author(&session).await.expect_err("coverage gap refused");
-    let detail = err.to_string();
-    assert!(detail.contains("password-reset"), "{detail}");
-
-    // One initial dispatch plus MAX_REPAIRS re-prompts drained the
-    // budget-sized script exactly.
-    session.model().assert_exhausted();
+#[test]
+fn leftover_project() {
+    let yaml = "name: demo\nslices:\n  - name: a\n    target: default\n    project: default\n";
+    let err = serde_saphyr::from_str::<Plan>(yaml).expect_err("unknown field");
+    let text = err.to_string();
+    assert!(text.contains("project") || text.contains("unknown"), "{text}");
 }

@@ -5,29 +5,181 @@
 
 use serde_json::json;
 
+fn quiet_assessment() -> serde_json::Value {
+    json!({
+        "behavioural-breadth": 1,
+        "coupling": 1,
+        "uncertainty": 1,
+        "context-volume": 1,
+        "verification-surface": 1
+    })
+}
+
+fn loud_assessment() -> serde_json::Value {
+    json!({
+        "behavioural-breadth": 10,
+        "coupling": 10,
+        "uncertainty": 10,
+        "context-volume": 10,
+        "verification-surface": 10
+    })
+}
+
+/// Partition + change-prose answers for the degenerate greeting author.
+#[must_use]
+pub fn greeting_author() -> Vec<String> {
+    vec![greeting_leaf(), greeting_change()]
+}
+
+/// Degenerate `leaf` partition: one intent lead, target `app`.
+///
+/// # Panics
+///
+/// Panics when the value stops serialising.
+#[must_use]
+pub fn greeting_leaf() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "leaf",
+        "target": "app",
+        "slice": "greeting",
+        "ownership": ["."],
+        "acceptance": "The greeting endpoint returns a static string.",
+        "sources": [{ "source": "intent", "lead": "intent" }],
+        "assessment": quiet_assessment(),
+        "rationale": "One intent lead, one slice."
+    }))
+    .expect("leaf serialises")
+}
+
+/// `change.md` review prose for the degenerate greeting author.
+///
+/// # Panics
+///
+/// Panics when the value stops serialising.
+#[must_use]
+pub fn greeting_change() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "response",
+        "slices": [{
+            "name": "greeting",
+            "target": "app",
+            "sources": [{ "source": "intent", "lead": "intent" }],
+            "rationale": "One intent lead, one slice."
+        }],
+        "gate": {
+            "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nOne slice."
+        }
+    }))
+    .expect("change serialises")
+}
+
 /// The reconciliation grouping for the minimal profile: one lead, one
-/// slice.
+/// slice. Same envelope as [`greeting_change`].
 ///
 /// # Panics
 ///
 /// Panics when the grouping value stops serialising.
 #[must_use]
 pub fn greeting_grouping() -> String {
+    greeting_change()
+}
+
+/// High-score leaf that triggers boundary review (degenerate intent).
+///
+/// # Panics
+///
+/// Panics when the value stops serialising.
+#[must_use]
+pub fn greeting_leaf_loud() -> String {
     serde_json::to_string(&json!({
         "version": 1,
-        "kind": "response",
-        "slices": [{
-            "name": "greeting",
-            "sources": [{ "source": "main", "lead": "greeting" }],
-            "rationale": "One mock lead, one slice."
-        }],
-        "gate": {
-            "change": "## Intent\n\nCharacterise the greeting service.\n\n## Scope\n\nOne slice.",
-            "discovery-summary": "Sources: 1. Leads: 1.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| main | mock | \"The greeting service.\" |"
-        }
+        "kind": "leaf",
+        "target": "app",
+        "slice": "greeting",
+        "ownership": ["."],
+        "acceptance": "The greeting endpoint returns a static string.",
+        "sources": [{ "source": "intent", "lead": "intent" }],
+        "assessment": loud_assessment()
     }))
-    .expect("grouping serialises")
+    .expect("loud leaf serialises")
+}
+
+/// Boundary review that blocks authoring as unready.
+///
+/// # Panics
+///
+/// Panics when the value stops serialising.
+#[must_use]
+pub fn greeting_unready() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "verdict": "unready",
+        "rationale": "the greeting slice exceeds the target envelope"
+    }))
+    .expect("unready serialises")
+}
+
+/// Boundary review that requeues via focused survey of `intent`.
+///
+/// # Panics
+///
+/// Panics when the value stops serialising.
+#[must_use]
+pub fn greeting_focus() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "verdict": "focus",
+        "focus": [{ "source": "intent", "lead": "intent" }]
+    }))
+    .expect("focus serialises")
+}
+
+/// Incomplete leaf used as the first (invalid) partition answer.
+///
+/// # Panics
+///
+/// Panics when the value stops serialising.
+#[must_use]
+pub fn greeting_leaf_invalid() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "leaf",
+        "target": "app",
+        "slice": "greeting",
+        "assessment": quiet_assessment()
+    }))
+    .expect("invalid leaf serialises")
+}
+
+/// Overlapping two-child split with no order (blocks after repair).
+///
+/// # Panics
+///
+/// Panics when the value stops serialising.
+#[must_use]
+pub fn greeting_overlap() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "split",
+        "assessment": quiet_assessment(),
+        "children": [
+            {
+                "id": "left",
+                "sources": [{ "source": "intent", "lead": "intent" }],
+                "target": "app",
+                "ownership": ["."]
+            },
+            {
+                "id": "right",
+                "sources": [{ "source": "intent", "lead": "intent" }],
+                "target": "app",
+                "ownership": ["."]
+            }
+        ]
+    }))
+    .expect("overlap serialises")
 }
 
 /// The synthesis answer for the minimal profile's `greeting` slice.
@@ -38,9 +190,10 @@ pub fn greeting_grouping() -> String {
 #[must_use]
 pub fn greeting_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "greeting",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "greeting returns the static string",
@@ -63,6 +216,26 @@ pub fn greeting_synthesis() -> String {
     .expect("synthesis serialises")
 }
 
+/// Boundary-escalation synthesis for the degenerate authored `greeting`
+/// leaf (`intent` / `intent`). Assessment exceeds the compiled
+/// slice-split threshold.
+///
+/// # Panics
+///
+/// Panics when the synthesis value stops serialising.
+#[must_use]
+pub fn greeting_escalation() -> String {
+    serde_json::to_string(&json!({
+        "version": 3,
+        "kind": "boundary-escalation",
+        "slice": "greeting",
+        "assessment": loud_assessment(),
+        "affected": [{ "source": "intent", "lead": "intent" }],
+        "rationale": "Evidence supports separately acceptable child boundaries for the greeting surface."
+    }))
+    .expect("escalation serialises")
+}
+
 /// The minimal-profile synthesis with an evidence gap: the sole
 /// requirement carries no claims, so authority derivation mints
 /// `status: unknown` — the gate-time deferral fixtures ride this.
@@ -73,9 +246,10 @@ pub fn greeting_synthesis() -> String {
 #[must_use]
 pub fn greeting_unknown_synth() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "greeting",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "greeting error handling",
@@ -142,9 +316,7 @@ pub fn adversarial_grouping() -> String {
             }
         ],
         "gate": {
-            "change": "## Intent\n\nCharacterise the auth surface.\n\n## Scope\n\nThree slices.\n\n## Likely divergences\n\n- session-policy: docs say 30 minutes, code says 15.",
-            "discovery-summary": "Sources: 2. Leads: 5.",
-            "discovery-source-inventory": "| key | adapter | binding |\n|---|---|---|\n| docs | mock-docs | \"The docs source.\" |\n| code | mock-code | \"The code source.\" |"
+            "change": "## Intent\n\nCharacterise the auth surface.\n\n## Scope\n\nThree slices.\n\n## Likely divergences\n\n- session-policy: docs say 30 minutes, code says 15."
         }
     }))
     .expect("grouping serialises")
@@ -159,9 +331,10 @@ pub fn adversarial_grouping() -> String {
 #[must_use]
 pub fn login_flow_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "login-flow",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "users sign in with email and password",
@@ -195,9 +368,10 @@ pub fn login_flow_synthesis() -> String {
 #[must_use]
 pub fn password_reset_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 2,
-        "kind": "response",
+        "version": 3,
+        "kind": "proceed",
         "slice": "password-reset",
+        "assessment": quiet_assessment(),
         "model": {
             "requirements": [{
                 "title": "password reset behaviour",

@@ -27,7 +27,7 @@ mod validate {
     #[test]
     fn missing_artifact() {
         let (_guard, project_dir) = stage_project();
-        let slice_dir = project_dir.join(".emery/slices/synth-missing");
+        let slice_dir = project_dir.join(".emery/change/slices/synth-missing");
         fs::create_dir_all(&slice_dir).unwrap();
         // Deliberately leave out every canonical artifact.
 
@@ -80,7 +80,7 @@ mod validate {
     fn good_fixture_passes_clean() {
         let fixture = crate_root().join("tests/fixtures/change-good");
         let (_guard, project_dir) = stage_project();
-        let slice_dir = project_dir.join(".emery/slices/change-good");
+        let slice_dir = project_dir.join(".emery/change/slices/change-good");
         support::copy_dir(&fixture, &slice_dir);
 
         let findings = validate_slice(&slice_dir).expect("validate_slice ok");

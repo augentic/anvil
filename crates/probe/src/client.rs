@@ -62,7 +62,8 @@ pub async fn run(
     argv.retain(|arg| arg != "--debug" && arg != "--quiet");
     let root = project_root(&mut argv)?;
     init_tracing(log_destination(&argv, &root, sandbox), debug, quiet)?;
-    dispatch(root, argv, catalog, cases, sandbox).await
+    // Same EventKind growth as `plan execute`: clippy large_futures at 16KiB.
+    Box::pin(dispatch(root, argv, catalog, cases, sandbox)).await
 }
 
 async fn dispatch(
@@ -70,14 +71,14 @@ async fn dispatch(
     sandbox: Option<&Path>,
 ) -> anyhow::Result<ExitCode> {
     if argv.get(1).is_some_and(|arg| arg == "eval") {
-        return crate::run(root, catalog, cursor_factory(), &argv[1..], cases, sandbox)
+        return Box::pin(crate::run(root, catalog, cursor_factory(), &argv[1..], cases, sandbox))
             .await
             .map(|()| ExitCode::SUCCESS);
     }
 
     let paths = ExecutionPaths::operator(root.clone());
     let model = DynModel::new(DevModel::new(&root));
-    Ok(::native::command::run(paths, model, catalog, argv).await)
+    Ok(Box::pin(::native::command::run(paths, model, catalog, argv)).await)
 }
 
 /// The log-file destination: an explicit `EVAL_LOG` always wins; a

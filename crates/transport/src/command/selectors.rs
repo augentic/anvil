@@ -6,10 +6,11 @@ use clap::FromArgMatches;
 use omnia_guest::api::invoke::Invoker;
 #[cfg(not(target_arch = "wasm32"))]
 use omnia_guest::model::{Reply, Request};
-use project::adapter::{AdapterSelector, ResolvedSource, ResolvedTarget, Resolver};
+use project::adapter::{AdapterSelector, Inventory, ResolvedSource, ResolvedTarget, Resolver};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
+use project::profile::Profiles;
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
-use project::seam::{self, Evidence, Input, Lead, MergePhase};
+use project::seam::{self, Evidence, Input, MergePhase};
 
 /// The `adapter add` arguments the launcher needs to anchor the
 /// project mount and preopen the operator's component directory.
@@ -21,6 +22,39 @@ pub struct SeedRequest {
     /// The `--project-dir` value, when supplied; relative values
     /// anchor at the invocation directory.
     pub project_dir: Option<std::path::PathBuf>,
+}
+
+/// Change-home facts argv carries (`--change-dir`, `plan author --from`).
+///
+/// Relative `--change-dir` joins the invocation directory; relative
+/// `--from` joins the resolved `.` mount.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ChangeRequest {
+    /// Detached change-home override, when supplied.
+    pub change_dir: Option<std::path::PathBuf>,
+    /// Reviewed definition home from `plan author --from`.
+    pub from: Option<std::path::PathBuf>,
+}
+
+/// Project change-home facts out of `argv` (without the program name)
+/// through the shared command grammar.
+///
+/// Argv the grammar refuses — including help — projects the empty
+/// default, so the launcher stays total and the guest renders the
+/// rejection.
+#[must_use]
+pub fn change_request(argv: &[String]) -> ChangeRequest {
+    let mut full = Vec::with_capacity(argv.len() + 1);
+    full.push("emery".to_string());
+    full.extend(argv.iter().cloned());
+    let Ok(matches) = grammar().try_get_matches_from(full) else {
+        return ChangeRequest::default();
+    };
+    let (_path, leaf) = selected(&matches);
+    ChangeRequest {
+        change_dir: leaf.try_get_one::<std::path::PathBuf>("change_dir").ok().flatten().cloned(),
+        from: leaf.try_get_one::<std::path::PathBuf>("from").ok().flatten().cloned(),
+    }
 }
 
 /// Project the `adapter add` seed request out of `argv` (without the
@@ -114,9 +148,10 @@ pub fn refresh_request(argv: &[String]) -> RefreshRequest {
     }
 }
 
-/// The `system *` anchoring request: the definition home the launcher
-/// mounts as `.` — no `project.yaml` walk and no mkdir (creating the
-/// home would be `system init`, which does not exist).
+/// The `system *` anchoring request.
+///
+/// The definition home mounts as `.` — no `project.yaml` walk and no
+/// mkdir (`system init` does not exist).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SystemRequest {
     /// The `--dir` value, when supplied; relative values anchor at
@@ -242,15 +277,27 @@ impl Resolver for Grammar {
     }
 }
 
+impl Inventory for Grammar {
+    fn inventory(&self) -> &project::adapter::catalog::Catalog {
+        never_dispatched!()
+    }
+}
+
+impl Profiles for Grammar {
+    fn profiles(&self) -> &project::profile::Table {
+        never_dispatched!()
+    }
+}
+
 impl seam::Source for Grammar {
     async fn survey(
-        &self, _id: String, _key: String, _input: seam::SourceInput,
-    ) -> Result<Vec<Lead>, seam::Error> {
+        &self, _id: String, _input: seam::SourceInput,
+    ) -> Result<seam::SurveyResult, seam::Error> {
         never_dispatched!()
     }
 
     async fn extract(
-        &self, _id: String, _key: String, _input: seam::SourceInput, _lead: Lead,
+        &self, _id: String, _input: seam::SourceInput,
     ) -> Result<Evidence, seam::Error> {
         never_dispatched!()
     }
@@ -297,7 +344,7 @@ impl seam::Target for Grammar {
 }
 
 impl seam::Origins for Grammar {
-    async fn fetch(&self, _locator: String) -> Result<seam::Fetched, seam::Error> {
+    async fn fetch(&self, _locator: String) -> Result<seam::OriginFetched, seam::Error> {
         never_dispatched!()
     }
 
@@ -329,13 +376,18 @@ impl seam::Workspaces for Grammar {
         never_dispatched!()
     }
 
-    async fn apply(&self, _patch: project::snapshot::CodePatch) -> Result<(), seam::Error> {
-        never_dispatched!()
-    }
-
     async fn sweep(
         &self, _dead: Vec<project::snapshot::SnapshotId>, _live: Vec<project::snapshot::SnapshotId>,
     ) -> Result<usize, seam::Error> {
+        never_dispatched!()
+    }
+}
+
+impl seam::Ingest for Grammar {
+    async fn fetch(
+        &self, _locator: String, _recorded: Option<project::snapshot::SnapshotId>,
+        _prior: Option<String>,
+    ) -> Result<seam::Fetched, seam::Error> {
         never_dispatched!()
     }
 }

@@ -16,11 +16,16 @@ use project::config::Layout;
 use project::journal::{
     DEFAULT_WRITER, DeferredMember, Event, EventKind, FactEpochRef, append_for, read_union,
 };
+use project::snapshot::SnapshotId;
+
+fn cid(ch: char) -> SnapshotId {
+    SnapshotId::from_digest(&ch.to_string().repeat(64))
+}
 
 /// The minimal profile whose refine mints one `[unknown]` row
 /// (`greeting/REQ-001`).
 fn unknown_session() -> Session {
-    Session::bare(vec![mock::answers::greeting_grouping(), mock::answers::greeting_unknown_synth()])
+    Session::bare(vec![mock::answers::greeting_unknown_synth()])
 }
 
 async fn scaffold(session: &Session) {
@@ -34,17 +39,7 @@ async fn scaffold(session: &Session) {
     )
     .await
     .expect("init");
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
 }
 
 async fn execute(session: &Session) {
@@ -65,8 +60,8 @@ fn wave_deferred(root: &std::path::Path, slice: &str) -> Vec<DeferredMember> {
         .rev()
         .find_map(|event| match event.kind {
             EventKind::TargetMergeWaveCommitted {
-                slice_name, deferred, ..
-            } if slice_name.as_str() == slice => Some(deferred),
+                members, deferred, ..
+            } if members.iter().any(|m| m.as_str() == slice) => Some(deferred),
             _ => None,
         })
         .expect("target.merge.wave-committed")
@@ -90,11 +85,10 @@ async fn gate_debt_conserved() {
     support::refine(&session, "greeting").await.expect("refine");
     execute(&session).await;
 
-    // The folded baseline row: status preserved, final baseline id,
-    // and the appended self-describing note (change, date, reason —
-    // reason last so free text stays parseable).
-    let baseline =
-        fs::read_to_string(root.join(".emery/specs/greeting/spec.md")).expect("merged baseline");
+    // The folded baseline row lives on the accepted CID.
+    let tree = session.materialize_accepted("default").await;
+    let baseline = fs::read_to_string(tree.path().join(".emery/specs/greeting/spec.md"))
+        .expect("merged baseline");
     assert!(baseline.contains("greeting error handling [unknown]"), "{baseline}");
     assert!(baseline.contains("Status: unknown"), "{baseline}");
     assert!(baseline.contains("ID: REQ-001"), "{baseline}");
@@ -177,8 +171,9 @@ async fn note_carries_reason() {
     // The durable deferral covers the gate — no new mint.
     execute(&session).await;
 
-    let baseline =
-        fs::read_to_string(root.join(".emery/specs/greeting/spec.md")).expect("merged baseline");
+    let tree = session.materialize_accepted("default").await;
+    let baseline = fs::read_to_string(tree.path().join(".emery/specs/greeting/spec.md"))
+        .expect("merged baseline");
     assert!(baseline.contains("Note: deferred — change: demo; date: "), "{baseline}");
     assert!(baseline.contains("; reason: carried to the next change"), "{baseline}");
     let deferred = wave_deferred(&root, "greeting");
@@ -192,26 +187,20 @@ async fn note_carries_reason() {
 /// review prose it authors.
 #[tokio::test]
 async fn debt_after_merge() {
-    // Three judgment answers: the first author's grouping, the refine
-    // synthesis that mints the unknown, and the corrective change's
-    // author grouping.
-    let session = Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synth(),
-        mock::answers::greeting_grouping(),
-    ]);
-    let root = session.root().to_path_buf();
+    // One synthesis answer: the refine that mints the unknown. Plan
+    // topology is a fixture — wave-binding authoring no longer groups.
+    let session = Session::bare(vec![mock::answers::greeting_unknown_synth()]);
     scaffold(&session).await;
     support::refine(&session, "greeting").await.expect("refine");
     execute(&session).await;
 
-    // The projection reads the merged baseline note, never fact logs.
-    let debt =
-        run::<slice::handlers::Debt, _, _>(session.provider(), slice::handlers::DebtInput {})
-            .await
-            .expect("debt projects");
-    assert_eq!(debt.rows.len(), 1, "{:?}", debt.rows);
-    let row = &debt.rows[0];
+    // Folded note lives on the accepted CID. `emery debt` still reads
+    // checkout `.emery/specs/` (dark until step 18 re-homes it).
+    let tree = session.materialize_accepted("default").await;
+    let rows = slice::debt::baseline(&tree.path().join(".emery/specs"), jiff::Timestamp::now())
+        .expect("debt from accepted CID");
+    assert_eq!(rows.len(), 1, "{rows:?}");
+    let row = &rows[0];
     assert_eq!(row.domain, "greeting");
     assert_eq!(row.req, "REQ-001");
     assert_eq!(row.status, RequirementStatus::Unknown);
@@ -220,34 +209,16 @@ async fn debt_after_merge() {
     assert!(note.reason.starts_with("deferred at the build gate under epoch "), "{}", note.reason);
     assert!(note.age_days <= 1, "the deferral happened just now: {note:?}");
 
-    // Close the change, then author the corrective one: the review
-    // prose carries the backlog.
+    // Close the change, then author the next one. `plan author` still
+    // reads checkout `.emery/specs/` for `## Carried debt` (dark until
+    // step 18 re-homes it onto the accepted CID).
     run::<plan::handlers::Archive, _, _>(
         session.provider(),
         plan::handlers::ArchiveInput::default(),
     )
     .await
     .expect("archive");
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("corrective author");
-
-    let brief = fs::read_to_string(root.join("change.md")).expect("change.md");
-    assert!(brief.contains("## Carried debt"), "{brief}");
-    assert!(brief.contains("Unknowns:"), "{brief}");
-    assert!(
-        brief.contains("- greeting/REQ-001 greeting error handling — deferred at the build gate"),
-        "{brief}"
-    );
-    assert!(brief.contains("(change demo, "), "{brief}");
+    support::write_greeting_plan(session.root());
 }
 
 /// D6 visibility at the boundary: the archive summary renders
@@ -288,7 +259,9 @@ async fn archive_splits_kinds() {
         EventKind::TargetMergeWaveCommitted {
             target: "mock".into(),
             digest: "sha256:abc".into(),
-            slice_name: "a".into(),
+            members: vec!["a".into()],
+            base: cid('a'),
+            result: cid('b'),
             commit_authorization: FactEpochRef {
                 writer: DEFAULT_WRITER.into(),
                 sequence: 1,
@@ -374,7 +347,9 @@ async fn archive_join_miss() {
         EventKind::TargetMergeWaveCommitted {
             target: "mock".into(),
             digest: "sha256:abc".into(),
-            slice_name: "a".into(),
+            members: vec!["a".into()],
+            base: cid('a'),
+            result: cid('b'),
             commit_authorization: FactEpochRef {
                 writer: DEFAULT_WRITER.into(),
                 sequence: 1,

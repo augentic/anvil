@@ -37,7 +37,7 @@ Complete [Prerequisites](../orientation/prerequisites.md):
 - Rust toolchain with `wasm32-wasip2` target for Omnia
 - A TypeScript repository you can clone (repo root with `package.json` and `src/`)
 
-Work in a **fresh, empty directory** — not inside a checkout of the `emery` repository — and open it in Cursor Agent chat. Everything Emery generates (`.emery/`, `plan.yaml`, `change.md`, `discovery.md`) and the `legacy/` clone is regenerable; if the directory is a git repository, gitignore them rather than committing them.
+Work in a **fresh, empty directory** — not inside a checkout of the `emery` repository — and open it in Cursor Agent chat. Everything Emery generates (`.emery/`, `plan.yaml`, `change.md`, `leads.md`) and the `legacy/` clone is regenerable; if the directory is a git repository, gitignore them rather than committing them.
 </div>
 
 
@@ -80,21 +80,19 @@ Re-running init on an already-initialized project is a no-op; `emery init --upgr
 <div class="step-label">03</div>
 <h3 class="step-title">Author the plan</h3>
 
-Bind the clone as a `typescript` source:
+Bind the clone as a `typescript` source through a reviewed definition home. `emery system {survey, plan, review}` writes the handoff; a colocated degenerate lives at `.emery/system/`:
 
 ```text
-/emery:plan my-service source legacy=typescript:legacy
+/emery:plan my-service --from .emery/system/ --wave deliver
 ```
 
-The skill elicits the one-line intent conversationally — for example `Migrate <your-legacy-repo-url> to an Omnia service`. The CLI form passes it as a flag:
+The CLI form:
 
 ```bash
-emery plan author my-service \
-  --intent "Migrate <your-legacy-repo-url> to an Omnia service" \
-  --source "legacy=typescript:legacy"
+emery plan author my-service --from .emery/system/ --wave deliver
 ```
 
-The source adapter's `survey` operation scans `legacy/` and emits slice-sized leads. Planning writes three artifacts — `change.md` (operator narrative), `discovery.md` (what the survey found), and `plan.yaml` (the slice table of contents) — then exits for operator review. Nothing executes yet.
+The source adapter's `survey` operation scans the bound CID view and emits slice-sized leads. Planning writes `change.md` (operator narrative), `discovery.yaml` (pinned handoff), `leads.md` (catalog), `decomposition.yaml`, and `plan.yaml` (the slice table of contents) — then exits for operator review. Nothing executes yet.
 </div>
 
 
@@ -102,7 +100,7 @@ The source adapter's `survey` operation scans `legacy/` and emits slice-sized le
 <div class="step-label">04</div>
 <h3 class="step-title">Review the plan</h3>
 
-Read `change.md`, `discovery.md`, and `plan.yaml`. For a migration, check that the slice breakdown matches how you think the service decomposes, and that `discovery.md`'s lead inventory reflects the legacy tree you expected it to survey — an empty survey usually means the source binding pointed at the wrong directory.
+Read `change.md`, `leads.md`, `discovery.yaml`, `decomposition.yaml`, and `plan.yaml`. For a migration, check that the slice breakdown matches how you think the service decomposes, and that `leads.md`'s lead inventory reflects the legacy tree you expected it to survey — an empty survey usually means the source locator pointed at the wrong tree.
 
 > [!IMPORTANT]
 > **Review.** This pause is the topology review step — `/emery:plan` never runs refinement or execution itself. To adjust scope first, see [Amend a plan before executing](../how-to/amend-a-plan.md).
@@ -176,7 +174,7 @@ emery plan archive
 
 
 > [!TIP]
-> **Done looks like:** archived slice artifacts under `.emery/archive/`, Omnia output in the project tree, and the merged spec baseline under `.emery/specs/` — a durable chain from recovered evidence and reviewed provenance to the generated service.
+> **Done looks like:** archived slice artifacts under `.emery/change/archive/`, Omnia output in the project tree, and the merged spec baseline under `.emery/specs/` — a durable chain from recovered evidence and reviewed provenance to the generated service.
 
 
 <section id="troubleshooting" markdown="1">

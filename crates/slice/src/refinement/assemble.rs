@@ -6,11 +6,11 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use error::Error;
 use project::adapter::BuildInputDeclaration;
 use project::config::Layout;
-use project::plan::{Entry, Plan, Projections, contributing_leads, dir_cid};
+use project::plan::{Decomposition, Entry, Plan, Projections, contributing_leads, dir_cid};
 use project::snapshot::SnapshotId;
 
 use super::{BundleEntry, Dependency, Inputs, Kind, Manifest, Planning, VERSION};
@@ -32,13 +32,13 @@ pub struct TargetInputs<'a> {
 
 /// Assemble the refinement manifest for `entry`.
 ///
-/// `inventory` is the full `discovery.md` lead set; `dependencies`
+/// `inventory` is the full `leads.md` catalog; `dependencies`
 /// are the ordered predecessor `(slice, digest)` pairs; `target`
 /// carries the bound target's facts.
 ///
 /// # Errors
 ///
-/// - `discovery-lead-unknown` / `plan-projection-source-unbound` from
+/// - `leads-lead-unknown` / `plan-projection-source-unbound` from
 ///   the planning projections.
 /// - `slice-refinement-source-unbound` / `slice-refinement-pin-missing`
 ///   when a bound source has no closed plan pin.
@@ -52,7 +52,9 @@ pub fn assemble(
     dependencies: Vec<Dependency>,
 ) -> Result<Manifest, Error> {
     let contributing = contributing_leads(entry, inventory)?;
-    let planning = Projections::compute(plan, entry, &contributing, target.reference)?;
+    let tree = Decomposition::load_opt(&layout.decomposition_path())?;
+    let planning =
+        Projections::compute_with(plan, entry, &contributing, target.reference, tree.as_ref())?;
     let slice_dir = layout.slice_dir(entry.name.as_str());
     Ok(Manifest {
         version: VERSION,
@@ -63,7 +65,7 @@ pub fn assemble(
                 leads: planning.leads,
                 decomposition: planning.decomposition,
             },
-            profile: super::empty_digest(),
+            profile: super::live_profile(plan, entry),
             observations: super::empty_digest(),
             target_guidance: target.guidance,
             baseline_specs: dir_cid(&layout.specs_dir())?,
@@ -89,6 +91,9 @@ fn source_pins(plan: &Plan, entry: &Entry) -> Result<BTreeMap<String, SnapshotId
                 ),
             });
         };
+        if bound.value.is_some() {
+            continue;
+        }
         let Some(cid) = bound.cid.clone() else {
             return Err(Error::Diag {
                 code: "slice-refinement-pin-missing",

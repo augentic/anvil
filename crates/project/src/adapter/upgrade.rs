@@ -7,17 +7,16 @@ use std::path::Path;
 use error::Error;
 
 use super::AdapterSelector;
-use crate::config::{Layout, ProjectConfig};
-use crate::plan::Plan;
+use crate::config::ProjectConfig;
 
 /// Collect the bare adapter names bound by the project at
 /// `project_dir`.
 ///
-/// The set is the `project.yaml` target binding plus every
-/// `plan.yaml.sources.<key>` adapter that parses as a bare name; a
-/// missing or unreadable `plan.yaml` contributes nothing. The guest
-/// handler and the launcher's refresh widening both call this, so the
-/// refresh set and the resolve loop agree on the same names.
+/// The set is the `project.yaml` target binding when it is a bare
+/// name. Plan source and target rows are exact pins and never
+/// contribute. The guest handler and the launcher's refresh widening
+/// both call this, so the refresh set and the resolve loop agree on
+/// the same names.
 ///
 /// # Errors
 ///
@@ -30,13 +29,6 @@ pub fn targets(project_dir: &Path) -> Result<BTreeSet<String>, Error> {
         && let Ok(AdapterSelector::Bare { name }) = AdapterSelector::parse(adapter)
     {
         names.insert(name);
-    }
-    if let Ok(plan) = Plan::load(&Layout::new(project_dir).plan_path()) {
-        for binding in plan.sources.values() {
-            if let AdapterSelector::Bare { name } = binding.selector() {
-                names.insert(name);
-            }
-        }
     }
     Ok(names)
 }

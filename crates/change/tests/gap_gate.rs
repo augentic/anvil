@@ -22,12 +22,8 @@ use project::journal::{
 use project::plan::{Disposition, Plan};
 use support::plan_with_changes;
 
-/// Single-project plan entry so execute's workspace routing refusal
-/// does not fire.
 fn leaf(name: &str) -> change::Entry {
-    let mut entry = support::change(name);
-    entry.project = None;
-    entry
+    support::change(name)
 }
 
 fn err_code(err: &project::handler::Error) -> String {
@@ -39,7 +35,7 @@ fn write_plan(root: &std::path::Path, plan: &Plan) {
 }
 
 fn write_refined(root: &std::path::Path, slice: &str, model: &str) {
-    let dir = root.join(".emery/slices").join(slice);
+    let dir = root.join(".emery/change/slices").join(slice);
     fs::create_dir_all(dir.join("specs")).expect("slice/specs");
     fs::write(dir.join("model.yaml"), model).expect("model.yaml");
     fs::write(
@@ -214,7 +210,7 @@ async fn digest_less_row_refused() {
     let session = Session::bare(Vec::new());
     init_mock(&session).await;
     write_refined(session.root(), "a", "requirements: []\n");
-    let specs = session.root().join(".emery/slices/a/specs/auth");
+    let specs = session.root().join(".emery/change/slices/a/specs/auth");
     fs::create_dir_all(&specs).expect("specs dir");
     fs::write(
         specs.join("spec.md"),

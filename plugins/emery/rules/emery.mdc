@@ -115,7 +115,7 @@ Every CLI failure prints a kebab-case error code (and usually a `hint:` line —
 
 ### Slice not found
 
-- Inspect `.emery/slices/` to see active slices
+- Inspect `.emery/change/slices/` to see active slices
 - Check the slice name matches (kebab-case)
 
 ### Artifacts incomplete

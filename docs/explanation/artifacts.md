@@ -21,10 +21,10 @@ Every slice produces these four, regardless of which target adapter it uses:
 
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|
-| `proposal.md` | *Why* does this slice exist? What is in scope? | `.emery/slices/<name>/proposal.md` |
-| `spec.md` | *What* must the system do? (behavioral requirements) | `.emery/slices/<name>/specs/<domain>/spec.md` |
-| `design.md` | *How* will the behavior be implemented? | `.emery/slices/<name>/design.md` |
-| `tasks.md` | In what *sequence* should it be built? | `.emery/slices/<name>/tasks.md` |
+| `proposal.md` | *Why* does this slice exist? What is in scope? | `.emery/change/slices/<name>/proposal.md` |
+| `spec.md` | *What* must the system do? (behavioral requirements) | `.emery/change/slices/<name>/specs/<domain>/spec.md` |
+| `design.md` | *How* will the behavior be implemented? | `.emery/change/slices/<name>/design.md` |
+| `tasks.md` | In what *sequence* should it be built? | `.emery/change/slices/<name>/tasks.md` |
 
 The split is deliberate: `proposal.md` and `spec.md` stay platform-neutral (the *why* and *what*), while `design.md` and `tasks.md` carry the project-specific *how*. Keeping behaviour separate from implementation is what lets the same spec drive different targets and survive a re-implementation.
 
@@ -36,7 +36,7 @@ Where specs describe behaviour in prose, **contract artifacts** capture the mach
 
 Contracts complement specs rather than replace them: specs say *what the system does*; contracts say *what the interfaces look like*. Both are needed for traceability and machine-readable integration.
 
-Contracts are a *platform* concern — they describe interfaces *between* components, so they live at the repository root in `contracts/` (the baseline) with per-slice additions under `.emery/slices/<name>/contracts/`. See [Contract artifacts](../reference/artifact-format.md#contract-artifacts-api-shape) for the directory layout and naming rules.
+Contracts are a *platform* concern — they describe interfaces *between* components, so they live at the repository root in `contracts/` (the baseline) with per-slice additions under `.emery/change/slices/<name>/contracts/`. See [Contract artifacts](../reference/artifact-format.md#contract-artifacts-api-shape) for the directory layout and naming rules.
 
 ## Composition: visual arrangement (Vectis only)
 
@@ -52,9 +52,9 @@ Unlike `design.md`, which is archived with its slice, accepted decisions accumul
 
 Artifacts live in three places over their lifetime:
 
-1. **Working slice** — `.emery/slices/<name>/` holds the active slice and its artifacts while it is being refined and built.
+1. **Working slice** — `.emery/change/slices/<name>/` holds the active slice and its artifacts while it is being refined and built.
 2. **Baseline** — `.emery/specs/` holds the merged specs that represent the current known state of the system; `.emery/decisions/` holds the accepted Decision Records.
-3. **Archive** — `.emery/archive/YYYY-MM-DD-<name>/` holds finalized slices (merged or dropped) as a prunable convenience cache.
+3. **Archive** — `.emery/change/archive/YYYY-MM-DD-<name>/` holds finalized slices (merged or dropped) as a prunable convenience cache.
 
 When the execute loop merges a slice, its spec deltas (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED` blocks keyed by stable `REQ-XXX` ids) are applied to the baseline. For Vectis slices, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. Contract files are replaced wholesale at the root-level `contracts/` directory. Any Decision Records the slice authored are promoted into `.emery/decisions/` by the same opaque-add strategy — whole-file add with an engine-assigned `DEC-NNNN` id, never a prose delta-merge — and a newer record's `supersedes:` flips its named targets to `status: superseded`. The slice itself is then archived. The baseline grows over time, giving future slices a consistent foundation to build on. Accepted decisions also sharpen the project's routing identity at plan time (a third axis beside *what the project does* and *what recently changed*).
 

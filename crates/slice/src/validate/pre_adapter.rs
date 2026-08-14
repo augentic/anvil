@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use artifacts::discovery::Discovery;
+use artifacts::leads::Leads;
 use artifacts::spec::provenance::{self, ParsedSpec, RequirementTag};
 use diagnostics::{Artifact, Diagnostic};
 use error::Result;
@@ -84,17 +84,17 @@ pub(super) fn gates(
     Ok(findings)
 }
 
-/// Report thin discovery synopses when `discovery.md` exists.
+/// Report thin lead synopses when `leads.md` exists.
 ///
 /// This remains advisory because the heuristic can produce false
 /// positives; its purpose is to improve cross-source reconciliation.
 pub(super) fn synopsis_thin(layout: Layout<'_>) -> Result<Vec<Diagnostic>> {
-    let path = layout.discovery_path();
+    let path = layout.leads_path();
     if !path.exists() {
         return Ok(Vec::new());
     }
-    let discovery = Discovery::load(&path)?;
-    Ok(discovery
+    let catalog = Leads::load(&path)?;
+    Ok(catalog
         .leads()
         .iter()
         .filter(|lead| is_synopsis_thin(&lead.synopsis))

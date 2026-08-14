@@ -14,16 +14,12 @@ use project::config::Layout;
 use project::journal::{ClosedPlanCoverage, EventKind, read_union};
 use support::plan_with_changes;
 
-/// Single-project plan entry (`project: None`) so execute's workspace
-/// routing refusal does not fire.
 fn leaf(name: &str) -> change::Entry {
-    let mut entry = support::change(name);
-    entry.project = None;
-    entry
+    support::change(name)
 }
 
 fn suite_answers() -> Vec<String> {
-    vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
+    vec![mock::answers::greeting_synthesis()]
 }
 
 async fn scaffold_author(session: &Session) {
@@ -37,17 +33,7 @@ async fn scaffold_author(session: &Session) {
     )
     .await
     .expect("scaffold");
-    run::<change::plan::handlers::Author, _, _>(
-        session.provider(),
-        change::plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author");
+    support::write_greeting_plan(session.root());
 }
 
 fn started_events(root: &std::path::Path) -> Vec<project::journal::Event> {
@@ -63,7 +49,7 @@ fn write_plan(root: &std::path::Path, plan: &Plan) {
 }
 
 fn write_model(root: &std::path::Path, slice: &str, yaml: &str) {
-    let dir = root.join(".emery/slices").join(slice);
+    let dir = root.join(".emery/change/slices").join(slice);
     fs::create_dir_all(dir.join("specs")).expect("slice/specs");
     fs::write(dir.join("model.yaml"), yaml).expect("model.yaml");
     fs::write(
@@ -98,7 +84,10 @@ async fn appends_closed_epoch() {
         panic!("expected PlanExecuteStarted");
     };
     assert!(plan_digest.starts_with("sha256:"), "{plan_digest}");
-    assert!(discovery_digest.is_none());
+    assert!(
+        discovery_digest.as_ref().is_some_and(|digest| digest.starts_with("sha256:")),
+        "execute start always records discovery-digest; got {discovery_digest:?}"
+    );
     assert!(
         refinements.contains_key("greeting"),
         "covered leaf carries a refinement digest; got {refinements:?}"

@@ -16,13 +16,12 @@ use mock::behaviour;
 use mock::invoke::run;
 use mock::session::Session;
 
-/// The scripted answers for the whole loop, in dispatch order: the
-/// reconciliation grouping (author) and the synthesis response
-/// (the `plan refine` drain). Survey, extract, guidance, and build are
-/// deterministic mock operations — no model dispatch; execute consumes
-/// no answers at all.
+/// The scripted answers for the whole loop: the synthesis response
+/// (the `plan refine` drain). Author is fixture-driven until
+/// decomposition lands; survey, extract, guidance, and build are
+/// deterministic mock operations. Execute consumes no answers.
 fn suite_answers() -> Vec<String> {
-    vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
+    vec![mock::answers::greeting_synthesis()]
 }
 
 /// Concatenate the per-writer union as JSONL text for substring asserts.
@@ -52,21 +51,7 @@ async fn scaffold_author(session: &Session) {
     .expect("scaffold initialises the mock-bound project");
     assert_eq!(scaffolded.adapter_name, "mock");
 
-    let authored = run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author exits for review");
-    assert_eq!(authored.slices, ["greeting"]);
-    assert_eq!(authored.surveyed.len(), 1);
-    assert_eq!(authored.surveyed[0].leads, ["greeting"]);
-    assert!(authored.hint.contains("emery plan refine"), "{}", authored.hint);
+    support::write_greeting_plan(session.root());
 
     let refined = support::refine_plan(session).await;
     assert_eq!(refined.refined, ["greeting"]);
@@ -107,7 +92,8 @@ async fn author_approve_execute() {
     );
 
     // Plan progress projects `done` from archive facts (RFC-86 D2 / D11).
-    let plan_yaml = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
+    let plan_yaml =
+        fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("read plan.yaml");
     assert!(!plan_yaml.contains("status:"), "plan.yaml has no stored status: {plan_yaml}");
     let plan: change::Plan = serde_saphyr::from_str(&plan_yaml).expect("parse plan.yaml");
     let events =
@@ -118,15 +104,20 @@ async fn author_approve_execute() {
         "projected ladders: {ladders:?}"
     );
 
-    // Baseline merge output with complete provenance.
-    let baseline = root.join(".emery/specs/greeting/spec.md");
-    let content = fs::read_to_string(&baseline).expect("baseline spec written");
+    // Baseline merge output with complete provenance lives on the accepted CID.
+    assert!(
+        !root.join(".emery/specs/greeting/spec.md").exists(),
+        "merge must not write the operator checkout"
+    );
+    let accepted = session.materialize_accepted("default").await;
+    let content = fs::read_to_string(accepted.path().join(".emery/specs/greeting/spec.md"))
+        .expect("accepted baseline spec");
     assert!(content.contains("ID: REQ-001"), "{content}");
     assert!(content.contains("Sources: main"), "{content}");
 
     // The merge archived the slice directory; the archived model.yaml
     // carries the kernel-projected provenance inline.
-    let archive = fs::read_dir(root.join(".emery/archive"))
+    let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive dir exists")
         .map(|entry| entry.expect("archive entry").path())
         .find(|path| {
@@ -143,16 +134,20 @@ async fn author_approve_execute() {
     assert_eq!(requirement["status"], "agreed");
     assert_eq!(requirement["claims"][0]["source"], "main");
 
-    // The mock target produced a real, non-empty build output.
-    let artifact = behaviour::build_artifact_path(&root, "greeting");
+    // The mock target produced a real, non-empty build output on the
+    // accepted CID — never an ambient checkout write.
+    let artifact = behaviour::build_artifact_path(accepted.path(), "greeting");
     let body = fs::read_to_string(&artifact).expect("mock build output exists");
     assert!(body.contains("Fixture build — greeting"), "{body}");
     assert!(body.contains("proposal 1, design 1, tasks 1, specs 1"), "{body}");
+    assert!(
+        !behaviour::build_artifact_path(&root, "greeting").exists(),
+        "build output must not land on the operator checkout"
+    );
 
-    // RFC-87 / RFC-86 D27: the artifact arrived through capture + the
-    // interim post-merge apply, never an ambient checkout write — the
-    // archived fact-substrate build record records the touched path
-    // and the journal carries the apply event.
+    // RFC-88: the artifact arrived through capture + accepted-CID merge,
+    // never an interim apply. The archived fact-substrate build record
+    // records the touched path; the journal carries no apply event.
     let builds = archive.join("builds");
     let record_path = fs::read_dir(&builds)
         .expect("archived builds/")
@@ -167,7 +162,7 @@ async fn author_approve_execute() {
         "patch.yaml must not be build-outcome authority"
     );
     let journal = journal_text(&root);
-    assert!(journal.contains("slice.code.applied"), "{journal}");
+    assert!(!journal.contains("slice.code.applied"), "{journal}");
     assert!(journal.contains("target.wave.opened"), "{journal}");
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");
     assert!(journal.contains("target.merge.wave-succeeded"), "{journal}");
@@ -192,10 +187,9 @@ async fn author_approve_execute() {
         .expect("postflight report beside the archive");
     assert!(postflight.contains("status: success"), "{postflight}");
 
-    // Model cadence: one reconciliation leg (author), one synthesis
-    // leg (the refine drain) — exactly the two scripted answers, all
-    // consumed; execute dispatched no model call.
-    assert_eq!(requests.len(), 2);
+    // Model cadence: fixture-driven author (no propose judgment), one
+    // synthesis leg (the refine drain); execute dispatched no model call.
+    assert_eq!(requests.len(), 1);
     session.model().assert_exhausted();
 }
 
@@ -230,15 +224,19 @@ async fn archive_sweeps_change() {
     .expect("archive moves the plan and sweeps");
     assert_eq!(archived.plan.name, "demo");
     assert!(archived.swept_objects > 0, "the sweep collected the change's objects");
-    assert_eq!(
-        count_files(&objects),
-        0,
-        "no snapshot objects survive once the change's pins stop being GC roots"
+    let accepted = session.materialize_accepted("default").await;
+    assert!(
+        accepted.path().join(".emery/specs/greeting/spec.md").is_file(),
+        "the accepted CID survives archive — it is the merged product"
+    );
+    assert!(
+        count_files(&objects) > 0,
+        "accepted-CID objects stay as live GC roots after the change's pins stop being roots"
     );
 
     // The archived pins themselves stay on disk for audit — only the
     // store objects they anchored are collected.
-    let slice_archive = fs::read_dir(root.join(".emery/archive"))
+    let slice_archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive dir")
         .filter_map(Result::ok)
         .map(|entry| entry.path())
@@ -290,7 +288,7 @@ async fn execute_reentry_noop() {
 
     // No approval field ever reaches disk: `plan.yaml` carries no
     // lifecycle key and the journal carries no approval event.
-    let raw = fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml");
+    let raw = fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("read plan.yaml");
     assert!(!raw.contains("lifecycle"), "{raw}");
     let journal = journal_text(&root);
     assert!(!journal.contains("plan.transition.approved"), "{journal}");
@@ -340,15 +338,15 @@ async fn preflight_parks_built() {
     assert!(stopped.to_string().contains("target-merge-preflight-failed"), "{stopped}");
 
     // Nothing merged: the build record remains, no baseline, no archive.
-    let metadata = fs::read_to_string(root.join(".emery/slices/greeting/metadata.yaml"))
+    let metadata = fs::read_to_string(root.join(".emery/change/slices/greeting/metadata.yaml"))
         .expect("slice still present");
     assert!(metadata.contains("completed-at:"), "{metadata}");
     assert!(
-        project::build_record::BuildRecord::present(&root.join(".emery/slices/greeting")),
+        project::build_record::BuildRecord::present(&root.join(".emery/change/slices/greeting")),
         "build record must remain after a parked preflight"
     );
     assert!(
-        !root.join(".emery/slices/greeting/build/patch.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/build/patch.yaml").exists(),
         "patch.yaml is not authority"
     );
     assert!(!root.join(".emery/specs/greeting/spec.md").exists());
@@ -396,12 +394,15 @@ async fn postflight_terminal() {
         "hint must not describe a retryable in-progress merge conflict: {stopped}"
     );
 
-    // Non-rollback: the merge committed before the gate ran — baseline
-    // written, slice archived, plan entry projects `done`.
-    assert!(root.join(".emery/specs/greeting/spec.md").is_file());
-    assert!(!root.join(".emery/slices/greeting").exists());
+    // Non-rollback: the merge committed before the gate ran — accepted
+    // CID stands, slice archived, plan entry projects `done`. Checkout
+    // is untouched.
+    assert!(!root.join(".emery/specs/greeting/spec.md").exists());
+    let accepted = session.materialize_accepted("default").await;
+    assert!(accepted.path().join(".emery/specs/greeting/spec.md").is_file());
+    assert!(!root.join(".emery/change/slices/greeting").exists());
     let plan: change::Plan = serde_saphyr::from_str(
-        &fs::read_to_string(root.join("plan.yaml")).expect("read plan.yaml"),
+        &fs::read_to_string(root.join(".emery/change/plan.yaml")).expect("read plan.yaml"),
     )
     .expect("parse plan.yaml");
     let events =
@@ -413,7 +414,7 @@ async fn postflight_terminal() {
     );
 
     // Failed postflight report persists beside the archive.
-    let archive = fs::read_dir(root.join(".emery/archive"))
+    let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive dir exists")
         .map(|entry| entry.expect("archive entry").path())
         .find(|path| {

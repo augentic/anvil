@@ -2,7 +2,7 @@
 
 > Status: Implemented foundation of the [Services Delivery Programme](platform.md). Adds `plan refine`, reviewable refinement manifests, and wave-time target bases. Builds on [RFC-86](rfc-86-change-facts.md), [RFC-87](rfc-87-working-trees.md), and [RFC-90](rfc-90-build-verification.md). Scheduled [RFC-96](rfc-96-concurrent-execution.md) owns concurrent refinement and execution; parked [RFC-100](rfc-100-distributed-execution.md) and [RFC-99](rfc-99-streaming-execution.md) retain distributed claims and progressive execution.
 >
-> Patch ownership: this RFC amends implemented RFC-86 D6 / D8 / D12 / D14 / D22 / D25 / D26 and, once RFC-88 lands, RFC-88 D7 / D8 plus its public operator flow. The predecessor RFC texts remain unchanged.
+> Patch ownership: this RFC amends implemented RFC-86 D6 / D8 / D12 / D14 / D22 / D25 / D26 and implemented RFC-88 D7 / D8 plus its public operator flow. The predecessor RFC texts remain unchanged.
 >
 > Note ([RFC-86a](rfc-86a-gap-deferral.md), implemented after this draft): the per-epoch unknown-waiver surface referenced below (`--waive`, waivers nested on coverage) is deleted — gap dispositions are durable digest-bound `gap.deferred` facts minted unconditionally at the build gate (the `strict | defer` policy knob and the `emery plan defer` verb were subsequently deleted too), and deferred requirements leave build scope rather than being built over. Read this draft's waiver mentions as that disposition surface; the refinement stage this RFC adds is the intended home of the operator pause on gaps, and execute respects the same deferral fact union.
 

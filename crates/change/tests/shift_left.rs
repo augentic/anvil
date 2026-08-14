@@ -13,7 +13,7 @@ use project::config::Layout;
 use project::journal::{EventKind, read_union};
 
 fn suite_answers() -> Vec<String> {
-    vec![mock::answers::greeting_grouping(), mock::answers::greeting_synthesis()]
+    vec![mock::answers::greeting_synthesis()]
 }
 
 fn journal_text(root: &std::path::Path) -> String {
@@ -49,18 +49,8 @@ async fn scaffold_init(session: &Session) {
     .expect("init");
 }
 
-async fn author(session: &Session) -> plan::handlers::AuthorBody {
-    run::<plan::handlers::Author, _, _>(
-        session.provider(),
-        plan::handlers::AuthorInput {
-            name: "demo".to_string(),
-            sources: support::greeting_binding(),
-            intent: None,
-            force: false,
-        },
-    )
-    .await
-    .expect("author")
+fn author(session: &Session) {
+    support::write_greeting_plan(session.root());
 }
 
 /// The staged path: author does not refine; specs and the refinement
@@ -71,17 +61,10 @@ async fn shift_left_refine_execute() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     scaffold_init(&session).await;
+    author(&session);
 
-    let authored = author(&session).await;
-    assert_eq!(authored.slices, ["greeting"]);
-    assert!(
-        authored.hint.contains("emery plan refine"),
-        "author exits pointing at the refinement drain: {}",
-        authored.hint
-    );
-
-    // Author is topology-only — no extract / synthesis artifacts.
-    let slice_dir = root.join(".emery/slices/greeting");
+    // Fixture plan is topology-only — no extract / synthesis artifacts.
+    let slice_dir = root.join(".emery/change/slices/greeting");
     assert!(!slice_dir.join("model.yaml").exists(), "author must not mint model.yaml");
     assert!(!slice_dir.join("spec.md").exists(), "author must not mint spec.md");
     assert!(!slice_dir.join("refinement.yaml").exists(), "author must not write the manifest");
@@ -143,7 +126,7 @@ async fn shift_left_refine_execute() {
     assert!(journal.contains("plan.execute.started"), "{journal}");
     assert!(journal.contains("target.wave.opened"), "{journal}");
     assert!(journal.contains("target.merge.wave-committed"), "{journal}");
-    assert!(!root.join(".emery/slices/greeting/build/patch.yaml").exists());
+    assert!(!root.join(".emery/change/slices/greeting/build/patch.yaml").exists());
 }
 
 /// Execute over an unrefined leaf fails typed
@@ -154,10 +137,10 @@ async fn unrefined_execute_fails() {
     let session = Session::bare(suite_answers());
     let root = session.root().to_path_buf();
     scaffold_init(&session).await;
-    author(&session).await;
+    author(&session);
 
     assert!(
-        !root.join(".emery/slices/greeting/refinement.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/refinement.yaml").exists(),
         "execute starts over an unrefined leaf"
     );
 
@@ -176,7 +159,7 @@ async fn unrefined_execute_fails() {
     assert!(!journal.contains("plan.execute.started"), "no epoch: {journal}");
     assert!(!journal.contains("slice.synthesize."), "execute never refines: {journal}");
     assert!(!journal.contains("target.wave.opened"), "no wave: {journal}");
-    assert!(!root.join(".emery/slices/greeting/model.yaml").exists());
+    assert!(!root.join(".emery/change/slices/greeting/model.yaml").exists());
 
     // The drain then execute is the recovery path.
     support::refine_plan(&session).await;
@@ -195,21 +178,18 @@ async fn unrefined_execute_fails() {
 /// execute never auto-refines and open gaps never park the loop.
 #[tokio::test]
 async fn refine_gate_mints_drains() {
-    let session = Session::bare(vec![
-        mock::answers::greeting_grouping(),
-        mock::answers::greeting_unknown_synth(),
-    ]);
+    let session = Session::bare(vec![mock::answers::greeting_unknown_synth()]);
     let root = session.root().to_path_buf();
     scaffold_init(&session).await;
-    author(&session).await;
+    author(&session);
 
     assert!(
-        !root.join(".emery/slices/greeting/model.yaml").exists(),
+        !root.join(".emery/change/slices/greeting/model.yaml").exists(),
         "author is topology-only — the unknown arrives via refine"
     );
     support::refine_plan(&session).await;
     assert!(
-        root.join(".emery/slices/greeting/model.yaml").is_file(),
+        root.join(".emery/change/slices/greeting/model.yaml").is_file(),
         "refine mints the unknown before execute"
     );
 

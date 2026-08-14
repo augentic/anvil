@@ -16,10 +16,10 @@ use error::Error;
 /// filesystem directly.
 pub trait ExecBits: Debug + Send + Sync {
     /// The `/`-separated relative paths of executable regular files
-    /// beneath `root`. Never follows symlinks. May skip paths the
-    /// snapshot walk excludes (kernel excludes, `.gitignore` matches)
-    /// as an optimization — the walk never queries paths it excludes,
-    /// so the set is consulted as a lookup superset only.
+    /// beneath `root`. Never follows symlinks. May skip the store's
+    /// ignored paths (`.git`, `.emery/change`) and `.gitignore`
+    /// matches as an optimization — the walk never queries paths it
+    /// excludes.
     ///
     /// # Errors
     ///
@@ -75,12 +75,10 @@ fn collect(
         let Some(name) = name.to_str() else {
             continue;
         };
-        if super::store::IGNORED.contains(&name)
-            || (prefix.is_empty() && super::store::IGNORED_ROOT.contains(&name))
-        {
+        let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
+        if crate::snapshot::ignored(&rel) {
             continue;
         }
-        let rel = if prefix.is_empty() { name.to_string() } else { format!("{prefix}/{name}") };
         let path = entry.path();
         let meta = std::fs::symlink_metadata(&path)?;
         if meta.file_type().is_symlink() {

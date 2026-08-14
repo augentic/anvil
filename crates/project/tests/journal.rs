@@ -11,6 +11,11 @@ use project::journal::{
     DEFAULT_WRITER, Event, EventKind, FactEpochRef, append_for, append_one, claim,
     emit_best_effort, handlers, read_union,
 };
+use project::snapshot::SnapshotId;
+
+fn cid(ch: char) -> SnapshotId {
+    SnapshotId::from_digest(&ch.to_string().repeat(64))
+}
 
 const fn layout(root: &std::path::Path) -> Layout<'_> {
     Layout::new(root)
@@ -35,7 +40,7 @@ fn reads_prior_actor_wire() {
     // unparseable lines, so missing aliases would silently drop history.
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();
-    let events_dir = root.join(".emery/events");
+    let events_dir = root.join(".emery/change/events");
     std::fs::create_dir_all(&events_dir).expect("mkdir");
     let claimed = concat!(
         r#"{"timestamp":"2023-11-14T22:13:20Z","actor":"alice","sequence":1,"#,
@@ -118,7 +123,9 @@ fn wave_defer_roundtrip() {
         kind: EventKind::TargetMergeWaveCommitted {
             target: "mock".into(),
             digest: "sha256:abc".into(),
-            slice_name: "auth-login".into(),
+            members: vec!["auth-login".into()],
+            base: cid('a'),
+            result: cid('b'),
             commit_authorization: FactEpochRef {
                 writer: "alice".into(),
                 sequence: 1,
@@ -147,7 +154,9 @@ fn wave_defer_roundtrip() {
         kind: EventKind::TargetMergeWaveCommitted {
             target: "mock".into(),
             digest: "sha256:abc".into(),
-            slice_name: "auth-login".into(),
+            members: vec!["auth-login".into()],
+            base: cid('a'),
+            result: cid('b'),
             commit_authorization: FactEpochRef {
                 writer: "alice".into(),
                 sequence: 1,
@@ -172,7 +181,7 @@ fn append_stamps_writer() {
         .expect("append batch");
     append_for(layout, "operator-a", &[build_started(2, "gamma")]).expect("append one more");
 
-    let path = root.join(".emery/events/operator-a.jsonl");
+    let path = root.join(".emery/change/events/operator-a.jsonl");
     assert!(path.is_file(), "writer file created");
     assert!(!root.join(".emery/journal.jsonl").exists(), "single-file journal is not written");
     let events = read_union(layout).expect("union");
@@ -222,7 +231,7 @@ fn append_uses_default() {
 
     append_one(layout, &build_started(0, "solo")).expect("append");
 
-    let writer_path = root.join(".emery/events").join(format!("{DEFAULT_WRITER}.jsonl"));
+    let writer_path = root.join(".emery/change/events").join(format!("{DEFAULT_WRITER}.jsonl"));
     assert!(writer_path.is_file(), "default writer file");
     assert!(!root.join(".emery/journal.jsonl").exists(), "legacy journal.jsonl is not written");
 
@@ -384,4 +393,38 @@ fn release_clears_live_claim() {
     append_for(layout, "bob", &[claimed(3, "orders-api")]).expect("bob after release");
     let ownership = claim::project(&read_union(layout).expect("union"));
     assert_eq!(ownership.owner(&"orders-api".into()), Some("bob"), "slice free after release");
+}
+
+#[test]
+fn append_refuses_review() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let layout = layout(tmp.path());
+    let event = Event::new(
+        ts(0),
+        EventKind::SystemWaveReviewed {
+            wave: "deliver".into(),
+            handoff_digest: cid('a'),
+        },
+    );
+    let err = append_for(layout, "local", &[event]).expect_err("refused");
+    assert!(err.to_string().contains("journal-event-read-only"), "{err}");
+}
+
+#[test]
+fn review_event_round_trip() {
+    let event = Event {
+        timestamp: ts(0),
+        writer: "local".into(),
+        sequence: 1,
+        kind: EventKind::SystemWaveReviewed {
+            wave: "deliver".into(),
+            handoff_digest: cid('a'),
+        },
+    };
+    let wire = serde_json::to_string(&event).expect("serialize");
+    assert!(wire.contains(r#""event":"system.wave.reviewed""#), "{wire}");
+    assert!(wire.contains(r#""handoff-digest""#), "{wire}");
+    assert_eq!(serde_json::from_str::<Event>(&wire).expect("parse"), event);
+    let digest = event.digest().expect("digest");
+    SnapshotId::parse(digest.as_str()).expect("sha256");
 }

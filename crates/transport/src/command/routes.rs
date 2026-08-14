@@ -6,14 +6,15 @@ use omnia_guest::Model;
 use omnia_guest::api::Provider;
 use omnia_guest::api::command::{BuildError, Completions, Namespace, Router, RouterBuilder, run};
 use omnia_guest::api::invoke::Invoker;
-use project::adapter::Resolver;
+use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
-use project::seam::{Origins, Source, Target, Workspaces};
+use project::profile::Profiles;
+use project::seam::{Ingest, Origins, Source, Target, Workspaces};
 
+use super::change_dir::ChangeDir;
 use super::{
     EmeryProjector, Globals, adapter, archive, journal, plan, slice, source, system, target,
 };
-
 /// One-line application description.
 const ABOUT: &str = "Deterministic primitives for spec-driven development";
 
@@ -36,13 +37,12 @@ pub(super) struct InitArgs {
     pub(super) upgrade: bool,
 }
 
-/// Arguments for `debt` — none.
-#[derive(Clone, Copy, Debug, Args)]
-#[expect(
-    clippy::empty_structs_with_brackets,
-    reason = "clap's `Args` derive requires a braced struct"
-)]
-pub(super) struct DebtArgs {}
+/// Arguments for `debt`.
+#[derive(Clone, Debug, Args)]
+pub(super) struct DebtArgs {
+    #[command(flatten)]
+    pub(super) change_dir: ChangeDir,
+}
 
 #[derive(Clone, Copy)]
 struct NamespaceHelp {
@@ -74,17 +74,17 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
     ),
     NamespaceHelp::new(
         &["slice"],
-        "Read-only slice projections over `.emery/slices/` — `plan refine` owns refinement; the execute loop owns the build → merge phases",
+        "Read-only slice projections over `.emery/change/slices/` — `plan refine` owns refinement; the execute loop owns the build → merge phases",
     ),
     NamespaceHelp::new(&["slice", "model"], "Read-only viewer over a slice's `model.yaml`"),
     NamespaceHelp::new(
         &["archive"],
-        "Slice-archive cache maintenance. The archived slice folders under `.emery/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
+        "Slice-archive cache maintenance. The archived slice folders under `.emery/change/archive/` are a prunable convenience cache; `prune` reclaims disk by retention bound",
     ),
     NamespaceHelp::new(&["plan"], "Executable plan operations — `plan.yaml` lifecycle"),
     NamespaceHelp::new(
         &["journal"],
-        "Workflow journal at `.emery/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
+        "Workflow journal at `.emery/change/events/<writer>.jsonl`. Read-only: `show` merges the per-writer union and projects the closed §Observability event taxonomy; CLI verbs append their own events as a side effect of the operation",
     ),
     NamespaceHelp::new(
         &["system"],
@@ -103,7 +103,17 @@ const NAMESPACE_HELP: &[NamespaceHelp] = &[
 )]
 pub fn router<P>(invoker: Invoker<P>) -> Result<Router<P, Globals>, BuildError>
 where
-    P: Provider + Anchor + Model + Resolver + Source + Target + Workspaces + Origins,
+    P: Provider
+        + Anchor
+        + Model
+        + Resolver
+        + Inventory
+        + Profiles
+        + Source
+        + Target
+        + Workspaces
+        + Ingest
+        + Origins,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -163,15 +173,15 @@ where
         ["source", "survey"],
         source::SurveyArgs,
         ::change::source::Survey,
-        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md` — `plan author` runs this step itself",
-        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `discovery.md` — `plan author` runs this step itself; reach for this verb only to re-survey a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, `leads.md` validation, and the `discovery.md` merge."
+        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `leads.md` — `plan author` runs this step itself",
+        "Debug/breakout: re-run one source adapter's `survey` against a plan-bound source and merge the resulting lead set into `leads.md` — `plan author` runs this step itself; reach for this verb only to re-survey a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed survey orchestration in the engine guest — one call covering the source dispatch, catalog validation, and the `leads.md` merge."
     );
     route!(
         ["source", "extract"],
         source::ExtractArgs,
         ::slice::source::Extract,
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself",
-        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/change/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself",
+        "Debug/breakout: re-run one source adapter's `extract` for one `(source, lead)` pair and persist the resulting Evidence to `.emery/change/slices/<slice>/evidence/<source>.yaml` — the `plan refine` drain runs this step itself; reach for this verb only to re-extract a single source or debug adapter wiring.\n\nResolves `<source>` against `plan.yaml.sources.<key>` (not the adapter name) and drives the bound source adapter's collapsed extract orchestration in the engine guest — one call covering the source dispatch, the typed Evidence validation, and the persist."
     );
     route!(
         ["target", "resolve"],
@@ -183,7 +193,7 @@ where
         ["slice", "list"],
         slice::ListArgs,
         ::slice::handlers::List,
-        "List every slice under `.emery/slices/` with its lifecycle status and target"
+        "List every slice under `.emery/change/slices/` with its lifecycle status and target"
     );
     route!(
         ["slice", "validate"],
@@ -208,8 +218,8 @@ where
         ["archive", "prune"],
         archive::PruneArgs,
         ::slice::handlers::Prune,
-        "Prune archived slice folders under `.emery/archive/` that fall outside the supplied retention bounds",
-        "Prune archived slice folders under `.emery/archive/` that fall outside the supplied retention bounds.\n\nThe archive is a prunable convenience cache, not the system of record — git history of `.emery/specs/` plus the `slice.archive.created` journal entries are. At least one of `--keep` / `--older-than` is required; a folder is pruned when it falls outside the newest-`--keep` window or is older than `--older-than` days."
+        "Prune archived slice folders under `.emery/change/archive/` that fall outside the supplied retention bounds",
+        "Prune archived slice folders under `.emery/change/archive/` that fall outside the supplied retention bounds.\n\nThe archive is a prunable convenience cache, not the system of record — git history of `.emery/specs/` plus the `slice.archive.created` journal entries are. At least one of `--keep` / `--older-than` is required; a folder is pruned when it falls outside the newest-`--keep` window or is older than `--older-than` days."
     );
     route!(
         ["plan", "validate"],
@@ -223,7 +233,7 @@ where
         plan::StatusArgs,
         ::change::plan::handlers::Status,
         "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained`",
-        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-writer fact union. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`) are classified from phase / wave journal events (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
+        "Read-only projection of the plan's execution state into a deterministic `next-action` — `refine|build|merge <slice>`, `stop <reason>`, or `drained` — plus Ready / Authorized milestones (never `approved`).\n\nComputed from `plan.yaml` topology, slice artifacts / phase timestamps, and the per-writer fact union. Stop reasons (`refine-failed`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`, `boundary-escalation`, `refine-budget-exhausted`) are classified from phase / wave journal events and inert boundary proposals (scoped to the active entry's window for in-progress failures; plan-scoped sticky debt for postflight until `plan.merge-postflight.acknowledged`). Writes nothing."
     );
     route!(
         ["plan", "gaps"],
@@ -237,48 +247,48 @@ where
         ["plan", "amend"],
         plan::AmendArgs,
         ::change::plan::handlers::Amend,
-        "Edit non-status fields on an existing plan entry",
-        "Edit non-status fields on an existing plan entry.\n\nThree orthogonal flag families operate on `sources`:\n\n- `--sources <binding>` (with `num_args = 0..`) replaces the slice's `sources` array wholesale.\n- `--add-source <binding>` (repeatable) adds a single binding.\n- `--remove-source <key>` (repeatable) removes a binding by key; fails with `plan-binding-not-found` when no binding matches.\n\n`--add-source` and `--remove-source` apply after `--sources`, so wholesale replacement plus targeted edits can be combined in a single invocation when needed."
+        "Edit a plan entry or apply a retained amendment proposal",
+        "Edit non-status fields on an existing plan entry, or apply a retained amendment with `--proposal <digest>`.\n\n`--proposal` compare-and-sets expected planning revisions, accepted CIDs, and the committed-leaf set; refuses live affected claims or waves; then reprojects `plan.yaml` from the decomposition. Envelope and definition-revision documents are not amendments.\n\nThree orthogonal flag families operate on `sources`:\n\n- `--sources <binding>` (with `num_args = 0..`) replaces the slice's `sources` array wholesale.\n- `--add-source <binding>` (repeatable) adds a single binding.\n- `--remove-source <key>` (repeatable) removes a binding by key; fails with `plan-binding-not-found` when no binding matches.\n\n`--add-source` and `--remove-source` apply after `--sources`, so wholesale replacement plus targeted edits can be combined in a single invocation when needed. Once `decomposition.yaml` exists, topology edits reproject through that tree or refuse when the hierarchy edit is ambiguous."
     );
     route!(
         ["plan", "remove"],
         plan::RemoveArgs,
         ::change::plan::handlers::Remove,
-        "Remove a plan entry while the plan is still replaceable (every entry still projects `pending`). Plan-review curation only — defers a lead without re-surveying `discovery.md`"
+        "Remove a plan entry while the plan is still replaceable (every entry still projects `pending`). Plan-review curation only — defers a lead without re-surveying `leads.md`"
     );
     route!(
         ["plan", "drop"],
         plan::DropArgs,
         ::change::plan::handlers::Drop,
         "Abandon one plan entry's slice without merging: stamp it `dropped` and archive the slice tree",
-        "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
+        "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/change/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
     );
     route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint",
-        "Author a plan end-to-end in the engine guest: scaffold `plan.yaml`, survey every bound source into `discovery.md`, reconcile the leads into `plan.yaml.slices[]` through the judgment leg, persist the review prose (`change.md`, `discovery.md`'s `## Summary` and `## Source inventory`), validate, and exit with the literal execute hint.\n\nWhen the baseline carries deferred debt, `change.md` also renders the carried-debt inventory (the same backlog `emery debt` projects), so a corrective change is scoped with it in view. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` recreates the plan unconditionally, whatever its entry statuses. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Bind a reviewed handoff, decompose it, and publish `decomposition.yaml` + `plan.yaml`",
+        "Bind a reviewed handoff, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together.\n\nRequires `--from <definition-home>` and `--wave <id>`. Copies the handoff and review envelopes under `imports/`, ingests target and source locators, pins adapters, decomposes the bound catalog, and records the canonical discovery, leads, and decomposition digests. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` rebinds the same reviewed handoff. Intent arrives only through the handoff — there is no `--intent` or `--source` authoring flag. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "refine"],
         plan::RefineArgs,
         ::change::plan::handlers::Refine,
         "Drain refinement for a closed plan: extract + synthesize every targeted in-scope leaf in dependency order, write per-slice refinement manifests, and stop before any code work",
-        "Drain refinement for a closed plan in the engine guest — the specification stage between `plan author` and `plan execute` (RFC-91).\n\nWalks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts, and atomically writes `refinement.yaml`. Fresh leaves are skipped, so re-running resumes missing or stale work; the drain stops on the first failed refinement (exit 2, `plan-refine-stopped`).\n\nRepeatable `--slice <name>` targets specific leaves plus the stale-or-missing predecessor closure they need. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs — inspect them with `emery plan gaps`. No target build operation, workspace, wave, or authorization epoch is created; the loop holds the create-exclusive `.emery/guest.lock` marker while it drains."
+        "Drain refinement for a closed plan in the engine guest — the specification stage between `plan author` and `plan execute` (RFC-91).\n\nWalks in-scope plan entries in topological `depends-on` order and, for every targeted leaf whose refinement manifest is missing or stale, extracts each bound source, synthesizes and validates the slice artifacts, and atomically writes `refinement.yaml`. Fresh leaves are skipped, so re-running resumes missing or stale work; the drain stops on the first failed refinement (exit 2, `plan-refine-stopped`).\n\nRepeatable `--slice <name>` targets specific leaves plus the stale-or-missing predecessor closure they need. Successful refinement may carry `[unknown]` / `[conflict]` / `[divergence]` review outputs — inspect them with `emery plan gaps`. No target build operation, workspace, wave, or authorization epoch is created; the loop holds the create-exclusive `.emery/change/guest.lock` marker while it drains."
     );
     route!(
         ["plan", "execute"],
         plan::ExecuteArgs,
         ::change::plan::handlers::Execute,
         "Run the drained execute loop: at start append `plan.execute.started` (authorization epoch) covering exact per-leaf refinement digests, then build → merge until `drained` or a stop (exit 2, `plan-execute-stopped`)",
-        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests. Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows are dispositioned at the gate (one `gap.deferred` fact each) and build proceeds — nothing blocks. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
+        "Run the drained execute loop in the engine guest.\n\nRequires a fresh refinement manifest for every in-scope leaf it may build — execute never refines (RFC-91): a missing or stale manifest is a typed `refinement-required` stop pointing at `emery plan refine`. At start appends `plan.execute.started` with typed `closed-plan` coverage — exact per-leaf refinement digests. Then advance → build → merge per entry until the plan projects `drained` or a stop condition halts it (exit 2, `plan-execute-stopped`).\n\nBefore each build the gap gate joins durable dispositions from the deferral fact union: deferred rows leave build scope; open `[unknown]` / `[conflict]` rows are dispositioned at the gate (one `gap.deferred` fact each) and build proceeds — nothing blocks. Guest-only through the composed-deployment leg: the loop holds the create-exclusive `.emery/change/guest.lock` marker (guest-vs-guest refusal only) while it drives the phases."
     );
     route!(
         ["plan", "archive"],
         plan::ArchiveArgs,
         ::change::plan::handlers::Archive,
-        "Archive the current plan to `.emery/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
+        "Archive the current plan to `.emery/change/archive/plans/<name>-<YYYYMMDD>.yaml` and sweep the snapshot objects whose GC roots belonged only to the archived change"
     );
     route!(
         ["debt"],
@@ -319,8 +329,8 @@ where
         ["journal", "show"],
         journal::ShowArgs,
         project::journal::handlers::Show,
-        "Read events from `.emery/events/<writer>.jsonl` (union order)",
-        "Read events from `.emery/events/<writer>.jsonl`, merging every writer file in `(timestamp, writer, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, writer, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
+        "Read events from `.emery/change/events/<writer>.jsonl` (union order)",
+        "Read events from `.emery/change/events/<writer>.jsonl`, merging every writer file in `(timestamp, writer, sequence)` order.\n\nRead-only: emits no journal event and writes nothing. Text mode prints the canonical JSONL lines — one `{ timestamp, writer, sequence, event, payload }` object per event, pipeable — while `--format json` wraps the same events in the standard envelope. Blank and unparseable lines are skipped, matching every other journal reader; a missing events directory yields no events."
     );
     for help in NAMESPACE_HELP {
         router = router.namespace(help.path.iter().copied(), help.metadata);
@@ -330,8 +340,8 @@ where
 
 macro_rules! convert {
     // The destructuring pattern is exhaustive on purpose: a new clap
-    // flag missing from the field list is a compile error, not a
-    // silently dropped argument.
+    // flag missing from the field list is a compile error. `; drop`
+    // names launcher-only flags (`--change-dir`).
     ($args:path => $input:path {}) => {
         impl TryFrom<$args> for $input {
             type Error = error::Error;
@@ -352,32 +362,60 @@ macro_rules! convert {
             }
         }
     };
+    ($args:path => $input:path {} ; drop $($drop:ident),+) => {
+        impl TryFrom<$args> for $input {
+            type Error = error::Error;
+
+            #[expect(
+                clippy::unneeded_field_pattern,
+                reason = "named drops keep clap Args exhaustive; `..` would swallow a new flag"
+            )]
+            fn try_from(args: $args) -> Result<Self, Self::Error> {
+                let $args { $($drop: _,)+ } = args;
+                Ok(Self {})
+            }
+        }
+    };
+    ($args:path => $input:path { $($field:ident),* $(,)? } ; drop $($drop:ident),+) => {
+        impl TryFrom<$args> for $input {
+            type Error = error::Error;
+
+            #[expect(
+                clippy::unneeded_field_pattern,
+                reason = "named drops keep clap Args exhaustive; `..` would swallow a new flag"
+            )]
+            fn try_from(args: $args) -> Result<Self, Self::Error> {
+                let $args { $($field,)* $($drop: _,)+ } = args;
+                Ok(Self { $($field),* })
+            }
+        }
+    };
 }
 
 convert!(adapter::AddArgs => project::adapter::handlers::AddInput { component, project_dir });
 convert!(adapter::UpgradeArgs => project::adapter::handlers::UpgradeInput { name, all, project_dir });
 convert!(source::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
 convert!(target::ResolveArgs => project::adapter::handlers::ResolveInput { value, project_dir });
-convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan });
-convert!(source::ExtractArgs => ::slice::source::ExtractInput { source, lead, slice });
-convert!(slice::ListArgs => ::slice::handlers::ListInput {});
-convert!(slice::ValidateArgs => ::slice::handlers::ValidateInput { name });
-convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name });
-convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name });
-convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run });
-convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {});
-convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {});
-convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {});
-convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice });
-convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {});
-convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override });
-convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace });
-convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name });
-convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason });
-convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, sources, intent, force });
-convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force });
-convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit });
-convert!(DebtArgs => ::slice::handlers::DebtInput {});
+convert!(source::SurveyArgs => ::change::source::SurveyInput { source, plan, focus } ; drop change_dir);
+convert!(source::ExtractArgs => ::slice::source::ExtractInput { source, lead, slice } ; drop change_dir);
+convert!(slice::ListArgs => ::slice::handlers::ListInput {} ; drop change_dir);
+convert!(slice::ValidateArgs => ::slice::handlers::ValidateInput { name } ; drop change_dir);
+convert!(slice::ProvenanceArgs => ::slice::handlers::ProvenanceInput { name } ; drop change_dir);
+convert!(slice::ModelShowArgs => ::slice::handlers::ModelShowInput { name } ; drop change_dir);
+convert!(archive::PruneArgs => ::slice::handlers::PruneInput { keep, older_than, dry_run } ; drop change_dir);
+convert!(plan::ValidateArgs => ::change::plan::handlers::ValidateInput {} ; drop change_dir);
+convert!(plan::StatusArgs => ::change::plan::handlers::StatusInput {} ; drop change_dir);
+convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {} ; drop change_dir);
+convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice } ; drop change_dir);
+convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {} ; drop change_dir);
+convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override, target } ; drop change_dir);
+convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, proposal, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace } ; drop change_dir);
+convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name } ; drop change_dir);
+convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason } ; drop change_dir);
+convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, from, wave, force } ; drop change_dir);
+convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force } ; drop change_dir);
+convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit } ; drop change_dir);
+convert!(DebtArgs => ::slice::handlers::DebtInput {} ; drop change_dir);
 
 // Deliberately not `convert!`: `--dir` is deployment-consumed — the
 // launcher anchors the `.` mount at it (`selectors::system_request`),

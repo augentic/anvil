@@ -65,16 +65,19 @@ A case is a data directory under the composition root's `cases/` tree —
 fresh sandbox. Two kinds exist:
 
 - **`kind = "workflow"`** — the operator rhythm over real verbs:
-  `init <target>`, `plan author <change> [--intent] [--source k=v …]`,
-  then (past `--until plan`) the genuine drained `plan execute`
-  (running it is the approval), and (at `--until finalize`) `plan archive`. The default
-  stop is `execute`; `case.toml`'s `until` sets a case default and
-  `--until` overrides per run. An optional `clone = { url, dest }`
-  (mutually exclusive with `fixture`) shallow-clones an upstream tree
-  into the case's own `fixture/<dest>` on first run (stripping
-  `.git`) and reuses that gitignored cache afterwards — for source
-  trees that cannot ship as committed fixtures; delete the cached
-  tree to refresh the snapshot.
+  `plan author <change> --from <definition> --wave <id>`, then (past
+  `--until plan`) `plan refine`, then (past `--until refine`) the
+  genuine drained `plan execute` (running it is the approval), and
+  (at `--until finalize`) `plan archive`. `case.toml` supplies a
+  definition home (`definition` or sibling `definition/`) plus `wave`;
+  `intent` / `[sources]` mint a degenerate home when no fixture is
+  present. The default stop is `execute`; `case.toml`'s `until` sets a
+  case default and `--until` overrides per run. An optional
+  `clone = { url, dest }` (mutually exclusive with `fixture`)
+  shallow-clones an upstream tree into the case's own `fixture/<dest>`
+  on first run (stripping `.git`) and reuses that gitignored cache
+  afterwards — for source trees that cannot ship as committed
+  fixtures; delete the cached tree to refresh the snapshot.
 - **`kind = "build"`** — one `emery slice build <slice>` against a
   committed refined fixture (valid project + slice metadata; the runner
   never stamps lifecycle state), then the built gates.

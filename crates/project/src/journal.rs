@@ -1,6 +1,7 @@
-//! Workflow journal events: append-only newline-delimited JSON, one
-//! file per writer under a `JournalRoot` (`.emery/events/` for the
-//! change home, `<system>/events/` for an RFC-104 definition home).
+//! Workflow journal events.
+//!
+//! Append-only NDJSON per writer under a [`JournalRoot`]; readers
+//! union by `(timestamp, writer, sequence)`.
 
 mod append;
 pub mod claim;
@@ -18,7 +19,7 @@ pub use self::append::{append_batch, append_for, append_for_at, append_one};
 pub use self::emit::{bracket, emit_best_effort};
 pub use self::event::{
     AuthorityOverrideAction, ClosedPlanCoverage, DeferredMember, Event, EventKind, FactEpochRef,
-    IdentityMap,
+    IdentityMap, ParkReason,
 };
 use crate::config::Layout;
 
@@ -27,9 +28,9 @@ pub const DEFAULT_WRITER: &str = "local";
 
 /// One journal's events directory.
 ///
-/// The product change home journals at `.emery/events/`; an RFC-104
-/// definition home journals at `<system>/events/`. Carrying the
-/// events directory instead of a product [`Layout`] keeps the two
+/// The product change home journals at `.emery/change/events/`; an
+/// RFC-104 definition home journals at `<system>/events/`. Carrying
+/// the events directory instead of a product [`Layout`] keeps the two
 /// roots separate while sharing the append/read kernels and the
 /// RFC-86 writer/sequence union semantics.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,7 +85,7 @@ pub fn writer_id() -> String {
 }
 
 /// Absolute path to one writer's log at
-/// `<project_dir>/.emery/events/<writer>.jsonl`.
+/// `<project_dir>/.emery/change/events/<writer>.jsonl`.
 #[must_use]
 pub(crate) fn writer_log_path(layout: Layout<'_>, writer: &str) -> PathBuf {
     layout.writer_events_path(writer)
@@ -100,7 +101,7 @@ pub fn read_union_at(root: &JournalRoot) -> Result<Vec<Event>, Error> {
 }
 
 /// Refuse writer ids that cannot be a single path segment under
-/// `.emery/events/`.
+/// `.emery/change/events/`.
 pub(crate) fn validate_writer(writer: &str) -> Result<(), Error> {
     if writer.is_empty()
         || writer == "."
@@ -121,7 +122,7 @@ pub(crate) fn validate_writer(writer: &str) -> Result<(), Error> {
 }
 
 /// Read every parseable [`Event`] from every per-writer log under
-/// `.emery/events/`, ordered by `(timestamp, writer, sequence)`.
+/// `.emery/change/events/`, ordered by `(timestamp, writer, sequence)`.
 ///
 /// A missing events directory yields an empty vector. Blank lines and
 /// lines that fail to parse as an [`Event`] are skipped rather than

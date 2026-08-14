@@ -11,10 +11,10 @@
 </div>
 
 
-The same rhythm runs for a one-slice change and a twelve-slice change alike. For multi-source slices, bind additional sources at plan time:
+The same rhythm runs for a one-slice change and a twelve-slice change alike. Author from a reviewed handoff:
 
 ```text
-/emery:plan <name> source legacy=typescript:./vendor/monolith source docs=documentation:./design-notes
+/emery:plan <name> --from <definition-home> --wave <id>
 ```
 
 ## All skills
@@ -22,24 +22,29 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. For
 | Skill                    | Purpose                                                                                        |
 | ------------------------ | ---------------------------------------------------------------------------------------------- |
 | `/emery:init`             | One-time project setup                                                                         |
-| `/emery:plan`             | Survey sources, propose `slices[]`, exit for operator review                                 |
+| `/emery:plan`             | Bind a reviewed handoff (`--from` / `--wave`), decompose, exit for operator review |
 | `/emery:refine`           | Drain specification refinement over the closed plan, stop before code work (`emery plan refine`) |
 | `/emery:execute`          | Drive the per-slice build → merge loop (`emery plan execute` — opens the authorization epoch over the refinement digests) |
 | `/emery:status`           | Report where the plan stands and the literal next command (read-only)                          |
 | `/emery:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
+| `/emery:system-survey`    | Survey a definition home's declared coverage and correlate the `as-is` architecture           |
+| `/emery:system-plan`      | Propose the initial architecture once, then reproject views and wave handoffs                 |
+| `/emery:system-review`    | Record architectural authority over one exact wave handoff                                    |
 
 ## Artifacts
 
 | Artifact            | Question                            | Location                                                          |
 | ------------------- | ----------------------------------- | ----------------------------------------------------------------- |
-| `change.md`         | Why is the change happening?        | `change.md` (project root)                                        |
-| `plan.yaml`         | Which slices, in what order?        | `plan.yaml` (project root)                                        |
-| `discovery.md`      | What leads did sources surface? | `discovery.md` (project root)                                     |
-| `proposal.md`       | Why does this slice exist?          | `.emery/slices/<name>/proposal.md`                              |
-| `spec.md`           | What must the system do?            | `.emery/slices/<name>/specs/<domain>/spec.md`                     |
-| `design.md`         | How will it be implemented?         | `.emery/slices/<name>/design.md`                                |
-| `tasks.md`          | In what sequence?                   | `.emery/slices/<name>/tasks.md`                                 |
-| `evidence/<key>.yaml` | What did this source say?         | `.emery/slices/<name>/evidence/<source>.yaml`               |
+| `change.md`         | Why is the change happening?        | `.emery/change/change.md`                                         |
+| `plan.yaml`         | Which slices, in what order?        | `.emery/change/plan.yaml`                                         |
+| `discovery.yaml`    | What did the reviewed handoff pin?  | `.emery/change/discovery.yaml`                                    |
+| `leads.md`          | What leads did sources surface?     | `.emery/change/leads.md`                                          |
+| `decomposition.yaml`| How do conflict domains nest?       | `.emery/change/decomposition.yaml`                                |
+| `proposal.md`       | Why does this slice exist?          | `.emery/change/slices/<name>/proposal.md`                              |
+| `spec.md`           | What must the system do?            | `.emery/change/slices/<name>/specs/<domain>/spec.md`                     |
+| `design.md`         | How will it be implemented?         | `.emery/change/slices/<name>/design.md`                                |
+| `tasks.md`          | In what sequence?                   | `.emery/change/slices/<name>/tasks.md`                                 |
+| `evidence/<key>.yaml` | What did this source say?         | `.emery/change/slices/<name>/evidence/<source>.yaml`               |
 
 ## Lifecycle states (projected)
 
@@ -66,9 +71,10 @@ emery source resolve <name>                            # resolve a source adapte
 emery target resolve <value>                           # validate a target adapter (name, path, or URL)
 
 # Plan management
-emery plan author <plan-name> --source <key>=<adapter>:<path>    # scaffold + survey + reconcile + validate; exits for review (--force replaces a replaceable plan)
-emery plan add <entry> --sources <key>=<lead>
+emery plan author <name> --from <definition-home> --wave <id>   # bind + decompose + publish; exits for review (--force rebinds the same handoff)
+emery plan add <entry> --target <key> --sources <key>=<lead>
 emery plan amend <entry> --add-source <key>=<lead> --remove-source <key> --divergence accepted
+emery plan amend --proposal <digest>                           # apply a retained amendment
 emery plan remove <entry>                                  # pre-execution deferral (replaceable plan only)
 emery plan drop <entry> [--reason "..."]               # abandon a refined slice without merging
 emery plan refine [--slice <slice>]...                 # specification drain: extract + synthesize + refinement.yaml per leaf
@@ -77,6 +83,12 @@ emery plan status                                      # read-only next-action +
 emery plan gaps                                        # typed gap inventory with open|deferred dispositions
 emery plan archive                                     # archive the drained plan (prints the carried-debt summary)
 emery debt                                             # baseline debt projection (carried unknown/conflict backlog)
+
+# Definition loop (RFC-104)
+emery system survey [--dir <definition-home>]          # coverage-accounted estate survey + as-is correlation
+emery system plan [--dir <definition-home>]            # initial architecture proposal + handoff reprojection
+emery system review <wave> --handoff <digest>          # append system.wave.reviewed
+emery system status [--dir <definition-home>]          # read-only next-action projection
 
 # Slice projections (read-only)
 emery slice list                                       # every slice with status + target
@@ -107,19 +119,23 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
 ```text
 <project-root>/
 ├── AGENTS.md             # generated agent guidance with operator-editable prose outside fences
-├── change.md             # operator brief (per active change)
-├── plan.yaml             # change plan
-├── discovery.md          # plan-time lead inventory
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .emery/
     ├── project.yaml      # project config (target, sources, emery-version)
-    ├── guest.lock        # lock held by a running plan refine / plan execute (a second driver gets guest-marker-held)
     ├── scratch/          # transient per-run working state (gitignored)
-    ├── slices/           # active slices (proposal/spec/design/tasks + evidence/ + refinement.yaml + builds/)
-    ├── targets/          # one-member wave manifests
     ├── specs/            # merged baseline
-    ├── events/           # per-writer fact logs (<writer>.jsonl)
-    └── archive/          # finalized plans and merged or dropped slices
+    └── change/           # in-place change home
+        ├── guest.lock    # lock held by a running plan refine / plan execute (a second driver gets guest-marker-held)
+        ├── plan.yaml     # change plan
+        ├── change.md     # operator brief
+        ├── discovery.yaml
+        ├── leads.md      # canonical lead catalog
+        ├── decomposition.yaml
+        ├── planning/     # retained amendments under proposals/
+        ├── slices/       # active slices (proposal/spec/design/tasks + evidence/ + refinement.yaml + builds/)
+        ├── targets/      # one-member wave manifests
+        ├── events/       # per-writer fact logs (<writer>.jsonl)
+        └── archive/      # finalized plans and merged or dropped slices
 ```
 
 The regenerable adapter cache lives outside the working tree under the Emery home (`$EMERY_HOME/cache/<project-id>/`, default `~/.emery`). See [Directory layout](directory-layout.md) for the full tree.

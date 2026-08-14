@@ -61,10 +61,28 @@ fn execute_codes_hint() {
     // The RFC-86 execute refusals are the operator's main exit-2
     // surface; each carries a recovery hint mirroring
     // docs/reference/diagnostics.md.
-    for (code, expect) in
-        [("plan-epoch-stale", "emery plan execute"), ("guest-marker-held", ".emery/guest.lock")]
-    {
+    for (code, expect) in [
+        ("plan-epoch-stale", "emery plan execute"),
+        ("guest-marker-held", ".emery/change/guest.lock"),
+    ] {
         let err = Error::validation_failed(code, "rule", "detail");
+        let hint = err.hint().unwrap_or_else(|| panic!("{code} carries a hint"));
+        assert!(hint.contains(expect), "{code} hint names the recovery gesture: {hint}");
+    }
+}
+
+#[test]
+fn closed_plan_codes_hint() {
+    for (code, expect) in [
+        ("plan-discovery-mismatch", "emery plan author"),
+        ("plan-definition-stale", "emery plan author"),
+        ("plan-epoch-required", "emery plan execute"),
+        ("target-base-freeze-detached", "accepted CID"),
+    ] {
+        let err = Error::Diag {
+            code,
+            detail: "detail".into(),
+        };
         let hint = err.hint().unwrap_or_else(|| panic!("{code} carries a hint"));
         assert!(hint.contains(expect), "{code} hint names the recovery gesture: {hint}");
     }

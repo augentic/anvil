@@ -43,8 +43,16 @@ pub async fn run(
     let sandbox = sandbox.context("this eval composition has no sandbox")?;
     let cases = anchored(&workspace_root, cases);
     let sandbox = anchored(&workspace_root, sandbox);
-    case::run(&cases, &sandbox, args.case.as_deref(), args.until, args.restart, &catalog, &model)
-        .await
+    Box::pin(case::run(
+        &cases,
+        &sandbox,
+        args.case.as_deref(),
+        args.until,
+        args.restart,
+        &catalog,
+        &model,
+    ))
+    .await
 }
 
 /// The case id argv names, when it parses as an eval invocation

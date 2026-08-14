@@ -1,12 +1,12 @@
 //! Freshness projection over a recorded refinement manifest.
 //!
-//! Recomputes inputs and bundle digests against the live trees;
-//! `profile` / `observations` / `target-guidance` stay recorded-only.
+//! Recomputes planning, profile, baseline, sources, predecessors, and
+//! bundle; `observations` / `target-guidance` stay recorded-only.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-use artifacts::discovery::Lead;
+use artifacts::leads::Lead;
 use diagnostics::{Artifact, Diagnostic, DiagnosticKind, DiagnosticSource, Severity};
 use error::Error;
 
@@ -14,7 +14,7 @@ use super::{Kind, Manifest, VERSION, file_digest};
 use crate::config::{Layout, ProjectConfig};
 use crate::journal::{self, EventKind};
 use crate::plan::{
-    Entry, Plan, Projections, SourceBinding, contributing_leads, dir_cid, source_cid,
+    Decomposition, Entry, Plan, Projections, SourceBinding, contributing_leads, dir_cid, source_cid,
 };
 use crate::snapshot::SnapshotId;
 
@@ -142,13 +142,12 @@ pub fn freshness(
 
 /// Project the freshness of `entry`'s recorded refinement manifest.
 ///
-/// `inventory` is the full `discovery.md` lead set; `live` memoizes
-/// shared inputs across leaves. Recomputes the planning projections,
-/// baseline, sources, predecessors (an archived manifest counts,
-/// RFC-91 D3), spec membership, and bundle digests; an unparseable
-/// manifest is stale, not an error. The baseline also accepts the
-/// newest journaled post-merge digest (D4), so plan-local wave
-/// commits never stale unbuilt sibling manifests.
+/// `inventory` is the full `leads.md` catalog; `live` memoizes shared
+/// inputs across leaves. Recomputes planning, profile, baseline, sources,
+/// predecessors (archived manifests count), spec membership, and bundle
+/// digests; an unparseable manifest is stale, not an error. The baseline
+/// also accepts the newest journaled post-merge digest (D4), so sibling
+/// wave commits do not stale unbuilt manifests.
 ///
 /// # Errors
 ///
@@ -192,7 +191,16 @@ pub fn freshness_with(
             .push(format!("manifest names slice `{}`, expected `{}`", manifest.slice, entry.name));
     }
 
-    planning(plan, entry, inventory, &manifest, live.target(layout)?.as_deref(), &mut reasons);
+    planning(
+        layout,
+        plan,
+        entry,
+        inventory,
+        &manifest,
+        live.target(layout)?.as_deref(),
+        &mut reasons,
+    );
+    profile(plan, entry, &manifest, &mut reasons);
     baseline(layout, &manifest, live, &mut reasons)?;
     sources(layout, plan, entry, &manifest, live, &mut reasons)?;
     dependencies(layout, &manifest, &mut reasons)?;
@@ -242,7 +250,7 @@ pub fn findings(name: &str, freshness: &Freshness) -> Vec<Diagnostic> {
 /// newest archive entry when the live slice tree has none.
 ///
 /// Merge and `plan drop` move the whole tree — `refinement.yaml`
-/// included — to `.emery/archive/<stamp>-<slice>/`, and an accepted
+/// included — to `.emery/change/archive/<stamp>-<slice>/`, and an accepted
 /// predecessor satisfies "predecessor refined" a fortiori (RFC-91
 /// D3). `None` only when neither a live nor an archived manifest
 /// exists.
@@ -276,15 +284,34 @@ pub fn latest_archive(archive_dir: &Path, slice: &str) -> Option<PathBuf> {
     best.map(|name| archive_dir.join(name))
 }
 
+/// Recompute the bound-target profile digest from `plan.yaml.targets`.
+fn profile(plan: &Plan, entry: &Entry, manifest: &Manifest, reasons: &mut Vec<String>) {
+    let live = super::live_profile(plan, entry);
+    if manifest.inputs.profile != live {
+        reasons.push(format!(
+            "profile `{}` drifted; live digest is `{live}`",
+            manifest.inputs.profile
+        ));
+    }
+}
+
 /// Recompute the three planning projections. A failed recompute (a
 /// contributing lead or plan-level source binding no longer resolves)
 /// is itself staleness: the covered planning input has changed shape.
 fn planning(
-    plan: &Plan, entry: &Entry, inventory: &[Lead], manifest: &Manifest, target: Option<&str>,
-    reasons: &mut Vec<String>,
+    layout: Layout<'_>, plan: &Plan, entry: &Entry, inventory: &[Lead], manifest: &Manifest,
+    target: Option<&str>, reasons: &mut Vec<String>,
 ) {
-    let live = contributing_leads(entry, inventory)
-        .and_then(|contributing| Projections::compute(plan, entry, &contributing, target));
+    let tree = match Decomposition::load_opt(&layout.decomposition_path()) {
+        Ok(tree) => tree,
+        Err(err) => {
+            reasons.push(format!("planning projections no longer compute: {err}"));
+            return;
+        }
+    };
+    let live = contributing_leads(entry, inventory).and_then(|contributing| {
+        Projections::compute_with(plan, entry, &contributing, target, tree.as_ref())
+    });
     match live {
         Ok(live) => {
             let recorded = &manifest.inputs.planning;
@@ -341,11 +368,14 @@ fn sources(
     }
     for binding in &entry.sources {
         let key = binding.source();
-        let Some(recorded) = manifest.inputs.sources.get(key) else {
-            reasons.push(format!("bound source `{key}` has no recorded digest"));
+        let Some(plan_binding) = plan.sources.get(key) else {
             continue;
         };
-        let Some(plan_binding) = plan.sources.get(key) else {
+        if plan_binding.value.is_some() {
+            continue;
+        }
+        let Some(recorded) = manifest.inputs.sources.get(key) else {
+            reasons.push(format!("bound source `{key}` has no recorded digest"));
             continue;
         };
         let current = live.source(layout, key, plan_binding)?;
