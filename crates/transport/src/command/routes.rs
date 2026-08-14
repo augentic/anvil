@@ -241,8 +241,8 @@ where
         ["plan", "amend"],
         plan::AmendArgs,
         ::change::plan::handlers::Amend,
-        "Edit non-status fields on an existing plan entry",
-        "Edit non-status fields on an existing plan entry.\n\nThree orthogonal flag families operate on `sources`:\n\n- `--sources <binding>` (with `num_args = 0..`) replaces the slice's `sources` array wholesale.\n- `--add-source <binding>` (repeatable) adds a single binding.\n- `--remove-source <key>` (repeatable) removes a binding by key; fails with `plan-binding-not-found` when no binding matches.\n\n`--add-source` and `--remove-source` apply after `--sources`, so wholesale replacement plus targeted edits can be combined in a single invocation when needed."
+        "Edit a plan entry or apply a retained amendment proposal",
+        "Edit non-status fields on an existing plan entry, or apply a retained amendment with `--proposal <digest>`.\n\n`--proposal` compare-and-sets expected planning revisions, accepted CIDs, and the committed-leaf set; refuses live affected claims or waves; then reprojects `plan.yaml` from the decomposition. Envelope and definition-revision documents are not amendments.\n\nThree orthogonal flag families operate on `sources`:\n\n- `--sources <binding>` (with `num_args = 0..`) replaces the slice's `sources` array wholesale.\n- `--add-source <binding>` (repeatable) adds a single binding.\n- `--remove-source <key>` (repeatable) removes a binding by key; fails with `plan-binding-not-found` when no binding matches.\n\n`--add-source` and `--remove-source` apply after `--sources`, so wholesale replacement plus targeted edits can be combined in a single invocation when needed. Once `decomposition.yaml` exists, topology edits reproject through that tree or refuse when the hierarchy edit is ambiguous."
     );
     route!(
         ["plan", "remove"],
@@ -375,7 +375,7 @@ convert!(plan::GapsArgs => ::change::plan::handlers::GapsInput {} ; drop change_
 convert!(plan::RefineArgs => ::change::plan::handlers::RefineInput { slice } ; drop change_dir);
 convert!(plan::ExecuteArgs => ::change::plan::handlers::ExecuteInput {} ; drop change_dir);
 convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on, sources, description, context, authority_override, target } ; drop change_dir);
-convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace } ; drop change_dir);
+convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, proposal, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace } ; drop change_dir);
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name } ; drop change_dir);
 convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason } ; drop change_dir);
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, from, wave, force } ; drop change_dir);

@@ -179,7 +179,14 @@ pub struct AddArgs {
 pub struct AmendArgs {
     /// Kebab-case plan entry (slice) name — the row under `plan.yaml.slices[]`
     /// being edited. There is one active plan file; this is not the plan name.
-    pub name: String,
+    /// Required unless `--proposal` is set.
+    #[arg(required_unless_present = "proposal")]
+    pub name: Option<String>,
+    /// Apply a retained amendment proposal by content digest
+    /// (`sha256:<64 hex>`). Compare-and-sets expected frontiers and
+    /// reprojects `plan.yaml`. Cannot combine with entry-edit flags.
+    #[arg(long = "proposal", value_name = "DIGEST")]
+    pub proposal: Option<String>,
     /// Replace depends-on. Pass `--depends-on` (with no value) to clear the
     /// field; omit the flag to leave it unchanged. Repeat or comma-separate
     /// to supply multiple values.

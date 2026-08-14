@@ -537,6 +537,14 @@ pub enum EventKind {
         /// The synthesized gate-time reason.
         reason: String,
     },
+    /// `emery plan amend --proposal` applied a retained amendment.
+    /// Invalidates the old closed-plan epoch by changing `plan.yaml`;
+    /// status skips the digest as unapplied.
+    #[serde(rename = "plan.amend.applied", rename_all = "kebab-case")]
+    PlanAmendApplied {
+        /// Content digest of the applied proposal document.
+        digest: SnapshotId,
+    },
     /// Refinement parked this leaf: an inert boundary proposal, or
     /// exhausted resurvey / re-decomposition budgets. No `refined`
     /// transition and no synthesis promotion.

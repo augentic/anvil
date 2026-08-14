@@ -1,7 +1,7 @@
-//! `plan drop` — abandon one plan entry's slice without merging.
+//! Abandon one plan entry's slice without merging.
 //!
 //! Stamps `dropped_at` and archives the slice tree; the entry stays on
-//! the plan and projects the `slice-dropped` stop (RFC-86 D24).
+//! the plan (in-scope exclusion) and the decomposition is unchanged.
 
 use std::io::Write;
 use std::path::PathBuf;

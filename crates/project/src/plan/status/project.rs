@@ -284,7 +284,10 @@ fn resume_point(
             | StopReason::MergeConflict
             | StopReason::MergePostflightFailed
             | StopReason::MergeIncomplete => Some("emery plan execute".to_string()),
-            StopReason::SliceDropped | StopReason::Stuck | StopReason::BoundaryEscalation => None,
+            StopReason::SliceDropped | StopReason::Stuck => None,
+            StopReason::BoundaryEscalation => {
+                stop.detail.as_ref().map(|digest| format!("emery plan amend --proposal {digest}"))
+            }
         }),
     }
 }

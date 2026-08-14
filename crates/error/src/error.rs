@@ -162,6 +162,21 @@ impl Error {
                 _ => None,
             },
             Self::Validation { code, .. } => match code.as_ref() {
+                "plan-proposal-stale" | "plan-proposal-live" | "plan-proposal-preserve" => Some(
+                    "quiesce affected claims and waves, then re-run `emery plan amend --proposal <digest>` against a fresh proposal",
+                ),
+                "plan-proposal-kind" => Some(
+                    "envelope and definition-revision documents are not amendments; revise the reviewed handoff or wait for RFC-96",
+                ),
+                "plan-proposal-cycle" => Some(
+                    "the candidate tree must stay acyclic; author a new proposal from the live decomposition",
+                ),
+                "plan-mutation-ambiguous" => Some(
+                    "re-run `emery plan author --force` for a hierarchy edit, or apply a retained proposal",
+                ),
+                "plan-ownership-overlap" => Some(
+                    "quiesce affected work, then apply the inert ownership proposal with `emery plan amend --proposal <digest>`",
+                ),
                 "init-adapter-required" => {
                     Some("`emery init <adapter>` scaffolds the project.\nsee: docs/init.md")
                 }

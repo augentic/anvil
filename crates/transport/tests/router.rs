@@ -126,7 +126,9 @@ async fn globals_and_completions() {
 
     let help = router.execute(["emery", "plan", "amend", "--help"]).await;
     assert_eq!(help.exit, 0);
-    assert!(String::from_utf8_lossy(&help.stdout).contains("--allow-composition-replace"));
+    let help = String::from_utf8_lossy(&help.stdout);
+    assert!(help.contains("--allow-composition-replace"));
+    assert!(help.contains("--proposal"));
 
     let completions = router.execute(["emery", "completions", "zsh"]).await;
     assert_eq!(completions.exit, 0);

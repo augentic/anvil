@@ -41,7 +41,8 @@ async fn depend(session: &Session, slice: &str, on: &str) {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: slice.to_string(),
+            name: Some(slice.to_string()),
+            proposal: None,
             depends_on: Some(vec![on.to_string()]),
             sources: None,
             add_source: Vec::new(),
@@ -246,7 +247,8 @@ async fn dependent_rerefine() {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "beta".to_string(),
+            name: Some("beta".to_string()),
+            proposal: None,
             depends_on: None,
             sources: None,
             add_source: Vec::new(),

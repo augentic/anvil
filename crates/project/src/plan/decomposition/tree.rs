@@ -304,6 +304,18 @@ impl Decomposition {
         })
     }
 
+    /// Mutable node `id`, or `decomposition-node-unknown`.
+    ///
+    /// # Errors
+    ///
+    /// `decomposition-node-unknown` when `id` is absent.
+    pub fn node_mut(&mut self, id: &str) -> Result<&mut Node, Error> {
+        self.nodes.get_mut(id).ok_or_else(|| Error::Diag {
+            code: "decomposition-node-unknown",
+            detail: format!("no decomposition node `{id}`"),
+        })
+    }
+
     /// Slice name of a leaf node. Falls back to the node id.
     ///
     /// # Errors

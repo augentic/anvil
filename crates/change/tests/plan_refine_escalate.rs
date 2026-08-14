@@ -111,7 +111,9 @@ async fn boundary_escalation_parks() {
 
     let proposals = Proposal::load_all(layout).expect("proposals");
     assert_eq!(proposals.len(), 1, "one inert proposal");
-    let Proposal::Boundary(boundary) = &proposals[0].1;
+    let Proposal::Boundary(boundary) = &proposals[0].1 else {
+        panic!("expected boundary proposal");
+    };
     assert_eq!(boundary.failed_leaf.as_str(), "greeting");
     assert_eq!(boundary.affected.len(), 1);
     assert_eq!(boundary.affected[0].source, "intent");
@@ -127,7 +129,11 @@ async fn boundary_escalation_parks() {
     assert_eq!(body.next_action, "stop boundary-escalation");
     assert_eq!(body.slice.as_deref(), Some("greeting"));
     assert_eq!(body.current_step, Some(change::LoopStep::Refine));
-    assert_eq!(body.resume, None);
+    assert!(
+        body.resume.as_deref().is_some_and(|cmd| cmd.starts_with("emery plan amend --proposal ")),
+        "resume {}",
+        body.resume.as_deref().unwrap_or("-")
+    );
 
     session.model().assert_exhausted();
     let parked =

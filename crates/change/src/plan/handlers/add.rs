@@ -9,7 +9,7 @@ use omnia_guest::api::operation::Operation;
 use project::config::with_state;
 use project::handler::{Anchor, Ctx};
 use project::journal;
-use project::plan::{AuthorityOverride, Entry, Plan, authority_override, entry_mut};
+use project::plan::{AuthorityOverride, Entry, Plan, authority_override, entry_mut, proposal};
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -92,6 +92,24 @@ impl<P: Anchor> Operation<P> for Add {
         };
         let plan_path = cx.layout().plan_path();
         let now = cx.now();
+        let layout = cx.layout();
+        if proposal::has_tree(layout) {
+            let mut plan = Plan::load(&plan_path)?;
+            proposal::add(layout, &mut plan, &entry)?;
+            let created_entry = plan
+                .entries
+                .iter()
+                .find(|row| row.name == name)
+                .cloned()
+                .ok_or_else(|| project::plan::unknown_slice_err(&plan.name, name))?;
+            let events = authority_override::emit_seed_events(&plan.name, &created_entry, now);
+            journal::append_batch(layout, &events)?;
+            return Ok(EntryBody {
+                plan: plan_ref(&plan, &plan_path),
+                action: Action::Create,
+                entry: created_entry,
+            });
+        }
         let (body, override_events) =
             with_state::<Plan, _, _>(cx.layout(), "plan.yaml", move |plan| {
                 plan.create(entry)?;

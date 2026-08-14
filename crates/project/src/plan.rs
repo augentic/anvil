@@ -49,7 +49,8 @@ pub use model::{
 pub use pins::{close as close_source_pins, dir_cid, empty_cid, file_cid, source_cid, value_cid};
 pub use projection::{Projections, contributing_leads};
 pub use proposal::{
-    Boundary as BoundaryProposal, Frontiers, Proposal, VERSION as PROPOSAL_VERSION,
+    Applied, Boundary as BoundaryProposal, Envelope, Frontiers, Ownership, Proposal, Repair,
+    Revision, VERSION as PROPOSAL_VERSION, apply as apply_proposal, author_overlap,
 };
 pub use propose::{
     GateProse, ProjectRef, ProposalRequest, ProposalResponse, build_request, resolve_target,

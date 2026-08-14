@@ -70,6 +70,18 @@ pub async fn merge<T: Target + Workspaces>(
 ) -> Result<MergeOutcome, Error> {
     tracing::info!("merge started");
     preflight_completion(layout, slice)?;
+    if layout.plan_path().exists()
+        && let Some(digest) =
+            project::plan::author_overlap(layout, &Plan::load(&layout.plan_path())?)?
+    {
+        return Err(Error::validation_failed(
+            "plan-ownership-overlap",
+            "runtime ownership overlap writes an inert proposal",
+            format!(
+                "apply with `emery plan amend --proposal {digest}` after quiescing affected work"
+            ),
+        ));
+    }
     if let Some(outcome) = already_complete(layout, slice) {
         tracing::info!("merge completed: commit and postflight already settled");
         return Ok(outcome);

@@ -21,7 +21,7 @@ use project::plan::Plan;
 use serde::Serialize;
 
 pub use self::add::{Add, AddInput};
-pub use self::amend::{Amend, AmendInput};
+pub use self::amend::{Amend, AmendBody, AmendInput, AppliedBody};
 pub use self::archive::{Archive, ArchiveBody, ArchiveInput, ArchivedPlan};
 pub use self::author::{Author, AuthorBody, AuthorInput};
 pub use self::drop::{Drop, DropBody, DropInput};

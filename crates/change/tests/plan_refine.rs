@@ -103,7 +103,8 @@ async fn amend_goes_stale() {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "greeting".to_string(),
+            name: Some("greeting".to_string()),
+            proposal: None,
             depends_on: None,
             sources: None,
             add_source: Vec::new(),
@@ -145,7 +146,8 @@ async fn slice_closure() {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "password-reset".to_string(),
+            name: Some("password-reset".to_string()),
+            proposal: None,
             depends_on: Some(vec!["login-flow".to_string()]),
             sources: None,
             add_source: Vec::new(),
@@ -230,7 +232,8 @@ async fn stop_then_resume() {
     run::<plan::handlers::Amend, _, _>(
         session.provider(),
         plan::handlers::AmendInput {
-            name: "beta".to_string(),
+            name: Some("beta".to_string()),
+            proposal: None,
             depends_on: None,
             sources: Some(vec![BindingArg {
                 key: "main".to_string(),

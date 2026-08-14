@@ -441,8 +441,8 @@ The first cut lands the execution-substrate change while everything is still in-
 - Target-contraction kernel is `decomposition::contraction(&[Entry])` so RFC-95 archive can reuse it without loading a `Decomposition`. Same-target edges drop; an SCC or self-loop is `publication-target-cycle`.
 - `Projections::compute` stays digest-neutral (empty `ancestry` omitted). `compute_with` fills ancestry + compiled closure from a tree. Freshness and manifest assembly load `decomposition.yaml` when present. Retention copies exact bytes to `decompositions/<digest>.yaml` on first reference (`retain_decomposition`).
 - **Step 15:** validate each judgment response with `Decomposition::check` / `findings` before enqueueing. Unary splits are only legal as the root container (or other 1-child wrappers); do not emit them as reducing partitions. Caps are `plan::decomposition::{MAX_DEPTH, MAX_NODES, MAX_JUDGMENTS}` — do not introduce `MAX_DECOMPOSITION_*` aliases. Leaf-readiness remains `Profile::exceeds` against the plan-row pin (step 13).
-- **Step 17:** `plan add` / `amend` / `remove` still write `slices[]` directly. Once a `decomposition.yaml` exists they must refuse or reproject via `slices` + `matches_plan`. Do not invent a second drift check.
-- **Step 18:** execute start is `matches_plan` plus `plan.decomposition_digest == tree.digest()` plus the retained `decompositions/<digest>.yaml`. The profile digest chain is plan-row digest ↔ `BoundProfile.digest` ↔ `refinement.yaml.inputs.profile`. Call `contraction(&plan.entries)` when validating the plan graph without reloading the tree.
+- **Step 17:** once `decomposition.yaml` exists, `plan add` / `amend` / `remove` reproject via `slices` + `matches_plan` or refuse `plan-mutation-ambiguous`. Do not invent a second drift check. (Landed.)
+- **Step 18:** execute start is `matches_plan` plus `plan.decomposition_digest == tree.digest()` plus the retained `decompositions/<digest>.yaml`. The profile digest chain is plan-row digest ↔ `BoundProfile.digest` ↔ `refinement.yaml.inputs.profile`. Call `contraction(&plan.entries)` when validating the plan graph without reloading the tree. `plan.amend.applied` plus `plan.yaml` digest drift already make `epoch::freshness` `Stale`; treat that as the epoch-invalidation signal and reuse `Frontiers::live` rather than a second snapshot. Boundary apply stamps `decomposition.yaml.leads-digest` from the activated catalog before retain.
 
 ### Step 15 — Decomposition judgment legs + full detached `plan author` [x]
 
@@ -505,7 +505,7 @@ The first cut lands the execution-substrate change while everything is still in-
 - Native author→refine fixtures rebind recorded first-party pins (`intent@1.0.0`, `omnia@1.0.0`) onto `emery:mock@0.0.0` so extract/guidance can dispatch. The mock catalog has no `intent` source; lead `intent` now has extract evidence. Live adapters in step 19 do not need this rebind.
 - `docs/standards/workflow.md` persist-tail still says `kind: response` — step 20 name sweep.
 
-### Step 17 — Amendment proposals + `plan amend --proposal` [ ]
+### Step 17 — Amendment proposals + `plan amend --proposal` [x]
 
 **RFC anchors:** D1 (`planning/proposals/`), D8 (ownership proposals, boundary proposals, envelope escalation shape for RFC-96, definition-revision requests, compare-and-set application, preservation rules, lowering of direct plan mutations); acceptance criterion 9 (application half); implementation requirement "Add closed ownership and refinement-boundary proposal DTOs plus `emery plan amend --proposal <digest>`…".
 
@@ -521,6 +521,17 @@ The first cut lands the execution-substrate change while everything is still in-
 **Tests / gates:** compare-and-set matrix (each expected-revision mismatch refuses); preservation-violation refusals; boundary activation + reprojection round-trip; add/amend/remove lowering including refusal; epoch invalidation observed by step 18's checks (assert the fact-side effect now, full chain in 18). `cargo make ci`.
 
 **Notes (from step 16):** `Proposal::Boundary` already persists at `planning/proposals/<digest>.yaml` with `Frontiers` (leads / decomposition / discovery / plan digests, accepted CIDs, empty committed map, claims). Apply via `plan amend --proposal <digest>` with compare-and-set on those frontiers; do not re-home the file. Ownership / envelope / definition-revision variants are still this step. Status `resume` for `boundary-escalation` is currently unset — point it at the amend verb here. Re-entry on `plan refine` already refuses to re-synthesize when a boundary proposal parks the leaf.
+
+**Notes (2026-08-14):**
+
+- Closed `Proposal` at `planning/proposals/<digest>.yaml` (filename is the bare hex; do not re-home): `Boundary` / `Ownership` / `Envelope` / `Revision`. Envelope and revision refuse `plan-proposal-kind` — not amendments. Apply journals `plan.amend.applied`; `boundary_for` skips applied digests so status does not keep parking.
+- `Frontiers::compare` CAS-equals leads / decomposition / discovery / plan digests, accepted CIDs, and the committed map. `claims` are recorded but **not** CAS-equal; live claims and open waves (opened minus committed) refuse separately as `plan-proposal-live`.
+- Boundary apply writes the candidate catalog, stamps `decomposition.yaml.leads-digest` from that catalog, saves the candidate tree, reprojects via `slices` + overlay of review fields, `matches_plan`, retain, then rewrites `plan.yaml`. That digest drift is the epoch-invalidation signal for step 18 (`epoch::freshness` → `Stale`).
+- Preservation is committed-leaf identity / target / sources / depends-on. Accepted leaves may gain dependants. Unary greeting ownership is `["."]`; value-backed escalation still adds no children — apply tests hand-build a two-leaf candidate (`intent/hello` + `intent/world`, `hello/**` / `world/**`).
+- `plan add` / topology `amend` / `remove` reproject through the tree when `decomposition.yaml` exists, or refuse `plan-mutation-ambiguous`. Review-only amend still uses `Plan::amend`. `depends-on` argv is slice names, resolved to node ids. Unary `root → greeting` remove refuses (incomplete). Add of a sibling with disjoint ownership (`sibling/**`) reprojects; the same ownership as the existing leaf (`["."]`) refuses overlap. `plan drop` is unchanged in-scope exclusion.
+- Overlap authoring is merge-only (`author_overlap` after preflight completion); `plan validate` stays read-only. The hook returns the existing unapplied digest so merge keeps refusing until apply; applied ownership documents are skipped. Fan-in siblings with overlapping globs can still author a `DependsOn` proposal (compiler edges do not order the pair).
+- Status `resume` for `boundary-escalation` is `emery plan amend --proposal {digest}`. HTTP remains `POST /plan/{name}/amend`; path `name` is not a combo conflict with `--proposal` in the body.
+- Typed refusals (exit 2): `plan-proposal-not-found` / `malformed` / `stale` / `live` / `preserve` / `kind` / `cycle`, `plan-mutation-ambiguous`, `plan-ownership-overlap`. No second drift check beyond `matches_plan`.
 
 ---
 
@@ -542,6 +553,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Key code areas:** `crates/change/src/orchestrate/{execute,epoch}.rs`, `crates/change/src/orchestrate/` scheduler, `crates/slice/src/orchestrate/target.rs`, `crates/project/src/journal/event.rs` (coverage payload), status/gaps handlers.
 
 **Tests / gates:** acceptance-criteria 7/8/11 integration fixtures over the mock catalog (two-target plan with a cross-target dependency; postflight-failure resumable stop; live-claim-without-epoch refusal; stale-definition refusal mid-plan); `cargo make ci` + wasm32 check.
+
+**Notes (from step 17):** `emery plan amend --proposal` already invalidates the closed-plan epoch by rewriting `plan.yaml` and journaling `plan.amend.applied`. Reuse `Frontiers::live` / `epoch::freshness` for the digest chain; do not add a second CAS snapshot. Boundary apply stamps `decomposition.yaml.leads-digest` from the activated catalog before retain, so `plan.leads_digest` and the tree field agree after application. Overlap detection is a merge-time inert proposal (`plan-ownership-overlap`), not a validate diagnostic.
 
 ### Step 19 — Definition-home fixtures, eval and wasm cases (adapters repo) [ ]
 
@@ -568,6 +581,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Notes (from step 10):** Rustdoc path links in `docs/standards/workflow.md` already point at `crates/artifacts/src/leads/{lead,document}.rs` (required for the links gate after the module rename). Remaining `discovery.md` prose in docs, glossary, skills, and CLI reference is this step's name sweep. AGENTS.md vocabulary and the never-hand-edit list already name `leads.md`.
 
 **Notes (from step 16):** Synthesis persist-tail in `docs/standards/workflow.md` still says `kind: response`. The wire is v3 `proceed | boundary-escalation`. Sweep that plus `planning/proposals/`, `slice.refinement.parked`, and the new stop reasons (`boundary-escalation`, `refine-budget-exhausted`).
+
+**Notes (from step 17):** Sweep `emery plan amend --proposal`, `plan.amend.applied`, status resume `emery plan amend --proposal <digest>`, and the new refusals (`plan-proposal-*`, `plan-mutation-ambiguous`, `plan-ownership-overlap`). `plan add`/`amend`/`remove` now reproject through `decomposition.yaml` when it exists. Envelope / definition-revision documents are inert (not applied).
 
 ---
 

@@ -7,12 +7,11 @@ use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::Layout;
 use project::handler::ExecutionPaths;
-use project::journal::{self, Event, EventKind, ParkReason, claim};
-use project::plan::{BoundaryProposal, FocusParent, Frontiers, Plan, Proposal, collect_events};
+use project::journal::{self, Event, EventKind, ParkReason};
+use project::plan::{BoundaryProposal, FocusParent, Frontiers, Plan, Proposal};
 use project::profile::Profiles;
 use project::seam::{Source, Workspaces};
 use project::snapshot::SnapshotId;
-use project::wave::accepted_cid;
 use slice::orchestrate::RefineOutcome as SliceRefine;
 
 use super::decompose;
@@ -64,7 +63,7 @@ where
     // Restore live planning artifacts if a persist-mode path leaked.
     restore(layout, &live_leads_bytes, live_decomp_bytes.as_deref(), &live_plan_bytes)?;
 
-    let expected = frontiers(layout, plan)?;
+    let expected = Frontiers::live(layout, plan)?;
     let proposal = Proposal::Boundary(BoundaryProposal {
         version: project::plan::PROPOSAL_VERSION,
         failed_leaf: slice.clone().into(),
@@ -132,31 +131,6 @@ fn restore(
     }
     std::fs::write(layout.plan_path(), plan)?;
     Ok(())
-}
-
-fn frontiers(layout: Layout<'_>, plan: &Plan) -> Result<Frontiers, Error> {
-    let events = collect_events(layout)?;
-    let mut accepted = std::collections::BTreeMap::new();
-    for (id, row) in &plan.targets {
-        let cid = accepted_cid(layout, &events, id)?.unwrap_or_else(|| row.cid.clone());
-        accepted.insert(id.clone(), cid);
-    }
-    let claims: Vec<_> = claim::project(&events).iter().map(|(slice, _)| slice.clone()).collect();
-    Ok(Frontiers {
-        leads_digest: plan.leads_digest.clone().ok_or_else(|| Error::Diag {
-            code: "plan-leads-digest-missing",
-            detail: "plan.yaml has no leads-digest".into(),
-        })?,
-        decomposition_digest: plan.decomposition_digest.clone().ok_or_else(|| Error::Diag {
-            code: "plan-decomposition-digest-missing",
-            detail: "plan.yaml has no decomposition-digest".into(),
-        })?,
-        discovery_digest: plan.discovery_digest.clone(),
-        plan_digest: SnapshotId::parse(&Plan::file_digest(layout)?)?,
-        accepted,
-        committed: std::collections::BTreeMap::new(),
-        claims,
-    })
 }
 
 fn remap_budget(err: Error) -> Error {
