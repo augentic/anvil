@@ -5,10 +5,11 @@ use std::path::{Path, PathBuf};
 use project::config::Roots;
 use transport::command::selectors::{SeedRequest, SystemRequest};
 
-/// Resolve in-place vs detached roots: `adapter add --project-dir`
-/// always selects that product tree (in-place, even before init);
-/// otherwise [`Roots::resolve`] over `--change-dir` and the ancestor
-/// walk for `.emery/project.yaml`.
+/// Resolve in-place vs detached roots.
+///
+/// `adapter add --project-dir` always selects that product tree
+/// (in-place, even before init); otherwise [`Roots::resolve`] over
+/// `--change-dir` and the ancestor walk for `.emery/project.yaml`.
 #[must_use]
 pub fn roots(invoked_dir: &Path, seed: Option<&SeedRequest>, change_dir: Option<&Path>) -> Roots {
     if let Some(dir) = seed.and_then(|request| request.project_dir.as_ref()) {

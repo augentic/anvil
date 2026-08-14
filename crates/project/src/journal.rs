@@ -1,8 +1,7 @@
-//! Workflow journal events: append-only newline-delimited JSON, one
-//! file per writer under a [`JournalRoot`] (`.emery/change/events/` for
-//! the change home, `<system>/events/` for an RFC-104 definition home).
-//! Each writer appends only its own file; readers union all files by
-//! `(timestamp, writer, sequence)`.
+//! Workflow journal events.
+//!
+//! Append-only NDJSON per writer under a [`JournalRoot`]; readers
+//! union by `(timestamp, writer, sequence)`.
 
 mod append;
 pub mod claim;

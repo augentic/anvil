@@ -102,7 +102,7 @@ pub fn review(
     crate::model::overlay::validate(&model, &decisions)?;
     crate::architecture::validate(layout, &model)?;
     let current = current_handoff(layout, wave)?;
-    let handoff_digest = current.digest.clone();
+    let handoff_digest = current.digest;
     let digest = handoff_digest.as_str().to_owned();
     let reviewed = supplied.strip_prefix("sha256:").unwrap_or(supplied);
     if reviewed != handoff_digest.digest() {
@@ -126,7 +126,7 @@ pub fn review(
     if already {
         return Ok(ReviewOutcome {
             wave: wave.to_string(),
-            handoff_digest: digest.clone(),
+            handoff_digest: digest,
             recorded: false,
         });
     }

@@ -24,10 +24,10 @@ pub struct SeedRequest {
     pub project_dir: Option<std::path::PathBuf>,
 }
 
-/// Change-home facts argv carries: `--change-dir` and `plan author
-/// --from`. Relative `--change-dir` joins the invocation directory;
-/// relative `--from` joins the resolved `.` mount (product in-place,
-/// change home when detached).
+/// Change-home facts argv carries (`--change-dir`, `plan author --from`).
+///
+/// Relative `--change-dir` joins the invocation directory; relative
+/// `--from` joins the resolved `.` mount.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ChangeRequest {
     /// Detached change-home override, when supplied.
@@ -148,9 +148,10 @@ pub fn refresh_request(argv: &[String]) -> RefreshRequest {
     }
 }
 
-/// The `system *` anchoring request: the definition home the launcher
-/// mounts as `.` — no `project.yaml` walk and no mkdir (creating the
-/// home would be `system init`, which does not exist).
+/// The `system *` anchoring request.
+///
+/// The definition home mounts as `.` — no `project.yaml` walk and no
+/// mkdir (`system init` does not exist).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SystemRequest {
     /// The `--dir` value, when supplied; relative values anchor at

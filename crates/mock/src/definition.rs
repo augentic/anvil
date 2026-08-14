@@ -1,9 +1,6 @@
 //! Host-only definition-home fixtures for RFC-88 / RFC-104 tests.
 //!
-//! Mints a minimal valid RFC-104 definition home (scope, coverage,
-//! model, migration, Evidence, content-addressed handoff) plus a
-//! `system.wave.reviewed` envelope so CI never depends on live
-//! `emery system` orchestrations.
+//! Mints a minimal valid definition home plus `system.wave.reviewed`.
 
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
