@@ -16,6 +16,7 @@ mod validate;
 use std::path::{Path, PathBuf};
 
 use error::{Error, Result};
+use project::config::Layout;
 use project::handler::Ctx;
 use project::plan::Plan;
 use serde::Serialize;
@@ -38,8 +39,8 @@ pub use self::validate::{Validate, ValidateInput};
 /// Ensure the plan file exists before we try to load it. Error text is
 /// the stable "plan file not found: plan.yaml" string that skill
 /// authors match on.
-pub(crate) fn require_file(ctx: &Ctx) -> Result<PathBuf> {
-    let path = ctx.layout().plan_path();
+pub(crate) fn require_plan(layout: Layout<'_>) -> Result<PathBuf> {
+    let path = layout.plan_path();
     if !path.exists() {
         return Err(Error::ArtifactNotFound {
             kind: "plan.yaml",
@@ -47,6 +48,10 @@ pub(crate) fn require_file(ctx: &Ctx) -> Result<PathBuf> {
         });
     }
     Ok(path)
+}
+
+pub(crate) fn require_file(ctx: &Ctx) -> Result<PathBuf> {
+    require_plan(ctx.layout())
 }
 
 /// Name + path reference to the governing plan file, embedded in the

@@ -26,6 +26,7 @@ pub mod scaffold;
 pub mod scope;
 pub mod status;
 pub mod validate;
+pub mod verify;
 
 pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
@@ -63,3 +64,4 @@ pub use status::{
     plan_status_body,
 };
 pub use validate::{finding, orphan_authority_override, reject_duplicate_source};
+pub use verify::{closed_plan, resolve_from};

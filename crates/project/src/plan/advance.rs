@@ -15,7 +15,6 @@ use serde::Serialize;
 use super::execution::{collect_events, next_eligible, project_ladders};
 use super::model::{Entry, Plan, SliceSourceBinding, Status};
 use crate::adapter::Resolver;
-use crate::config::{Layout, ProjectConfig};
 use crate::handler::ExecutionPaths;
 use crate::journal::{self, Event, EventKind, claim};
 use crate::name::SliceName;
@@ -69,8 +68,8 @@ pub struct AdvanceBody {
 /// [`Error::Validation`] `plan-structural-errors` when the plan has
 /// blocking validate findings or a dependency cycle.
 pub fn plan_advance_body<S: BuildHasher>(
-    _resolver: &impl Resolver, plan: &Plan, slices_dir: &Path, _config: &ProjectConfig,
-    _paths: &ExecutionPaths, ladders: &HashMap<SliceName, Status, S>,
+    _resolver: &impl Resolver, plan: &Plan, slices_dir: &Path, _paths: &ExecutionPaths,
+    ladders: &HashMap<SliceName, Status, S>,
 ) -> Result<AdvanceBody, Error> {
     if has_blocking(&advance_gate(plan, slices_dir)) {
         return Err(structural_errors());
@@ -134,13 +133,13 @@ fn structural_errors() -> Error {
 /// - `slice-claim-conflict` when another writer owns the eligible slice.
 /// - journal append failures for the claim / advance facts.
 pub fn advance_next(
-    resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp, config: &ProjectConfig,
+    resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<AdvanceBody, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     let plan = Plan::load(&layout.plan_path())?;
     let events = collect_events(layout)?;
     let ladders = project_ladders(&plan, &events);
-    let body = plan_advance_body(resolver, &plan, &layout.slices_dir(), config, paths, &ladders)?;
+    let body = plan_advance_body(resolver, &plan, &layout.slices_dir(), paths, &ladders)?;
     if let Some(advanced) = &body.advanced {
         let slice: SliceName = advanced.clone().into();
         let writer = journal::writer_id();

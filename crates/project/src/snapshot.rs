@@ -54,6 +54,12 @@ impl SnapshotId {
     pub fn digest(&self) -> &str {
         &self.0[SCHEME.len()..]
     }
+
+    /// Fixture / unbound seed: every digest nibble is `0`.
+    #[must_use]
+    pub fn is_unbound(&self) -> bool {
+        self.digest().bytes().all(|b| b == b'0')
+    }
 }
 
 impl fmt::Display for SnapshotId {

@@ -150,6 +150,18 @@ impl<'a> Layout<'a> {
         }
     }
 
+    /// Detached change home: the `.` mount *is* the change directory.
+    #[must_use]
+    pub const fn detached(change_root: &'a Path) -> Self {
+        Self::with_change_root(change_root, change_root)
+    }
+
+    /// Whether this layout has no ambient product root.
+    #[must_use]
+    pub fn is_detached(&self) -> bool {
+        self.change_root() == self.project_dir()
+    }
+
     /// Project root the layout is anchored at.
     #[must_use]
     pub const fn project_dir(&self) -> &'a Path {

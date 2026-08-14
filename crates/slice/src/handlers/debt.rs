@@ -8,6 +8,8 @@ use artifacts::spec::provenance::RequirementStatus;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::handler::{Anchor, Ctx, Render};
+use project::plan::Plan;
+use project::seam::Workspaces;
 use serde::{Deserialize, Serialize};
 
 use crate::debt::DebtRow;
@@ -22,14 +24,14 @@ pub struct DebtInput {}
 
 /// `emery debt`.
 ///
-/// Read-only projection over `.emery/specs/`: emits no journal event
-/// and writes nothing. Never joins archived fact logs — every row's
-/// reason, originating change, and age come from the self-describing
-/// note the merge fold appended (RFC-86a D5).
+/// Read-only projection over each target's accepted-CID baseline:
+/// emits no journal event and writes nothing. Never joins archived
+/// fact logs — every row's reason, originating change, and age come
+/// from the self-describing note the merge fold appended (RFC-86a D5).
 #[derive(Clone, Copy, Debug)]
 pub struct Debt;
 
-impl<P: Anchor> Operation<P> for Debt {
+impl<P: Anchor + Workspaces> Operation<P> for Debt {
     type Error = project::handler::Error;
     type Input = DebtInput;
     type Output = DebtBody;
@@ -38,7 +40,16 @@ impl<P: Anchor> Operation<P> for Debt {
         _input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
-        let rows = crate::debt::baseline(&cx.layout().specs_dir(), cx.now())?;
+        let layout = cx.layout();
+        let rows = match Plan::load(&layout.plan_path()) {
+            Ok(plan) => {
+                crate::debt::from_targets(context.provider, layout, &plan, cx.now()).await?
+            }
+            Err(_) if !layout.is_detached() => {
+                crate::debt::baseline(&layout.specs_dir(), cx.now())?
+            }
+            Err(_) => Vec::new(),
+        };
         Ok(DebtBody { rows })
     }
 }

@@ -80,9 +80,10 @@ pub async fn refine<
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     selectors: &[String],
 ) -> Result<RefineOutcome, Error> {
-    let layout = Layout::new(paths.project_root());
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let adapter = project::target_policy::project_adapter(caps.resolver, &config, paths)?;
+    let layout = paths.layout();
+    if !paths.is_detached() {
+        drop(ProjectConfig::load(paths.project_root())?);
+    }
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
     let catalog = Leads::load(&layout.leads_path())?;
@@ -138,6 +139,7 @@ pub async fn refine<
             });
         }
         tracing::info!("refine {name} …");
+        let adapter = leaf_adapter(caps.resolver, paths, entry)?;
         match slice::orchestrate::refine(
             caps,
             paths,
@@ -366,4 +368,13 @@ fn target_set(
         }
     }
     Ok(targets)
+}
+
+fn leaf_adapter(
+    resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry,
+) -> Result<project::adapter::ResolvedTarget, Error> {
+    let layout = paths.layout();
+    let plan = Plan::load(&layout.plan_path())?;
+    let binding = plan.target(&entry.target)?;
+    resolver.resolve_target(&binding.adapter.selector(), paths)
 }

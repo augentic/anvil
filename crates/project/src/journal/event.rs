@@ -502,8 +502,8 @@ pub enum EventKind {
     /// content address (`sha256:…`) of that YAML.
     #[serde(rename = "target.wave.opened", rename_all = "kebab-case")]
     TargetWaveOpened {
-        /// Target key under `.emery/change/targets/` (project name in the
-        /// in-place cut).
+        /// Target key under `.emery/change/targets/` (`plan.yaml`
+        /// entry target; standalone fixtures may use the project name).
         target: String,
         /// Manifest content digest (`sha256:<64 hex>`).
         digest: String,

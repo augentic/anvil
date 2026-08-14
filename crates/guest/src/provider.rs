@@ -198,6 +198,12 @@ impl seam::Workspaces for Provider {
     /// `.git` and a nested `.emery/change/` home).
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, seam::Error>> + Send {
         async move {
+            if PATHS.is_detached() {
+                return Err(seam::Error::InvalidRequest(
+                    "target-base-freeze-detached: detached change home is not a product tree"
+                        .into(),
+                ));
+            }
             let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
             store.snapshot(PATHS.project_root()).await.map_err(|err| workspace_failure(&err))
         }

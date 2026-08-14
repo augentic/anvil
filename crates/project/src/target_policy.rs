@@ -42,7 +42,7 @@ pub fn project_adapter(
 pub fn fresh(
     resolver: &impl Resolver, paths: &ExecutionPaths, entry: &Entry, slice: &str, phase: &str,
 ) -> Result<String, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     let plan = crate::plan::Plan::load(&layout.plan_path())?;
     let binding = plan.target(&entry.target).map_err(|err| Error::Diag {
         code: "slice-create-target-missing",

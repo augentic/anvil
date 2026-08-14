@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use error::Error;
 use jiff::Timestamp;
 use project::build_record::BuildRecord;
-use project::config::{Layout, ProjectConfig};
+use project::config::Layout;
 use project::journal::{self, DeferredMember, Event, EventKind, FactEpochRef, IdentityMap};
 use project::name::SliceName;
 use project::plan::{Plan, Status, collect_events, project_ladders};
@@ -70,6 +70,7 @@ pub async fn merge<T: Target + Workspaces>(
 ) -> Result<MergeOutcome, Error> {
     tracing::info!("merge started");
     preflight_completion(layout, slice)?;
+    project::plan::epoch::require_for_claim(layout, slice)?;
     if layout.plan_path().exists()
         && let Some(digest) =
             project::plan::author_overlap(layout, &Plan::load(&layout.plan_path())?)?
@@ -350,10 +351,9 @@ async fn postflight_members<T: Target>(
 fn load_wave_commit(
     layout: Layout<'_>, slice: &str, slice_dir: &Path,
 ) -> Result<WaveCommit, Error> {
-    let opened = opened_wave_digest(layout, slice)?;
+    let (target, opened) = opened_wave(layout, slice)?;
     let record = BuildRecord::load_for_wave(slice_dir, &opened)?;
-    let config = ProjectConfig::load(layout.project_dir())?;
-    let wave = Wave::load_for_merge(layout, &config.name, slice, &record)?;
+    let wave = Wave::load_for_merge(layout, &target, slice, &record)?;
     let digest = wave.digest()?.as_str().to_string();
     let members = wave.load_member_records(layout)?;
     Ok(WaveCommit {
@@ -363,17 +363,20 @@ fn load_wave_commit(
     })
 }
 
-/// The newest `target.wave.opened` fact naming `slice` in the ordered
-/// event union — the wave the build phase authorized (RFC-86 D9).
-fn opened_wave_digest(layout: Layout<'_>, slice: &str) -> Result<SnapshotId, Error> {
+/// Newest `target.wave.opened` naming `slice` — the recorded target
+/// key and digest. Merge does not re-read `plan.yaml` for the key
+/// (standalone fixtures have no plan; D9 does not re-bind).
+fn opened_wave(layout: Layout<'_>, slice: &str) -> Result<(String, SnapshotId), Error> {
     let events = collect_events(layout)?;
-    let digest = events
+    let (target, digest) = events
         .iter()
         .rev()
         .find_map(|event| match &event.kind {
             EventKind::TargetWaveOpened {
-                digest, slice_name, ..
-            } if slice_name.as_str() == slice => Some(digest.clone()),
+                target,
+                digest,
+                slice_name,
+            } if slice_name.as_str() == slice => Some((target.clone(), digest.clone())),
             _ => None,
         })
         .ok_or_else(|| {
@@ -386,7 +389,7 @@ fn opened_wave_digest(layout: Layout<'_>, slice: &str) -> Result<SnapshotId, Err
                 ),
             )
         })?;
-    SnapshotId::parse(&digest)
+    Ok((target, SnapshotId::parse(&digest)?))
 }
 
 /// This cut's composed member-result: the sole `BuildRecord.result`,

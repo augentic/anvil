@@ -1,6 +1,7 @@
-//! Authorization-epoch open at `plan execute` start: assembles typed
-//! `closed-plan` coverage (per-leaf refinement digests) and appends
-//! `plan.execute.started` (RFC-86/86a/91).
+//! Authorization-epoch open at `plan execute` start.
+//!
+//! Verifies the closed-plan digest chain, assembles typed coverage,
+//! and appends `plan.execute.started`.
 
 use std::collections::BTreeMap;
 
@@ -8,12 +9,27 @@ use error::Error;
 use jiff::Timestamp;
 use project::build_record::BuildRecord;
 use project::config::Layout;
+use project::handler::ExecutionPaths;
 use project::journal::{self, ClosedPlanCoverage, Event, EventKind};
 use project::plan::{Plan, Status, collect_events, in_scope, project_ladders};
+use project::refinement;
 use project::slice::SliceMetadata;
-use slice::refinement::{self, Freshness, Live};
+use project::snapshot::SnapshotId;
+use slice::refinement::{self as slice_refinement, Freshness, Live};
 
 use crate::plan::wire::load_leads;
+
+/// Verify the digest chain, then append `plan.execute.started`.
+///
+/// # Errors
+///
+/// Closed-plan verification, coverage-assembly, and journal append
+/// failures. A missing or stale refinement manifest fails typed as
+/// `plan-refinement-required` before any epoch append.
+pub(super) fn open(paths: &ExecutionPaths, plan: &Plan, now: Timestamp) -> Result<(), Error> {
+    project::plan::closed_plan(paths, plan)?;
+    append_started(paths.layout(), plan, now)
+}
 
 /// Append `plan.execute.started` with typed `closed-plan` coverage.
 ///
@@ -24,12 +40,12 @@ use crate::plan::wire::load_leads;
 /// `plan-refinement-required` before any epoch append — execute never
 /// refines (RFC-91 D5).
 pub(super) fn append_started(layout: Layout<'_>, plan: &Plan, now: Timestamp) -> Result<(), Error> {
-    let coverage = assemble_coverage(layout, plan)?;
+    let (coverage, discovery_digest) = assemble_coverage(layout, plan)?;
     let event = Event::new(
         now,
         EventKind::PlanExecuteStarted {
             coverage,
-            discovery_digest: None,
+            discovery_digest: Some(discovery_digest.to_string()),
         },
     );
     journal::append_one(layout, &event)
@@ -43,8 +59,11 @@ pub(super) fn append_started(layout: Layout<'_>, plan: &Plan, now: Timestamp) ->
 /// build are not re-litigated: a merged leaf (projected `done`)
 /// contributes nothing, and a built leaf parked at merge carries the
 /// manifest digest its wave bound at build time (resume path).
-fn assemble_coverage(layout: Layout<'_>, plan: &Plan) -> Result<ClosedPlanCoverage, Error> {
+fn assemble_coverage(
+    layout: Layout<'_>, plan: &Plan,
+) -> Result<(ClosedPlanCoverage, SnapshotId), Error> {
     let plan_digest = Plan::file_digest(layout)?;
+    let discovery_digest = discovery_digest(layout, plan)?;
 
     let catalog = load_leads(layout)?;
     let inventory = catalog.as_ref().map_or(&[][..], |d| d.leads());
@@ -66,7 +85,7 @@ fn assemble_coverage(layout: Layout<'_>, plan: &Plan) -> Result<ClosedPlanCovera
         }
         let name = entry.name.as_str();
         if BuildRecord::present(&slice_dir)
-            && let Some(digest) = refinement::file_digest(&slice_dir)?
+            && let Some(digest) = slice_refinement::file_digest(&slice_dir)?
         {
             // Built, awaiting merge: build promotion may legitimately
             // drift the bundle inputs (`writable-artifacts[]`), so the
@@ -74,7 +93,7 @@ fn assemble_coverage(layout: Layout<'_>, plan: &Plan) -> Result<ClosedPlanCovera
             refinements.insert(name.to_string(), digest);
             continue;
         }
-        match refinement::freshness_with(layout, plan, entry, inventory, &mut live)? {
+        match slice_refinement::freshness_with(layout, plan, entry, inventory, &mut live)? {
             Freshness::Fresh { digest } => {
                 refinements.insert(name.to_string(), digest);
             }
@@ -94,10 +113,24 @@ fn assemble_coverage(layout: Layout<'_>, plan: &Plan) -> Result<ClosedPlanCovera
         }
     }
 
-    Ok(ClosedPlanCoverage::ClosedPlan {
-        plan_digest,
-        refinements,
-    })
+    Ok((
+        ClosedPlanCoverage::ClosedPlan {
+            plan_digest,
+            refinements,
+        },
+        discovery_digest,
+    ))
+}
+
+fn discovery_digest(layout: Layout<'_>, plan: &Plan) -> Result<SnapshotId, Error> {
+    if let Some(recorded) = &plan.discovery_digest {
+        return Ok(recorded.clone());
+    }
+    let path = layout.discovery_yaml_path();
+    if path.is_file() {
+        return project::plan::Discovery::load(&path)?.digest();
+    }
+    Ok(refinement::empty_digest())
 }
 
 const fn refinement_required(detail: String) -> Error {

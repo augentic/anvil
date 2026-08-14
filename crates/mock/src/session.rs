@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use native::{DynModel, Provider, ReferenceMode};
 use omnia_testkit::model::{Harness, Scripted as ScriptedModel};
-use project::handler::{CachePlacement, ExecutionPaths, Locations};
+use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 
 /// The recording model shape the scripted suites hold beside the
 /// provider: a request-recording [`Harness`] over FIFO `Scripted`
@@ -147,7 +147,7 @@ impl Session {
     /// is broken, no CID exists yet, or materialization fails.
     pub async fn materialize_accepted(&self, target: &str) -> tempfile::TempDir {
         let dest = tempfile::TempDir::new().expect("accepted tree");
-        let layout = project::config::Layout::new(&self.root);
+        let layout = self.provider.paths().layout();
         let events = project::journal::read_union(layout).expect("union");
         let cid = project::wave::accepted_cid(layout, &events, target)
             .expect("accepted-CID projection")

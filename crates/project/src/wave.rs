@@ -17,7 +17,7 @@ use crate::snapshot::SnapshotId;
 
 mod accepted;
 
-pub use accepted::accepted_cid;
+pub use accepted::{accepted_cid, wave_base};
 
 /// Fact-log identity of a `plan.execute.started` authorization epoch
 /// (`writer` + 1-based `sequence` of that line in the union).
@@ -52,8 +52,7 @@ pub struct Wave {
     /// Target key (current project name in the in-place cut).
     pub target: String,
     /// Target-base tree identity selected when the wave opened
-    /// (the current accepted CID, or an ambient freeze on the
-    /// target's first wave).
+    /// (the current accepted CID, or `plan.yaml.targets[].cid`).
     pub base: SnapshotId,
     /// Ordered member set — length must be 1 before open.
     pub members: Vec<Member>,

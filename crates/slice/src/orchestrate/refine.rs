@@ -120,7 +120,7 @@ pub async fn refine<P: Model + Profiles, S: Source + Workspaces, T: Target, R: R
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str, dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration],
 ) -> Result<RefineOutcome, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     tracing::info!("refine started");
     let (plan, entry) = load_entry(layout, slice)?;
     let parent_dir = layout.slices_dir();
@@ -263,7 +263,7 @@ fn write_manifest(
     dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration], slice_dir: &Path,
 ) -> Result<(), Error> {
     let inventory = Leads::load(&layout.leads_path())?;
-    let config = ProjectConfig::load(layout.project_dir())?;
+    let reference = ProjectConfig::load(layout.project_dir()).ok().and_then(|c| c.adapter);
     refinement::assemble(
         layout,
         plan,
@@ -272,7 +272,7 @@ fn write_manifest(
         refinement::TargetInputs {
             guidance,
             declarations,
-            reference: config.adapter.as_deref(),
+            reference: reference.as_deref(),
         },
         dependencies,
     )?
@@ -419,7 +419,7 @@ fn baseline_specs_dir(layout: Layout<'_>, slice_dir: &Path) -> PathBuf {
 /// context, so any topology resolution miss degrades to empty vectors
 /// (the native handler's posture).
 fn baseline_identity(paths: &ExecutionPaths, entry: &Entry) -> (Vec<Surface>, Vec<Decision>) {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     let Ok(plan) = Plan::load(&layout.plan_path()) else {
         return Default::default();
     };

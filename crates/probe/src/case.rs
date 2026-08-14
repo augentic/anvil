@@ -110,7 +110,7 @@ async fn execute(
         }
         Case::Build(build) => {
             println!("eval case {id}: build slice {} sandbox {}", build.slice, scratch.display());
-            run_build(id, build, &scratch, &model, catalog, &telemetry).await
+            Box::pin(run_build(id, build, &scratch, &model, catalog, &telemetry)).await
         }
     }
 }
@@ -175,7 +175,7 @@ async fn run_build(
     id: &str, case: &Build, root: &Path, model: &DynModel, catalog: &Catalog,
     telemetry: &Telemetry<DynModel>,
 ) -> Result<()> {
-    build_phase(root, model, catalog, &case.slice).await?;
+    Box::pin(build_phase(root, model, catalog, &case.slice)).await?;
 
     let slice_dir = Layout::new(root).slice_dir(&case.slice);
     let metadata =

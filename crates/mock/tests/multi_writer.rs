@@ -299,10 +299,9 @@ async fn sibling_advance_peer() {
 
     claim_slice(session.root(), "alice", "auth", "login-flow", 1);
 
-    let config = ProjectConfig::load(session.root()).expect("project.yaml");
     let now = ts(2);
     let _writer = WriterEnv::set("bob");
-    let body = advance_next(session.provider(), session.provider().paths(), now, &config)
+    let body = advance_next(session.provider(), session.provider().paths(), now)
         .expect("bob advances a different slice");
     assert_eq!(
         body.advanced.as_deref(),

@@ -1,8 +1,9 @@
 //! The baseline debt projection (RFC-86a D9).
 //!
-//! Reads the baseline specs alone — never archived fact logs — listing
-//! every carried `unknown` / `conflict` row with its D5 note parsed.
+//! Reads the baseline specs alone — never archived fact logs. After
+//! accepted-CID merge the live baseline lives on the accepted snapshot.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use artifacts::spec::provenance::{Requirement, RequirementStatus, parse_spec_md};
@@ -10,6 +11,11 @@ use error::Error;
 use jiff::Timestamp;
 use jiff::civil::Date;
 use jiff::tz::TimeZone;
+use project::config::Layout;
+use project::journal;
+use project::plan::Plan;
+use project::seam::Workspaces;
+use project::wave::accepted_cid;
 use serde::Serialize;
 
 /// Line prefix of the self-describing baseline debt note. The tail is
@@ -88,6 +94,49 @@ pub fn baseline(specs_dir: &Path, now: Timestamp) -> Result<Vec<DebtRow>, Error>
                 summary: req.name.clone(),
                 deferral: parse_note(&req, today),
             });
+        }
+    }
+    Ok(rows)
+}
+
+/// Project carried debt from each plan target's accepted CID.
+///
+/// Falls back to the seed CID when no wave has opened. Unbound
+/// fixture seeds use the in-place checkout `.emery/specs/`; detached
+/// homes have no ambient product tree.
+///
+/// # Errors
+///
+/// Journal, accepted-CID, workspace prepare, and specs-read failures.
+pub async fn from_targets(
+    workspaces: &impl Workspaces, layout: Layout<'_>, plan: &Plan, now: Timestamp,
+) -> Result<Vec<DebtRow>, Error> {
+    let events = journal::read_union(layout)?;
+    let mut rows = Vec::new();
+    let mut seen = BTreeSet::new();
+    for key in plan.targets.keys() {
+        let cid = match accepted_cid(layout, &events, key)? {
+            Some(cid) => cid,
+            None => plan.target(key)?.cid.clone(),
+        };
+        let batch = if cid.is_unbound() {
+            if layout.is_detached() { Vec::new() } else { baseline(&layout.specs_dir(), now)? }
+        } else {
+            let workspace = workspaces.prepare(cid, false).await.map_err(|err| Error::Diag {
+                code: "debt-baseline-prepare-failed",
+                detail: format!("preparing the accepted CID for target `{key}` failed: {err}"),
+            })?;
+            let specs = Path::new(&workspace.root).join(".emery/specs");
+            let batch = baseline(&specs, now);
+            if let Err(err) = workspaces.discard(workspace.id).await {
+                tracing::warn!("debt workspace discard failed: {err}");
+            }
+            batch?
+        };
+        for row in batch {
+            if seen.insert((row.domain.clone(), row.req.clone())) {
+                rows.push(row);
+            }
         }
     }
     Ok(rows)

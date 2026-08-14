@@ -5,7 +5,7 @@
 use jiff::Timestamp;
 use mock::session::Session;
 use project::adapter::catalog::Pin;
-use project::config::{Layout, ProjectConfig};
+use project::config::Layout;
 use project::handler::Anchor;
 use project::journal::{self, Event, EventKind};
 use project::plan::{
@@ -118,10 +118,9 @@ fn advance_starts_second() {
     write_plan(session.root(), &staged);
     seed_in_progress(session.root(), "test", "a", 1_700_000_000);
 
-    let config = ProjectConfig::load(session.root()).expect("project.yaml");
     let now = Timestamp::from_second(1_700_000_001).expect("timestamp");
-    let body = advance_next(session.provider(), session.provider().paths(), now, &config)
-        .expect("advance sibling");
+    let body =
+        advance_next(session.provider(), session.provider().paths(), now).expect("advance sibling");
     assert_eq!(body.advanced.as_deref(), Some("b"));
     assert!(body.active.is_none(), "fresh advance, not a mid-slice resume");
 
@@ -150,10 +149,9 @@ fn advance_resumes_progress() {
     write_plan(session.root(), &staged);
     seed_in_progress(session.root(), "test", "a", 1_700_000_000);
 
-    let config = ProjectConfig::load(session.root()).expect("project.yaml");
     let now = Timestamp::from_second(1_700_000_001).expect("timestamp");
-    let body = advance_next(session.provider(), session.provider().paths(), now, &config)
-        .expect("resume active");
+    let body =
+        advance_next(session.provider(), session.provider().paths(), now).expect("resume active");
     assert_eq!(body.active.as_deref(), Some("a"));
     assert_eq!(body.reason, Some(project::plan::AdvanceReason::InProgress));
     assert!(body.advanced.is_none());

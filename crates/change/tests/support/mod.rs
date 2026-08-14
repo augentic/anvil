@@ -71,22 +71,29 @@ pub async fn refine_slices(
 /// Panics when the manifest is absent or unreadable.
 #[must_use]
 pub fn manifest_digest(root: &std::path::Path, slice: &str) -> SnapshotId {
-    slice::refinement::file_digest(&project::config::Layout::new(root).slice_dir(slice))
+    slice::refinement::file_digest(&fixture_layout(root).slice_dir(slice))
         .expect("read refinement manifest")
         .expect("refinement manifest present")
 }
 
+/// In-place layout when `project.yaml` exists; detached otherwise.
+#[must_use]
+pub fn fixture_layout(root: &std::path::Path) -> project::config::Layout<'_> {
+    if root.join(".emery/project.yaml").is_file() {
+        project::config::Layout::new(root)
+    } else {
+        project::config::Layout::detached(root)
+    }
+}
+
 /// Hand-stage a fresh refinement manifest for a hand-written slice
-/// tree: write the minimal bundle files (proposal / design / tasks +
-/// one per-domain spec) when absent, then assemble and persist
-/// `refinement.yaml` against the live `plan.yaml`, so execute's
-/// freshness recompute passes without a model-driven refine.
+/// tree.
 ///
 /// # Panics
 ///
 /// Panics when the plan, the entry, or a write is unavailable.
 pub fn stage_manifest(root: &std::path::Path, slice: &str) {
-    let layout = project::config::Layout::new(root);
+    let layout = fixture_layout(root);
     let plan = Plan::load(&layout.plan_path()).expect("plan.yaml");
     let entry =
         plan.entries.iter().find(|e| e.name == slice).expect("plan entry for slice").clone();
@@ -109,11 +116,13 @@ pub fn stage_manifest(root: &std::path::Path, slice: &str) {
     // so assembly must read the same `project.yaml` value freshness
     // recomputes against (an uninitialised root degrades to none).
     let config = project::config::ProjectConfig::load(root).ok();
+    let catalog =
+        Leads::load(&layout.leads_path()).unwrap_or_else(|_| Leads::from_leads(Vec::new()));
     slice::refinement::assemble(
         layout,
         &plan,
         &entry,
-        &[],
+        catalog.leads(),
         slice::refinement::TargetInputs {
             guidance: slice::refinement::empty_digest(),
             declarations: &[],
@@ -144,7 +153,7 @@ pub async fn refine(
     let provider = session.provider();
     let caps = slice::orchestrate::Capabilities::provider(provider);
     let paths = provider.paths();
-    let layout = project::config::Layout::new(paths.project_root());
+    let layout = paths.layout();
     let plan = Plan::load(&layout.plan_path())?;
     let entry = plan
         .entries
@@ -155,8 +164,9 @@ pub async fn refine(
         Some(meta) => meta.target,
         None => project::target_policy::fresh(provider, paths, entry, slice, "refining")?,
     };
-    let config = project::config::ProjectConfig::load(layout.project_dir())?;
-    let adapter = project::target_policy::project_adapter(provider, &config, paths)?;
+    let binding = plan.target(&entry.target)?;
+    let adapter =
+        project::adapter::Resolver::resolve_target(provider, &binding.adapter.selector(), paths)?;
     slice::orchestrate::refine(
         caps,
         paths,
@@ -174,13 +184,10 @@ pub async fn refine(
 ///
 /// # Panics
 ///
-/// Panics when config load or the advance kernel fails.
+/// Panics when the advance kernel fails.
 pub fn advance(session: &Session) -> project::plan::AdvanceBody {
     let provider = session.provider();
-    let paths = provider.paths();
-    let layout = project::config::Layout::new(paths.project_root());
-    let config = project::config::ProjectConfig::load(layout.project_dir()).expect("config loads");
-    project::plan::advance_next(provider, paths, jiff::Timestamp::now(), &config)
+    project::plan::advance_next(provider, provider.paths(), jiff::Timestamp::now())
         .expect("advance claims")
 }
 
@@ -194,11 +201,24 @@ pub async fn build(
 ) -> Result<slice::orchestrate::BuildOutcome, error::Error> {
     let provider = session.provider();
     let paths = provider.paths();
-    let layout = project::config::Layout::new(paths.project_root());
-    let config = project::config::ProjectConfig::load(layout.project_dir())?;
-    let adapter = project::target_policy::project_adapter(provider, &config, paths)?;
-    slice::orchestrate::build(provider, layout, jiff::Timestamp::now(), slice, &adapter.manifest)
-        .await
+    let layout = paths.layout();
+    let plan = Plan::load(&layout.plan_path())?;
+    let entry = plan
+        .entries
+        .iter()
+        .find(|entry| entry.name == slice)
+        .unwrap_or_else(|| panic!("plan entry `{slice}` missing"));
+    let binding = plan.target(&entry.target)?;
+    let adapter =
+        project::adapter::Resolver::resolve_target(provider, &binding.adapter.selector(), paths)?;
+    Box::pin(slice::orchestrate::build(
+        provider,
+        layout,
+        jiff::Timestamp::now(),
+        slice,
+        &adapter.manifest,
+    ))
+    .await
 }
 
 /// Drive the merge phase for one slice the way the execute loop does
@@ -211,7 +231,7 @@ pub async fn merge(
     session: &Session, slice: &str,
 ) -> Result<slice::orchestrate::MergeOutcome, error::Error> {
     let provider = session.provider();
-    let layout = project::config::Layout::new(provider.paths().project_root());
+    let layout = provider.paths().layout();
     slice::orchestrate::merge(provider, layout, jiff::Timestamp::now(), slice, false).await
 }
 
@@ -233,7 +253,7 @@ pub fn write_plan_fixture(
     root: &std::path::Path, name: &str, sources: &[(&str, &str, &str)],
     slices: &[(&str, &str, &str)],
 ) {
-    let layout = project::config::Layout::new(root);
+    let layout = fixture_layout(root);
     std::fs::create_dir_all(layout.change_root()).expect("change home");
     let mut plan = Plan::named(name);
     let adapter = project::config::ProjectConfig::load(root)

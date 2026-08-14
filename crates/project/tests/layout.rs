@@ -45,3 +45,15 @@ fn project_dir_from_slice() {
     assert_eq!(Layout::project_dir_from_slice(root), None);
     assert_eq!(Layout::project_dir_from_slice(&root.join(".emery/slices/demo")), None);
 }
+
+#[test]
+fn detached_change_home() {
+    let root = std::path::Path::new("/tmp/emery-detached");
+    let layout = Layout::detached(root);
+    assert!(layout.is_detached());
+    assert_eq!(layout.project_dir(), root);
+    assert_eq!(layout.change_root(), root);
+    assert_eq!(layout.plan_path(), root.join("plan.yaml"));
+    assert_eq!(layout.slices_dir(), root.join("slices"));
+    assert_eq!(layout.specs_dir(), root.join(".emery/specs"));
+}

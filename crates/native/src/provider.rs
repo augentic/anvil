@@ -393,6 +393,11 @@ impl seam::Workspaces for Provider {
     /// `.git` and a nested `.emery/change/` home) into the local
     /// snapshot store.
     async fn freeze(&self) -> Result<SnapshotId, seam::Error> {
+        if self.paths.is_detached() {
+            return Err(seam::Error::InvalidRequest(
+                "target-base-freeze-detached: detached change home is not a product tree".into(),
+            ));
+        }
         self.store()
             .snapshot(self.paths.project_root())
             .await

@@ -84,7 +84,10 @@ async fn appends_closed_epoch() {
         panic!("expected PlanExecuteStarted");
     };
     assert!(plan_digest.starts_with("sha256:"), "{plan_digest}");
-    assert!(discovery_digest.is_none());
+    assert!(
+        discovery_digest.as_ref().is_some_and(|digest| digest.starts_with("sha256:")),
+        "execute start always records discovery-digest; got {discovery_digest:?}"
+    );
     assert!(
         refinements.contains_key("greeting"),
         "covered leaf carries a refinement digest; got {refinements:?}"

@@ -72,6 +72,23 @@ fn execute_codes_hint() {
 }
 
 #[test]
+fn closed_plan_codes_hint() {
+    for (code, expect) in [
+        ("plan-discovery-mismatch", "emery plan author"),
+        ("plan-definition-stale", "emery plan author"),
+        ("plan-epoch-required", "emery plan execute"),
+        ("target-base-freeze-detached", "accepted CID"),
+    ] {
+        let err = Error::Diag {
+            code,
+            detail: "detail".into(),
+        };
+        let hint = err.hint().unwrap_or_else(|| panic!("{code} carries a hint"));
+        assert!(hint.contains(expect), "{code} hint names the recovery gesture: {hint}");
+    }
+}
+
+#[test]
 fn empty_rule_omits_prefix() {
     // Edge: an empty `rule` must not leave a dangling `": "` prefix.
     let err = Error::validation_failed("code", "", "just detail");

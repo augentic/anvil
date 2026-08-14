@@ -537,7 +537,7 @@ The first cut lands the execution-substrate change while everything is still in-
 
 ## Cut D — execution, fixtures, closure
 
-### Step 18 — Execute digest chain + detached accepted-CID execution [ ]
+### Step 18 — Execute digest chain + detached accepted-CID execution [x]
 
 **RFC anchors:** D7 (execution over accepted CIDs, workspaces from accepted CID, read-only change mounts), D8 (verification list, coverage contents), D9 ("execution never repeats target binding"); implementation requirements on coverage; acceptance criteria 7, 8, 11.
 
@@ -556,6 +556,14 @@ The first cut lands the execution-substrate change while everything is still in-
 
 **Notes (from step 17):** `emery plan amend --proposal` already invalidates the closed-plan epoch by rewriting `plan.yaml` and journaling `plan.amend.applied`. Reuse `Frontiers::live` / `epoch::freshness` for the digest chain; do not add a second CAS snapshot. Boundary apply stamps `decomposition.yaml.leads-digest` from the activated catalog before retain, so `plan.leads_digest` and the tree field agree after application. Overlap detection is a merge-time inert proposal (`plan-ownership-overlap`), not a validate diagnostic.
 
+**Notes (2026-08-14):**
+- Fixture plans without recorded discovery / leads / decomposition / definition digests skip those `closed_plan` legs; a recorded digest with a missing file is a typed failure. `plan.execute.started.discovery-digest` stays `Option` on the wire for planted facts; new appends always populate it (plan field, else live `discovery.yaml`, else the empty digest).
+- Wave target key is `entry.target` (fixture plans use `default`), not `project.yaml.name`. Merge loads that key from the slice's `target.wave.opened` fact (D9 — do not re-read `plan.yaml`); standalone merge fixtures without a plan keep working. In-place first waves still freeze when the seed CID is the all-zero unbound stub; detached execution never freezes (guest/native `freeze` refuse `target-base-freeze-detached`) and prepares from the accepted CID or `plan.yaml.targets[].cid`.
+- `Ctx::load` skips `project.yaml` when detached (dummy empty config); `Ctx::layout()` is `paths.layout()`. Change-scoped verbs (`status` / `gaps` / `debt` / `archive` / refine) share that load. `emery debt` and author `## Carried debt` prepare a read-only view of each target's accepted (or seed) CID; unbound in-place seeds still fall back to checkout `.emery/specs/`.
+- `DefinitionIdentity.from` persists the resolved `--from` path so execute can re-resolve the current handoff. Detached homes without `from` skip the current-handoff leg; in-place tries `.emery/system/` when present.
+- Archive already keeps accepted CIDs as live GC roots (step 3); no extra store CIDs were added for plan/discovery file digests (those are not snapshot objects).
+- **Step 19 leftover:** when execute is detached, the guest `.` mount *is* the change home, so adapter preflight that still reads `.emery/change/slices/…` is wrong. Detached preflight must read `slices/<slice>/…` relative to that mount (or the engine must pass the staged path). Do not invent a dual-path probe in the engine.
+
 ### Step 19 — Definition-home fixtures, eval and wasm cases (adapters repo) [ ]
 
 **RFC anchors:** implementation requirement "Integration tests use reviewed definition fixtures, local repository-host, HTTP, content-addressed store, and component fixtures"; adapters-repo testing map.
@@ -569,6 +577,8 @@ The first cut lands the execution-substrate change while everything is still in-
 **Tests / gates:** `cargo make ci` in emery-adapters; eval/wasm rungs remain operator-invoked (run at least `wasm-contracts` once before closing the step; record the outcome in Notes).
 
 **Notes (from step 15):** Engine `probe` already drives `plan author --from/--wave` (degenerate mint, or a fixture `definition/` tree). Multi-source `case.toml` without `intent` or a definition home fails closed — `orders-contracts` / `omnia-r9k` / engine `auth` need definition-home fixtures here. `mock::definition::mint` is reachable from probe (`emery-mock` is a regular dep). Do not revive `seed_authored_plan`.
+
+**Notes (from step 18):** Detached execute is live in the engine. When updating adapter preflight for wasm/eval cases, read `slices/<slice>/…` relative to the change-home `.` mount (or consume a staged path the engine passes). The in-place `.emery/change/slices/…` prefix is wrong once `.` is the change home. Do not add a dual-path probe.
 
 ### Step 20 — Documentation closure and final gates (both repos) [ ]
 

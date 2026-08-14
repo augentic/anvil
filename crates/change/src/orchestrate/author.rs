@@ -3,7 +3,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use artifacts::leads::{Lead, Leads};
 use error::Error;
@@ -18,8 +18,8 @@ use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{
     DISCOVERY_VERSION, DefinitionIdentity, Discovery, GateProse, Plan, ReviewIdentity,
-    SourceBinding, TargetBinding, build_request, resolve_topology, retain_decomposition,
-    retain_leads,
+    SourceBinding, TargetBinding, build_request, resolve_from, resolve_topology,
+    retain_decomposition, retain_leads,
 };
 use project::profile::Profiles;
 use project::seam::{self, Ingest, Source, Workspaces};
@@ -101,7 +101,7 @@ where
         sources.insert(key, binding);
     }
 
-    let definition = identity(&reviewed);
+    let definition = identity(&reviewed, &from);
     let discovery = Discovery {
         version: DISCOVERY_VERSION,
         definition: definition.clone(),
@@ -165,7 +165,8 @@ where
         },
     )
     .await?;
-    write_change(layout, &plan, &leads, gate.gate.as_ref(), &decomposed.caveats, now)?;
+    let debt = slice::debt::from_targets(provider, layout, &plan, now).await.unwrap_or_default();
+    write_change(layout, &plan, &leads, gate.gate.as_ref(), &decomposed.caveats, &debt)?;
     journal::append_one(
         layout,
         &Event::new(
@@ -191,7 +192,7 @@ where
 
 fn write_change(
     layout: Layout<'_>, plan: &Plan, leads: &Leads, gate: Option<&GateProse>, caveats: &[String],
-    now: Timestamp,
+    debt: &[slice::debt::DebtRow],
 ) -> Result<(), Error> {
     let mut body = format!("# Change — {}\n\n", plan.name);
     body.push_str(&orientation(plan, leads));
@@ -206,9 +207,7 @@ fn write_change(
             let _ = writeln!(body, "- {caveat}");
         }
     }
-    if let Ok(rows) = slice::debt::baseline(&layout.specs_dir(), now)
-        && let Some(section) = slice::debt::markdown(&rows)
-    {
+    if let Some(section) = slice::debt::markdown(debt) {
         body.push('\n');
         body.push_str(&section);
         if !body.ends_with('\n') {
@@ -253,17 +252,6 @@ fn import_lead(key: &str, scope: &Scope) -> Lead {
         .unwrap_or(scope.lead.as_str())
         .to_string();
     Lead::new(scope.lead.clone(), key, synopsis)
-}
-
-fn resolve_from(paths: &ExecutionPaths, from: &Path) -> PathBuf {
-    if from.is_absolute() {
-        return from.to_path_buf();
-    }
-    if paths.is_detached() {
-        paths.change_root().join(from)
-    } else {
-        paths.project_root().join(from)
-    }
 }
 
 fn load_existing(plan_path: &Path) -> Result<Option<Plan>, Error> {
@@ -366,7 +354,7 @@ fn review_line(events_dir: &Path, reviewed: &Reviewed) -> Result<Vec<u8>, Error>
     Ok(bytes)
 }
 
-fn identity(reviewed: &Reviewed) -> DefinitionIdentity {
+fn identity(reviewed: &Reviewed, from: &Path) -> DefinitionIdentity {
     DefinitionIdentity {
         system: reviewed.handoff.definition.clone(),
         handoff_digest: reviewed.digest.clone(),
@@ -378,6 +366,7 @@ fn identity(reviewed: &Reviewed) -> DefinitionIdentity {
         system_model_digest: reviewed.handoff.system_model_digest.clone(),
         migration_plan_digest: reviewed.handoff.migration_plan_digest.clone(),
         wave_id: reviewed.handoff.wave.id.clone(),
+        from: Some(from.display().to_string()),
     }
 }
 

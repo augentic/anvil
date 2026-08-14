@@ -86,7 +86,7 @@ async fn gate_debt_conserved() {
     execute(&session).await;
 
     // The folded baseline row lives on the accepted CID.
-    let tree = session.materialize_accepted("demo").await;
+    let tree = session.materialize_accepted("default").await;
     let baseline = fs::read_to_string(tree.path().join(".emery/specs/greeting/spec.md"))
         .expect("merged baseline");
     assert!(baseline.contains("greeting error handling [unknown]"), "{baseline}");
@@ -171,7 +171,7 @@ async fn note_carries_reason() {
     // The durable deferral covers the gate — no new mint.
     execute(&session).await;
 
-    let tree = session.materialize_accepted("demo").await;
+    let tree = session.materialize_accepted("default").await;
     let baseline = fs::read_to_string(tree.path().join(".emery/specs/greeting/spec.md"))
         .expect("merged baseline");
     assert!(baseline.contains("Note: deferred — change: demo; date: "), "{baseline}");
@@ -196,7 +196,7 @@ async fn debt_after_merge() {
 
     // Folded note lives on the accepted CID. `emery debt` still reads
     // checkout `.emery/specs/` (dark until step 18 re-homes it).
-    let tree = session.materialize_accepted("demo").await;
+    let tree = session.materialize_accepted("default").await;
     let rows = slice::debt::baseline(&tree.path().join(".emery/specs"), jiff::Timestamp::now())
         .expect("debt from accepted CID");
     assert_eq!(rows.len(), 1, "{rows:?}");

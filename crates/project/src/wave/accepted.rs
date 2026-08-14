@@ -9,7 +9,7 @@ use crate::journal::{Event, EventKind};
 use crate::snapshot::SnapshotId;
 
 /// Current accepted CID for `target`, or `None` when no wave has
-/// opened yet (the first wave freezes ambient).
+/// opened yet (the first wave seeds from `plan.yaml.targets[].cid`).
 ///
 /// The chain starts at the first committed fact's `base` (the freeze
 /// taken when that target's first wave opened) and walks `{base,
@@ -54,6 +54,21 @@ pub fn accepted_cid(
     }
 
     initial_cid(layout, events, target)
+}
+
+/// Wave-open base: the current accepted CID, or the bound target's
+/// recorded seed CID when no wave has opened.
+///
+/// # Errors
+///
+/// `plan-target-unknown`; accepted-CID projection failures.
+pub fn wave_base(
+    layout: Layout<'_>, events: &[Event], plan: &crate::plan::Plan, target: &str,
+) -> Result<SnapshotId, Error> {
+    match accepted_cid(layout, events, target)? {
+        Some(cid) => Ok(cid),
+        None => Ok(plan.target(target)?.cid.clone()),
+    }
 }
 
 /// Base recorded on the target's first opened wave — the in-place

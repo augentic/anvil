@@ -420,7 +420,7 @@ async fn wave_opened_build_execute() {
     assert!(kinds.iter().any(|k| k == "target.merge.wave-postflight-failed"), "{kinds:?}");
     assert!(!kinds.iter().any(|k| k == "target.merge.wave-succeeded"), "{kinds:?}");
     assert!(!root.join(".emery/specs/greeting/spec.md").exists(), "checkout untouched");
-    let accepted = session.materialize_accepted("demo").await;
+    let accepted = session.materialize_accepted("default").await;
     assert!(
         accepted.path().join(".emery/specs/greeting/spec.md").is_file(),
         "merge stands on the accepted CID"

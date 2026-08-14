@@ -113,54 +113,7 @@ impl Error {
             Self::AdapterCliTooOld { .. } => Some(
                 "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`); if the adapter itself is stale instead, `emery adapter update <name>` pulls its newest published version",
             ),
-            Self::Diag { code, .. } => match *code {
-                "plan-has-outstanding-work" => Some(
-                    "complete or drop the listed entries, or rerun with --force to archive anyway",
-                ),
-                "slice-not-found" => {
-                    Some("run `emery slice list` to see every slice and its status")
-                }
-                "plan-entry-not-found" => {
-                    Some("run `emery plan status` to see the plan's entries and the next action")
-                }
-                "plan-source-unknown" => Some(
-                    "bind the source at plan time (`emery plan author --from <dir> --wave <id>`) or pass one of the bound keys",
-                ),
-                "slice-lifecycle" => Some(
-                    "run `emery slice list` for each slice's current status, then re-run `emery plan execute` — the loop drives the missing phase",
-                ),
-                "plan-transition" => Some(
-                    "per-entry status is projected from facts written by `emery plan execute` (the advance claim writes `in-progress`, the merge phase writes `done`); there is no direct status writer",
-                ),
-                "plan-already-exists" => Some(
-                    "rerun with --force to replace the plan, or continue the existing one (`emery plan status`)",
-                ),
-                "slice-already-exists" => Some(
-                    "continue the existing slice (`emery slice list` shows its status) or abandon it with `emery plan drop <slice>`",
-                ),
-                "binding-budget-exhausted" => Some(
-                    "narrow or split the reviewed wave upstream; delivery-binding budgets are engine constants and cannot be raised per project",
-                ),
-                "git-revision-unavailable" => Some(
-                    "the recorded commit is gone from the repository host; update the reviewed wave with a reachable exact revision",
-                ),
-                "locator-private-network" => Some(
-                    "use a public HTTPS locator; delivery binding does not read private-network targets",
-                ),
-                "source-adapter-no-match" | "source-adapter-ambiguous" => Some(
-                    "pin an exact adapter on the reviewed handoff (`emery:<name>@<semver>`); recognition does not rank or fall back",
-                ),
-                "adapter-unversioned" => Some(
-                    "detached topology records only exact package pins (`emery:<name>@<semver>`); seed a local component with `emery adapter add` for in-place work",
-                ),
-                "source-intent-locator" => Some(
-                    "bind `intent` as an inline value under the reserved key; locators are refused",
-                ),
-                "source-adapter-duplicate" => {
-                    Some("remove the duplicate source binding from the reviewed wave")
-                }
-                _ => None,
-            },
+            Self::Diag { code, .. } => diag_hint(code),
             Self::Validation { code, .. } => match code.as_ref() {
                 "plan-proposal-stale" | "plan-proposal-live" | "plan-proposal-preserve" => Some(
                     "quiesce affected claims and waves, then re-run `emery plan amend --proposal <digest>` against a fresh proposal",
@@ -234,5 +187,74 @@ impl Error {
             code: code.into(),
             detail,
         }
+    }
+}
+
+fn diag_hint(code: &str) -> Option<&'static str> {
+    match code {
+        "plan-has-outstanding-work" => {
+            Some("complete or drop the listed entries, or rerun with --force to archive anyway")
+        }
+        "slice-not-found" => Some("run `emery slice list` to see every slice and its status"),
+        "plan-entry-not-found" => {
+            Some("run `emery plan status` to see the plan's entries and the next action")
+        }
+        "plan-source-unknown" => Some(
+            "bind the source at plan time (`emery plan author --from <dir> --wave <id>`) or pass one of the bound keys",
+        ),
+        "slice-lifecycle" => Some(
+            "run `emery slice list` for each slice's current status, then re-run `emery plan execute` — the loop drives the missing phase",
+        ),
+        "plan-transition" => Some(
+            "per-entry status is projected from facts written by `emery plan execute` (the advance claim writes `in-progress`, the merge phase writes `done`); there is no direct status writer",
+        ),
+        "plan-already-exists" => Some(
+            "rerun with --force to replace the plan, or continue the existing one (`emery plan status`)",
+        ),
+        "slice-already-exists" => Some(
+            "continue the existing slice (`emery slice list` shows its status) or abandon it with `emery plan drop <slice>`",
+        ),
+        "binding-budget-exhausted" => Some(
+            "narrow or split the reviewed wave upstream; delivery-binding budgets are engine constants and cannot be raised per project",
+        ),
+        "git-revision-unavailable" => Some(
+            "the recorded commit is gone from the repository host; update the reviewed wave with a reachable exact revision",
+        ),
+        "locator-private-network" => Some(
+            "use a public HTTPS locator; delivery binding does not read private-network targets",
+        ),
+        "source-adapter-no-match" | "source-adapter-ambiguous" => Some(
+            "pin an exact adapter on the reviewed handoff (`emery:<name>@<semver>`); recognition does not rank or fall back",
+        ),
+        "adapter-unversioned" => Some(
+            "detached topology records only exact package pins (`emery:<name>@<semver>`); seed a local component with `emery adapter add` for in-place work",
+        ),
+        "source-intent-locator" => {
+            Some("bind `intent` as an inline value under the reserved key; locators are refused")
+        }
+        "source-adapter-duplicate" => {
+            Some("remove the duplicate source binding from the reviewed wave")
+        }
+        "plan-discovery-mismatch"
+        | "plan-discovery-missing"
+        | "plan-leads-mismatch"
+        | "plan-leads-revision-missing"
+        | "plan-decomposition-mismatch"
+        | "plan-decomposition-revision-missing"
+        | "plan-handoff-import-missing"
+        | "plan-handoff-import-mismatch"
+        | "plan-review-import-missing"
+        | "plan-review-import-mismatch"
+        | "plan-definition-stale"
+        | "plan-profile-mismatch" => Some(
+            "re-author or re-bind the reviewed wave (`emery plan author --force --from <dir> --wave <id>`), then `emery plan refine` and `emery plan execute`",
+        ),
+        "plan-epoch-required" => Some(
+            "run `emery plan execute` — it opens the authorization epoch before build or merge",
+        ),
+        "target-base-freeze-detached" => Some(
+            "detached execution prepares workspaces from the accepted CID or plan.yaml.targets[].cid; never freeze the change home",
+        ),
+        _ => None,
     }
 }

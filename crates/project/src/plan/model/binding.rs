@@ -21,6 +21,10 @@ pub struct DefinitionIdentity {
     pub migration_plan_digest: SnapshotId,
     /// Selected wave id.
     pub wave_id: String,
+    /// Definition-home path used at author time (`--from`). Absolute
+    /// after resolve. Absent on fixture plans.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
 }
 
 /// `(writer, sequence, event-digest)` of the imported review fact.

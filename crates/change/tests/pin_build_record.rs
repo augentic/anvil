@@ -4,13 +4,15 @@
 
 mod support;
 
+use std::collections::BTreeMap;
 use std::fs;
 
 use diagnostics::DiagnosticKind;
+use jiff::Timestamp;
 use mock::invoke::run;
 use mock::session::Session;
 use project::config::Layout;
-use project::journal::{EventKind, read_union};
+use project::journal::{ClosedPlanCoverage, Event, EventKind, append_one, read_union};
 use project::plan::Plan;
 use project::slice::{LifecycleStatus, SliceMetadata};
 use slice::refinement::Manifest;
@@ -23,6 +25,21 @@ async fn author_and_refine(session: &Session) {
     // Merge (and the plan-owned completion preflight) require a
     // projected in-progress entry — the advance step claims the slice.
     support::advance(session);
+    let layout = Layout::new(session.root());
+    append_one(
+        layout,
+        &Event::new(
+            Timestamp::from_second(1_700_000_000).expect("timestamp"),
+            EventKind::PlanExecuteStarted {
+                coverage: ClosedPlanCoverage::ClosedPlan {
+                    plan_digest: Plan::file_digest(layout).expect("plan digest"),
+                    refinements: BTreeMap::new(),
+                },
+                discovery_digest: Some(project::refinement::empty_digest().to_string()),
+            },
+        ),
+    )
+    .expect("stamp epoch");
 }
 
 fn journal_kinds(root: &std::path::Path) -> Vec<&'static str> {
@@ -123,7 +140,7 @@ async fn pin_build_record_wave() {
 
     // Merged projection: accepted CID carries finalized ids; checkout is untouched.
     assert!(!root.join(".emery/specs/auth/spec.md").is_file());
-    let tree = session.materialize_accepted("demo").await;
+    let tree = session.materialize_accepted("default").await;
     assert!(tree.path().join(".emery/specs/auth/spec.md").is_file());
     let archive = fs::read_dir(root.join(".emery/change/archive"))
         .expect("archive")

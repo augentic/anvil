@@ -109,7 +109,7 @@ async fn author_approve_execute() {
         !root.join(".emery/specs/greeting/spec.md").exists(),
         "merge must not write the operator checkout"
     );
-    let accepted = session.materialize_accepted("demo").await;
+    let accepted = session.materialize_accepted("default").await;
     let content = fs::read_to_string(accepted.path().join(".emery/specs/greeting/spec.md"))
         .expect("accepted baseline spec");
     assert!(content.contains("ID: REQ-001"), "{content}");
@@ -224,7 +224,7 @@ async fn archive_sweeps_change() {
     .expect("archive moves the plan and sweeps");
     assert_eq!(archived.plan.name, "demo");
     assert!(archived.swept_objects > 0, "the sweep collected the change's objects");
-    let accepted = session.materialize_accepted("demo").await;
+    let accepted = session.materialize_accepted("default").await;
     assert!(
         accepted.path().join(".emery/specs/greeting/spec.md").is_file(),
         "the accepted CID survives archive — it is the merged product"
@@ -398,7 +398,7 @@ async fn postflight_terminal() {
     // CID stands, slice archived, plan entry projects `done`. Checkout
     // is untouched.
     assert!(!root.join(".emery/specs/greeting/spec.md").exists());
-    let accepted = session.materialize_accepted("demo").await;
+    let accepted = session.materialize_accepted("default").await;
     assert!(accepted.path().join(".emery/specs/greeting/spec.md").is_file());
     assert!(!root.join(".emery/change/slices/greeting").exists());
     let plan: change::Plan = serde_saphyr::from_str(

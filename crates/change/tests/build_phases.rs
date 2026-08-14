@@ -326,7 +326,7 @@ mod gate_profiles {
         let root = session.root().to_path_buf();
         let dir = slice_dir(&session);
 
-        let err = support::build(&session, "greeting").await.expect_err("gate rejects");
+        let err = Box::pin(support::build(&session, "greeting")).await.expect_err("gate rejects");
         assert_eq!(err.variant_str(), code);
 
         let report = support::canonical_report(&root, "greeting");

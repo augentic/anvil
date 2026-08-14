@@ -56,7 +56,7 @@ pub async fn extract(
     seam: &impl Source, resolver: &impl Resolver, workspaces: &impl Workspaces,
     paths: &ExecutionPaths, now: Timestamp, source: &str, lead: &str, slice: &str,
 ) -> Result<ExtractOutcome, Error> {
-    let layout = Layout::new(paths.project_root());
+    let layout = paths.layout();
     let plan = Plan::load(&layout.plan_path())?;
     let binding = plan
         .sources
