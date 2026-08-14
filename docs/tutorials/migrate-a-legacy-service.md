@@ -80,7 +80,7 @@ Re-running init on an already-initialized project is a no-op; `emery init --upgr
 <div class="step-label">03</div>
 <h3 class="step-title">Author the plan</h3>
 
-Bind the clone as a `typescript` source through a reviewed definition home. Until RFC-104's write surface lands, a colocated degenerate lives at `.emery/system/`:
+Bind the clone as a `typescript` source through a reviewed definition home. `emery system {survey, plan, review}` writes the handoff; a colocated degenerate lives at `.emery/system/`:
 
 ```text
 /emery:plan my-service --from .emery/system/ --wave deliver

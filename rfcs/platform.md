@@ -1,6 +1,6 @@
 # Services Delivery Programme
 
-> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-99 through RFC-102 are parked and deliberately excluded from the active dependency map. RFC-96 is scheduled active work following stable RFC-88/91 contracts. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
+> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88 and RFC-104 are implemented. RFC-99 through RFC-102 are parked and deliberately excluded from the active dependency map. Next gaps are RFC-96 (bounded concurrent execution) and RFC-95 (publication sets). Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
 >
 > Business direction: Propellerhead builds and changes critical software without losing the behaviour, knowledge, and trust the organisation depends on.
 >
@@ -20,9 +20,7 @@ The north-star architecture remains capable of scaling beyond one node and one r
 
 ## Where we are
 
-**Implemented foundation:** RFC-86 (Change Facts), RFC-87 (Private Workspaces), RFC-88 (Detached Changes), RFC-90 (Build Verification), and RFC-91 (Refinement Stage). The engine runs a fact-based workflow over private workspaces with an engine-owned build phase machine, a fenced specification-refinement stage, and detached multi-target execution over accepted CIDs. Merge-time `apply` is deleted; each touched target ends with one accepted CID.
-
-**Current definition gap:** the implemented workflow begins with change authoring from a reviewed handoff. It can recover slice specifications from bound sources, but it cannot yet produce a coverage-accounted system inventory, evidence-linked as-is architecture, deterministic diagram projections, target and transition architecture, or a migration plan that can finish as a paid client deliverable. [RFC-104](rfc-104-system-archaeology.md) supplies that predecessor and hands one reviewed wave to RFC-88. Until that write surface lands, `plan author --from --wave` consumes fixture-built definition homes.
+**Implemented foundation:** RFC-86 (Change Facts), RFC-87 (Private Workspaces), RFC-88 (Detached Changes), RFC-90 (Build Verification), RFC-91 (Refinement Stage), and RFC-104 (System Archaeology). The engine runs a fact-based workflow over private workspaces with an engine-owned build phase machine, a fenced specification-refinement stage, detached multi-target execution over accepted CIDs, and the `emery system *` definition loop that appends `system.wave.reviewed` over an exact wave handoff. Merge-time `apply` is deleted; each touched target ends with one accepted CID. `plan author --from --wave` consumes that reviewed handoff.
 
 **Current delivery gap:** RFC-96 supplies the bounded concurrent scheduler, task decomposition, deterministic composition, and domain convergence required for practical delivery; RFC-95 seals results for publication. Merged code exists only as store snapshots until RFC-95 — there is no shipped materialize verb.
 
@@ -64,8 +62,8 @@ flowchart TD
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef critical fill:#fef3c7,stroke:#b45309,color:#78350f,stroke-width:3px
-    class R86,R87,R88,R90,R91 done
-    class R104,R94,R95,R96,R97,R98 critical
+    class R86,R87,R88,R90,R91,R104 done
+    class R94,R95,R96,R97,R98 critical
 ```
 
 RFC-92 patches the model-capability profile shape owned by RFC-88, but it does not wait for RFC-88 to finish: routes and usage facts land on the implemented substrate and fold into the profile when that cut lands.
@@ -87,7 +85,7 @@ Independent tracks proceed in parallel. Staffing follows the critical path first
 
 ### Critical path — finish definition and delivery as one services loop
 
-[RFC-104 System Archaeology and Migration Planning](rfc-104-system-archaeology.md) is the active definition contract and the programme's first services-shaped cut:
+[RFC-104 System Archaeology and Migration Planning](rfc-104-system-archaeology.md) is the implemented definition contract and the programme's first services-shaped cut:
 
 1. persist a declared system boundary and every included, excluded, inaccessible, unsupported, or unresolved source;
 2. extract system-wide Evidence into a structured as-is model, including runtime topology, interfaces, state, ownership, and context-only dependencies;
@@ -97,7 +95,7 @@ Independent tracks proceed in parallel. Staffing follows the critical path first
 
 The definition loop may finish without product execution. That is a legitimate paid archaeology or readiness outcome, not a failed attempt to produce slices.
 
-[RFC-88 Detached Changes](rfc-88-detached-changes.md) remains one active delivery contract following the reviewed RFC-104 handoff. Implement it in internal cuts rather than splitting its delivery mechanics into more RFCs:
+[RFC-88 Detached Changes](rfc-88-detached-changes.md) is the implemented delivery contract following the reviewed RFC-104 handoff. Its internal cuts landed rather than splitting delivery mechanics into more RFCs:
 
 1. accepted-CID merge and deletion of interim `apply`;
 2. detached change home with exact delivery targets and sources imported from one reviewed RFC-104 wave;
@@ -211,7 +209,7 @@ operator publishes    → push sealed branches; open and merge PRs
 emery plan archive    → verify publication, project outcome, archive
 ```
 
-The four delivery stages from `plan author` onward are implemented today, with two qualifications: verification is currently model-assisted, and detached target pinning plus the publication legs land with RFC-88 and RFC-95 respectively. The two definition stages are RFC-104. RFC-94 adds target execution admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the delivery stages.
+The definition loop (`system survey` → `system plan` → `system review`) and the four delivery stages from `plan author` onward are implemented today, with two qualifications: verification is currently model-assisted, and the publication legs land with RFC-95. RFC-96 supplies bounded concurrent execution. RFC-94 adds target execution admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the delivery stages.
 
 An automation may invoke stages back to back. Inspection opportunities are not inferred attestations: only `system review` records wave selection, by appending `system.wave.reviewed` over an exact handoff, and that fact grants no product mutation authority. When RFC-93 lands, it governs whether the caller may request each act; the engine applies identical artifact and result gates whoever called.
 

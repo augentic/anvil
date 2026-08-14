@@ -6,7 +6,7 @@ Scaffold, populate, refine, validate, execute, and archive change plans. The `pl
 
 | Verb | When to use |
 |------|-------------|
-| [`author`](#emery-plan-author) | Bind a reviewed handoff (`--from` / `--wave`), decompose it, and publish `decomposition.yaml` + `plan.yaml` together. Refuses an existing plan unless `--force` rebinds the same reviewed handoff. Invoked by `/emery:plan`. |
+| [`author`](#emery-plan-author) | Bind a reviewed handoff from `emery system review` (`--from` / `--wave`), import its surface leads, decompose it, and publish `decomposition.yaml` + `plan.yaml` together. Refuses an existing plan unless `--force` rebinds the same reviewed handoff. Invoked by `/emery:plan`. |
 | [`refine`](#emery-plan-refine) | Guest-routed serial refinement drain: per in-scope leaf in dependency order, extract every bound source, synthesize + validate the slice artifacts, atomically write `refinement.yaml`. Fresh manifests are skipped; no code work. Invoked by `/emery:refine`. Optional repeated `--slice` selectors. |
 | [`execute`](#emery-plan-execute) | Guest-routed driver loop: requires a fresh refinement manifest per in-scope leaf, at start appends `plan.execute.started` (authorization epoch covering the exact refinement digests), then claims → builds → merges per entry under gap gates until `drained` or a stop. Holds the `.emery/change/guest.lock` marker. |
 | [`add`](#emery-plan-add) | Append a new entry to the plan (projects `pending` until claimed). |
@@ -43,9 +43,9 @@ JSON output: the [`emery plan author` envelope](../cli-output-shapes.md#emery-pl
 
 Behavior notes:
 
-- **Order of operations.** Resolve the current reviewed handoff, copy byte-identical envelopes under `imports/`, ingest target and source locators, pin adapters, write `discovery.yaml`, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together (complete-tree policy).
-- **Intent** arrives only through the handoff evidence scope (reserved key `intent`, value-only, no locator, no CID). There is no `--intent` or `--source` authoring flag.
-- **Exact pins.** Every bound source and target records `emery:<name>@<semver>`. Bare names are refused on the plan topology.
+- **Order of operations.** Resolve the current reviewed handoff (`system::review::current_handoff`, verify-on-read), copy byte-identical envelopes under `imports/`, re-resolve each coverage locator and pin the delivery CID (a handoff `observed-cid` is imported provenance and does not authorize the pin), fill a declared adapter name and keep a handoff pin, write `discovery.yaml`, import the wave's surface leads (focused child survey only when an imported lead is still coarser than a buildable boundary), decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together (complete-tree policy).
+- **Intent** arrives only through the handoff (reserved key `intent`, value-only, no locator, no CID). There is no `--intent` or `--source` authoring flag.
+- **Exact pins.** Every bound source and target records `emery:<name>@<semver>`. A handoff pin is frozen; a declared name is filled at bind time. Bare names are refused on the persisted plan topology.
 
 ### emery plan refine
 

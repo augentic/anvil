@@ -4,7 +4,7 @@ Emery turns raw inputs — operator intent, written documentation, legacy code, 
 
 There are two distinct reconciliation moments, and they answer different questions:
 
-- **Plan time — what work exists?** `/emery:plan` binds a reviewed handoff (`--from` / `--wave`), surveys each bound source for *leads*, and decomposes them into the *slices* that make up the change.
+- **Plan time — what work exists?** `/emery:plan` binds a reviewed handoff (`--from` / `--wave`), imports the wave's surface leads (focused child survey only when an imported lead is still coarser than a buildable boundary), and decomposes them into the *slices* that make up the change.
 - **Slice time — what must each domain do?** The `emery plan refine` drain extracts *evidence* from each source and synthesizes it into the domain's `specs/<domain>/spec.md`, recording exactly which source contributed each requirement.
 
 ## Plan time: leads become slices

@@ -72,7 +72,7 @@ See [Directory layout](../reference/directory-layout.md) for the full tree.
 <div class="step-label">02</div>
 <h3 class="step-title">Plan the change</h3>
 
-Author from a reviewed definition home. Intent arrives through that handoff (reserved key `intent`); there is no `--intent` or `--source` flag. Until RFC-104's write surface lands, a colocated degenerate lives at `.emery/system/`:
+Author from a reviewed definition home. Intent arrives through that handoff (reserved key `intent`); there is no `--intent` or `--source` flag. `emery system {survey, plan, review}` writes the handoff; a colocated degenerate lives at `.emery/system/`:
 
 ```text
 /emery:plan fix-typo --from .emery/system/ --wave deliver

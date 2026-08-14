@@ -1,6 +1,6 @@
 # RFC-104 → RFC-88 patches
 
-> Status: Apply into the next [RFC-88](rfc-88-detached-changes.md) cut. Do not edit in-flight RFC-88 from the RFC-104 work.
+> Status: Must-apply items are folded into [RFC-88](rfc-88-detached-changes.md). Keep this file as the consumption-patch record; do not re-apply the replacements. Recommended field-patch `plan amend` retirement stays out of scope.
 >
 > [RFC-104](rfc-104-system-archaeology.md) states the definition-side consumption contract. This file is the RFC-88-side wording so the two documents agree. It is not a new lifecycle RFC. [platform.md](platform.md) already tells RFC-88 to use internal cuts rather than extra RFCs.
 

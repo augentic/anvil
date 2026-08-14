@@ -27,6 +27,9 @@ The same rhythm runs for a one-slice change and a twelve-slice change alike. Aut
 | `/emery:execute`          | Drive the per-slice build → merge loop (`emery plan execute` — opens the authorization epoch over the refinement digests) |
 | `/emery:status`           | Report where the plan stands and the literal next command (read-only)                          |
 | `/emery:finalize`         | Confirm operator-owned publication is complete, then archive the plan                         |
+| `/emery:system-survey`    | Survey a definition home's declared coverage and correlate the `as-is` architecture           |
+| `/emery:system-plan`      | Propose the initial architecture once, then reproject views and wave handoffs                 |
+| `/emery:system-review`    | Record architectural authority over one exact wave handoff                                    |
 
 ## Artifacts
 
@@ -80,6 +83,12 @@ emery plan status                                      # read-only next-action +
 emery plan gaps                                        # typed gap inventory with open|deferred dispositions
 emery plan archive                                     # archive the drained plan (prints the carried-debt summary)
 emery debt                                             # baseline debt projection (carried unknown/conflict backlog)
+
+# Definition loop (RFC-104)
+emery system survey [--dir <definition-home>]          # coverage-accounted estate survey + as-is correlation
+emery system plan [--dir <definition-home>]            # initial architecture proposal + handoff reprojection
+emery system review <wave> --handoff <digest>          # append system.wave.reviewed
+emery system status [--dir <definition-home>]          # read-only next-action projection
 
 # Slice projections (read-only)
 emery slice list                                       # every slice with status + target

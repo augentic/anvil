@@ -6,7 +6,7 @@ Reconcile evidence from more than one source adapter at plan time.
 
 ## Basic syntax
 
-Sources arrive through the reviewed handoff (`/emery:plan` elicits `--from` / `--wave`). Each evidence scope in that handoff becomes a slot in `plan.yaml.sources` and contributes [leads](../appendices/glossary.md#l) to `leads.md`.
+Sources arrive through the reviewed handoff (`/emery:plan` elicits `--from` / `--wave`). Each imported surface lead in that handoff becomes a slot in `plan.yaml.sources` and contributes [leads](../appendices/glossary.md#l) to `leads.md`. Bind re-resolves the coverage locator and pins the delivery CID; a handoff `observed-cid` is imported provenance only.
 
 Intent is the reserved key with an inline `value`; other sources carry a locator and a CID. There is no `--intent` or `--source` authoring flag.
 
