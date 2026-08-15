@@ -1,0 +1,135 @@
+/// The host-owned VCS capability (RFC-95): every operation whose
+/// nature is Git or forge I/O. The engine guest has no network or
+/// git; the host stages trees, exports publication worktrees, and
+/// reads the forge. Imported by the workflow guest only — CID
+/// minting, D9 metering, and every verification check stay
+/// engine-side.
+package emery:vcs@0.1.0;
+
+interface trees {
+  /// Credential policy travels per call, never as package identity.
+  enum credentials {
+    /// Hardened credential-free fetch (RFC-88 bind): no hooks, no
+    /// submodules, no LFS, no prompts.
+    none,
+    /// The operator's ambient host credentials (RFC-104 archaeology).
+    ambient,
+  }
+
+  /// Transport-level bounds for one fetch, handed down from the
+  /// engine's D9 policy (`https_body`, `https_redirects`, `time_ms`).
+  /// Wave-level metering (bindings, trees, inspected bytes) stays
+  /// engine-side.
+  record limits { max-bytes: u64, max-redirects: u32, time-ms: u64 }
+
+  /// One staged tree beneath the staging root.
+  record fetched {
+    /// Deployment-local root of the staged tree. The engine snapshots
+    /// it (CID minting stays in the workspace kernel) and discards it.
+    root: string,
+    /// The commit the fetch reports, when the locator is Git. The
+    /// moved-branch comparison against a recorded prior SHA is an
+    /// engine check.
+    revision: option<string>,
+  }
+
+  variant error {
+    /// The locator is not a fetchable origin.
+    invalid-request(string),
+    /// The origin refused or could not be reached.
+    access(string),
+    /// A transport-level limit was exhausted (bytes, redirects, time).
+    limit(string),
+    internal(string),
+  }
+
+  fetch: async func(locator: string, credentials: credentials, limits: limits)
+    -> result<fetched, error>;
+
+  /// Discard a staged tree by its root. Best-effort and idempotent.
+  discard: async func(root: string) -> result<_, error>;
+}
+
+interface worktree {
+  /// One RFC-95 D11 materialize. `plan` and `target` name the
+  /// `$EMERY_HOME/publication/<plan>/<target>/` slot; `branch` is
+  /// `change/<plan>`; `allow-in-place` carries the engine's
+  /// single-member in-place decision.
+  record request {
+    repository: string,
+    parent-revision: string,
+    branch: string,
+    cid: string,
+    plan: string,
+    target: string,
+    allow-in-place: bool,
+  }
+
+  /// Idempotency outcome per the D11 state table.
+  enum state { created, matched, rematerialized }
+
+  /// The D11 refusal rows. The engine maps `dirty` to
+  /// `publication-worktree-dirty` and the closed provisioning reasons
+  /// to `publication-provision-failed`.
+  variant export-error {
+    /// Operator has uncommitted edits on the publication worktree.
+    dirty,
+    branch-diverged,
+    branch-checked-out-elsewhere,
+    destination-conflict,
+    parent-unavailable,
+    clone-failed(string),
+    invalid-request(string),
+    internal(string),
+  }
+
+  /// Provision, materialize, and stage per RFC-95 D11; returns the
+  /// host worktree path (node-local observation for the
+  /// `plan.publication.materialized` fact) and the outcome.
+  %export: async func(req: request) -> result<tuple<string, state>, export-error>;
+}
+
+interface forge {
+  /// Publication state as the forge reports it. `unpublished` is the
+  /// engine's zero-match projection, not a forge state.
+  enum pr-state { open, merged, closed }
+
+  /// One pull request, carrying everything RFC-95 D10's read needs.
+  record pull-request {
+    url: string,
+    body: string,
+    state: pr-state,
+    /// The observed base branch (recorded, not gated — D10).
+    base: string,
+    /// RFC 3339; present only when merged.
+    merged-at: option<string>,
+    /// The forge's merge commit; present only when merged.
+    merge-commit: option<string>,
+  }
+
+  /// Authentication and transport failures are distinct outcomes;
+  /// neither is `publication-unverified` (D10).
+  variant error {
+    invalid-request(string),
+    auth(string),
+    transport(string),
+    internal(string),
+  }
+
+  /// Every open, merged, and closed pull request for
+  /// `(repository, branch)`, pagination followed to exhaustion. The
+  /// zero / one / several rule, trailer and covering-digest matching,
+  /// and `merged-at` ordering are engine checks over these results.
+  find: async func(repository: string, branch: string)
+    -> result<list<pull-request>, error>;
+}
+
+/// Host-side bindgen world for the `vcs` capability: the shipped
+/// runtime links a host implementation into the engine deployment.
+/// Never exported by a guest. Imports grow with the RFC-95 cuts —
+/// `trees` (cut 1), then `worktree` (cut 2), then `forge` (cut 3).
+world vcs-host {
+  import trees;
+  import worktree;
+  import forge;
+}

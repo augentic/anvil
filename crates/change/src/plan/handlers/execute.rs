@@ -11,7 +11,7 @@ use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::plan::LoopStep;
-use project::seam::{PhaseSource, Source, Target, Workspaces};
+use project::seam::{PhaseSource, Source, Target, Workspaces, Worktree};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome};
@@ -29,7 +29,9 @@ pub struct ExecuteInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
-impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> for Execute {
+impl<P: Anchor + Model + Resolver + Source + Target + Workspaces + Worktree> Operation<P>
+    for Execute
+{
     type Error = project::handler::Error;
     type Input = ExecuteInput;
     type Output = ExecuteBody;

@@ -9,7 +9,7 @@ use omnia_guest::api::operation::Operation;
 use project::adapter::{Inventory, Resolver};
 use project::handler::{Anchor, Render};
 use project::profile::Profiles;
-use project::seam::{Ingest, Source, Workspaces};
+use project::seam::{Source, Trees, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate;
@@ -34,8 +34,8 @@ pub struct AuthorInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Author;
 
-impl<P: Anchor + Model + Resolver + Inventory + Profiles + Ingest + Source + Workspaces>
-    Operation<P> for Author
+impl<P: Anchor + Model + Resolver + Inventory + Profiles + Trees + Source + Workspaces> Operation<P>
+    for Author
 {
     type Error = project::handler::Error;
     type Input = AuthorInput;

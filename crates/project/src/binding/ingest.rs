@@ -9,18 +9,18 @@ use super::https::check as check_https;
 use super::locator::{Location, Locator};
 use super::meter::Meter;
 use super::policy::Policy;
+use crate::seam::{self, Workspaces};
 use crate::snapshot::SnapshotId;
 use crate::workspace::{self, Access, Objects, Store, Workspace};
 
-/// Host-staged bytes or tree, or a local filesystem read.
+/// Host-staged tree, or a local filesystem read.
 #[derive(Clone, Copy, Debug)]
 pub enum Staged<'a> {
     /// Read the locator from disk (path locators only).
     Disk,
-    /// Host-checked-out Git tree. `.git` is ignored by snapshot.
+    /// Host-staged tree (Git checkout, or an HTTPS document staged as
+    /// a one-file tree). `.git` is ignored by snapshot.
     Tree(&'a Path),
-    /// Host-fetched file bytes (HTTPS documents).
-    Bytes(&'a [u8]),
 }
 
 /// One locator resolved to an exact origin and a store CID.
@@ -76,11 +76,16 @@ pub async fn view(
     workspace::prepare(store, workspaces, cid, Access { writable: false }).await
 }
 
-/// Ingest session: store, scratch, change root, intern cache, and budgets.
+/// Ingest session: workspace capability, scratch, change root,
+/// intern cache, and budgets.
+///
+/// Wasm-clean — CID minting runs through the seam's [`Workspaces`]
+/// capability, origin I/O through [`crate::seam::Trees`] in
+/// [`super::fetch_locator`].
 #[derive(Debug)]
-pub struct Session<'a, O: Objects> {
-    /// Snapshot store the CID is written into.
-    pub store: &'a Store<O>,
+pub struct Session<'a, W: Workspaces> {
+    /// Workspace capability the CID is minted through.
+    pub workspaces: &'a W,
     /// Disposable staging directory (one-file trees, copies).
     pub scratch: &'a Path,
     /// Change home; relative path locators join this.
@@ -93,7 +98,7 @@ pub struct Session<'a, O: Objects> {
     pub meter: &'a mut Meter,
 }
 
-impl<O: Objects> Session<'_, O> {
+impl<W: Workspaces> Session<'_, W> {
     /// Resolve `location` once, snapshot the staged tree, and intern the CID.
     ///
     /// A recorded CID present in the store is returned without rereading the
@@ -110,7 +115,7 @@ impl<O: Objects> Session<'_, O> {
     ) -> Result<Resolved, Error> {
         self.meter.binding(self.policy)?;
         if let Some(cid) = recorded
-            && self.store.contains(cid).await
+            && self.contains(cid).await?
         {
             self.cache.insert(location, cid.clone());
             return Ok(Resolved {
@@ -120,7 +125,7 @@ impl<O: Objects> Session<'_, O> {
             });
         }
         if let Some(cid) = self.cache.get(location)
-            && self.store.contains(&cid).await
+            && self.contains(&cid).await?
         {
             return Ok(Resolved {
                 location: location.clone(),
@@ -141,7 +146,11 @@ impl<O: Objects> Session<'_, O> {
         refuse_escapes(&root)?;
         self.meter.tree(self.policy)?;
         self.charge_tree(&root)?;
-        let cid = self.store.snapshot(&root).await?;
+        let cid = self
+            .workspaces
+            .snapshot(root.display().to_string())
+            .await
+            .map_err(|err| snapshot_failure(&err))?;
         self.cache.insert(location, cid.clone());
         Ok(Resolved {
             location: location.clone(),
@@ -150,11 +159,15 @@ impl<O: Objects> Session<'_, O> {
         })
     }
 
+    /// Whether the snapshot store already holds `cid`.
+    async fn contains(&self, cid: &SnapshotId) -> Result<bool, Error> {
+        self.workspaces.contains(cid.clone()).await.map_err(|err| snapshot_failure(&err))
+    }
+
     fn stage(&self, location: &Location, staged: Staged<'_>) -> Result<PathBuf, Error> {
         match staged {
             Staged::Disk => self.stage_disk(location),
             Staged::Tree(root) => self.wrap(select(root, &location.path)?),
-            Staged::Bytes(bytes) => self.stage_bytes(location, bytes),
         }
     }
 
@@ -173,21 +186,6 @@ impl<O: Objects> Session<'_, O> {
             });
         }
         self.wrap(select(&base, &location.path)?)
-    }
-
-    fn stage_bytes(&self, location: &Location, bytes: &[u8]) -> Result<PathBuf, Error> {
-        let len = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
-        let cap = u64::try_from(self.policy.https_body).unwrap_or(u64::MAX);
-        if len > cap {
-            return Err(Error::Diag {
-                code: "binding-budget-exhausted",
-                detail: format!("delivery-binding https-body budget ({cap}) exhausted"),
-            });
-        }
-        let dir = self.scratch.join(unique("file"));
-        std::fs::create_dir_all(&dir)?;
-        std::fs::write(dir.join(file_name(location)), bytes)?;
-        Ok(dir)
     }
 
     /// A file becomes a one-file tree under scratch so every CID is a tree.
@@ -289,14 +287,12 @@ fn refuse_escapes(root: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-fn file_name(location: &Location) -> String {
-    match &location.locator {
-        Locator::Https(url) | Locator::Git { url, .. } => {
-            url.rsplit('/').next().filter(|name| !name.is_empty()).unwrap_or("document").to_string()
-        }
-        Locator::Path(path) => {
-            path.file_name().and_then(|n| n.to_str()).unwrap_or("document").to_string()
-        }
+/// A snapshot-capability failure during ingest — the seam error keeps
+/// its full detail; the code stays one stable diagnostic.
+fn snapshot_failure(err: &seam::Error) -> Error {
+    Error::Diag {
+        code: "binding-snapshot-failed",
+        detail: format!("snapshotting the staged tree failed: {err}"),
     }
 }
 

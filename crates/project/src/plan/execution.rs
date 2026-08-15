@@ -66,6 +66,17 @@ impl Resolution {
         }
     }
 
+    /// A pending publication member holds the drain (RFC-95 D11).
+    pub(super) fn materialize(target: &str) -> Self {
+        Self {
+            action: NextActionKind::Materialize,
+            slice: None,
+            target: Some(target.to_string()),
+            last_completed: None,
+            stop: None,
+        }
+    }
+
     fn phase(action: NextActionKind, entry: &Entry, last_completed: Option<LoopStep>) -> Self {
         Self {
             action,

@@ -25,8 +25,7 @@ omnia-wasi-blobstore.workspace = true
 emery-project.workspace = true
 emery-transport.workspace = true
 emery-wasi-exec-mode.workspace = true
-emery-wasi-ingest.workspace = true
-emery-wasi-origins.workspace = true
+emery-wasi-vcs.workspace = true
 semver.workspace = true
 
 [dev-dependencies]

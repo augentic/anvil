@@ -52,7 +52,7 @@ Per-entry `pending` / `in-progress` / `done` are the same kind of projection (cl
                                    emery plan execute — opens the authorization epoch over
                                    the exact refinement digests)
 
-/emery:finalize <name>             (confirm publication, archive plan)
+/emery:finalize <name>             (confirm publication, archive plan — archive verifies the forge)
 ```
 
 At any point, `/emery:status` (read-only, wraps `emery plan status`) reports where the plan stands and the literal next command — use it whenever unsure what to do next.

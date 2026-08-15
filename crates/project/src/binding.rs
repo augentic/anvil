@@ -1,8 +1,8 @@
 //! Locator grammar, bounded-read policy, and CID ingestion kernel.
-//!
-//! Git clone and HTTPS fetch are host-side (`launcher::ingest`); this
-//! module is wasm-clean.
+//! Wasm-clean: origin I/O runs through the seam's `Trees`, CID
+//! minting through `Workspaces` ([`crate::vcs`] backs the native leg).
 
+mod fetch;
 mod https;
 mod ingest;
 mod locator;
@@ -12,14 +12,11 @@ mod policy;
 #[cfg(not(target_arch = "wasm32"))]
 mod git;
 #[cfg(not(target_arch = "wasm32"))]
-mod host;
-#[cfg(not(target_arch = "wasm32"))]
 mod https_fetch;
 
+pub use fetch::{fetch as fetch_locator, resolve};
 #[cfg(not(target_arch = "wasm32"))]
 pub use git::checkout;
-#[cfg(not(target_arch = "wasm32"))]
-pub use host::{fetch as fetch_locator, resolve};
 pub use https::{check as check_https, is_private, raw_github};
 #[cfg(not(target_arch = "wasm32"))]
 pub use https_fetch::fetch as fetch_https;

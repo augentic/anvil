@@ -21,7 +21,7 @@ use project::plan::{
     retain_decomposition, retain_leads,
 };
 use project::profile::Profiles;
-use project::seam::{self, Ingest, Source, Workspaces};
+use project::seam::{Source, Trees, Workspaces};
 use project::snapshot::SnapshotId;
 use system::handoff::{self, EvidenceScopeRef, Handoff};
 
@@ -68,7 +68,7 @@ pub async fn author<P>(
     force: bool,
 ) -> Result<AuthorOutcome, Error>
 where
-    P: Resolver + Inventory + Profiles + Ingest + Model + Source + Workspaces,
+    P: Resolver + Inventory + Profiles + Trees + Model + Source + Workspaces,
 {
     project::name::validate_name(name)?;
     let from = resolve_from(paths, from);
@@ -83,10 +83,28 @@ where
 
     let catalog = provider.inventory();
     let mut intern = BTreeMap::new();
+    // One bind session per authoring run: the D9 budgets, intern
+    // cache, and scratch staging are wave-scoped (RFC-88 over the
+    // RFC-95 `Trees` seam — policy runs engine-side).
+    let scratch = paths.locations().workspaces_root().join("ingest");
+    std::fs::create_dir_all(&scratch)?;
+    let policy = project::binding::Policy::standard();
+    let mut meter = project::binding::Meter::new();
+    let mut cache = project::binding::Cache::new();
+    let mut session = project::binding::Session {
+        workspaces: provider,
+        scratch: &scratch,
+        change_root: paths.change_root(),
+        cache: &mut cache,
+        policy: &policy,
+        meter: &mut meter,
+    };
     let mut targets =
-        bind_targets(provider, catalog, &reviewed, existing.as_ref(), &mut intern).await?;
+        bind_targets(provider, &mut session, catalog, &reviewed, existing.as_ref(), &mut intern)
+            .await?;
     let sources =
-        bind_sources(provider, catalog, &reviewed, existing.as_ref(), &mut intern).await?;
+        bind_sources(provider, &mut session, catalog, &reviewed, existing.as_ref(), &mut intern)
+            .await?;
     let imported = reviewed
         .handoff
         .wave
@@ -457,9 +475,9 @@ fn stamp_profiles(
     Ok(())
 }
 
-async fn bind_targets<P: Ingest>(
-    ingest: &P, catalog: &catalog::Catalog, reviewed: &Reviewed, existing: Option<&Plan>,
-    intern: &mut BTreeMap<String, SnapshotId>,
+async fn bind_targets<P: Trees, W: Workspaces>(
+    trees: &P, session: &mut project::binding::Session<'_, W>, catalog: &catalog::Catalog,
+    reviewed: &Reviewed, existing: Option<&Plan>, intern: &mut BTreeMap<String, SnapshotId>,
 ) -> Result<BTreeMap<String, TargetBinding>, Error> {
     let mut targets = BTreeMap::new();
     for target in &reviewed.handoff.wave.targets {
@@ -469,10 +487,14 @@ async fn bind_targets<P: Ingest>(
         });
         let prior = existing
             .and_then(|plan| plan.targets.get(&target.id).and_then(|row| git_sha(&row.locator)));
-        let fetched = ingest
-            .fetch(locator.clone(), recorded, prior)
-            .await
-            .map_err(|err| seam::seam_failure("fetch", "ingest", &err))?;
+        let fetched = project::binding::fetch_locator(
+            session,
+            trees,
+            &locator,
+            recorded.as_ref(),
+            prior.as_deref(),
+        )
+        .await?;
         intern.insert(locator, fetched.cid.clone());
         intern.insert(fetched.locator.clone(), fetched.cid.clone());
         let pin = catalog::fill(catalog, &target.adapter)?;
@@ -482,9 +504,9 @@ async fn bind_targets<P: Ingest>(
     Ok(targets)
 }
 
-async fn bind_sources<P: Ingest>(
-    provider: &P, catalog: &catalog::Catalog, reviewed: &Reviewed, existing: Option<&Plan>,
-    intern: &mut BTreeMap<String, SnapshotId>,
+async fn bind_sources<P: Trees, W: Workspaces>(
+    trees: &P, session: &mut project::binding::Session<'_, W>, catalog: &catalog::Catalog,
+    reviewed: &Reviewed, existing: Option<&Plan>, intern: &mut BTreeMap<String, SnapshotId>,
 ) -> Result<BTreeMap<String, SourceBinding>, Error> {
     let mut sources = BTreeMap::new();
     for scope in &reviewed.handoff.wave.evidence_scopes {
@@ -502,10 +524,9 @@ async fn bind_sources<P: Ingest>(
                 })
             })
         });
-        let fetched = provider
-            .fetch(locator.clone(), recorded, None)
-            .await
-            .map_err(|err| seam::seam_failure("fetch", "ingest", &err))?;
+        let fetched =
+            project::binding::fetch_locator(session, trees, &locator, recorded.as_ref(), None)
+                .await?;
         intern.insert(locator, fetched.cid.clone());
         intern.insert(fetched.locator.clone(), fetched.cid.clone());
         let binding = if pin.name == INTENT || scope.source == INTENT {

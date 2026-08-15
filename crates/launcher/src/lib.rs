@@ -9,8 +9,8 @@ use std::sync::OnceLock;
 use project::adapter::{AdapterSelector, RoutedId};
 use project::config::ProjectConfig;
 use project::handler::{
-    CHANGE_ROOT_ENV, DETACHED_ENV, ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_WORKSPACES_MOUNT,
-    Locations, PROJECT_ROOT_ENV,
+    CHANGE_ROOT_ENV, DETACHED_ENV, ExecutionPaths, GUEST_CACHE_MOUNT, GUEST_STAGING_MOUNT,
+    GUEST_WORKSPACES_MOUNT, Locations, PROJECT_ROOT_ENV,
 };
 use transport::command::selectors::{
     SeedRequest, change_request, refresh_request, seed_request, system_request,
@@ -19,17 +19,15 @@ use transport::command::selectors::{
 mod anchor;
 mod blobstore;
 mod exec_mode;
-mod ingest;
 mod install;
-mod origins;
 mod resolver;
+mod vcs;
 
 pub use blobstore::Blobstore;
 pub use exec_mode::ExecMode;
-pub use ingest::{Ingest, checkout, fetch, ingest};
 pub use install::Registry;
-pub use origins::Origins;
 pub use resolver::Resolver;
+pub use vcs::Vcs;
 
 /// Compiled first-party adapter catalog for detached binding.
 #[must_use]
@@ -48,6 +46,9 @@ pub const CACHE_MOUNT: &str = GUEST_CACHE_MOUNT;
 
 /// Guest-visible preopen name of the private-workspaces root.
 pub const WORKSPACES_MOUNT: &str = GUEST_WORKSPACES_MOUNT;
+
+/// Guest-visible preopen name of the VCS staging root.
+pub const STAGING_MOUNT: &str = GUEST_STAGING_MOUNT;
 
 /// Fallback guest name for the definition preopen when argv carries
 /// no `--from` (or the named directory does not exist). Distinct from
@@ -117,7 +118,8 @@ impl Policy {
         // leg creates it on demand. Same for the snapshot store. The
         // `.` mount is product (in-place) or the change home (detached).
         let workspaces_dir = paths.locations().workspaces_root().to_path_buf();
-        let mut dirs = vec![paths.cache_dir(), workspaces_dir];
+        let staging_dir = paths.locations().staging_root().to_path_buf();
+        let mut dirs = vec![paths.cache_dir(), workspaces_dir, staging_dir];
         if !system_invocation {
             dirs.push(paths.project_root().to_path_buf());
         }
@@ -177,6 +179,14 @@ impl Policy {
     #[must_use]
     pub fn workspaces_dir(&self) -> PathBuf {
         self.paths.locations().workspaces_root().to_path_buf()
+    }
+
+    /// Host directory of the VCS staging mount, named
+    /// [`STAGING_MOUNT`]. Read-only in-guest: the host stages and
+    /// discards; the guest only reads (and snapshots) staged trees.
+    #[must_use]
+    pub fn staging_dir(&self) -> PathBuf {
+        self.paths.locations().staging_root().to_path_buf()
     }
 
     /// The read-only self-named preopen: the `adapter add` component's
@@ -345,6 +355,12 @@ pub fn cache_dir() -> PathBuf {
 #[must_use]
 pub fn workspaces_dir() -> PathBuf {
     current().workspaces_dir()
+}
+
+/// Macro expression: host directory of the read-only staging mount.
+#[must_use]
+pub fn staging_dir() -> PathBuf {
+    current().staging_dir()
 }
 
 /// Macro expression: guest-visible name of the read-only seed preopen.

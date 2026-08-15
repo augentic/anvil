@@ -367,18 +367,40 @@ impl seam::Target for Grammar {
     }
 }
 
-impl seam::Origins for Grammar {
-    async fn fetch(&self, _locator: String) -> Result<seam::OriginFetched, seam::Error> {
+impl seam::Trees for Grammar {
+    async fn fetch(
+        &self, _locator: String, _credentials: seam::TreeCredentials, _limits: seam::TreeLimits,
+    ) -> Result<seam::TreeFetched, seam::TreeError> {
         never_dispatched!()
     }
 
-    async fn discard_fetched(&self, _root: String) -> Result<(), seam::Error> {
+    async fn discard_fetched(&self, _root: String) -> Result<(), seam::TreeError> {
+        never_dispatched!()
+    }
+}
+
+impl seam::Forge for Grammar {
+    async fn find(
+        &self, _repository: String, _branch: String,
+    ) -> Result<Vec<seam::PullRequest>, seam::ForgeError> {
+        never_dispatched!()
+    }
+}
+
+impl seam::Worktree for Grammar {
+    async fn export(
+        &self, _req: seam::WorktreeRequest,
+    ) -> Result<(String, seam::WorktreeState), seam::WorktreeError> {
         never_dispatched!()
     }
 }
 
 impl seam::Workspaces for Grammar {
     async fn freeze(&self) -> Result<project::snapshot::SnapshotId, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn contains(&self, _id: project::snapshot::SnapshotId) -> Result<bool, seam::Error> {
         never_dispatched!()
     }
 
@@ -403,15 +425,6 @@ impl seam::Workspaces for Grammar {
     async fn sweep(
         &self, _dead: Vec<project::snapshot::SnapshotId>, _live: Vec<project::snapshot::SnapshotId>,
     ) -> Result<usize, seam::Error> {
-        never_dispatched!()
-    }
-}
-
-impl seam::Ingest for Grammar {
-    async fn fetch(
-        &self, _locator: String, _recorded: Option<project::snapshot::SnapshotId>,
-        _prior: Option<String>,
-    ) -> Result<seam::Fetched, seam::Error> {
         never_dispatched!()
     }
 }

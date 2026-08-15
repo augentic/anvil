@@ -1,4 +1,4 @@
-//! The in-process origins seam plus the RFC-104 materialization
+//! The in-process VCS trees seam plus the RFC-104 materialization
 //! kernel over it: a coverage location resolves to an observed tree
 //! (`observed-cid` provenance) lent as a read-only RFC-87 workspace,
 //! and remote fetch trees never outlive the run.
@@ -63,16 +63,24 @@ async fn remote_document() {
     assert_eq!(std::fs::read_to_string(lent).expect("lent document"), body);
 
     // The transient fetch tree was discarded after the snapshot:
-    // nothing `origin-*` survives beneath the workspaces root.
+    // nothing `vcs-*` survives beneath the staging root.
+    let staging_root = tmp.path().join("staging");
+    let staged: Vec<String> = std::fs::read_dir(&staging_root)
+        .map(|entries| {
+            entries
+                .map(|entry| entry.expect("entry").file_name().to_string_lossy().into_owned())
+                .collect()
+        })
+        .unwrap_or_default();
+    assert!(
+        !staged.iter().any(|name| name.starts_with("vcs-")),
+        "fetch trees never outlive the run: {staged:?}"
+    );
     let workspaces_root = tmp.path().join("workspaces");
     let survivors: Vec<String> = std::fs::read_dir(&workspaces_root)
         .expect("workspaces root")
         .map(|entry| entry.expect("entry").file_name().to_string_lossy().into_owned())
         .collect();
-    assert!(
-        !survivors.iter().any(|name| name.starts_with("origin-")),
-        "fetch trees never outlive the run: {survivors:?}"
-    );
     assert!(survivors.contains(&observed.workspace.id), "the lent workspace remains");
 
     provider.discard(observed.workspace.id).await.expect("workspace discards");

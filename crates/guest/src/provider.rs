@@ -27,7 +27,7 @@ use project::seam::{
 use project::snapshot::{CodePatch, SnapshotId};
 
 use crate::bindings::emery::adapter::{source, target, types};
-use crate::bindings::emery::origins::origins;
+use crate::bindings::emery::vcs::{forge, trees, worktree};
 
 /// Workflow capabilities backed by the world's WIT imports.
 #[derive(Clone, Copy, Debug)]
@@ -219,6 +219,13 @@ impl seam::Workspaces for Provider {
         }
     }
 
+    fn contains(&self, id: SnapshotId) -> impl Future<Output = Result<bool, seam::Error>> + Send {
+        async move {
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
+            Ok(store.contains(&id).await)
+        }
+    }
+
     fn prepare(
         &self, base: SnapshotId, writable: bool,
     ) -> impl Future<Output = Result<Workspace, seam::Error>> + Send {
@@ -269,50 +276,25 @@ impl seam::Workspaces for Provider {
     }
 }
 
-impl seam::Ingest for Provider {
+/// Tree fetch is host-implemented (`emery:vcs/trees`): the engine
+/// guest has no network or git, so the host stages the locator
+/// beneath the staging mount and the guest snapshots it.
+impl seam::Trees for Provider {
     fn fetch(
-        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
-    ) -> impl Future<Output = Result<seam::Fetched, seam::Error>> + Send {
+        &self, locator: String, credentials: seam::TreeCredentials, limits: seam::TreeLimits,
+    ) -> impl Future<Output = Result<seam::TreeFetched, seam::TreeError>> + Send {
         async move {
-            use crate::bindings::emery::ingest::ingest;
-            let fetched = ingest::fetch(locator, recorded.as_ref().map(ToString::to_string), prior)
-                .await
-                .map_err(ingest_error)?;
-            let cid = SnapshotId::parse(&fetched.cid).map_err(|err| {
-                seam::Error::InvalidRequest(format!("host ingest returned a malformed cid: {err}"))
-            })?;
-            Ok(seam::Fetched {
-                locator: fetched.locator,
-                cid,
-                root: fetched.root,
-                warning: fetched.warning,
-            })
-        }
-    }
-}
-
-fn ingest_error(err: crate::bindings::emery::ingest::types::Error) -> seam::Error {
-    match err {
-        crate::bindings::emery::ingest::types::Error::InvalidRequest(detail) => {
-            seam::Error::InvalidRequest(detail)
-        }
-        crate::bindings::emery::ingest::types::Error::Io(detail) => seam::Error::Io(detail),
-        crate::bindings::emery::ingest::types::Error::Internal(detail) => {
-            seam::Error::Internal(detail)
-        }
-    }
-}
-
-/// Origin fetch is host-implemented (`emery:origins`): the engine
-/// guest has no network or git, so the host materializes the locator
-/// beneath the workspaces mount and the guest snapshots it.
-impl seam::Origins for Provider {
-    fn fetch(
-        &self, locator: String,
-    ) -> impl Future<Output = Result<seam::OriginFetched, seam::Error>> + Send {
-        async move {
-            let fetched = origins::fetch(locator).await.map_err(origin_failure)?;
-            Ok(seam::OriginFetched {
+            let credentials = match credentials {
+                seam::TreeCredentials::None => trees::Credentials::None,
+                seam::TreeCredentials::Ambient => trees::Credentials::Ambient,
+            };
+            let limits = trees::Limits {
+                max_bytes: limits.max_bytes,
+                max_redirects: limits.max_redirects,
+                time_ms: limits.time_ms,
+            };
+            let fetched = trees::fetch(locator, credentials, limits).await.map_err(tree_failure)?;
+            Ok(seam::TreeFetched {
                 root: fetched.root,
                 revision: fetched.revision,
             })
@@ -321,18 +303,104 @@ impl seam::Origins for Provider {
 
     fn discard_fetched(
         &self, root: String,
-    ) -> impl Future<Output = Result<(), seam::Error>> + Send {
-        async move { origins::discard(root).await.map_err(origin_failure) }
+    ) -> impl Future<Output = Result<(), seam::TreeError>> + Send {
+        async move { trees::discard(root).await.map_err(tree_failure) }
     }
 }
 
-/// Map an `emery:origins` failure onto the seam error contract; an
-/// origin that cannot be reached is I/O, not an internal fault.
-fn origin_failure(error: origins::Error) -> seam::Error {
+/// Map an `emery:vcs/trees` failure onto the seam's typed tree error.
+fn tree_failure(error: trees::Error) -> seam::TreeError {
     match error {
-        origins::Error::InvalidRequest(detail) => seam::Error::InvalidRequest(detail),
-        origins::Error::Access(detail) => seam::Error::Io(detail),
-        origins::Error::Internal(detail) => seam::Error::Internal(detail),
+        trees::Error::InvalidRequest(detail) => seam::TreeError::InvalidRequest(detail),
+        trees::Error::Access(detail) => seam::TreeError::Access(detail),
+        trees::Error::Limit(detail) => seam::TreeError::Limit(detail),
+        trees::Error::Internal(detail) => seam::TreeError::Internal(detail),
+    }
+}
+
+/// The D11 publication materialize is host-implemented
+/// (`emery:vcs/worktree`): the engine guest has no git, so the host
+/// provisions, materializes, and stages in one call.
+impl seam::Worktree for Provider {
+    fn export(
+        &self, req: seam::WorktreeRequest,
+    ) -> impl Future<Output = Result<(String, seam::WorktreeState), seam::WorktreeError>> + Send
+    {
+        async move {
+            let wire = worktree::Request {
+                repository: req.repository,
+                parent_revision: req.parent_revision,
+                branch: req.branch,
+                cid: req.cid.to_string(),
+                plan: req.plan,
+                target: req.target,
+                allow_in_place: req.allow_in_place,
+            };
+            let (path, state) = worktree::export(wire).await.map_err(worktree_failure)?;
+            let state = match state {
+                worktree::State::Created => seam::WorktreeState::Created,
+                worktree::State::Matched => seam::WorktreeState::Matched,
+                worktree::State::Rematerialized => seam::WorktreeState::Rematerialized,
+            };
+            Ok((path, state))
+        }
+    }
+}
+
+/// Forge observation is host-implemented (`emery:vcs/forge`): the
+/// engine guest has no outgoing HTTP, so the host reads GitHub and
+/// the guest applies the D10 checks over typed results.
+impl seam::Forge for Provider {
+    fn find(
+        &self, repository: String, branch: String,
+    ) -> impl Future<Output = Result<Vec<seam::PullRequest>, seam::ForgeError>> + Send {
+        async move {
+            let rows = forge::find(repository, branch).await.map_err(forge_failure)?;
+            Ok(rows.into_iter().map(map_pull_request).collect())
+        }
+    }
+}
+
+fn map_pull_request(row: forge::PullRequest) -> seam::PullRequest {
+    seam::PullRequest {
+        url: row.url,
+        body: row.body,
+        state: match row.state {
+            forge::PrState::Open => seam::PrState::Open,
+            forge::PrState::Merged => seam::PrState::Merged,
+            forge::PrState::Closed => seam::PrState::Closed,
+        },
+        base: row.base,
+        merged_at: row.merged_at,
+        merge_commit: row.merge_commit,
+    }
+}
+
+/// Map an `emery:vcs/forge` failure onto the seam's typed error.
+fn forge_failure(error: forge::Error) -> seam::ForgeError {
+    match error {
+        forge::Error::InvalidRequest(detail) => seam::ForgeError::InvalidRequest(detail),
+        forge::Error::Auth(detail) => seam::ForgeError::Auth(detail),
+        forge::Error::Transport(detail) => seam::ForgeError::Transport(detail),
+        forge::Error::Internal(detail) => seam::ForgeError::Internal(detail),
+    }
+}
+
+/// Map an `emery:vcs/worktree` refusal onto the seam's typed rows.
+fn worktree_failure(error: worktree::ExportError) -> seam::WorktreeError {
+    match error {
+        worktree::ExportError::Dirty => seam::WorktreeError::Dirty,
+        worktree::ExportError::BranchDiverged => seam::WorktreeError::BranchDiverged,
+        worktree::ExportError::BranchCheckedOutElsewhere => {
+            seam::WorktreeError::BranchCheckedOutElsewhere
+        }
+        worktree::ExportError::DestinationConflict => seam::WorktreeError::DestinationConflict,
+        worktree::ExportError::ParentUnavailable => seam::WorktreeError::ParentUnavailable,
+        worktree::ExportError::CloneFailed(detail) => seam::WorktreeError::CloneFailed(detail),
+        worktree::ExportError::InvalidRequest(detail) => {
+            seam::WorktreeError::InvalidRequest(detail)
+        }
+        worktree::ExportError::Internal(detail) => seam::WorktreeError::Internal(detail),
     }
 }
 

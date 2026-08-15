@@ -6,15 +6,16 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use artifacts::spec::provenance::RequirementStatus;
+use diagnostics::has_blocking;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::build_record::BuildRecord;
 use project::handler::{Anchor, Ctx, Render};
-use project::journal::{Event, EventKind};
-use project::plan::{Plan, collect_events};
-use project::seam::Workspaces;
+use project::journal::{self, Event, EventKind};
+use project::plan::{Plan, collect_events, decomposition, publication};
+use project::seam::{Forge, Workspaces};
 use project::snapshot::SnapshotId;
 use serde::{Deserialize, Serialize};
 use slice::refinement::Manifest;
@@ -26,6 +27,10 @@ pub struct ArchiveInput {
     /// Archive even when the plan has pending or in-progress entries.
     #[serde(default)]
     pub force: bool,
+    /// Archive without publication verification (RFC-95 D5) — still
+    /// journals `plan.publication.unverified-archive` first.
+    #[serde(default)]
+    pub unverified: bool,
 }
 
 /// `emery plan archive` — close the change.
@@ -39,7 +44,7 @@ pub struct ArchiveInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Archive;
 
-impl<P: Anchor + Workspaces> Operation<P> for Archive {
+impl<P: Anchor + Workspaces + Forge> Operation<P> for Archive {
     type Error = project::handler::Error;
     type Input = ArchiveInput;
     type Output = ArchiveBody;
@@ -59,6 +64,11 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
         }
         let plan = Plan::load(&plan_path)?;
         let plan_name = plan.name.to_string();
+
+        // Publication gate (RFC-95 D5/D7), fixed order: contraction
+        // check → project → verify → journal → mutate → sweep.
+        let publication =
+            publication_gate(context.provider, &plan, layout, input.unverified, cx.now()).await?;
 
         // Carried-debt summary (RFC-86a D5/D9): read before the plan
         // moves; advisory only — archiving never blocks on debt.
@@ -87,9 +97,129 @@ impl<P: Anchor + Workspaces> Operation<P> for Archive {
             archived_plans_dir,
             swept_objects,
             debt,
+            publication,
             plan: ArchivedPlan { name: plan_name },
         })
     }
+}
+
+/// The RFC-95 D5 publication gate before archive mutation: repeat the
+/// contraction check, project the set over one forge read per member,
+/// verify (or journal the unverified bypass), then journal the
+/// projection and every newly landed member. `None` when the plan has
+/// no Git-bound publication members — no forge is consulted.
+async fn publication_gate<P: Anchor + Forge>(
+    provider: &P, plan: &Plan, layout: project::config::Layout<'_>, unverified: bool,
+    now: Timestamp,
+) -> Result<Option<publication::Record>, Error> {
+    let entries = publication::in_scope_entries(plan, layout)?;
+    let findings = decomposition::contraction(&entries);
+    if has_blocking(&findings) {
+        let detail = findings.iter().map(|f| f.title.as_str()).collect::<Vec<_>>().join("; ");
+        return Err(Error::Diag {
+            code: "publication-target-cycle",
+            detail,
+        });
+    }
+    let events = collect_events(layout)?;
+    if publication::members(plan, layout, &events)?.is_empty() {
+        return Ok(None);
+    }
+    let projection = publication::project(provider, plan, layout, &events).await?;
+    let record = projection.record;
+    let plan_digest = Plan::file_digest(layout)?;
+    if record.verification != publication::Verification::Verified {
+        if !unverified {
+            let failing = record
+                .failures
+                .iter()
+                .map(|failure| format!("{} ({})", failure.member, failure.reason))
+                .collect::<Vec<_>>()
+                .join(", ");
+            return Err(Error::Diag {
+                code: "publication-unverified",
+                detail: format!(
+                    "publication set is not verified — {failing}; publish and merge every \
+                     member, or archive with --unverified"
+                ),
+            });
+        }
+        journal::append_one(
+            layout,
+            &Event::new(
+                now,
+                EventKind::PublicationUnverified {
+                    plan_name: plan.name.clone(),
+                    plan_digest: plan_digest.clone(),
+                },
+            ),
+        )?;
+    }
+    let canonical = serde_json::to_vec(&record).map_err(|err| Error::Diag {
+        code: "publication-projection-failed",
+        detail: format!("serializing the publication projection: {err}"),
+    })?;
+    journal::append_one(
+        layout,
+        &Event::new(
+            now,
+            EventKind::PublicationProjected {
+                plan_name: plan.name.clone(),
+                plan_digest: plan_digest.clone(),
+                projection_digest: format!(
+                    "sha256:{}",
+                    diagnostics::digest::sha256_hex(&canonical)
+                ),
+                verification: record.verification,
+            },
+        ),
+    )?;
+    journal_landed(plan, layout, &events, &record, &projection.merged_at, &plan_digest, now)?;
+    Ok(Some(record))
+}
+
+/// One `plan.publication.member-landed` per newly merged member,
+/// deduped on `(target, pull-request, merge commit)` against the
+/// existing fact union.
+fn journal_landed(
+    plan: &Plan, layout: project::config::Layout<'_>, events: &[Event],
+    record: &publication::Record, merged_at: &BTreeMap<String, String>, plan_digest: &str,
+    now: Timestamp,
+) -> Result<(), Error> {
+    for member in &record.members {
+        let (publication::PublicationState::Merged, Some(pull), Some(commit)) =
+            (member.publication, &member.pull_request, &member.merge_commit)
+        else {
+            continue;
+        };
+        let restated = events.iter().any(|event| match &event.kind {
+            EventKind::PublicationMemberLanded {
+                target,
+                pull_request,
+                merge_commit,
+                ..
+            } => target == &member.target && pull_request == pull && merge_commit == commit,
+            _ => false,
+        });
+        if restated {
+            continue;
+        }
+        journal::append_one(
+            layout,
+            &Event::new(
+                now,
+                EventKind::PublicationMemberLanded {
+                    plan_name: plan.name.clone(),
+                    plan_digest: plan_digest.to_string(),
+                    target: member.target.clone(),
+                    pull_request: pull.clone(),
+                    merge_commit: commit.clone(),
+                    merged_at: merged_at.get(&member.target).cloned().unwrap_or_default(),
+                },
+            ),
+        )?;
+    }
+    Ok(())
 }
 
 /// The debt the archived change carried into the baseline: each
@@ -146,7 +276,7 @@ fn carried_debt(
 /// fact naming `slice`, or `None` when the slice never merged.
 fn latest_wave_deferred<'e>(
     events: &'e [Event], slice: &str,
-) -> Option<&'e [project::journal::DeferredMember]> {
+) -> Option<&'e [journal::DeferredMember]> {
     events.iter().rev().find_map(|event| match &event.kind {
         EventKind::TargetMergeWaveCommitted {
             members, deferred, ..
@@ -265,6 +395,10 @@ pub struct ArchiveBody {
     /// D5/D9) — advisory; archiving never blocks on debt.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub debt: Vec<DebtRow>,
+    /// The verified publication projection (RFC-95 D7); `None` when
+    /// the plan has no Git-bound publication members.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication: Option<publication::Record>,
     /// The archived plan's identity.
     pub plan: ArchivedPlan,
 }
@@ -343,6 +477,26 @@ impl ArchiveBody {
 impl Render for ArchiveBody {
     fn render(&self, w: &mut dyn Write) -> std::io::Result<()> {
         writeln!(w, "archived plan `{}`", self.plan.name)?;
+        if let Some(publication) = &self.publication {
+            let verdict = match publication.verification {
+                publication::Verification::Verified => "verified",
+                publication::Verification::Pending => "pending",
+                publication::Verification::Unverified => "unverified",
+            };
+            writeln!(w, "  publication: {verdict}")?;
+            for member in &publication.members {
+                let state = match member.publication {
+                    publication::PublicationState::Unpublished => "unpublished",
+                    publication::PublicationState::Open => "open",
+                    publication::PublicationState::Merged => "merged",
+                    publication::PublicationState::Closed => "closed",
+                };
+                match &member.pull_request {
+                    Some(pull) => writeln!(w, "    {} — {state} ({pull})", member.target)?,
+                    None => writeln!(w, "    {} — {state}", member.target)?,
+                }
+            }
+        }
         writeln!(w, "  archived: {}", self.archived.display())?;
         if let Some(dir) = &self.archived_plans_dir {
             writeln!(w, "  working directory: {}", dir.display())?;

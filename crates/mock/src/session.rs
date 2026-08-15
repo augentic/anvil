@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use native::{DynModel, Provider, ReferenceMode};
+pub use native::{ForgeScript, WorktreeScript};
 use omnia_testkit::model::{Harness, Scripted as ScriptedModel};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 
@@ -169,6 +170,20 @@ impl Session {
         let provider = self.provider;
         self.provider = provider.with_profiles(table);
         self
+    }
+
+    /// Script the D11 publication worktree export (RFC-95) — the
+    /// publication suites answer export calls without host Git.
+    pub fn script_worktree(&mut self, script: WorktreeScript) {
+        let provider = self.provider.clone();
+        self.provider = provider.with_worktree_script(script);
+    }
+
+    /// Script the D10 forge read (RFC-95) — the archive suites answer
+    /// pull-request lookups without GitHub.
+    pub fn script_forge(&mut self, script: ForgeScript) {
+        let provider = self.provider.clone();
+        self.provider = provider.with_forge_script(script);
     }
 }
 

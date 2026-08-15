@@ -19,8 +19,7 @@ anyhow.workspace = true
 cfg-if.workspace = true
 emery-launcher.workspace = true
 emery-wasi-exec-mode.workspace = true
-emery-wasi-ingest.workspace = true
-emery-wasi-origins.workspace = true
+emery-wasi-vcs.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
 omnia-wasi-blobstore.workspace = true
@@ -55,6 +54,10 @@ crate-type = ["cdylib"]
 [[example]]
 name = "eval"
 path = "examples/eval/main.rs"
+
+[[example]]
+name = "definition"
+path = "examples/wasm/definition.rs"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 emery-probe = { workspace = true, features = ["client"] }
@@ -217,8 +220,7 @@ emery-slice = { path = "crates/slice" }
 emery-system = { path = "crates/system" }
 emery-transport = { path = "crates/transport" }
 emery-wasi-exec-mode = { path = "crates/wasi-exec-mode" }
-emery-wasi-ingest = { path = "crates/wasi-ingest" }
-emery-wasi-origins = { path = "crates/wasi-origins" }
+emery-wasi-vcs = { path = "crates/wasi-vcs" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }
 omnia-cursor = "0.29.0"

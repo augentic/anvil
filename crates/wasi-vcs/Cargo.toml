@@ -1,10 +1,10 @@
 # The Emery-owned Omnia host capability backing the engine guest's
-# `emery:origins` import. Owns the package WIT under `wit/`. The lib
-# name is fixed by `omnia::runtime!`'s hosts codegen, which derives the
-# crate path `omnia_wasi_origins` from the `WasiOrigins` host type.
+# `emery:vcs` import. Owns the package WIT under `wit/`. The lib name
+# is fixed by `omnia::runtime!`'s hosts codegen, which derives the
+# crate path `omnia_wasi_vcs` from the `WasiVcs` host type.
 [package]
-name = "emery-wasi-origins"
-description = "Emery-owned Omnia host capability: origin locator fetch (Git/HTTPS) for system survey"
+name = "emery-wasi-vcs"
+description = "Emery-owned Omnia host capability: VCS trees, publication worktrees, and forge reads (RFC-95)"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -16,7 +16,7 @@ rust-version.workspace = true
 workspace = true
 
 [lib]
-name = "omnia_wasi_origins"
+name = "omnia_wasi_vcs"
 path = "src/lib.rs"
 
 [dependencies]

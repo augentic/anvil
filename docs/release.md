@@ -10,6 +10,8 @@ Three surfaces version independently — never force them to share a number:
 | ---- | -------- | -------------- |
 | **Host** | `emery` binary / `emery:engine@<version>` | `[workspace.package].version` in `Cargo.toml`, the `v*` tag, `RELEASES.md` |
 | **WIT contract** | `emery:adapter@<wit version>` | the `package` declaration in `wit/emery.wit`; versions independently of the binary |
+
+The engine guest's own world lives in a separate, host-only WIT package — `emery:engine@0.1.0` at `crates/guest/wit/` — so host-seam changes (capability imports on the `workflow` world) never move the `emery:adapter` contract or the adapter train. That package is not published for adapters; only the `emery:adapter` contract is a vendored pin. Do not confuse the `emery:engine` WIT package (the world declaration, versioned independently) with the `emery:engine@<version>` wasm-pkg **component** publish below (the compiled guest, versioned with the binary) — same namespace, different artifact kinds.
 | **Adapter train** | `emery:<name>@<semver>` → `ghcr.io/augentic/emery-adapters/<name>:<version>` | the adapters repo's shared `[workspace.package]` SemVer |
 
 Compatibility between host and adapters is declared — exact pins plus each adapter's `emery-floor` (minimum host) — not implied by equal numbers. The Cursor `/emery:*` plugin is an ultrathin CLI wrapper; bump its marketplace / `plugin.json` versions only when `plugins/` content changes, not on every host release.
@@ -34,7 +36,7 @@ Every release chooses exactly one shape; the order prevents adapters shipping ag
 | Shape | Trigger | Order |
 | ----- | ------- | ----- |
 | **WIT-breaking** | `package emery:adapter@…` moves | 1) engine release branch + publish WIT 2) engine publish 3) adapters bump pin + train release 4) announce hard-cut / re-init when product policy requires it |
-| **Host-only** | CLI / lifecycle / engine guest; WIT unchanged | engine cut → publish; adapters unchanged unless the floor must rise |
+| **Host-only** | CLI / lifecycle / engine guest; `emery:adapter` WIT unchanged (changes confined to the `emery:engine` world's host imports are this shape) | engine cut → publish; adapters unchanged unless the floor must rise |
 | **Adapter-only** | prompts, rules, target behavior; seam unchanged | adapters cut → publish; engine unchanged |
 
 Never release adapters against an unpublished WIT or an unreleased engine commit that changed the seam.

@@ -30,6 +30,7 @@
 - [Bind multiple sources](how-to/bind-multiple-sources.md)
 - [Recover from a stale guest lock](how-to/recover-from-a-stale-guest-lock.md)
 - [Upgrade adapters](how-to/upgrade-adapters.md)
+- [Publish a change](how-to/publish-a-change.md)
 
 ---
 

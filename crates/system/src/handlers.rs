@@ -9,7 +9,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Render};
-use project::seam::{Origins, Source, Workspaces};
+use project::seam::{Source, Trees, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::coverage::{SurveyError, SurveyErrorKind};
@@ -38,7 +38,7 @@ pub struct SurveyInput {}
 #[derive(Clone, Copy, Debug)]
 pub struct Survey;
 
-impl<P: Anchor + Source + Resolver + Workspaces + Origins + Model> Operation<P> for Survey {
+impl<P: Anchor + Source + Resolver + Workspaces + Trees + Model> Operation<P> for Survey {
     type Error = project::handler::Error;
     type Input = SurveyInput;
     type Output = SurveyBody;

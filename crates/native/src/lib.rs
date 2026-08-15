@@ -19,4 +19,4 @@ pub use model::DynModel;
 // engine core; re-exported so composition roots need no direct
 // `project` import.
 pub use project::handler::{CachePlacement, ExecutionPaths, Locations};
-pub use provider::{Provider, ReferenceMode};
+pub use provider::{ForgeScript, Provider, ReferenceMode, WorktreeScript};

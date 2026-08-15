@@ -110,9 +110,9 @@ If a manifest is missing or stale, execute fails before opening a workspace or t
 
 Before each build, the RFC-86a gap gate mints one durable `gap.deferred` fact per remaining open `[unknown]` or `[conflict]`; deferred requirements leave build scope and are conserved as debt.
 
-### Archive — unchanged
+### Archive
 
-After publication, `emery plan archive` verifies its existing completion conditions and archives the change.
+After publication, `emery plan archive` observes the forge per [RFC-95](rfc-95-publication-sets.md) (trailers, merged state, landing order), renders the typed publication projection, and archives the change.
 
 ## Decisions
 
