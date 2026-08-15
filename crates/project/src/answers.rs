@@ -266,6 +266,25 @@ pub fn proposal() -> Value {
     schema
 }
 
+/// The publication-set record schema (RFC-95 D7/D8).
+///
+/// Not a judgment answer: plan-backed records are projected by
+/// `emery plan archive`, and external producers author the same shape
+/// against this document.
+#[must_use]
+pub fn publication() -> Value {
+    root_schema::<crate::plan::publication::Record>(
+        "publication.schema.json",
+        "Emery publication-set record",
+        "Generated wire schema — generated from the Rust wire types by \
+         project::answers; do not edit. The RFC-95 publication-set record: members \
+         with repository, branch, pull request, base, merge commit, publication \
+         state, and derived order, plus the whole-set verification verdict and the \
+         stable failing-member list. Plan-backed records are projected at \
+         `emery plan archive`; external records validate against the same shape.",
+    )
+}
+
 /// The decomposition partition answer schema (`split | leaf`).
 ///
 /// Generated from [`crate::plan::PartitionResponse`], with `kind`

@@ -17,7 +17,6 @@ pub mod init;
 pub mod journal;
 pub mod judgment;
 pub mod name;
-pub mod origins;
 pub mod plan;
 pub mod platform;
 pub mod profile;
@@ -27,6 +26,7 @@ pub mod serde_time;
 pub mod slice;
 pub mod snapshot;
 pub mod target_policy;
+pub mod vcs;
 pub mod wave;
 pub mod workspace;
 

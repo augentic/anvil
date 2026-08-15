@@ -69,7 +69,7 @@ Those problems are closed in code. The in-force path is:
 - Content-addressed `builds/<digest>.yaml` (`BuildRecord`) as build-outcome authority (no `build/patch.yaml`)
 - One-member waves at `.emery/targets/<target>/waves/<digest>.yaml` with `target.wave.opened` / `target.merge.wave-committed`
 
-Still deferred to later series RFCs: merge-time `apply` and the flat `.emery/` change home ([RFC-88](rfc-88-detached-changes.md)); publication seals ([RFC-95](rfc-95-publication-sets.md)); engine-owned verify/repair phases ([RFC-90](rfc-90-build-verification.md)).
+Still deferred to later series RFCs: merge-time `apply` and the flat `.emery/` change home ([RFC-88](rfc-88-detached-changes.md)); publication worktrees ([RFC-95](rfc-95-publication-sets.md)); engine-owned verify/repair phases ([RFC-90](rfc-90-build-verification.md)).
 
 
 
@@ -451,7 +451,7 @@ All product / contract questions are **closed**. Closed items below are the deci
 - An `emery plan refine` (or other plan-phase refine batch) verb — refine stays `slice refine`; public surface stays author → execute → archive (see D14 / D26).
 - Folding slice extract / synthesize into `plan author` / `/emery:plan` — author stays delivery-topology-only; RFC-104 owns prior system-wide extraction, while RFC-88 folds exact wave binding into author, not refine (see D14).
 - Silent auto-waive of gaps when execute starts — waivers stay explicit `--waive` on execute (see D17).
-- Redefining the RFC-87 workspace contract, inventing a second snapshot identity, or owning project seal — those stay RFC-87 / RFC-95. Interim `apply` retirement is claimed by [RFC-88](rfc-88-detached-changes.md), not by this RFC. This RFC records pins, authorization epochs, and wave/result facts those seams consume. Wire name for tree identity is `cid`; Rust type may remain `SnapshotId`.
+- Redefining the RFC-87 workspace contract, inventing a second snapshot identity, or owning publication-worktree materialize — those stay RFC-87 / RFC-95. Interim `apply` retirement is claimed by [RFC-88](rfc-88-detached-changes.md), not by this RFC. This RFC records pins, authorization epochs, and wave/result facts those seams consume. Wire name for tree identity is `cid`; Rust type may remain `SnapshotId`.
 - Introducing a plan topology-approve verb, or reintroducing an RFC-88 `change approve` / open / discover command group — rejected by D21 and by [RFC-88](rfc-88-detached-changes.md); this RFC does not mint a substitute.
 - Machine-gating refine on slice-list / topology approval — the post-author pause is human-owned (see D21).
 - Ready that includes waived unknowns, or Ready that depends on a covering epoch — Ready stays clean-gap / artifact-only; waivers nest only under Authorized (see D22).
@@ -520,7 +520,7 @@ Settled patterns this RFC borrows, without adopting their full machinery:
 - Exclude already-merged from the membership noun — smuggles execute into Ready (see D24).
 - Stored scope / include-exclude list, claim- or last-selector-derived membership, phase-divergent filters, or a soft “deferred / parked” exit ramp — reintroduce editable or divergent membership (see D2, D24).
 - Invent a second pin / revision wire format alongside RFC-87 `SnapshotId` / `cid`, or keep build-time ambient freeze / `build/patch.yaml` authority once recorded pins and fact-substrate build records exist — fights D4 / D25 / D27 and the landed workspace seam.
-- Treat interim `apply` retirement or project seal as this RFC’s job — `apply` deletion is claimed by [RFC-88](rfc-88-detached-changes.md); project seal stays RFC-95; this RFC records the facts and pins those steps consume (D27 retires freeze + `patch.yaml` only).
+- Treat interim `apply` retirement or publication-worktree materialize as this RFC’s job — `apply` deletion is claimed by [RFC-88](rfc-88-detached-changes.md); the publication worktree stays RFC-95; this RFC records the facts and pins those steps consume (D27 retires freeze + `patch.yaml` only).
 - Leave `build/patch.yaml` as the build-outcome authority after Phase B pins and waves land — dual status (file vs facts); forces RFC-88 to re-home again (see D27).
 - Keep a detached `change approve` (or other topology-approve) verb so plan can stay approve-less — RFC-88 has neither; execute is the sole authorization gesture in both RFCs.
 - Per-slice merge facts with no wave shape — fights D9 and leaves RFC-88 without the accepted-`cid` transition it assumes.
@@ -537,7 +537,7 @@ For engine contributors. Not required to evaluate the product intent.
 **Already landed (RFC-87 + Phases A–C) — consume, do not reinvent**
 
 - Value vocabulary: `project::snapshot::{SnapshotId, CodePatch}` (`sha256:…` tree digest; code patch = `{ base, result, touched paths }`). Wire documents say `cid` for the same identity ([RFC-88](rfc-88-detached-changes.md)).
-- Workspace capability: `project::seam::Workspaces` — `freeze` (refine pin authorship) / `prepare` / `capture` / `discard` / interim `apply`; the wasm-clean kernel in `project::workspace` runs in-guest over `wasi:blobstore` + `emery:exec-bits` (and in-process in the native provider) — see the deployment note in [RFC-87](rfc-87-working-trees.md).
+- Workspace capability: `project::seam::Workspaces` — `freeze` (refine pin authorship) / `prepare` / `capture` / `discard` / interim `apply`; the wasm-clean kernel in `project::workspace` runs in-guest over `wasi:blobstore` + `emery:exec-mode` (and in-process in the native provider) — see the deployment note in [RFC-87](rfc-87-working-trees.md).
 - Build orchestration (`crates/slice/src/orchestrate/target.rs`) opens a one-member wave, prepares from the recorded `base.yaml` `target_base` pin, dispatches `target.build`, captures, and persists `builds/<digest>.yaml` (`BuildRecord`). No ambient freeze-at-build; no `build/patch.yaml` authority.
 - Merge orchestration loads the `BuildRecord`, revalidates the wave, commits `target.merge.wave-committed`, and still calls interim `apply` for write-back (deleted by [RFC-88](rfc-88-detached-changes.md), not by this RFC). Do not reintroduce ambient checkout writes.
 

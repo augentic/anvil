@@ -1,0 +1,17 @@
+/// The `emery:engine` package: the engine guest's own world, split from
+/// the published `emery:adapter` contract so host-seam changes never
+/// drag the adapter release train. Adapters never vendor this package.
+package emery:engine@0.1.0;
+
+/// The workflow guest: the deployment's only `wasi:cli/run` exporter.
+/// The `source` / `target` imports route to adapter guests by
+/// `adapter-id`; `emery:exec-mode` is host-implemented (the workspace
+/// kernel runs in-guest over `wasi:blobstore` + `wasi:filesystem`).
+world workflow {
+  import emery:adapter/source@0.1.0;
+  import emery:adapter/target@0.1.0;
+  import emery:exec-mode/exec-mode@0.1.0;
+  import emery:vcs/trees@0.1.0;
+  import emery:vcs/worktree@0.1.0;
+  import emery:vcs/forge@0.1.0;
+}

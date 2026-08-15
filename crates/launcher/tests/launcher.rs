@@ -515,12 +515,13 @@ async fn bare_miss_offline_fails() {
 
 #[tokio::test]
 async fn missing_sidecar_refused() {
-    // An unverifiable entry triggers one unlink-and-reinstall; with
+    // An unverifiable entry triggers one reinstall-in-place; with
     // the registry unreachable the heal fails and the original
-    // verification refusal stands.
+    // verification refusal stands — without destroying the local
+    // artifact.
     let sandbox = Sandbox::new();
-    std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"mock without provenance")
-        .expect("write unverifiable adapter entry");
+    let entry = sandbox.store.join("mock@1.0.0.wasm");
+    std::fs::write(&entry, b"mock without provenance").expect("write unverifiable adapter entry");
 
     let err = sandbox
         .offline_resolver()
@@ -528,14 +529,15 @@ async fn missing_sidecar_refused() {
         .await
         .expect_err("sidecar-less store entry");
     assert_eq!(code(&err), "adapter-sidecar-missing");
+    assert!(entry.is_file(), "a failed heal must not unlink the local artifact");
 }
 
 #[tokio::test]
 async fn digest_drift_refused() {
     let sandbox = Sandbox::new();
     sandbox.seed_store_adapter("mock", "1.0.0");
-    std::fs::write(sandbox.store.join("mock@1.0.0.wasm"), b"tampered adapter bytes")
-        .expect("tamper with store entry");
+    let entry = sandbox.store.join("mock@1.0.0.wasm");
+    std::fs::write(&entry, b"tampered adapter bytes").expect("tamper with store entry");
 
     let err = sandbox
         .offline_resolver()
@@ -543,6 +545,11 @@ async fn digest_drift_refused() {
         .await
         .expect_err("tampered store entry, heal offline");
     assert_eq!(code(&err), "adapter-digest-mismatch");
+    assert!(entry.is_file(), "a failed heal must not unlink the local artifact");
+    assert!(
+        sandbox.store.join("mock@1.0.0.meta").is_file(),
+        "a failed heal must not unlink the sidecar"
+    );
 }
 
 #[tokio::test]

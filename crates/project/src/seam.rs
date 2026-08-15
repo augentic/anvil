@@ -331,6 +331,11 @@ pub trait Workspaces: Send + Sync {
     /// freezes the product tree.
     fn freeze(&self) -> impl Future<Output = Result<SnapshotId, Error>> + Send;
 
+    /// Whether the snapshot store already holds `id` — the bind
+    /// kernel's recorded-CID and intern-cache pre-checks run this
+    /// before any origin I/O.
+    fn contains(&self, id: SnapshotId) -> impl Future<Output = Result<bool, Error>> + Send;
+
     /// Freeze an arbitrary deployment-local tree (a directory, or a
     /// single file as a one-file tree) as an immutable snapshot — the
     /// source-input preparation leg. Unlike [`Self::freeze`], the
@@ -363,11 +368,11 @@ pub trait Workspaces: Send + Sync {
     ) -> impl Future<Output = Result<usize, Error>> + Send;
 }
 
-/// Host-staged locator ingest: Git/HTTPS I/O plus CID snapshot.
+/// One bound locator: exact pin, CID, and a readable staged tree.
 ///
-/// Path locators are read in-process; Git clone and HTTPS fetch run on
-/// the host (native in-process, guest via WIT). Always uses
-/// [`crate::binding::Policy::standard`].
+/// Produced by the engine bind kernel
+/// ([`crate::binding::fetch_locator`]) — never by the host, which
+/// only stages trees through [`Trees`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fetched {
     /// Exact locator (Git revisions are SHAs).
@@ -380,43 +385,256 @@ pub struct Fetched {
     pub warning: Option<String>,
 }
 
-/// Host ingest capability for wave binding.
-pub trait Ingest: Send + Sync {
-    /// Stage `locator`, snapshot it, and return the exact pin plus a
-    /// local tree the caller can fingerprint.
-    fn fetch(
-        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
-    ) -> impl Future<Output = Result<Fetched, Error>> + Send;
+/// Credential policy for one tree fetch, mirroring the WIT
+/// `trees.credentials` enum. Travels per call, never as capability
+/// identity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TreeCredentials {
+    /// Hardened credential-free fetch (RFC-88 bind): no hooks, no
+    /// submodules, no LFS, no prompts.
+    None,
+    /// The operator's ambient host credentials (RFC-104 archaeology).
+    Ambient,
 }
 
-/// One fetched origin: the deployment-local tree the fetch
-/// materialized plus the origin's revision report.
+/// Transport-level bounds for one fetch, mirroring the WIT
+/// `trees.limits` record. Handed down from the engine's D9 policy;
+/// wave-level metering (bindings, trees, inspected bytes) stays
+/// engine-side.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TreeLimits {
+    /// Maximum response body, in bytes.
+    pub max_bytes: u64,
+    /// Maximum HTTPS 3xx hops followed.
+    pub max_redirects: u32,
+    /// Wall-clock budget for the fetch, in milliseconds.
+    pub time_ms: u64,
+}
+
+impl TreeLimits {
+    /// The D9 transport slice of one bind policy.
+    #[must_use]
+    pub fn standard(policy: &crate::binding::Policy) -> Self {
+        Self {
+            max_bytes: u64::try_from(policy.https_body).unwrap_or(u64::MAX),
+            max_redirects: u32::try_from(policy.https_redirects).unwrap_or(u32::MAX),
+            time_ms: policy.time_ms,
+        }
+    }
+
+    /// No transport bounds — the RFC-104 archaeology fetch, which has
+    /// never been metered.
+    #[must_use]
+    pub const fn unbounded() -> Self {
+        Self {
+            max_bytes: u64::MAX,
+            max_redirects: u32::MAX,
+            time_ms: u64::MAX,
+        }
+    }
+}
+
+/// One staged tree beneath the deployment's staging root, mirroring
+/// the WIT `trees.fetched` record.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct OriginFetched {
-    /// Deployment-local root of the fetched tree, beneath the
-    /// deployment's workspaces mount. The caller snapshots it and
-    /// then discards it via [`Origins::discard_fetched`].
+pub struct TreeFetched {
+    /// Deployment-local root of the staged tree. The caller snapshots
+    /// it (CID minting stays in the workspace kernel) and discards it
+    /// via [`Trees::discard_fetched`].
     pub root: String,
-    /// The commit the fetch reports, when the origin is Git.
+    /// The commit the fetch reports, when the locator is Git. The
+    /// moved-branch comparison against a recorded prior SHA is an
+    /// engine check.
     pub revision: Option<String>,
 }
 
-/// The host-owned origin-fetch capability (RFC-104).
-///
-/// Resolves a remote coverage locator (Git or HTTPS) into a
-/// deployment-local tree: the native provider runs host `git` /
-/// HTTPS fetch in-process; the engine guest maps the
-/// host-implemented `emery:origins` import (the guest has no network
-/// or git). Private Git uses ambient host credentials — no secrets
-/// surface in the definition home. Only system survey dispatches it.
-pub trait Origins: Send + Sync {
-    /// Fetch `locator` into a deployment-local tree: a Git origin
-    /// clones, any other HTTPS locator downloads as a one-file tree.
-    fn fetch(&self, locator: String) -> impl Future<Output = Result<OriginFetched, Error>> + Send;
+/// Typed tree-fetch failure, mirroring the WIT `trees.error` variant.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum TreeError {
+    /// The locator is not a fetchable origin.
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
+    /// The origin refused or could not be reached.
+    #[error("access: {0}")]
+    Access(String),
+    /// A transport-level limit was exhausted (bytes, redirects, time).
+    #[error("limit: {0}")]
+    Limit(String),
+    /// A host-side fault outside the locator's control.
+    #[error("internal: {0}")]
+    Internal(String),
+}
 
-    /// Discard a fetched tree by its deployment-local root.
+/// The host-owned VCS tree-fetch capability (RFC-95): the one seam
+/// for every remote locator fetch.
+///
+/// The native provider runs host `git` / HTTPS in-process; the engine
+/// guest maps the host-implemented `emery:vcs/trees` import (the
+/// guest has no network or git). `credentials` selects the RFC-88
+/// hardened bind leg or the RFC-104 ambient archaeology leg; policy
+/// (CID minting, D9 metering, recorded-CID skip, moved-branch
+/// comparison) stays with the caller.
+pub trait Trees: Send + Sync {
+    /// Stage `locator` beneath the deployment's staging root: a Git
+    /// origin checks out, any other HTTPS locator downloads as a
+    /// one-file tree.
+    fn fetch(
+        &self, locator: String, credentials: TreeCredentials, limits: TreeLimits,
+    ) -> impl Future<Output = Result<TreeFetched, TreeError>> + Send;
+
+    /// Discard a staged tree by its deployment-local root.
     /// Best-effort and idempotent.
-    fn discard_fetched(&self, root: String) -> impl Future<Output = Result<(), Error>> + Send;
+    fn discard_fetched(&self, root: String) -> impl Future<Output = Result<(), TreeError>> + Send;
+}
+
+/// One RFC-95 D11 publication materialize, mirroring the WIT
+/// `worktree.request` record.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorktreeRequest {
+    /// Bound repository URL (`plan.yaml.targets[].locator` minus the
+    /// `@revision` suffix).
+    pub repository: String,
+    /// The recorded parent commit the publication branch starts at.
+    pub parent_revision: String,
+    /// The publication branch, `change/<plan>`.
+    pub branch: String,
+    /// Accepted CID to materialize.
+    pub cid: SnapshotId,
+    /// Plan name — the first `$EMERY_HOME/publication/<plan>/<target>/`
+    /// slot segment.
+    pub plan: String,
+    /// Target key — the second slot segment.
+    pub target: String,
+    /// The engine's single-member in-place decision: when set, a clean
+    /// product checkout at the parent revision is used in place.
+    pub allow_in_place: bool,
+}
+
+/// Idempotency outcome per the D11 state table, mirroring the WIT
+/// `worktree.state` enum.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum WorktreeState {
+    /// First materialization onto a fresh publication branch.
+    Created,
+    /// The worktree already carried exactly this CID's content.
+    Matched,
+    /// Existing staged content was replaced by this CID's content.
+    Rematerialized,
+}
+
+/// The D11 refusal rows, mirroring the WIT `worktree.export-error`
+/// variant. `Dirty` maps to the `publication-worktree-dirty` stop;
+/// the closed provisioning rows map to `publication-provision-failed`.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum WorktreeError {
+    /// Operator has uncommitted edits on the publication worktree.
+    #[error("publication worktree has uncommitted operator edits")]
+    Dirty,
+    /// The publication branch exists at a different commit than the
+    /// recorded parent.
+    #[error("publication branch diverged from the recorded parent revision")]
+    BranchDiverged,
+    /// The publication branch is checked out in another linked worktree.
+    #[error("publication branch is checked out in another worktree")]
+    BranchCheckedOutElsewhere,
+    /// The destination slot exists but is not the expected worktree.
+    #[error("publication destination exists but is not the expected worktree")]
+    DestinationConflict,
+    /// The parent revision is unavailable even after one fetch.
+    #[error("recorded parent revision unavailable after fetch")]
+    ParentUnavailable,
+    /// The first-time clone failed.
+    #[error("publication clone failed: {0}")]
+    CloneFailed(String),
+    /// The request itself is malformed.
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
+    /// A host-side fault outside the request's control.
+    #[error("internal: {0}")]
+    Internal(String),
+}
+
+/// The host-owned publication-worktree capability (RFC-95 D11): one
+/// call provisions the checkout, applies the closed state table,
+/// materializes the accepted CID, and stages the index.
+///
+/// The native provider runs host `git` plus `Store::materialize`
+/// in-process; the engine guest maps the host-implemented
+/// `emery:vcs/worktree` import. Fact minting (dedupe on `(target,
+/// CID)`) and the materialize predicate stay with the caller.
+pub trait Worktree: Send + Sync {
+    /// Materialize one publication member; returns the node-local
+    /// worktree path and the idempotency state.
+    fn export(
+        &self, req: WorktreeRequest,
+    ) -> impl Future<Output = Result<(String, WorktreeState), WorktreeError>> + Send;
+}
+
+/// Publication state as the forge reports it, mirroring the WIT
+/// `forge.pr-state` enum. `unpublished` is the engine's zero-match
+/// projection, not a forge state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PrState {
+    /// The pull request is open.
+    Open,
+    /// The pull request merged.
+    Merged,
+    /// The pull request closed without merging.
+    Closed,
+}
+
+/// One pull request, mirroring the WIT `forge.pull-request` record —
+/// everything RFC-95 D10's read needs.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PullRequest {
+    /// Forge URL of the pull request.
+    pub url: String,
+    /// Pull-request body — the D3 trailer surface.
+    pub body: String,
+    /// Forge-reported state.
+    pub state: PrState,
+    /// The observed base branch (recorded, not gated — D10).
+    pub base: String,
+    /// RFC 3339; present only when merged.
+    pub merged_at: Option<String>,
+    /// The forge's merge commit; present only when merged.
+    pub merge_commit: Option<String>,
+}
+
+/// Typed forge-read failure, mirroring the WIT `forge.error` variant.
+/// Authentication and transport failures are distinct outcomes;
+/// neither is `publication-unverified` (D10).
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ForgeError {
+    /// The repository reference is malformed.
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
+    /// The forge refused the credentials.
+    #[error("auth: {0}")]
+    Auth(String),
+    /// The forge could not be reached.
+    #[error("transport: {0}")]
+    Transport(String),
+    /// A host-side fault outside the request's control.
+    #[error("internal: {0}")]
+    Internal(String),
+}
+
+/// The host-owned forge-observation capability (RFC-95 D10): every
+/// open, merged, and closed pull request for `(repository, branch)`,
+/// pagination followed to exhaustion.
+///
+/// The native provider speaks GitHub REST in-process; the engine
+/// guest maps the host-implemented `emery:vcs/forge` import. The
+/// zero / one / several rule, trailer and covering-digest matching,
+/// and `merged-at` ordering are engine checks over these results.
+pub trait Forge: Send + Sync {
+    /// Every pull request for `(repository, branch)`.
+    fn find(
+        &self, repository: String, branch: String,
+    ) -> impl Future<Output = Result<Vec<PullRequest>, ForgeError>> + Send;
 }
 
 /// The borrowed capability bundle one orchestration run dispatches

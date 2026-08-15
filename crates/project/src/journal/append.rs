@@ -99,12 +99,26 @@ fn next_sequence(path: &Path) -> Result<u64, Error> {
         Err(err) if err.kind() == ErrorKind::NotFound => return Ok(1),
         Err(err) => return Err(Error::Io(err)),
     };
-    let last = contents
-        .lines()
-        .rev()
-        .find(|line| !line.trim().is_empty())
-        .and_then(|line| serde_json::from_str::<Event>(line).ok());
-    Ok(last.map_or(1, |event| event.sequence.saturating_add(1)))
+    // Walk back past corrupt trailing lines to the newest parseable
+    // event; resetting to 1 would collide with the events still in
+    // the file (union order is `(timestamp, writer, sequence)`).
+    let mut saw_line = false;
+    for line in contents.lines().rev().filter(|line| !line.trim().is_empty()) {
+        saw_line = true;
+        if let Ok(event) = serde_json::from_str::<Event>(line) {
+            return Ok(event.sequence.saturating_add(1));
+        }
+    }
+    if saw_line {
+        return Err(Error::Diag {
+            code: "journal-log-corrupt",
+            detail: format!(
+                "no parseable event in {}; repair or remove the log before appending",
+                path.display()
+            ),
+        });
+    }
+    Ok(1)
 }
 
 fn serialize_event(event: &Event) -> Result<String, Error> {

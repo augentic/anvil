@@ -12,12 +12,14 @@ use project::config::Layout;
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{LoopStep, NextActionKind, Plan, StatusBody, StopReason, plan_status_body};
-use project::seam::{PhaseSource, Source, Target, Workspaces};
+use project::seam::{PhaseSource, Source, Target, Workspaces, Worktree};
 use tracing::Instrument as _;
 
 mod marker;
+mod publication;
 
 pub use marker::GuestMarker;
+use publication::Reconciled;
 
 /// One phase the loop completed, in run order.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,15 +66,15 @@ pub enum ExecuteOutcome {
     },
 }
 
-/// Run the drained execute loop: advance → refine → build → merge
-/// per entry until `plan status` projects `drained` or a stop.
+/// Run the drained execute loop: advance → build → merge per entry
+/// until `plan status` projects `drained` or a stop. Execute never
+/// refines — refinement runs only in `emery plan refine` (RFC-91 D5).
 ///
-/// Re-entry is safe: a refine / build / preflight-merge failure leaves
-/// the entry `in-progress`, so the next run resumes (or re-reports the
+/// Re-entry is safe: a build / preflight-merge failure leaves the
+/// entry `in-progress`, so the next run resumes (or re-reports the
 /// stop); a postflight failure stamps `done` (non-rollback) and
 /// projects a sticky stop the next execute acknowledges. The bound
-/// target adapter resolves once in loop setup (before the marker),
-/// giving every dispatch one identity.
+/// target adapter resolves once in loop setup, before the marker.
 ///
 /// # Errors
 ///
@@ -81,7 +83,7 @@ pub enum ExecuteOutcome {
 ///   says which file to delete.
 /// Phase failures do **not** surface here — they return as
 ///   [`ExecuteOutcome::Stopped`].
-pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
+pub async fn execute<P: Model, S: Source, T: Target + Workspaces + Worktree, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<ExecuteOutcome, Error> {
     let layout = paths.layout();
@@ -90,14 +92,8 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     }
     let plan = Plan::load(&layout.plan_path())?;
     let _marker = GuestMarker::acquire(layout, now)?;
-    // A drained plan is a read-only no-op: opening a fresh
-    // authorization epoch would journal coverage nothing runs under.
-    let status = plan_status_body(&plan, layout)?;
-    if status.action == NextActionKind::Drained {
-        return Ok(ExecuteOutcome::Drained {
-            plan: status.plan,
-            phases: Vec::new(),
-        });
+    if let Some(outcome) = before_epoch(caps.targets, paths, now).await? {
+        return Ok(outcome);
     }
     // Digest chain, then `plan.execute.started` with typed coverage.
     super::epoch::open(paths, &plan, now)?;
@@ -106,6 +102,14 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
     loop {
         let plan = Plan::load(&layout.plan_path())?;
         let status = plan_status_body(&plan, layout)?;
+        // A pending publication member is the loop's own reconcile
+        // step, not a dispatched slice phase.
+        if status.action == NextActionKind::Materialize {
+            if let Some(stopped) = reconcile_publication(caps.targets, paths, now, &phases).await? {
+                return Ok(stopped);
+            }
+            continue;
+        }
         // Progress rendering: the active entry is the (done + 1)-th of the
         // plan's total, carried into the per-phase lines below.
         let counts = status.counts;
@@ -168,6 +172,15 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                     step,
                     verification,
                 });
+                // A landed merge may complete its target's in-scope
+                // set — materialize eagerly (RFC-95 D11 permits
+                // running before unrelated targets drain).
+                if step == LoopStep::Merge
+                    && let Some(stopped) =
+                        reconcile_publication(caps.targets, paths, now, &phases).await?
+                {
+                    return Ok(stopped);
+                }
             }
             Err(err) => {
                 // The phase already journalled its failure terminal, so a
@@ -184,6 +197,50 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces, R: Resolver>(
                 });
             }
         }
+    }
+}
+
+/// The pre-epoch gate. A drained plan is a read-only no-op: opening a
+/// fresh authorization epoch would journal coverage nothing runs
+/// under. Pending publication members reconcile first — the fact
+/// predicate authorizes the materialize; no new epoch (RFC-95 D11).
+async fn before_epoch<W: Worktree>(
+    worktree: &W, paths: &ExecutionPaths, now: Timestamp,
+) -> Result<Option<ExecuteOutcome>, Error> {
+    let layout = paths.layout();
+    let status = plan_status_body(&Plan::load(&layout.plan_path())?, layout)?;
+    let status = if status.action == NextActionKind::Materialize {
+        if let Some(stopped) = reconcile_publication(worktree, paths, now, &Vec::new()).await? {
+            return Ok(Some(stopped));
+        }
+        // Re-project: the reconcile may have completed the drain.
+        plan_status_body(&Plan::load(&layout.plan_path())?, layout)?
+    } else {
+        status
+    };
+    if status.action == NextActionKind::Drained {
+        return Ok(Some(ExecuteOutcome::Drained {
+            plan: status.plan,
+            phases: Vec::new(),
+        }));
+    }
+    Ok(None)
+}
+
+/// Run one publication reconcile pass; a member refusal maps onto the
+/// typed publication stop.
+async fn reconcile_publication<W: Worktree>(
+    worktree: &W, paths: &ExecutionPaths, now: Timestamp, phases: &[PhaseRun],
+) -> Result<Option<ExecuteOutcome>, Error> {
+    match publication::reconcile(worktree, paths, now).await? {
+        Reconciled::Clean => Ok(None),
+        Reconciled::Stopped { reason, detail } => Ok(Some(ExecuteOutcome::Stopped {
+            reason,
+            detail: Some(detail),
+            hint: reason.hint(),
+            slice: None,
+            phases: phases.to_vec(),
+        })),
     }
 }
 
@@ -280,6 +337,9 @@ fn dispatch_status(
         NextActionKind::Refine => ControlFlow::Break(refinement_required(status, phases)),
         NextActionKind::Build => ControlFlow::Continue(Some(LoopStep::Build)),
         NextActionKind::Merge => ControlFlow::Continue(Some(LoopStep::Merge)),
+        // The loop intercepts materialize before dispatch; looping
+        // back re-intercepts if a race re-projects it.
+        NextActionKind::Materialize => ControlFlow::Continue(None),
     }
 }
 

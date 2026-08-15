@@ -5,7 +5,7 @@ use omnia_guest::api::invoke::CallContext;
 use omnia_guest::api::operation::Operation;
 use project::config::{Mutation, with_state};
 use project::handler::{Anchor, Ctx};
-use project::plan::{Plan, collect_events, project_ladders, proposal};
+use project::plan::{Plan, collect_events, project_ladders, proposal, publication};
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -43,6 +43,11 @@ impl<P: Anchor> Operation<P> for Remove {
                 .find(|e| e.name == name)
                 .cloned()
                 .ok_or_else(|| plan.entry_not_found(&name))?;
+            // Materialized publication members lock their target's
+            // topology until archive (RFC-95 D11).
+            if publication::locked_targets(plan, &events).contains(&removed.target) {
+                return Err(publication::locked_err(&removed.target));
+            }
             let ladders = project_ladders(plan, &events);
             if proposal::has_tree(layout) && Plan::is_replaceable(&ladders) {
                 proposal::remove(layout, plan, &name)?;

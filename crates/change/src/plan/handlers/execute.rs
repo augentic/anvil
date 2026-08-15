@@ -1,5 +1,6 @@
-//! `plan execute` — the drained refine → build → merge loop. At start
-//! appends `plan.execute.started` with typed `closed-plan` coverage.
+//! `plan execute` — the drained build → merge loop (refinement runs
+//! only in `emery plan refine`; RFC-91 D5). At start appends
+//! `plan.execute.started` with typed `closed-plan` coverage.
 
 use std::io::Write;
 
@@ -10,7 +11,7 @@ use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::plan::LoopStep;
-use project::seam::{PhaseSource, Source, Target, Workspaces};
+use project::seam::{PhaseSource, Source, Target, Workspaces, Worktree};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, ExecuteOutcome};
@@ -24,11 +25,13 @@ use crate::orchestrate::{self, ExecuteOutcome};
 pub struct ExecuteInput {}
 
 /// `emery plan execute` → the internal execute orchestration — the
-/// drained refine → build → merge loop.
+/// drained build → merge loop (execute never refines).
 #[derive(Clone, Copy, Debug)]
 pub struct Execute;
 
-impl<P: Anchor + Model + Resolver + Source + Target + Workspaces> Operation<P> for Execute {
+impl<P: Anchor + Model + Resolver + Source + Target + Workspaces + Worktree> Operation<P>
+    for Execute
+{
     type Error = project::handler::Error;
     type Input = ExecuteInput;
     type Output = ExecuteBody;

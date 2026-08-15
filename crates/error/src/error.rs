@@ -111,7 +111,7 @@ impl Error {
                 "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`), then rerun the command",
             ),
             Self::AdapterCliTooOld { .. } => Some(
-                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`); if the adapter itself is stale instead, `emery adapter update <name>` pulls its newest published version",
+                "update the installed binary through its install channel: `curl -fsSL https://raw.githubusercontent.com/augentic/emery/main/scripts/install.sh | sh` (or `brew upgrade emery`); if the adapter itself is stale instead, `emery adapter upgrade <name>` pulls its newest published version",
             ),
             Self::Diag { code, .. } => diag_hint(code),
             Self::Validation { code, .. } => match code.as_ref() {
@@ -119,7 +119,7 @@ impl Error {
                     "quiesce affected claims and waves, then re-run `emery plan amend --proposal <digest>` against a fresh proposal",
                 ),
                 "plan-proposal-kind" => Some(
-                    "envelope and definition-revision documents are not amendments; revise the reviewed handoff or wait for RFC-96",
+                    "envelope and definition-revision documents are not amendments; revise the reviewed handoff or wait for RFC-106",
                 ),
                 "plan-proposal-cycle" => Some(
                     "the candidate tree must stay acyclic; author a new proposal from the live decomposition",

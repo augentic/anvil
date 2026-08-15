@@ -1,6 +1,6 @@
 //! In-guest workspace-kernel seams: snapshot objects over Omnia's
-//! `BlobStore` capability (the `wasi:blobstore` import), exec bits
-//! over `emery:exec-bits`; tree I/O runs over the preopens.
+//! `BlobStore` capability (the `wasi:blobstore` import), exec mode
+//! over `emery:exec-mode`; tree I/O runs over the preopens.
 
 use std::collections::BTreeSet;
 use std::io::{Read, Write as _};
@@ -8,15 +8,15 @@ use std::path::Path;
 
 use error::Error;
 use omnia_guest::BlobStore;
-use project::workspace::{ExecBits, Objects, Store};
+use project::workspace::{ExecMode, Objects, Store};
 
-use crate::bindings::emery::exec_bits::exec_bits;
+use crate::bindings::emery::exec_mode::exec_mode;
 
 /// The one container engine snapshots live in.
 const CONTAINER: &str = "snapshots";
 
 /// The in-guest snapshot store: blobstore-backed objects, host
-/// exec bits.
+/// exec mode.
 ///
 /// # Errors
 ///
@@ -25,7 +25,7 @@ pub(crate) async fn store() -> Result<Store<BlobObjects>, Error> {
     if !BlobObjects.container_exists(CONTAINER).await.map_err(store_error)? {
         BlobObjects.create_container(CONTAINER).await.map_err(store_error)?;
     }
-    Ok(Store::over(BlobObjects, WitExecBits))
+    Ok(Store::over(BlobObjects, WitExecMode))
 }
 
 /// Digest-named objects sharded as `<2 hex>/<62 hex>` — an emery-owned
@@ -89,20 +89,20 @@ impl Objects for BlobObjects {
     }
 }
 
-/// [`ExecBits`] over the deployment's `emery:exec-bits` import —
+/// [`ExecMode`] over the deployment's `emery:exec-mode` import —
 /// `wasi:filesystem` carries no permission bits, so the host
 /// round-trips the manifest's one mode distinction.
 #[derive(Clone, Copy, Debug)]
-struct WitExecBits;
+struct WitExecMode;
 
-impl ExecBits for WitExecBits {
+impl ExecMode for WitExecMode {
     fn read(&self, root: &Path) -> Result<BTreeSet<String>, Error> {
-        let paths = exec_bits::read(guest_root(root)?).map_err(exec_error)?;
+        let paths = exec_mode::read(guest_root(root)?).map_err(exec_error)?;
         Ok(paths.into_iter().collect())
     }
 
     fn apply(&self, root: &Path, exec: &[String], plain: &[String]) -> Result<(), Error> {
-        exec_bits::apply(guest_root(root)?, exec, plain).map_err(exec_error)
+        exec_mode::apply(guest_root(root)?, exec, plain).map_err(exec_error)
     }
 }
 
@@ -193,13 +193,13 @@ fn store_error(error: omnia_guest::anyhow::Error) -> Error {
     }
 }
 
-fn exec_error(error: exec_bits::Error) -> Error {
+fn exec_error(error: exec_mode::Error) -> Error {
     Error::Diag {
-        code: "workspace-exec-bits",
+        code: "workspace-exec-mode",
         detail: match error {
-            exec_bits::Error::InvalidRequest(detail)
-            | exec_bits::Error::Io(detail)
-            | exec_bits::Error::Internal(detail) => detail,
+            exec_mode::Error::InvalidRequest(detail)
+            | exec_mode::Error::Io(detail)
+            | exec_mode::Error::Internal(detail) => detail,
         },
     }
 }

@@ -709,15 +709,3 @@ world adapter {
   export source;
   export target;
 }
-
-/// The workflow guest: the deployment's only `wasi:cli/run` exporter.
-/// The `source` / `target` imports route to adapter guests by
-/// `adapter-id`; `emery:exec-bits` is host-implemented (the workspace
-/// kernel runs in-guest over `wasi:blobstore` + `wasi:filesystem`).
-world workflow {
-  import source;
-  import target;
-  import emery:exec-bits/exec-bits@0.1.0;
-  import emery:ingest/ingest@0.1.0;
-  import emery:origins/origins@0.1.0;
-}

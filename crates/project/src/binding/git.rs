@@ -7,28 +7,19 @@ use error::Error;
 
 use super::{Locator, Meter, Policy};
 
-/// Checkout result: exact SHA plus an optional moved-branch warning.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Exact {
-    /// Resolved commit id.
-    pub revision: String,
-    /// Set when `prior` no longer matches the named ref's tip.
-    pub warning: Option<String>,
-}
-
 /// Clone `url` at `revision` into `dest` with hooks, LFS, and submodules off.
 ///
-/// Mutable refs resolve via `ls-remote`. A `prior` SHA that still exists but
-/// is no longer the named ref's tip yields a freshness warning; the checkout
-/// uses `prior`. An unavailable recorded commit is an error.
+/// Mutable refs resolve to their tip via `ls-remote`; the returned
+/// commit is exact. The moved-branch comparison against a recorded
+/// prior SHA is an engine check (`binding::fetch`), not a host one.
 ///
 /// # Errors
 ///
 /// `git-ingest-failed`, `git-revision-unavailable`, `binding-budget-exhausted`.
 pub fn checkout(
-    url: &str, revision: &str, prior: Option<&str>, dest: &Path, policy: &Policy, meter: &mut Meter,
-) -> Result<Exact, Error> {
-    let (sha, warning) = resolve_sha(url, revision, prior, policy, meter)?;
+    url: &str, revision: &str, dest: &Path, policy: &Policy, meter: &mut Meter,
+) -> Result<String, Error> {
+    let sha = resolve_sha(url, revision, policy, meter)?;
     if dest.exists() {
         std::fs::remove_dir_all(dest)?;
     }
@@ -63,32 +54,17 @@ pub fn checkout(
         }
     }
     run(&["checkout", "--force", "--recurse-submodules=no", &sha], Some(dest))?;
-    Ok(Exact {
-        revision: sha,
-        warning,
-    })
+    Ok(sha)
 }
 
 fn resolve_sha(
-    url: &str, revision: &str, prior: Option<&str>, policy: &Policy, meter: &mut Meter,
-) -> Result<(String, Option<String>), Error> {
+    url: &str, revision: &str, policy: &Policy, meter: &mut Meter,
+) -> Result<String, Error> {
     if Locator::is_sha(revision) {
-        return Ok((revision.to_string(), None));
+        return Ok(revision.to_string());
     }
     meter.api(policy)?;
-    let tip = ls_remote(url, revision)?;
-    if let Some(prior) = prior {
-        if prior != tip {
-            return Ok((
-                prior.to_string(),
-                Some(format!(
-                    "git ref `{revision}` moved from `{prior}` to `{tip}`; ingesting recorded commit"
-                )),
-            ));
-        }
-        return Ok((prior.to_string(), None));
-    }
-    Ok((tip, None))
+    ls_remote(url, revision)
 }
 
 fn ls_remote(url: &str, revision: &str) -> Result<String, Error> {

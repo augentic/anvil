@@ -11,8 +11,8 @@ use super::super::execution::{
     scan_union,
 };
 use super::super::gaps::{GapsBody, plan_gaps_body};
-use super::super::in_scope;
 use super::super::model::{Entry, Plan, Status};
+use super::super::{in_scope, publication};
 use super::{LoopStep, NextActionKind, StatusBody, StatusCounts, StopReason};
 use crate::build_record::BuildRecord;
 use crate::config::Layout;
@@ -89,7 +89,59 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         ready: all_in_scope_refined(plan, layout, &inventory, &mut live)? && clean_gaps(&gaps),
         authorized: project_authorized(plan, layout, &events)?,
     };
-    Ok(assemble(plan, counts, active, &ladders, resolution, gaps, milestones))
+    // The drain condition includes publication (RFC-95 D11): a plan
+    // whose entries are all done but whose members lack materialized
+    // facts projects `materialize`, not `drained`.
+    let members = publication::members(plan, layout, &events)?;
+    let resolution = match resolution {
+        r if r.action == NextActionKind::Drained => members
+            .iter()
+            .find(|member| member.pending())
+            .map_or(r, |member| Resolution::materialize(&member.target)),
+        r => r,
+    };
+    let publication = publication_bodies(plan, &members);
+    Ok(assemble(plan, counts, active, &ladders, resolution, gaps, milestones, publication))
+}
+
+/// Per-member publication milestone rows, in member order.
+fn publication_bodies(
+    plan: &Plan, members: &[publication::Member],
+) -> Vec<super::PublicationMemberBody> {
+    use super::{PublicationMemberBody, PublicationMemberState};
+    members
+        .iter()
+        .map(|member| {
+            let (state, next) = match &member.materialized {
+                Some(fact) => (
+                    PublicationMemberState::Materialized,
+                    format!(
+                        "review, commit, and push branch {} from {}",
+                        fact.branch, fact.worktree_path
+                    ),
+                ),
+                None if member.blocked => (
+                    PublicationMemberState::Blocked,
+                    "acknowledge the postflight stop by re-running emery plan execute".to_string(),
+                ),
+                None if member.complete && member.accepted.is_some() => (
+                    PublicationMemberState::Ready,
+                    "emery plan execute materializes the publication worktree".to_string(),
+                ),
+                None => (
+                    PublicationMemberState::AwaitingMerges,
+                    format!("awaiting in-scope merges for plan {}", plan.name),
+                ),
+            };
+            PublicationMemberBody {
+                target: member.target.clone(),
+                state,
+                branch: member.materialized.as_ref().map(|fact| fact.branch.clone()),
+                worktree: member.materialized.as_ref().map(|fact| fact.worktree_path.clone()),
+                next,
+            }
+        })
+        .collect()
 }
 
 /// Plan-wide Ready / Authorized inputs for [`assemble`] (RFC-86 D22).
@@ -192,14 +244,19 @@ fn project_authorized(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Resu
     Ok(matches!(freshness, super::super::epoch::EpochFreshness::Fresh { .. }))
 }
 
+#[expect(clippy::too_many_arguments, reason = "one-shot assembly of the wire body's inputs")]
 fn assemble(
     plan: &Plan, counts: StatusCounts, active: Option<&Entry>,
     ladders: &std::collections::HashMap<SliceName, Status>, resolution: Resolution, gaps: GapsBody,
-    milestones: Milestones,
+    milestones: Milestones, publication: Vec<super::PublicationMemberBody>,
 ) -> StatusBody {
     let next_action = match (resolution.action, &resolution.slice, &resolution.stop) {
         (NextActionKind::Drained, ..) => "drained".to_string(),
         (NextActionKind::Stop, _, Some(stop)) => format!("stop {}", stop.reason),
+        // Materialize targets a publication member, not a slice.
+        (NextActionKind::Materialize, ..) => {
+            format!("materialize {}", resolution.target.as_deref().unwrap_or_default())
+        }
         (action, Some(slice), _) => format!("{action} {slice}"),
         // Unreachable by construction: every non-stop, non-drained
         // resolution carries a slice. Render the bare verb if it ever
@@ -221,6 +278,7 @@ fn assemble(
         slice: resolution.slice,
         target: resolution.target,
         stop: resolution.stop,
+        publication,
         gaps,
     }
 }
@@ -232,7 +290,7 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
         NextActionKind::Refine => Some(LoopStep::Refine),
         NextActionKind::Build => Some(LoopStep::Build),
         NextActionKind::Merge => Some(LoopStep::Merge),
-        NextActionKind::Drained => None,
+        NextActionKind::Materialize | NextActionKind::Drained => None,
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
             StopReason::RefineFailed
             | StopReason::RefinementRequired
@@ -243,9 +301,11 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
             // but the per-entry `done` stamp has not. Postflight failure is
             // past merge (`done` + archived) — no awaited phase.
             StopReason::MergeConflict | StopReason::MergeIncomplete => Some(LoopStep::Merge),
-            StopReason::MergePostflightFailed | StopReason::SliceDropped | StopReason::Stuck => {
-                None
-            }
+            StopReason::MergePostflightFailed
+            | StopReason::SliceDropped
+            | StopReason::Stuck
+            | StopReason::PublicationWorktreeDirty
+            | StopReason::PublicationProvision => None,
         }),
     }
 }
@@ -272,9 +332,12 @@ fn resume_point(
     }
     match resolution.action {
         // Refinement resumes through `plan refine` (RFC-91 D1/D8);
-        // build and merge resume through the execute loop.
+        // build, merge, and publication materialize resume through
+        // the execute loop.
         NextActionKind::Refine => Some("emery plan refine".to_string()),
-        NextActionKind::Build | NextActionKind::Merge => Some("emery plan execute".to_string()),
+        NextActionKind::Build | NextActionKind::Merge | NextActionKind::Materialize => {
+            Some("emery plan execute".to_string())
+        }
         NextActionKind::Drained => Some(format!("/emery:finalize {}", plan.name)),
         NextActionKind::Stop => resolution.stop.as_ref().and_then(|stop| match stop.reason {
             StopReason::RefineFailed
@@ -283,7 +346,9 @@ fn resume_point(
             StopReason::BuildFailed
             | StopReason::MergeConflict
             | StopReason::MergePostflightFailed
-            | StopReason::MergeIncomplete => Some("emery plan execute".to_string()),
+            | StopReason::MergeIncomplete
+            | StopReason::PublicationWorktreeDirty
+            | StopReason::PublicationProvision => Some("emery plan execute".to_string()),
             StopReason::SliceDropped | StopReason::Stuck => None,
             StopReason::BoundaryEscalation => {
                 stop.detail.as_ref().map(|digest| format!("emery plan amend --proposal {digest}"))

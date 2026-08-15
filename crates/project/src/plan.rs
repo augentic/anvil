@@ -21,6 +21,7 @@ pub mod pins;
 pub mod projection;
 pub mod proposal;
 pub mod propose;
+pub mod publication;
 pub mod remove;
 pub mod scaffold;
 pub mod scope;
@@ -60,8 +61,8 @@ pub use propose::{
 pub use scaffold::scaffold;
 pub use scope::in_scope;
 pub use status::{
-    LoopStep, NextActionKind, StatusBody, StatusCounts, StopBody, StopReason, drained_line,
-    plan_status_body,
+    LoopStep, NextActionKind, PublicationMemberBody, PublicationMemberState, StatusBody,
+    StatusCounts, StopBody, StopReason, drained_line, plan_status_body,
 };
 pub use validate::{finding, orphan_authority_override, reject_duplicate_source};
 pub use verify::{closed_plan, resolve_from};

@@ -110,9 +110,9 @@ If a manifest is missing or stale, execute fails before opening a workspace or t
 
 Before each build, the RFC-86a gap gate mints one durable `gap.deferred` fact per remaining open `[unknown]` or `[conflict]`; deferred requirements leave build scope and are conserved as debt.
 
-### Archive — unchanged
+### Archive
 
-After publication, `emery plan archive` verifies its existing completion conditions and archives the change.
+After publication, `emery plan archive` observes the forge per [RFC-95](rfc-95-publication-sets.md) (trailers, merged state, landing order), renders the typed publication projection, and archives the change.
 
 ## Decisions
 
@@ -230,7 +230,7 @@ This supersedes RFC-86 D25's refine-time target-base rule and preserves RFC-87's
 
 The first implementation runs under the existing guest marker and stops on the first failed refinement. Re-entry skips fresh manifests and resumes missing or stale work.
 
-RFC-96 owns the generic phase-work-item scheduler, concurrent work frontiers, and local operation-scoped claims. Its scheduler-and-pool delivery may land before target task decomposition and multi-member waves so RFC-99 can reuse it for progressive refinement. RFC-100 adds distributed offers, leases, ownership generations, and stale-claim rejection.
+RFC-96 owns the generic phase-work-item scheduler, concurrent work frontiers, and local operation-scoped claims. Its scheduler-and-pool delivery may land before composition and multi-member waves so RFC-99 can reuse it for progressive refinement. [RFC-106](rfc-106-task-graphs.md) owns target task decomposition. RFC-100 adds distributed offers, leases, ownership generations, and stale-claim rejection.
 
 ### D8 — Status exposes the review seam
 

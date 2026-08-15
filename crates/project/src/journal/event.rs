@@ -558,6 +558,72 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         proposal: Option<SnapshotId>,
     },
+    /// One publication member materialized (RFC-95 D11): the target's
+    /// final accepted CID was exported as a publication worktree on
+    /// the change branch. Dedupes on `(target, cid)` — a re-run that
+    /// would restate an existing fact appends nothing. The worktree
+    /// path is node-local observation, never portable authority.
+    #[serde(rename = "plan.publication.materialized", rename_all = "kebab-case")]
+    PublicationMaterialized {
+        /// Governing plan — plan names recur across successive
+        /// changes, so the name alone is not a join key.
+        plan_name: PlanName,
+        /// Covering `plan.yaml` content digest at materialize time
+        /// (same rendering as the epoch coverage's `plan-digest`).
+        plan_digest: String,
+        /// Materialized target key.
+        target: String,
+        /// The recorded parent Git revision the branch starts at.
+        parent_revision: String,
+        /// Final accepted CID exported into the worktree — the dedupe
+        /// key beside `target`.
+        cid: SnapshotId,
+        /// Node-local worktree path (observation only).
+        worktree_path: String,
+        /// Publication branch (`change/<plan>`).
+        branch: String,
+    },
+    /// Archive projected the publication set before mutation (RFC-95
+    /// D7 / D11). Repeated observations are legal — each is a
+    /// timestamped snapshot, not member authority.
+    #[serde(rename = "plan.publication.projected", rename_all = "kebab-case")]
+    PublicationProjected {
+        /// Governing plan.
+        plan_name: PlanName,
+        /// Covering `plan.yaml` content digest at projection time.
+        plan_digest: String,
+        /// SHA-256 digest of the canonical projection JSON.
+        projection_digest: String,
+        /// Closed verdict (`verified | pending | unverified`).
+        verification: crate::plan::publication::Verification,
+    },
+    /// One publication member's pull request merged on the forge
+    /// (RFC-95 D10 / D11). Dedupes on `(target, pull-request,
+    /// merge commit)`; forge state stays authoritative (D2).
+    #[serde(rename = "plan.publication.member-landed", rename_all = "kebab-case")]
+    PublicationMemberLanded {
+        /// Governing plan.
+        plan_name: PlanName,
+        /// Covering `plan.yaml` content digest at observation time.
+        plan_digest: String,
+        /// Landed target key.
+        target: String,
+        /// Pull-request URL as the forge reports it.
+        pull_request: String,
+        /// The forge's merge commit.
+        merge_commit: String,
+        /// RFC 3339 merge time as the forge reports it.
+        merged_at: String,
+    },
+    /// `--unverified` bypassed publication verification at archive
+    /// (RFC-95 D5) — appended before any other archive journaling.
+    #[serde(rename = "plan.publication.unverified-archive", rename_all = "kebab-case")]
+    PublicationUnverified {
+        /// Governing plan.
+        plan_name: PlanName,
+        /// Covering `plan.yaml` content digest at archive time.
+        plan_digest: String,
+    },
     /// `emery system review` recorded architectural authority over one
     /// exact wave handoff (RFC-104 D10). Definition-home writers only
     /// (`<system>/events/`, never `.emery/change/events/`); the fact

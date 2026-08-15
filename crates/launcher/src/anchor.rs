@@ -23,9 +23,5 @@ pub fn roots(invoked_dir: &Path, seed: Option<&SeedRequest>, change_dir: Option<
 /// never a `project.yaml` walk.
 #[must_use]
 pub fn system_root(invoked_dir: &Path, system: &SystemRequest) -> PathBuf {
-    match &system.dir {
-        Some(dir) if dir.is_absolute() => dir.clone(),
-        Some(dir) => invoked_dir.join(dir),
-        None => invoked_dir.to_path_buf(),
-    }
+    system.root(invoked_dir)
 }

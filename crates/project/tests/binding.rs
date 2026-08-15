@@ -1,16 +1,19 @@
 //! Locator parse, bounded-read policy, local ingest, CID reuse, and GC roots.
 
+mod support;
+
 use std::path::{Path, PathBuf};
 
 use project::binding::{
     Cache, Location, Locator, Meter, Policy, Session, Staged, check_https, is_private, raw_github,
     roots, view,
 };
-use project::workspace::{self, Access, FsObjects, Store};
+use project::workspace::{self, Access};
+use support::KernelSeam;
 
 struct Lab {
     _root: tempfile::TempDir,
-    store: Store<FsObjects>,
+    seam: KernelSeam,
     workspaces: PathBuf,
     change: PathBuf,
     scratch: PathBuf,
@@ -18,14 +21,14 @@ struct Lab {
 
 fn lab() -> Lab {
     let root = tempfile::tempdir().expect("tempdir");
-    let store = Store::new(root.path().join("snapshots"));
+    let seam = KernelSeam::new(root.path());
     let workspaces = root.path().join("workspaces");
     let change = root.path().join("change");
     let scratch = root.path().join("scratch");
     std::fs::create_dir_all(&change).expect("change");
     std::fs::create_dir_all(&scratch).expect("scratch");
     Lab {
-        store,
+        seam,
         workspaces,
         change,
         scratch,
@@ -138,7 +141,7 @@ mod ingest {
         let policy = Policy::standard();
         let mut meter = Meter::new();
         let mut session = Session {
-            store: &lab.store,
+            workspaces: &lab.seam,
             scratch: &lab.scratch,
             change_root: &lab.change,
             cache: &mut cache,
@@ -155,7 +158,7 @@ mod ingest {
         let location = Location::parse("notes.md", None).expect("parse");
         let resolved = pin(&lab, &location).await;
         let out = lab.scratch.join("out");
-        lab.store.materialize(&resolved.cid, &out).await.expect("materialize");
+        lab.seam.store.materialize(&resolved.cid, &out).await.expect("materialize");
         assert_eq!(std::fs::read_to_string(out.join("notes.md")).expect("read"), "# hello\n");
         assert_eq!(std::fs::read_dir(&out).expect("list").count(), 1);
     }
@@ -169,7 +172,7 @@ mod ingest {
         let policy = Policy::standard();
         let mut meter = Meter::new();
         let mut session = Session {
-            store: &lab.store,
+            workspaces: &lab.seam,
             scratch: &lab.scratch,
             change_root: &lab.change,
             cache: &mut cache,
@@ -192,7 +195,7 @@ mod ingest {
         let policy = Policy::standard();
         let mut meter = Meter::new();
         let mut session = Session {
-            store: &lab.store,
+            workspaces: &lab.seam,
             scratch: &lab.scratch,
             change_root: &lab.change,
             cache: &mut cache,
@@ -205,7 +208,7 @@ mod ingest {
             .expect("recorded");
         assert_eq!(again.cid, first.cid);
         let out = lab.scratch.join("recorded");
-        lab.store.materialize(&again.cid, &out).await.expect("materialize");
+        lab.seam.store.materialize(&again.cid, &out).await.expect("materialize");
         assert_eq!(std::fs::read_to_string(out.join("a.txt")).expect("read"), "one\n");
     }
 
@@ -217,7 +220,7 @@ mod ingest {
         let location = Location::parse("tree", Some("docs")).expect("parse");
         let resolved = pin(&lab, &location).await;
         let out = lab.scratch.join("sel");
-        lab.store.materialize(&resolved.cid, &out).await.expect("materialize");
+        lab.seam.store.materialize(&resolved.cid, &out).await.expect("materialize");
         assert!(out.join("api.md").is_file());
         assert!(!out.join("src").exists());
 
@@ -227,7 +230,7 @@ mod ingest {
             let policy = Policy::standard();
             let mut meter = Meter::new();
             let mut session = Session {
-                store: &lab.store,
+                workspaces: &lab.seam,
                 scratch: &lab.scratch,
                 change_root: &lab.change,
                 cache: &mut cache,
@@ -253,7 +256,7 @@ mod ingest {
             let policy = Policy::standard();
             let mut meter = Meter::new();
             let mut session = Session {
-                store: &lab.store,
+                workspaces: &lab.seam,
                 scratch: &lab.scratch,
                 change_root: &lab.change,
                 cache: &mut cache,
@@ -277,7 +280,7 @@ mod ingest {
         let mut cache = Cache::new();
         let mut meter = Meter::new();
         let mut session = Session {
-            store: &lab.store,
+            workspaces: &lab.seam,
             scratch: &lab.scratch,
             change_root: &lab.change,
             cache: &mut cache,
@@ -294,10 +297,11 @@ mod ingest {
         let lab = lab();
         write(&lab.change, "a.txt", b"a\n");
         let resolved = pin(&lab, &Location::parse("a.txt", None).expect("parse")).await;
-        let ws = view(&lab.store, &lab.workspaces, &resolved.cid).await.expect("view");
+        let ws = view(&lab.seam.store, &lab.workspaces, &resolved.cid).await.expect("view");
         assert!(!ws.writable);
-        let err =
-            workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect_err("capture");
+        let err = workspace::capture(&lab.seam.store, &lab.workspaces, &ws.id)
+            .await
+            .expect_err("capture");
         assert!(code(&err).contains("read-only"), "{err}");
         workspace::discard(&lab.workspaces, &ws.id).expect("discard");
     }
@@ -310,14 +314,19 @@ mod ingest {
         let keep = pin(&lab, &Location::parse("keep.txt", None).expect("parse")).await;
         let gone = pin(&lab, &Location::parse("drop.txt", None).expect("parse")).await;
         let live = roots(std::slice::from_ref(&keep));
-        let removed = lab.store.sweep(std::slice::from_ref(&gone.cid), &live).await.expect("sweep");
+        let removed =
+            lab.seam.store.sweep(std::slice::from_ref(&gone.cid), &live).await.expect("sweep");
         assert!(removed > 0, "dead tree objects should be collected");
-        assert!(lab.store.contains(&keep.cid).await);
-        assert!(!lab.store.contains(&gone.cid).await);
+        assert!(lab.seam.store.contains(&keep.cid).await);
+        assert!(!lab.seam.store.contains(&gone.cid).await);
 
-        let _writable =
-            workspace::prepare(&lab.store, &lab.workspaces, &keep.cid, Access { writable: true })
-                .await
-                .expect("live root still prepares");
+        let _writable = workspace::prepare(
+            &lab.seam.store,
+            &lab.workspaces,
+            &keep.cid,
+            Access { writable: true },
+        )
+        .await
+        .expect("live root still prepares");
     }
 }

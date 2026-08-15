@@ -26,17 +26,3 @@ pub use ops::{
 pub use registry::catalog;
 #[cfg(not(target_arch = "wasm32"))]
 pub use session::{Cwd, Session};
-
-/// Compiled first-party adapter inventory for detached-binding tests.
-#[cfg(not(target_arch = "wasm32"))]
-#[must_use]
-pub fn inventory() -> project::adapter::catalog::Catalog {
-    project::adapter::catalog::Catalog::first_party()
-}
-
-/// Compiled model-capability profile table for detached-binding tests.
-#[cfg(not(target_arch = "wasm32"))]
-#[must_use]
-pub fn profiles() -> project::profile::Table {
-    project::profile::Table::compiled()
-}

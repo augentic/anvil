@@ -26,7 +26,7 @@ Self-healing inside one run remains bounded engine orchestration. Learning chang
 
 ## Problem
 
-RFC-90 retains every build phase and diagnostic, RFC-96 adds task and domain outcomes, RFC-97 adds host attestations, and the live harness records blind grades. Today those records answer what happened in one attempt but no contract:
+RFC-90 retains every build phase and diagnostic, RFC-96 adds domain outcomes, RFC-106 may add task outcomes, RFC-97 adds host attestations, and the live harness records blind grades. Today those records answer what happened in one attempt but no contract:
 
 - projects recurring diagnostic fingerprints across changes;
 - measures which repair, decomposition, prompt, model, or policy revision resolved them;

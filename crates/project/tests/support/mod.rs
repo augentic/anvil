@@ -233,3 +233,115 @@ pub fn copy_dir(src: &Path, dst: &Path) {
         }
     }
 }
+
+/// Seam-shaped capability double over the on-disk kernels: the
+/// binding and VCS suites run the engine bind flow through it —
+/// [`project::seam::Workspaces`] over a filesystem snapshot store,
+/// [`project::seam::Trees`] over the native VCS fetch kernel.
+#[derive(Debug)]
+pub struct KernelSeam {
+    /// Snapshot store CIDs are minted into.
+    pub store: project::workspace::Store<project::workspace::FsObjects>,
+    /// Private-workspace root for prepare/discard.
+    pub workspaces: PathBuf,
+    /// Staging root the trees leg fetches beneath.
+    pub staging: PathBuf,
+}
+
+impl KernelSeam {
+    /// Roots beneath `root`: `snapshots/`, `workspaces/`, `staging/`.
+    #[must_use]
+    pub fn new(root: &Path) -> Self {
+        Self {
+            store: project::workspace::Store::new(root.join("snapshots")),
+            workspaces: root.join("workspaces"),
+            staging: root.join("staging"),
+        }
+    }
+}
+
+impl project::seam::Workspaces for KernelSeam {
+    async fn freeze(&self) -> Result<project::snapshot::SnapshotId, project::seam::Error> {
+        Err(project::seam::Error::InvalidRequest("the kernel seam has no product tree".into()))
+    }
+
+    async fn snapshot(
+        &self, path: String,
+    ) -> Result<project::snapshot::SnapshotId, project::seam::Error> {
+        self.store
+            .snapshot_path(Path::new(&path))
+            .await
+            .map_err(|err| project::seam::Error::Internal(err.to_string()))
+    }
+
+    async fn contains(
+        &self, id: project::snapshot::SnapshotId,
+    ) -> Result<bool, project::seam::Error> {
+        Ok(self.store.contains(&id).await)
+    }
+
+    async fn prepare(
+        &self, base: project::snapshot::SnapshotId, writable: bool,
+    ) -> Result<project::seam::Workspace, project::seam::Error> {
+        let prepared = project::workspace::prepare(
+            &self.store,
+            &self.workspaces,
+            &base,
+            project::workspace::Access { writable },
+        )
+        .await
+        .map_err(|err| project::seam::Error::Internal(err.to_string()))?;
+        Ok(project::seam::Workspace {
+            id: prepared.id,
+            root: prepared.root.display().to_string(),
+            artifacts: ".".into(),
+            artifact_stage: None,
+        })
+    }
+
+    async fn capture(
+        &self, id: String,
+    ) -> Result<project::snapshot::CodePatch, project::seam::Error> {
+        project::workspace::capture(&self.store, &self.workspaces, &id)
+            .await
+            .map_err(|err| project::seam::Error::Internal(err.to_string()))
+    }
+
+    async fn discard(&self, id: String) -> Result<(), project::seam::Error> {
+        project::workspace::discard(&self.workspaces, &id)
+            .map_err(|err| project::seam::Error::Internal(err.to_string()))
+    }
+
+    async fn sweep(
+        &self, dead: Vec<project::snapshot::SnapshotId>, live: Vec<project::snapshot::SnapshotId>,
+    ) -> Result<usize, project::seam::Error> {
+        self.store
+            .sweep(&dead, &live)
+            .await
+            .map_err(|err| project::seam::Error::Internal(err.to_string()))
+    }
+}
+
+impl project::seam::Trees for KernelSeam {
+    async fn fetch(
+        &self, locator: String, credentials: project::seam::TreeCredentials,
+        limits: project::seam::TreeLimits,
+    ) -> Result<project::seam::TreeFetched, project::seam::TreeError> {
+        let fetched = project::vcs::fetch(&self.staging, &locator, credentials, &limits)?;
+        Ok(project::seam::TreeFetched {
+            root: fetched.dir.display().to_string(),
+            revision: fetched.revision,
+        })
+    }
+
+    async fn discard_fetched(&self, root: String) -> Result<(), project::seam::TreeError> {
+        let name = Path::new(&root)
+            .strip_prefix(&self.staging)
+            .ok()
+            .and_then(|rest| rest.to_str())
+            .ok_or_else(|| {
+                project::seam::TreeError::InvalidRequest(format!("`{root}` is not staged"))
+            })?;
+        project::vcs::discard(&self.staging, name)
+    }
+}

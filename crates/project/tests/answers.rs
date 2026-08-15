@@ -53,6 +53,11 @@ fn boundary_review_golden() {
     assert_golden("boundary-review.schema.json", &project::answers::boundary_review());
 }
 
+#[test]
+fn publication_golden() {
+    assert_golden("publication.schema.json", &project::answers::publication());
+}
+
 /// The semantic constraints patched onto the generated shapes: kebab
 /// grammars on lead ids and topic slugs, the dotted-kebab claim-id
 /// grammar, and the conditional id requirement on `requirement` /

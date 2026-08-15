@@ -61,6 +61,8 @@ Omnia is built on Wasmtime. Its design centers on pluggable host services behind
 
 Emery extends this surface through provider-backed host capabilities: a snapshot-backed workspace provider that prepares the [private workspace](#the-private-workspace), and the **model backend** behind `wasi-model`. The model id and any vendor SDK live in that backend, never in the runtime core. Future [host verification](rfc-97-native-verification.md) adds a third deployment-provider capability through an Emery-owned host-verification interface and native sandbox contract.
 
+Locator fetch, publication worktrees, and forge reads share one domain seam: the `emery:vcs` package (`trees` / `worktree` / `forge`), where credential and transport policy travel as typed data per call and publication export is a single host call — [RFC-95 host surface](rfc-95-host-surface.md). It retires `emery:origins` / `emery:ingest` as its first cut. `emery:adapter` remains the product contract; `emery:exec-mode` remains the WASI mode-bit gap.
+
 ## Judgment: the `wasi-model` host
 
 Model evaluation is a host capability like any other. Omnia exposes a `wasi-model` host whose `eval` export a guest calls to have a prompt evaluated:
@@ -145,7 +147,7 @@ A `build` flows like this:
 2. It dispatches one target `build` operation. The target's generation judgment calls `wasi-model.eval`; the backend resolves references and lets the model edit only that private candidate.
 3. RFC-90's engine-owned phase machine dispatches a separate target `verify`. In RFC-90 this remains model-assisted: the verification agent selects, runs, and interprets commands, then returns one typed report.
 4. Blocking findings pass through the engine's bounded repair-brief projection into one target `repair`, followed by another engine-selected `verify`; fixed engine budgets decide when to stop.
-5. A passing verification dispatches the separate standards `review`, with the same explicit repair return path. RFC-96 materializes each operation from the logical candidate in a fresh workspace and composes only captured, grant-valid patches.
+5. A passing verification dispatches the separate standards `review`, with the same explicit repair return path. RFC-90 keeps one workspace per attempt. RFC-96 composes captured same-base patches across slices; RFC-106, if activated, rematerializes each task operation from the logical candidate.
 6. On terminal success the engine captures the result, promotes staged artifacts, writes the content-addressed build record, and performs the single `refined → built` transition.
 
 In short: deterministic control lives in engine guest code, each judgment is one typed operation, references load lazily through the references server, and what crosses operation boundaries is a typed report plus immutable base/result snapshot identities. RFC-97 later replaces model-assisted verify evidence with directly resolved host attestations; it does not return repair-loop authority to the model backend.

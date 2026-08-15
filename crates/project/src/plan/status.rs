@@ -23,9 +23,14 @@ pub enum NextActionKind {
     Build,
     /// The execute loop's merge phase awaits [`StatusBody::slice`].
     Merge,
+    /// Every entry is done but a publication member awaits its
+    /// worktree (RFC-95 D11); [`StatusBody::target`] names it. The
+    /// execute loop reconciles it without opening a new epoch.
+    Materialize,
     /// Halt the loop; [`StatusBody::stop`] carries the reason.
     Stop,
-    /// No pending or in-progress entries remain — the only clean exit.
+    /// No pending or in-progress entries remain and every publication
+    /// member is materialized — the only clean exit.
     Drained,
 }
 
@@ -80,6 +85,15 @@ pub enum StopReason {
     /// Focused resurvey or nearest-domain re-decomposition exhausted
     /// its compiled budget. The leaf is parked.
     RefineBudgetExhausted,
+    /// The publication worktree carries uncommitted operator edits
+    /// (RFC-95 D11) — materialize refuses to overwrite them.
+    PublicationWorktreeDirty,
+    /// Provisioning the publication worktree failed on one of the
+    /// closed D11 rows (`branch-diverged | branch-checked-out-elsewhere
+    /// | destination-conflict | parent-unavailable | clone-failed`).
+    #[serde(rename = "publication-provision-failed")]
+    #[strum(serialize = "publication-provision-failed")]
+    PublicationProvision,
 }
 
 impl StopReason {
@@ -131,6 +145,15 @@ impl StopReason {
             Self::RefineBudgetExhausted => {
                 "Focused resurvey or nearest-domain re-decomposition exhausted its budget. \
                  Adjust sources or the bound profile, then re-run emery plan refine."
+            }
+            Self::PublicationWorktreeDirty => {
+                "The publication worktree has uncommitted operator edits. Commit or stash them \
+                 (or discard them), then re-run emery plan execute to materialize."
+            }
+            Self::PublicationProvision => {
+                "Provisioning the publication worktree failed; the detail names the member and \
+                 the closed reason. Fix the worktree or branch state, then re-run emery plan \
+                 execute."
             }
         }
     }
@@ -214,9 +237,50 @@ pub struct StatusBody {
     /// [`NextActionKind::Stop`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<StopBody>,
+    /// Publication milestone (RFC-95 D11): per-member materialized
+    /// state and the next operator Git step. Empty before any
+    /// in-scope entry exists.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub publication: Vec<PublicationMemberBody>,
     /// Typed gap inventory for in-scope slices (RFC-86 Gaps / D18 /
     /// D19 / D24). Same projection as `emery plan gaps`.
     pub gaps: GapsBody,
+}
+
+/// Closed per-member publication state on
+/// [`PublicationMemberBody::state`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum PublicationMemberState {
+    /// In-scope entries for this target are still pending or
+    /// in-progress.
+    AwaitingMerges,
+    /// An unacknowledged postflight failure blocks materialize.
+    Blocked,
+    /// Every in-scope entry merged; `emery plan execute` materializes
+    /// the worktree.
+    Ready,
+    /// The publication worktree carries the accepted CID.
+    Materialized,
+}
+
+/// One publication member row on [`StatusBody::publication`].
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PublicationMemberBody {
+    /// Target key.
+    pub target: String,
+    /// Closed member state.
+    pub state: PublicationMemberState,
+    /// Publication branch (`change/<plan>`), once materialized.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    /// Node-local worktree path (observation only), once materialized.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub worktree: Option<String>,
+    /// Next operator step for this member.
+    pub next: String,
 }
 
 /// Stop-conditions drained string: `drained — run /emery:finalize <name>`.
@@ -260,6 +324,12 @@ impl crate::handler::Render for StatusBody {
             && let Some(resume) = &self.resume
         {
             writeln!(w, "resume: {resume}")?;
+        }
+        if !self.publication.is_empty() {
+            writeln!(w, "publication:")?;
+            for member in &self.publication {
+                writeln!(w, "  {}: {} — {}", member.target, member.state, member.next)?;
+            }
         }
         if !self.gaps.is_empty() {
             writeln!(w)?;

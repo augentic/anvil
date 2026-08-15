@@ -11,6 +11,11 @@ pub use claim::{Backing, Claim, ExampleClaim, validate_claims};
 use serde::{Deserialize, Serialize};
 
 /// One kebab-case slug segment (`^[a-z0-9]+(-[a-z0-9]+)*$`).
+///
+/// Deliberately sibling to the adapter SDK's answer-side copy (a leaf
+/// crate that cannot depend on `artifacts`): this side validates
+/// persisted catalog rows, whose `focus` stays opaque (`POST /orders`);
+/// survey answers gate `focus` as kebab at the SDK seam.
 #[must_use]
 pub fn is_kebab(value: &str) -> bool {
     !value.is_empty()

@@ -10,7 +10,6 @@ use artifacts::spec::{REQ_HEADING, REQ_ID_PREFIX};
 use error::Error;
 use jiff::Timestamp;
 use project::config::Layout;
-use project::plan::{Disposition, Plan, collect_events, plan_gaps_body};
 
 use crate::debt::NOTE_PREFIX;
 
@@ -64,16 +63,11 @@ impl CarriedDebt {
 /// Propagates plan / journal / model read failures from the gap
 /// projection.
 pub fn carried(layout: Layout<'_>, slice: &str) -> Result<SliceDebt, Error> {
-    let plan_path = layout.plan_path();
-    if !plan_path.is_file() {
+    let Some((plan, deferred)) = crate::build::deferred::deferred_rows(layout, slice)? else {
         return Ok(SliceDebt::default());
-    }
-    let plan = Plan::load(&plan_path)?;
-    let events = collect_events(layout)?;
-    let rows = plan_gaps_body(&plan, layout, &events)?
-        .rows
+    };
+    let rows = deferred
         .into_iter()
-        .filter(|row| row.slice == slice && row.disposition == Some(Disposition::Deferred))
         .filter_map(|row| {
             // Deferred rows carry a digest and a covering fact by
             // construction — a fact can only match a digest-bearing row.

@@ -1,6 +1,6 @@
 # RFC-99: Streaming Execution
 
-> Status: **Parked.** Reopen Phase A only when measured authoring duration or time-to-first-refinement shows that complete-plan closure is a material engagement bottleneck. Reopen Phase B only after RFC-96 is complete and a client engagement requires unattended candidate build before final closure. Phase A depends on [RFC-96](rfc-96-concurrent-execution.md) Phase A; Phase B depends on completed RFC-96. Distribution through parked [RFC-100](rfc-100-distributed-execution.md) remains optional.
+> Status: **Parked.** Reopen Phase A only when measured authoring duration or time-to-first-refinement shows that complete-plan closure is a material engagement bottleneck. Reopen Phase B only after RFC-96 Phase B is complete and a client engagement requires unattended candidate build before final closure. Phase A depends on [RFC-96](rfc-96-concurrent-execution.md) Phase A; Phase B depends on RFC-96 Phase B (`compose` and multi-member waves). [RFC-106](rfc-106-task-graphs.md) is optional unless a candidate is too large for one `target.build`. Distribution through parked [RFC-100](rfc-100-distributed-execution.md) remains optional.
 >
 > Patch ownership: this RFC amends RFC-86 D27, RFC-88 D1 / D3 / D7 / D8, and RFC-90's wave-only build envelope after those contracts land. Those predecessor RFC texts remain unchanged.
 
@@ -89,7 +89,7 @@ emery plan run --publication progressive --through built --policy <profile>
 
 `plan run` accepts the same authoring criterion when no plan exists and resumes the retained run when planning artifacts already exist. `/emery:run` is an ultrathin invoke-and-relay wrapper.
 
-`--through refined` creates no code-work grant and requires no policy profile. `--through built` requires a resolved run policy and may prepare private workspaces, but it cannot merge, seal, publish, or mutate an accepted CID.
+`--through refined` creates no code-work grant and requires no policy profile. `--through built` requires a resolved run policy and may prepare private workspaces, but it cannot merge, materialize a publication worktree, publish, or mutate an accepted CID.
 
 The concurrency cap is deployment policy with an optional operator reduction. A cap of one follows the same scheduler and remains the deterministic reference path.
 
@@ -222,7 +222,7 @@ If an upstream branch, refinement, build, protected input, or policy changes, ev
 
 ### Build and verification
 
-RFC-96 Phase B supplies task decomposition, isolated writers, code-patch composition, slice verification, protected inputs, and the scheduler. RFC-90 supplies the engine-owned `build → verify ⇄ repair → review ⇄ repair` machine.
+RFC-96 Phase B supplies code-patch composition, slice verification, domain rounds, protected-input closure, and the scheduler. RFC-90 supplies the engine-owned `build → verify ⇄ repair → review ⇄ repair` machine. RFC-106 may supply task decomposition and isolated writers inside a candidate when a slice is too large for one build call.
 
 Candidate batches do not write `target.wave.opened`, project RFC-96 `frontier` or accepted `complete` domain rounds, or participate in target drain. Their batch and frontier records are the complete candidate-lineage substrate. Candidate-frontier verification may persist a non-authoritative candidate report; a commit-capable run creates current domain rounds and multi-member waves only after final closure.
 
@@ -306,14 +306,14 @@ Every fact references schema-validated content. Claims select who performs admit
 6. **Unattended candidate build.** One progressive run reaches `built` without a human pause when every manifest is exact, the gap inventory is clean, policy admission succeeds, and required verification passes.
 7. **Gap refusal.** A conflict or unknown stops unattended build before workspace preparation; no policy field or model answer can waive it.
 8. **Candidate dependency chain.** A three-leaf serial chain advances three exact candidate bases, while two independent same-base leaves compose as one disjoint batch. Neither opens a target wave or advances the accepted CID. A cross-target dependency contributes identity and readiness without tree composition.
-9. **No implicit commit.** A completed progressive run cannot merge, seal, publish, or project accepted results. Closed `plan execute` reuses only candidates that pass full revalidation.
+9. **No implicit commit.** A completed progressive run cannot merge, materialize a publication worktree, publish, or project accepted results. Closed `plan execute` reuses only candidates that pass full revalidation.
 10. **Assurance truthfulness.** Operator output and facts distinguish model-assisted, protected, and host-attested checks and never label candidate-authored tests as protected.
 11. **Quality and economics.** Repository gates pass, cap-one/cap-four candidate snapshots remain equivalent, and the live fixture reports first-refinement latency, first-build latency, discarded speculative work, and model cost when available.
 
 ## Rejected alternatives
 
 - **Put progressive refinement inside `plan author`.** Manual author must retain its topology review boundary. `plan run` orchestrates the same operations without changing their individual contracts.
-- **Wait for all of RFC-96 before refining progressively.** Refinement needs the work-item scheduler and read-heavy pool, not target task graphs, composition, domain rounds, or multi-member commit.
+- **Wait for all of RFC-96 before refining progressively.** Refinement needs the work-item scheduler and read-heavy pool, not composition, domain rounds, or multi-member commit. Task graphs are RFC-106 and are not a refinement prerequisite.
 - **Write a partially valid `plan.yaml`.** Immutable branch records project progressive readiness; `plan.yaml` remains the canonical complete-tree leaf projection.
 - **Authorize unknown future manifests directly.** Parent policy grants constrain the run; member admission binds exact manifests before build.
 - **Auto-waive unknowns.** Absence of information is not policy authority. Unattended work stops.

@@ -9,7 +9,7 @@ use omnia_guest::api::invoke::Invoker;
 use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
 use project::profile::Profiles;
-use project::seam::{Ingest, Origins, Source, Target, Workspaces};
+use project::seam::{Forge, Source, Target, Trees, Workspaces, Worktree};
 
 use super::change_dir::ChangeDir;
 use super::{
@@ -112,8 +112,9 @@ where
         + Source
         + Target
         + Workspaces
-        + Ingest
-        + Origins,
+        + Trees
+        + Worktree
+        + Forge,
 {
     let command = clap::Command::new("emery").version(env!("CARGO_PKG_VERSION")).about(ABOUT);
     let mut router = RouterBuilder::new(command, invoker)
@@ -413,7 +414,7 @@ convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, proposa
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name } ; drop change_dir);
 convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason } ; drop change_dir);
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, from, wave, force } ; drop change_dir);
-convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force } ; drop change_dir);
+convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force, unverified } ; drop change_dir);
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit } ; drop change_dir);
 convert!(DebtArgs => ::slice::handlers::DebtInput {} ; drop change_dir);
 

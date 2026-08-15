@@ -11,8 +11,8 @@ use project::handler::{Anchor, Ctx, Render};
 use project::journal;
 use project::plan::proposal::{self, Applied};
 use project::plan::{
-    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, authority_override, entry_mut,
-    reject_duplicate_source,
+    Divergence, EntryPatch, Patch, Plan, SliceSourceBinding, authority_override, collect_events,
+    entry_mut, publication, reject_duplicate_source,
 };
 use project::snapshot::SnapshotId;
 use serde::{Deserialize, Serialize};
@@ -140,6 +140,15 @@ impl<P: Anchor> Operation<P> for Amend {
         let cx = Ctx::load(context.provider)?;
         if let Some(digest) = input.proposal.as_ref() {
             refuse_combo(&input)?;
+            // A proposal reprojects the topology wholesale, so any
+            // materialized member locks it until archive (RFC-95 D11).
+            {
+                let plan = Plan::load(&cx.layout().plan_path())?;
+                let events = collect_events(cx.layout())?;
+                if let Some(target) = publication::locked_targets(&plan, &events).first() {
+                    return Err(publication::locked_err(target).into());
+                }
+            }
             let digest = SnapshotId::parse(digest)?;
             let applied = proposal::apply(cx.layout(), cx.now(), &digest)?;
             return Ok(AmendBody::Applied(applied.into()));
@@ -182,6 +191,9 @@ fn amend_entry(cx: &Ctx, input: AmendInput) -> Result<AmendBody, Error> {
     let now = cx.now();
     let topology =
         has_topology(sources.as_deref(), depends_on.as_deref(), &add_source, &remove_source);
+    if topology {
+        refuse_locked(cx, &name)?;
+    }
     let (body, journal_events) = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {
         let sources_replace =
             sources.as_ref().map(|v| bindings_from_args(v, &name, leads.as_ref())).transpose()?;
@@ -190,8 +202,8 @@ fn amend_entry(cx: &Ctx, input: AmendInput) -> Result<AmendBody, Error> {
         let previous_divergence =
             plan.entries.iter().find(|e| e.name == name).and_then(|e| e.divergence);
 
-        if proposal::has_tree(layout) && topology {
-            reproject(
+        if topology {
+            apply_topology(
                 layout,
                 plan,
                 &name,
@@ -199,19 +211,8 @@ fn amend_entry(cx: &Ctx, input: AmendInput) -> Result<AmendBody, Error> {
                 add_bindings,
                 &remove_source,
                 depends_on,
+                &plan_name,
             )?;
-        } else if topology {
-            let patch = EntryPatch {
-                depends_on: depends_on.map(|v| v.into_iter().map(Into::into).collect()),
-                sources: sources_replace,
-                description: Patch::Keep,
-                context: None,
-                divergence: None,
-                allow_composition_replace: None,
-            };
-            plan.amend(&name, patch)?;
-            apply_source_edits(plan, &plan_name, &name, add_bindings, &remove_source)?;
-            reject_duplicate_source(plan)?;
         }
 
         let patch = EntryPatch {
@@ -307,6 +308,51 @@ fn divergence_events(
             to,
         },
     )]
+}
+
+/// Apply the wholesale topology leg: reproject through the retained
+/// decomposition when one exists, else patch the entry in place.
+#[expect(clippy::too_many_arguments, reason = "one call site carrying the destructured flags")]
+fn apply_topology(
+    layout: project::config::Layout<'_>, plan: &mut Plan, name: &str,
+    sources_replace: Option<Vec<SliceSourceBinding>>, add_bindings: Vec<SliceSourceBinding>,
+    remove_source: &[String], depends_on: Option<Vec<String>>, plan_name: &str,
+) -> Result<(), Error> {
+    if proposal::has_tree(layout) {
+        return reproject(
+            layout,
+            plan,
+            name,
+            sources_replace,
+            add_bindings,
+            remove_source,
+            depends_on,
+        );
+    }
+    let patch = EntryPatch {
+        depends_on: depends_on.map(|v| v.into_iter().map(Into::into).collect()),
+        sources: sources_replace,
+        description: Patch::Keep,
+        context: None,
+        divergence: None,
+        allow_composition_replace: None,
+    };
+    plan.amend(name, patch)?;
+    apply_source_edits(plan, plan_name, name, add_bindings, remove_source)?;
+    reject_duplicate_source(plan)
+}
+
+/// Topology edits on a materialized member's entries are rejected
+/// until archive (RFC-95 D11); non-topology field edits stay legal.
+fn refuse_locked(cx: &Ctx, name: &str) -> Result<(), Error> {
+    let plan = Plan::load(&cx.layout().plan_path())?;
+    let events = collect_events(cx.layout())?;
+    if let Some(entry) = plan.entries.iter().find(|entry| entry.name == name)
+        && publication::locked_targets(&plan, &events).contains(&entry.target)
+    {
+        return Err(publication::locked_err(&entry.target));
+    }
+    Ok(())
 }
 
 fn refuse_combo(input: &AmendInput) -> Result<(), Error> {

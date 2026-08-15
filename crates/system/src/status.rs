@@ -9,8 +9,8 @@ use crate::coverage::{Coverage, Disposition};
 use crate::layout::Layout;
 use crate::migration::Migration;
 use crate::model::Model;
-use crate::review;
 use crate::scope::Scope;
+use crate::{handoff, review};
 
 /// The projected definition-home status.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,8 +153,11 @@ pub fn project(layout: &Layout<'_>) -> Result<Status, Error> {
     let reviewed = reviewed_facts(layout)?;
     let mut waves = Vec::new();
     if let Some(migration) = &migration {
+        // One live-digest pass and one handoff load serve every wave.
+        let live = review::Live::load(layout)?;
+        let handoffs = handoff::load_all(layout)?;
         for wave in &migration.waves {
-            let standing = match review::current_handoff(layout, &wave.id) {
+            let standing = match review::select(&live, &handoffs, &wave.id) {
                 Ok(current) => {
                     let digest = current.digest.as_str().to_string();
                     if reviewed.contains(&(wave.id.clone(), digest.clone())) {

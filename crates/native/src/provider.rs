@@ -55,6 +55,59 @@ pub struct Provider {
     inventory: Option<std::sync::Arc<Adapters>>,
     profiles: Option<std::sync::Arc<profile::Table>>,
     references: References,
+    worktree: Option<WorktreeScript>,
+    forge: Option<ForgeScript>,
+}
+
+/// One scripted export answer: the node-local worktree path plus the
+/// idempotency state, or a closed D11 refusal.
+pub type WorktreeAnswer = Result<(String, seam::WorktreeState), seam::WorktreeError>;
+
+/// A scripted stand-in for the D11 worktree export — test suites
+/// answer export requests without host Git or a real repository.
+#[derive(Clone)]
+pub struct WorktreeScript(
+    std::sync::Arc<dyn Fn(&seam::WorktreeRequest) -> WorktreeAnswer + Send + Sync>,
+);
+
+impl WorktreeScript {
+    /// Wrap one answer function.
+    pub fn new(
+        answer: impl Fn(&seam::WorktreeRequest) -> WorktreeAnswer + Send + Sync + 'static,
+    ) -> Self {
+        Self(std::sync::Arc::new(answer))
+    }
+}
+
+impl std::fmt::Debug for WorktreeScript {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("WorktreeScript")
+    }
+}
+
+/// One scripted forge answer: the pull requests for one
+/// `(repository, branch)` lookup, or a typed forge failure.
+pub type ForgeAnswer = Result<Vec<seam::PullRequest>, seam::ForgeError>;
+
+/// The boxed answer function inside a [`ForgeScript`].
+type ForgeAnswerFn = dyn Fn(&str, &str) -> ForgeAnswer + Send + Sync;
+
+/// A scripted stand-in for the D10 forge read — test suites answer
+/// find requests without GitHub or outgoing HTTP.
+#[derive(Clone)]
+pub struct ForgeScript(std::sync::Arc<ForgeAnswerFn>);
+
+impl ForgeScript {
+    /// Wrap one `(repository, branch)` answer function.
+    pub fn new(answer: impl Fn(&str, &str) -> ForgeAnswer + Send + Sync + 'static) -> Self {
+        Self(std::sync::Arc::new(answer))
+    }
+}
+
+impl std::fmt::Debug for ForgeScript {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ForgeScript")
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -89,7 +142,25 @@ impl Provider {
             inventory: None,
             profiles: None,
             references,
+            worktree: None,
+            forge: None,
         }
+    }
+
+    /// Script the D11 worktree export instead of running host Git —
+    /// change-suite scaffolding for the publication seam.
+    #[must_use]
+    pub fn with_worktree_script(mut self, script: WorktreeScript) -> Self {
+        self.worktree = Some(script);
+        self
+    }
+
+    /// Script the D10 forge read instead of speaking GitHub REST —
+    /// change-suite scaffolding for archive verification.
+    #[must_use]
+    pub fn with_forge_script(mut self, script: ForgeScript) -> Self {
+        self.forge = Some(script);
+        self
     }
 
     /// Replace the compiled first-party inventory.
@@ -411,6 +482,10 @@ impl seam::Workspaces for Provider {
             .map_err(|err| workspace_failure(&err))
     }
 
+    async fn contains(&self, id: SnapshotId) -> Result<bool, seam::Error> {
+        Ok(self.store().contains(&id).await)
+    }
+
     async fn prepare(&self, base: SnapshotId, writable: bool) -> Result<Workspace, seam::Error> {
         let prepared = workspace_kernel::prepare(
             &self.store(),
@@ -448,71 +523,68 @@ impl seam::Workspaces for Provider {
     }
 }
 
-impl seam::Ingest for Provider {
+/// Tree fetch runs in-process (RFC-95 `emery:vcs/trees`): host `git`
+/// / HTTPS through the native VCS kernel, trees staged beneath the
+/// staging root and reported as host paths.
+impl seam::Trees for Provider {
     async fn fetch(
-        &self, locator: String, recorded: Option<SnapshotId>, prior: Option<String>,
-    ) -> Result<seam::Fetched, seam::Error> {
-        let store = self.store();
-        let scratch = self.workspaces_root().join("ingest");
-        std::fs::create_dir_all(&scratch).map_err(|source| {
-            seam::Error::Io(format!("create ingest scratch {}: {source}", scratch.display()))
-        })?;
-        let policy = project::binding::Policy::standard();
-        let mut meter = project::binding::Meter::new();
-        let mut cache = project::binding::Cache::new();
-        let mut session = project::binding::Session {
-            store: &store,
-            scratch: &scratch,
-            change_root: self.paths.change_root(),
-            cache: &mut cache,
-            policy: &policy,
-            meter: &mut meter,
-        };
-        project::binding::fetch_locator(&mut session, &locator, recorded.as_ref(), prior.as_deref())
-            .await
-            .map_err(|err| seam::Error::Internal(err.to_string()))
-    }
-}
-
-/// Origin fetch runs in-process (RFC-104): host `git` / HTTPS
-/// through the native kernel, trees minted beneath the workspaces
-/// root and reported as host paths.
-impl seam::Origins for Provider {
-    async fn fetch(&self, locator: String) -> Result<seam::OriginFetched, seam::Error> {
-        let fetched =
-            project::origins::fetch(self.workspaces_root(), &locator).map_err(origin_failure)?;
-        Ok(seam::OriginFetched {
+        &self, locator: String, credentials: seam::TreeCredentials, limits: seam::TreeLimits,
+    ) -> Result<seam::TreeFetched, seam::TreeError> {
+        let staging = self.paths.locations().staging_root();
+        let fetched = project::vcs::fetch(staging, &locator, credentials, &limits)?;
+        Ok(seam::TreeFetched {
             root: fetched.dir.display().to_string(),
             revision: fetched.revision,
         })
     }
 
-    async fn discard_fetched(&self, root: String) -> Result<(), seam::Error> {
-        let parent = self.workspaces_root();
+    async fn discard_fetched(&self, root: String) -> Result<(), seam::TreeError> {
+        let staging = self.paths.locations().staging_root();
         let name = std::path::Path::new(&root)
-            .strip_prefix(parent)
+            .strip_prefix(staging)
             .ok()
             .and_then(|name| name.to_str())
             .ok_or_else(|| {
-                seam::Error::InvalidRequest(format!("`{root}` is not a fetched origin tree"))
+                seam::TreeError::InvalidRequest(format!("`{root}` is not a staged tree"))
             })?;
-        project::origins::discard(parent, name).map_err(origin_failure)
+        project::vcs::discard(staging, name)
     }
 }
 
-/// Map an origin-kernel failure onto the seam error contract: a
-/// refused locator is the caller's, a failed fetch is I/O.
-fn origin_failure(err: Error) -> seam::Error {
-    match err {
-        Error::Diag {
-            code: "origin-locator-unsupported",
-            detail,
-        } => seam::Error::InvalidRequest(detail),
-        Error::Diag {
-            code: "origin-fetch-failed",
-            detail,
-        } => seam::Error::Io(detail),
-        other => seam::Error::Internal(other.to_string()),
+/// The D11 publication materialize runs in-process (RFC-95
+/// `emery:vcs/worktree`): host `git` plus `Store::materialize` over
+/// the deployment's publication slot root, honoring the in-place
+/// candidate when the anchoring is not detached.
+impl seam::Worktree for Provider {
+    async fn export(
+        &self, req: seam::WorktreeRequest,
+    ) -> Result<(String, seam::WorktreeState), seam::WorktreeError> {
+        if let Some(script) = &self.worktree {
+            return (script.0)(&req);
+        }
+        let store = self.store();
+        let env = project::vcs::worktree::ExportEnv {
+            store: &store,
+            publication_root: self.paths.locations().publication_root(),
+            product_root: (!self.paths.is_detached()).then(|| self.paths.project_root()),
+        };
+        let (path, state) = project::vcs::worktree::export(&env, &req).await?;
+        Ok((path.display().to_string(), state))
+    }
+}
+
+/// The D10 forge read runs in-process (RFC-95 `emery:vcs/forge`):
+/// GitHub REST with the launcher's token order, or the scripted
+/// double in test suites.
+impl seam::Forge for Provider {
+    async fn find(
+        &self, repository: String, branch: String,
+    ) -> Result<Vec<seam::PullRequest>, seam::ForgeError> {
+        if let Some(script) = &self.forge {
+            return (script.0)(&repository, &branch);
+        }
+        let config = project::vcs::forge::Config::github();
+        project::vcs::forge::find(&config, &repository, &branch)
     }
 }
 

@@ -75,3 +75,44 @@ async fn failure_typed_response() {
     assert_ne!(response.exit, 0);
     assert!(!response.stderr.is_empty());
 }
+
+#[tokio::test]
+async fn system_dir_reanchors() {
+    // `system * --dir` roots at the definition home (launcher
+    // parity); the caller's product paths carry no `scope.yaml`.
+    let (_tmp, root) = project();
+    let home = root.join("definition-home");
+    fs::create_dir_all(&home).expect("definition home");
+    fs::write(home.join("scope.yaml"), "version: 1\nid: acme\ndecision: consolidate\n")
+        .expect("scope.yaml");
+    fs::write(
+        home.join("coverage.yaml"),
+        "version: 1\ncandidates:\n  - key: legacy-erp\n    location: https://erp.example.com\n    \
+         disposition: inaccessible\n    reason: vendor system\n",
+    )
+    .expect("coverage.yaml");
+
+    // Without `--dir`, the product root has no scope and fails typed.
+    let response =
+        native::command::execute(paths(&root), model(), catalog(), argv(&["system", "status"]))
+            .await
+            .expect("the router assembles");
+    let stderr = String::from_utf8_lossy(&response.stderr).to_string();
+    assert_ne!(response.exit, 0);
+    assert!(stderr.contains("system-scope-missing"), "{stderr}");
+
+    // With `--dir`, the same paths reanchor at the definition home.
+    let dir = home.to_string_lossy().to_string();
+    let response = native::command::execute(
+        paths(&root),
+        model(),
+        catalog(),
+        argv(&["--format", "json", "system", "status", "--dir", &dir]),
+    )
+    .await
+    .expect("the router assembles");
+    let stdout = String::from_utf8_lossy(&response.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&response.stderr).to_string();
+    assert_eq!(response.exit, 0, "{stderr}");
+    assert!(stdout.contains("\"id\": \"acme\""), "the status projects the home's scope: {stdout}");
+}

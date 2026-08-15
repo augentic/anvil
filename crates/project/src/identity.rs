@@ -203,9 +203,9 @@ fn requirement_order(id: &str) -> u64 {
 }
 
 fn project_recent(project_dir: &Path) -> Result<Vec<String>, Error> {
-    // Tail-read the last `RECENT_TAIL` archive summaries rather than
-    // loading every event and discarding all but the tail — cost stays
-    // flat as the journal grows.
+    // Keep only the last `RECENT_TAIL` archive summaries. The union
+    // read still loads every event — the per-writer union is the
+    // ordering authority, so cost tracks total journal size.
     journal::read_recent(Layout::new(project_dir), RECENT_TAIL, |event| match event.kind {
         EventKind::SliceArchiveCreated { outcome_summary, .. } => Some(outcome_summary),
         _ => None,

@@ -178,14 +178,14 @@ AC4 splits: Cut A sums the four exact attributions to the usage-fact union; Cut 
 
 **Where:** D1 table.
 
-**Finding.** Live model legs missing from the table: RFC-104 `system.correlate`, `system.propose`. Keys with no producer until later RFCs: `engine.topology`, `engine.decompose`, `engine.boundary` (RFC-88), `engine.readiness` (RFC-94), `target.decompose` (RFC-96). `target.guidance` / `target.merge` / `target.verify` may or may not invoke a model depending on the adapter and on RFC-97.
+**Finding.** Live model legs missing from the table: RFC-104 `system.correlate`, `system.propose`. Keys with no producer until later RFCs: `engine.topology`, `engine.decompose`, `engine.boundary` (RFC-88), `engine.readiness` (RFC-94), `target.decompose` (RFC-106). `target.guidance` / `target.merge` / `target.verify` may or may not invoke a model depending on the adapter and on RFC-97.
 
 **Recommend.** Keep “closed per programme state.” Split the table:
 
 | Family | Live now (Cut A) | Joins when that RFC lands |
 | --- | --- | --- |
 | Source | `source.survey`, `source.extract` | |
-| Target | `target.guidance`, `target.build`, `target.verify`, `target.repair`, `target.review`, `target.merge` | `target.decompose` (RFC-96) |
+| Target | `target.guidance`, `target.build`, `target.verify`, `target.repair`, `target.review`, `target.merge` | `target.decompose` (RFC-106) |
 | Engine | `engine.propose`, `engine.synthesize` | `engine.topology`, `engine.decompose`, `engine.boundary` (RFC-88); `engine.readiness` (RFC-94) |
 | System | `system.correlate`, `system.propose` | |
 

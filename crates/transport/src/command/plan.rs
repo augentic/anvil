@@ -132,6 +132,10 @@ pub struct ArchiveArgs {
     /// Without --force, these non-terminal statuses block the archive.
     #[arg(long)]
     pub force: bool,
+    /// Archive without publication verification (RFC-95). The bypass
+    /// is journaled; it composes with --force.
+    #[arg(long)]
+    pub unverified: bool,
     #[command(flatten)]
     pub change_dir: ChangeDir,
 }

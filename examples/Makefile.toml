@@ -68,3 +68,72 @@ emery init target --name change
 emery plan author change --source main="source:value:The greeting service."
 emery plan execute
 '''
+
+# RFC-95 publication scenario (operator-invoked; script only, never
+# CI-gated): the delivery target binds to a local Git origin, the
+# execute drain materializes the publication worktree over real Git,
+# and the operator Git loop commits and pushes `change/<plan>` with
+# both `Emery-Change` trailers. Archive verification needs a
+# GitHub-hosted member (GitHub is the only v1 forge), so the scenario
+# ends at the pushed branch and the `plan status` publication
+# milestone.
+[tasks.wasm-publication]
+dependencies = ["wasm-build"]
+env_files = [".env"]
+script_runner = "bash"
+script = '''
+set -eo pipefail
+
+export EMERY_HOME="$PWD/sandbox/wasm"
+export RUST_LOG="${RUST_LOG:-info,omnia_wasi_http=debug}"
+
+rm -rf "$EMERY_HOME"
+mkdir -p "$EMERY_HOME/project"
+git init -q "$EMERY_HOME/project"
+
+TARGET="$PWD/target"
+emery() { (cd "$EMERY_HOME/project" && "$TARGET/debug/emery" "$@"); }
+
+# A local Git origin standing in for the product repository: one seed
+# commit is the parent revision the publication branch starts at.
+git init -q --bare "$EMERY_HOME/origin.git"
+git clone -q "$EMERY_HOME/origin.git" "$EMERY_HOME/seed"
+(cd "$EMERY_HOME/seed" \
+  && echo "# demo" > README.md \
+  && git add README.md \
+  && git -c user.name=operator -c user.email=operator@example.com \
+       commit -qm "seed" \
+  && git push -q origin HEAD)
+
+# Adapters into the cache; target admitted at init.
+emery adapter add "$TARGET/wasm32-wasip2/debug/examples/source.wasm"
+emery adapter add "$TARGET/wasm32-wasip2/debug/examples/target.wasm"
+emery init target --name change
+
+# Reviewed definition home with the delivery target bound to the origin.
+cargo run -q -p emery --example definition -- \
+  "$EMERY_HOME/definition" "$EMERY_HOME/origin.git"
+
+emery plan author change --from "$EMERY_HOME/definition" --wave deliver
+emery plan refine
+# The drain's last merge satisfies the D11 predicate and materializes
+# the publication worktree (single member, engine-side facts).
+emery plan execute
+emery plan status
+
+# Operator Git loop: commit the exported tree onto `change/change`
+# with both trailers, then push to the origin.
+WORKTREE="$EMERY_HOME/publication/change/app"
+DIGEST=$(grep -h '"plan.publication.materialized"' \
+    "$EMERY_HOME/project/.emery/change/events/"*.jsonl \
+  | sed -n 's/.*"plan-digest":"\([^"]*\)".*/\1/p' | head -1)
+(cd "$WORKTREE" \
+  && git -c user.name=operator -c user.email=operator@example.com \
+       commit -qam "Deliver the reviewed greeting" \
+       -m "Emery-Change: change" \
+       -m "Emery-Change-Digest: $DIGEST" \
+  && git push -q origin "change/change")
+
+echo "publication branch pushed; archive verification needs a GitHub-hosted member"
+emery plan status
+'''

@@ -50,6 +50,8 @@ pub fn parse_evidence(answer: &str) -> Result<Evidence, serde_json::Error> {
 }
 
 // Schemas leave these as plain strings; we enforce the grammars in-guest.
+// Deliberately sibling to `artifacts::evidence::is_kebab` (this leaf can't
+// depend on it): answers gate `focus` as kebab; catalog rows keep it opaque.
 const KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*$";
 const DOTTED_KEBAB_PATTERN: &str = "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$";
 

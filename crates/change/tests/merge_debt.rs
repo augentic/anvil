@@ -297,7 +297,10 @@ async fn archive_splits_kinds() {
     // and never a gate.
     let archived = run::<plan::handlers::Archive, _, _>(
         session.provider(),
-        plan::handlers::ArchiveInput { force: true },
+        plan::handlers::ArchiveInput {
+            force: true,
+            unverified: false,
+        },
     )
     .await
     .expect("forced archive with staged debt");
@@ -367,7 +370,10 @@ async fn archive_join_miss() {
 
     let archived = run::<plan::handlers::Archive, _, _>(
         session.provider(),
-        plan::handlers::ArchiveInput { force: true },
+        plan::handlers::ArchiveInput {
+            force: true,
+            unverified: false,
+        },
     )
     .await
     .expect("archive with an orphan wave member");

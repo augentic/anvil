@@ -44,3 +44,11 @@ After running, inspect the generated result at:
 ```text
 sandbox/wasm/project/mock-build/<slice>.md
 ```
+
+## Publication scenario (RFC-95)
+
+```bash
+cargo make wasm-publication
+```
+
+Same seam, but the delivery target binds to a local bare Git origin (`sandbox/wasm/origin.git`) through a minted reviewed definition home ([definition.rs](definition.rs), `cargo run --example definition`). The execute drain's last merge satisfies the D11 predicate and materializes the publication worktree over real host Git at `sandbox/wasm/publication/change/app/`; the script then runs the operator Git loop — commit with both `Emery-Change` trailers, push `change/change` to the origin — and prints the `emery plan status` publication milestone. Archive verification reads the forge, and GitHub is the only v1 forge, so the scenario ends at the pushed branch rather than `emery plan archive`.

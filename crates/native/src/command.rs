@@ -9,7 +9,7 @@ use omnia_guest::api::command::CommandResponse;
 use omnia_guest::api::invoke::Invoker;
 use project::config::Roots;
 use project::handler::ExecutionPaths;
-use transport::command::selectors::change_request;
+use transport::command::selectors::{change_request, system_request};
 
 use crate::catalog::Catalog;
 use crate::error::Error;
@@ -39,10 +39,16 @@ pub async fn execute(
     Ok(response)
 }
 
-/// Apply `--change-dir` when argv names it; otherwise keep the
-/// caller's paths (native tests pass a tempdir while cwd is the crate).
+/// Apply `system * --dir` / `--change-dir` when argv names them;
+/// otherwise keep the caller's paths (native tests pass a tempdir
+/// while cwd is the crate). Mirrors launcher anchoring: a `system *`
+/// invocation roots at the definition home with a shared cache tenant.
 fn reanchor(paths: ExecutionPaths, argv: &[String]) -> ExecutionPaths {
     let rest: Vec<String> = argv.iter().skip(1).cloned().collect();
+    if let Some(system) = system_request(&rest) {
+        let root = system.root(paths.project_root());
+        return ExecutionPaths::new(root, paths.locations().clone().shared_cache("system"));
+    }
     let Some(dir) = change_request(&rest).change_dir else {
         return paths;
     };

@@ -195,6 +195,51 @@ fn append_stamps_writer() {
 }
 
 #[test]
+fn append_skips_corrupt_tail() {
+    // A corrupt trailing line must not reset the sequence to 1; the
+    // append walks back to the newest parseable event.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let layout = layout(root);
+
+    append_for(layout, "operator-a", &[build_started(0, "alpha"), build_started(1, "beta")])
+        .expect("append batch");
+    let path = root.join(".emery/change/events/operator-a.jsonl");
+    let mut contents = std::fs::read_to_string(&path).expect("writer log");
+    contents.push_str("{not json\n");
+    std::fs::write(&path, contents).expect("corrupt trailing line");
+
+    append_for(layout, "operator-a", &[build_started(2, "gamma")]).expect("append after corrupt");
+
+    let events = read_union(layout).expect("union");
+    assert_eq!(
+        events.iter().map(|event| event.sequence).collect::<Vec<_>>(),
+        vec![1, 2, 3],
+        "sequence continues past the corrupt line"
+    );
+}
+
+#[test]
+fn corrupt_log_refused() {
+    // A non-empty log with zero parseable events fails closed rather
+    // than silently restarting at sequence 1.
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let root = tmp.path();
+    let layout = layout(root);
+    let events_dir = root.join(".emery/change/events");
+    std::fs::create_dir_all(&events_dir).expect("mkdir");
+    std::fs::write(events_dir.join("operator-a.jsonl"), "{not json\ngarbage\n")
+        .expect("corrupt log");
+
+    let err = append_for(layout, "operator-a", &[build_started(0, "alpha")])
+        .expect_err("corrupt log refused");
+    match err {
+        error::Error::Diag { code, .. } => assert_eq!(code, "journal-log-corrupt"),
+        other => panic!("expected Diag, got {other:?}"),
+    }
+}
+
+#[test]
 fn union_orders_timestamp() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let root = tmp.path();

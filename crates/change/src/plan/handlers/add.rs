@@ -9,7 +9,10 @@ use omnia_guest::api::operation::Operation;
 use project::config::with_state;
 use project::handler::{Anchor, Ctx};
 use project::journal;
-use project::plan::{AuthorityOverride, Entry, Plan, authority_override, entry_mut, proposal};
+use project::plan::{
+    AuthorityOverride, Entry, Plan, authority_override, collect_events, entry_mut, proposal,
+    publication,
+};
 use serde::{Deserialize, Serialize};
 
 use super::entry::{Action, EntryBody};
@@ -93,6 +96,15 @@ impl<P: Anchor> Operation<P> for Add {
         let plan_path = cx.layout().plan_path();
         let now = cx.now();
         let layout = cx.layout();
+        // Materialized publication members lock their target's
+        // topology until archive (RFC-95 D11).
+        {
+            let plan = Plan::load(&plan_path)?;
+            let events = collect_events(layout)?;
+            if publication::locked_targets(&plan, &events).contains(&entry.target) {
+                return Err(publication::locked_err(&entry.target).into());
+            }
+        }
         if proposal::has_tree(layout) {
             let mut plan = Plan::load(&plan_path)?;
             proposal::add(layout, &mut plan, &entry)?;

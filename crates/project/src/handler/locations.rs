@@ -43,6 +43,17 @@ pub const GUEST_SNAPSHOTS_MOUNT: &str = "/emery-snapshots";
 /// deployment-local path.
 pub const GUEST_WORKSPACES_MOUNT: &str = "/emery-workspaces";
 
+/// Guest-visible preopen name of the host's VCS staging root inside
+/// the deployment's WASI sandbox.
+///
+/// The deployment mounts the host's resolved
+/// [`Locations::staging_root`] under this name so the engine guest
+/// can read (and snapshot) trees the `emery:vcs` backend staged.
+/// Fetch staging is never confused with RFC-87 workspace trees; its
+/// lifecycle (discard after snapshot, age-based sweep) is independent
+/// of workspace GC policy.
+pub const GUEST_STAGING_MOUNT: &str = "/emery-staging";
+
 /// Environment key carrying the host-absolute project root into the
 /// engine guest.
 ///
@@ -88,6 +99,8 @@ pub struct Locations {
     cache: CachePlacement,
     snapshots_root: PathBuf,
     workspaces_root: PathBuf,
+    staging_root: PathBuf,
+    publication_root: PathBuf,
 }
 
 impl Locations {
@@ -120,17 +133,22 @@ impl Locations {
             cache,
             snapshots_root: home.join("snapshots"),
             workspaces_root: home.join("workspaces"),
+            staging_root: home.join("staging"),
+            publication_root: home.join("publication"),
         }
     }
 
-    /// Re-home the value roots (snapshot store and workspaces) as
-    /// `<home>/snapshots` and `<home>/workspaces`. Chainable after
-    /// [`Self::explicit`] when the value layout diverges from the
-    /// store root's parent.
+    /// Re-home the value roots (snapshot store, workspaces, VCS
+    /// staging, and publication slots) as `<home>/snapshots`,
+    /// `<home>/workspaces`, `<home>/staging`, and
+    /// `<home>/publication`. Chainable after [`Self::explicit`] when
+    /// the value layout diverges from the store root's parent.
     #[must_use]
     pub fn values_under(mut self, home: &Path) -> Self {
         self.snapshots_root = home.join("snapshots");
         self.workspaces_root = home.join("workspaces");
+        self.staging_root = home.join("staging");
+        self.publication_root = home.join("publication");
         self
     }
 
@@ -159,6 +177,11 @@ impl Locations {
             cache: CachePlacement::Project(PathBuf::from(GUEST_CACHE_MOUNT)),
             snapshots_root: PathBuf::from(GUEST_SNAPSHOTS_MOUNT),
             workspaces_root: PathBuf::from(GUEST_WORKSPACES_MOUNT),
+            staging_root: PathBuf::from(GUEST_STAGING_MOUNT),
+            // Publication worktrees are host-owned with no guest
+            // mount: the D11 export is one host call and its returned
+            // path is node-local observation, never guest I/O.
+            publication_root: PathBuf::from("/emery-publication"),
         }
     }
 
@@ -227,6 +250,23 @@ impl Locations {
     #[must_use]
     pub fn workspaces_root(&self) -> &Path {
         &self.workspaces_root
+    }
+
+    /// VCS staging root: the `emery:vcs` backend stages fetched trees
+    /// beneath it; the deployment mounts it so the engine guest can
+    /// read and snapshot staged trees by deployment-local path.
+    #[must_use]
+    pub fn staging_root(&self) -> &Path {
+        &self.staging_root
+    }
+
+    /// Publication slot root (RFC-95 D11): the `emery:vcs` worktree
+    /// backend places non-in-place publication worktrees at
+    /// `<root>/<plan>/<target>/`. Host-owned; no guest mount — the
+    /// exported path is node-local observation, never guest I/O.
+    #[must_use]
+    pub fn publication_root(&self) -> &Path {
+        &self.publication_root
     }
 }
 

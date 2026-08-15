@@ -14,7 +14,7 @@ use omnia_guest::Model;
 use project::adapter::{AdapterSelector, Resolver};
 use project::handler::ExecutionPaths;
 use project::seam::{
-    Origins, Source, SourceContent, SourceInput, SourceWorkspace, Workspaces, source_id,
+    Source, SourceContent, SourceInput, SourceWorkspace, Trees, Workspaces, source_id,
 };
 use project::snapshot::SnapshotId;
 
@@ -111,7 +111,7 @@ struct Surveyed {
 /// stops (coverage accounting persists; `as-is` is not replaced),
 /// judgment failures, and persist I/O failures.
 pub async fn survey(
-    seam: &(impl Source + Workspaces + Origins + Model), resolver: &impl Resolver,
+    seam: &(impl Source + Workspaces + Trees + Model), resolver: &impl Resolver,
     paths: &ExecutionPaths,
 ) -> Result<SurveyOutcome, Error> {
     let root = paths.project_root();
@@ -332,7 +332,7 @@ fn read_corpus(layout: &Layout<'_>, coverage: &Coverage) -> Result<Corpus, Error
 /// One row's survey leg: resolve the declared adapter, materialize
 /// the location, dispatch, and validate the lead set.
 async fn survey_source(
-    seam: &(impl Source + Workspaces + Origins), resolver: &impl Resolver, paths: &ExecutionPaths,
+    seam: &(impl Source + Workspaces + Trees), resolver: &impl Resolver, paths: &ExecutionPaths,
     home: &Path, row: &Row,
 ) -> Result<Surveyed, SurveyError> {
     let declared = row.adapter.as_deref().unwrap_or_default();

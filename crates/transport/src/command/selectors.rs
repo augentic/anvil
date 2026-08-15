@@ -159,6 +159,20 @@ pub struct SystemRequest {
     pub dir: Option<std::path::PathBuf>,
 }
 
+impl SystemRequest {
+    /// The definition-home root: `--dir` (relative values join
+    /// `invoked`) else `invoked` itself. The one join rule every
+    /// deployment shares.
+    #[must_use]
+    pub fn root(&self, invoked: &std::path::Path) -> std::path::PathBuf {
+        match &self.dir {
+            Some(dir) if dir.is_absolute() => dir.clone(),
+            Some(dir) => invoked.join(dir),
+            None => invoked.to_path_buf(),
+        }
+    }
+}
+
 /// Project the `system *` anchoring request out of `argv` (without
 /// the program name) through the shared command grammar.
 ///
@@ -215,24 +229,34 @@ fn selected(mut matches: &clap::ArgMatches) -> (Vec<String>, &clap::ArgMatches) 
 }
 
 /// The assembled emery clap grammar, identical to the executing
-/// router's — built over a provider that never dispatches.
+/// router's — built over a provider that never dispatches. Assembled
+/// once per process: every selector projection clones the cached tree
+/// instead of re-running the full router assembly.
 fn grammar() -> clap::Command {
-    let invoker = Invoker::new(
-        "emery",
-        Grammar {
-            // Inert explicit locations: the grammar-only provider is
-            // never dispatched, so no layout (and no environment
-            // capture) is ever reached — including on wasm32.
-            paths: ExecutionPaths::new(
-                ".",
-                Locations::explicit(
-                    std::path::PathBuf::new(),
-                    CachePlacement::Project(std::path::PathBuf::new()),
-                ),
-            ),
-        },
-    );
-    super::router(invoker).expect("the emery route inventory is statically valid").command().clone()
+    static GRAMMAR: std::sync::OnceLock<clap::Command> = std::sync::OnceLock::new();
+    GRAMMAR
+        .get_or_init(|| {
+            let invoker = Invoker::new(
+                "emery",
+                Grammar {
+                    // Inert explicit locations: the grammar-only provider is
+                    // never dispatched, so no layout (and no environment
+                    // capture) is ever reached — including on wasm32.
+                    paths: ExecutionPaths::new(
+                        ".",
+                        Locations::explicit(
+                            std::path::PathBuf::new(),
+                            CachePlacement::Project(std::path::PathBuf::new()),
+                        ),
+                    ),
+                },
+            );
+            super::router(invoker)
+                .expect("the emery route inventory is statically valid")
+                .command()
+                .clone()
+        })
+        .clone()
 }
 
 /// Grammar-only provider: satisfies the router's capability bounds so
@@ -343,18 +367,40 @@ impl seam::Target for Grammar {
     }
 }
 
-impl seam::Origins for Grammar {
-    async fn fetch(&self, _locator: String) -> Result<seam::OriginFetched, seam::Error> {
+impl seam::Trees for Grammar {
+    async fn fetch(
+        &self, _locator: String, _credentials: seam::TreeCredentials, _limits: seam::TreeLimits,
+    ) -> Result<seam::TreeFetched, seam::TreeError> {
         never_dispatched!()
     }
 
-    async fn discard_fetched(&self, _root: String) -> Result<(), seam::Error> {
+    async fn discard_fetched(&self, _root: String) -> Result<(), seam::TreeError> {
+        never_dispatched!()
+    }
+}
+
+impl seam::Forge for Grammar {
+    async fn find(
+        &self, _repository: String, _branch: String,
+    ) -> Result<Vec<seam::PullRequest>, seam::ForgeError> {
+        never_dispatched!()
+    }
+}
+
+impl seam::Worktree for Grammar {
+    async fn export(
+        &self, _req: seam::WorktreeRequest,
+    ) -> Result<(String, seam::WorktreeState), seam::WorktreeError> {
         never_dispatched!()
     }
 }
 
 impl seam::Workspaces for Grammar {
     async fn freeze(&self) -> Result<project::snapshot::SnapshotId, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn contains(&self, _id: project::snapshot::SnapshotId) -> Result<bool, seam::Error> {
         never_dispatched!()
     }
 
@@ -379,15 +425,6 @@ impl seam::Workspaces for Grammar {
     async fn sweep(
         &self, _dead: Vec<project::snapshot::SnapshotId>, _live: Vec<project::snapshot::SnapshotId>,
     ) -> Result<usize, seam::Error> {
-        never_dispatched!()
-    }
-}
-
-impl seam::Ingest for Grammar {
-    async fn fetch(
-        &self, _locator: String, _recorded: Option<project::snapshot::SnapshotId>,
-        _prior: Option<String>,
-    ) -> Result<seam::Fetched, seam::Error> {
         never_dispatched!()
     }
 }

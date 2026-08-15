@@ -30,6 +30,7 @@ pub fn doctor(plan: &Plan, slices_dir: Option<&Path>) -> Vec<Diagnostic> {
     let mut out: Vec<Diagnostic> = plan.validate(slices_dir);
 
     out.extend(detect(&plan.entries));
+    out.extend(super::decomposition::contraction(&plan.entries));
     out.extend(orphan_source::detect(plan));
 
     out
