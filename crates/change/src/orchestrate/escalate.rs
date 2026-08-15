@@ -9,6 +9,7 @@ use project::config::Layout;
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind, ParkReason};
 use project::plan::{BoundaryProposal, FocusParent, Frontiers, Plan, Proposal};
+use project::pool;
 use project::profile::Profiles;
 use project::seam::{Source, Workspaces};
 use project::snapshot::SnapshotId;
@@ -52,9 +53,7 @@ where
     let live_plan_bytes = std::fs::read(layout.plan_path())?;
 
     let mut catalog = live_leads.clone();
-    for parent in &affected {
-        focus_into(provider, paths, now, plan, &mut catalog, parent).await?;
-    }
+    focus_all(provider, paths, now, plan, &mut catalog, &affected).await?;
 
     let candidate = decompose::nearest(provider, paths, now, plan, &slice, &mut catalog)
         .await
@@ -90,36 +89,87 @@ where
     Ok(digest)
 }
 
-async fn focus_into<P>(
+/// Fan the affected parents' focused surveys onto the bounded pool
+/// (RFC-96 D5) and merge every child set in `affected` order — the
+/// escalation joins into one inert proposal, or all cancel on the
+/// first failure (in-flight siblings are dropped, nothing persists).
+async fn focus_all<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
-    parent: &FocusParent,
+    affected: &[FocusParent],
 ) -> Result<(), Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
 {
-    let Some(binding) = plan.sources.get(&parent.source) else {
-        return Err(Error::Diag {
-            code: "plan-source-unknown",
-            detail: format!("focus source `{}` is not a plan binding", parent.source),
-        });
-    };
-    if binding.locator.is_none() {
-        return Ok(());
+    let mut surveyable = Vec::with_capacity(affected.len());
+    for parent in affected {
+        let Some(binding) = plan.sources.get(&parent.source) else {
+            return Err(Error::Diag {
+                code: "plan-source-unknown",
+                detail: format!("focus source `{}` is not a plan binding", parent.source),
+            });
+        };
+        if binding.locator.is_some() {
+            surveyable.push((parent, binding));
+        }
     }
-    let children = focused_leads(
-        provider,
-        provider,
-        provider,
-        paths,
-        now,
-        &parent.source,
-        binding,
-        catalog,
-        &parent.lead,
-    )
-    .await?;
-    catalog.merge_leads(&parent.source, children);
+    let claims = pool::Claims::default();
+    let jobs: Vec<pool::Job<'_, Vec<artifacts::leads::Lead>, Error>> = surveyable
+        .iter()
+        .map(|(parent, binding)| pool::Job {
+            claim: pool::Claim {
+                item: format!("{}:{}", parent.source, parent.lead),
+                operation: "focused-survey".to_string(),
+                attempt: 1,
+            },
+            budget: pool::budget::SURVEY,
+            future: Box::pin(focused_leads(
+                provider,
+                provider,
+                provider,
+                paths,
+                now,
+                &parent.source,
+                binding,
+                catalog,
+                &parent.lead,
+            )),
+        })
+        .collect();
+    let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Cancel, jobs).await;
+    let mut joined = Vec::with_capacity(surveyable.len());
+    for (outcome, (parent, _)) in outcomes.into_iter().zip(&surveyable) {
+        joined.push((parent.source.clone(), settle_focus(outcome, parent)?));
+    }
+    for (source, children) in joined {
+        catalog.merge_leads(&source, children);
+    }
     Ok(())
+}
+
+/// Fold one focused-survey pool outcome, in `affected` order.
+fn settle_focus(
+    outcome: pool::Outcome<Vec<artifacts::leads::Lead>, Error>, parent: &FocusParent,
+) -> Result<Vec<artifacts::leads::Lead>, Error> {
+    match outcome {
+        pool::Outcome::Settled(result) => result,
+        // A duplicate affected parent surveys once; the sibling's
+        // children carry the merge.
+        pool::Outcome::Rejected => Ok(Vec::new()),
+        pool::Outcome::TimedOut => Err(Error::Diag {
+            code: "plan-refine-focus-timeout",
+            detail: format!(
+                "focused survey of `{}:{}` exceeded its inactivity budget; re-run the drain",
+                parent.source, parent.lead
+            ),
+        }),
+        pool::Outcome::Cancelled | pool::Outcome::Skipped => Err(Error::Diag {
+            code: "plan-refine-focus-cancelled",
+            detail: format!(
+                "focused survey of `{}:{}` was cancelled (a sibling survey failed first)",
+                parent.source, parent.lead
+            ),
+        }),
+    }
 }
 
 fn restore(

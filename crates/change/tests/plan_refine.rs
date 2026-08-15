@@ -264,7 +264,11 @@ async fn stop_then_resume() {
 // Regression: a multi-entry plan drains through execute. The first
 // merge archives `alpha`'s slice tree, so `beta`'s pre-build epoch
 // gate must re-check only the claimed slice — not every covered leaf —
-// or the loop dies `plan-epoch-stale` after the first merge.
+// or the loop dies `plan-epoch-stale` after the first merge. Both
+// entries share one target, so the concurrent drain (RFC-96) builds
+// them together from the shared accepted base, merges `alpha` at the
+// canonical head, then requeues `beta`'s build under the moved base
+// before its merge (identity-level stale-base requeue).
 #[tokio::test]
 async fn pair_execute_drains() {
     let session = Session::scripted(
@@ -288,6 +292,7 @@ async fn pair_execute_drains() {
         ran,
         [
             ("alpha", change::LoopStep::Build),
+            ("beta", change::LoopStep::Build),
             ("alpha", change::LoopStep::Merge),
             ("beta", change::LoopStep::Build),
             ("beta", change::LoopStep::Merge),

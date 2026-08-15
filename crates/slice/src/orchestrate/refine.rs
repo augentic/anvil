@@ -17,10 +17,12 @@ use project::handler::ExecutionPaths;
 use project::identity::{Decision, Surface};
 use project::journal::{self, EventKind};
 use project::plan::{Entry, FocusParent, Plan, resolve_topology};
+use project::pool;
 use project::profile::{Profile, Profiles};
 use project::seam::{Source, Target, Workspaces};
 use project::snapshot::SnapshotId;
 
+use super::extract::ExtractOutcome;
 use super::synthesize::SynthesizeRequest;
 use crate::judgment::synthesize::Kernel;
 use crate::merge::{MergeStrategy, artifact_classes};
@@ -228,31 +230,73 @@ pub async fn refine<P: Model + Profiles, S: Source + Workspaces, T: Target, R: R
     })
 }
 
-/// Extract fan-out, serially in binding declaration order (the
-/// skill's no-parallelism rule). Returns the `(source, lead)` pairs
-/// extracted, in binding order.
+/// Extract fan-out over the bounded pool (RFC-96 D5), joined in
+/// binding declaration order — never completion order. Synthesis and
+/// boundary assessment start only after every bound Evidence result
+/// settles; the first failure drains in-flight siblings and surfaces
+/// in binding order. Returns the `(source, lead)` pairs extracted.
 async fn extract_all<P: Model, S: Source + Workspaces, T: Target, R: Resolver>(
     caps: &super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,
     slice: &str, entry: &Entry,
 ) -> Result<Vec<(String, String)>, Error> {
-    let mut extracted = Vec::with_capacity(entry.sources.len());
-    for binding in &entry.sources {
-        let source = binding.source().to_string();
-        let lead = binding.lead(slice).to_string();
-        super::extract(
-            caps.sources,
-            caps.resolver,
-            caps.sources,
-            paths,
-            now,
-            &source,
-            &lead,
-            slice,
-        )
-        .await?;
-        extracted.push((source, lead));
+    let pairs: Vec<(String, String)> = entry
+        .sources
+        .iter()
+        .map(|binding| (binding.source().to_string(), binding.lead(slice).to_string()))
+        .collect();
+    let claims = pool::Claims::default();
+    let jobs: Vec<pool::Job<'_, ExtractOutcome, Error>> = pairs
+        .iter()
+        .map(|(source, lead)| pool::Job {
+            claim: pool::Claim {
+                item: format!("{slice}/{source}:{lead}"),
+                operation: "extract".to_string(),
+                attempt: 1,
+            },
+            budget: pool::budget::EXTRACT,
+            future: Box::pin(super::extract(
+                caps.sources,
+                caps.resolver,
+                caps.sources,
+                paths,
+                now,
+                source,
+                lead,
+                slice,
+            )),
+        })
+        .collect();
+    let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
+    for (outcome, (source, lead)) in outcomes.into_iter().zip(&pairs) {
+        settle_extract(outcome, source, lead)?;
     }
-    Ok(extracted)
+    Ok(pairs)
+}
+
+/// Fold one pool outcome into the drain's error surface. Duplicate
+/// bindings reuse the first extraction's Evidence; a timeout is the
+/// operation's typed inactivity stop.
+fn settle_extract(
+    outcome: pool::Outcome<ExtractOutcome, Error>, source: &str, lead: &str,
+) -> Result<(), Error> {
+    match outcome {
+        pool::Outcome::Settled(result) => result.map(|_| ()),
+        // A duplicate `(source, lead)` binding was already extracted
+        // by its live sibling; the persisted Evidence file is shared.
+        pool::Outcome::Rejected => Ok(()),
+        pool::Outcome::TimedOut => Err(Error::Diag {
+            code: "source-extract-timeout",
+            detail: format!(
+                "extract of `{source}:{lead}` exceeded its inactivity budget; re-run the drain"
+            ),
+        }),
+        pool::Outcome::Cancelled | pool::Outcome::Skipped => Err(Error::Diag {
+            code: "source-extract-cancelled",
+            detail: format!(
+                "extract of `{source}:{lead}` did not run (a sibling extraction failed first)"
+            ),
+        }),
+    }
 }
 
 /// Assemble and atomically write the refinement manifest. Runs only

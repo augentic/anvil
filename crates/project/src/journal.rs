@@ -67,18 +67,16 @@ impl From<Layout<'_>> for JournalRoot {
 /// Resolve the calling writer id at the journal-append boundary.
 ///
 /// A non-empty `EMERY_WRITER` wins; otherwise [`DEFAULT_WRITER`]. The
-/// wasm32 guest has no process environment for this variable and
-/// always uses the default — pass an explicit writer to [`append_for`]
-/// when a guest-side identity is required.
+/// launcher exposes the host environment to the wasm guest through the
+/// same path as `HTTP_ADDR` (RFC-96 D4), so guest and native reads
+/// agree. Writer identity is deployment configuration, never a
+/// capability.
 #[must_use]
 pub fn writer_id() -> String {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        if let Ok(value) = std::env::var("EMERY_WRITER") {
-            let trimmed = value.trim();
-            if !trimmed.is_empty() {
-                return trimmed.to_string();
-            }
+    if let Ok(value) = std::env::var("EMERY_WRITER") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
         }
     }
     DEFAULT_WRITER.to_string()

@@ -3,10 +3,14 @@
 //! Reference mode is always [`ReferenceMode::Offline`], so native tests start
 //! no listeners; the recording model handle is held beside the provider.
 
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::task::Poll;
 
 use native::{DynModel, Provider, ReferenceMode};
 pub use native::{ForgeScript, WorktreeScript};
+use omnia_guest::model::{Error as ModelError, Model, Reply, Request};
 use omnia_testkit::model::{Harness, Scripted as ScriptedModel};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 
@@ -113,6 +117,32 @@ impl Session {
         session
     }
 
+    /// [`Session::scripted`] with staggered model completions: call
+    /// `n` resolves only after `yields[n]` extra polls (missing
+    /// entries resolve immediately), so concurrent judgments settle
+    /// out of dispatch order while answers still pop in call order —
+    /// the RFC-96 pool suites' interleaving fixture.
+    ///
+    /// # Panics
+    ///
+    /// Panics when the tempdir or project scaffold cannot be written.
+    #[must_use]
+    pub fn scripted_staggered(
+        target_adapter: &str, answers: Vec<String>, yields: Vec<usize>,
+    ) -> Self {
+        let mut session = Self::scripted(target_adapter, Vec::new());
+        let model = Harness::answering(answers);
+        session.model = model.clone();
+        let stagger = Stagger {
+            backend: model,
+            yields: Arc::new(Mutex::new(yields.into())),
+        };
+        let paths = session.provider.paths().clone();
+        session.provider =
+            Provider::new(paths, DynModel::new(stagger), crate::catalog(), ReferenceMode::Offline);
+        session
+    }
+
     /// The project root every project-scoped verb anchors at.
     #[must_use]
     pub fn root(&self) -> &Path {
@@ -185,6 +215,49 @@ impl Session {
         let provider = self.provider.clone();
         self.provider = provider.with_forge_script(script);
     }
+}
+
+/// A model decorator that delays completion without moving the pop:
+/// the scripted answer is taken at dispatch (call order stays the
+/// canonical routing order); the reply then waits out its per-call
+/// yield budget before settling, so a bounded pool observes
+/// completions out of dispatch order.
+#[derive(Clone, Debug)]
+struct Stagger<B> {
+    backend: B,
+    yields: Arc<Mutex<VecDeque<usize>>>,
+}
+
+impl<B: Model> Model for Stagger<B> {
+    fn create(&self, request: Request) -> impl Future<Output = Result<Reply, ModelError>> + Send {
+        let inner = self.backend.create(request);
+        let steps = self
+            .yields
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .pop_front()
+            .unwrap_or(0);
+        async move {
+            for _ in 0..steps {
+                yield_once().await;
+            }
+            inner.await
+        }
+    }
+}
+
+// One self-waking Pending poll — runtime-independent.
+fn yield_once() -> impl Future<Output = ()> {
+    let mut yielded = false;
+    std::future::poll_fn(move |cx| {
+        if yielded {
+            Poll::Ready(())
+        } else {
+            yielded = true;
+            cx.waker().wake_by_ref();
+            Poll::Pending
+        }
+    })
 }
 
 // A fresh tempdir; the session's cache parent lives inside it.

@@ -19,6 +19,7 @@ pub mod judgment;
 pub mod name;
 pub mod plan;
 pub mod platform;
+pub mod pool;
 pub mod profile;
 pub mod refinement;
 pub mod seam;

@@ -24,6 +24,7 @@ pub mod propose;
 pub mod publication;
 pub mod remove;
 pub mod scaffold;
+pub mod schedule;
 pub mod scope;
 pub mod status;
 pub mod validate;
@@ -59,10 +60,11 @@ pub use propose::{
     resolve_topology,
 };
 pub use scaffold::scaffold;
+pub use schedule::{WorkItem, layers, ready_set};
 pub use scope::in_scope;
 pub use status::{
-    LoopStep, NextActionKind, PublicationMemberBody, PublicationMemberState, StatusBody,
-    StatusCounts, StopBody, StopReason, drained_line, plan_status_body,
+    InProgressBody, LoopStep, NextActionKind, PublicationMemberBody, PublicationMemberState,
+    StatusBody, StatusCounts, StopBody, StopReason, drained_line, plan_status_body,
 };
 pub use validate::{finding, orphan_authority_override, reject_duplicate_source};
 pub use verify::{closed_plan, resolve_from};

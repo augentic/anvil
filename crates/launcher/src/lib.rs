@@ -289,7 +289,11 @@ fn current() -> &'static Policy {
 }
 
 /// Export the host-absolute `.` mount, change home, and detached flag
-/// so guests inherit them.
+/// so guests inherit them. The operator's `EMERY_WRITER` (RFC-96 D4
+/// writer identity) and `EMERY_POOL` (the D1 operation cap read by
+/// `project::pool::cap`) ride the same inheritance as `HTTP_ADDR`:
+/// the runtime snapshots the host environment into every guest store,
+/// so one read works on both deployments.
 fn export_roots(paths: &ExecutionPaths) {
     let mount = std::path::absolute(paths.project_root())
         .unwrap_or_else(|_io| paths.project_root().to_path_buf());

@@ -27,14 +27,14 @@ flowchart TD
     R87 --> R104[RFC-104 system archaeology]
     R87 --> R90[RFC-90 private workspaces]
     R104 --> R88[RFC-88 detached changes]
-    R88 --> R94[RFC-94 target readiness (3)]
+    R88 --> R94[RFC-94 target readiness]
     R88 --> R95[RFC-95 publication sets]
     R88 --> R96[RFC-96 concurrent execution]
     R90 --> R91[RFC-91 specification refinement]
-    R90 --> R92[RFC-92 model policy (1)]
+    R90 --> R92[RFC-92 model policy]
     R91 --> R96[RFC-96 concurrent execution]
     R92 --> R103[RFC-103 outcome learning]
-    R96 --> R97[RFC-97 native verification (2)]
+    R96 --> R97[RFC-97 native verification]
     R97 --> R98[RFC-98 conservation]
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px

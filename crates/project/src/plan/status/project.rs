@@ -42,8 +42,25 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         in_progress: count(&ladders, Status::InProgress),
         done: count(&ladders, Status::Done),
     };
-    let active =
-        plan.entries.iter().find(|e| ladders.get(&e.name).copied() == Some(Status::InProgress));
+    // In-progress entries in the canonical work order (RFC-96): the
+    // head carries the singular fields; every row lands on
+    // `in-progress[]`.
+    let mut active_entries: Vec<(usize, &Entry)> = plan
+        .entries
+        .iter()
+        .enumerate()
+        .filter(|(_, e)| ladders.get(&e.name).copied() == Some(Status::InProgress))
+        .collect();
+    let layer_map = super::super::schedule::layers(plan);
+    active_entries.sort_by_key(|(index, entry)| {
+        (
+            entry.target.clone(),
+            layer_map.get(&entry.name).copied().unwrap_or_default(),
+            *index,
+            entry.name.to_string(),
+        )
+    });
+    let active = active_entries.first().map(|(_, entry)| *entry);
 
     // One freshness cache and lead inventory serve the resolution and
     // the Ready milestone; an absent `leads.md` degrades to an
@@ -51,8 +68,10 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
     let mut live = Live::new();
     let inventory = load_inventory(layout)?;
 
-    let resolution = match active {
-        Some(entry) => resolve_entry(
+    let mut in_progress = Vec::with_capacity(active_entries.len());
+    let mut head_resolution = None;
+    for (_, entry) in &active_entries {
+        let resolution = resolve_entry(
             plan,
             entry,
             layout,
@@ -60,7 +79,20 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
             &events,
             &inventory,
             &mut live,
-        )?,
+        )?;
+        in_progress.push(super::InProgressBody {
+            slice: entry.name.to_string(),
+            target: entry.target.clone(),
+            phase: current_step(&resolution),
+            stop: resolution.stop.clone(),
+        });
+        if head_resolution.is_none() {
+            head_resolution = Some(resolution);
+        }
+    }
+
+    let resolution = match head_resolution {
+        Some(resolution) => resolution,
         None => {
             // Sticky postflight debt: after a non-rollback postflight
             // failure the entry is already `done`, so nothing is
@@ -101,7 +133,17 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         r => r,
     };
     let publication = publication_bodies(plan, &members);
-    Ok(assemble(plan, counts, active, &ladders, resolution, gaps, milestones, publication))
+    Ok(assemble(
+        plan,
+        counts,
+        active,
+        &ladders,
+        resolution,
+        gaps,
+        milestones,
+        publication,
+        in_progress,
+    ))
 }
 
 /// Per-member publication milestone rows, in member order.
@@ -249,6 +291,7 @@ fn assemble(
     plan: &Plan, counts: StatusCounts, active: Option<&Entry>,
     ladders: &std::collections::HashMap<SliceName, Status>, resolution: Resolution, gaps: GapsBody,
     milestones: Milestones, publication: Vec<super::PublicationMemberBody>,
+    in_progress: Vec<super::InProgressBody>,
 ) -> StatusBody {
     let next_action = match (resolution.action, &resolution.slice, &resolution.stop) {
         (NextActionKind::Drained, ..) => "drained".to_string(),
@@ -280,6 +323,7 @@ fn assemble(
         stop: resolution.stop,
         publication,
         gaps,
+        in_progress,
     }
 }
 

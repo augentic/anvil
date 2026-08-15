@@ -33,6 +33,7 @@ pub(super) enum JournalOverlay {
 }
 
 /// The projected next step for one candidate entry.
+#[derive(Clone)]
 pub(super) struct Resolution {
     pub action: NextActionKind,
     pub slice: Option<String>,
@@ -415,7 +416,7 @@ fn active_window_facts(events: &[Event], plan_name: &PlanName, slice: &SliceName
 }
 
 /// An unrefined leaf parked by boundary escalation or budget exhaustion.
-struct Parked {
+pub(super) struct Parked {
     reason: StopReason,
     detail: Option<String>,
 }
@@ -426,7 +427,7 @@ impl Parked {
     }
 }
 
-fn parked_refinement(
+pub(super) fn parked_refinement(
     layout: Layout<'_>, events: &[Event], slice: &str,
 ) -> Result<Option<Parked>, Error> {
     if let Some((digest, _)) = Proposal::boundary_for(layout, slice)? {

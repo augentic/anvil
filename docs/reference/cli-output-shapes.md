@@ -168,6 +168,17 @@ Abandons one entry's slice without merging. The body carries the archive destina
 
 Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` rhythm, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). Refinement resumes through `emery plan refine` (`/emery:refine` on a fresh plan); build and merge resume through the execute loop (`/emery:execute` on a fresh, Ready plan). The verb never writes: the execute loop's claim step stays the only `in-progress` writer.
 
+Under concurrent execution (RFC-96) more than one entry may be in progress at once. `in-progress` lists one row per in-progress entry — `slice`, `target`, the awaited `phase`, and any parked `stop` block — in the canonical work order (target, topological layer, plan order, slice); the singular fields above are the head of that order, so the one-clear-next-command contract holds at any cap. The array is omitted when nothing is in progress.
+
+```json
+{
+  "in-progress": [
+    { "slice": "a", "target": "default", "phase": "build" },
+    { "slice": "b", "target": "default", "phase": "refine" }
+  ]
+}
+```
+
 ```json
 {
   "action": "refine",

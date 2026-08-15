@@ -1,6 +1,6 @@
-//! The serial refinement drain behind `emery plan refine` (RFC-91 D7):
-//! a refinement-specific deterministic selector over the closed plan.
-//! No epoch, no claims, no gap gate, and no target build operations.
+//! The refinement drain behind `emery plan refine` (RFC-91 D7),
+//! fanning independent leaves onto the bounded pool (RFC-96 D5). No
+//! epoch, no durable claims, no gap gate, no target build operations.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -15,6 +15,7 @@ use project::journal::{self, Event, EventKind, ParkReason};
 use project::plan::{
     Entry, Plan, Proposal, Status, collect_events, in_scope, plan_gaps_body, project_ladders,
 };
+use project::pool;
 use project::profile::Profiles;
 use project::seam::{Source, Target, Workspaces};
 use project::slice::SliceMetadata;
@@ -95,77 +96,86 @@ pub async fn refine<
     // manifest digests are never cached (the drain rewrites them).
     let mut live = Live::new();
     let targets = target_set(layout, &plan, &ordered, inventory, selectors, &mut live)?;
+    let claims = pool::Claims::default();
 
+    // Independent leaves refine concurrently in rounds (RFC-96 D5);
+    // outcomes join in topological order — never completion order —
+    // and dependents dispatch in a later round over fresh pins.
     let mut refined: Vec<String> = Vec::new();
     let mut skipped: Vec<String> = Vec::new();
-    for entry in &ordered {
-        let name = entry.name.as_str();
-        if !targets.contains(name) {
-            continue;
-        }
-        // Re-entry resumes missing/stale work; fresh leaves are never
-        // repeated.
-        if let Freshness::Fresh { .. } =
-            refinement::freshness_with(layout, &plan, entry, inventory, &mut live)?
-        {
-            skipped.push(name.to_string());
-            continue;
-        }
-        // Dependent refinement requires every direct predecessor
-        // currently fresh (RFC-91 D3); the fresh digests become the
-        // ordered dependency pins.
-        let dependencies = match predecessor_pins(layout, &plan, entry, inventory, &mut live)? {
-            Ok(dependencies) => dependencies,
-            Err(detail) => {
-                return Ok(RefineOutcome::Stopped {
-                    slice: name.to_string(),
-                    detail,
-                });
-            }
-        };
-        // The recorded `metadata.yaml` target is authoritative once the
-        // slice exists; only absence falls through to a fresh resolve.
-        let target = match SliceMetadata::load_opt(&layout.slice_dir(name))? {
-            Some(meta) => meta.target,
-            None => project::target_policy::fresh(caps.resolver, paths, entry, name, "refining")?,
-        };
-        if Proposal::boundary_for(layout, name)?.is_some() {
-            return Ok(RefineOutcome::Stopped {
-                slice: name.to_string(),
-                detail: format!(
-                    "inert boundary proposal already parks `{name}`; apply it with emery plan \
-                     amend --proposal before re-refining this leaf"
-                ),
-            });
-        }
-        tracing::info!("refine {name} …");
-        let adapter = leaf_adapter(caps.resolver, paths, entry)?;
-        match slice::orchestrate::refine(
-            caps,
+    let mut handled: BTreeSet<String> = BTreeSet::new();
+    loop {
+        let Round {
+            leaves: round,
+            stop: pending_stop,
+        } = next_round(
+            caps.resolver,
             paths,
-            now,
-            name,
-            &target,
-            dependencies,
-            &adapter.manifest.inputs,
-        )
-        .await
-        {
-            Ok(slice::orchestrate::RefineOutcome::Refined { .. }) => {
-                tracing::info!("refine {name} — completed");
-                refined.push(name.to_string());
+            &plan,
+            &ordered,
+            &targets,
+            inventory,
+            &mut handled,
+            &mut skipped,
+            &mut live,
+        )?;
+
+        if round.is_empty() {
+            if let Some(stop) = pending_stop {
+                return Ok(stop);
             }
-            Ok(escalation @ slice::orchestrate::RefineOutcome::Escalated { .. }) => {
-                return persist_escalation(caps.model, paths, now, &plan, layout, name, escalation)
+            break;
+        }
+        let jobs: Vec<pool::Job<'_, slice::orchestrate::RefineOutcome, Error>> = round
+            .iter()
+            .map(|leaf| {
+                tracing::info!("refine {} …", leaf.name);
+                pool::Job {
+                    claim: pool::Claim {
+                        item: leaf.name.clone(),
+                        operation: "refine".to_string(),
+                        attempt: 1,
+                    },
+                    budget: pool::budget::JUDGMENT,
+                    future: Box::pin(slice::orchestrate::refine(
+                        caps,
+                        paths,
+                        now,
+                        &leaf.name,
+                        &leaf.target,
+                        leaf.dependencies.clone(),
+                        &leaf.adapter.manifest.inputs,
+                    )),
+                }
+            })
+            .collect();
+        let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
+
+        for (leaf, outcome) in round.iter().zip(outcomes) {
+            let name = leaf.name.as_str();
+            match settle_leaf(outcome, name) {
+                Ok(slice::orchestrate::RefineOutcome::Refined { .. }) => {
+                    tracing::info!("refine {name} — completed");
+                    refined.push(name.to_string());
+                    handled.insert(name.to_string());
+                }
+                Ok(escalation @ slice::orchestrate::RefineOutcome::Escalated { .. }) => {
+                    return persist_escalation(
+                        caps.model, paths, now, &plan, layout, name, escalation,
+                    )
                     .await;
+                }
+                Err(err) => {
+                    tracing::info!("refine {name} — stopped: {err}");
+                    return Ok(RefineOutcome::Stopped {
+                        slice: name.to_string(),
+                        detail: err.to_string(),
+                    });
+                }
             }
-            Err(err) => {
-                tracing::info!("refine {name} — stopped: {err}");
-                return Ok(RefineOutcome::Stopped {
-                    slice: name.to_string(),
-                    detail: err.to_string(),
-                });
-            }
+        }
+        if let Some(stop) = pending_stop {
+            return Ok(stop);
         }
     }
 
@@ -177,6 +187,128 @@ pub async fn refine<
         skipped,
         gaps,
     })
+}
+
+/// One dispatched round member: the leaf's resolved target,
+/// dependency pins, and bound adapter.
+struct RoundLeaf {
+    name: String,
+    target: String,
+    dependencies: Vec<Dependency>,
+    adapter: project::adapter::ResolvedTarget,
+}
+
+/// One round's dispatch set plus the stop that closes the drain once
+/// the current round settles.
+struct Round {
+    leaves: Vec<RoundLeaf>,
+    stop: Option<RefineOutcome>,
+}
+
+/// Select the next concurrent round: every targeted, unhandled leaf
+/// whose targeted predecessors are all handled. Fresh leaves are
+/// skipped in place; an unready predecessor or a parked boundary
+/// proposal is the drain's stop — leaves after it never dispatch.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the round selector reads the drain's full working state"
+)]
+fn next_round(
+    resolver: &impl Resolver, paths: &ExecutionPaths, plan: &Plan, ordered: &[&Entry],
+    targets: &BTreeSet<String>, inventory: &[Lead], handled: &mut BTreeSet<String>,
+    skipped: &mut Vec<String>, live: &mut Live,
+) -> Result<Round, Error> {
+    let layout = paths.layout();
+    let mut leaves: Vec<RoundLeaf> = Vec::new();
+    for entry in ordered {
+        let name = entry.name.as_str();
+        if !targets.contains(name) || handled.contains(name) {
+            continue;
+        }
+        // Re-entry resumes missing/stale work; fresh leaves are never
+        // repeated.
+        if let Freshness::Fresh { .. } =
+            refinement::freshness_with(layout, plan, entry, inventory, live)?
+        {
+            skipped.push(name.to_string());
+            handled.insert(name.to_string());
+            continue;
+        }
+        // A targeted predecessor still awaiting refinement defers this
+        // leaf to a later round.
+        if entry
+            .depends_on
+            .iter()
+            .any(|dep| targets.contains(dep.as_str()) && !handled.contains(dep.as_str()))
+        {
+            continue;
+        }
+        // Dependent refinement requires every direct predecessor
+        // currently fresh (RFC-91 D3); the fresh digests become the
+        // ordered dependency pins.
+        let dependencies = match predecessor_pins(layout, plan, entry, inventory, live)? {
+            Ok(dependencies) => dependencies,
+            Err(detail) => {
+                return Ok(Round {
+                    leaves,
+                    stop: Some(RefineOutcome::Stopped {
+                        slice: name.to_string(),
+                        detail,
+                    }),
+                });
+            }
+        };
+        if Proposal::boundary_for(layout, name)?.is_some() {
+            return Ok(Round {
+                leaves,
+                stop: Some(RefineOutcome::Stopped {
+                    slice: name.to_string(),
+                    detail: format!(
+                        "inert boundary proposal already parks `{name}`; apply it with emery \
+                         plan amend --proposal before re-refining this leaf"
+                    ),
+                }),
+            });
+        }
+        // The recorded `metadata.yaml` target is authoritative once the
+        // slice exists; only absence falls through to a fresh resolve.
+        let target = match SliceMetadata::load_opt(&layout.slice_dir(name))? {
+            Some(meta) => meta.target,
+            None => project::target_policy::fresh(resolver, paths, entry, name, "refining")?,
+        };
+        let adapter = leaf_adapter(resolver, paths, entry)?;
+        leaves.push(RoundLeaf {
+            name: name.to_string(),
+            target,
+            dependencies,
+            adapter,
+        });
+    }
+    Ok(Round { leaves, stop: None })
+}
+
+/// Fold one pool outcome into the drain's per-leaf surface, in
+/// topological order.
+fn settle_leaf(
+    outcome: pool::Outcome<slice::orchestrate::RefineOutcome, Error>, name: &str,
+) -> Result<slice::orchestrate::RefineOutcome, Error> {
+    match outcome {
+        pool::Outcome::Settled(result) => result,
+        pool::Outcome::TimedOut => Err(Error::Diag {
+            code: "plan-refine-timeout",
+            detail: format!(
+                "refinement of `{name}` exceeded its inactivity budget; re-run the drain"
+            ),
+        }),
+        pool::Outcome::Rejected | pool::Outcome::Cancelled | pool::Outcome::Skipped => {
+            Err(Error::Diag {
+                code: "plan-refine-cancelled",
+                detail: format!(
+                    "refinement of `{name}` did not run (a sibling refinement failed first)"
+                ),
+            })
+        }
+    }
 }
 
 async fn persist_escalation<P>(

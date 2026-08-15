@@ -10,6 +10,7 @@ use project::config::Layout;
 use project::handler::ExecutionPaths;
 use project::journal::{self, Event, EventKind};
 use project::plan::{Plan, SourceBinding, retain_leads};
+use project::pool;
 use project::seam::{
     Lead, Source, Workspaces, bind_source, discard_source_view, seam_failure, source_id,
 };
@@ -28,27 +29,65 @@ pub struct SurveyedSource {
 /// Survey every `plan.yaml` source binding through the seam and merge
 /// each lead set into `leads.md`. Unfocused: the complete current set.
 ///
-/// Bindings run in plan order; each is dispatched, source-attributed,
-/// validated before it becomes visible, merged, and journalled.
-/// The first failure aborts the fan-out with earlier sources already
-/// merged.
+/// Dispatch fans out on the bounded pool (RFC-96 D5); lead sets are
+/// joined, merged, and journalled serially in plan order — never
+/// completion order — so the catalog is byte-identical at every cap.
+/// The first failure (in plan order) drains in-flight siblings and
+/// aborts with earlier sources already merged.
 ///
 /// # Errors
 ///
-/// Plan-load failures plus whatever [`survey`] surfaces for the first
-/// failing binding.
+/// Plan-load failures plus whatever the first failing binding's
+/// survey leg surfaces.
 pub async fn survey_all(
     seam: &impl Source, resolver: &impl Resolver, workspaces: &impl Workspaces,
     paths: &ExecutionPaths, now: Timestamp,
 ) -> Result<Vec<SurveyedSource>, Error> {
     let layout = paths.layout();
     let plan = Plan::load(&layout.plan_path())?;
-    let mut surveyed = Vec::with_capacity(plan.sources.len());
-    for (source, binding) in &plan.sources {
-        surveyed
-            .push(survey_one(seam, resolver, workspaces, paths, now, source, binding, None).await?);
+    let bindings: Vec<(&String, &SourceBinding)> = plan.sources.iter().collect();
+    let claims = pool::Claims::default();
+    let jobs: Vec<pool::Job<'_, (Vec<CatalogLead>, String), Error>> = bindings
+        .iter()
+        .map(|(source, binding)| pool::Job {
+            claim: pool::Claim {
+                item: (*source).clone(),
+                operation: "survey".to_string(),
+                attempt: 1,
+            },
+            budget: pool::budget::SURVEY,
+            future: Box::pin(collect_leads(
+                seam, resolver, workspaces, paths, now, source, binding, None,
+            )),
+        })
+        .collect();
+    let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
+
+    let mut surveyed = Vec::with_capacity(bindings.len());
+    for (outcome, (source, _)) in outcomes.into_iter().zip(&bindings) {
+        let (leads, adapter) = settle_survey(outcome, source)?;
+        surveyed.push(merge_surveyed(layout, now, source, None, leads, adapter)?);
     }
     Ok(surveyed)
+}
+
+/// Fold one pool outcome into the survey error surface.
+fn settle_survey(
+    outcome: pool::Outcome<(Vec<CatalogLead>, String), Error>, source: &str,
+) -> Result<(Vec<CatalogLead>, String), Error> {
+    match outcome {
+        pool::Outcome::Settled(result) => result,
+        pool::Outcome::TimedOut => Err(Error::Diag {
+            code: "source-survey-timeout",
+            detail: format!("survey of `{source}` exceeded its inactivity budget; re-run"),
+        }),
+        pool::Outcome::Rejected | pool::Outcome::Cancelled | pool::Outcome::Skipped => {
+            Err(Error::Diag {
+                code: "source-survey-cancelled",
+                detail: format!("survey of `{source}` did not run (a sibling survey failed first)"),
+            })
+        }
+    }
 }
 
 /// Survey one `plan.yaml` source binding (`emery source survey
@@ -120,6 +159,16 @@ async fn survey_one(
     let layout = paths.layout();
     let (leads, adapter) =
         collect_leads(seam, resolver, workspaces, paths, now, source, binding, parent).await?;
+    merge_surveyed(layout, now, source, parent, leads, adapter)
+}
+
+/// Merge one settled lead set into `leads.md` and journal it — the
+/// deterministic tail behind both the single survey and the pool
+/// fan-out's plan-order join.
+fn merge_surveyed(
+    layout: Layout<'_>, now: Timestamp, source: &str, parent: Option<&Lead>,
+    leads: Vec<CatalogLead>, adapter: String,
+) -> Result<SurveyedSource, Error> {
     let lead_ids: Vec<String> = leads.iter().map(|lead| lead.lead.clone()).collect();
 
     let leads_path = layout.leads_path();
