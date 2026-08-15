@@ -119,7 +119,7 @@ impl Error {
                     "quiesce affected claims and waves, then re-run `emery plan amend --proposal <digest>` against a fresh proposal",
                 ),
                 "plan-proposal-kind" => Some(
-                    "envelope and definition-revision documents are not amendments; revise the reviewed handoff or wait for RFC-96",
+                    "envelope and definition-revision documents are not amendments; revise the reviewed handoff or wait for RFC-106",
                 ),
                 "plan-proposal-cycle" => Some(
                     "the candidate tree must stay acyclic; author a new proposal from the live decomposition",

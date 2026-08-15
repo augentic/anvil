@@ -56,7 +56,7 @@ The trust boundary has five rules:
 - Only host records resolved directly by the engine count as tool evidence.
 - Missing tools, policies, reports, or required profiles fail closed.
 
-RFC-90 still owns slice phase order, model-repair budgets, finding routing, terminal reports, and lifecycle transitions. RFC-87 supplies the Phase A attempt workspace and candidate snapshot. RFC-96 later owns domain candidates, task ownership, composition, and domain verification contexts.
+RFC-90 still owns slice phase order, model-repair budgets, finding routing, terminal reports, and lifecycle transitions. RFC-87 supplies the Phase A attempt workspace and candidate snapshot. RFC-96 later owns domain candidates, composition, and domain verification contexts. RFC-106, if staffed, owns task-grant routing inside a slice attempt.
 
 ## Flow
 
@@ -89,7 +89,7 @@ RFC-90 still owns slice phase order, model-repair budgets, finding routing, term
 
 ### D1 — Host verification replaces command judgment, not the phase machine
 
-RFC-90's engine still selects slice `verify`, routes findings into `repair`, enforces budgets, persists phase reports, and assembles the terminal report. Phase A captures the current attempt candidate through RFC-87 without changing the loop. Phase B leaves RFC-96 owning logical domain candidates, fresh operation workspaces, task-grant routing, and composition.
+RFC-90's engine still selects slice `verify`, routes findings into `repair`, enforces budgets, persists phase reports, and assembles the terminal report. Phase A captures the current attempt candidate through RFC-87 without changing the loop. Phase B leaves RFC-96 owning logical domain candidates, fresh operation workspaces, and composition. Task-grant routing is RFC-106.
 
 This RFC changes the `target.verify` result from a target-authored phase report to a `verification-answer` carrying opaque profile-attestation handles plus optional deterministic in-component findings. The adapter contains no model leg and executes no native command itself. The engine resolves the host records and assembles the phase report. A host-only phase reports `phase-source: tool`; a phase combining host records with deterministic in-component findings reports `hybrid`, extending RFC-90's gate without changing the wire enum.
 
@@ -135,7 +135,7 @@ Under RFC-100 placement, the worker-side verifier provider publishes that digest
 
 ### D4 — Candidate checks and protected oracles remain distinguishable
 
-In Phase A, the closed execution epoch and target build request cover `protected-verification-inputs[]` for in-tree baseline tests and fixtures that the slice writer cannot change plus digest-bound `protected-oracles[]` mounted outside the candidate tree. Phase B carries the same sets through RFC-96 member admission and derives domain closure under D11. Deployment policy controls how an authorized input or oracle is mounted and consumed; it cannot introduce another identity.
+In Phase A, the closed execution epoch and target build request cover `protected-verification-inputs[]` for in-tree baseline tests and fixtures that the slice writer cannot change plus digest-bound `protected-oracles[]` mounted outside the candidate tree. Phase B carries the same sets through RFC-96 member admission and derives domain closure under RFC-96 D8. Deployment policy controls how an authorized input or oracle is mounted and consumed; it cannot introduce another identity.
 
 Candidate-authored tests remain useful: they demonstrate that the candidate passes its own checks. They do not become an independent oracle merely because the host ran them — the same reason a worker that writes its own tests cannot close a milestone validation contract. Every profile report records:
 
@@ -197,7 +197,7 @@ The cache key contains:
 - toolchain identity
 - sandbox/environment-policy digest
 
-RFC-96 still materializes a fresh workspace for every operation. The host mounts or copies the private cache into that execution without exposing it as a shared writable product tree. Every profile still executes its command and parser; cached verdicts or reports are forbidden. Cache contents never enter snapshot capture, report fingerprints, lifecycle authority, or another lineage.
+RFC-96 still materializes a fresh workspace for every domain operation. RFC-90 keeps one workspace per slice-build attempt until RFC-106 rematerializes per task. The host mounts or copies the private cache into that execution without exposing it as a shared writable product tree. Every profile still executes its command and parser; cached verdicts or reports are forbidden. Cache contents never enter snapshot capture, report fingerprints, lifecycle authority, or another lineage.
 
 Every warm passing required profile is provisional. Before it may contribute to a successful verification phase, the host reruns it once with an empty cache and uses the cold report as authority. This preserves warm failure/repair iteration without letting stale or candidate-poisoned incremental state certify any lifecycle gate. Attempt completion, abandonment, policy change, or verification-lineage garbage collection makes the cache disposable.
 
@@ -229,9 +229,9 @@ Canonical reports and telemetry may feed evaluation, synthetic filtering, or mod
 
 After RFC-96 lands, slice, frontier-domain, and complete-domain calls use the same target/platform profile set, host policy, normalization, and attestation gate. Their verification context and candidate snapshot enter every attestation and telemetry event. Phase A wire shapes already carry the closed context field but accept only `slice-attempt`; Phase B opens the two domain variants.
 
-Only a slice attempt has task owners, RFC-90 model-repair budgets, and D7 host-mechanical-repair authority. A blocking frontier report fails the frozen wave; a blocking complete report preserves accepted waves and blocks dependants and drain, exactly as RFC-96 specifies. A domain verifier never synthesizes a writer, reuses a slice continuation, opens a repair budget, or carries cache state from its child slices.
+Only a slice attempt has RFC-90 model-repair budgets and D7 host-mechanical-repair authority. Task owners exist only if RFC-106 is staffed. A blocking frontier report fails the frozen wave; a blocking complete report preserves accepted waves and blocks dependants and drain, exactly as RFC-96 specifies. A domain verifier never synthesizes a writer, reuses a slice continuation, opens a repair budget, or carries cache state from its child slices.
 
-RFC-96 D11 derives and persists the domain's canonical protected-input closure by intersecting every contributing descendant's admission-covered sets and subtracting touched paths. Its digest enters the domain operation key, verifier context, and attestation. The host may attest domain-level `protected` or `mixed` only from that closure; a path protected by only one child contributes no domain assurance.
+RFC-96 D8 derives and persists the domain's canonical protected-input closure by intersecting every contributing descendant's admission-covered sets and subtracting touched paths. Its digest enters the domain operation key, verifier context, and attestation. The host may attest domain-level `protected` or `mixed` only from that closure; a path protected by only one child contributes no domain assurance.
 
 ## Implementation requirements
 
@@ -245,7 +245,7 @@ RFC-96 D11 derives and persists the domain's canonical protected-input closure b
 - Add host-attested profile reports, separate execution and oracle assurance, policy/context/candidate binding, canonical normalization, report comparison predicates, and engine assembly from the exact resolved attestation set. Preserve RFC-90 phase source as the report provenance field and ignore adapter-authored tool findings.
 - Cover Phase A protected inputs and oracles in the closed epoch/build request, capture the RFC-90 attempt candidate, and materialize a fresh RFC-87 verification workspace with a private lineage cache. Cold-confirm every warm passing required profile.
 - Implement D7 as an explicit slice-only host-mechanical-repair phase through RFC-87 prepare/capture/discard and the slice write grant.
-- **Phase B:** extend RFC-96 candidate materialization and member admission with read-only protected-input handles, open the two domain context variants, derive D11 protected-input closure, and bind placement/publishing under RFC-100. Domain verification has no host or model repair writer.
+- **Phase B:** extend RFC-96 candidate materialization and member admission with read-only protected-input handles, open the two domain context variants, derive RFC-96 D8 protected-input closure, and bind placement/publishing under RFC-100. Domain verification has no host or model repair writer.
 - Emit D9's context-aware per-profile and mechanical-phase events while keeping timing and cache data outside report fingerprints and lifecycle projection.
 
 

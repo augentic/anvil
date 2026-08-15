@@ -2,7 +2,7 @@
 
 > Status: Draft
 
-The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-104](rfc-104-system-archaeology.md) owns the definition home, coverage-accounted system survey, architecture model and diagrams, and migration plan; those are core product work rather than roadmap opportunities. RFC-96 is scheduled active work; RFC-99 through RFC-102 are parked. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
+The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-104](rfc-104-system-archaeology.md) owns the definition home, coverage-accounted system survey, architecture model and diagrams, and migration plan; those are core product work rather than roadmap opportunities. RFC-96 is scheduled active work; RFC-99 through RFC-102 are parked; RFC-106 is evidence-gated. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
 
 ## Engagement-triggered
 

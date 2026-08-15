@@ -54,7 +54,7 @@ Single-node autonomy does not wait on distribution. Multi-node or multi-tenant a
 - A **policy bundle** is the immutable deployment resolution containing the applicable operator grant, autonomy policy, model routes, readiness profile, verification profiles, corpus governance, and egress/secret policy plus their individual and aggregate digests.
 - A **risk class** is one of `low | moderate | high | critical`; it selects one closed assurance and recovery profile for a target or slice.
 - A **commit admission** is the exact fact authorizing one closed target wave to mutate the accepted CID.
-- A **standing amendment rule** is a narrow, pre-authorized deterministic predicate over one inert RFC-88/RFC-96 amendment proposal.
+- A **standing amendment rule** is a narrow, pre-authorized deterministic predicate over one inert RFC-88/RFC-106 amendment proposal.
 - A **recovery ladder** is the ordered bounded set of actions the engine may try before stopping.
 - A **policy generation** is a promoted RFC-103 version; changing it starts a new run grant.
 
@@ -159,19 +159,19 @@ The engine attempts only the compiled sequence:
 
 1. bounded judgment-answer repair;
 2. RFC-90 verification repair and review remediation;
-3. one validated task-graph replacement for an RFC-96 graph-attributable failure;
+3. one validated task-graph replacement for an RFC-106 graph-attributable failure;
 4. one standing-rule amendment application when explicitly allowed, followed by ordinary refinement and build of the new planning revision;
 5. stop with retained evidence.
 
 Each rung has a separate counter. Success at one rung does not reset another.
 
-A policy may lower RFC-90's verification and review budgets and standing amendment applications. Judgment-answer repair remains the fixed engine `MAX_REPAIRS`; graph replacement remains RFC-96's fixed two-round limit. Neither is policy-increasable.
+A policy may lower RFC-90's verification and review budgets and standing amendment applications. Judgment-answer repair remains the fixed engine `MAX_REPAIRS`; graph replacement remains RFC-106's fixed two-round limit. Neither is policy-increasable.
 
 A retry always creates a new attempt or revision with a new input digest. The engine never edits a successful record in place.
 
 ## Standing amendments
 
-RFC-88 and RFC-96 amendment proposals remain inert by default. A standing rule may apply a proposal automatically only when deterministic validation proves:
+RFC-88 and RFC-106 amendment proposals remain inert by default. A standing rule may apply a proposal automatically only when deterministic validation proves:
 
 - the proposal kind is explicitly allowed;
 - source, target, product, and protected-oracle scope do not expand;

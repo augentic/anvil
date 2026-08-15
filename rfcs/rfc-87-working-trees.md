@@ -99,7 +99,7 @@ The operator's checkout is never a workspace, cache, or merge target.
 
 ### D7 — Coordination stays outside RFC-87
 
-[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-96](rfc-96-concurrent-execution.md) supplies target-proposed task decomposition, write ownership, and convergence. [RFC-100](rfc-100-distributed-execution.md) supplies placement, fencing, and transport. [RFC-95](rfc-95-publication-sets.md) exports each final accepted CID into a publication worktree and supplies branches, pull-request markers, and publication verification.
+[RFC-86](rfc-86-change-facts.md) supplies claims, pinned inputs, `plan.execute.started`, and result facts. [RFC-96](rfc-96-concurrent-execution.md) supplies scheduling, composition, and domain convergence. [RFC-106](rfc-106-task-graphs.md) supplies target-proposed task decomposition and write ownership when a slice is too large for one build call. [RFC-100](rfc-100-distributed-execution.md) supplies placement, fencing, and transport. [RFC-95](rfc-95-publication-sets.md) exports each final accepted CID into a publication worktree and supplies branches, pull-request markers, and publication verification.
 
 RFC-87 consumes an execution request and returns an immutable code result. It owns no scheduler, lifecycle status, branch, or publication operation.
 

@@ -4,7 +4,7 @@
 >
 > Owns: one publication worktree per publication member, the shared branch and pull-request markers, landing order, archive-time publication observation, and the typed publication projection. Does not own the operator's Git commit, forge writes, atomic cross-repository submission, automated rollback, or parallel member preparation.
 >
-> Builds on implemented [RFC-88](rfc-88-detached-changes.md). Host Git and forge access use Omnia generic interfaces — [host surface](rfc-95-host-surface.md) — not new `emery:*` packages. [RFC-100](rfc-100-distributed-execution.md) may execute across nodes first. RFC-81 in `augentic/remedium` is the first external producer.
+> Builds on implemented [RFC-88](rfc-88-detached-changes.md). Host Git and forge access use Omnia generic interfaces — [host surface](rfc-95-host-surface.md) — not new `emery:*` packages. [RFC-100](rfc-100-distributed-execution.md) may execute across nodes first. RFC-81 in `augentic/remedium` is the first external producer. Pre-implementation review: [rfc-95-review.md](rfc-95-review.md).
 
 ## Intent
 

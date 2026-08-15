@@ -61,7 +61,7 @@ The closed operation-key set derives from the existing typed enums plus the engi
 | Target | `target.guidance`, `target.build`, `target.verify`, `target.repair`, `target.review`, `target.merge` |
 | Engine | `engine.topology`, `engine.propose`, `engine.decompose`, `engine.synthesize`, `engine.boundary`, `engine.readiness` |
 
-An absent key falls to `default`. The shorthand `target.review: frontier` canonicalizes to `{ start: frontier }` with no escalation. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is never consulted; a route policy is a binding, not a requirement to invoke. The set is closed per programme state, not forever: [RFC-96](rfc-96-concurrent-execution.md)'s `target.decompose` joins it when that RFC lands.
+An absent key falls to `default`. The shorthand `target.review: frontier` canonicalizes to `{ start: frontier }` with no escalation. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is never consulted; a route policy is a binding, not a requirement to invoke. The set is closed per programme state, not forever: [RFC-106](rfc-106-task-graphs.md)'s `target.decompose` joins it when that RFC lands.
 
 That closed key set is **model specialization by role**: survey, extract, synthesize, build, verify, and review may bind different tiers without an orchestrator-agent model ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)). A starting-route or ladder change produces a new profile digest and invalidates the epoch on the same rule as a threshold change.
 

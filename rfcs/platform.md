@@ -1,6 +1,6 @@
 # Services Delivery Programme
 
-> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88 and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. Next gaps are RFC-95 and RFC-96. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
+> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88 and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. RFC-106 is evidence-gated and excluded from the active dependency map. Next gaps are RFC-95 and RFC-96. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
 >
 > Business direction: Propellerhead builds and changes critical software without losing the behaviour, knowledge, and trust the organisation depends on.
 >
@@ -14,7 +14,7 @@ The programme supports one services promise:
 
 Modernization is the commercial wedge. A new system is the simpler evidence case: authoritative intent establishes the baseline instead of archaeology recovering one. Emery is the delivery system behind the promise, not the product strategy. The immediate goal is the smallest single-node system that can recover a bounded estate, deliver one reviewed wave, and leave living behavioural and architectural baselines.
 
-Services expertise supplies architectural and exception judgment; Emery records evidence, decisions, and consequences. Bounded single-node concurrency is in scope. Streaming, distribution, hosted fleets, and unattended merge are not prerequisites. Multi-node and unattended scale activate on measured engagement pull, not architectural completeness.
+Services expertise supplies architectural and exception judgment; Emery records evidence, decisions, and consequences. Bounded single-node concurrency is in scope. Intra-slice task graphs ([RFC-106](rfc-106-task-graphs.md)), streaming, distribution, hosted fleets, and unattended merge are not prerequisites. Multi-node, fat-slice decomposition, and unattended scale activate on measured engagement pull, not architectural completeness.
 
 ## Active dependency map
 
@@ -53,7 +53,7 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 
 **Definition:** implemented. [RFC-104](rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
 
-**Delivery gap:** RFC-95 exports each final accepted CID into a publication worktree; RFC-96 supplies bounded concurrent scheduling. Merged code exists only as store snapshots until RFC-95 — there is no shipped publication worktree.
+**Delivery gap:** RFC-95 exports each final accepted CID into a publication worktree; RFC-96 supplies bounded concurrent slice scheduling. Merged code exists only as store snapshots until RFC-95 — there is no shipped publication worktree. Intra-slice task graphs are RFC-106 and wait on a measured fat Omnia slice.
 
 **Evidence gap** — asserted rather than demonstrated; may proceed beside or after the product cut:
 
@@ -65,6 +65,7 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 | Actor and admitting grant unrecoverable          | [RFC-93](rfc-93-operator-boundary.md)                                                 | Parallel assurance; not the product path |
 | Target loop support assessed too late            | [RFC-94](rfc-94-target-readiness.md)                                                  | Follows RFC-88 delivery binding          |
 | Recovered behaviour model-reviewed, not replayed | [RFC-97](rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md) | After or beside product staffing         |
+| One Omnia slice too large for one `target.build` | [RFC-106](rfc-106-task-graphs.md)                                                     | Evidence-gated; not default staffing     |
 
 
 None requires streaming, distribution, a hosted fleet, or autonomous merge.
@@ -78,7 +79,7 @@ Every item is in exactly one state:
 - **Evidence-gated** — accepted architecture whose implementation starts only when its stated measurement or engagement trigger fires; not on the default staffing plan.
 - **Parked** — preserved design option, excluded from the active dependency map and staffing plan.
 
-An RFC number is a stable design identity, not a promise that every lower number must be implemented first. Assigned numbers stay put — including the RFC-93 / RFC-103 swap while both were unimplemented. Delivery order is the track plan below. RFC-99 through RFC-102 retain their identities while parked and are never reused.
+An RFC number is a stable design identity, not a promise that every lower number must be implemented first. Assigned numbers stay put — including the RFC-93 / RFC-103 swap while both were unimplemented. Delivery order is the track plan below. RFC-99 through RFC-102 retain their identities while parked and are never reused. RFC-106 retains its identity while evidence-gated.
 
 ## Delivery tracks
 
@@ -112,7 +113,11 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 ### Scheduled after RFC-88 — concurrent execution
 
-- [RFC-96](rfc-96-concurrent-execution.md) — work-item scheduling, task graphs, deterministic composition, domain convergence, and multi-member waves, following stable RFC-88/91. Phase order: work-item scheduler and read-heavy pool, then concurrent build and convergence. Cap one is the deterministic reference; higher caps must preserve equivalent ordered outcomes. RFC-92/97 telemetry tunes pools, budgets, and verification placement rather than whether RFC-96 is implemented. RFC-97 Phase B remains attached exactly as specified in RFC-97.
+- [RFC-96](rfc-96-concurrent-execution.md) — work-item scheduling, a bounded shared pool, deterministic composition, domain convergence, and multi-member waves, following stable RFC-88/91. Phase order: work-item scheduler and read-heavy pool, then `compose` and multi-member waves. Cap one is the deterministic reference; higher caps must preserve equivalent ordered outcomes. RFC-92/97 telemetry tunes pools, budgets, and verification placement rather than whether RFC-96 is implemented. RFC-97 Phase B remains attached to RFC-96 domain contexts. Intra-slice task graphs are not this RFC.
+
+### Evidence-gated — fat-slice decomposition
+
+- [RFC-106](rfc-106-task-graphs.md) — `target.decompose`, task graphs, exclusive write grants, and task-scoped repair. Accepted architecture; implementation starts when RFC-96 D11 fixtures or an engagement show one Omnia slice is too large for one `target.build`. Depends on RFC-96 Phase B. Not on the default staffing plan and not on the active dependency map.
 
 ## Why this sequence
 
@@ -122,7 +127,7 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 4. **Earn the assurance claim.** RFC-94/97/98 turn eligibility and “model-reviewed” into digest-bound admission and host-attested execution against protected evidence.
 5. **Attribute when agents drive; do not front-load grants.** RFC-93 and RM-24 sit beside the product path.
 6. **Learn only after signal producers exist.** RFC-103 without RFC-92 and blind evaluation cannot promote honestly.
-7. **Make required single-node concurrency deterministic before adding deployment modes.** RFC-96 follows the stable delivery contracts; streaming, distribution, hosted fleets, and unattended merge stay parked until separately justified.
+7. **Make required single-node concurrency deterministic before adding deployment modes or intra-slice graphs.** RFC-96 follows the stable delivery contracts; streaming, distribution, hosted fleets, unattended merge, and task graphs stay parked or evidence-gated until separately justified.
 
 ## RFC-88 scope discipline
 
@@ -179,13 +184,13 @@ An automation may invoke stages back to back. Inspection is not attestation: onl
 
 ## Parked programme
 
-RFC-99 through RFC-102 are preserved design options, not active dependencies or implementation commitments. They do not appear in the active map.
+RFC-99 through RFC-102 are preserved design options, not active dependencies or implementation commitments. They do not appear in the active map. RFC-106 is evidence-gated rather than parked: the architecture is accepted, but implementation waits on the stated measurement.
 
 
 | RFC                                                               | Reopen when                                                                                                                                                                                                                                                            |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [RFC-99 Streaming Execution](rfc-99-streaming-execution.md)       | Complete-plan authoring or refinement latency is a measured engagement bottleneck. Phase B also needs completed RFC-96 and a real need for unattended candidate build before final closure.                                                                            |
-| [RFC-100 Distributed Execution](rfc-100-distributed-execution.md) | One production change must execute across multiple nodes. More client work or another independent machine is not the trigger; RFC-96's one-change workload must exceed a node, or a deployment constraint must require remote placement.                               |
+| [RFC-99 Streaming Execution](rfc-99-streaming-execution.md)       | Complete-plan authoring or refinement latency is a measured engagement bottleneck. Phase B also needs RFC-96 Phase B and a real need for unattended candidate build before final closure.                                                                            |
+| [RFC-100 Distributed Execution](rfc-100-distributed-execution.md) | One production change must execute across multiple nodes. More client work or another independent machine is not the trigger; RFC-96's one-change workload must exceed a node, or a deployment constraint must require remote placement. RFC-106 is not a prerequisite. |
 | [RFC-101 Platform Readiness](rfc-101-platform-readiness.md)       | RFC-100 is activated, or a contract needs hosted tenancy, authenticated fleet ingress, or sealed shared audit storage. Small desktop capabilities (for example a read-only OpenTelemetry projection) may ship as roadmap items without activating the fleet programme. |
 | [RFC-102 Policy-Gated Autonomy](rfc-102-policy-gated-autonomy.md) | RFC-99 Phase B, RFC-97 Phase B, RFC-103 promoted policies, RFC-94, and RFC-93 grants have landed, and a client requires unattended accepted-CID mutation. Reviewed execution and agent-driven operation do not require this RFC.                                       |
 
@@ -208,7 +213,7 @@ These are Emery's own principles, not a competitive backlog:
 - **Validation is defined before implementation.** RFC-91 refines specifications first; RFC-97/98 add host execution and protected behavioural oracles.
 - **Fresh contexts and separated incentives matter.** RFC-87 lends private workspaces; RFC-90 prevents implementers from choosing terminal success.
 - **Model specialization is local to operations.** RFC-92 routes survey, extraction, synthesis, build, repair, and review independently under one pinned policy.
-- **Validation may discover legitimate new work.** RFC-96 supports bounded graph replacement; RFC-88 keeps structural amendments inert and reviewable. Free-form in-context re-planning never gains authority directly.
+- **Validation may discover legitimate new work.** RFC-96 supports concurrent independent leaves; RFC-106 supports bounded graph replacement inside one slice; RFC-88 keeps structural amendments inert and reviewable. Free-form in-context re-planning never gains authority directly.
 - **Recovery must be actionable.** Typed stops name the exact next verb, inputs, and proposal diff; re-running the stopped stage remains the resume path.
 
 The commercial interpretation is services-led: Emery supports Propellerhead's accountable delivery practice; it is not an adoption-led software product.

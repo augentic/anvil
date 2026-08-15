@@ -1,6 +1,6 @@
 # RFC-99: Streaming Execution
 
-> Status: **Parked.** Reopen Phase A only when measured authoring duration or time-to-first-refinement shows that complete-plan closure is a material engagement bottleneck. Reopen Phase B only after RFC-96 is complete and a client engagement requires unattended candidate build before final closure. Phase A depends on [RFC-96](rfc-96-concurrent-execution.md) Phase A; Phase B depends on completed RFC-96. Distribution through parked [RFC-100](rfc-100-distributed-execution.md) remains optional.
+> Status: **Parked.** Reopen Phase A only when measured authoring duration or time-to-first-refinement shows that complete-plan closure is a material engagement bottleneck. Reopen Phase B only after RFC-96 Phase B is complete and a client engagement requires unattended candidate build before final closure. Phase A depends on [RFC-96](rfc-96-concurrent-execution.md) Phase A; Phase B depends on RFC-96 Phase B (`compose` and multi-member waves). [RFC-106](rfc-106-task-graphs.md) is optional unless a candidate is too large for one `target.build`. Distribution through parked [RFC-100](rfc-100-distributed-execution.md) remains optional.
 >
 > Patch ownership: this RFC amends RFC-86 D27, RFC-88 D1 / D3 / D7 / D8, and RFC-90's wave-only build envelope after those contracts land. Those predecessor RFC texts remain unchanged.
 
@@ -222,7 +222,7 @@ If an upstream branch, refinement, build, protected input, or policy changes, ev
 
 ### Build and verification
 
-RFC-96 Phase B supplies task decomposition, isolated writers, code-patch composition, slice verification, protected inputs, and the scheduler. RFC-90 supplies the engine-owned `build → verify ⇄ repair → review ⇄ repair` machine.
+RFC-96 Phase B supplies code-patch composition, slice verification, domain rounds, protected-input closure, and the scheduler. RFC-90 supplies the engine-owned `build → verify ⇄ repair → review ⇄ repair` machine. RFC-106 may supply task decomposition and isolated writers inside a candidate when a slice is too large for one build call.
 
 Candidate batches do not write `target.wave.opened`, project RFC-96 `frontier` or accepted `complete` domain rounds, or participate in target drain. Their batch and frontier records are the complete candidate-lineage substrate. Candidate-frontier verification may persist a non-authoritative candidate report; a commit-capable run creates current domain rounds and multi-member waves only after final closure.
 
@@ -313,7 +313,7 @@ Every fact references schema-validated content. Claims select who performs admit
 ## Rejected alternatives
 
 - **Put progressive refinement inside `plan author`.** Manual author must retain its topology review boundary. `plan run` orchestrates the same operations without changing their individual contracts.
-- **Wait for all of RFC-96 before refining progressively.** Refinement needs the work-item scheduler and read-heavy pool, not target task graphs, composition, domain rounds, or multi-member commit.
+- **Wait for all of RFC-96 before refining progressively.** Refinement needs the work-item scheduler and read-heavy pool, not composition, domain rounds, or multi-member commit. Task graphs are RFC-106 and are not a refinement prerequisite.
 - **Write a partially valid `plan.yaml`.** Immutable branch records project progressive readiness; `plan.yaml` remains the canonical complete-tree leaf projection.
 - **Authorize unknown future manifests directly.** Parent policy grants constrain the run; member admission binds exact manifests before build.
 - **Auto-waive unknowns.** Absence of information is not policy authority. Unattended work stops.

@@ -46,7 +46,7 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 | `plan-proposal-stale` | `emery plan amend --proposal` compare-and-set found a drifted frontier. | Quiesce affected claims and waves, then re-run against a fresh proposal. |
 | `plan-proposal-live` | The proposal's affected claims or waves are still live. | Quiesce the affected work, then re-run `emery plan amend --proposal <digest>`. |
 | `plan-proposal-preserve` | Applying the proposal would drop a preservation-required node. | Author a new proposal from the live decomposition. |
-| `plan-proposal-kind` | The named document is an envelope or definition-revision — not an amendment. | Revise the reviewed handoff or wait for RFC-96. |
+| `plan-proposal-kind` | The named document is an envelope or definition-revision — not an amendment. | Revise the reviewed handoff or wait for RFC-106. |
 | `plan-proposal-cycle` | The candidate tree is cyclic. | Author a new proposal from the live decomposition. |
 | `plan-proposal-not-found` | No file at `planning/proposals/<digest>.yaml`. | Check the digest from the stop card. |
 | `plan-proposal-malformed` | The retained proposal failed its typed parse. | Re-emit the proposal (re-run refine) rather than hand-editing it. |

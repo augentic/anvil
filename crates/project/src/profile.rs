@@ -66,7 +66,7 @@ pub struct Weights {
 pub struct Thresholds {
     /// Slice-split threshold (RFC-88 leaf-readiness).
     pub slice_split: u32,
-    /// Task threshold (recorded for RFC-96).
+    /// Task threshold (recorded for RFC-106).
     pub task: u32,
 }
 
@@ -91,7 +91,7 @@ pub struct Assessment {
 pub enum Gate {
     /// Slice-split (RFC-88).
     SliceSplit,
-    /// Task (RFC-96).
+    /// Task (RFC-106).
     Task,
 }
 

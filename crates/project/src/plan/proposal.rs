@@ -41,7 +41,7 @@ pub enum Proposal {
     Boundary(Boundary),
     /// Runtime ownership overlap. Names a dependency or fan-in repair.
     Ownership(Ownership),
-    /// RFC-96 envelope escalation. DTO only; this crate does not apply it.
+    /// RFC-106 envelope escalation. DTO only; this crate does not apply it.
     Envelope(Envelope),
     /// Conflicting handoff authority. Stops the affected scope; not an
     /// amendment.
@@ -86,7 +86,7 @@ pub struct Ownership {
     pub expected: Frontiers,
 }
 
-/// Envelope-escalation payload (RFC-96). Not applied here.
+/// Envelope-escalation payload (RFC-106). Not applied here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Envelope {

@@ -2,7 +2,7 @@
 
 > Status: Design. Edit this file, then implement against it. Not a new RFC.
 >
-> Product policy (worktree, markers, archive observation, facts, schema) lives in [RFC-95](rfc-95-publication-sets.md). This document decides how the host talks to Git and the forge.
+> Product policy (worktree, markers, archive observation, facts, schema) lives in [RFC-95](rfc-95-publication-sets.md). This document decides how the host talks to Git and the forge. Pre-implementation review: [rfc-95-review.md](rfc-95-review.md).
 >
 > Decision: **Omnia generic interfaces**, shipped as **one implementation** — git-aware blobstore and mounted publication worktree together. No new `emery:*` host packages.
 
