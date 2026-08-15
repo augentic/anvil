@@ -1,6 +1,6 @@
 # RFC-95 host surface
 
-> Status: Active host-surface companion to [RFC-95](rfc-95-publication-sets.md) in the [Services Delivery Programme](platform.md). Not a new RFC. Implementation starts at cut 0 of the sequencing table.
+> Status: Implemented host-surface companion to [RFC-95](rfc-95-publication-sets.md) in the [Services Delivery Programme](platform.md). Not a new RFC. Implementation followed the sequencing table from cut 0.
 >
 > Product policy (worktree, markers, archive observation, facts, schema) lives in [RFC-95](rfc-95-publication-sets.md). This document decides how the host talks to Git and the forge. This revision supersedes the earlier git-aware-blobstore direction: the VCS seam below retires both bespoke fetch packages as the foundation RFC-95 lands on rather than as deferred cleanup. The pre-implementation review's open items are closed as decided text below — the WIT field lists and error taxonomies, the `emery:engine` package, the dedicated staging root, and the forge token order; git history holds the full findings.
 >

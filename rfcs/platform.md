@@ -1,6 +1,6 @@
 # Services Delivery Programme
 
-> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88 and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. RFC-106 is evidence-gated and excluded from the active dependency map. Next gaps are RFC-95 and RFC-96. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
+> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88, RFC-95, and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. RFC-106 is evidence-gated and excluded from the active dependency map. Next gap is RFC-96. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
 >
 > Business direction: Propellerhead builds and changes critical software without losing the behaviour, knowledge, and trust the organisation depends on.
 >
@@ -49,11 +49,11 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 
 ## Where we are
 
-**Implemented:** RFC-86, RFC-87, RFC-88, RFC-90, RFC-91, RFC-104. Fact-based workflow over private workspaces, with an engine-owned build phase machine, a fenced specification-refinement stage, detached multi-target execution over accepted CIDs, and the definition loop through `system.wave.reviewed`. Merge-time `apply` is deleted; `plan author --from --wave` consumes a reviewed handoff.
+**Implemented:** RFC-86, RFC-87, RFC-88, RFC-90, RFC-91, RFC-95, RFC-104. Fact-based workflow over private workspaces, with an engine-owned build phase machine, a fenced specification-refinement stage, detached multi-target execution over accepted CIDs, publication worktrees with forge-verified archive over the one `emery:vcs` host seam, and the definition loop through `system.wave.reviewed`. Merge-time `apply` is deleted; `plan author --from --wave` consumes a reviewed handoff.
 
 **Definition:** implemented. [RFC-104](rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
 
-**Delivery gap:** RFC-95 exports each final accepted CID into a publication worktree; RFC-96 supplies bounded concurrent slice scheduling. Merged code exists only as store snapshots until RFC-95 — there is no shipped publication worktree. Intra-slice task graphs are RFC-106 and wait on a measured fat Omnia slice.
+**Delivery gap:** RFC-96 supplies bounded concurrent slice scheduling. RFC-95 is implemented — the execute drain exports each final accepted CID into a publication worktree and archive verifies the publication set against the forge. Intra-slice task graphs are RFC-106 and wait on a measured fat Omnia slice.
 
 **Evidence gap** — asserted rather than demonstrated; may proceed beside or after the product cut:
 
@@ -89,7 +89,7 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 - [RFC-104](rfc-104-system-archaeology.md) — implemented definition predecessor. Three internal cuts (coverage and Evidence; correlation and as-is; plan, handoff, and review); the accepted loop through `system.wave.reviewed` holds. The definition loop may finish without product execution: that is a paid archaeology or readiness outcome, not a failed attempt to produce slices.
 - [RFC-88](rfc-88-detached-changes.md) — implemented delivery contract after that reviewed handoff. Internal cuts: accepted-CID merge and deletion of interim `apply`; detached change home importing one RFC-104 wave; capability-profile-bound decomposition and refinement feedback; deterministic accepted-CID execution. Complete-tree publication stays the reference policy.
-- [RFC-95](rfc-95-publication-sets.md) — publication worktrees, publication identity, ordered landing, and archive verification after RFC-88 member derivation. The operator authors the Git commit and every forge write; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts when manual publication is a measured bottleneck. Host implementation is [rfc-95-host-surface.md](rfc-95-host-surface.md): the `emery:vcs` seam (`trees` / `worktree` / `forge`) with export as one host call, retiring `emery:origins` / `emery:ingest` as its first cut; no `emery:publication` / `emery:forge`, no git-aware blobstore.
+- [RFC-95](rfc-95-publication-sets.md) — implemented publication follow-on: publication worktrees, publication identity, ordered landing, and archive verification after RFC-88 member derivation. The operator authors the Git commit and every forge write; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts when manual publication is a measured bottleneck. Host implementation is [rfc-95-host-surface.md](rfc-95-host-surface.md): the `emery:vcs` seam (`trees` / `worktree` / `forge`) with export as one host call, which retired `emery:origins` / `emery:ingest` as its first cut; no `emery:publication` / `emery:forge`, no git-aware blobstore.
 
 ### Parallel — measure and quote honestly
 
@@ -178,7 +178,7 @@ operator publishes    → review each publication worktree; commit, push, open a
 emery plan archive    → verify publication, project outcome, archive
 ```
 
-The definition loop and `plan author` onward are implemented today, with two qualifications: verification is model-assisted, and publication lands with RFC-95. RFC-94 adds target execution admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the delivery stages.
+The definition loop and `plan author` onward are implemented today, including RFC-95 publication, with one qualification: verification is model-assisted. RFC-94 adds target execution admission, RFC-97 Phase A adds host-attested verification, and RFC-98 adds protected conservation without changing the delivery stages.
 
 An automation may invoke stages back to back. Inspection is not attestation: only `system review` records wave selection (`system.wave.reviewed` over an exact handoff), and that fact grants no product mutation authority. When RFC-93 lands, it governs whether the caller may request each act; the engine applies identical artifact and result gates whoever called.
 

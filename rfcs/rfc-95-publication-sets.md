@@ -1,6 +1,6 @@
 # RFC-95: Publication Sets
 
-> Status: Active product follow-on to RFC-88 in the [Services Delivery Programme](platform.md)
+> Status: Implemented product follow-on to RFC-88 in the [Services Delivery Programme](platform.md)
 >
 > Owns: one publication worktree per publication member, the shared branch and pull-request markers, landing order, archive-time publication observation, and the typed publication projection. Does not own the operator's Git commit, forge writes, atomic cross-repository submission, automated rollback, or parallel member preparation.
 >
