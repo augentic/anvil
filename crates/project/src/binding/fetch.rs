@@ -29,21 +29,8 @@ pub async fn resolve<W: Workspaces, T: Trees>(
             Ok((resolved, root))
         }
         Locator::Git { url, revision } => {
-            if let Some(cid) = recorded
-                && session.workspaces.contains(cid.clone()).await.unwrap_or(false)
-            {
-                let resolved = session.ingest(location, Staged::Disk, recorded, None).await?;
-                return Ok((
-                    resolved,
-                    path_root(session.change_root, location)
-                        .unwrap_or_else(|_| session.scratch.to_path_buf()),
-                ));
-            }
-            if let Some(cid) = session.cache.get(location)
-                && session.workspaces.contains(cid.clone()).await.unwrap_or(false)
-            {
-                let resolved = session.ingest(location, Staged::Disk, Some(&cid), None).await?;
-                return Ok((resolved, session.scratch.to_path_buf()));
+            if let Some(hit) = reuse(session, location, recorded).await? {
+                return Ok(hit);
             }
             let (root, exact, warning) = stage_git(session, trees, url, revision, prior).await?;
             let mut pinned = location.clone();
@@ -56,17 +43,8 @@ pub async fn resolve<W: Workspaces, T: Trees>(
             Ok((resolved, root))
         }
         Locator::Https(url) => {
-            if let Some(cid) = recorded
-                && session.workspaces.contains(cid.clone()).await.unwrap_or(false)
-            {
-                let resolved = session.ingest(location, Staged::Disk, recorded, None).await?;
-                return Ok((resolved, session.scratch.to_path_buf()));
-            }
-            if let Some(cid) = session.cache.get(location)
-                && session.workspaces.contains(cid.clone()).await.unwrap_or(false)
-            {
-                let resolved = session.ingest(location, Staged::Disk, Some(&cid), None).await?;
-                return Ok((resolved, session.scratch.to_path_buf()));
+            if let Some(hit) = reuse(session, location, recorded).await? {
+                return Ok(hit);
             }
             session.meter.api(session.policy)?;
             let staged = trees
@@ -115,6 +93,39 @@ async fn stage_git<W: Workspaces, T: Trees>(
         return Ok((PathBuf::from(&pinned.root), prior.to_string(), Some(warning)));
     }
     Ok((PathBuf::from(&staged.root), exact, None))
+}
+
+/// Reuse a recorded or interned CID already in the store.
+///
+/// There is no live checkout on this path — prepare a read-only tree
+/// so `plan author` can still fingerprint `project.yaml` / intent.
+async fn reuse<W: Workspaces>(
+    session: &mut Session<'_, W>, location: &Location, recorded: Option<&SnapshotId>,
+) -> Result<Option<(Resolved, PathBuf)>, Error> {
+    let cid = if let Some(cid) = recorded
+        && session.workspaces.contains(cid.clone()).await.unwrap_or(false)
+    {
+        cid.clone()
+    } else if let Some(cid) = session.cache.get(location)
+        && session.workspaces.contains(cid.clone()).await.unwrap_or(false)
+    {
+        cid
+    } else {
+        return Ok(None);
+    };
+    let resolved = session.ingest(location, Staged::Disk, Some(&cid), None).await?;
+    Ok(Some((resolved, prepared_root(session, &cid).await?)))
+}
+
+async fn prepared_root<W: Workspaces>(
+    session: &Session<'_, W>, cid: &SnapshotId,
+) -> Result<PathBuf, Error> {
+    let workspace =
+        session.workspaces.prepare(cid.clone(), false).await.map_err(|err| Error::Diag {
+            code: "binding-snapshot-failed",
+            detail: format!("materializing the recorded tree failed: {err}"),
+        })?;
+    Ok(PathBuf::from(workspace.root))
 }
 
 fn git_locator(url: &str, revision: &str) -> String {
