@@ -1119,7 +1119,7 @@ dependencies = [
  "emery-mock",
  "emery-native",
  "emery-probe",
- "emery-wasi-exec-mode",
+ "emery-wasi-exec",
  "emery-wasi-vcs",
  "omnia",
  "omnia-cursor",
@@ -1240,8 +1240,6 @@ dependencies = [
  "emery-error",
  "emery-project",
  "emery-transport",
- "emery-wasi-exec-mode",
- "emery-wasi-vcs",
  "oci-client",
  "oci-wasm",
  "omnia",
@@ -1423,10 +1421,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "emery-wasi-exec-mode"
+name = "emery-wasi-exec"
 version = "0.38.0"
 dependencies = [
  "anyhow",
+ "emery-project",
  "futures",
  "omnia",
  "tokio",
@@ -1439,6 +1438,7 @@ name = "emery-wasi-vcs"
 version = "0.38.0"
 dependencies = [
  "anyhow",
+ "emery-project",
  "futures",
  "omnia",
  "tokio",

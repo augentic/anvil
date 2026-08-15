@@ -32,9 +32,7 @@ interface exec-mode {
   apply: async func(root: string, exec: list<string>, plain: list<string>) -> result<_, error>;
 }
 
-/// Host-side bindgen world for the `exec-mode` capability: the shipped
-/// runtime links a host implementation of this interface into the
-/// engine deployment. Never exported by a guest.
-world exec-mode-host {
+/// Host-side bindgen world. Never exported by a guest.
+world imports {
   import exec-mode;
 }

@@ -18,16 +18,12 @@ use transport::command::selectors::{
 
 mod anchor;
 mod blobstore;
-mod exec_mode;
 mod install;
 mod resolver;
-mod vcs;
 
 pub use blobstore::Blobstore;
-pub use exec_mode::ExecMode;
 pub use install::Registry;
 pub use resolver::Resolver;
-pub use vcs::Vcs;
 
 /// Compiled first-party adapter catalog for detached binding.
 #[must_use]

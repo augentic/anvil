@@ -8,9 +8,9 @@ cfg_if::cfg_if! {
         use omnia_wasi_http::{HttpDefault, WasiHttp};
         use omnia_wasi_model::WasiModel;
         use omnia_wasi_blobstore::WasiBlobstore;
-        use omnia_wasi_execmode::WasiExecMode;
+        use omnia_wasi_exec::{ExecDefault, WasiExec};
         use omnia_wasi_otel::{OtelDefault, WasiOtel};
-        use omnia_wasi_vcs::WasiVcs;
+        use omnia_wasi_vcs::{VcsDefault, WasiVcs};
 
         omnia::runtime!({
             mode: command,
@@ -49,14 +49,14 @@ cfg_if::cfg_if! {
                 WasiModel: Cursor,
                 // Exec-mode round-tripping for the in-guest workspace
                 // kernel — `wasi:filesystem` carries no mode bits.
-                WasiExecMode: launcher::ExecMode,
+                WasiExec: ExecDefault,
                 // The snapshot object store: the filesystem blobstore
                 // anchored at the launcher's snapshots root.
                 WasiBlobstore: launcher::Blobstore,
                 // Git and forge I/O for bind, archaeology, and
                 // publication — the guest has no network or git;
                 // trees land under the staging root.
-                WasiVcs: launcher::Vcs,
+                WasiVcs: VcsDefault,
             }
         });
     } else {

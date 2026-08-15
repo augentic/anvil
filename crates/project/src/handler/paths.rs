@@ -5,6 +5,8 @@
 
 use std::path::{Path, PathBuf};
 
+#[cfg(not(target_arch = "wasm32"))]
+use super::locations::PROJECT_ROOT_ENV;
 use super::locations::{DETACHED_ENV, Locations};
 use crate::config::Layout;
 
@@ -53,6 +55,23 @@ impl ExecutionPaths {
     #[must_use]
     pub fn operator(project_root: impl Into<PathBuf>) -> Self {
         Self::new(project_root, Locations::from_env())
+    }
+
+    /// Host-backend paths: the launcher-exported [`PROJECT_ROOT_ENV`]
+    /// (cwd if unset) plus [`Locations::from_env`]. Composition-root only.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[must_use]
+    pub fn host() -> Self {
+        let root = std::env::var_os(PROJECT_ROOT_ENV)
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute())
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        let locations = Locations::from_env();
+        if std::env::var_os(DETACHED_ENV).is_some() {
+            Self::detached(root, locations)
+        } else {
+            Self::new(root, locations)
+        }
     }
 
     /// The engine guest's paths: `.` is the mount preopen. Detached

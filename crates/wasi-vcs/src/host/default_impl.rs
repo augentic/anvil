@@ -1,14 +1,7 @@
-//! Deployment backend for the `emery:vcs` host capability: the
-//! native VCS kernel staging `vcs-<nonce>` trees beneath the
-//! dedicated staging root, reported under the staging mount.
+//! Default implementation for `emery:vcs`.
 
 use anyhow::bail;
 use omnia::Backend;
-use omnia_wasi_vcs::{
-    Credentials, Error, ExportError, ExportRequest, ExportState, Fetched, ForgeError, ForgeResult,
-    Limits, PrState, PullRequest, TreesResult, WasiVcsCtx, WorktreeResult, blocking,
-    blocking_forge,
-};
 use project::handler::{ExecutionPaths, GUEST_STAGING_MOUNT};
 use project::seam::{
     TreeCredentials, TreeError, TreeLimits, WorktreeError, WorktreeRequest, WorktreeState,
@@ -16,27 +9,33 @@ use project::seam::{
 use project::snapshot::SnapshotId;
 use project::workspace::Store;
 
+use crate::host::{
+    Credentials, Error, ExportError, ExportRequest, ExportState, Fetched, ForgeError, ForgeResult,
+    Limits, PrState, PullRequest, TreesResult, WasiVcsCtx, WorktreeResult, blocking,
+    blocking_forge,
+};
+
 /// Staging trees older than this are abandoned (a crashed run never
 /// discarded them); each fetch sweeps opportunistically.
 const STALE_AFTER: std::time::Duration = std::time::Duration::from_hours(24);
 
-/// The VCS backend over this invocation's captured layout.
+/// Default implementation for `emery:vcs`.
 #[derive(Clone, Debug)]
-pub struct Vcs {
+pub struct VcsDefault {
     paths: ExecutionPaths,
 }
 
-impl Backend for Vcs {
+impl Backend for VcsDefault {
     type ConnectOptions = omnia::NoOptions;
 
     async fn connect_with(_options: omnia::NoOptions) -> anyhow::Result<Self> {
         Ok(Self {
-            paths: super::current().paths.clone(),
+            paths: ExecutionPaths::host(),
         })
     }
 }
 
-impl WasiVcsCtx for Vcs {
+impl WasiVcsCtx for VcsDefault {
     fn fetch(
         &self, locator: String, credentials: Credentials, limits: Limits,
     ) -> TreesResult<Fetched> {

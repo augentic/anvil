@@ -18,7 +18,7 @@ crate-type = ["cdylib"]
 anyhow.workspace = true
 cfg-if.workspace = true
 emery-launcher.workspace = true
-emery-wasi-exec-mode.workspace = true
+emery-wasi-exec.workspace = true
 emery-wasi-vcs.workspace = true
 omnia.workspace = true
 omnia-cursor.workspace = true
@@ -219,7 +219,7 @@ emery-prose = { path = "crates/prose" }
 emery-slice = { path = "crates/slice" }
 emery-system = { path = "crates/system" }
 emery-transport = { path = "crates/transport" }
-emery-wasi-exec-mode = { path = "crates/wasi-exec-mode" }
+emery-wasi-exec = { path = "crates/wasi-exec" }
 emery-wasi-vcs = { path = "crates/wasi-vcs" }
 
 omnia = { version = "0.35.0", default-features = false, features = ["jit"] }

@@ -1,32 +1,31 @@
-//! Deployment backend for the exec-mode host capability: guest-visible
-//! roots validated onto the captured layout, mode bits round-tripped
-//! by the kernel's native exec seam. Filesystem-heavy legs run blocking.
+//! Default implementation for `emery:exec-mode`.
 
 use std::path::PathBuf;
 
 use anyhow::bail;
 use omnia::Backend;
-use omnia_wasi_execmode::{FutureResult, WasiExecModeCtx, blocking};
 use project::handler::{ExecutionPaths, GUEST_WORKSPACES_MOUNT};
 use project::workspace::{ExecMode as _, FsExecMode};
 
-/// The exec-mode backend over this invocation's captured layout.
+use crate::host::{FutureResult, WasiExecCtx, blocking};
+
+/// Default implementation for `emery:exec-mode`.
 #[derive(Clone, Debug)]
-pub struct ExecMode {
+pub struct ExecDefault {
     paths: ExecutionPaths,
 }
 
-impl Backend for ExecMode {
+impl Backend for ExecDefault {
     type ConnectOptions = omnia::NoOptions;
 
     async fn connect_with(_options: omnia::NoOptions) -> anyhow::Result<Self> {
         Ok(Self {
-            paths: super::current().paths.clone(),
+            paths: ExecutionPaths::host(),
         })
     }
 }
 
-impl WasiExecModeCtx for ExecMode {
+impl WasiExecCtx for ExecDefault {
     fn read(&self, root: String) -> FutureResult<Vec<String>> {
         let paths = self.paths.clone();
         blocking(move || {
