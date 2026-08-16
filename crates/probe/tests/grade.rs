@@ -41,6 +41,69 @@ fn refuses_evidenced_sources() {
     assert!(format!("{err:#}").contains("no provenance"), "{err:#}");
 }
 
+mod blind {
+    use super::*;
+
+    #[test]
+    fn matched_needles_pass() {
+        let blind = grade::Blind {
+            accept: vec!["static string".into(), "REQ-".into()],
+        };
+        grade::blind("### Requirement: Login\n\nID: REQ-001\nthe static string\n", &blind)
+            .expect("matched needles pass");
+    }
+
+    #[test]
+    fn unmatched_needle_fails() {
+        let blind = grade::Blind {
+            accept: vec!["password rotation".into()],
+        };
+        let err = grade::blind("ID: REQ-001\nthe static string\n", &blind)
+            .expect_err("an unmatched needle fails the grade");
+        assert!(format!("{err:#}").contains("password rotation"), "{err:#}");
+    }
+
+    #[test]
+    fn loads_from_toml() {
+        let tmp = TempDir::new().expect("tempdir");
+        let path = tmp.path().join("blind.toml");
+        fs::write(&path, "accept = [\"greeting returns\", \"REQ-\"]\n").expect("write blind");
+        let blind = grade::load_blind(&path).expect("blind set loads");
+        assert_eq!(blind.accept.len(), 2);
+    }
+
+    #[test]
+    fn empty_set_refused() {
+        let tmp = TempDir::new().expect("tempdir");
+        let path = tmp.path().join("blind.toml");
+        fs::write(&path, "accept = []\n").expect("write blind");
+        let err = grade::load_blind(&path).expect_err("an empty blind set refuses");
+        assert!(format!("{err:#}").contains("no `accept`"), "{err:#}");
+    }
+
+    #[test]
+    fn unknown_key_refused() {
+        let tmp = TempDir::new().expect("tempdir");
+        let path = tmp.path().join("blind.toml");
+        fs::write(&path, "accept = [\"x\"]\nreject = [\"y\"]\n").expect("write blind");
+        let err = grade::load_blind(&path).expect_err("unknown keys refuse");
+        assert!(format!("{err:#}").contains("reject"), "{err:#}");
+    }
+}
+
+#[test]
+fn baseline_text_concats() {
+    let tmp = TempDir::new().expect("tempdir");
+    for (domain, body) in [("auth", "auth body\n"), ("billing", "billing body\n")] {
+        let dir = tmp.path().join(".emery/specs").join(domain);
+        fs::create_dir_all(&dir).expect("domain");
+        fs::write(dir.join("spec.md"), body).expect("spec");
+    }
+    let text = grade::baseline_text(tmp.path()).expect("baseline text");
+    assert!(text.contains("auth body"), "{text}");
+    assert!(text.contains("billing body"), "{text}");
+}
+
 #[test]
 fn baseline_reads_domain() {
     let tmp = TempDir::new().expect("tempdir");

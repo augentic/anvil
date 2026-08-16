@@ -145,7 +145,7 @@ async fn staged_tree_promotes() {
 // the repair budget, fails typed, and leaves the slice artifacts
 // untouched.
 #[tokio::test]
-async fn failed_validation_leaves_artifacts_untouched() {
+async fn failed_stage_untouched() {
     let incomplete = || answer(&[("artifacts", artifacts())]);
     let session = Session::scripted("mock", vec![incomplete(), incomplete(), incomplete()]);
     seed_greeting_plan(session.root());

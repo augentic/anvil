@@ -66,6 +66,18 @@ pub struct Workflow {
     /// Default stop rung; `--until` overrides per run.
     #[serde(default)]
     pub until: WorkflowUntil,
+    /// Operation cap for this run (RFC-96 D11): injected as
+    /// `EMERY_POOL` before the case's verbs run. `1` is the serial
+    /// reference of a cap-comparison pair; absent inherits deployment
+    /// policy.
+    #[serde(default)]
+    pub cap: Option<usize>,
+    /// Blind acceptance set relative to `case.toml` (RFC-96 D11): a
+    /// TOML `accept = […]` file graded only against the accepted
+    /// baseline — never copied into the sandbox, so workflow model
+    /// calls cannot read it.
+    #[serde(default)]
+    pub blind: Option<PathBuf>,
 }
 
 /// One `git clone --depth 1` populating the sibling `fixture/` cache.
@@ -197,6 +209,16 @@ fn validate(case: &Case) -> Result<()> {
                     || !workflow.sources.is_empty(),
                 "a workflow case requires `definition`, `intent`, or at least one `[sources]` binding"
             );
+            if let Some(cap) = workflow.cap {
+                ensure!(
+                    (1..=project::pool::MAX_CAP).contains(&cap),
+                    "`cap` must be 1..={} (the compiled pool ceiling)",
+                    project::pool::MAX_CAP
+                );
+            }
+            if let Some(blind) = &workflow.blind {
+                ensure!(!blind.as_os_str().is_empty(), "empty `blind` path");
+            }
             if let Some(clone) = &workflow.clone {
                 ensure!(
                     workflow.fixture.is_none(),

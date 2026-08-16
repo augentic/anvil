@@ -105,12 +105,23 @@ async fn execute(
         Case::Workflow(workflow) => {
             let until = until.unwrap_or(workflow.until);
             tracing::Span::current().record("until", until.label());
+            apply_cap(workflow.cap);
+            let blind = workflow
+                .blind
+                .as_ref()
+                .map(|rel| {
+                    let path =
+                        if rel.is_absolute() { rel.clone() } else { root.join(id).join(rel) };
+                    grade::load_blind(&path)
+                })
+                .transpose()?;
             println!(
                 "eval case {id}: workflow until {} sandbox {}",
                 until.label(),
                 scratch.display()
             );
-            run_workflow(id, workflow, until, &scratch, &model, catalog, &telemetry).await
+            run_workflow(id, workflow, until, &scratch, &model, catalog, &telemetry, blind.as_ref())
+                .await
         }
         Case::Build(build) => {
             println!("eval case {id}: build slice {} sandbox {}", build.slice, scratch.display());
@@ -119,9 +130,21 @@ async fn execute(
     }
 }
 
+/// Inject a case's `cap` as `EMERY_POOL` — the launcher cap-policy
+/// seam [`project::pool::cap`] reads. The eval composition runs one
+/// case per process, so the write cannot race another run.
+#[expect(unsafe_code, reason = "EMERY_POOL is the launcher cap seam; one case per process")]
+fn apply_cap(cap: Option<usize>) {
+    if let Some(cap) = cap {
+        // SAFETY: single-case process; no concurrent env reader yet.
+        unsafe { std::env::set_var("EMERY_POOL", cap.to_string()) };
+    }
+}
+
+#[expect(clippy::too_many_arguments, reason = "internal driver; callers use `run`")]
 async fn run_workflow(
     id: &str, case: &Workflow, until: WorkflowUntil, root: &Path, model: &DynModel,
-    catalog: &Catalog, telemetry: &Telemetry<DynModel>,
+    catalog: &Catalog, telemetry: &Telemetry<DynModel>, blind: Option<&grade::Blind>,
 ) -> Result<()> {
     let supplied = definition_home(root, case);
     if supplied.is_none() {
@@ -188,8 +211,14 @@ async fn run_workflow(
         ladders.values().all(|status| *status == Status::Done),
         "execute must drain the plan (projected done): ladders={ladders:?}"
     );
-    grade_accepted(root).await?;
+    let accepted = grade_accepted(root).await?;
+    if let Some(blind) = blind {
+        grade::blind(&accepted.text, blind).context("grading the blind acceptance set")?;
+    }
     telemetry::report(&telemetry.counts(), plan.entries.len());
+    let report =
+        crate::metrics::coordination(executed, &events, telemetry.counts(), accepted.rows)?;
+    crate::metrics::render(&report);
 
     if until == WorkflowUntil::Finalize {
         invoke(root, model, catalog, &["plan", "archive"]).await?;
@@ -364,13 +393,23 @@ async fn ensure_target_trees(
     Ok(())
 }
 
-async fn grade_accepted(root: &Path) -> Result<()> {
+/// The grading residue [`run_workflow`]'s tail consumes: per-target
+/// accepted rows for the coordination report plus the concatenated
+/// baseline text the blind set grades against.
+struct AcceptedGrading {
+    rows: Vec<crate::metrics::Accepted>,
+    text: String,
+}
+
+async fn grade_accepted(root: &Path) -> Result<AcceptedGrading> {
     let paths = paths(root);
     let layout = paths.layout();
     let plan = project::plan::Plan::load(&layout.plan_path()).context("loading plan.yaml")?;
     let events = project::plan::collect_events(layout).context("collecting journal events")?;
     let store = project::workspace::Store::new(paths.locations().snapshots_root());
     let mut requirements = Vec::new();
+    let mut rows = Vec::new();
+    let mut text = String::new();
     for id in plan.targets.keys() {
         let Some(cid) = project::wave::accepted_cid(layout, &events, id)
             .with_context(|| format!("accepted CID for target `{id}`"))?
@@ -382,10 +421,19 @@ async fn grade_accepted(root: &Path) -> Result<()> {
             .materialize(&cid, &dest)
             .await
             .with_context(|| format!("materializing accepted CID for target `{id}`"))?;
-        requirements.extend(grade::baseline(&dest)?);
+        let graded = grade::baseline(&dest)?;
+        text.push_str(&grade::baseline_text(&dest)?);
+        rows.push(crate::metrics::Accepted {
+            target: id.clone(),
+            cid,
+            requirements: graded.len(),
+            bytes: crate::metrics::tree_bytes(&dest)?,
+        });
+        requirements.extend(graded);
     }
     ensure!(!requirements.is_empty(), "execute produced no accepted-CID baseline to grade");
-    grade::provenance(&requirements)
+    grade::provenance(&requirements)?;
+    Ok(AcceptedGrading { rows, text })
 }
 
 fn case_layout(root: &Path) -> Layout<'_> {

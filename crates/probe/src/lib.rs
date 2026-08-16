@@ -8,6 +8,7 @@ pub mod case;
 pub mod client;
 mod fs;
 pub mod grade;
+pub mod metrics;
 mod run;
 pub mod sandbox;
 pub mod telemetry;
