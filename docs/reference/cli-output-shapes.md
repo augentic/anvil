@@ -168,6 +168,17 @@ Abandons one entry's slice without merging. The body carries the archive destina
 
 Read-only projection of the plan's execution state. `next-action` is the dispatch string (`refine|build|merge <slice>` / `stop <reason>` / `drained`) with `action` as its machine discriminant; `stop` is non-null only when `action` is `stop`, carrying the closed stop-reason discriminant, optional journal detail, and operator hint. The re-entry fields ride the same body: `current-step` / `last-completed` name the slice's position in the `refine → build → merge` rhythm, and `resume` is the literal command (or skill invocation) that makes progress — `null` when no single command does (e.g. `stuck`, `slice-dropped`). Refinement resumes through `emery plan refine` (`/emery:refine` on a fresh plan); build and merge resume through the execute loop (`/emery:execute` on a fresh, Ready plan). The verb never writes: the execute loop's claim step stays the only `in-progress` writer.
 
+Under concurrent execution (RFC-96) more than one entry may be in progress at once. `in-progress` lists one row per in-progress entry — `slice`, `target`, the awaited `phase`, and any parked `stop` block — in the canonical work order (target, topological layer, plan order, slice); the singular fields above are the head of that order, so the one-clear-next-command contract holds at any cap. The array is omitted when nothing is in progress.
+
+```json
+{
+  "in-progress": [
+    { "slice": "a", "target": "default", "phase": "build" },
+    { "slice": "b", "target": "default", "phase": "refine" }
+  ]
+}
+```
+
 ```json
 {
   "action": "refine",
@@ -262,7 +273,7 @@ The merge phase inside `emery plan execute` folds the slice's spec deltas into t
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the `emery plan refine` drain assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree — they are not inlined on the wire), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the `emery plan refine` drain assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the stage-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent staged tree — they are not inlined on the wire; RFC-96 D10), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -273,12 +284,12 @@ The synthesis leg inside the `emery plan refine` drain assembles the agent **inp
     {
       "source": "docs",
       "lead": "password-reset",
-      "evidence-path": ".emery/change/slices/identity-service/evidence/docs.yaml"
+      "evidence-path": "evidence/docs.yaml"
     },
     {
       "source": "legacy",
       "lead": "password-reset",
-      "evidence-path": ".emery/change/slices/identity-service/evidence/legacy.yaml"
+      "evidence-path": "evidence/legacy.yaml"
     }
   ],
   "guidance-brief": "# Guidance brief\n…"

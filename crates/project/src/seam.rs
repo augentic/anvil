@@ -313,6 +313,20 @@ pub trait Target: Send + Sync {
     ) -> impl Future<Output = Result<BuildReport, Error>> + Send;
 }
 
+/// The engine's own synthesis reference shelf (RFC-96 D9).
+///
+/// The native provider serves the shelf from its lazy loopback
+/// reference listener; the engine guest derives the URL from the
+/// deployment's pre-bound `HTTP_ADDR` listener, whose `http_paths`
+/// hook routes `/mcp/engine/synthesis` back onto the engine guest.
+/// `Ok(None)` means no listener is available — the synthesis prompt
+/// falls back to inlining the full playbook, so degradation is
+/// coherent end to end.
+pub trait Shelf: Send + Sync {
+    /// The shelf URL to grant on the synthesis judgment, when served.
+    fn synthesis_shelf(&self) -> impl Future<Output = Result<Option<String>, Error>> + Send;
+}
+
 /// The host-owned private-workspace capability (RFC-87).
 ///
 /// Mirrors the WIT `workspaces` interface: immutable snapshots in a
@@ -353,6 +367,13 @@ pub trait Workspaces: Send + Sync {
     /// object, record the result snapshot, and derive the touched
     /// paths against the recorded base.
     fn capture(&self, id: String) -> impl Future<Output = Result<CodePatch, Error>> + Send;
+
+    /// Compose same-base, disjoint patches into one result snapshot
+    /// (RFC-96 D6). Base mismatch and touched-path overlap fail typed
+    /// before any store mutation; there is no textual merge.
+    fn compose(
+        &self, base: SnapshotId, patches: Vec<CodePatch>,
+    ) -> impl Future<Output = Result<CodePatch, Error>> + Send;
 
     /// Discard a workspace. Idempotent; captured snapshots survive by
     /// digest.

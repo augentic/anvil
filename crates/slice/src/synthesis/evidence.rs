@@ -103,8 +103,10 @@ pub fn read_evidence_dir(slice_dir: &Path) -> Result<Vec<EvidenceDoc>> {
 pub type KernelEvidence = (BTreeMap<String, AuthorityClass>, BTreeMap<(String, String), ClaimKind>);
 
 /// Read each bound source's `evidence/<source>.yaml` into a
-/// [`SourceInput`] for the agent inputs envelope, carrying the
-/// project-relative `evidence-path` the agent reads the claims from.
+/// [`SourceInput`] for the agent inputs envelope. The wire
+/// `evidence-path` is stage-relative (`evidence/<source>.yaml`): the
+/// lent staged tree is seeded from the slice bundle, so the agent
+/// reads the claims inside its own workspace (RFC-96 D10).
 ///
 /// # Errors
 ///
@@ -117,20 +119,9 @@ pub fn read_source_inputs(layout: Layout<'_>, entry: &Entry) -> Result<Vec<Sourc
         .map(|binding| {
             let source = binding.source();
             let path = evidence_path(&slice_dir, source);
-            SourceInput::from_file(source, &path, wire_path(layout, &path))
+            SourceInput::from_file(source, &path, format!("evidence/{source}.yaml"))
         })
         .collect()
-}
-
-/// Project-relative, `/`-joined form of `path` — the lent-tree path
-/// the synthesis inputs envelope hands the agent.
-fn wire_path(layout: Layout<'_>, path: &Path) -> String {
-    path.strip_prefix(layout.project_dir())
-        .unwrap_or(path)
-        .components()
-        .map(|component| component.as_os_str().to_string_lossy().into_owned())
-        .collect::<Vec<_>>()
-        .join("/")
 }
 
 /// Distil the per-source document-level `authority` map and the

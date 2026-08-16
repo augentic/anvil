@@ -1,19 +1,26 @@
-//! The drained execute loop behind `emery plan execute`: advance,
-//! dispatch the entry's phase (build / merge), repeat until `drained`
-//! or a typed stop. Execute never refines (RFC-91 D5).
+//! The drained execute loop behind `emery plan execute`: fan ready
+//! builds onto the bounded pool, commit merges serially at the
+//! canonical head, repeat until `drained` or a typed stop (RFC-96).
 
 use std::ops::ControlFlow;
 
+use artifacts::leads::Leads;
 use error::Error;
 use jiff::Timestamp;
 use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::config::Layout;
 use project::handler::ExecutionPaths;
-use project::journal::{self, Event, EventKind};
-use project::plan::{LoopStep, NextActionKind, Plan, StatusBody, StopReason, plan_status_body};
+use project::journal::{self, Event, EventKind, claim};
+use project::plan::{
+    LoopStep, NextActionKind, Plan, StatusBody, StopReason, collect_events, plan_status_body,
+    schedule,
+};
+use project::pool;
 use project::seam::{PhaseSource, Source, Target, Workspaces, Worktree};
 use tracing::Instrument as _;
+
+use super::converge;
 
 mod marker;
 mod publication;
@@ -110,28 +117,37 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces + Worktree, R: 
             }
             continue;
         }
-        // Progress rendering: the active entry is the (done + 1)-th of the
-        // plan's total, carried into the per-phase lines below.
-        let counts = status.counts;
-        let total = counts.pending + counts.in_progress + counts.done;
-        let entry = (counts.done + 1).min(total.max(1));
-        // A single execute process walks entries one-by-one. When status
-        // already names an in-progress entry, resume it — advance would
-        // start a different eligible pending sibling instead.
-        let resume = status.active.clone();
-        let step = match dispatch_status(layout, now, status, &phases) {
+        // A projected complete-round gap (RFC-96 D8) is the loop's own
+        // convergence step: record the missing rounds, then re-project
+        // — a durably failed round re-surfaces as the stop.
+        if status.stop.as_ref().map(|stop| stop.reason) == Some(StopReason::DomainCompleteFailed) {
+            match converge::complete(caps.targets, caps.resolver, paths, now, &plan).await? {
+                None => continue,
+                Some(failure) => return Ok(domain_stop(&failure, &phases)),
+            }
+        }
+        match dispatch_status(layout, now, status, &phases) {
             ControlFlow::Break(outcome) => return Ok(outcome),
             ControlFlow::Continue(None) => continue, // postflight ack
-            ControlFlow::Continue(Some(step)) => step,
-        };
+            ControlFlow::Continue(Some(_)) => {}     // ready work below
+        }
 
-        let Some(slice) = (match resume {
-            Some(slice) => Some(slice),
-            None => advance(caps.resolver, paths, now)?,
-        }) else {
-            // The status projection targeted a phase but the advance
-            // found nothing runnable — plan state moved underneath us.
-            // Surface it as the stuck stop rather than spinning.
+        // Ready-set dispatch (RFC-96 D2): merges commit serially at
+        // the canonical head (a landed merge requeues stale sibling
+        // builds by identity); ready builds fan out on the pool.
+        let ready = ready_items(layout, &plan)?;
+        if let Some(item) = ready.iter().find(|item| item.phase == LoopStep::Merge) {
+            match run_merge(caps, paths, now, &plan, item.slice.as_str(), &mut phases).await? {
+                Some(stopped) => return Ok(stopped),
+                None => continue,
+            }
+        }
+        let builds: Vec<schedule::WorkItem> =
+            ready.into_iter().filter(|item| item.phase == LoopStep::Build).collect();
+        if builds.is_empty() {
+            // The status projection targeted a phase but the ready set
+            // is empty — plan state moved underneath us. Surface it as
+            // the stuck stop rather than spinning.
             return Ok(ExecuteOutcome::Stopped {
                 reason: StopReason::Stuck,
                 detail: None,
@@ -139,63 +155,244 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces + Worktree, R: 
                 slice: None,
                 phases,
             });
-        };
-        // Build staleness (RFC-86a D4): rebuild when deferred set drifted
-        // from the build record or the newest wave's rebuild failed.
-        // Pin/source drift is refinement's (RFC-91); execute never re-refines.
-        let step = if step == LoopStep::Merge
-            && slice::dispositions_drifted(layout, &layout.slice_dir(&slice), &slice)?
-        {
-            tracing::info!(
-                "deferred dispositions drifted for {slice} — re-building under this epoch"
-            );
-            LoopStep::Build
-        } else {
-            step
-        };
+        }
+        if let Some(stopped) = run_builds(caps, paths, now, &plan, &builds, &mut phases).await? {
+            return Ok(stopped);
+        }
+    }
+}
 
-        tracing::info!("{step} {slice} [entry {entry}/{total}] …");
+/// The ready set over the live plan, facts, and lead catalog. An
+/// absent catalog degrades to empty, matching the freshness posture.
+fn ready_items(layout: Layout<'_>, plan: &Plan) -> Result<Vec<schedule::WorkItem>, Error> {
+    let events = collect_events(layout)?;
+    let leads_path = layout.leads_path();
+    let catalog = if leads_path.exists() { Leads::load(&leads_path)? } else { Leads::empty() };
+    let mut live = project::refinement::Live::new();
+    schedule::ready_set(plan, layout, &events, catalog.leads(), &mut live)
+}
+
+/// Claim `slice` for this writer (`slice.claimed` +
+/// `plan.entry.advanced`), a no-op when this writer already holds it.
+///
+/// # Errors
+///
+/// `slice-claim-conflict` when another writer owns the slice.
+fn claim_slice(layout: Layout<'_>, now: Timestamp, plan: &Plan, slice: &str) -> Result<(), Error> {
+    let slice_name: project::name::SliceName = slice.to_string().into();
+    let events = collect_events(layout)?;
+    let ownership = claim::project(&events);
+    let writer = journal::writer_id();
+    if ownership.owner(&slice_name) == Some(writer.as_str()) {
+        return Ok(());
+    }
+    let claimed = claim::claim(&ownership, slice_name.clone(), &writer)?;
+    journal::append_one(layout, &Event::new(now, claimed))?;
+    journal::append_one(
+        layout,
+        &Event::new(
+            now,
+            EventKind::PlanEntryAdvanced {
+                plan_name: plan.name.clone(),
+                slice_name,
+            },
+        ),
+    )?;
+    Ok(())
+}
+
+/// Commit one merge at the canonical head — serially, never on the
+/// pool. Deferred-disposition drift (RFC-86a D4) downgrades the merge
+/// to a rebuild under this epoch. Returns the stop that ends the run,
+/// or `None` to continue the loop.
+async fn run_merge<P: Model, S: Source, T: Target + Workspaces + Worktree, R: Resolver>(
+    caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, plan: &Plan,
+    slice: &str, phases: &mut Vec<PhaseRun>,
+) -> Result<Option<ExecuteOutcome>, Error> {
+    let layout = paths.layout();
+    claim_slice(layout, now, plan, slice)?;
+    let step = if slice::dispositions_drifted(layout, &layout.slice_dir(slice), slice)? {
+        tracing::info!("deferred dispositions drifted for {slice} — re-building under this epoch");
+        LoopStep::Build
+    } else {
+        LoopStep::Merge
+    };
+    tracing::info!("{step} {slice} …");
+    if step == LoopStep::Build {
+        super::enforce_before_build(layout, plan, slice, now)?;
+    }
+    // The frontier round gates a multi-member wave's commit (RFC-96
+    // D8): a failed round parks the wave — no prefix commits.
+    if step == LoopStep::Merge
+        && let Some(failure) =
+            converge::frontier(caps.targets, caps.resolver, paths, now, plan, slice).await?
+    {
+        return Ok(Some(domain_stop(&failure, phases)));
+    }
+    match run_phase(caps, paths, now, step, slice).await {
+        Ok(verification) => {
+            tracing::info!("{step} {slice} — completed");
+            phases.push(PhaseRun {
+                slice: slice.to_string(),
+                step,
+                verification,
+            });
+            // A landed merge may complete its target's in-scope set:
+            // record any newly convergeable complete rounds (RFC-96
+            // D8), then materialize eagerly (RFC-95 D11).
+            if step == LoopStep::Merge {
+                if let Some(failure) =
+                    converge::complete(caps.targets, caps.resolver, paths, now, plan).await?
+                {
+                    return Ok(Some(domain_stop(&failure, phases)));
+                }
+                return reconcile_publication(caps.targets, paths, now, phases).await;
+            }
+            Ok(None)
+        }
+        Err(err) => {
+            let reason = phase_stop_reason(step, &err);
+            tracing::info!("{step} {slice} — stopped: {reason}");
+            Ok(Some(ExecuteOutcome::Stopped {
+                reason,
+                detail: Some(err.to_string()),
+                hint: reason.hint(),
+                slice: Some(slice.to_string()),
+                phases: phases.clone(),
+            }))
+        }
+    }
+}
+
+/// Fan the ready builds onto the bounded pool: same-target groups
+/// freeze one multi-member wave before claims and builds (RFC-96 D7,
+/// membership capped at the pool cap), claims and the gap gate run
+/// serially per admitted item, dispatches overlap up to the cap, and
+/// outcomes join in canonical order — never completion order. The
+/// first failure (in canonical order) drains in-flight siblings to
+/// their terminal reports and stops the run; completed siblings keep
+/// their `PhaseRun` rows.
+async fn run_builds<P: Model, S: Source, T: Target + Workspaces + Worktree, R: Resolver>(
+    caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, plan: &Plan,
+    builds: &[schedule::WorkItem], phases: &mut Vec<PhaseRun>,
+) -> Result<Option<ExecuteOutcome>, Error> {
+    let layout = paths.layout();
+    let builds = capped_groups(builds);
+    for (target, group) in &builds {
+        if group.len() > 1 {
+            let slices: Vec<String> = group.iter().map(|item| item.slice.to_string()).collect();
+            slice::orchestrate::open_wave_group(caps.targets, layout, now, target, &slices).await?;
+        }
+    }
+    let builds: Vec<&schedule::WorkItem> =
+        builds.iter().flat_map(|(_, group)| group.iter().copied()).collect();
+    for item in &builds {
+        claim_slice(layout, now, plan, item.slice.as_str())?;
         // Epoch freshness gates build before the target orchestration
         // (`plan-epoch-stale`); open gaps are dispositioned at the
         // gate itself (gate-time deferrals) and never block.
-        if step == LoopStep::Build {
-            let plan = Plan::load(&layout.plan_path())?;
-            super::enforce_before_build(layout, &plan, &slice, now)?;
-        }
-        let result = run_phase(caps, paths, now, step, &slice).await;
+        super::enforce_before_build(layout, plan, item.slice.as_str(), now)?;
+        tracing::info!("build {} …", item.slice);
+    }
+    let claims = pool::Claims::default();
+    let jobs: Vec<pool::Job<'_, Option<PhaseSource>, Error>> = builds
+        .iter()
+        .map(|item| pool::Job {
+            claim: pool::Claim {
+                item: format!("{}:{}", item.slice, item.digest),
+                operation: "build".to_string(),
+                attempt: 1,
+            },
+            budget: pool::budget::BUILD,
+            future: Box::pin(run_phase(caps, paths, now, LoopStep::Build, item.slice.as_str())),
+        })
+        .collect();
+    let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
 
-        match result {
+    let mut stop: Option<(StopReason, String, String)> = None;
+    for (item, outcome) in builds.iter().copied().zip(outcomes) {
+        let slice = item.slice.as_str();
+        match settle_build(outcome, slice) {
             Ok(verification) => {
-                tracing::info!("{step} {slice} [entry {entry}/{total}] — completed");
+                tracing::info!("build {slice} — completed");
                 phases.push(PhaseRun {
-                    slice,
-                    step,
+                    slice: slice.to_string(),
+                    step: LoopStep::Build,
                     verification,
                 });
-                // A landed merge may complete its target's in-scope
-                // set — materialize eagerly (RFC-95 D11 permits
-                // running before unrelated targets drain).
-                if step == LoopStep::Merge
-                    && let Some(stopped) =
-                        reconcile_publication(caps.targets, paths, now, &phases).await?
-                {
-                    return Ok(stopped);
+            }
+            Err(err) if stop.is_none() => {
+                let reason = phase_stop_reason(LoopStep::Build, &err);
+                tracing::info!("build {slice} — stopped: {reason}");
+                stop = Some((reason, err.to_string(), slice.to_string()));
+            }
+            // Later failures re-surface on the re-entrant run; the
+            // first (in canonical order) is this run's stop.
+            Err(_) => {}
+        }
+    }
+    Ok(stop.map(|(reason, detail, slice)| ExecuteOutcome::Stopped {
+        reason,
+        detail: Some(detail),
+        hint: reason.hint(),
+        slice: Some(slice),
+        phases: phases.clone(),
+    }))
+}
+
+/// Map one failed domain round onto the typed execute stop (RFC-96
+/// D8): `domain-frontier-failed` parks the wave;
+/// `domain-complete-failed` blocks dependants, drain, and publication.
+fn domain_stop(failure: &converge::Failure, phases: &[PhaseRun]) -> ExecuteOutcome {
+    let reason = match failure.kind {
+        project::domain::RoundKind::Frontier => StopReason::DomainFrontierFailed,
+        project::domain::RoundKind::Complete => StopReason::DomainCompleteFailed,
+    };
+    tracing::info!("domain {} — stopped: {reason}", failure.domain);
+    ExecuteOutcome::Stopped {
+        reason,
+        detail: Some(failure.detail.clone()),
+        hint: reason.hint(),
+        slice: None,
+        phases: phases.to_vec(),
+    }
+}
+
+/// Group the canonical-order ready builds by target, truncating each
+/// group at the pool cap: frozen wave membership never exceeds the
+/// cap, and overflow items wait for a later round (RFC-96 D7).
+fn capped_groups(builds: &[schedule::WorkItem]) -> Vec<(String, Vec<&schedule::WorkItem>)> {
+    let cap = pool::cap();
+    let mut groups: Vec<(String, Vec<&schedule::WorkItem>)> = Vec::new();
+    for item in builds {
+        match groups.last_mut() {
+            Some((target, group)) if *target == item.target => {
+                if group.len() < cap {
+                    group.push(item);
                 }
             }
-            Err(err) => {
-                // The phase already journalled its failure terminal, so a
-                // re-entrant run reports this same stop. Refine / build /
-                // preflight leave `in-progress`; postflight stamped `done`.
-                let reason = phase_stop_reason(step, &err);
-                tracing::info!("{step} {slice} [entry {entry}/{total}] — stopped: {reason}");
-                return Ok(ExecuteOutcome::Stopped {
-                    reason,
-                    detail: Some(err.to_string()),
-                    hint: reason.hint(),
-                    slice: Some(slice),
-                    phases,
-                });
-            }
+            _ => groups.push((item.target.clone(), vec![item])),
+        }
+    }
+    groups
+}
+
+/// Fold one pool outcome into the drain's per-build surface, in
+/// canonical order.
+fn settle_build(
+    outcome: pool::Outcome<Option<PhaseSource>, Error>, slice: &str,
+) -> Result<Option<PhaseSource>, Error> {
+    match outcome {
+        pool::Outcome::Settled(result) => result,
+        pool::Outcome::TimedOut => Err(Error::Diag {
+            code: "target-build-timeout",
+            detail: format!("build of `{slice}` exceeded its inactivity budget; re-run execute"),
+        }),
+        pool::Outcome::Rejected | pool::Outcome::Cancelled | pool::Outcome::Skipped => {
+            Err(Error::Diag {
+                code: "target-build-cancelled",
+                detail: format!("build of `{slice}` did not run (a sibling build failed first)"),
+            })
         }
     }
 }
@@ -409,18 +606,6 @@ fn refinement_required(status: StatusBody, phases: &[PhaseRun]) -> ExecuteOutcom
         slice: status.slice,
         phases: phases.to_vec(),
     }
-}
-
-/// Advance the plan through the shared
-/// [`project::plan::advance_next`] kernel (see the module docs for
-/// why `require_held` does not apply in-loop). Returns the claimed or
-/// active slice, or `None` when nothing is runnable (drained / stuck —
-/// the status projection decides which).
-fn advance(
-    resolver: &impl Resolver, paths: &ExecutionPaths, now: Timestamp,
-) -> Result<Option<String>, Error> {
-    let body = project::plan::advance_next(resolver, paths, now)?;
-    Ok(body.advanced.or(body.active))
 }
 
 fn entry_adapter(

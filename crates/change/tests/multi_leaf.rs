@@ -162,7 +162,9 @@ async fn chain_drains() {
 // assembles fresh coverage — alpha is done and excluded, and beta's
 // manifest is still fresh because checkout `.emery/specs/` no longer
 // moves on merge (recorded refine pins still match live). Without
-// that, the re-run would fail `plan-refinement-required`.
+// that, the re-run would fail `plan-refinement-required`. Beta
+// depends on alpha so the pair serializes into two waves instead of
+// one frozen group (RFC-96 D7).
 #[tokio::test]
 async fn merge_stop_reentry() {
     let session = Session::scripted(
@@ -172,6 +174,7 @@ async fn merge_stop_reentry() {
     let root = session.root().to_path_buf();
 
     chain_plan(&root, &[("alpha", "main"), ("beta", "aux")]);
+    depend(&session, "beta", "alpha").await;
     support::refine_plan(&session).await;
     let beta_digest = support::manifest_digest(&root, "beta");
 

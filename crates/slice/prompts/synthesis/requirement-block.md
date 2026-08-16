@@ -1,6 +1,6 @@
 # Requirement block
 
-Every requirement in a spec file (`specs/<domain>/spec.md`) is one H3 block with three provenance lines plus a body. **The agent authors only the heading and body prose** (plus the requirement's `(source, id, kind)` claims and `agreement` verdict in the response); the refine phase's synthesis kernel **renders the `ID:` / `Sources:` / `Status:` lines and the headline tag** from `model.yaml`. The provenance parser (consumed by `emery slice validate`) validates the rendered shape exactly — an operator hand-edit that stales a kernel-rendered line fails `slice-spec-provenance-stale`.
+Every requirement in a spec file (`specs/<domain>/spec.md`) is one H3 block with three provenance lines plus a body. **The agent authors only the heading and body prose** (plus the requirement's `(source, id, kind)` claims and `agreement` verdict in the staged `model.yaml`); the refine phase's synthesis kernel **renders the `ID:` / `Sources:` / `Status:` lines and the headline tag** from `model.yaml`. The provenance parser (consumed by `emery slice validate`) validates the rendered shape exactly — an operator hand-edit that stales a kernel-rendered line fails `slice-spec-provenance-stale`.
 
 ## Canonical template (kernel-rendered)
 

@@ -7,7 +7,7 @@ use omnia_guest::api::command::{CommandResponse, Outcome, Projector, Router};
 use project::adapter::{Inventory, Resolver};
 use project::handler::{Anchor, Render};
 use project::profile::Profiles;
-use project::seam::{Forge, Source, Target, Trees, Workspaces, Worktree};
+use project::seam::{Forge, Shelf, Source, Target, Trees, Workspaces, Worktree};
 use serde::Serialize;
 use tracing::Instrument as _;
 
@@ -118,6 +118,7 @@ where
         + Inventory
         + Profiles
         + Source
+        + Shelf
         + Target
         + Workspaces
         + Trees

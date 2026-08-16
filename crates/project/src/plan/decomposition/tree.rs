@@ -93,6 +93,43 @@ pub struct Node {
     /// Reviewable acceptance boundary. Required on leaves.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub acceptance: Option<String>,
+    /// Covered protected-input entries this node vouches for
+    /// (optional, RFC-96 D8).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub covered: Vec<Covered>,
+    /// External protected-input oracles (optional, RFC-96 D8).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub oracles: Vec<Oracle>,
+}
+
+/// One covered in-tree protected input (RFC-96 D8).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct Covered {
+    /// Entry kind.
+    pub kind: CoveredKind,
+    /// Workspace-relative path.
+    pub path: String,
+}
+
+/// Closed covered-entry kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CoveredKind {
+    /// One file.
+    File,
+    /// A directory subtree.
+    Tree,
+}
+
+/// One external protected-input oracle (RFC-96 D8).
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct Oracle {
+    /// Stable oracle id.
+    pub id: String,
+    /// Content digest the oracle vouches for.
+    pub digest: SnapshotId,
 }
 
 /// One contributing `(source, lead)` pair.

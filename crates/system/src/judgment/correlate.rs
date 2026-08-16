@@ -104,16 +104,24 @@ pub async fn correlate<P: Model>(
         "## Correlation inputs\n\n```json\n{}\n```",
         render_json(inputs, "correlation inputs")?
     );
-    repaired(model, prose::correlate_system(), user, "correlation", &schema, |answer| {
-        let response: CorrelationResponse = serde_saphyr::from_str(answer).map_err(|err| {
-            Error::validation_failed(
-                "system-correlate-response-parse",
-                "the answer deserialises as a correlation response",
-                format!("failed to parse correlation response: {err}"),
-            )
-        })?;
-        tail(response.as_is, claims)
-    })
+    repaired(
+        model,
+        prose::correlate_system(),
+        user,
+        "correlation",
+        &schema,
+        project::judgment::Lent::default(),
+        |answer| {
+            let response: CorrelationResponse = serde_saphyr::from_str(answer).map_err(|err| {
+                Error::validation_failed(
+                    "system-correlate-response-parse",
+                    "the answer deserialises as a correlation response",
+                    format!("failed to parse correlation response: {err}"),
+                )
+            })?;
+            tail(response.as_is, claims)
+        },
+    )
     .await
 }
 

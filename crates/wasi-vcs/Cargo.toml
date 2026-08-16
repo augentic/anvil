@@ -19,8 +19,10 @@ workspace = true
 name = "omnia_wasi_vcs"
 path = "src/lib.rs"
 
-[dependencies]
+# host dependencies
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 anyhow.workspace = true
+emery-project.workspace = true
 futures.workspace = true
 omnia.workspace = true
 tokio.workspace = true

@@ -18,16 +18,12 @@ use transport::command::selectors::{
 
 mod anchor;
 mod blobstore;
-mod exec_mode;
 mod install;
 mod resolver;
-mod vcs;
 
 pub use blobstore::Blobstore;
-pub use exec_mode::ExecMode;
 pub use install::Registry;
 pub use resolver::Resolver;
-pub use vcs::Vcs;
 
 /// Compiled first-party adapter catalog for detached binding.
 #[must_use]
@@ -293,7 +289,11 @@ fn current() -> &'static Policy {
 }
 
 /// Export the host-absolute `.` mount, change home, and detached flag
-/// so guests inherit them.
+/// so guests inherit them. The operator's `EMERY_WRITER` (RFC-96 D4
+/// writer identity) and `EMERY_POOL` (the D1 operation cap read by
+/// `project::pool::cap`) ride the same inheritance as `HTTP_ADDR`:
+/// the runtime snapshots the host environment into every guest store,
+/// so one read works on both deployments.
 fn export_roots(paths: &ExecutionPaths) {
     let mount = std::path::absolute(paths.project_root())
         .unwrap_or_else(|_io| paths.project_root().to_path_buf());
@@ -393,17 +393,24 @@ pub fn resolver() -> Resolver {
     current().resolver()
 }
 
+/// The engine guest's deployment identity — must match the `guests:`
+/// id in the `omnia::runtime!` invocation in `src/main.rs`.
+const ENGINE_GUEST: &str = "emery";
+
 /// Macro expression: the deployment's `http_paths:` hook, mapping
-/// adapter MCP reference-shelf paths to guest identities.
+/// MCP reference-shelf paths to guest identities.
 ///
-/// `/mcp/<axis>/<name>[@<version>]` maps back onto the routed adapter
-/// id the guest was faulted in under, so the component's `wasi:http`
-/// export serves the shelf. Fail closed: a path outside the grammar
-/// or a definitive resolver miss is an ordinary 404 (never a
-/// catch-all onto the engine guest); a genuine fault on a claimed
-/// shelf is Omnia's error-logged 500.
+/// `/mcp/engine/synthesis` routes onto the engine guest's embedded
+/// synthesis shelf (RFC-96 D9); `/mcp/<axis>/<name>[@<version>]` maps
+/// back onto the routed adapter id the guest was faulted in under
+/// (`engine` is not a legal axis, so the grammars never collide).
+/// Fail closed: an unmatched path or definitive resolver miss is an
+/// ordinary 404; a fault on a claimed shelf is an error-logged 500.
 #[must_use]
 pub fn mcp_route(path: &str) -> Option<omnia::GuestId> {
+    if path == slice::shelf::PATH {
+        return Some(omnia::GuestId::from(ENGINE_GUEST));
+    }
     let rest = path.strip_prefix("/mcp/")?;
     let (axis, rest) = rest.split_once('/')?;
     let adapter = rest.split('/').next().filter(|segment| !segment.is_empty())?;

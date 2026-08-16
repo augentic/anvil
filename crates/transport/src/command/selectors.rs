@@ -367,6 +367,12 @@ impl seam::Target for Grammar {
     }
 }
 
+impl seam::Shelf for Grammar {
+    async fn synthesis_shelf(&self) -> Result<Option<String>, seam::Error> {
+        never_dispatched!()
+    }
+}
+
 impl seam::Trees for Grammar {
     async fn fetch(
         &self, _locator: String, _credentials: seam::TreeCredentials, _limits: seam::TreeLimits,
@@ -415,6 +421,12 @@ impl seam::Workspaces for Grammar {
     }
 
     async fn capture(&self, _id: String) -> Result<project::snapshot::CodePatch, seam::Error> {
+        never_dispatched!()
+    }
+
+    async fn compose(
+        &self, _base: project::snapshot::SnapshotId, _patches: Vec<project::snapshot::CodePatch>,
+    ) -> Result<project::snapshot::CodePatch, seam::Error> {
         never_dispatched!()
     }
 

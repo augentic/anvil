@@ -9,4 +9,5 @@ pub mod evidence;
 pub mod persist;
 pub mod project;
 pub mod render;
+pub mod stage;
 pub mod wire;

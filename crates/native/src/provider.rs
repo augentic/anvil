@@ -15,7 +15,9 @@ use project::adapter::{
 use project::handler::ExecutionPaths;
 use project::profile::{self, Profiles};
 use project::seam::wire::{BuildReport, PhaseReport, RepairOrigin};
-use project::seam::{self, Evidence, Input, Source, SourceInput, SurveyResult, Target, Workspace};
+use project::seam::{
+    self, Evidence, Input, Shelf, Source, SourceInput, SurveyResult, Target, Workspace,
+};
 use project::snapshot::{CodePatch, SnapshotId};
 use project::workspace::{self as workspace_kernel, Access, Store};
 
@@ -207,7 +209,7 @@ impl Provider {
             References::Online(host) => {
                 let base =
                     host.base().await.map_err(|err| seam::Error::Internal(err.to_string()))?;
-                Ok(base.map(|base| format!("{base}/mcp/{}", entry.name())))
+                Ok(Some(format!("{base}/mcp/{}", entry.name())))
             }
             #[cfg(not(feature = "cli"))]
             References::Online => Err(seam::Error::Internal(format!(
@@ -229,8 +231,12 @@ impl Provider {
         }
     }
 
+    // Source legs lend the CID view; a value-backed leg lends
+    // `scratch` (a fresh empty directory) instead — agent backends
+    // need a working tree, and sources get no project or change home.
     fn source_ctx<'a>(
         id: &'a str, url: Option<String>, input: &'a aseam::SourceInput,
+        scratch: Option<&'a std::path::Path>,
     ) -> Context<'a> {
         match &input.content {
             aseam::SourceContent::Workspace(view) => Context {
@@ -241,10 +247,21 @@ impl Provider {
             },
             aseam::SourceContent::Value(_) => Context {
                 adapter_id: id,
-                project_root: std::path::Path::new(""),
+                project_root: scratch.unwrap_or_else(|| std::path::Path::new("")),
                 mcp_url: url,
-                lend: None,
+                lend: scratch.map(|path| path.display().to_string()),
             },
+        }
+    }
+
+    /// A disposable empty scratch directory for a value-backed source
+    /// leg, dropped (and removed) after the dispatch returns.
+    fn scratch(input: &aseam::SourceInput) -> Result<Option<tempfile::TempDir>, seam::Error> {
+        match &input.content {
+            aseam::SourceContent::Workspace(_) => Ok(None),
+            aseam::SourceContent::Value(_) => tempfile::tempdir()
+                .map(Some)
+                .map_err(|err| seam::Error::Internal(format!("source scratch dir: {err}"))),
         }
     }
 
@@ -357,7 +374,13 @@ impl Model for Provider {
 impl Source for Provider {
     async fn survey(&self, id: String, input: SourceInput) -> Result<SurveyResult, seam::Error> {
         let input = convert::narrow_source_input(input);
-        let ctx = Self::source_ctx(&id, self.mcp_url(&id).await?, &input);
+        let scratch = Self::scratch(&input)?;
+        let ctx = Self::source_ctx(
+            &id,
+            self.mcp_url(&id).await?,
+            &input,
+            scratch.as_ref().map(tempfile::TempDir::path),
+        );
         let result =
             self.catalog.survey(&self.model, &ctx, &id, &input).await.map_err(convert::error)?;
         Ok(convert::survey_result(result))
@@ -365,10 +388,40 @@ impl Source for Provider {
 
     async fn extract(&self, id: String, input: SourceInput) -> Result<Evidence, seam::Error> {
         let input = convert::narrow_source_input(input);
-        let ctx = Self::source_ctx(&id, self.mcp_url(&id).await?, &input);
+        let scratch = Self::scratch(&input)?;
+        let ctx = Self::source_ctx(
+            &id,
+            self.mcp_url(&id).await?,
+            &input,
+            scratch.as_ref().map(tempfile::TempDir::path),
+        );
         let evidence =
             self.catalog.extract(&self.model, &ctx, &id, &input).await.map_err(convert::error)?;
         Ok(convert::evidence(evidence))
+    }
+}
+
+impl Shelf for Provider {
+    /// The engine's synthesis shelf on the shared loopback reference
+    /// listener (RFC-96 D9), starting it on first use. Offline
+    /// providers grant nothing — deterministic tests keep the full
+    /// inline prompt and never bind a socket.
+    async fn synthesis_shelf(&self) -> Result<Option<String>, seam::Error> {
+        match &self.references {
+            References::Offline => Ok(None),
+            #[cfg(feature = "cli")]
+            References::Online(host) => {
+                let base =
+                    host.base().await.map_err(|err| seam::Error::Internal(err.to_string()))?;
+                Ok(Some(format!("{base}{}", ::slice::shelf::PATH)))
+            }
+            #[cfg(not(feature = "cli"))]
+            References::Online => Err(seam::Error::Internal(
+                "reference-listener-unavailable: the synthesis shelf needs the `cli` \
+                 networking stack"
+                    .to_string(),
+            )),
+        }
     }
 }
 
@@ -507,6 +560,14 @@ impl seam::Workspaces for Provider {
 
     async fn capture(&self, id: String) -> Result<CodePatch, seam::Error> {
         workspace_kernel::capture(&self.store(), self.workspaces_root(), &id)
+            .await
+            .map_err(|err| workspace_failure(&err))
+    }
+
+    async fn compose(
+        &self, base: SnapshotId, patches: Vec<CodePatch>,
+    ) -> Result<CodePatch, seam::Error> {
+        workspace_kernel::compose(&self.store(), &base, &patches)
             .await
             .map_err(|err| workspace_failure(&err))
     }

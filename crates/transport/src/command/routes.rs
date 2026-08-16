@@ -9,7 +9,7 @@ use omnia_guest::api::invoke::Invoker;
 use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
 use project::profile::Profiles;
-use project::seam::{Forge, Source, Target, Trees, Workspaces, Worktree};
+use project::seam::{Forge, Shelf, Source, Target, Trees, Workspaces, Worktree};
 
 use super::change_dir::ChangeDir;
 use super::{
@@ -110,6 +110,7 @@ where
         + Inventory
         + Profiles
         + Source
+        + Shelf
         + Target
         + Workspaces
         + Trees

@@ -571,6 +571,72 @@ mod re_entry {
     }
 }
 
+mod in_progress {
+    use super::*;
+
+    #[tokio::test]
+    async fn multi_rows_canonical() {
+        // RFC-96 D6: two claimed entries project one in-progress row
+        // each, in canonical work order; the singular fields stay the
+        // head of that order, and the text rendering gains the
+        // in-progress block only when more than one row exists.
+        let project = Session::scripted("demo", Vec::new());
+        write_slice(project.root(), "b", SliceArt::Refined);
+        let plan = plan_with_changes(vec![change("a"), change("b")]);
+        write_plan(&project, &plan);
+        support::stage_manifest(project.root(), "b");
+        append(project.root(), &[advanced(0, "test", "a"), advanced(1, "test", "b")]);
+        let body = status(&project, &plan).await;
+
+        let rows: Vec<(&str, Option<LoopStep>)> =
+            body.in_progress.iter().map(|row| (row.slice.as_str(), row.phase)).collect();
+        assert_eq!(
+            rows,
+            [("a", Some(LoopStep::Refine)), ("b", Some(LoopStep::Build))],
+            "canonical order: same target and layer, plan order breaks the tie"
+        );
+        assert_eq!(body.slice.as_deref(), Some("a"), "singular fields are the head row");
+        assert_eq!(body.next_action, "refine a");
+
+        let mut out = Vec::new();
+        project::handler::Render::render(&body, &mut out).expect("render");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(text.contains("in-progress:"), "multi-row block renders, got:\n{text}");
+        assert!(text.contains("  a: refine"), "got:\n{text}");
+        assert!(text.contains("  b: build"), "got:\n{text}");
+    }
+
+    #[tokio::test]
+    async fn single_row_singular() {
+        // Cap-one equivalence: one in-progress entry keeps the exact
+        // pre-RFC-96 text output — no in-progress block — while the
+        // JSON array still carries the row.
+        let project = Session::scripted("demo", Vec::new());
+        append(project.root(), &[advanced(0, "test", "a")]);
+        let plan = plan_with_changes(vec![change("a")]);
+        let body = status(&project, &plan).await;
+        assert_eq!(body.in_progress.len(), 1);
+        assert_eq!(body.in_progress[0].slice, "a");
+        assert_eq!(body.in_progress[0].phase, Some(LoopStep::Refine));
+
+        let mut out = Vec::new();
+        project::handler::Render::render(&body, &mut out).expect("render");
+        let text = String::from_utf8(out).expect("utf8");
+        assert!(!text.contains("in-progress:"), "single row keeps the singular text:\n{text}");
+    }
+
+    #[tokio::test]
+    async fn empty_when_unclaimed() {
+        // A fresh plan carries no in-progress rows and the JSON omits
+        // the array entirely.
+        let project = Session::scripted("demo", Vec::new());
+        let body = status(&project, &plan_with_changes(vec![change("a")])).await;
+        assert!(body.in_progress.is_empty());
+        let json = serde_json::to_string(&body).expect("json");
+        assert!(!json.contains("\"in-progress\":["), "empty array is omitted: {json}");
+    }
+}
+
 mod milestones {
     use std::collections::BTreeMap;
 

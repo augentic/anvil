@@ -1,6 +1,6 @@
 # Claim reconciliation
 
-How the agent groups claims across `Evidence[]` into the synthesis response and where each claim kind lands in the four artifacts. Grouping and the `agreement` verdict are the agent's; the kernel resolves authority, derives `status`, marks winners, and renders the `Sources:` list.
+How the agent groups claims across `Evidence[]` into the staged `model.yaml` and where each claim kind lands in the four artifacts. Grouping and the `agreement` verdict are the agent's; the kernel resolves authority, derives `status`, marks winners, and renders the `Sources:` list.
 
 ## Per-kind reconciliation
 

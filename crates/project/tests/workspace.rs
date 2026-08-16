@@ -163,6 +163,105 @@ mod round_trip {
     }
 }
 
+/// RFC-96 D6: `compose(base, patches)` — same-base disjoint patches
+/// only, deterministic deployment-independent identity, typed
+/// refusals with no store mutation.
+mod compose {
+    use super::*;
+
+    /// Capture one mutation of `base` as a patch.
+    async fn patch_of(
+        lab: &Lab, base: &SnapshotId, mutate: impl FnOnce(&Path),
+    ) -> project::snapshot::CodePatch {
+        let ws = workspace::prepare(&lab.store, &lab.workspaces, base, Access { writable: true })
+            .await
+            .expect("prepare");
+        mutate(&ws.root);
+        workspace::capture(&lab.store, &lab.workspaces, &ws.id).await.expect("capture")
+    }
+
+    #[tokio::test]
+    async fn disjoint_deterministic() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a\n");
+        write(&lab.source, "b.txt", b"b\n");
+        write(&lab.source, "c.txt", b"c\n");
+        let base = lab.store.snapshot(&lab.source).await.expect("base");
+
+        let edits = patch_of(&lab, &base, |root| {
+            write(root, "a.txt", b"a2\n");
+            write(root, "d.txt", b"d\n");
+        })
+        .await;
+        let deletes = patch_of(&lab, &base, |root| {
+            std::fs::remove_file(root.join("c.txt")).expect("rm");
+            write(root, "b.txt", b"b2\n");
+        })
+        .await;
+
+        let composed = workspace::compose(&lab.store, &base, &[edits.clone(), deletes.clone()])
+            .await
+            .expect("compose");
+        assert_eq!(composed.base, base);
+        assert_eq!(composed.touched, vec!["a.txt", "b.txt", "c.txt", "d.txt"]);
+
+        // The composed identity equals a direct snapshot of the same
+        // tree — deterministic and deployment-independent.
+        let manual = lab.source.parent().expect("parent").join("manual");
+        std::fs::create_dir_all(&manual).expect("manual dir");
+        write(&manual, "a.txt", b"a2\n");
+        write(&manual, "b.txt", b"b2\n");
+        write(&manual, "d.txt", b"d\n");
+        let oracle = lab.store.snapshot(&manual).await.expect("oracle");
+        assert_eq!(composed.result, oracle, "composed identity equals the assembled tree");
+
+        let again =
+            workspace::compose(&lab.store, &base, &[edits, deletes]).await.expect("recompose");
+        assert_eq!(again.result, composed.result, "replay mints the same identity");
+    }
+
+    #[tokio::test]
+    async fn overlap_refused() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a\n");
+        let base = lab.store.snapshot(&lab.source).await.expect("base");
+        let first = patch_of(&lab, &base, |root| write(root, "a.txt", b"one\n")).await;
+        let second = patch_of(&lab, &base, |root| write(root, "a.txt", b"two\n")).await;
+
+        let err = workspace::compose(&lab.store, &base, &[first, second])
+            .await
+            .expect_err("overlapping touched sets must refuse");
+        assert!(err.to_string().contains("workspace-compose-overlap"), "{err}");
+        assert!(err.to_string().contains("a.txt"), "the refusal names the path: {err}");
+    }
+
+    #[tokio::test]
+    async fn base_mismatch_refused() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a\n");
+        let base = lab.store.snapshot(&lab.source).await.expect("base");
+        write(&lab.source, "a.txt", b"moved\n");
+        let moved = lab.store.snapshot(&lab.source).await.expect("moved");
+        let stale = patch_of(&lab, &moved, |root| write(root, "a.txt", b"edit\n")).await;
+
+        let err = workspace::compose(&lab.store, &base, &[stale])
+            .await
+            .expect_err("a patch off another base must refuse");
+        assert!(err.to_string().contains("workspace-compose-base-mismatch"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn empty_is_base() {
+        let lab = lab();
+        write(&lab.source, "a.txt", b"a\n");
+        let base = lab.store.snapshot(&lab.source).await.expect("base");
+        let composed = workspace::compose(&lab.store, &base, &[]).await.expect("compose");
+        assert_eq!(composed.base, base);
+        assert_eq!(composed.result, base, "an empty patch set composes to the base itself");
+        assert!(composed.touched.is_empty());
+    }
+}
+
 /// The migration oracle: the manifest encoding is canonical, so this
 /// exact tree must always hash to this exact snapshot id — across the
 /// native kernel, the in-guest kernel, and any object backend. Exec

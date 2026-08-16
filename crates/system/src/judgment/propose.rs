@@ -120,16 +120,24 @@ pub async fn propose<P: Model>(
     let user =
         format!("## Proposal inputs\n\n```json\n{}\n```", render_json(inputs, "proposal inputs")?);
     let as_is = inputs.as_is.clone();
-    repaired(model, prose::propose_system(), user, "proposal", &schema, move |answer| {
-        let response: ProposalResponse = serde_saphyr::from_str(answer).map_err(|err| {
-            Error::validation_failed(
-                "system-propose-response-parse",
-                "the answer deserialises as a proposal response",
-                format!("failed to parse proposal response: {err}"),
-            )
-        })?;
-        tail(response, &as_is, claims, leads, decision_ids)
-    })
+    repaired(
+        model,
+        prose::propose_system(),
+        user,
+        "proposal",
+        &schema,
+        project::judgment::Lent::default(),
+        move |answer| {
+            let response: ProposalResponse = serde_saphyr::from_str(answer).map_err(|err| {
+                Error::validation_failed(
+                    "system-propose-response-parse",
+                    "the answer deserialises as a proposal response",
+                    format!("failed to parse proposal response: {err}"),
+                )
+            })?;
+            tail(response, &as_is, claims, leads, decision_ids)
+        },
+    )
     .await
 }
 

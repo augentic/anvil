@@ -185,6 +185,11 @@ fn preserve_err(name: &SliceName, detail: &str) -> Error {
     )
 }
 
+/// Refuse live affected claims. An affected *open wave* no longer
+/// refuses: the applied amendment retracts the whole uncommitted wave
+/// through identity — re-refined members stale the frozen manifest
+/// bindings, so the scheduler requeues builds instead of merging the
+/// retracted wave (RFC-96 D7).
 fn refuse_live(layout: Layout<'_>, affected: &BTreeSet<SliceName>) -> Result<(), Error> {
     let events = collect_events(layout)?;
     let live_claims: BTreeSet<SliceName> =
@@ -197,33 +202,7 @@ fn refuse_live(layout: Layout<'_>, affected: &BTreeSet<SliceName>) -> Result<(),
             format!("claimed: {}", claimed.join(", ")),
         ));
     }
-    let open = open_waves(&events);
-    let waving: Vec<_> = open.intersection(affected).map(SliceName::as_str).collect();
-    if !waving.is_empty() {
-        return Err(Error::validation_failed(
-            "plan-proposal-live",
-            "amend --proposal refuses live affected waves",
-            format!("open waves: {}", waving.join(", ")),
-        ));
-    }
     Ok(())
-}
-
-fn open_waves(events: &[Event]) -> BTreeSet<SliceName> {
-    let mut opened = BTreeSet::new();
-    let mut done = BTreeSet::new();
-    for event in events {
-        match &event.kind {
-            EventKind::TargetWaveOpened { slice_name, .. } => {
-                opened.insert(slice_name.clone());
-            }
-            EventKind::TargetMergeWaveCommitted { members, .. } => {
-                done.extend(members.iter().cloned());
-            }
-            _ => {}
-        }
-    }
-    opened.difference(&done).cloned().collect()
 }
 
 fn affected_boundary(plan: &Plan, body: &Boundary) -> BTreeSet<SliceName> {

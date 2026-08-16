@@ -253,9 +253,10 @@ mod kernel {
 mod bind {
     use super::*;
 
-    async fn bind(
-        lab: &Lab, location: &Location, prior: Option<&str>, cache: &mut Cache,
-    ) -> Result<project::binding::Resolved, String> {
+    async fn bind_tree(
+        lab: &Lab, location: &Location, recorded: Option<&project::snapshot::SnapshotId>,
+        prior: Option<&str>, cache: &mut Cache,
+    ) -> Result<(project::binding::Resolved, PathBuf), String> {
         let policy = Policy::standard();
         let mut meter = Meter::new();
         let mut session = Session {
@@ -266,10 +267,15 @@ mod bind {
             policy: &policy,
             meter: &mut meter,
         };
-        resolve(&mut session, &lab.seam, location, None, prior)
+        resolve(&mut session, &lab.seam, location, recorded, prior)
             .await
-            .map(|(resolved, _)| resolved)
             .map_err(|err| err.to_string())
+    }
+
+    async fn bind(
+        lab: &Lab, location: &Location, prior: Option<&str>, cache: &mut Cache,
+    ) -> Result<project::binding::Resolved, String> {
+        bind_tree(lab, location, None, prior, cache).await.map(|(resolved, _)| resolved)
     }
 
     #[tokio::test]
@@ -330,8 +336,53 @@ mod bind {
         let locator = format!("{}@{sha}", dir.display());
         let location = Location::parse(&locator, None).expect("parse");
         let mut cache = Cache::new();
-        let target = bind(&lab, &location, None, &mut cache).await.expect("target");
-        let source = bind(&lab, &location, None, &mut cache).await.expect("source");
+        let (target, _) = bind_tree(&lab, &location, None, None, &mut cache).await.expect("target");
+        let (source, root) =
+            bind_tree(&lab, &location, None, None, &mut cache).await.expect("source");
         assert_eq!(target.cid, source.cid);
+        assert_ne!(root, lab.scratch, "intern skip must not return the ingest scratch");
+        assert_eq!(std::fs::read_to_string(root.join("src/a.rs")).expect("read"), "a\n");
+    }
+
+    #[tokio::test]
+    async fn recorded_skip_tree() {
+        let lab = lab();
+        let (dir, sha) = repo(
+            lab.root.path(),
+            &[
+                (".emery/project.yaml", "name: app\nadapter: omnia\nrules: {}\n"),
+                ("src/lib.rs", "ok\n"),
+            ],
+        );
+        let locator = format!("{}@{sha}", dir.display());
+        let location = Location::parse(&locator, None).expect("parse");
+        let mut cache = Cache::new();
+        let first = bind(&lab, &location, None, &mut cache).await.expect("first");
+        std::fs::remove_dir_all(&dir).expect("drop origin");
+        let mut cache = Cache::new();
+        let (again, root) =
+            bind_tree(&lab, &location, Some(&first.cid), None, &mut cache).await.expect("recorded");
+        assert_eq!(again.cid, first.cid);
+        assert_ne!(root, lab.scratch, "recorded skip must not return the ingest scratch");
+        assert!(root.join(".emery/project.yaml").is_file());
+        assert_eq!(std::fs::read_to_string(root.join("src/lib.rs")).expect("read"), "ok\n");
+    }
+
+    #[tokio::test]
+    async fn https_skip_tree() {
+        let lab = lab();
+        let brief = lab.change.join("brief.md");
+        std::fs::write(&brief, b"Ship the greeting.\n").expect("brief");
+        let cid = lab.seam.store.snapshot_path(&brief).await.expect("seed");
+        let location = Location::parse("https://example.com/brief.md", None).expect("https");
+        let mut cache = Cache::new();
+        let (resolved, root) =
+            bind_tree(&lab, &location, Some(&cid), None, &mut cache).await.expect("recorded");
+        assert_eq!(resolved.cid, cid);
+        assert_ne!(root, lab.scratch, "HTTPS skip must not return the ingest scratch");
+        assert_eq!(
+            std::fs::read_to_string(root.join("brief.md")).expect("read"),
+            "Ship the greeting.\n"
+        );
     }
 }

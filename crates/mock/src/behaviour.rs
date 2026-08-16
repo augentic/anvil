@@ -5,10 +5,10 @@
 pub use source::{extract, survey};
 pub use targets::{
     BUILD_DIR, CLAIM_COVERED_MARKER, CONTINUATION_CLEAR_MARKER, CONTINUATION_MARKER,
-    CONTINUATION_V1, CONTINUATION_V2, FAIL_BUILD_MARKER, POSTFLIGHT_FAIL, PREFLIGHT_FAIL,
-    REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED, VERIFICATION_REPAIRED,
-    VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER, build, build_artifact_path,
-    claimed_covered, guidance, merge, repair, review, verify,
+    CONTINUATION_V1, CONTINUATION_V2, DOMAIN_VERIFY_BLOCKED, FAIL_BUILD_MARKER, POSTFLIGHT_FAIL,
+    PREFLIGHT_FAIL, REVIEW_BLOCKED_MARKER, REVIEW_FIXABLE_MARKER, REVIEW_REPAIRED,
+    VERIFICATION_REPAIRED, VERIFY_AFTER_REVIEW, VERIFY_BLOCKED_MARKER, VERIFY_FIXABLE_MARKER,
+    build, build_artifact_path, claimed_covered, guidance, merge, repair, review, verify,
 };
 
 mod source {
@@ -308,6 +308,11 @@ mod targets {
     /// drives verification-budget exhaustion.
     pub const VERIFY_BLOCKED_MARKER: &str = "mock-verify-blocked";
 
+    /// Marker file: a stage-less `verify` (no lent artifact stage —
+    /// the RFC-96 D8 domain-round dispatch) returns one blocking
+    /// finding while build-loop verifications keep passing.
+    pub const DOMAIN_VERIFY_BLOCKED: &str = "mock-domain-verify-blocked";
+
     /// Marker file: `verify` blocks until a verification-origin
     /// `repair` has written [`VERIFICATION_REPAIRED`] — drives one
     /// verification-repair round.
@@ -498,6 +503,12 @@ mod targets {
             return Ok(blocked(&format!(
                 "the verify-blocked marker fails every verification (round {round})"
             )));
+        }
+        if project_root.join(DOMAIN_VERIFY_BLOCKED).is_file() && workspace.artifact_stage.is_none()
+        {
+            return Ok(blocked(
+                "the domain-verify-blocked marker fails stage-less (domain-round) verification",
+            ));
         }
         if project_root.join(VERIFY_FIXABLE_MARKER).is_file()
             && !workspace.root_path().join(VERIFICATION_REPAIRED).is_file()

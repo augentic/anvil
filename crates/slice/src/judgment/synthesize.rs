@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use artifacts::evidence::{AuthorityClass, ClaimKind};
 use error::Error;
 use omnia_guest::Model;
+use omnia_guest::model::McpGrant;
 use project::plan::FocusParent;
 use project::profile::{Gate, Profile};
 
@@ -38,35 +39,61 @@ pub struct Kernel<'a> {
 }
 
 /// A validated synthesis answer: the parsed response plus, on
-/// `proceed`, the kernel-projected model.
+/// `proceed`, the staged artifacts and the kernel-projected model.
 #[derive(Debug)]
 pub struct Synthesized {
     /// The agent's parsed response envelope.
     pub response: SynthesisResponse,
     /// The kernel-projected model — present only on `proceed`.
     pub projected: Option<SliceModel>,
+    /// The prose artifacts read from the staged tree — present only
+    /// on `proceed` (RFC-96 D10).
+    pub artifacts: Option<crate::synthesis::wire::SynthesisArtifacts>,
 }
 
 /// Run the slice synthesis judgment leg over an assembled inputs
 /// envelope.
 ///
+/// With a shelf URL (RFC-96 D9) the prompt keeps only the measured
+/// inline minimum and the shelf is granted as an MCP server; without
+/// one the full playbook inlines as before. `stage` is the lent
+/// writable staged tree (RFC-96 D10): the agent writes the bundle
+/// there, the deterministic tail validates the full tree, and a tail
+/// failure re-prompts the same agent over the same stage.
+///
 /// # Errors
 ///
-/// The mapped model failure, or the last schema / parse / kernel
-/// failure once the repair budget is exhausted.
+/// The mapped model failure, or the last schema / parse / staged-tree
+/// / kernel failure once the repair budget is exhausted.
 pub async fn synthesize<P: Model>(
-    model: &P, inputs: &SynthesisInputs, kernel: &Kernel<'_>,
+    model: &P, inputs: &SynthesisInputs, kernel: &Kernel<'_>, shelf: Option<String>, stage: &str,
 ) -> Result<Synthesized, Error> {
     let schema = project::answers::render(&crate::answers::synthesis());
-    let system = prose::synthesize_system();
+    let system = prose::synthesize_system(shelf.as_deref());
+    let grants: Vec<McpGrant> = shelf
+        .map(|url| McpGrant {
+            name: crate::shelf::SERVER.to_string(),
+            tools: Vec::new(),
+            url,
+        })
+        .into_iter()
+        .collect();
     let user = format!(
         "## Synthesis inputs\n\n```json\n{}\n```",
         super::render_json(inputs, "synthesis inputs")?
     );
-    repaired(model, &system, user, "synthesis", &schema, |answer| check(answer, kernel)).await
+    let root = std::path::PathBuf::from(stage);
+    let lent = project::judgment::Lent {
+        grants,
+        workspace: Some(stage.to_string()),
+    };
+    repaired(model, &system, user, "synthesis", &schema, lent, |answer| {
+        check(answer, kernel, &root)
+    })
+    .await
 }
 
-fn check(answer: &str, kernel: &Kernel<'_>) -> Result<Synthesized, Error> {
+fn check(answer: &str, kernel: &Kernel<'_>, stage: &std::path::Path) -> Result<Synthesized, Error> {
     let response: SynthesisResponse = serde_saphyr::from_str(answer).map_err(|err| {
         Error::validation_failed(
             "slice-synthesize-response-parse",
@@ -83,28 +110,20 @@ fn check(answer: &str, kernel: &Kernel<'_>) -> Result<Synthesized, Error> {
     }
     kernel.profile.score(&response.assessment)?;
     match response.kind {
-        SynthesisKind::Proceed => proceed(response, kernel),
+        SynthesisKind::Proceed => proceed(response, kernel, stage),
         SynthesisKind::BoundaryEscalation => escalate(response, kernel),
     }
 }
 
-fn proceed(response: SynthesisResponse, kernel: &Kernel<'_>) -> Result<Synthesized, Error> {
-    let model = response.model.clone().ok_or_else(|| {
-        Error::validation_failed(
-            "slice-synthesize-proceed-incomplete",
-            "a proceed answer carries the structured model",
-            "proceed omitted `model`",
-        )
-    })?;
-    if response.artifacts.is_none() {
-        return Err(Error::validation_failed(
-            "slice-synthesize-proceed-incomplete",
-            "a proceed answer carries the prose artifacts",
-            "proceed omitted `artifacts`",
-        ));
-    }
+/// Validate a `proceed` answer's staged tree (RFC-96 D10): read the
+/// full bundle the agent wrote, then run the kernel projection over
+/// the staged model — any miss repairs in-loop over the same stage.
+fn proceed(
+    response: SynthesisResponse, kernel: &Kernel<'_>, stage: &std::path::Path,
+) -> Result<Synthesized, Error> {
+    let bundle = crate::synthesis::stage::read(stage)?;
     let projected = project(
-        model,
+        bundle.model,
         kernel.header.clone(),
         kernel.authority,
         kernel.overrides,
@@ -114,6 +133,7 @@ fn proceed(response: SynthesisResponse, kernel: &Kernel<'_>) -> Result<Synthesiz
     Ok(Synthesized {
         response,
         projected: Some(projected),
+        artifacts: Some(bundle.artifacts),
     })
 }
 
@@ -156,5 +176,6 @@ fn escalate(response: SynthesisResponse, kernel: &Kernel<'_>) -> Result<Synthesi
     Ok(Synthesized {
         response,
         projected: None,
+        artifacts: None,
     })
 }

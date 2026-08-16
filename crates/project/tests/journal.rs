@@ -82,6 +82,30 @@ fn reads_prior_actor_wire() {
 }
 
 #[test]
+#[expect(
+    unsafe_code,
+    reason = "EMERY_WRITER is the journal writer seam; nextest isolates the process"
+)]
+fn writer_id_env() {
+    // RFC-96 D4: a non-empty EMERY_WRITER wins on every deployment;
+    // whitespace and empty values fall back to the local default.
+    // SAFETY: nextest isolates the test process; no concurrent reader.
+    unsafe { std::env::remove_var("EMERY_WRITER") };
+    assert_eq!(project::journal::writer_id(), DEFAULT_WRITER);
+    // SAFETY: as above.
+    unsafe { std::env::set_var("EMERY_WRITER", "  ") };
+    assert_eq!(project::journal::writer_id(), DEFAULT_WRITER, "whitespace falls back");
+    // SAFETY: as above.
+    unsafe { std::env::set_var("EMERY_WRITER", "") };
+    assert_eq!(project::journal::writer_id(), DEFAULT_WRITER, "empty falls back");
+    // SAFETY: as above.
+    unsafe { std::env::set_var("EMERY_WRITER", " alice ") };
+    assert_eq!(project::journal::writer_id(), "alice", "trimmed value wins");
+    // SAFETY: as above.
+    unsafe { std::env::remove_var("EMERY_WRITER") };
+}
+
+#[test]
 fn deferral_round_trip() {
     // RFC-86a D2: dotted-kebab wire id and kebab-case payload keys on
     // the deferral fact, stable through serde and the file union.

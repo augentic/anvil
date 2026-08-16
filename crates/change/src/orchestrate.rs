@@ -4,6 +4,7 @@
 //! execute loop. Time is injected; nothing reads the clock.
 
 mod author;
+mod converge;
 mod decompose;
 mod epoch;
 mod escalate;

@@ -36,7 +36,9 @@ emery-diagnostics.workspace = true
 emery-error.workspace = true
 omnia-guest.workspace = true
 emery-project.workspace = true
+emery-slice.workspace = true
 semver.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, optional = true }
 emery-transport = { workspace = true, optional = true }
@@ -44,7 +46,6 @@ emery-transport = { workspace = true, optional = true }
 [dev-dependencies]
 emery-system.workspace = true
 omnia-testkit.workspace = true
-tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [[test]]

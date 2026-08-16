@@ -25,6 +25,8 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 | `stuck` | Pending entries remain but every one is blocked on unmet dependencies. | Run `emery plan validate` (first triage step) and fix the dependency structure. |
 | `boundary-escalation` | Refinement wrote an inert boundary proposal at `planning/proposals/<digest>.yaml`; the leaf is parked (`slice.refinement.parked`). | Apply with `emery plan amend --proposal <digest>` after quiescing affected work, then re-run `emery plan refine` on the new children. Re-running refine on this leaf does not re-synthesize. |
 | `refine-budget-exhausted` | Focused resurvey or nearest-domain re-decomposition exhausted its compiled budget. | Adjust sources or the bound profile, then re-run `emery plan refine`. |
+| `domain-frontier-failed` | Domain-level verification failed over a multi-member wave's composed candidate (RFC-96 D8); the wave is parked — no prefix commits. | Repair the members (re-refine or apply an amendment) — staling the frozen bindings retracts the wave — then re-run `emery plan execute`. |
+| `domain-complete-failed` | Domain-level verification failed (or has not passed) over the accepted tree (RFC-96 D8); dependants, drain, and publication materialization are blocked. | Land an authorized repair (a follow-up slice via `/emery:plan`), then re-run `emery plan execute`. |
 
 ## Driver lock
 
@@ -44,7 +46,7 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 | `plan-remove-entry-referenced` | Another entry lists the removal target in `depends-on`. | Amend the dependent entry's `--depends-on` first. |
 | `plan-has-outstanding-work` | `emery plan archive` refused: the plan still has non-terminal entries (exit 1). | Drain the plan (merge or drop every entry) before archiving. |
 | `plan-proposal-stale` | `emery plan amend --proposal` compare-and-set found a drifted frontier. | Quiesce affected claims and waves, then re-run against a fresh proposal. |
-| `plan-proposal-live` | The proposal's affected claims or waves are still live. | Quiesce the affected work, then re-run `emery plan amend --proposal <digest>`. |
+| `plan-proposal-live` | The proposal's affected claims are still live (an affected *open wave* no longer refuses — the applied amendment retracts it through refinement staleness, RFC-96 D7). | Quiesce the affected claims, then re-run `emery plan amend --proposal <digest>`. |
 | `plan-proposal-preserve` | Applying the proposal would drop a preservation-required node. | Author a new proposal from the live decomposition. |
 | `plan-proposal-kind` | The named document is an envelope or definition-revision — not an amendment. | Revise the reviewed handoff or wait for RFC-106. |
 | `plan-proposal-cycle` | The candidate tree is cyclic. | Author a new proposal from the live decomposition. |
@@ -69,6 +71,17 @@ All exit 2. Decomposition validates the projected `slices[]` grouping before wri
 | `plan-reconcile-depends-on-cycle` | The projected `depends-on` edges form a cycle. |
 | `plan-reconcile-target-unknown` | A slice names a `target` absent from `plan.yaml.targets`. |
 | `plan-reconcile-plan-not-replaceable` | The plan carries a non-pending entry. |
+
+## Slice synthesis (inside `emery plan refine`)
+
+All exit 2. Synthesis lends the agent a staged copy of the slice bundle (RFC-96 D10); the deterministic tail validates the staged tree before anything is promoted, and a tail failure re-prompts the same agent over the same stage. These codes surface on the envelope when the repair budget is exhausted; the slice artifacts stay untouched.
+
+| Code | Meaning | Recovery |
+| ---- | ------- | -------- |
+| `slice-synthesize-stage-prepare-failed` | Snapshotting the slice bundle, materializing the writable stage, or seeding a dependency root failed before the agent ran. | Check the workspace store and slice tree, then re-run `emery plan refine`. |
+| `slice-synthesize-stage-missing` | A required bundle file (`model.yaml`, `proposal.md`, `design.md`, `tasks.md`, or every `specs/<domain>/spec.md`) is absent or empty in the staged tree after the repair budget. | Re-run `emery plan refine`; persistent misses usually mean the source Evidence is too thin to synthesize from. |
+| `slice-synthesize-stage-model` | The staged `model.yaml` failed the typed slice-model parse. | Re-run `emery plan refine`. |
+| `slice-synthesize-stage-decision` | A staged `decisions/<slug>.md` is not a well-formed Decision Record (front-matter, `# <title>`, Nygard sections). | Re-run `emery plan refine`. |
 
 ## Plan validate findings
 
@@ -123,6 +136,10 @@ Findings from [`emery slice validate`](cli/slice.md#emery-slice-validate). The `
 | `target-wave-not-opened` | The merge phase found no `target.wave.opened` fact naming the slice. | Re-run `emery plan execute` — the build phase opens the wave merge resolves its record through. |
 | `slice-build-record-missing` | A built slice has no `builds/<digest>.yaml`, or none records the merge's authorized wave. | Re-run `emery plan execute` — the loop re-builds and mints the record. |
 | `slice-build-record-ambiguous` | More than one build record names the merge's authorized wave. | Remove the stale `builds/<digest>.yaml` duplicates, then re-run execute. |
+| `target-wave-member-stale` | A frozen member's live refinement manifest no longer matches its wave binding — the whole uncommitted wave is retracted; no prefix commits (RFC-96 D7). | Re-run `emery plan execute` — the scheduler rebuilds the members under a fresh wave. |
+| `target-merge-compose-failed` | Composing the frozen member patches into the wave's merge base failed (base mismatch or touched-path overlap surfaces here as `workspace-compose-*`). | Inspect the named conflict; overlapping members must land through separate waves — amend the plan topology, then re-run execute. |
+| `workspace-compose-base-mismatch` / `workspace-compose-overlap` | `compose(base, patches)` refused: a patch starts from another base, or two patches touch the same path — there is no textual merge (RFC-96 D6). | Rebuild the stale member so every patch shares the wave base, or split overlapping work across waves. |
+| `domain-frontier-compose-failed` / `domain-verify-prepare-failed` / `domain-verify-dispatch-failed` | A domain round's mechanics failed before any verdict: composing the frontier candidate, preparing the verification workspace, or the `target.verify` dispatch itself (RFC-96 D8). A dispatch failure is not a verdict — no round is recorded. | Fix the named failure (adapter binding, workspace store), then re-run `emery plan execute`. |
 
 ## Source sandbox
 

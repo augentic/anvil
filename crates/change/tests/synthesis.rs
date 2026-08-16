@@ -17,7 +17,7 @@ use serde_json::json;
 /// kernel resolves documentation over behaviour.
 fn session_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 3,
+        "version": 4,
         "kind": "proceed",
         "slice": "session-policy",
         "assessment": {
@@ -59,7 +59,7 @@ fn session_synthesis_answer() -> String {
 /// unanchored requirement (zero claims) the kernel marks `[unknown]`.
 fn reset_synthesis_answer() -> String {
     serde_json::to_string(&json!({
-        "version": 3,
+        "version": 4,
         "kind": "proceed",
         "slice": "password-reset",
         "assessment": {
@@ -111,22 +111,17 @@ async fn divergence_docs_wins() {
     assert_eq!(slice, "session-policy");
 
     // The synthesis prompt is path-first: each source row carries the
-    // project-relative `evidence-path` into the lent tree, and no
-    // claim bodies are inlined in the user message.
+    // stage-relative `evidence-path` into the lent staged tree
+    // (RFC-96 D10), and no claim bodies are inlined in the user
+    // message.
     let requests = session.model().requests();
-    let prompt = &requests.last().expect("synthesis request recorded").messages[0].content;
-    assert!(
-        prompt.contains(
-            "\"evidence-path\": \".emery/change/slices/session-policy/evidence/docs.yaml\""
-        ),
-        "{prompt}"
-    );
-    assert!(
-        prompt.contains(
-            "\"evidence-path\": \".emery/change/slices/session-policy/evidence/code.yaml\""
-        ),
-        "{prompt}"
-    );
+    let request = requests.last().expect("synthesis request recorded");
+    let prompt = &request.messages[0].content;
+    assert!(prompt.contains("\"evidence-path\": \"evidence/docs.yaml\""), "{prompt}");
+    assert!(prompt.contains("\"evidence-path\": \"evidence/code.yaml\""), "{prompt}");
+    // The lent workspace is the staged tree, not the project root.
+    let workspace = request.workspace.as_deref().expect("synthesis lends the staged tree");
+    assert_ne!(workspace, ".");
     assert!(!prompt.contains("\"claims\""), "claims must not be inlined: {prompt}");
     assert!(
         !prompt.contains("Sessions expire after 30 minutes of inactivity."),

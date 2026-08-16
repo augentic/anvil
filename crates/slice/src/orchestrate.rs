@@ -15,4 +15,4 @@ pub use self::extract::{ExtractOutcome, extract};
 pub use self::merge::{MergeOutcome, merge};
 pub use self::refine::{RefineOutcome, refine};
 pub use self::synthesize::synthesize;
-pub use self::target::{BuildOutcome, build};
+pub use self::target::{BuildOutcome, build, open_wave_group};

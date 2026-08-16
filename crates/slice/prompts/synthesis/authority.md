@@ -8,7 +8,7 @@ Top-level `authority:` on every `Evidence` document is a closed enum. Highest wi
 
 Authority defaults to the **Evidence document**. v1 adds one opt-in surface (see [§Authority overrides](#authority-overrides)): a per-slice override on `plan.yaml`. Without `authority-override`, the document-level rule applies. (A per-Evidence per-kind `authority-overrides` surface is deferred to a future RFC.)
 
-The **agent** never resolves authority or marks winners. It records contributing `(source, id, kind)` claims and an `agreement` verdict (`agreed` / `disagreed`). The **kernel** resolves authority after the response returns, then derives `status`, winner markers, and `Sources:`.
+The **agent** never resolves authority or marks winners. It records contributing `(source, id, kind)` claims and an `agreement` verdict (`agreed` / `disagreed`) in the staged `model.yaml`. The **kernel** resolves authority after the response returns, then derives `status`, winner markers, and `Sources:`.
 
 ## `agreement` verdict → kernel `status` derivation
 

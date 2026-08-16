@@ -15,7 +15,7 @@ const SCHEME: &str = "sha256:";
 /// Wire form is `sha256:<64 lowercase hex>` — the digest of the
 /// snapshot's canonical tree manifest. Rides the WIT `revision` type
 /// across the seam as an opaque string.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub struct SnapshotId(String);
 

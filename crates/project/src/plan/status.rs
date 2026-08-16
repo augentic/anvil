@@ -85,6 +85,13 @@ pub enum StopReason {
     /// Focused resurvey or nearest-domain re-decomposition exhausted
     /// its compiled budget. The leaf is parked.
     RefineBudgetExhausted,
+    /// A domain frontier round failed over the composed wave
+    /// candidate (RFC-96 D8) — the wave is parked, no prefix commits.
+    DomainFrontierFailed,
+    /// A domain complete round failed (or is missing) over the
+    /// accepted tree (RFC-96 D8) — dependants, drain, and publication
+    /// materialization are blocked.
+    DomainCompleteFailed,
     /// The publication worktree carries uncommitted operator edits
     /// (RFC-95 D11) — materialize refuses to overwrite them.
     PublicationWorktreeDirty,
@@ -145,6 +152,16 @@ impl StopReason {
             Self::RefineBudgetExhausted => {
                 "Focused resurvey or nearest-domain re-decomposition exhausted its budget. \
                  Adjust sources or the bound profile, then re-run emery plan refine."
+            }
+            Self::DomainFrontierFailed => {
+                "Domain-level verification failed over the composed wave candidate; the wave is \
+                 parked. Repair the members (re-refine or apply an amendment) — staling the \
+                 frozen bindings retracts the wave — then re-run emery plan execute."
+            }
+            Self::DomainCompleteFailed => {
+                "Domain-level verification failed (or has not passed) over the accepted tree; \
+                 drain and publication are blocked. Land an authorized repair (a follow-up \
+                 slice via /emery:plan), then re-run emery plan execute."
             }
             Self::PublicationWorktreeDirty => {
                 "The publication worktree has uncommitted operator edits. Commit or stash them \
@@ -245,6 +262,29 @@ pub struct StatusBody {
     /// Typed gap inventory for in-scope slices (RFC-86 Gaps / D18 /
     /// D19 / D24). Same projection as `emery plan gaps`.
     pub gaps: GapsBody,
+    /// In-progress work rows (RFC-96): one row per in-progress entry
+    /// in the canonical work order (target, topological layer, plan
+    /// order, slice). The singular fields above are the head of this
+    /// order. Additive; omitted when empty.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub in_progress: Vec<InProgressBody>,
+}
+
+/// One in-progress work row on [`StatusBody::in_progress`].
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct InProgressBody {
+    /// Slice the row tracks.
+    pub slice: String,
+    /// Bound target of the entry.
+    pub target: String,
+    /// The phase this entry currently awaits (the parked phase on a
+    /// stop). `None` when no phase applies (dropped, past merge).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase: Option<LoopStep>,
+    /// Parked-stop detail, when the row's newest terminal is a stop.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop: Option<StopBody>,
 }
 
 /// Closed per-member publication state on
@@ -324,6 +364,18 @@ impl crate::handler::Render for StatusBody {
             && let Some(resume) = &self.resume
         {
             writeln!(w, "resume: {resume}")?;
+        }
+        if self.in_progress.len() > 1 {
+            writeln!(w, "in-progress:")?;
+            for row in &self.in_progress {
+                let phase = row.phase.map_or_else(|| "-".to_string(), |step| step.to_string());
+                match &row.stop {
+                    Some(stop) => {
+                        writeln!(w, "  {}: {phase} (stop: {})", row.slice, stop.reason)?;
+                    }
+                    None => writeln!(w, "  {}: {phase}", row.slice)?,
+                }
+            }
         }
         if !self.publication.is_empty() {
             writeln!(w, "publication:")?;

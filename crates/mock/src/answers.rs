@@ -190,7 +190,7 @@ pub fn greeting_overlap() -> String {
 #[must_use]
 pub fn greeting_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 3,
+        "version": 4,
         "kind": "proceed",
         "slice": "greeting",
         "assessment": quiet_assessment(),
@@ -226,7 +226,7 @@ pub fn greeting_synthesis() -> String {
 #[must_use]
 pub fn greeting_escalation() -> String {
     serde_json::to_string(&json!({
-        "version": 3,
+        "version": 4,
         "kind": "boundary-escalation",
         "slice": "greeting",
         "assessment": loud_assessment(),
@@ -246,7 +246,7 @@ pub fn greeting_escalation() -> String {
 #[must_use]
 pub fn greeting_unknown_synth() -> String {
     serde_json::to_string(&json!({
-        "version": 3,
+        "version": 4,
         "kind": "proceed",
         "slice": "greeting",
         "assessment": quiet_assessment(),
@@ -331,7 +331,7 @@ pub fn adversarial_grouping() -> String {
 #[must_use]
 pub fn login_flow_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 3,
+        "version": 4,
         "kind": "proceed",
         "slice": "login-flow",
         "assessment": quiet_assessment(),
@@ -368,7 +368,7 @@ pub fn login_flow_synthesis() -> String {
 #[must_use]
 pub fn password_reset_synthesis() -> String {
     serde_json::to_string(&json!({
-        "version": 3,
+        "version": 4,
         "kind": "proceed",
         "slice": "password-reset",
         "assessment": quiet_assessment(),

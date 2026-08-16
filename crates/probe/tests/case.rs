@@ -19,8 +19,9 @@ fn catalog() -> Catalog {
 }
 
 // A FIFO scripted model factory; every case run shares the answers.
+// `Staging` plays the agent side of the staged synthesis tree.
 fn scripted(answers: Vec<String>) -> ModelFactory {
-    let model = Harness::answering(answers);
+    let model = mock::session::Staging::new(Harness::answering(answers));
     Arc::new(move |_root| Ok(DynModel::new(model.clone())))
 }
 
@@ -188,6 +189,48 @@ mod config {
     }
 
     #[test]
+    fn cap_parses() {
+        let case = case::parse(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\ncap = 1\n\
+             blind = \"blind.toml\"\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+        )
+        .expect("a cap-comparison workflow case parses");
+        let Case::Workflow(workflow) = case else {
+            panic!("workflow kind parses to a workflow case");
+        };
+        assert_eq!(workflow.cap, Some(1));
+        assert_eq!(workflow.blind.as_deref(), Some(Path::new("blind.toml")));
+    }
+
+    #[test]
+    fn cap_over_ceiling_refused() {
+        let err = case::parse(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\ncap = 99\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+        )
+        .expect_err("a cap over the compiled ceiling refuses");
+        assert!(format!("{err:#}").contains("cap"), "{err:#}");
+    }
+
+    #[test]
+    fn cap_zero_refused() {
+        let err = case::parse(
+            "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\ncap = 0\n\
+             [sources]\nmain = \"mock:value:The greeting service.\"\n",
+        )
+        .expect_err("cap zero refuses — one is the serial reference");
+        assert!(format!("{err:#}").contains("cap"), "{err:#}");
+    }
+
+    #[test]
+    fn cap_on_build_refused() {
+        let err = case::parse("kind = \"build\"\nslice = \"demo\"\nexpect = [\"out\"]\ncap = 4\n")
+            .expect_err("build cases carry no cap");
+        assert!(format!("{err:#}").contains("cap"), "{err:#}");
+    }
+
+    #[test]
     fn nested_id_refused() {
         let tmp = TempDir::new().expect("tempdir");
         let err = case::load(tmp.path(), "mock/one").expect_err("nested ids refuse");
@@ -319,10 +362,10 @@ async fn refine_phase(root: &Path, model: &DynModel, slice_name: &str) {
 // exact state a committed Build fixture carries.
 async fn stage_refined_fixture(root: &Path) {
     fs::create_dir_all(root).expect("mkdir fixture");
-    let model = DynModel::new(Harness::answering(vec![
+    let model = DynModel::new(mock::session::Staging::new(Harness::answering(vec![
         mock::answers::greeting_grouping(),
         mock::answers::greeting_synthesis(),
-    ]));
+    ])));
     invoke(root, &model, &["init", "mock"]).await;
     seed_greeting_plan(root);
     refine_phase(root, &model, "greeting").await;
@@ -549,6 +592,64 @@ async fn until_plan_leaves_entries() {
         "no entry advanced: ladders={ladders:?}"
     );
     assert!(!journal(&root).contains("plan.entry.advanced"), "no entry advanced before execution");
+}
+
+// A case `cap` reaches the launcher cap seam (RFC-96 D11): after the
+// run the process carries `EMERY_POOL`, which `project::pool::cap()`
+// reads. nextest isolates the test process.
+#[tokio::test]
+async fn cap_reaches_pool_env() {
+    let tmp = TempDir::new().expect("tempdir");
+    let cases = tmp.path().join("cases");
+    stage_case(
+        &cases,
+        "capped",
+        "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\ncap = 2\n\
+         [sources]\nmain = \"mock:value:The greeting service.\"\n",
+    );
+
+    case::run(
+        &cases,
+        &tmp.path().join("sandbox"),
+        Some("capped"),
+        Some(WorkflowUntil::Plan),
+        false,
+        &catalog(),
+        &scripted(mock::answers::greeting_author()),
+    )
+    .await
+    .expect("the capped workflow case passes");
+
+    assert_eq!(std::env::var("EMERY_POOL").as_deref(), Ok("2"));
+    assert_eq!(project::pool::cap(), 2);
+}
+
+// A malformed blind set fails before any verb runs — the case never
+// mutates the sandbox.
+#[tokio::test]
+async fn malformed_blind_fails() {
+    let tmp = TempDir::new().expect("tempdir");
+    let cases = tmp.path().join("cases");
+    stage_case(
+        &cases,
+        "blinded",
+        "kind = \"workflow\"\ntarget = \"mock\"\nchange = \"demo\"\nblind = \"blind.toml\"\n\
+         [sources]\nmain = \"mock:value:The greeting service.\"\n",
+    );
+    fs::write(cases.join("blinded/blind.toml"), "accept = []\n").expect("write blind");
+
+    let err = case::run(
+        &cases,
+        &tmp.path().join("sandbox"),
+        Some("blinded"),
+        Some(WorkflowUntil::Plan),
+        false,
+        &catalog(),
+        &scripted(Vec::new()),
+    )
+    .await
+    .expect_err("an empty blind set refuses");
+    assert!(format!("{err:#}").contains("no `accept`"), "{err:#}");
 }
 
 #[tokio::test]

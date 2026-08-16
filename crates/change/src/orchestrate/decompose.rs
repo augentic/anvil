@@ -14,6 +14,7 @@ use project::plan::decomposition::{
     BoundProfile, Child, Decomposition, Kind, MAX_JUDGMENTS, Node, PartitionKind,
     PartitionResponse, ReviewVerdict, Scope, VERSION,
 };
+use project::pool;
 use project::profile::{Gate, Profiles};
 use project::seam::{Source, Workspaces};
 use serde_json::json;
@@ -82,52 +83,102 @@ where
 {
     let mut judgments = 0_usize;
     let mut caveats = Vec::new();
+    let claims = pool::Claims::default();
 
-    while let Some(id) = queue.pop_front() {
-        if judgments >= MAX_JUDGMENTS {
+    // Sibling domains own distinct subtrees, so their partition
+    // judgments run concurrently in rounds (RFC-96 D5); responses join
+    // and apply in queue order — never completion order.
+    while !queue.is_empty() {
+        let remaining = MAX_JUDGMENTS.saturating_sub(judgments);
+        if remaining == 0 {
             return Err(budget_exhausted());
         }
-        judgments += 1;
-        let request = partition_request(&tree, &id, catalog, plan, judgments)?;
-        let response = partition::partition(provider, &request, |answer| {
-            check_targets(plan, answer)?;
-            let mut trial = tree.clone();
-            apply(&mut trial, &id, answer)?;
-            check_progress(&trial)
-        })
-        .await?;
-        check_targets(plan, &response)?;
-        match response.kind {
-            PartitionKind::Split => {
-                let children: Vec<String> =
-                    response.children.iter().map(|child| child.id.clone()).collect();
-                apply(&mut tree, &id, &response)?;
-                for child in children {
-                    queue.push_back(child);
+        let take = queue.len().min(remaining);
+        let round: Vec<String> = queue.drain(..take).collect();
+        let requests: Vec<serde_json::Value> = round
+            .iter()
+            .enumerate()
+            .map(|(offset, id)| partition_request(&tree, id, catalog, plan, judgments + offset + 1))
+            .collect::<Result<_, _>>()?;
+        judgments += round.len();
+
+        let jobs: Vec<pool::Job<'_, PartitionResponse, Error>> = round
+            .iter()
+            .zip(&requests)
+            .map(|(id, request)| pool::Job {
+                claim: pool::Claim {
+                    item: id.clone(),
+                    operation: "partition".to_string(),
+                    attempt: 1,
+                },
+                budget: pool::budget::JUDGMENT,
+                future: Box::pin(partition::partition(provider, request, |answer| {
+                    check_targets(plan, answer)?;
+                    let mut trial = tree.clone();
+                    apply(&mut trial, id, answer)?;
+                    check_progress(&trial)
+                })),
+            })
+            .collect();
+        let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
+
+        for (id, outcome) in round.iter().zip(outcomes) {
+            let response = settle_partition(outcome, id)?;
+            check_targets(plan, &response)?;
+            match response.kind {
+                PartitionKind::Split => {
+                    let children: Vec<String> =
+                        response.children.iter().map(|child| child.id.clone()).collect();
+                    apply(&mut tree, id, &response)?;
+                    for child in children {
+                        queue.push_back(child);
+                    }
                 }
-            }
-            PartitionKind::Leaf => {
-                close_or_review(
-                    provider,
-                    paths,
-                    now,
-                    plan,
-                    catalog,
-                    persist,
-                    &mut tree,
-                    &mut queue,
-                    &mut caveats,
-                    &mut judgments,
-                    &id,
-                    &response,
-                )
-                .await?;
+                PartitionKind::Leaf => {
+                    close_or_review(
+                        provider,
+                        paths,
+                        now,
+                        plan,
+                        catalog,
+                        persist,
+                        &mut tree,
+                        &mut queue,
+                        &mut caveats,
+                        &mut judgments,
+                        id,
+                        &response,
+                    )
+                    .await?;
+                }
             }
         }
     }
 
     tree.check()?;
     Ok(Decomposed { tree, caveats })
+}
+
+/// Fold one pool outcome into the decomposition error surface, in
+/// queue order.
+fn settle_partition(
+    outcome: pool::Outcome<PartitionResponse, Error>, id: &str,
+) -> Result<PartitionResponse, Error> {
+    match outcome {
+        pool::Outcome::Settled(result) => result,
+        pool::Outcome::TimedOut => Err(Error::Diag {
+            code: "plan-author-partition-timeout",
+            detail: format!("partition of `{id}` exceeded its inactivity budget; re-run"),
+        }),
+        pool::Outcome::Rejected | pool::Outcome::Cancelled | pool::Outcome::Skipped => {
+            Err(Error::Diag {
+                code: "plan-author-partition-cancelled",
+                detail: format!(
+                    "partition of `{id}` did not run (a sibling judgment failed first)"
+                ),
+            })
+        }
+    }
 }
 
 fn budget_exhausted() -> Error {

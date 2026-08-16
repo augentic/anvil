@@ -21,8 +21,8 @@ use project::seam::wire::{
     PhaseWrite, RepairOrigin, UiSurface, build_finding,
 };
 use project::seam::{
-    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Source, SourceContent,
-    SourceInput, SourceWorkspace, SurveyResult, Target, Workspace,
+    self, ArtifactStage, BuildContext, Evidence, Input, Lead, MergePhase, Shelf, Source,
+    SourceContent, SourceInput, SourceWorkspace, SurveyResult, Target, Workspace,
 };
 use project::snapshot::{CodePatch, SnapshotId};
 
@@ -112,6 +112,20 @@ impl Source for Provider {
                 claims: evidence.claims.into_iter().map(map_claim).collect(),
             })
         }
+    }
+}
+
+impl Shelf for Provider {
+    /// The engine's synthesis shelf on the deployment's pre-bound
+    /// listener (RFC-96 D9): only the port is taken from `HTTP_ADDR`
+    /// — the host stays the IPv4 loopback literal, mirroring the
+    /// adapter SDK's grant derivation. `None` when the variable is
+    /// absent or unparseable: no listener means no shelf, and the
+    /// synthesis prompt inlines the full playbook instead.
+    async fn synthesis_shelf(&self) -> Result<Option<String>, seam::Error> {
+        let addr = std::env::var("HTTP_ADDR").ok();
+        let port = addr.as_deref().and_then(|addr| addr.rsplit_once(':')?.1.parse::<u16>().ok());
+        Ok(port.map(|port| format!("http://127.0.0.1:{port}{}", slice::shelf::PATH)))
     }
 }
 
@@ -254,6 +268,17 @@ impl seam::Workspaces for Provider {
         async move {
             let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
             project::workspace::capture(&store, Path::new(GUEST_WORKSPACES_MOUNT), &id)
+                .await
+                .map_err(|err| workspace_failure(&err))
+        }
+    }
+
+    fn compose(
+        &self, base: SnapshotId, patches: Vec<CodePatch>,
+    ) -> impl Future<Output = Result<CodePatch, seam::Error>> + Send {
+        async move {
+            let store = crate::workspace::store().await.map_err(|err| workspace_failure(&err))?;
+            project::workspace::compose(&store, &base, &patches)
                 .await
                 .map_err(|err| workspace_failure(&err))
         }

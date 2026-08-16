@@ -107,7 +107,13 @@ pub async fn merge<T: Target + Workspaces>(
         return resume_postflight(targets, layout, now, slice, &id, &commit).await;
     }
 
-    let composed = composed_result(&commit)?;
+    // Retraction gate (RFC-96 D7, plan-owned merges only): a stale
+    // frozen member retracts the whole uncommitted wave — no prefix
+    // commits.
+    if layout.plan_path().exists() && !commit.wave.members_fresh(layout)? {
+        journal_on_failure(layout, now, slice, Err::<(), _>(stale_wave(&commit)))?;
+    }
+    let composed = journal_on_failure(layout, now, slice, composed_result(targets, &commit).await)?;
     let view = journal_on_failure(
         layout,
         now,
@@ -375,8 +381,10 @@ fn opened_wave(layout: Layout<'_>, slice: &str) -> Result<(String, SnapshotId), 
             EventKind::TargetWaveOpened {
                 target,
                 digest,
-                slice_name,
-            } if slice_name.as_str() == slice => Some((target.clone(), digest.clone())),
+                members,
+            } if members.iter().any(|member| member.as_str() == slice) => {
+                Some((target.clone(), digest.clone()))
+            }
             _ => None,
         })
         .ok_or_else(|| {
@@ -392,19 +400,52 @@ fn opened_wave(layout: Layout<'_>, slice: &str) -> Result<(String, SnapshotId), 
     Ok((target, SnapshotId::parse(&digest)?))
 }
 
-/// This cut's composed member-result: the sole `BuildRecord.result`,
-/// loaded through the member list.
-fn composed_result(commit: &WaveCommit) -> Result<SnapshotId, Error> {
-    commit.wave.enforce_one_member()?;
-    commit.members.iter().map(|(_, record)| record.result.clone()).next().ok_or_else(|| {
-        Error::Diag {
-            code: "target-wave-member-count",
+/// The typed retraction refusal for a stale frozen wave.
+fn stale_wave(commit: &WaveCommit) -> Error {
+    Error::Diag {
+        code: "target-wave-member-stale",
+        detail: format!(
+            "wave `{}` for target `{}` was retracted: a member's refinement manifest no longer \
+             matches its frozen binding; re-run `emery plan execute` to rebuild the members \
+             under a fresh wave",
+            commit.digest, commit.wave.target
+        ),
+    }
+}
+
+/// The wave's composed member result: the sole record's result for a
+/// one-member wave (byte-identical to the serial reference), else the
+/// same-base disjoint composition of every member patch (RFC-96
+/// D6/D7).
+async fn composed_result<T: Workspaces>(
+    targets: &T, commit: &WaveCommit,
+) -> Result<SnapshotId, Error> {
+    let mut results = commit.members.iter().map(|(_, record)| record);
+    let first = results.next().ok_or_else(|| Error::Diag {
+        code: "target-wave-member-count",
+        detail: format!("target wave for `{}` must have at least one member", commit.wave.target),
+    })?;
+    if commit.members.len() == 1 {
+        return Ok(first.result.clone());
+    }
+    let patches: Vec<project::snapshot::CodePatch> = commit
+        .members
+        .iter()
+        .map(|(_, record)| project::snapshot::CodePatch {
+            base: record.base.clone(),
+            result: record.result.clone(),
+            touched: record.touched.clone(),
+        })
+        .collect();
+    let composed =
+        targets.compose(commit.wave.base.clone(), patches).await.map_err(|err| Error::Diag {
+            code: "target-merge-compose-failed",
             detail: format!(
-                "target wave for `{}` must have exactly one member; found 0",
-                commit.wave.target
+                "composing the frozen member patches for wave `{}` failed: {err}",
+                commit.digest
             ),
-        }
-    })
+        })?;
+    Ok(composed.result)
 }
 
 async fn prepare_workspace(

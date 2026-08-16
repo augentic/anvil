@@ -23,9 +23,8 @@ omnia.workspace = true
 omnia-filesystem.workspace = true
 omnia-wasi-blobstore.workspace = true
 emery-project.workspace = true
+emery-slice.workspace = true
 emery-transport.workspace = true
-emery-wasi-exec-mode.workspace = true
-emery-wasi-vcs.workspace = true
 semver.workspace = true
 
 [dev-dependencies]

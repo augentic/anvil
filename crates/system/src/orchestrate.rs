@@ -13,6 +13,7 @@ use error::Error;
 use omnia_guest::Model;
 use project::adapter::{AdapterSelector, Resolver};
 use project::handler::ExecutionPaths;
+use project::pool;
 use project::seam::{
     Source, SourceContent, SourceInput, SourceWorkspace, Trees, Workspaces, source_id,
 };
@@ -120,23 +121,9 @@ pub async fn survey(
     let coverage = Coverage::load(&layout.coverage_path())?;
     let decisions = decision::load_all(&layout.decisions_dir())?;
 
-    // Survey phase: materialize and survey every included row,
-    // holding each lent workspace for extract. The Result sequence
-    // is the report order so survey failures stay in place.
-    let mut surveyed = Vec::new();
+    let included: Vec<&Row> = coverage.included().collect();
     let mut patches: BTreeMap<String, RowPatch> = BTreeMap::new();
-    for row in coverage.included() {
-        match survey_source(seam, resolver, paths, root, row).await {
-            Ok(ok) => surveyed.push(Ok(ok)),
-            Err(error) => {
-                patches.insert(row.key.clone(), RowPatch::Failed(error.clone()));
-                surveyed.push(Err(SourceReport::Failed {
-                    source: row.key.clone(),
-                    error,
-                }));
-            }
-        }
-    }
+    let surveyed = survey_phase(seam, resolver, paths, root, &included, &mut patches).await;
 
     // The lead gate runs before any extract: exceeding the engine
     // constant is a typed stop, and surveyed rows keep their observed
@@ -165,47 +152,7 @@ pub async fn survey(
         });
     }
 
-    // Extract phase: a source's Evidence replaces `evidence/<source>/`
-    // only after every lead extracted, so a failure preserves the
-    // prior corpus alongside its `survey-error`.
-    let mut reports = Vec::new();
-    let mut persisted = 0_usize;
-    for row in surveyed {
-        match row {
-            Err(failed) => reports.push(failed),
-            Ok(source) => {
-                let extracted = extract_source(seam, &source).await;
-                let _dropped = seam.discard(source.workspace).await;
-                match extracted {
-                    Ok(documents) => {
-                        persisted += documents.len();
-                        replace_evidence(&layout, &source.key, &documents)?;
-                        patches.insert(
-                            source.key.clone(),
-                            RowPatch::Observed {
-                                cid: source.cid.clone(),
-                                revision: source.revision.clone(),
-                            },
-                        );
-                        reports.push(SourceReport::Surveyed {
-                            source: source.key,
-                            adapter: source.adapter,
-                            leads: source.leads.len(),
-                            cid: source.cid,
-                            revision: source.revision,
-                        });
-                    }
-                    Err(error) => {
-                        patches.insert(source.key.clone(), RowPatch::Failed(error.clone()));
-                        reports.push(SourceReport::Failed {
-                            source: source.key,
-                            error,
-                        });
-                    }
-                }
-            }
-        }
-    }
+    let (reports, persisted) = extract_phase(seam, &layout, surveyed, &mut patches).await?;
 
     coverage::persist(&layout.coverage_path(), &patches)?;
     std::fs::create_dir_all(layout.events_dir()).map_err(Error::Io)?;
@@ -327,6 +274,158 @@ fn read_corpus(layout: &Layout<'_>, coverage: &Coverage) -> Result<Corpus, Error
         }
     }
     Ok(corpus)
+}
+
+/// Survey phase: materialize and survey every included row on the
+/// bounded pool (RFC-96 D5), holding each lent workspace for extract.
+/// Rows join in coverage order — never completion order — and a
+/// failed row records its `survey-error` patch while siblings
+/// continue.
+async fn survey_phase(
+    seam: &(impl Source + Workspaces + Trees), resolver: &impl Resolver, paths: &ExecutionPaths,
+    root: &Path, included: &[&Row], patches: &mut BTreeMap<String, RowPatch>,
+) -> Vec<Result<Surveyed, SourceReport>> {
+    let claims = pool::Claims::default();
+    let jobs: Vec<pool::Job<'_, Result<Surveyed, SurveyError>, Error>> = included
+        .iter()
+        .map(|row| pool::Job {
+            claim: pool::Claim {
+                item: row.key.clone(),
+                operation: "system-survey".to_string(),
+                attempt: 1,
+            },
+            budget: pool::budget::SURVEY,
+            future: Box::pin(
+                async move { Ok(survey_source(seam, resolver, paths, root, row).await) },
+            ),
+        })
+        .collect();
+    let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
+
+    let mut surveyed = Vec::with_capacity(included.len());
+    for (outcome, row) in outcomes.into_iter().zip(included) {
+        match settle_row(outcome, &row.key, "survey") {
+            Ok(ok) => surveyed.push(Ok(ok)),
+            Err(error) => {
+                patches.insert(row.key.clone(), RowPatch::Failed(error.clone()));
+                surveyed.push(Err(SourceReport::Failed {
+                    source: row.key.clone(),
+                    error,
+                }));
+            }
+        }
+    }
+    surveyed
+}
+
+/// Extract phase: sources fan out on the pool and their documents
+/// join in coverage order; within one source, leads extract serially
+/// against its lent workspace. A source's Evidence replaces
+/// `evidence/<source>/` only after every lead extracted, so a failure
+/// preserves the prior corpus alongside its `survey-error`. Returns
+/// the per-source reports and the persisted document count.
+async fn extract_phase(
+    seam: &(impl Source + Workspaces), layout: &Layout<'_>,
+    surveyed: Vec<Result<Surveyed, SourceReport>>, patches: &mut BTreeMap<String, RowPatch>,
+) -> Result<(Vec<SourceReport>, usize), Error> {
+    let claims = pool::Claims::default();
+    let mut jobs: Vec<pool::Job<'_, Extracted, Error>> = Vec::new();
+    for row in &surveyed {
+        let Ok(source) = row else { continue };
+        // The budget scales with the serial per-lead extract chain.
+        let budget_units = u32::try_from(source.leads.len().max(1)).unwrap_or(u32::MAX);
+        jobs.push(pool::Job {
+            claim: pool::Claim {
+                item: source.key.clone(),
+                operation: "system-extract".to_string(),
+                attempt: 1,
+            },
+            budget: pool::budget::EXTRACT.saturating_mul(budget_units),
+            future: Box::pin(async move {
+                let documents = extract_source(seam, source).await;
+                let _dropped = seam.discard(source.workspace.clone()).await;
+                Ok(documents)
+            }),
+        });
+    }
+    let mut extractions =
+        pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await.into_iter();
+
+    let mut reports = Vec::new();
+    let mut persisted = 0_usize;
+    for row in surveyed {
+        match row {
+            Err(failed) => reports.push(failed),
+            Ok(source) => {
+                let outcome = extractions.next().ok_or_else(|| Error::Diag {
+                    code: "system-survey-extract-missing",
+                    detail: format!("no extract outcome for `{}`", source.key),
+                })?;
+                // A never-admitted job's future never ran its discard;
+                // release the lent workspace here.
+                if !matches!(outcome, pool::Outcome::Settled(_)) {
+                    let _dropped = seam.discard(source.workspace.clone()).await;
+                }
+                match settle_row(outcome, &source.key, "extract") {
+                    Ok(documents) => {
+                        persisted += documents.len();
+                        replace_evidence(layout, &source.key, &documents)?;
+                        patches.insert(
+                            source.key.clone(),
+                            RowPatch::Observed {
+                                cid: source.cid.clone(),
+                                revision: source.revision.clone(),
+                            },
+                        );
+                        reports.push(SourceReport::Surveyed {
+                            source: source.key,
+                            adapter: source.adapter,
+                            leads: source.leads.len(),
+                            cid: source.cid,
+                            revision: source.revision,
+                        });
+                    }
+                    Err(error) => {
+                        patches.insert(source.key.clone(), RowPatch::Failed(error.clone()));
+                        reports.push(SourceReport::Failed {
+                            source: source.key,
+                            error,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    Ok((reports, persisted))
+}
+
+/// One source's joined extract result: lead-keyed documents, or the
+/// per-row survey error that keeps siblings running.
+type Extracted = Result<Vec<(String, artifacts::evidence::Document)>, SurveyError>;
+
+/// Fold one pool outcome into the per-row survey-error surface — a
+/// stalled or skipped row records an error while its siblings'
+/// results stand.
+fn settle_row<T>(
+    outcome: pool::Outcome<Result<T, SurveyError>, Error>, key: &str, leg: &str,
+) -> Result<T, SurveyError> {
+    match outcome {
+        pool::Outcome::Settled(Ok(row)) => row,
+        pool::Outcome::Settled(Err(err)) => Err(SurveyError {
+            kind: SurveyErrorKind::Adapter,
+            detail: format!("{leg} of `{key}` failed: {err}"),
+        }),
+        pool::Outcome::TimedOut => Err(SurveyError {
+            kind: SurveyErrorKind::Adapter,
+            detail: format!("{leg} of `{key}` exceeded its inactivity budget; re-run"),
+        }),
+        pool::Outcome::Rejected | pool::Outcome::Cancelled | pool::Outcome::Skipped => {
+            Err(SurveyError {
+                kind: SurveyErrorKind::Adapter,
+                detail: format!("{leg} of `{key}` did not run (a sibling row stalled); re-run"),
+            })
+        }
+    }
 }
 
 /// One row's survey leg: resolve the declared adapter, materialize

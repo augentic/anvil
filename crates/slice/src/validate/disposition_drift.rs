@@ -36,9 +36,11 @@ enum Staleness {
 fn staleness(layout: Layout<'_>, slice_dir: &Path, name: &str) -> Result<Option<Staleness>> {
     let events = collect_events(layout)?;
     let Some(digest) = events.iter().rev().find_map(|event| match &event.kind {
-        EventKind::TargetWaveOpened {
-            digest, slice_name, ..
-        } if slice_name.as_str() == name => Some(digest.clone()),
+        EventKind::TargetWaveOpened { digest, members, .. }
+            if members.iter().any(|member| member.as_str() == name) =>
+        {
+            Some(digest.clone())
+        }
         _ => None,
     }) else {
         return Ok(None);

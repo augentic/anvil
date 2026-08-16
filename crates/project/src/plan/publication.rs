@@ -33,6 +33,12 @@ pub struct Member {
     pub blocked: bool,
     /// Current accepted CID from the committed wave chain.
     pub accepted: Option<SnapshotId>,
+    /// The RFC-96 D8 drain gate: `Some(true)` when the root domain
+    /// holds a passing complete round for the current decomposition
+    /// revision and accepted CID, `Some(false)` when it is missing or
+    /// failed, `None` when no decomposition (or no accepted CID)
+    /// gates this member.
+    pub converged: Option<bool>,
     /// The covering `plan.publication.materialized` fact, when one
     /// exists for the current accepted CID.
     pub materialized: Option<Materialized>,
@@ -58,11 +64,15 @@ pub struct Materialized {
 
 impl Member {
     /// The D11 fact predicate: the member awaits materialization —
-    /// complete, unblocked, an accepted CID exists, and no covering
-    /// fact dedupes it.
+    /// complete, unblocked, converged (RFC-96 D8), an accepted CID
+    /// exists, and no covering fact dedupes it.
     #[must_use]
-    pub const fn pending(&self) -> bool {
-        self.complete && !self.blocked && self.accepted.is_some() && self.materialized.is_none()
+    pub fn pending(&self) -> bool {
+        self.complete
+            && !self.blocked
+            && self.converged != Some(false)
+            && self.accepted.is_some()
+            && self.materialized.is_none()
     }
 }
 
@@ -108,6 +118,7 @@ pub fn members(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Result<Vec<
         let materialized = accepted
             .as_ref()
             .and_then(|accepted| materialized_fact(plan, current, &target, accepted));
+        let converged = domain_gate(layout, &target, accepted.as_ref())?;
         projected.push(Member {
             blocked: postflight_blocked(events, &slices),
             target,
@@ -115,6 +126,7 @@ pub fn members(plan: &Plan, layout: Layout<'_>, events: &[Event]) -> Result<Vec<
             parent_revision,
             complete,
             accepted,
+            converged,
             materialized,
         });
     }
@@ -149,6 +161,23 @@ fn generation<'e>(plan: &Plan, events: &'e [Event]) -> &'e [Event] {
                 if *plan_name == plan.name)
         })
         .map_or(events, |start| &events[start..])
+}
+
+/// The RFC-96 D8 member gate: whether the decomposition root holds a
+/// passing complete round at the current revision and accepted CID.
+/// `None` when no decomposition (or no accepted CID) gates the member.
+fn domain_gate(
+    layout: Layout<'_>, target: &str, accepted: Option<&SnapshotId>,
+) -> Result<Option<bool>, Error> {
+    let Some(tree) = super::decomposition::Decomposition::load_opt(&layout.decomposition_path())?
+    else {
+        return Ok(None);
+    };
+    let Some(accepted) = accepted else {
+        return Ok(None);
+    };
+    let revision = tree.digest()?;
+    Ok(Some(crate::domain::complete_passed(layout, &tree.root, &revision, target, Some(accepted))?))
 }
 
 /// The typed topology-lock refusal for a mutation touching `target`.

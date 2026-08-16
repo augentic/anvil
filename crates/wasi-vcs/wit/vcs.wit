@@ -124,11 +124,8 @@ interface forge {
     -> result<list<pull-request>, error>;
 }
 
-/// Host-side bindgen world for the `vcs` capability: the shipped
-/// runtime links a host implementation into the engine deployment.
-/// Never exported by a guest. Imports grow with the RFC-95 cuts —
-/// `trees` (cut 1), then `worktree` (cut 2), then `forge` (cut 3).
-world vcs-host {
+/// Host-side bindgen world. Never exported by a guest.
+world imports {
   import trees;
   import worktree;
   import forge;
