@@ -15,7 +15,7 @@ Required H2s in order: `## Why`, `## Domains`, `## Non-goals`. Domain bullets: `
 
 ## 2. `specs/<domain>/spec.md`
 
-Behavioural requirements — the artifact the provenance parser validates after kernel render. One spec body per `## Domains` entry, keyed by `domain`; kernel writes `specs/<domain>/spec.md`. Slug is kebab-case from the Domains bullet. Target guidance chooses domains; layout is workflow-owned. Root-level `spec.md` is invalid.
+Behavioural requirements — the artifact the provenance parser validates after kernel render. One staged `specs/<domain>/spec.md` per `## Domains` entry. Slug is kebab-case from the Domains bullet. Target guidance chooses domains; layout is workflow-owned. Root-level `spec.md` is invalid.
 
 Author heading + body only; kernel injects provenance from `model.yaml` (see [`requirement-block.md`](requirement-block.md)).
 
@@ -58,7 +58,7 @@ Every task MUST match `- [ ] X.Y <description>` under a `## ` heading (`tasks.us
 
 ## What synthesis never does
 
-- **Never edit** `metadata.yaml`, `plan.yaml`, or `leads.md`.
-- **Never rewrite** an earlier response section.
+- **Never edit** `evidence/`, `dependencies/`, `metadata.yaml`, `plan.yaml`, or `leads.md`.
+- **Never rewrite** an earlier artifact when authoring a later one.
 - **Never author kernel-owned fields** — record claims + `agreement`; orphan `(source, id)` → `slice-model-source-orphan`.
 - **Never park on uncertainty** — record the verdict; kernel derives `[unknown]` / `[conflict]` / `[divergence]`.

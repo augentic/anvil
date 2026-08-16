@@ -918,6 +918,14 @@ fn mcp_route_maps_routed_ids() {
     }
 }
 
+// The engine's synthesis shelf (RFC-96 D9): exactly
+// `/mcp/engine/synthesis` routes onto the engine guest.
+#[test]
+fn mcp_route_engine_shelf() {
+    let guest = launcher::mcp_route("/mcp/engine/synthesis").expect("the engine shelf routes");
+    assert_eq!(guest.as_str(), "emery");
+}
+
 #[test]
 fn mcp_route_declines_others() {
     for path in [
@@ -930,6 +938,11 @@ fn mcp_route_declines_others() {
         "/mcp/plugin/omnia",
         "/mcp/target/omnia@1",
         "/mcp/target/omnia@not-semver",
+        // `engine` is not a legal adapter axis; only the exact
+        // synthesis shelf path routes onto the engine guest.
+        "/mcp/engine",
+        "/mcp/engine/",
+        "/mcp/engine/other",
     ] {
         assert!(launcher::mcp_route(path).is_none(), "{path} must decline");
     }

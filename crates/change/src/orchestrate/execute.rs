@@ -20,6 +20,8 @@ use project::pool;
 use project::seam::{PhaseSource, Source, Target, Workspaces, Worktree};
 use tracing::Instrument as _;
 
+use super::converge;
+
 mod marker;
 mod publication;
 
@@ -114,6 +116,15 @@ pub async fn execute<P: Model, S: Source, T: Target + Workspaces + Worktree, R: 
                 return Ok(stopped);
             }
             continue;
+        }
+        // A projected complete-round gap (RFC-96 D8) is the loop's own
+        // convergence step: record the missing rounds, then re-project
+        // — a durably failed round re-surfaces as the stop.
+        if status.stop.as_ref().map(|stop| stop.reason) == Some(StopReason::DomainCompleteFailed) {
+            match converge::complete(caps.targets, caps.resolver, paths, now, &plan).await? {
+                None => continue,
+                Some(failure) => return Ok(domain_stop(&failure, &phases)),
+            }
         }
         match dispatch_status(layout, now, status, &phases) {
             ControlFlow::Break(outcome) => return Ok(outcome),
@@ -210,6 +221,14 @@ async fn run_merge<P: Model, S: Source, T: Target + Workspaces + Worktree, R: Re
     if step == LoopStep::Build {
         super::enforce_before_build(layout, plan, slice, now)?;
     }
+    // The frontier round gates a multi-member wave's commit (RFC-96
+    // D8): a failed round parks the wave — no prefix commits.
+    if step == LoopStep::Merge
+        && let Some(failure) =
+            converge::frontier(caps.targets, caps.resolver, paths, now, plan, slice).await?
+    {
+        return Ok(Some(domain_stop(&failure, phases)));
+    }
     match run_phase(caps, paths, now, step, slice).await {
         Ok(verification) => {
             tracing::info!("{step} {slice} — completed");
@@ -218,10 +237,15 @@ async fn run_merge<P: Model, S: Source, T: Target + Workspaces + Worktree, R: Re
                 step,
                 verification,
             });
-            // A landed merge may complete its target's in-scope set —
-            // materialize eagerly (RFC-95 D11 permits running before
-            // unrelated targets drain).
+            // A landed merge may complete its target's in-scope set:
+            // record any newly convergeable complete rounds (RFC-96
+            // D8), then materialize eagerly (RFC-95 D11).
             if step == LoopStep::Merge {
+                if let Some(failure) =
+                    converge::complete(caps.targets, caps.resolver, paths, now, plan).await?
+                {
+                    return Ok(Some(domain_stop(&failure, phases)));
+                }
                 return reconcile_publication(caps.targets, paths, now, phases).await;
             }
             Ok(None)
@@ -240,18 +264,29 @@ async fn run_merge<P: Model, S: Source, T: Target + Workspaces + Worktree, R: Re
     }
 }
 
-/// Fan the ready builds onto the bounded pool: claims and the gap
-/// gate run serially per admitted item, dispatches overlap up to the
-/// cap, and outcomes join in canonical order — never completion
-/// order. The first failure (in canonical order) drains in-flight
-/// siblings to their terminal reports and stops the run; completed
-/// siblings keep their `PhaseRun` rows.
+/// Fan the ready builds onto the bounded pool: same-target groups
+/// freeze one multi-member wave before claims and builds (RFC-96 D7,
+/// membership capped at the pool cap), claims and the gap gate run
+/// serially per admitted item, dispatches overlap up to the cap, and
+/// outcomes join in canonical order — never completion order. The
+/// first failure (in canonical order) drains in-flight siblings to
+/// their terminal reports and stops the run; completed siblings keep
+/// their `PhaseRun` rows.
 async fn run_builds<P: Model, S: Source, T: Target + Workspaces + Worktree, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, plan: &Plan,
     builds: &[schedule::WorkItem], phases: &mut Vec<PhaseRun>,
 ) -> Result<Option<ExecuteOutcome>, Error> {
     let layout = paths.layout();
-    for item in builds {
+    let builds = capped_groups(builds);
+    for (target, group) in &builds {
+        if group.len() > 1 {
+            let slices: Vec<String> = group.iter().map(|item| item.slice.to_string()).collect();
+            slice::orchestrate::open_wave_group(caps.targets, layout, now, target, &slices).await?;
+        }
+    }
+    let builds: Vec<&schedule::WorkItem> =
+        builds.iter().flat_map(|(_, group)| group.iter().copied()).collect();
+    for item in &builds {
         claim_slice(layout, now, plan, item.slice.as_str())?;
         // Epoch freshness gates build before the target orchestration
         // (`plan-epoch-stale`); open gaps are dispositioned at the
@@ -275,7 +310,7 @@ async fn run_builds<P: Model, S: Source, T: Target + Workspaces + Worktree, R: R
     let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
 
     let mut stop: Option<(StopReason, String, String)> = None;
-    for (item, outcome) in builds.iter().zip(outcomes) {
+    for (item, outcome) in builds.iter().copied().zip(outcomes) {
         let slice = item.slice.as_str();
         match settle_build(outcome, slice) {
             Ok(verification) => {
@@ -303,6 +338,43 @@ async fn run_builds<P: Model, S: Source, T: Target + Workspaces + Worktree, R: R
         slice: Some(slice),
         phases: phases.clone(),
     }))
+}
+
+/// Map one failed domain round onto the typed execute stop (RFC-96
+/// D8): `domain-frontier-failed` parks the wave;
+/// `domain-complete-failed` blocks dependants, drain, and publication.
+fn domain_stop(failure: &converge::Failure, phases: &[PhaseRun]) -> ExecuteOutcome {
+    let reason = match failure.kind {
+        project::domain::RoundKind::Frontier => StopReason::DomainFrontierFailed,
+        project::domain::RoundKind::Complete => StopReason::DomainCompleteFailed,
+    };
+    tracing::info!("domain {} — stopped: {reason}", failure.domain);
+    ExecuteOutcome::Stopped {
+        reason,
+        detail: Some(failure.detail.clone()),
+        hint: reason.hint(),
+        slice: None,
+        phases: phases.to_vec(),
+    }
+}
+
+/// Group the canonical-order ready builds by target, truncating each
+/// group at the pool cap: frozen wave membership never exceeds the
+/// cap, and overflow items wait for a later round (RFC-96 D7).
+fn capped_groups(builds: &[schedule::WorkItem]) -> Vec<(String, Vec<&schedule::WorkItem>)> {
+    let cap = pool::cap();
+    let mut groups: Vec<(String, Vec<&schedule::WorkItem>)> = Vec::new();
+    for item in builds {
+        match groups.last_mut() {
+            Some((target, group)) if *target == item.target => {
+                if group.len() < cap {
+                    group.push(item);
+                }
+            }
+            _ => groups.push((item.target.clone(), vec![item])),
+        }
+    }
+    groups
 }
 
 /// Fold one pool outcome into the drain's per-build surface, in

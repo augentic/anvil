@@ -74,8 +74,8 @@ That makes the following a **wire contract**, on the same footing as the exit-co
 
 | Surface | Closed set | Source of truth |
 |---|---|---|
-| `plan status` `action` | `refine`, `build`, `merge`, `stop`, `drained` | `NextActionKind` in `crates/project/src/plan/status.rs` |
-| `plan status` `stop.reason` | `refine-failed`, `refinement-required`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`, `boundary-escalation`, `refine-budget-exhausted` | `StopReason`, same module |
+| `plan status` `action` | `refine`, `build`, `merge`, `materialize`, `stop`, `drained` | `NextActionKind` in `crates/project/src/plan/status.rs` |
+| `plan status` `stop.reason` | `refine-failed`, `refinement-required`, `build-failed`, `merge-conflict`, `merge-postflight-failed`, `slice-dropped`, `merge-incomplete`, `stuck`, `boundary-escalation`, `refine-budget-exhausted`, `domain-frontier-failed`, `domain-complete-failed`, `publication-worktree-dirty`, `publication-provision-failed` | `StopReason`, same module |
 | `plan status` `resume` | literal command string, or absent when no single command resumes | `StatusBody::resume` |
 | Failure discriminant | kebab-case `error` on the flat body | [JSON envelope](#json-envelope) |
 | Failure class | four-slot table | [Exit codes](#exit-codes) |
@@ -133,7 +133,8 @@ The event taxonomy is **closed** — the `EventKind` enum in the CLI repo's `cra
 | Slice synthesis | `slice.synthesize.started`, `slice.synthesize.agent`, `slice.synthesize.completed`, `slice.synthesize.failed`, `slice.synthesis.conflict`, `slice.synthesis.divergence`, `slice.synthesis.unknown`, `slice.extract.completed`, `slice.transition.refined` | the `plan refine` drain's synthesis leg and its `refined` transition, `emery source extract` |
 | Slice build | `slice.build.started`, `slice.build.succeeded`, `slice.build.failed`, `slice.build.phase-completed` | the execute loop's build phase (`phase-completed` is per-attempt ordinal evidence for each engine-selected build phase — RFC-90 D6) |
 | Slice merge | `slice.merge.started`, `slice.merge.succeeded`, `slice.merge.failed`, `slice.archive.created`, `target.merge.wave-committed`, `target.merge.wave-succeeded`, `target.merge.wave-postflight-failed` | the execute loop's merge phase (wave commit + postflight; RFC-86 D9) |
-| Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent`, `target.wave.opened` | `emery source survey` / `extract`, the build phase's request-assembly leg, one-member target-wave open (RFC-86 D9) |
+| Source / target | `source.survey.completed`, `source.execution.agent`, `target.execution.agent`, `target.wave.opened` | `emery source survey` / `extract`, the build phase's request-assembly leg, target-wave open (RFC-86 D9; the payload names the frozen member list — multi-member since RFC-96 D7) |
+| Domain convergence | `domain.convergence.recorded` | the execute loop's convergence step (RFC-96 D8) — one fact per bound target each time a durable `DomainRound` (frontier or complete) is written under `targets/<target>/domains/` |
 | Definition | `system.wave.reviewed` | RFC-104 `emery system review` appends it to a definition-home event log; RFC-88 parses and verifies it and never appends it to the change journal |
 
 Writer ownership follows the same single-writer discipline as the lifecycle fields: CLI verbs append their own events as a side effect of the operation; skills never append — there is no emit verb, and nothing writes the file by hand. The journal is append-only telemetry — reading it back never gates a lifecycle transition. Reads route through `emery journal show` (eval probes, operators) or a CLI projection that consumes the tail internally (`emery plan status`'s stop classification); nothing re-parses the JSONL by hand.

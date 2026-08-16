@@ -85,6 +85,13 @@ pub enum StopReason {
     /// Focused resurvey or nearest-domain re-decomposition exhausted
     /// its compiled budget. The leaf is parked.
     RefineBudgetExhausted,
+    /// A domain frontier round failed over the composed wave
+    /// candidate (RFC-96 D8) — the wave is parked, no prefix commits.
+    DomainFrontierFailed,
+    /// A domain complete round failed (or is missing) over the
+    /// accepted tree (RFC-96 D8) — dependants, drain, and publication
+    /// materialization are blocked.
+    DomainCompleteFailed,
     /// The publication worktree carries uncommitted operator edits
     /// (RFC-95 D11) — materialize refuses to overwrite them.
     PublicationWorktreeDirty,
@@ -145,6 +152,16 @@ impl StopReason {
             Self::RefineBudgetExhausted => {
                 "Focused resurvey or nearest-domain re-decomposition exhausted its budget. \
                  Adjust sources or the bound profile, then re-run emery plan refine."
+            }
+            Self::DomainFrontierFailed => {
+                "Domain-level verification failed over the composed wave candidate; the wave is \
+                 parked. Repair the members (re-refine or apply an amendment) — staling the \
+                 frozen bindings retracts the wave — then re-run emery plan execute."
+            }
+            Self::DomainCompleteFailed => {
+                "Domain-level verification failed (or has not passed) over the accepted tree; \
+                 drain and publication are blocked. Land an authorized repair (a follow-up \
+                 slice via /emery:plan), then re-run emery plan execute."
             }
             Self::PublicationWorktreeDirty => {
                 "The publication worktree has uncommitted operator edits. Commit or stash them \

@@ -125,13 +125,8 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
     // whose entries are all done but whose members lack materialized
     // facts projects `materialize`, not `drained`.
     let members = publication::members(plan, layout, &events)?;
-    let resolution = match resolution {
-        r if r.action == NextActionKind::Drained => members
-            .iter()
-            .find(|member| member.pending())
-            .map_or(r, |member| Resolution::materialize(&member.target)),
-        r => r,
-    };
+    let unconverged = unconverged_targets(plan, layout, &events)?;
+    let resolution = drain_rewrite(resolution, &members, &unconverged);
     let publication = publication_bodies(plan, &members);
     Ok(assemble(
         plan,
@@ -144,6 +139,61 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         publication,
         in_progress,
     ))
+}
+
+/// The drained→gate rewrite: an unconverged target (RFC-96 D8)
+/// projects the `domain-complete-failed` stop; a pending publication
+/// member projects `materialize` (RFC-95 D11); else drained stands.
+fn drain_rewrite(
+    resolution: Resolution, members: &[publication::Member], unconverged: &[String],
+) -> Resolution {
+    if resolution.action != NextActionKind::Drained {
+        return resolution;
+    }
+    if let Some(target) = unconverged.first() {
+        return Resolution::stop_detail(
+            StopReason::DomainCompleteFailed,
+            Some(format!(
+                "target `{target}` has no passing complete round for the current decomposition \
+                 revision and accepted CID; re-run emery plan execute"
+            )),
+        );
+    }
+    members
+        .iter()
+        .find(|member| member.pending())
+        .map_or(resolution, |member| Resolution::materialize(&member.target))
+}
+
+/// Targets failing the RFC-96 D8 drain gate: an accepted CID exists
+/// but the decomposition root has no passing complete round at the
+/// current revision. Empty without a decomposition.
+fn unconverged_targets(
+    plan: &Plan, layout: Layout<'_>, events: &[Event],
+) -> Result<Vec<String>, Error> {
+    let Some(tree) =
+        super::super::decomposition::Decomposition::load_opt(&layout.decomposition_path())?
+    else {
+        return Ok(Vec::new());
+    };
+    let revision = tree.digest()?;
+    let mut targets: Vec<String> = Vec::new();
+    for entry in &plan.entries {
+        if !targets.contains(&entry.target) {
+            targets.push(entry.target.clone());
+        }
+    }
+    let mut unconverged = Vec::new();
+    for target in targets {
+        let Some(accepted) = crate::wave::accepted_cid(layout, events, &target)? else {
+            continue;
+        };
+        if !crate::domain::complete_passed(layout, &tree.root, &revision, &target, Some(&accepted))?
+        {
+            unconverged.push(target);
+        }
+    }
+    Ok(unconverged)
 }
 
 /// Per-member publication milestone rows, in member order.
@@ -341,13 +391,16 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
             | StopReason::BoundaryEscalation
             | StopReason::RefineBudgetExhausted => Some(LoopStep::Refine),
             StopReason::BuildFailed => Some(LoopStep::Build),
-            // `merge-incomplete` parks inside merge: the spec merge landed
-            // but the per-entry `done` stamp has not. Postflight failure is
-            // past merge (`done` + archived) — no awaited phase.
-            StopReason::MergeConflict | StopReason::MergeIncomplete => Some(LoopStep::Merge),
+            // `merge-incomplete` and a parked frontier round both hold
+            // inside merge; postflight failure is past merge — no
+            // awaited phase.
+            StopReason::MergeConflict
+            | StopReason::MergeIncomplete
+            | StopReason::DomainFrontierFailed => Some(LoopStep::Merge),
             StopReason::MergePostflightFailed
             | StopReason::SliceDropped
             | StopReason::Stuck
+            | StopReason::DomainCompleteFailed
             | StopReason::PublicationWorktreeDirty
             | StopReason::PublicationProvision => None,
         }),
@@ -391,6 +444,8 @@ fn resume_point(
             | StopReason::MergeConflict
             | StopReason::MergePostflightFailed
             | StopReason::MergeIncomplete
+            | StopReason::DomainFrontierFailed
+            | StopReason::DomainCompleteFailed
             | StopReason::PublicationWorktreeDirty
             | StopReason::PublicationProvision => Some("emery plan execute".to_string()),
             StopReason::SliceDropped | StopReason::Stuck => None,

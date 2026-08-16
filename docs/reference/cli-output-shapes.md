@@ -273,7 +273,7 @@ The merge phase inside `emery plan execute` folds the slice's spec deltas into t
 
 ### Synthesis envelopes {#synthesis-envelopes}
 
-The synthesis leg inside the `emery plan refine` drain assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the project-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent tree — they are not inlined on the wire), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
+The synthesis leg inside the `emery plan refine` drain assembles the agent **inputs** envelope (`kind: inputs`): the slice name, one entry per bound source carrying its `lead` and the stage-relative `evidence-path` to its `evidence/<source>.yaml` (the agent reads the claims from the lent staged tree — they are not inlined on the wire; RFC-96 D10), and the resolved target guidance body (wire field `guidance-brief`). Authority is deliberately absent — the kernel resolves it after the response. Read-only; emits a `slice.synthesize.agent` journal event.
 
 ```json
 {
@@ -284,12 +284,12 @@ The synthesis leg inside the `emery plan refine` drain assembles the agent **inp
     {
       "source": "docs",
       "lead": "password-reset",
-      "evidence-path": ".emery/change/slices/identity-service/evidence/docs.yaml"
+      "evidence-path": "evidence/docs.yaml"
     },
     {
       "source": "legacy",
       "lead": "password-reset",
-      "evidence-path": ".emery/change/slices/identity-service/evidence/legacy.yaml"
+      "evidence-path": "evidence/legacy.yaml"
     }
   ],
   "guidance-brief": "# Guidance brief\n…"

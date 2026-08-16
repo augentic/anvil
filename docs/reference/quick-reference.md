@@ -133,7 +133,7 @@ First-party source adapters live under `sources/<name>/`: `intent`, `documentati
         ├── decomposition.yaml
         ├── planning/     # retained amendments under proposals/
         ├── slices/       # active slices (proposal/spec/design/tasks + evidence/ + refinement.yaml + builds/)
-        ├── targets/      # one-member wave manifests
+        ├── targets/      # frozen target-wave manifests
         ├── events/       # per-writer fact logs (<writer>.jsonl)
         └── archive/      # finalized plans and merged or dropped slices
 ```

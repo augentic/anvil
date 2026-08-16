@@ -10,7 +10,7 @@ use std::task::Poll;
 
 use native::{DynModel, Provider, ReferenceMode};
 pub use native::{ForgeScript, WorktreeScript};
-use omnia_guest::model::{Error as ModelError, Model, Reply, Request};
+use omnia_guest::model::{Error as ModelError, Format, Model, Reply, Request};
 use omnia_testkit::model::{Harness, Scripted as ScriptedModel};
 use project::handler::{Anchor, CachePlacement, ExecutionPaths, Locations};
 
@@ -56,7 +56,7 @@ impl Session {
         let model = Harness::answering(answers);
         let provider = Provider::new(
             paths,
-            DynModel::new(model.clone()),
+            DynModel::new(Staging::new(model.clone())),
             crate::catalog(),
             ReferenceMode::Offline,
         );
@@ -87,7 +87,7 @@ impl Session {
         let model = Harness::answering(answers);
         let provider = Provider::new(
             paths,
-            DynModel::new(model.clone()),
+            DynModel::new(Staging::new(model.clone())),
             crate::catalog(),
             ReferenceMode::Offline,
         );
@@ -138,8 +138,12 @@ impl Session {
             yields: Arc::new(Mutex::new(yields.into())),
         };
         let paths = session.provider.paths().clone();
-        session.provider =
-            Provider::new(paths, DynModel::new(stagger), crate::catalog(), ReferenceMode::Offline);
+        session.provider = Provider::new(
+            paths,
+            DynModel::new(Staging::new(stagger)),
+            crate::catalog(),
+            ReferenceMode::Offline,
+        );
         session
     }
 
@@ -215,6 +219,129 @@ impl Session {
         let provider = self.provider.clone();
         self.provider = provider.with_forge_script(script);
     }
+}
+
+/// A model decorator playing the agent side of the staged synthesis
+/// tree (RFC-96 D10) for scripted suites.
+///
+/// On a `synthesis`-schema request the rich scripted answer's
+/// `model` / `artifacts` payload is written into the lent workspace
+/// as the staged bundle and the reply carries only the envelope.
+/// Every other request passes through.
+#[derive(Clone, Debug)]
+pub struct Staging<B> {
+    backend: B,
+}
+
+impl<B> Staging<B> {
+    /// Wrap `backend` with scripted synthesis staging.
+    pub const fn new(backend: B) -> Self {
+        Self { backend }
+    }
+}
+
+impl<B: Model> Model for Staging<B> {
+    fn create(&self, request: Request) -> impl Future<Output = Result<Reply, ModelError>> + Send {
+        let synthesis =
+            matches!(&request.format, Format::Schema(schema) if schema.name == "synthesis");
+        let stage = request.workspace.clone().filter(|_| synthesis);
+        let inner = self.backend.create(request);
+        async move {
+            let mut reply = inner.await?;
+            if let Some(stage) = stage {
+                reply.answer = stage_bundle(Path::new(&stage), &reply.answer);
+            }
+            Ok(reply)
+        }
+    }
+}
+
+/// Split one rich scripted synthesis answer: write its `model` /
+/// `artifacts` payload into the staged tree at `stage` and return the
+/// remaining envelope. Answers without a payload (escalations,
+/// deliberately incomplete scripts) pass through unchanged.
+fn stage_bundle(stage: &Path, answer: &str) -> String {
+    let Ok(serde_json::Value::Object(mut fields)) = serde_json::from_str(answer) else {
+        return answer.to_string();
+    };
+    if let Some(model) = fields.remove("model") {
+        let yaml = artifacts::atomic::serialise_yaml(&model).expect("scripted model serialises");
+        write(stage, "model.yaml", &yaml);
+    }
+    if let Some(bundle) = fields.remove("artifacts") {
+        for (key, file) in
+            [("proposal", "proposal.md"), ("design", "design.md"), ("tasks", "tasks.md")]
+        {
+            if let Some(text) = bundle.get(key).and_then(serde_json::Value::as_str) {
+                write(stage, file, text);
+            }
+        }
+        for spec in bundle.get("specs").and_then(serde_json::Value::as_array).into_iter().flatten()
+        {
+            let domain = spec.get("domain").and_then(serde_json::Value::as_str).unwrap_or("spec");
+            let content = spec.get("content").and_then(serde_json::Value::as_str).unwrap_or("");
+            write(stage, &format!("specs/{domain}/spec.md"), content);
+        }
+        // The staged tree defines the decision set exactly: an agent
+        // that drops a record deletes its file, so the scripted
+        // "agent" clears the seeded set before writing its own.
+        drop(std::fs::remove_dir_all(stage.join("decisions")));
+        for decision in
+            bundle.get("decisions").and_then(serde_json::Value::as_array).into_iter().flatten()
+        {
+            let slug =
+                decision.get("slug").and_then(serde_json::Value::as_str).unwrap_or("decision");
+            write(stage, &format!("decisions/{slug}.md"), &render_decision(decision));
+        }
+    }
+    serde_json::Value::Object(fields).to_string()
+}
+
+/// Render one scripted decision entry in the staged Decision Record
+/// shape (YAML front-matter plus the Nygard body).
+fn render_decision(decision: &serde_json::Value) -> String {
+    let text = |key: &str| decision.get(key).and_then(serde_json::Value::as_str).unwrap_or("");
+    let list = |key: &str| {
+        decision
+            .get(key)
+            .and_then(serde_json::Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(serde_json::Value::as_str)
+            .map(String::from)
+            .collect::<Vec<_>>()
+    };
+    let record = artifacts::decision::DecisionRecord {
+        id: None,
+        slug: text("slug").to_string(),
+        status: if text("status") == "rejected" {
+            artifacts::decision::DecisionStatus::Rejected
+        } else {
+            artifacts::decision::DecisionStatus::Accepted
+        },
+        slice: None,
+        date: None,
+        supersedes: list("supersedes"),
+        related: list("related"),
+        topics: list("topics"),
+        superseded_by: None,
+    };
+    let yaml = artifacts::atomic::serialise_yaml(&record).expect("scripted decision serialises");
+    format!(
+        "---\n{yaml}---\n\n# {}\n\n## Context\n\n{}\n\n## Decision\n\n{}\n\n## Consequences\n\n{}\n",
+        text("title"),
+        text("context"),
+        text("decision"),
+        text("consequences")
+    )
+}
+
+fn write(stage: &Path, rel: &str, text: &str) {
+    let path = stage.join(rel);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("staged bundle directory");
+    }
+    std::fs::write(&path, text).expect("staged bundle write");
 }
 
 /// A model decorator that delays completion without moving the pop:

@@ -16,9 +16,9 @@ pub fn synthesis() -> Value {
         "Generated judgment-answer schema — generated from the Rust wire types by \
          slice::answers; do not edit. Validates the schema-gated answer to the slice \
          synthesis judgment: the typed `proceed | boundary-escalation` envelope. \
-         `proceed` carries the structured model and the prose-only Markdown artifacts; \
-         `boundary-escalation` names affected terminal pairs and a typed rationale. \
-         The deterministic tail re-parses the answer and runs the projection kernel \
-         only on `proceed`.",
+         `proceed` promotes the change-artifact bundle the agent staged into the lent \
+         workspace (RFC-96 D10); `boundary-escalation` names affected terminal pairs \
+         and a typed rationale. The deterministic tail validates the staged tree and \
+         runs the projection kernel only on `proceed`.",
     )
 }

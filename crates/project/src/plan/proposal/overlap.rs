@@ -57,8 +57,8 @@ fn in_flight(events: &[crate::journal::Event]) -> BTreeSet<SliceName> {
     let mut done = BTreeSet::new();
     for event in events {
         match &event.kind {
-            EventKind::TargetWaveOpened { slice_name, .. } => {
-                opened.insert(slice_name.clone());
+            EventKind::TargetWaveOpened { members, .. } => {
+                opened.extend(members.iter().cloned());
             }
             EventKind::TargetMergeWaveCommitted { members, .. } => {
                 done.extend(members.iter().cloned());

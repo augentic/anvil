@@ -119,11 +119,11 @@ pub async fn build(
 }
 
 /// Bracket [`finalize`] with the workspace lifecycle: gate on the
-/// slice's refinement manifest, select the wave base (accepted CID or
-/// `plan.yaml.targets[].cid`; in-place fixture plans may still freeze
-/// an unbound seed), persist + open the one-member wave, prepare a
-/// writable private workspace from that base, run the dispatch +
-/// finalize tail against it, and discard the workspace on every exit.
+/// slice's refinement manifest, join the slice's pre-frozen wave when
+/// one is live (RFC-96 D7) else open a one-member wave (selecting the
+/// base: accepted CID, `plan.yaml.targets[].cid`, or a fresh freeze),
+/// prepare a writable private workspace from that base, run the
+/// dispatch + finalize tail, and discard the workspace on every exit.
 async fn in_workspace(
     seam: &(impl Target + Workspaces), layout: Layout<'_>, now: Timestamp, slice: &str,
     slice_dir: &Path, adapter: &TargetAdapter, request: &BuildRequest,
@@ -146,18 +146,31 @@ async fn in_workspace(
             ),
         })?;
     let events = journal::read_union(layout)?;
-    let seed = project::wave::wave_base(layout, &events, &plan, &entry.target)?;
-    let base = if layout.is_detached() || !seed.is_unbound() {
-        seed
+    let joined = join_wave(layout, &events, &plan, slice, &entry.target)?;
+    let (base, wave_digest) = if let Some(joined) = joined {
+        joined
     } else {
-        seam.freeze().await.map_err(|err| Error::Diag {
-            code: "target-base-freeze-failed",
-            detail: format!(
-                "freezing the product tree as the wave base for slice `{slice}` failed: {err}"
-            ),
-        })?
+        let seed = project::wave::wave_base(layout, &events, &plan, &entry.target)?;
+        let base = if layout.is_detached() || !seed.is_unbound() {
+            seed
+        } else {
+            seam.freeze().await.map_err(|err| Error::Diag {
+                code: "target-base-freeze-failed",
+                detail: format!(
+                    "freezing the product tree as the wave base for slice `{slice}` failed: {err}"
+                ),
+            })?
+        };
+        let wave = Wave::one_member(
+            &entry.target,
+            base.clone(),
+            SliceName::from(slice),
+            refinement,
+            entry.depends_on.clone(),
+            covering_epoch(layout),
+        );
+        (base, wave.open(layout, now)?.digest)
     };
-    let wave_digest = open_wave(layout, now, slice, &entry.target, &base, &refinement)?;
     let workspace =
         seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;
     let outcome =
@@ -169,30 +182,122 @@ async fn in_workspace(
     outcome
 }
 
-/// Open the one-member target wave for this build (RFC-86 D9),
-/// binding the wave-open base and the member's refinement digest.
-fn open_wave(
-    layout: Layout<'_>, now: Timestamp, slice: &str, target: &str,
-    base: &project::snapshot::SnapshotId, refinement: &project::snapshot::SnapshotId,
-) -> Result<project::snapshot::SnapshotId, Error> {
+/// The newest open, uncommitted, still-fresh wave naming `slice` at
+/// the target's current frontier — a retry or a pre-frozen group
+/// member joins it instead of opening a new wave, so a failed build
+/// re-attempts under the same frozen membership (RFC-96 D7). A slice
+/// already holding a record for the wave never joins (a
+/// drift-downgraded rebuild opens a fresh wave instead of minting an
+/// ambiguous duplicate record).
+fn join_wave(
+    layout: Layout<'_>, events: &[journal::Event], plan: &Plan, slice: &str, target: &str,
+) -> Result<Option<(project::snapshot::SnapshotId, project::snapshot::SnapshotId)>, Error> {
+    let committed: std::collections::BTreeSet<&str> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            EventKind::TargetMergeWaveCommitted { digest, .. } => Some(digest.as_str()),
+            _ => None,
+        })
+        .collect();
+    let newest = events.iter().rev().find_map(|event| match &event.kind {
+        EventKind::TargetWaveOpened {
+            target: opened,
+            digest,
+            members,
+        } if opened == target && members.iter().any(|member| member.as_str() == slice) => {
+            Some(digest.clone())
+        }
+        _ => None,
+    });
+    let Some(digest) = newest else {
+        return Ok(None);
+    };
+    if committed.contains(digest.as_str()) {
+        return Ok(None);
+    }
+    let wave = Wave::load(layout, target, &digest)?;
+    let wave_id = project::snapshot::SnapshotId::parse(&digest)?;
+    if project::build_record::BuildRecord::find_for_wave(&layout.slice_dir(slice), &wave_id)?
+        .is_some()
+    {
+        return Ok(None);
+    }
+    let frontier = project::wave::wave_base(layout, events, plan, target)?;
+    if wave.base == frontier && wave.members_fresh(layout)? {
+        return Ok(Some((wave.base, wave_id)));
+    }
+    Ok(None)
+}
+
+/// Freeze and open one multi-member wave for `target` over `slices`
+/// — the execute drain's pre-dispatch freeze for a same-target ready
+/// group (RFC-96 D7).
+///
+/// Membership is fixed here, before claims and builds; each member's
+/// build then joins this wave. A re-run whose group can still join
+/// the previously frozen wave (same membership, fresh, uncommitted,
+/// at the frontier) opens nothing — the retry re-attempts under the
+/// existing membership.
+///
+/// # Errors
+///
+/// Missing plan entries or refinement manifests, base selection /
+/// freeze failures, and wave write / journal failures.
+pub async fn open_wave_group(
+    seam: &impl Workspaces, layout: Layout<'_>, now: Timestamp, target: &str, slices: &[String],
+) -> Result<(), Error> {
     let plan = Plan::load(&layout.plan_path())?;
-    let entry =
-        plan.entries.iter().find(|e| e.name.as_str() == slice).ok_or_else(|| Error::Diag {
-            code: "target-wave-entry-missing",
+    let events = journal::read_union(layout)?;
+    if let Some(first) = slices.first()
+        && let Some((_, digest)) = join_wave(layout, &events, &plan, first, target)?
+    {
+        let frozen = Wave::load(layout, target, digest.as_str())?;
+        let names: Vec<&str> = frozen.members.iter().map(|m| m.slice.as_str()).collect();
+        if names == slices.iter().map(String::as_str).collect::<Vec<_>>() {
+            return Ok(());
+        }
+    }
+    let mut members = Vec::with_capacity(slices.len());
+    let mut depends: std::collections::BTreeSet<SliceName> = std::collections::BTreeSet::new();
+    for slice in slices {
+        let entry =
+            plan.entries.iter().find(|e| e.name.as_str() == slice).ok_or_else(|| Error::Diag {
+                code: "target-wave-entry-missing",
+                detail: format!("slice `{slice}` has no plan.yaml entry; cannot freeze a wave"),
+            })?;
+        let refinement =
+            crate::refinement::file_digest(&layout.slice_dir(slice))?.ok_or_else(|| {
+                Error::Diag {
+                    code: "target-build-refinement-missing",
+                    detail: format!(
+                        "slice `{slice}` has no refinement manifest (refinement.yaml); run \
+                     `emery plan refine` before building"
+                    ),
+                }
+            })?;
+        members.push(project::wave::Member {
+            slice: SliceName::from(slice.as_str()),
+            inputs: project::wave::MemberInputs { refinement },
+        });
+        depends.extend(
+            entry.depends_on.iter().filter(|dep| !slices.contains(&dep.to_string())).cloned(),
+        );
+    }
+    let seed = project::wave::wave_base(layout, &events, &plan, target)?;
+    let base = if layout.is_detached() || !seed.is_unbound() {
+        seed
+    } else {
+        seam.freeze().await.map_err(|err| Error::Diag {
+            code: "target-base-freeze-failed",
             detail: format!(
-                "slice `{slice}` has no plan.yaml entry; cannot open a target wave without \
-                 depends-on / membership"
+                "freezing the product tree as the wave base for target `{target}` failed: {err}"
             ),
-        })?;
-    let wave = Wave::one_member(
-        target,
-        base.clone(),
-        SliceName::from(slice),
-        refinement.clone(),
-        entry.depends_on.clone(),
-        covering_epoch(layout),
-    );
-    Ok(wave.open(layout, now)?.digest)
+        })?
+    };
+    let wave =
+        Wave::new(target, base, members, depends.into_iter().collect(), covering_epoch(layout));
+    wave.open(layout, now)?;
+    Ok(())
 }
 
 /// Newest `plan.execute.started` in the fact union, else an unbound

@@ -19,7 +19,7 @@ use project::journal::{self, EventKind};
 use project::plan::{Entry, FocusParent, Plan, resolve_topology};
 use project::pool;
 use project::profile::{Profile, Profiles};
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Shelf, Source, Target, Workspaces};
 use project::snapshot::SnapshotId;
 
 use super::extract::ExtractOutcome;
@@ -118,7 +118,7 @@ impl TagCounts {
 /// - `slice-refinement-*` / `target-build-input-missing` from the
 ///   manifest assembly, and filesystem failures from its write.
 #[tracing::instrument(name = "slice.refine", skip_all, fields(slice = %slice, target = %target_value))]
-pub async fn refine<P: Model + Profiles, S: Source + Workspaces, T: Target, R: Resolver>(
+pub async fn refine<P: Model + Profiles, S: Source + Workspaces, T: Target + Shelf, R: Resolver>(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp, slice: &str,
     target_value: &str, dependencies: Vec<Dependency>, declarations: &[BuildInputDeclaration],
 ) -> Result<RefineOutcome, Error> {
@@ -141,7 +141,7 @@ pub async fn refine<P: Model + Profiles, S: Source + Workspaces, T: Target, R: R
     let baseline_index = BaselineIndex::build(&baseline_specs_dir)?;
     let (baseline, baseline_decisions) = baseline_identity(paths, &entry);
     let baseline_detail: Vec<DomainDetail> = (&baseline_index).into();
-    let dependency_context = dependency_context(layout, &dependencies);
+    let dependency_context = dependency_context(&dependencies);
     let header = ProjectionHeader {
         version: 1,
         slice: slice.to_string(),
@@ -185,7 +185,7 @@ pub async fn refine<P: Model + Profiles, S: Source + Workspaces, T: Target, R: R
         SYNTHESIZE_SCOPE,
     );
     let (synthesized, guidance_digest) =
-        super::synthesize(caps.model, caps.targets, &request, &kernel).await?;
+        staged_synthesize(&caps, &slice_dir, layout, &dependencies, &request, &kernel).await?;
     if synthesized.response.kind == SynthesisKind::BoundaryEscalation {
         tracing::info!("refine escalated");
         return Ok(escalated(slice, synthesized, profile_ref, extracted));
@@ -337,17 +337,18 @@ fn escalated(
     }
 }
 
-/// Persist a validated `proceed` answer. Guidance digest is already
-/// known from the synthesize dispatch.
+/// Persist a validated `proceed` answer from its staged bundle
+/// (RFC-96 D10). Guidance digest is already known from the synthesize
+/// dispatch.
 fn persist_proceed(
     synthesized: &crate::judgment::synthesize::Synthesized, slice_dir: &Path,
     baseline_index: &BaselineIndex, guidance_digest: SnapshotId,
 ) -> Result<(Vec<String>, SnapshotId), Error> {
-    let artifacts = synthesized.response.artifacts.clone().ok_or_else(|| {
+    let artifacts = synthesized.artifacts.clone().ok_or_else(|| {
         Error::validation_failed(
             "slice-synthesize-proceed-incomplete",
-            "a proceed answer carries the prose artifacts",
-            "proceed omitted `artifacts`",
+            "a proceed answer carries the staged prose artifacts",
+            "proceed carried no staged artifacts",
         )
     })?;
     let projected = synthesized.projected.as_ref().ok_or_else(|| {
@@ -362,27 +363,85 @@ fn persist_proceed(
 }
 
 /// Shape the ordered predecessor pairs into the synthesis inputs'
-/// change-local context: digest plus project-relative artifact root.
-fn dependency_context(layout: Layout<'_>, dependencies: &[Dependency]) -> Vec<DependencyContext> {
+/// change-local context: digest plus the stage-relative artifact root
+/// [`prepare_stage`] seeds (`dependencies/<predecessor>`).
+fn dependency_context(dependencies: &[Dependency]) -> Vec<DependencyContext> {
     dependencies
         .iter()
         .map(|dependency| DependencyContext {
             slice: dependency.slice.clone(),
             refinement: dependency.refinement.to_string(),
-            artifacts_root: wire_path(layout, &layout.slice_dir(&dependency.slice)),
+            artifacts_root: format!("dependencies/{}", dependency.slice),
         })
         .collect()
 }
 
-/// Project-relative, `/`-joined form of `path` — the lent-tree path
-/// the synthesis inputs envelope hands the agent.
-fn wire_path(layout: Layout<'_>, path: &Path) -> String {
-    path.strip_prefix(layout.project_dir())
-        .unwrap_or(path)
-        .components()
-        .map(|component| component.as_os_str().to_string_lossy().into_owned())
-        .collect::<Vec<_>>()
-        .join("/")
+/// The staged synthesis dispatch (RFC-96 D10): the agent writes the
+/// bundle into a lent private workspace, the tail validates the full
+/// staged tree, repairs reuse the same stage, and the stage is
+/// discarded once the leg settles.
+async fn staged_synthesize<P: Model, S: Source + Workspaces, T: Target + Shelf, R: Resolver>(
+    caps: &super::Capabilities<'_, P, S, T, R>, slice_dir: &Path, layout: Layout<'_>,
+    dependencies: &[Dependency], request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>,
+) -> Result<(crate::judgment::synthesize::Synthesized, SnapshotId), Error> {
+    let stage = prepare_stage(caps.sources, slice_dir, layout, dependencies).await?;
+    let outcome = super::synthesize(caps.model, caps.targets, request, kernel, &stage.root).await;
+    if let Err(err) = caps.sources.discard(stage.id.clone()).await {
+        tracing::warn!(workspace = %stage.id, "synthesis stage discard failed: {err}");
+    }
+    outcome
+}
+
+/// Prepare the staged synthesis tree (RFC-96 D10): snapshot the slice
+/// bundle, materialize it as a writable private workspace, and seed
+/// each predecessor's artifact root under `dependencies/<name>/`.
+async fn prepare_stage(
+    workspaces: &impl Workspaces, slice_dir: &Path, layout: Layout<'_>, dependencies: &[Dependency],
+) -> Result<project::seam::Workspace, Error> {
+    let stage_failure = |step: &str, detail: String| Error::Diag {
+        code: "slice-synthesize-stage-prepare-failed",
+        detail: format!("synthesis stage {step} failed: {detail}"),
+    };
+    let seed = workspaces
+        .snapshot(slice_dir.display().to_string())
+        .await
+        .map_err(|err| stage_failure("snapshot", err.to_string()))?;
+    let stage = workspaces
+        .prepare(seed, true)
+        .await
+        .map_err(|err| stage_failure("prepare", err.to_string()))?;
+    let root = PathBuf::from(&stage.root);
+    for dependency in dependencies {
+        let from = layout.slice_dir(&dependency.slice);
+        // A merged predecessor's bundle may already be archived; the
+        // dependency context degrades to an empty root, as before.
+        if !from.is_dir() {
+            continue;
+        }
+        let into = root.join("dependencies").join(&dependency.slice);
+        if let Err(err) = copy_tree(&from, &into) {
+            let discard = workspaces.discard(stage.id.clone()).await;
+            drop(discard);
+            return Err(stage_failure("dependency seed", err.to_string()));
+        }
+    }
+    Ok(stage)
+}
+
+/// Recursively copy `from` into `into` (files and directories only —
+/// slice bundles carry no symlinks).
+fn copy_tree(from: &Path, into: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(into)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let target = into.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_tree(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
 }
 
 /// The `slice validate` sweep: pre-adapter gates, adapter rules, and

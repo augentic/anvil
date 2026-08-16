@@ -5,7 +5,7 @@
 
 use error::Error;
 use omnia_guest::Model;
-use omnia_guest::model::{Format, Message, Reply, Request, Role, SchemaFormat};
+use omnia_guest::model::{Format, McpGrant, Message, Reply, Request, Role, SchemaFormat, Tool};
 use tracing::Instrument as _;
 
 /// Maximum repair attempts after the first answer — a tail failure
@@ -13,21 +13,33 @@ use tracing::Instrument as _;
 /// the leg surfaces the last failure.
 pub const MAX_REPAIRS: usize = 2;
 
+/// The agent-facing surface one leg lends beyond the prompt.
+///
+/// MCP servers granted on every attempt (RFC-96 D9, synthesis only)
+/// and the lent workspace — `None` lends the guest's own `"."`
+/// preopen; synthesis lends its staged tree (RFC-96 D10).
+#[derive(Debug, Default)]
+pub struct Lent {
+    /// MCP servers offered to the agent on every attempt.
+    pub grants: Vec<McpGrant>,
+    /// The lent tree; `None` is the guest's own `"."` preopen.
+    pub workspace: Option<String>,
+}
+
 /// Issue one schema-gated judgment leg with a bounded repair loop.
 ///
-/// `tail` is the deterministic validation over the raw answer. On a
-/// tail failure the leg re-prompts with the failed answer and findings
-/// inlined; a model failure is never repaired (the request did not
-/// change). The host `create` gate enforces the schema on the live
-/// backend; the tail's typed parse covers the scripted backends, whose
-/// answers are unvalidated.
+/// `tail` is the deterministic validation over the raw answer: a tail
+/// failure re-prompts with the findings inlined; a model failure is
+/// never repaired. The host `create` gate enforces the schema live;
+/// the tail's typed parse covers the scripted backends. `lent` is the
+/// agent-facing surface — MCP grants plus the lent workspace.
 ///
 /// # Errors
 ///
 /// The mapped model failure or the last tail failure once the repair
 /// budget is exhausted.
 pub async fn repaired<P, T, F>(
-    model: &P, system: &str, user: String, schema_name: &str, schema: &str, mut tail: F,
+    model: &P, system: &str, user: String, schema_name: &str, schema: &str, lent: Lent, mut tail: F,
 ) -> Result<T, Error>
 where
     P: Model,
@@ -42,7 +54,7 @@ where
         let mut attempt = 0;
 
         loop {
-            let reply = create(model, system, prompt, schema_name, schema).await?;
+            let reply = create(model, system, prompt, schema_name, schema, &lent).await?;
             match tail(&reply.answer) {
                 Ok(value) => {
                     tracing::Span::current().record("repairs", attempt);
@@ -63,10 +75,10 @@ where
     .await
 }
 
-/// One `create` call: schema-constrained output, no MCP grants, the
-/// guest's own `"."` preopen lent as the shared workspace.
+/// One `create` call: schema-constrained output plus the leg's lent
+/// agent surface (MCP grants, workspace).
 async fn create<P: Model>(
-    model: &P, system: &str, user: String, schema_name: &str, schema: &str,
+    model: &P, system: &str, user: String, schema_name: &str, schema: &str, lent: &Lent,
 ) -> Result<Reply, Error> {
     model
         .create(
@@ -79,7 +91,8 @@ async fn create<P: Model>(
                 .format(Format::Schema(
                     SchemaFormat::builder().name(schema_name).schema(schema).build(),
                 ))
-                .workspace(".")
+                .tools(lent.grants.iter().cloned().map(Tool::Mcp).collect())
+                .workspace(lent.workspace.as_deref().unwrap_or("."))
                 .build(),
         )
         .await

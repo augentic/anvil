@@ -202,6 +202,17 @@ impl<O: Objects> Store<O> {
         Ok(reached)
     }
 
+    /// Store `manifest` as a snapshot object and return its identity —
+    /// the canonical encoding makes equal trees hash equal.
+    ///
+    /// # Errors
+    ///
+    /// Object-store write failures.
+    pub(crate) async fn put_manifest(&self, manifest: &Manifest) -> Result<SnapshotId, Error> {
+        let digest = self.put(manifest.encode().as_bytes()).await?;
+        Ok(SnapshotId::from_digest(&digest))
+    }
+
     /// Read and parse snapshot `id`'s manifest.
     ///
     /// # Errors

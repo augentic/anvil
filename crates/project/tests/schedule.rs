@@ -96,17 +96,34 @@ fn write_fresh_manifest(root: &Path, plan: &Plan, name: &str, dependencies: Vec<
     manifest.write(&slice_dir).expect("refinement.yaml");
 }
 
+/// Stage a real wave manifest freezing the slice's live refinement
+/// digest, then a build record naming it — merge readiness loads the
+/// wave and checks member freshness (RFC-96 D7).
 fn write_record(root: &Path, name: &str, base: SnapshotId) {
     let layout = Layout::new(root);
     let slice_dir = layout.slice_dir(name);
     std::fs::create_dir_all(&slice_dir).expect("slice dir");
+    let refinement =
+        file_digest(&slice_dir).expect("digest read").expect("fixture refinement manifest");
+    let wave = project::wave::Wave::one_member(
+        "default",
+        base.clone(),
+        name.into(),
+        refinement,
+        vec![],
+        project::wave::EpochRef {
+            writer: "local".into(),
+            sequence: 0,
+        },
+    );
+    let wave_digest = wave.write(layout).expect("wave manifest");
     let record = BuildRecord::from_capture(
         CodePatch {
             base,
             result: cid('b'),
             touched: vec!["src/main.rs".into()],
         },
-        cid('c'),
+        wave_digest,
         BuildReport {
             version: 1,
             slice: name.into(),
@@ -183,6 +200,7 @@ fn stale_base_requeues_build() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let plan = write_plan(tmp.path());
 
+    write_fresh_manifest(tmp.path(), &plan, "a", vec![]);
     write_record(tmp.path(), "a", cid('0'));
     let items = ready(tmp.path(), &plan);
     let a = items.iter().find(|item| item.slice.as_str() == "a").expect("item for a");
@@ -198,6 +216,28 @@ fn stale_base_requeues_build() {
     let a = items.iter().find(|item| item.slice.as_str() == "a").expect("item for a");
     assert_eq!(a.phase, LoopStep::Build, "stale base requeues as a build item");
     assert_ne!(a.digest, merge_digest, "the requeue is a new identity, not a retry");
+}
+
+#[test]
+fn retracted_wave_requeues() {
+    // A member re-refined after the wave froze stales the frozen
+    // binding: the whole uncommitted wave retracts and the projection
+    // emits a build item, never the merge (RFC-96 D7).
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let plan = write_plan(tmp.path());
+    write_fresh_manifest(tmp.path(), &plan, "a", vec![]);
+    write_record(tmp.path(), "a", cid('0'));
+    let items = ready(tmp.path(), &plan);
+    let a = items.iter().find(|item| item.slice.as_str() == "a").expect("item for a");
+    assert_eq!(a.phase, LoopStep::Merge, "fresh frozen wave is merge-ready");
+
+    // Re-refine the member: catalog drift moves the manifest bytes,
+    // so the live digest no longer matches the frozen binding.
+    write_leads(tmp.path(), "a-synopsis-drifted");
+    write_fresh_manifest(tmp.path(), &plan, "a", vec![]);
+    let items = ready(tmp.path(), &plan);
+    let a = items.iter().find(|item| item.slice.as_str() == "a").expect("item for a");
+    assert_eq!(a.phase, LoopStep::Build, "the retracted wave requeues as a build");
 }
 
 #[test]

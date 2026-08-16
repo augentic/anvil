@@ -5,7 +5,7 @@ use error::Error;
 use omnia_guest::Model;
 use project::adapter::{Axis, RoutedId};
 use project::identity::{Decision, Surface};
-use project::seam::Target;
+use project::seam::{Shelf, Target};
 use project::snapshot::SnapshotId;
 
 use super::seam_failure;
@@ -36,26 +36,31 @@ pub struct SynthesizeRequest<'a> {
     pub dependencies: &'a [DependencyContext],
 }
 
-/// Run the synthesis judgment leg with the guidance brief read
-/// through `seam.guidance(target)`.
+/// Run the synthesis judgment leg over the caller-prepared stage.
 ///
-/// Assembles the inputs envelope and runs the judgment leg; the
-/// caller still owns persisting the artifacts and the
-/// `slice.synthesize.*` journal bracket. Returns the validated answer
-/// plus the content digest of the guidance text consumed — the
-/// `target-guidance` identity the refinement manifest records.
+/// Guidance is read through `seam.guidance(target)`, the reference
+/// shelf granted when served (RFC-96 D9), and `stage` — the writable
+/// staged tree — lent to the agent (RFC-96 D10). The caller still
+/// owns persisting the artifacts and the `slice.synthesize.*`
+/// bracket. Returns the validated answer plus the guidance content
+/// digest the refinement manifest records.
 ///
 /// # Errors
 ///
-/// - `seam-dispatch-failed` when the guidance dispatch fails.
-/// - propagates the judgment leg's model / schema / kernel failures.
-pub async fn synthesize<P: Model, T: Target>(
-    model: &P, seam: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>,
+/// - `seam-dispatch-failed` when the guidance or shelf dispatch fails.
+/// - propagates the judgment leg's model / schema / staged-tree /
+///   kernel failures.
+pub async fn synthesize<P: Model, T: Target + Shelf>(
+    model: &P, seam: &T, request: &SynthesizeRequest<'_>, kernel: &Kernel<'_>, stage: &str,
 ) -> Result<(Synthesized, SnapshotId), Error> {
     let id = RoutedId::recorded(Axis::Target, request.target).to_string();
     let guidance =
         seam.guidance(id.clone()).await.map_err(|err| seam_failure("guidance", &id, &err))?;
     let guidance_digest = SnapshotId::from_digest(&sha256_hex(guidance.as_bytes()));
+    let shelf = seam
+        .synthesis_shelf()
+        .await
+        .map_err(|err| seam_failure("synthesis-shelf", "engine", &err))?;
     let synthesis_inputs = inputs(
         request.slice,
         request.sources,
@@ -65,6 +70,7 @@ pub async fn synthesize<P: Model, T: Target>(
         request.baseline_decisions,
         request.dependencies,
     );
-    let synthesized = judgment::synthesize::synthesize(model, &synthesis_inputs, kernel).await?;
+    let synthesized =
+        judgment::synthesize::synthesize(model, &synthesis_inputs, kernel, shelf, stage).await?;
     Ok((synthesized, guidance_digest))
 }

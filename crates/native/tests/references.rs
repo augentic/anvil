@@ -1,6 +1,6 @@
 //! Native reference hosting: shelf mounting, the lazy shared loopback
-//! listener, per-operation grant routing, no-op document-free
-//! catalogs, and awaited shutdown.
+//! listener, per-operation grant routing, the always-mounted engine
+//! synthesis shelf, and awaited shutdown.
 
 mod support;
 
@@ -83,12 +83,22 @@ async fn offline_never_serves() {
     assert_eq!(leads.leads[0].lead, "none");
 }
 
-// A document-free catalog keeps online reference hosting a no-op.
+// The engine's synthesis shelf is always mounted (RFC-96 D9), so even
+// a document-free catalog serves it: the online provider grants the
+// `/mcp/engine/synthesis` URL, the offline provider grants nothing.
 #[tokio::test]
-async fn no_docs_is_a_no_op() {
+async fn synthesis_shelf() {
+    use project::seam::Shelf as _;
+
+    let tmp = tempfile::tempdir().expect("tempdir");
     let catalog = Catalog::builder().build().expect("empty catalog");
-    let host = references::ReferenceHost::new(catalog);
-    let base = host.base().await.expect("a document-free host is a no-op");
-    assert_eq!(base, None);
-    host.shutdown().await;
+    let online = Provider::new(paths(tmp.path()), model(), catalog.clone(), ReferenceMode::Online);
+    let url = online.synthesis_shelf().await.expect("shelf resolves").expect("shelf served");
+    assert!(url.starts_with("http://127.0.0.1:"), "loopback-only listener, got {url}");
+    assert!(url.ends_with("/mcp/engine/synthesis"), "engine shelf path, got {url}");
+    online.shutdown().await;
+
+    let offline = Provider::new(paths(tmp.path()), model(), catalog, ReferenceMode::Offline);
+    let none = offline.synthesis_shelf().await.expect("offline resolves");
+    assert_eq!(none, None, "offline providers never bind a socket");
 }

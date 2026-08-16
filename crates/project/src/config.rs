@@ -279,6 +279,14 @@ impl<'a> Layout<'a> {
         self.target_waves_dir(target).join(format!("{digest}.yaml"))
     }
 
+    /// Absolute path to
+    /// `<project_dir>/.emery/change/targets/<target>/domains/` —
+    /// content-addressed domain-convergence rounds (RFC-96 D8).
+    #[must_use]
+    pub fn target_domains_dir(&self, target: &str) -> PathBuf {
+        self.targets_dir().join(target).join("domains")
+    }
+
     /// Absolute path to one slice's build-record directory,
     /// `<project_dir>/.emery/change/slices/<name>/builds/` (RFC-86 D27).
     #[must_use]

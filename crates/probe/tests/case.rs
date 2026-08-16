@@ -19,8 +19,9 @@ fn catalog() -> Catalog {
 }
 
 // A FIFO scripted model factory; every case run shares the answers.
+// `Staging` plays the agent side of the staged synthesis tree.
 fn scripted(answers: Vec<String>) -> ModelFactory {
-    let model = Harness::answering(answers);
+    let model = mock::session::Staging::new(Harness::answering(answers));
     Arc::new(move |_root| Ok(DynModel::new(model.clone())))
 }
 
@@ -319,10 +320,10 @@ async fn refine_phase(root: &Path, model: &DynModel, slice_name: &str) {
 // exact state a committed Build fixture carries.
 async fn stage_refined_fixture(root: &Path) {
     fs::create_dir_all(root).expect("mkdir fixture");
-    let model = DynModel::new(Harness::answering(vec![
+    let model = DynModel::new(mock::session::Staging::new(Harness::answering(vec![
         mock::answers::greeting_grouping(),
         mock::answers::greeting_synthesis(),
-    ]));
+    ])));
     invoke(root, &model, &["init", "mock"]).await;
     seed_greeting_plan(root);
     refine_phase(root, &model, "greeting").await;

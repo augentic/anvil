@@ -11,7 +11,7 @@ use omnia_guest::http::header::{CONTENT_TYPE, HeaderValue};
 use project::adapter::{Inventory, Resolver};
 use project::handler::Anchor;
 use project::profile::Profiles;
-use project::seam::{Forge, Source, Target, Trees, Workspaces, Worktree};
+use project::seam::{Forge, Shelf, Source, Target, Trees, Workspaces, Worktree};
 use serde::Serialize;
 
 /// Emery's JSON HTTP output and error policy.
@@ -94,6 +94,7 @@ where
         + Inventory
         + Profiles
         + Source
+        + Shelf
         + Target
         + Workspaces
         + Trees

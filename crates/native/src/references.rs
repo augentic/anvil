@@ -36,27 +36,24 @@ pub fn shelves(catalog: &Catalog) -> Vec<Shelf> {
         .collect()
 }
 
-/// Shelf router nested at `/mcp/<name>`, ready to serve or to merge
-/// onto an embedding host's router.
+/// Shelf router: adapter shelves nested at `/mcp/<name>` plus the
+/// engine's synthesis shelf at `/mcp/engine/synthesis` (RFC-96 D9),
+/// ready to serve or to merge onto an embedding host's router.
 ///
 /// A linked implementor registered on both axes (legal for linked
 /// crates, unlike component exports) shares one embedded docs
-/// registry, so its shelf mounts once.
+/// registry, so its shelf mounts once. `engine` collides with no
+/// adapter name: the segment is reserved by the deployment route
+/// grammar, never a legal adapter identity.
 pub fn router(catalog: &Catalog) -> Router {
     let mut mounted = std::collections::HashSet::new();
-    shelves(catalog).into_iter().filter(|shelf| mounted.insert(shelf.name)).fold(
-        Router::new(),
-        |router, shelf| {
+    shelves(catalog)
+        .into_iter()
+        .filter(|shelf| mounted.insert(shelf.name))
+        .fold(Router::new(), |router, shelf| {
             router.nest(&format!("/mcp/{}", shelf.name), omnia_guest::mcp::router(shelf.references))
-        },
-    )
-}
-
-/// Whether any linked adapter carries reference documents; a
-/// document-free catalog keeps online reference hosting a no-op.
-#[must_use]
-pub fn has_docs(catalog: &Catalog) -> bool {
-    catalog.entries().iter().any(|entry| !entry.docs().is_empty())
+        })
+        .nest(::slice::shelf::PATH, omnia_guest::mcp::router(::slice::shelf::Shelf))
 }
 
 #[cfg(feature = "cli")]
@@ -103,20 +100,17 @@ mod host {
         }
 
         /// The shelf base URL, starting the shared listener on first
-        /// use. Returns `Ok(None)` when the catalog carries no
-        /// reference documents.
+        /// use. The engine's synthesis shelf is always mounted, so an
+        /// online host always has documents to serve (RFC-96 D9).
         ///
         /// # Errors
         ///
         /// [`Error::Listener`] when the loopback bind fails; the
         /// failure fails the requesting operation rather than
         /// stripping its grants.
-        pub async fn base(&self) -> Result<Option<String>, Error> {
-            if !super::has_docs(&self.catalog) {
-                return Ok(None);
-            }
+        pub async fn base(&self) -> Result<String, Error> {
             let started = self.started.get_or_try_init(|| self.start()).await?;
-            Ok(Some(started.base.clone()))
+            Ok(started.base.clone())
         }
 
         async fn start(&self) -> Result<Started, Error> {

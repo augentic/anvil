@@ -355,6 +355,22 @@ pub enum EventKind {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         deferred: Vec<DeferredMember>,
     },
+    /// One durable domain-convergence round was written (RFC-96 D8).
+    /// The record lives at
+    /// `.emery/change/targets/<target>/domains/<digest>.yaml`.
+    #[serde(rename = "domain.convergence.recorded", rename_all = "kebab-case")]
+    DomainConvergenceRecorded {
+        /// Target key under `.emery/change/targets/`.
+        target: String,
+        /// Decomposition node id the round converged.
+        domain: String,
+        /// Round kind (`frontier | complete`).
+        kind: crate::domain::RoundKind,
+        /// Round record content digest (`sha256:<64 hex>`).
+        digest: String,
+        /// Round verdict (`passed | failed`).
+        verdict: crate::domain::Verdict,
+    },
     /// Target postflight gate succeeded after wave commit (RFC-86 D9).
     #[serde(rename = "target.merge.wave-succeeded", rename_all = "kebab-case")]
     TargetMergeWaveSucceeded {
@@ -496,8 +512,8 @@ pub enum EventKind {
         /// Released slice.
         slice_name: SliceName,
     },
-    /// An immutable one-member target wave was written before build
-    /// (RFC-86 D9). The manifest lives at
+    /// An immutable target wave was written before build (RFC-86 D9;
+    /// multi-member since RFC-96 D7). The manifest lives at
     /// `.emery/change/targets/<target>/waves/<digest>.yaml`; `digest` is the
     /// content address (`sha256:…`) of that YAML.
     #[serde(rename = "target.wave.opened", rename_all = "kebab-case")]
@@ -507,8 +523,8 @@ pub enum EventKind {
         target: String,
         /// Manifest content digest (`sha256:<64 hex>`).
         digest: String,
-        /// The sole member's slice name.
-        slice_name: SliceName,
+        /// The frozen member slices, in wave order.
+        members: Vec<SliceName>,
     },
     /// `emery plan execute` opened an authorization epoch at start
     /// (RFC-86 D6 / D22). Presence projects the Authorized milestone.

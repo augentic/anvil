@@ -17,7 +17,7 @@ use project::plan::{
 };
 use project::pool;
 use project::profile::Profiles;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Shelf, Source, Target, Workspaces};
 use project::slice::SliceMetadata;
 use slice::refinement::{self, Dependency, Freshness, Live};
 
@@ -75,7 +75,7 @@ pub enum RefineOutcome {
 pub async fn refine<
     P: Model + Profiles + Resolver + Source + Workspaces,
     S: Source + Workspaces,
-    T: Target,
+    T: Target + Shelf,
     R: Resolver,
 >(
     caps: super::Capabilities<'_, P, S, T, R>, paths: &ExecutionPaths, now: Timestamp,

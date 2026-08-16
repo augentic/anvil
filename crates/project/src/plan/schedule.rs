@@ -24,7 +24,7 @@ use crate::refinement::{
 };
 use crate::slice::SliceMetadata;
 use crate::snapshot::SnapshotId;
-use crate::wave::wave_base;
+use crate::wave::{Wave, wave_base};
 
 /// One schedulable unit of work: a slice phase under an exact input
 /// identity.
@@ -157,12 +157,18 @@ pub fn ready_set(
         if BuildRecord::present(&slice_dir) {
             let record = BuildRecord::load_latest(&slice_dir)?;
             let frontier = wave_base(layout, events, plan, &entry.target)?;
-            if record.base == frontier {
-                items.push(at(LoopStep::Merge, merge_digest(&record, &frontier)?));
+            if record.base == frontier && wave_fresh(layout, entry, &record)? {
+                // A wave commits only after every frozen member holds
+                // a record (RFC-96 D7): a member awaiting its
+                // siblings contributes no item this round.
+                let wave = Wave::load(layout, &entry.target, record.wave.as_str())?;
+                if wave.records_complete(layout)? {
+                    items.push(at(LoopStep::Merge, merge_digest(&record, &frontier)?));
+                }
             } else {
-                // The accepted CID moved under this record: the merge
-                // input digest changed, so the scheduler emits a new
-                // build item — never a retry of the stale one.
+                // A moved frontier or a retracted wave changed the
+                // input digest: the scheduler emits a new build item
+                // — never a retry (RFC-96 D2/D7).
                 items.push(at(
                     LoopStep::Build,
                     build_digest(layout, entry, &slice_dir, epoch.as_ref(), &frontier)?,
@@ -199,6 +205,14 @@ pub fn ready_set(
 
     items.sort_by_key(WorkItem::canonical_key);
     Ok(items)
+}
+
+/// Whether the record's frozen wave is still live: the manifest loads
+/// and every member's refinement matches its frozen binding. A
+/// missing or unreadable manifest retracts the wave (RFC-96 D7).
+fn wave_fresh(layout: Layout<'_>, entry: &Entry, record: &BuildRecord) -> Result<bool, Error> {
+    Wave::load(layout, &entry.target, record.wave.as_str())
+        .map_or(Ok(false), |wave| wave.members_fresh(layout))
 }
 
 /// Every direct predecessor holds a fresh manifest or an archived one

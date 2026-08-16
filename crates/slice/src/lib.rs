@@ -14,6 +14,7 @@ pub(crate) mod model;
 pub mod orchestrate;
 pub(crate) mod provenance;
 pub mod refinement;
+pub mod shelf;
 pub mod source;
 pub(crate) mod synthesis;
 pub(crate) mod validate;

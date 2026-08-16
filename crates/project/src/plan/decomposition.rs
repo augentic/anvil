@@ -17,7 +17,8 @@ pub use judgment::{
 };
 pub use project::{matches_plan, slices};
 pub use tree::{
-    BoundProfile, Decomposition, Kind, MAX_DEPTH, MAX_JUDGMENTS, MAX_NODES, Node, Scope, VERSION,
+    BoundProfile, Covered, CoveredKind, Decomposition, Kind, MAX_DEPTH, MAX_JUDGMENTS, MAX_NODES,
+    Node, Oracle, Scope, VERSION,
 };
 pub use validate::findings;
 

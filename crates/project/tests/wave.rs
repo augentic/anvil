@@ -1,4 +1,5 @@
-//! One-member target wave manifests + `target.wave.opened` (RFC-86 D9).
+//! Target wave manifests + `target.wave.opened` (RFC-86 D9; multi-member
+//! since RFC-96 D7).
 
 use jiff::Timestamp;
 use project::config::Layout;
@@ -95,11 +96,12 @@ fn open_appends_target_wave() {
         EventKind::TargetWaveOpened {
             target,
             digest,
-            slice_name,
+            members,
         } => {
             assert_eq!(target, "demo");
             assert_eq!(digest, opened.digest.as_str());
-            assert_eq!(slice_name.as_str(), "login-flow");
+            assert_eq!(members.len(), 1);
+            assert_eq!(members[0].as_str(), "login-flow");
         }
         other => panic!("unexpected kind: {other:?}"),
     }
@@ -123,7 +125,7 @@ fn digest_filename_matches() {
 }
 
 #[test]
-fn refuse_empty_multi_member() {
+fn refuse_empty_members() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     let layout = layout(tmp.path());
 
@@ -131,11 +133,31 @@ fn refuse_empty_multi_member() {
     empty.members.clear();
     let err = empty.write(layout).expect_err("empty members");
     assert!(err.to_string().contains("target-wave-member-count"), "{err}");
+}
 
-    let mut multi = sample("demo", "login-flow");
-    multi.members.push(multi.members[0].clone());
-    let err = multi.open(layout, ts(1)).expect_err("two members");
-    assert!(err.to_string().contains("target-wave-member-count"), "{err}");
+// Multi-member waves write and journal every frozen member (RFC-96 D7).
+#[test]
+fn multi_member_opens() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    let layout = layout(tmp.path());
+
+    let mut wave = sample("demo", "login-flow");
+    let mut second = sample("demo", "orders-api").members.remove(0);
+    second.inputs.refinement = cid('c');
+    wave.members.push(second);
+
+    let opened = wave.open(layout, ts(1)).expect("multi-member open");
+    let loaded = Wave::load(layout, "demo", opened.digest.as_str()).expect("load");
+    assert_eq!(loaded.members.len(), 2);
+
+    let events = read_union(layout).expect("union");
+    match &events[0].kind {
+        EventKind::TargetWaveOpened { members, .. } => {
+            let names: Vec<&str> = members.iter().map(SliceName::as_str).collect();
+            assert_eq!(names, ["login-flow", "orders-api"]);
+        }
+        other => panic!("unexpected kind: {other:?}"),
+    }
 }
 
 #[test]

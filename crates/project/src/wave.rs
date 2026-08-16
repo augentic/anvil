@@ -1,6 +1,6 @@
-//! One-member target wave manifests at
-//! `.emery/change/targets/<target>/waves/<digest>.yaml`, written
-//! before build then journalled as `target.wave.opened`.
+//! Target wave manifests at
+//! `.emery/change/targets/<target>/waves/<digest>.yaml` — a frozen
+//! same-target member antichain (RFC-96 D7), `target.wave.opened`.
 
 use std::path::{Path, PathBuf};
 
@@ -41,11 +41,10 @@ pub struct Member {
     pub inputs: MemberInputs,
 }
 
-/// Immutable target-wave manifest (RFC-86 D9).
+/// Immutable target-wave manifest (RFC-86 D9, RFC-96 D7).
 ///
 /// On disk under `.emery/change/targets/<target>/waves/<digest>.yaml` where
-/// `digest` is the bare hex of the canonical YAML bytes. This cut
-/// accepts exactly one [`Member`].
+/// `digest` is the bare hex of the canonical YAML bytes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Wave {
@@ -54,7 +53,8 @@ pub struct Wave {
     /// Target-base tree identity selected when the wave opened
     /// (the current accepted CID, or `plan.yaml.targets[].cid`).
     pub base: SnapshotId,
-    /// Ordered member set — length must be 1 before open.
+    /// Ordered member set, frozen before claims and builds — never
+    /// shrunk (RFC-96 D7).
     pub members: Vec<Member>,
     /// Dependency frontier: slices whose accepted results this wave
     /// assumes (copied from the leaf's `depends-on` at open time).
@@ -74,41 +74,85 @@ pub struct Opened {
 }
 
 impl Wave {
-    /// Build a one-member wave from the fields D9 requires.
+    /// Build a wave over a frozen member antichain (RFC-96 D7).
     #[must_use]
-    pub fn one_member(
-        target: impl Into<String>, base: SnapshotId, slice: SliceName, refinement: SnapshotId,
+    pub fn new(
+        target: impl Into<String>, base: SnapshotId, members: Vec<Member>,
         depends_on: Vec<SliceName>, build_authorization: EpochRef,
     ) -> Self {
         Self {
             target: target.into(),
             base,
-            members: vec![Member {
-                slice,
-                inputs: MemberInputs { refinement },
-            }],
+            members,
             depends_on,
             build_authorization,
         }
     }
 
-    /// Refuse anything other than a single member (this cut).
+    /// [`Self::new`] over a single member — the cap-one shape.
+    #[must_use]
+    pub fn one_member(
+        target: impl Into<String>, base: SnapshotId, slice: SliceName, refinement: SnapshotId,
+        depends_on: Vec<SliceName>, build_authorization: EpochRef,
+    ) -> Self {
+        Self::new(
+            target,
+            base,
+            vec![Member {
+                slice,
+                inputs: MemberInputs { refinement },
+            }],
+            depends_on,
+            build_authorization,
+        )
+    }
+
+    /// Refuse an empty member set — a wave freezes at least one member.
+    fn enforce_members(&self) -> Result<(), Error> {
+        if self.members.is_empty() {
+            return Err(Error::Diag {
+                code: "target-wave-member-count",
+                detail: format!("target wave for `{}` must have at least one member", self.target),
+            });
+        }
+        Ok(())
+    }
+
+    /// Whether every member's live refinement manifest still matches
+    /// the digest frozen into this wave. A re-refined, dropped, or
+    /// archived member retracts the whole uncommitted wave — no
+    /// prefix is authoritative (RFC-96 D7).
     ///
     /// # Errors
     ///
-    /// `target-wave-member-count` when `members.len() != 1`.
-    pub fn enforce_one_member(&self) -> Result<(), Error> {
-        if self.members.len() == 1 {
-            return Ok(());
+    /// Manifest read failures other than absence.
+    pub fn members_fresh(&self, layout: Layout<'_>) -> Result<bool, Error> {
+        for member in &self.members {
+            let live = crate::refinement::file_digest(&layout.slice_dir(member.slice.as_str()))?;
+            if live.as_ref() != Some(&member.inputs.refinement) {
+                return Ok(false);
+            }
         }
-        Err(Error::Diag {
-            code: "target-wave-member-count",
-            detail: format!(
-                "target wave for `{}` must have exactly one member; found {}",
-                self.target,
-                self.members.len()
-            ),
-        })
+        Ok(true)
+    }
+
+    /// Whether every member holds a build record for this wave — the
+    /// commit precondition (a wave commits only after every frozen
+    /// member passes).
+    ///
+    /// # Errors
+    ///
+    /// Record read failures; `slice-build-record-ambiguous` on
+    /// duplicates.
+    pub fn records_complete(&self, layout: Layout<'_>) -> Result<bool, Error> {
+        let digest = self.digest()?;
+        for member in &self.members {
+            let slice_dir = layout.slice_dir(member.slice.as_str());
+            if BuildRecord::find_for_wave(&slice_dir, &digest)?.is_none() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     /// Canonical YAML bytes of this manifest (trailing newline).
@@ -149,7 +193,7 @@ impl Wave {
     ///
     /// Member-count gate, YAML / filesystem failures, digest collision.
     pub fn write(&self, layout: Layout<'_>) -> Result<SnapshotId, Error> {
-        self.enforce_one_member()?;
+        self.enforce_members()?;
         let yaml = self.canonical_yaml()?;
         let digest = SnapshotId::from_digest(&sha256_hex(yaml.as_bytes()));
         let path = layout.target_wave_path(&self.target, digest.digest());
@@ -188,25 +232,14 @@ impl Wave {
         load_path(&path)
     }
 
-    /// Persist this one-member wave and append `target.wave.opened`.
+    /// Persist this wave and append `target.wave.opened` carrying the
+    /// frozen member list.
     ///
     /// # Errors
     ///
     /// Member-count gate, write failures, or journal append failures.
     pub fn open(&self, layout: Layout<'_>, now: Timestamp) -> Result<Opened, Error> {
         let digest = self.write(layout)?;
-        let slice_name = self
-            .members
-            .first()
-            .ok_or_else(|| Error::Diag {
-                code: "target-wave-member-count",
-                detail: format!(
-                    "target wave for `{}` must have exactly one member; found 0",
-                    self.target
-                ),
-            })?
-            .slice
-            .clone();
         journal::append_one(
             layout,
             &Event::new(
@@ -214,7 +247,7 @@ impl Wave {
                 EventKind::TargetWaveOpened {
                     target: self.target.clone(),
                     digest: digest.as_str().to_string(),
-                    slice_name,
+                    members: self.members.iter().map(|member| member.slice.clone()).collect(),
                 },
             ),
         )?;

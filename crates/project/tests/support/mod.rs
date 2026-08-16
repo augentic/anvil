@@ -307,6 +307,14 @@ impl project::seam::Workspaces for KernelSeam {
             .map_err(|err| project::seam::Error::Internal(err.to_string()))
     }
 
+    async fn compose(
+        &self, base: project::snapshot::SnapshotId, patches: Vec<project::snapshot::CodePatch>,
+    ) -> Result<project::snapshot::CodePatch, project::seam::Error> {
+        project::workspace::compose(&self.store, &base, &patches)
+            .await
+            .map_err(|err| project::seam::Error::Internal(err.to_string()))
+    }
+
     async fn discard(&self, id: String) -> Result<(), project::seam::Error> {
         project::workspace::discard(&self.workspaces, &id)
             .map_err(|err| project::seam::Error::Internal(err.to_string()))

@@ -1,10 +1,10 @@
 //! Cut A5 (RFC-96): the concurrent execute drain. Cap-one and
 //! cap-four accept the same CIDs on an independent two-target plan
 //! (cap-four overlaps the cross-target builds in one pool round), a
-//! failed sibling build parks the run while completed siblings keep
-//! their build records, and `guest.lock` still excludes a second
-//! supervisor. Same-target stale-base requeue is covered by
-//! `plan_refine::pair_execute_drains`.
+//! same-target ready group freezes one multi-member wave that a
+//! single merge commits atomically (RFC-96 D7), a failed sibling
+//! build parks the run while completed siblings keep their build
+//! records, and `guest.lock` still excludes a second supervisor.
 
 mod support;
 
@@ -15,7 +15,7 @@ use mock::invoke::run;
 use mock::session::Session;
 use project::adapter::catalog::Pin;
 use project::handler::Anchor as _;
-use project::journal::read_union;
+use project::journal::{EventKind, read_union};
 use project::plan::{LoopStep, Plan, TargetBinding};
 use project::snapshot::SnapshotId;
 use project::wave::accepted_cid;
@@ -116,6 +116,106 @@ async fn cap_equivalence() {
         [("alpha".to_string(), LoopStep::Build), ("beta".to_string(), LoopStep::Build)],
         "cap-four dispatches the cross-target builds in one round: {phases:?}"
     );
+}
+
+// A same-target ready group freezes one two-member wave (RFC-96 D7):
+// both builds join it and the single merge at the canonical head
+// commits every member atomically — one `target.wave.opened` naming
+// both members, one `target.merge.wave-committed`, no second merge.
+#[tokio::test]
+async fn same_target_wave() {
+    set_cap("4");
+    let session = Session::scripted("mock", Vec::new());
+    let app = seed_cid(&session, "seed-app").await;
+    let other = seed_cid(&session, "seed-other").await;
+    write_two_target(&session, app, other, "mock");
+    let layout = session.provider().paths().layout();
+    let mut plan = Plan::load(&layout.plan_path()).expect("plan");
+    for entry in &mut plan.entries {
+        entry.target = "app".into();
+    }
+    plan.targets.remove("other");
+    plan.save(&layout.plan_path()).expect("plan.yaml");
+    stage_slices(session.root(), &[("alpha", "mock"), ("beta", "mock")]);
+
+    let executed = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
+        .await
+        .expect("execute drains");
+    assert_eq!(executed.status, "drained", "{executed:?}");
+    assert_eq!(
+        ran_phases(&executed),
+        [
+            ("alpha".to_string(), LoopStep::Build),
+            ("beta".to_string(), LoopStep::Build),
+            ("alpha".to_string(), LoopStep::Merge),
+        ],
+        "one merge commits the whole wave"
+    );
+
+    let events = read_union(layout).expect("union");
+    let opened: Vec<Vec<&str>> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            EventKind::TargetWaveOpened { members, .. } => {
+                Some(members.iter().map(project::name::SliceName::as_str).collect())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(opened, [vec!["alpha", "beta"]], "one frozen two-member wave");
+    let committed: Vec<Vec<&str>> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            EventKind::TargetMergeWaveCommitted { members, .. } => {
+                Some(members.iter().map(project::name::SliceName::as_str).collect())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(committed, [vec!["alpha", "beta"]], "the wave commits atomically");
+}
+
+// A group-wide build failure resumes under the same frozen wave: the
+// re-run rejoins the existing membership instead of opening a second
+// wave — failed build, new attempt, same membership (RFC-96 D7).
+#[tokio::test]
+async fn retry_rejoins_wave() {
+    set_cap("4");
+    let session = Session::scripted("mock", Vec::new());
+    let app = seed_cid(&session, "seed-app").await;
+    let other = seed_cid(&session, "seed-other").await;
+    write_two_target(&session, app, other, "mock");
+    let layout = session.provider().paths().layout();
+    let mut plan = Plan::load(&layout.plan_path()).expect("plan");
+    for entry in &mut plan.entries {
+        entry.target = "app".into();
+    }
+    plan.targets.remove("other");
+    plan.save(&layout.plan_path()).expect("plan.yaml");
+    stage_slices(session.root(), &[("alpha", "mock"), ("beta", "mock")]);
+
+    support::marker(session.root(), mock::behaviour::FAIL_BUILD_MARKER);
+    let stopped = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
+        .await
+        .expect_err("the marked builds park the run")
+        .to_string();
+    assert!(stopped.contains("build-failed"), "{stopped}");
+
+    fs::remove_file(session.root().join(mock::behaviour::FAIL_BUILD_MARKER)).expect("rm marker");
+    let executed = run::<Execute, _, _>(session.provider(), ExecuteInput::default())
+        .await
+        .expect("the resume drains");
+    assert_eq!(executed.status, "drained", "{executed:?}");
+
+    let events = read_union(layout).expect("union");
+    let opened: Vec<usize> = events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            EventKind::TargetWaveOpened { members, .. } => Some(members.len()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(opened, [2], "the retry rejoins the frozen wave — no second open");
 }
 
 // A failed sibling build parks the run with the typed stop naming the

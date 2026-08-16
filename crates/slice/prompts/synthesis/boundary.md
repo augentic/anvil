@@ -6,11 +6,11 @@ Complexity is a trigger, not sole authority over lifecycle shape. A score above 
 
 ## `proceed`
 
-Promote the synthesized bundle. Carry `model` and `artifacts` as today. The engine persists, validates, stamps `refined`, and writes `refinement.yaml`.
+Write the change-artifact bundle (`model.yaml`, prose files, `specs/<domain>/spec.md`, optional `decisions/<slug>.md`) into your working tree and answer with the envelope. The engine validates the staged tree, persists it, stamps `refined`, and writes `refinement.yaml`.
 
 ## `boundary-escalation`
 
-Do **not** author `model` or `artifacts`. Name the affected terminal `(source, lead)` pairs already bound on this leaf in `affected[]`, and say why the Evidence supports a split (or an over-envelope leaf) in `rationale`.
+Write **nothing** into the working tree. Name the affected terminal `(source, lead)` pairs already bound on this leaf in `affected[]`, and say why the Evidence supports a split (or an over-envelope leaf) in `rationale`.
 
 The engine does not promote artifacts, does not stamp `refined`, and does not start build work. It runs focused survey for the named parents and nearest-domain re-decomposition into an **inert** amendment proposal. Live `leads.md` / `decomposition.yaml` / `plan.yaml` stay unchanged until the operator applies that proposal.
 

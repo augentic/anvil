@@ -12,16 +12,15 @@ use project::profile::Assessment;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
-use crate::model::SliceModel;
 use crate::synthesis::baseline::BaselineIndex;
 
 /// Wire version stamped on both the input and response envelopes.
-/// v2: `sources[]` entries carry a project-relative `evidence-path`
-/// instead of inlined `claims[]` — the agent reads each Evidence
-/// document from the lent tree.
 /// v3: typed `proceed | boundary-escalation` outcome plus a closed
-/// complexity assessment, scored against the bound target's profile.
-pub const SYNTHESIS_VERSION: u32 = 3;
+/// profile-scored complexity assessment.
+/// v4 (RFC-96 D10): `proceed` writes the change-artifact bundle into
+/// the lent staged tree — `model` / `artifacts` leave the wire; the
+/// answer carries the envelope plus advisory `findings[]`.
+pub const SYNTHESIS_VERSION: u32 = 4;
 
 /// Synthesis response envelope kind.
 ///
@@ -41,9 +40,9 @@ pub enum SynthesisKind {
 ///
 /// The DTO is shape-only and the source of the generated
 /// judgment-answer schema; the projection kernel re-derives every
-/// kernel-owned field after the parse. `proceed` requires `model` and
-/// `artifacts`; `boundary-escalation` requires `affected` and
-/// `rationale`.
+/// kernel-owned field after the parse. On `proceed` the artifact
+/// payload rides the lent staged tree, never the wire (RFC-96 D10);
+/// `boundary-escalation` requires `affected` and `rationale`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SynthesisResponse {
@@ -55,12 +54,11 @@ pub struct SynthesisResponse {
     pub slice: String,
     /// Closed five-dimension complexity assessment.
     pub assessment: Assessment,
-    /// The agent's structured model — required on [`SynthesisKind::Proceed`].
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub model: Option<SliceModel>,
-    /// Prose-only Markdown artifacts — required on [`SynthesisKind::Proceed`].
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub artifacts: Option<SynthesisArtifacts>,
+    /// Advisory agent-reported synthesis notes (evidence gaps
+    /// preserved, divergences resolved, …). Review signals only — the
+    /// deterministic tail neither parses nor gates them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub findings: Vec<String>,
     /// Terminal `(source, lead)` pairs — required on
     /// [`SynthesisKind::BoundaryEscalation`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -71,7 +69,8 @@ pub struct SynthesisResponse {
     pub rationale: Option<String>,
 }
 
-/// The prose-only Markdown artifacts under a [`SynthesisResponse`].
+/// The prose-only Markdown artifacts of one synthesized slice, read
+/// from the staged tree the agent wrote (RFC-96 D10).
 ///
 /// Each is authored by the agent; the render step later injects
 /// provenance lines into the spec bodies.
@@ -105,7 +104,7 @@ pub struct SynthesisDecision {
     /// Stable kebab-case slug — the baseline filename derives from it.
     pub slug: String,
     /// `accepted` or `rejected` (`superseded` is engine-only and
-    /// refused by the answer schema).
+    /// normalised away by the staged read).
     pub status: artifacts::decision::DecisionStatus,
     /// The record's H1 title.
     pub title: String,
@@ -208,8 +207,9 @@ pub struct DependencyContext {
     pub slice: String,
     /// Predecessor refinement digest (`sha256:…`).
     pub refinement: String,
-    /// Project-relative readable artifact root
-    /// (`.emery/change/slices/<predecessor>/`).
+    /// Stage-relative readable artifact root
+    /// (`dependencies/<predecessor>`), seeded into the lent staged
+    /// tree.
     pub artifacts_root: String,
 }
 
@@ -246,11 +246,11 @@ impl From<&BaselineIndex> for Vec<DomainDetail> {
 
 /// One bound source's contribution to the synthesis inputs.
 ///
-/// Carries the source's `lead` and the project-relative
-/// `evidence-path` to its Evidence document in the lent tree — the
-/// agent reads the claim bodies from that file instead of receiving
-/// them inline on the wire. The document-level `authority` is
-/// intentionally not carried.
+/// Carries the source's `lead` and the stage-relative `evidence-path`
+/// (`evidence/<source>.yaml`) to its Evidence document in the lent
+/// staged tree — the agent reads the claim bodies from that file
+/// instead of receiving them inline on the wire. The document-level
+/// `authority` is intentionally not carried.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub struct SourceInput {
@@ -258,18 +258,18 @@ pub struct SourceInput {
     pub source: String,
     /// The source's discovery lead id (from `evidence/<source>.yaml`).
     pub lead: String,
-    /// Project-relative path to the source's Evidence document
-    /// (`.emery/change/slices/<slice>/evidence/<source>.yaml`), resolvable in
-    /// the lent tree the agent works in.
+    /// Stage-relative path to the source's Evidence document
+    /// (`evidence/<source>.yaml`), resolvable in the lent staged tree
+    /// the agent works in.
     pub evidence_path: String,
 }
 
 impl SourceInput {
     /// Shape one already-read Evidence document into a
     /// [`SourceInput`], pulling its `lead` and recording
-    /// `evidence_path` as the wire path — the claims stay on disk for
-    /// the agent to read (and the document-level `authority` is
-    /// resolved by the kernel post-response).
+    /// `evidence_path` as the stage-relative wire path — the claims
+    /// stay on disk for the agent to read (and the document-level
+    /// `authority` is resolved by the kernel post-response).
     ///
     /// # Errors
     ///

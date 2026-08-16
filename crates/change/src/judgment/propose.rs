@@ -73,16 +73,24 @@ where
         user.push_str(&context.render());
     }
 
-    repaired(model, prose::propose(), user, "proposal", &schema, |answer| {
-        let response: ProposalResponse = serde_json::from_str(answer).map_err(|err| {
-            Error::validation_failed(
-                "plan-propose-response-parse",
-                "the reconciliation answer deserialises as a response envelope",
-                format!("failed to parse response envelope: {err}"),
-            )
-        })?;
-        check(&response)?;
-        Ok(response)
-    })
+    repaired(
+        model,
+        prose::propose(),
+        user,
+        "proposal",
+        &schema,
+        project::judgment::Lent::default(),
+        |answer| {
+            let response: ProposalResponse = serde_json::from_str(answer).map_err(|err| {
+                Error::validation_failed(
+                    "plan-propose-response-parse",
+                    "the reconciliation answer deserialises as a response envelope",
+                    format!("failed to parse response envelope: {err}"),
+                )
+            })?;
+            check(&response)?;
+            Ok(response)
+        },
+    )
     .await
 }

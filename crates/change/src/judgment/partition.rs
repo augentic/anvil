@@ -29,27 +29,35 @@ where
         "## Partition request\n\n```json\n{}\n```",
         render_json(request, "partition request")?
     );
-    repaired(model, prose::partition(), user, "partition", &schema, |answer| {
-        let response: PartitionResponse = serde_json::from_str(answer).map_err(|err| {
-            Error::validation_failed(
-                "plan-partition-response-parse",
-                "the partition answer deserialises as a response envelope",
-                format!("failed to parse partition envelope: {err}"),
-            )
-        })?;
-        if response.version != project::plan::PARTITION_VERSION {
-            return Err(Error::validation_failed(
-                "plan-partition-version",
-                "the partition answer carries the current wire version",
-                format!(
-                    "partition version `{}` is not `{}`",
-                    response.version,
-                    project::plan::PARTITION_VERSION
-                ),
-            ));
-        }
-        check(&response)?;
-        Ok(response)
-    })
+    repaired(
+        model,
+        prose::partition(),
+        user,
+        "partition",
+        &schema,
+        project::judgment::Lent::default(),
+        |answer| {
+            let response: PartitionResponse = serde_json::from_str(answer).map_err(|err| {
+                Error::validation_failed(
+                    "plan-partition-response-parse",
+                    "the partition answer deserialises as a response envelope",
+                    format!("failed to parse partition envelope: {err}"),
+                )
+            })?;
+            if response.version != project::plan::PARTITION_VERSION {
+                return Err(Error::validation_failed(
+                    "plan-partition-version",
+                    "the partition answer carries the current wire version",
+                    format!(
+                        "partition version `{}` is not `{}`",
+                        response.version,
+                        project::plan::PARTITION_VERSION
+                    ),
+                ));
+            }
+            check(&response)?;
+            Ok(response)
+        },
+    )
     .await
 }

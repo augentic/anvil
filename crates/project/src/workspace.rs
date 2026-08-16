@@ -159,6 +159,70 @@ pub fn discard(workspaces: &Path, id: &str) -> Result<(), Error> {
     Ok(())
 }
 
+/// Compose same-base, disjoint patches into one result snapshot
+/// (RFC-96 D6).
+///
+/// Every patch must start from `base` and the `touched` sets must be
+/// pairwise disjoint — there is no textual merge. Exact result-tree
+/// values apply in the given order at the manifest level, so the
+/// composed identity is deterministic and deployment-independent;
+/// the store gains only the composed manifest object. An empty patch
+/// set composes to `base` itself.
+///
+/// # Errors
+///
+/// `workspace-compose-base-mismatch` / `workspace-compose-overlap`
+/// before any store read; `snapshot-missing` for an absent base or
+/// result manifest. Failures mutate nothing.
+pub async fn compose(
+    store: &Store<impl Objects>, base: &SnapshotId, patches: &[CodePatch],
+) -> Result<CodePatch, Error> {
+    check_composable(base, patches)?;
+    let base_manifest = store.manifest(base).await?;
+    let mut composed = base_manifest.clone();
+    for patch in patches {
+        let result = store.manifest(&patch.result).await?;
+        for path in &patch.touched {
+            match result.entries.get(path) {
+                Some(entry) => composed.entries.insert(path.clone(), entry.clone()),
+                None => composed.entries.remove(path),
+            };
+        }
+    }
+    let result = store.put_manifest(&composed).await?;
+    Ok(CodePatch {
+        base: base.clone(),
+        result,
+        touched: base_manifest.diff(&composed),
+    })
+}
+
+/// Refuse composition unless every patch starts from `base` and the
+/// touched sets are pairwise disjoint.
+fn check_composable(base: &SnapshotId, patches: &[CodePatch]) -> Result<(), Error> {
+    let mut claimed = std::collections::BTreeSet::new();
+    for patch in patches {
+        if patch.base != *base {
+            return Err(Error::Diag {
+                code: "workspace-compose-base-mismatch",
+                detail: format!(
+                    "patch result `{}` starts from `{}`, not the composition base `{base}`",
+                    patch.result, patch.base
+                ),
+            });
+        }
+        for path in &patch.touched {
+            if !claimed.insert(path.as_str()) {
+                return Err(Error::Diag {
+                    code: "workspace-compose-overlap",
+                    detail: format!("path `{path}` is touched by more than one patch"),
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Garbage-collect abandoned workspaces.
 ///
 /// Removes every entry whose modification time is older than

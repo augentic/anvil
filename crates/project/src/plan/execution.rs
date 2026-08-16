@@ -57,6 +57,21 @@ impl Resolution {
         }
     }
 
+    /// A slice-less stop with detail (the RFC-96 D8 domain gate).
+    pub(super) const fn stop_detail(reason: StopReason, detail: Option<String>) -> Self {
+        Self {
+            action: NextActionKind::Stop,
+            slice: None,
+            target: None,
+            last_completed: None,
+            stop: Some(StopBody {
+                reason,
+                detail,
+                hint: reason.hint(),
+            }),
+        }
+    }
+
     pub(super) const fn drained() -> Self {
         Self {
             action: NextActionKind::Drained,

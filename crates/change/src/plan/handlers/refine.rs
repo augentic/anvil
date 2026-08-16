@@ -11,7 +11,7 @@ use omnia_guest::api::operation::Operation;
 use project::adapter::Resolver;
 use project::handler::{Anchor, Ctx, Render};
 use project::profile::Profiles;
-use project::seam::{Source, Target, Workspaces};
+use project::seam::{Shelf, Source, Target, Workspaces};
 use serde::{Deserialize, Serialize};
 
 use crate::orchestrate::{self, RefineOutcome};
@@ -30,7 +30,7 @@ pub struct RefineInput {
 #[derive(Clone, Copy, Debug)]
 pub struct Refine;
 
-impl<P: Anchor + Model + Profiles + Resolver + Source + Target + Workspaces> Operation<P>
+impl<P: Anchor + Model + Profiles + Resolver + Source + Shelf + Target + Workspaces> Operation<P>
     for Refine
 {
     type Error = project::handler::Error;

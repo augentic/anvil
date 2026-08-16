@@ -25,7 +25,7 @@ mod workspace;
 
 pub use provider::Provider;
 /// Re-exported for the [`export!`] macro expansion.
-pub use {omnia_guest, omnia_wasi_otel, transport, wasip3};
+pub use {omnia_guest, omnia_wasi_http, omnia_wasi_otel, slice, transport, wasip3};
 
 /// Export the engine guest from the invoking cdylib.
 ///
@@ -78,6 +78,19 @@ macro_rules! export {
                 $crate::wasip3::http::types::Response,
                 $crate::wasip3::http::types::ErrorCode,
             > {
+                // The engine's own MCP reference shelf (RFC-96 D9):
+                // the deployment's `http_paths` hook routes the shelf
+                // path back onto this guest.
+                let shelf = request
+                    .get_path_with_query()
+                    .is_some_and(|path| {
+                        path.split('?').next() == Some($crate::slice::shelf::PATH)
+                    });
+                if shelf {
+                    let router =
+                        $crate::omnia_guest::mcp::router($crate::slice::shelf::Shelf);
+                    return $crate::omnia_wasi_http::serve(router, request).await;
+                }
                 let invoker =
                     $crate::omnia_guest::api::invoke::Invoker::new("emery", $crate::Provider);
                 let router = $crate::transport::http::router(invoker);
