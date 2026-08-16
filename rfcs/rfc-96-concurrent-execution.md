@@ -1,6 +1,6 @@
 # RFC-96: Concurrent Execution
 
-> Status: Active scheduled work in the [Services Delivery Programme](platform.md). Phase A adds the scheduler and read-heavy pool; Phase B adds composition and multi-member waves. Cap one remains the reference mode. Synthesis payload reduction (D9–D10) is an independent delivery slice.
+> Status: Implemented in the [Services Delivery Programme](platform.md). Phase A landed the scheduler and read-heavy pool; Phase B landed composition, multi-member waves, and domain convergence. Cap one remains the deterministic reference mode. The synthesis payload reduction (D9–D10) landed as its own delivery slice.
 >
 > Owns: single-node concurrent execution — phase work items and local claims, a bounded shared pool, host-injected writer identity, private-workspace composition, domain convergence, and multi-member target waves.
 >

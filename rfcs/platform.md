@@ -1,6 +1,6 @@
 # Services Delivery Programme
 
-> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88, RFC-95, and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. RFC-106 is evidence-gated and excluded from the active dependency map. Next gap is RFC-96. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
+> Status: Planning spine for the active RFC-86…RFC-98 / RFC-103 / RFC-104 programme. RFC-88, RFC-95, RFC-96, and RFC-104 are implemented. RFC-99 through RFC-102 are parked and excluded from the active dependency map. RFC-106 is evidence-gated and excluded from the active dependency map. Next gap is RFC-92. Each RFC owns its decisions; this document owns delivery sequence, programme state, and fit.
 >
 > Business direction: Propellerhead builds and changes critical software without losing the behaviour, knowledge, and trust the organisation depends on.
 >
@@ -40,8 +40,8 @@ flowchart TD
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef nearterm fill:#fed7aa,stroke:#c2410c,color:#7c2d12,stroke-width:3px
     classDef later fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
-    class R86,R87,R88,R90,R91,R104,R95 done
-    class R96,R92,R97,R94 nearterm
+    class R86,R87,R88,R90,R91,R104,R95,R96 done
+    class R92,R97,R94 nearterm
     class R98 later
 ```
 
@@ -49,11 +49,11 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 
 ## Where we are
 
-**Implemented:** RFC-86, RFC-87, RFC-88, RFC-90, RFC-91, RFC-95, RFC-104. Fact-based workflow over private workspaces, with an engine-owned build phase machine, a fenced specification-refinement stage, detached multi-target execution over accepted CIDs, publication worktrees with forge-verified archive over the one `emery:vcs` host seam, and the definition loop through `system.wave.reviewed`. Merge-time `apply` is deleted; `plan author --from --wave` consumes a reviewed handoff.
+**Implemented:** RFC-86, RFC-87, RFC-88, RFC-90, RFC-91, RFC-95, RFC-96, RFC-104. Fact-based workflow over private workspaces, with an engine-owned build phase machine, a fenced specification-refinement stage, detached multi-target execution over accepted CIDs, publication worktrees with forge-verified archive over the one `emery:vcs` host seam, and the definition loop through `system.wave.reviewed`. Merge-time `apply` is deleted; `plan author --from --wave` consumes a reviewed handoff. RFC-96 adds bounded single-node concurrency: a deterministic ready-set scheduler over a bounded pool, private-workspace composition, multi-member waves, and durable domain-convergence rounds, with cap one as the deterministic reference mode.
 
 **Definition:** implemented. [RFC-104](rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
 
-**Delivery gap:** RFC-96 supplies bounded concurrent slice scheduling. RFC-95 is implemented — the execute drain exports each final accepted CID into a publication worktree and archive verifies the publication set against the forge. Intra-slice task graphs are RFC-106 and wait on a measured fat Omnia slice.
+**Delivery gap:** RFC-92 supplies model routes, usage facts, and cost attribution — the measurement that tunes RFC-96 pool sizes and budgets. RFC-96 is implemented — the drains schedule ready work items over a bounded pool, compose multi-member waves, and record domain convergence; cap one remains the deterministic reference. Intra-slice task graphs are RFC-106 and wait on a measured fat Omnia slice.
 
 **Evidence gap** — asserted rather than demonstrated; may proceed beside or after the product cut:
 
@@ -111,9 +111,9 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 - [RFC-103](rfc-103-outcome-learning.md) — follows RFC-92 and the blind current-versus-candidate harness. First useful cut is outcome projection and recurrence analysis. Promotion stays offline, reviewed, versioned, and available only to future runs. RFC-94/97/98 enrich the same record as they land; they are not hard prerequisites for creating it. Private `probe` improvement is ordinary hygiene; a public evaluation asset is [RM-29](roadmap.md#rm-29-governed-model-evaluation-asset) and starts when a lighthouse sale needs published evidence.
 
-### Scheduled after RFC-88 — concurrent execution
+### Implemented after RFC-88 — concurrent execution
 
-- [RFC-96](rfc-96-concurrent-execution.md) — work-item scheduling, a bounded shared pool, deterministic composition, domain convergence, and multi-member waves, following stable RFC-88/91. Phase order: work-item scheduler and read-heavy pool, then `compose` and multi-member waves. Cap one is the deterministic reference; higher caps must preserve equivalent ordered outcomes. RFC-92/97 telemetry tunes pools, budgets, and verification placement rather than whether RFC-96 is implemented. RFC-97 Phase B remains attached to RFC-96 domain contexts. Intra-slice task graphs are not this RFC.
+- [RFC-96](rfc-96-concurrent-execution.md) — implemented single-node concurrency following stable RFC-88/91: work-item scheduling, a bounded shared pool, deterministic composition, domain convergence, and multi-member waves. Landed in phase order: work-item scheduler and read-heavy pool, then `compose` and multi-member waves. Cap one is the deterministic reference; higher caps preserve equivalent ordered outcomes. RFC-92/97 telemetry tunes pools, budgets, and verification placement. RFC-97 Phase B remains attached to RFC-96 domain contexts. Intra-slice task graphs are not this RFC.
 
 ### Evidence-gated — fat-slice decomposition
 
@@ -148,7 +148,7 @@ Do not split the implementation cuts into new lifecycle RFCs. Do not pre-impleme
 
 **Prefer a measurement to an assumption whenever the measurement is cheap.** Every operation is typed, every input is digest-bound, and every result is a durable fact. Internal coherence is not evidence that the design works on a client estate.
 
-- **Concurrency is required; measurement tunes it.** RFC-96 is scheduled, with cap one as the deterministic reference. RFC-92/97 timing sets useful pool sizes and budgets: excess concurrency can multiply spend without moving completion.
+- **Concurrency is required; measurement tunes it.** RFC-96 is implemented, with cap one as the deterministic reference. RFC-92/97 timing sets useful pool sizes and budgets: excess concurrency can multiply spend without moving completion.
 - **Assurance is claimed on both axes at the level earned.** RFC-97 projects `execution-assurance: model-assisted | host-attested | hybrid`; `oracle-assurance: candidate | protected | mixed` says whether the correctness input was independent of the writer. “Verified” must name the profile and both assurances.
 - **A number that looks measured must be measured.** Unknown cost remains `unknown`; thresholds and weights are starting values with an outcome-backed route to revision.
 - **Land the smallest thing that produces a useful fact.** Read those facts before introducing another execution mode.
