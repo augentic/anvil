@@ -109,13 +109,11 @@ impl<'a> Context<'a> {
 /// The adapter's own MCP references endpoint on the runtime's HTTP
 /// trigger: `<base>/mcp/<axis>/<name>[@<version>]`.
 ///
-/// The base comes from the guest's `MCP_URL_BASE` — the fully-formed
-/// `http://127.0.0.1:<port>` the deployment injects when its pre-bound
-/// listener binds (D6), so grants and listener cannot drift apart.
-/// A deployment that predates the injection falls back to deriving
-/// the base from `HTTP_ADDR`. `None` when neither is usable: no
-/// listener means no shelf, and no grant is offered — degradation is
-/// coherent end to end, never a wrong-port guess.
+/// The base is the guest's injected fully-formed `MCP_URL_BASE` (D6),
+/// so grants and listener cannot drift apart; a deployment predating
+/// the injection falls back to deriving the base from `HTTP_ADDR`.
+/// `None` when neither is usable: no listener means no shelf and no
+/// grant — coherent degradation, never a wrong-port guess.
 #[must_use]
 pub fn mcp_url(adapter_id: &str) -> Option<String> {
     if let Ok(base) = std::env::var("MCP_URL_BASE") {

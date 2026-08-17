@@ -1,10 +1,7 @@
 //! Build-time platform gate (A14).
 //!
-//! The project's declared platform set must satisfy the bound target's
-//! capability at every build assembly, not just at `emery init` —
-//! otherwise a project scaffolded before the target declared its
-//! capability (or a hand-edited `project.yaml`) reaches the target
-//! with no validated set and the target is left to guess.
+//! The declared platform set must satisfy the bound target's capability
+//! at every build assembly — the target never guesses an unvalidated set.
 
 use error::Error;
 use project::adapter::{PlatformsSurface, TargetAdapter};
@@ -13,9 +10,11 @@ use project::config::{Layout, ProjectConfig};
 /// Enforce the target's platforms capability over the project's
 /// declared set.
 ///
-/// A target without a capability passes; a detached change home has no
-/// `project.yaml` to validate, so the target's in-guest validation
-/// over the materialized tree is the gate there.
+/// A target without a capability passes. A detached change home has no
+/// `project.yaml` to validate here, so the gate defers to the target's
+/// in-guest handling of the materialized tree — a platform-requiring
+/// target (vectis) fails closed there when the tree declares no
+/// platform set, it does not guess one.
 ///
 /// # Errors
 ///

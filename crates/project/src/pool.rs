@@ -249,10 +249,9 @@ pub async fn run<T, E>(
             }
             return Poll::Ready(());
         }
-        // Real inactivity wake (S4): arm a monotonic-clock wake at the
-        // earliest in-flight deadline so a hung job times out even when
-        // no sibling ever progresses. Poll-driven detection above stays
-        // the check; the timer only guarantees a poll happens.
+        // Real inactivity wake (S4): a monotonic-clock wake at the
+        // earliest in-flight deadline times out a hung job even when no
+        // sibling progresses — the timer only guarantees a poll happens.
         if let Some(deadline) = running.iter().map(Running::deadline).min() {
             timer.arm(deadline, cx.waker());
         }

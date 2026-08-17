@@ -668,6 +668,12 @@ async fn bind_targets<P: Trees, W: Workspaces>(
     trees: &P, session: &mut project::binding::Session<'_, W>, catalog: &catalog::Catalog,
     reviewed: &Reviewed, existing: Option<&Plan>, intern: &mut BTreeMap<String, SnapshotId>,
 ) -> Result<BTreeMap<String, TargetBinding>, Error> {
+    // Moved-ref re-anchoring needs the same reviewed handoff: the row
+    // keeps only the settled SHA, so under a changed handoff a same-URL
+    // revision change would look like a moved ref and keep a stale pin (P7).
+    let same_handoff = existing
+        .and_then(|plan| plan.definition.as_ref())
+        .is_some_and(|definition| definition.handoff_digest == reviewed.digest);
     let mut targets = BTreeMap::new();
     for target in &reviewed.handoff.wave.targets {
         let locator = target.locator.clone();
@@ -681,7 +687,7 @@ async fn bind_targets<P: Trees, W: Workspaces>(
             .get(&locator)
             .cloned()
             .or_else(|| bound.filter(|row| row.locator == locator).map(|row| row.cid.clone()));
-        let prior = bound.and_then(|row| git_sha(&row.locator));
+        let prior = same_handoff.then(|| bound.and_then(|row| git_sha(&row.locator))).flatten();
         let fetched = project::binding::fetch_locator(
             session,
             trees,

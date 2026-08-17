@@ -317,16 +317,12 @@ fn export_roots(paths: &ExecutionPaths) {
 /// Macro expression: this invocation's pre-bound HTTP trigger
 /// listener, feeding the `/mcp/<axis>/<name>` reference shelves.
 ///
-/// Its local address becomes the guest-visible `HTTP_ADDR`, so
-/// concurrent invocations get distinct ports. An operator-set
-/// `HTTP_ADDR` must bind; without one, an ephemeral loopback port.
-/// Any bind failure is a startup failure — there is no
-/// run-without-the-trigger fallback.
-///
-/// A successful bind also injects the fully-formed `MCP_URL_BASE`
-/// (`http://127.0.0.1:<port>`, D6): guests append their shelf path to
-/// it instead of re-deriving the base from `HTTP_ADDR` parsing plus a
-/// hard-coded host literal.
+/// Its local address becomes the guest-visible `HTTP_ADDR` (distinct
+/// ports across concurrent invocations); an operator-set `HTTP_ADDR`
+/// must bind, else an ephemeral loopback port — any bind failure is a
+/// startup failure. A successful bind also injects the fully-formed
+/// `MCP_URL_BASE` (`http://127.0.0.1:<port>`, D6), which guests prefer
+/// over re-deriving the base from `HTTP_ADDR`.
 ///
 /// # Errors
 ///

@@ -13,12 +13,9 @@ use crate::slice::SliceMetadata;
 /// True when `entry` is on `plan`, no `slice.dropped` fact names it,
 /// and `meta` has no `dropped_at` stamp. The journal tombstone is the
 /// durable scope authority (S7 / CC-03): archiving moves the stamped
-/// `metadata.yaml` out of the live tree, so a dropped entry must stay
-/// excluded even when its live metadata is gone. A missing metadata
-/// document without a tombstone (slice not yet created) is not
-/// dropped, so the entry stays in-scope. `plan remove` deletes the row
-/// (absent ⇒ not in-scope); `plan drop` abandons the slice and
-/// excludes it even when the plan row remains.
+/// `metadata.yaml` out of the live tree, so a dropped entry stays
+/// excluded with no live metadata — while a missing document without
+/// a tombstone (slice not yet created) stays in-scope.
 #[must_use]
 pub fn in_scope(
     plan: &Plan, entry: &Entry, meta: Option<&SliceMetadata>, events: &[Event],

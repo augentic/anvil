@@ -199,7 +199,7 @@ fn unparseable_argv_anchors() {
 }
 
 #[test]
-fn unanchored_cwd_stays_in_place() {
+fn unanchored_cwd_in_place() {
     // Refused inference (D2): no `project.yaml` ancestor and no
     // `--change-dir` never anchors a detached change home at the
     // working directory. The policy stays total — it boots in-place at
@@ -813,7 +813,7 @@ async fn cache_seed_shadows_all() {
 }
 
 #[tokio::test]
-async fn settled_identity_journaled() {
+async fn settle_journaled() {
     // D5 containment: a non-durable settle (here a cache seed) appends
     // an `adapter.identity.settled` observability fact when the change
     // journal already exists — and never scaffolds one.

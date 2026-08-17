@@ -552,13 +552,15 @@ pub(crate) fn in_place(root: &Path) -> bool {
     root.join(".emery").join("project.yaml").is_file()
 }
 
-// One build phase over the case's refined fixture, driven straight
-// through the shared build orchestration (the execute loop owns the
-// phase in production) — one phase, for fast prompt iteration.
-//
-// LAB BACK DOOR: this bypasses the public workflow contract (no epoch,
-// no gap gate, no merge) and must never be graded as a workflow; the
-// runner redesign that retires it is Phase 5 of the remediation plan.
+/// One build phase over the case's refined fixture.
+///
+/// Driven straight through the shared build orchestration (the execute
+/// loop owns the phase in production) — one phase, for fast prompt
+/// iteration.
+///
+/// LAB BACK DOOR: bypasses the public workflow contract (no epoch, no
+/// gap gate, no merge) and must never be graded as a workflow; the
+/// runner redesign retiring it is Phase 5 of the remediation plan.
 async fn build_phase(root: &Path, model: &DynModel, catalog: &Catalog, slice: &str) -> Result<()> {
     tracing::info!("build phase for slice `{slice}`");
     let paths = paths(root);

@@ -713,7 +713,7 @@ mod guard {
     /// materialized tree and its metadata sidecar down on drop,
     /// leaving no workspace entry behind.
     #[tokio::test]
-    async fn timed_out_job_leaves_no_workspace() {
+    async fn timeout_discards() {
         let lab = lab();
         write(&lab.source, "a.txt", b"a");
         let base = lab.store.snapshot(&lab.source).await.expect("snapshot");

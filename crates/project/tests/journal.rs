@@ -253,7 +253,7 @@ fn append_skips_corrupt_tail() {
 }
 
 #[test]
-fn events_dir_unreadable_errs() {
+fn unreadable_dir_errs() {
     // S13 / CC-11: an unreadable events directory is an I/O error on
     // the authority read — never an empty union.
     let tmp = tempfile::TempDir::new().expect("tempdir");

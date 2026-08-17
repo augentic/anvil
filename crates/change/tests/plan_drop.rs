@@ -12,7 +12,7 @@ use project::journal::EventKind;
 use support::write_greeting_plan;
 
 #[tokio::test]
-async fn tombstone_survives_archive() {
+async fn tombstone_survives() {
     let session = Session::scripted("mock", Vec::new());
     let root = session.root();
     write_greeting_plan(root);

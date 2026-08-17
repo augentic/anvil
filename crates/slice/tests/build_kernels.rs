@@ -892,7 +892,7 @@ mod platforms_gate {
     /// capability (or hand-edited since) never reaches the target
     /// without a validated set.
     #[test]
-    fn required_but_missing_refuses() {
+    fn missing_set_refuses() {
         let dir = project("");
         let err =
             slice::build::platforms::enforce(Layout::new(dir.path()), &adapter(Some(capability())))
@@ -903,7 +903,7 @@ mod platforms_gate {
     /// A declared platform outside the capability's allowed set is the
     /// typed not-allowed refusal.
     #[test]
-    fn disallowed_platform_refuses() {
+    fn disallowed_refuses() {
         let dir = project("platforms: [core, web]\n");
         let err =
             slice::build::platforms::enforce(Layout::new(dir.path()), &adapter(Some(capability())))
@@ -914,7 +914,7 @@ mod platforms_gate {
     /// A conforming declared set passes; a target with no capability
     /// never gates.
     #[test]
-    fn conforming_and_uncapable_pass() {
+    fn conforming_pass() {
         let dir = project("platforms: [core, ios]\n");
         slice::build::platforms::enforce(Layout::new(dir.path()), &adapter(Some(capability())))
             .expect("conforming set passes");

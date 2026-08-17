@@ -178,10 +178,9 @@ async fn in_workspace(
     };
     let workspace =
         seam.prepare(base, true).await.map_err(|err| workspace_failure("prepare", slice, &err))?;
-    // Pool-drop containment (S37 / D12): an inactivity timeout or
-    // cancel drops this future mid-flight, so the settle-path discard
-    // below never runs — the guard tears the materialized tree down
-    // synchronously instead.
+    // Pool-drop containment (S37 / D12): a timeout or cancel drops
+    // this future mid-flight, skipping the settle-path discard below —
+    // the guard tears the materialized tree down synchronously instead.
     let mut guard = project::workspace::DiscardGuard::arm(&workspace.root);
     let outcome =
         finalize(seam, layout, now, slice, slice_dir, adapter, request, &workspace, wave_digest)

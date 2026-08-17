@@ -1,13 +1,7 @@
-//! The guest's non-MCP HTTP surface: one typed refusal (C3).
+//! The guest's non-MCP HTTP surface: one typed 404 (C3).
 //!
-//! The deployment's pre-bound listener carries no authentication, so
-//! mutating ingress over HTTP is disabled until an operator ingress
-//! is designed (target-architecture §7). The engine guest serves only
-//! the MCP reference shelf (`slice::shelf::PATH`, routed back to the
-//! guest by the deployment's `http_paths` hook); every other path and
-//! method answers the typed 404 below. Reintroducing an operation
-//! route table here is an ingress design decision, not a wiring
-//! change — `crates/transport/tests/router.rs` holds the refusal.
+//! The unauthenticated listener serves only the MCP reference shelf;
+//! operation routes are an ingress design decision (target-architecture §7).
 
 use omnia_guest::axum::Router;
 use omnia_guest::axum::response::{IntoResponse, Response};

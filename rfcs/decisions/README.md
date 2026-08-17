@@ -35,3 +35,9 @@ ADR-0001 through ADR-0006 are the **decision gate** from [architecture-review.md
 | [0004](0004-conflict-disposition.md) | Operator gate for conflicts vs auto-defer | No |
 | [0005](0005-change-home.md) | Detached-only change homes | No |
 | [0006](0006-rebuild-vs-refactor.md) | Walking-skeleton rebuild vs six-cut refactor | After 0001/0002 spikes |
+
+Later ADRs record decisions made during the programme itself:
+
+| ADR | Decision |
+| --- | --- |
+| [0007](0007-cache-seed-precedence.md) | **Accepted:** project cache seeds answer exact pins; pin digest verification is store-only |

@@ -238,12 +238,10 @@ pub(crate) fn read_recent<T>(
 /// (`timestamp`, `writer`, `sequence`).
 ///
 /// `filter` keeps events whose dotted-kebab wire id starts with the
-/// given prefix (e.g. `slice.build` or `plan.entry.advanced`); `limit`
-/// keeps only the most recent N matches. This is the one **lenient**
-/// reader: blank and unparseable lines are skipped so the
+/// given prefix; `limit` keeps only the most recent N matches. The one
+/// **lenient** reader: blank and unparseable lines are skipped so the
 /// observability projection still shows what this binary understands —
-/// authority reads use the strict [`read_union`] instead. Private: the
-/// only consumer is the [`handlers::Show`] handler.
+/// authority reads use the strict [`read_union`] instead.
 ///
 /// # Errors
 ///

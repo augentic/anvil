@@ -49,7 +49,7 @@ pub enum PlatformsViolation {
     },
 }
 
-/// Which caller surface a [`PlatformsViolation`] is being reported
+/// Which caller surface a `PlatformsViolation` is being reported
 /// from. Selects the diagnostic-code family and message wording in
 /// `PlatformsViolation::into_error`.
 #[derive(Debug, Clone, Copy)]
