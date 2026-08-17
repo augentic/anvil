@@ -266,11 +266,18 @@ where
         "Abandon one plan entry's slice without merging: stamp `dropped_at` on the slice's `metadata.yaml` and archive the slice tree under `.emery/change/archive/`.\n\nDropped slices leave the in-scope set (`plan gaps` excludes them) and the entry stays on the plan for the record; `plan status` projects the `slice-dropped` stop for it. A never-refined entry has no slice tree — curate it with `emery plan remove` instead."
     );
     route!(
+        ["plan", "correct"],
+        plan::CorrectArgs,
+        ::change::plan::handlers::Correct,
+        "Record one durable operator correction for a decomposition domain: fact-only on a parked author (honored by `plan author` re-entry), fact + inert boundary proposal on an authored plan (`plan amend --proposal` applies it)",
+        "Record one durable operator correction for a decomposition domain (`plan.correction.recorded`).\n\nOn a bound-not-authored change home (a parked author) the correction is a fact only — no model call, no proposal; re-running `emery plan author` carries it into the parked domain's partition request as a hard constraint. On an authored plan the named domain is re-decomposed into an inert boundary proposal with the correction in the request; live planning artifacts stay unchanged until `emery plan amend --proposal <digest>` applies it, and an uncovering or non-reducing re-cut refuses with `plan-correction-non-reducing`.\n\n`--domain` omitted resolves the sole parked domain (refusing when none or several are parked). The deterministic tail enforces only the closed `--constraint` (`close-as-leaf` | `split` with optional `--child` ids); free-text `--intent` is model guidance."
+    );
+    route!(
         ["plan", "author"],
         plan::AuthorArgs,
         ::change::plan::handlers::Author,
         "Bind a reviewed handoff, decompose it, and publish `decomposition.yaml` + `plan.yaml`",
-        "Bind a reviewed handoff, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together.\n\nRequires `--from <definition-home>` and `--wave <id>`. Copies the handoff and review envelopes under `imports/`, ingests target and source locators, pins adapters, decomposes the bound catalog, and records the canonical discovery, leads, and decomposition digests. An existing `plan.yaml` refuses with `plan-already-exists` unless `--force` is set; `--force` rebinds the same reviewed handoff. Intent arrives only through the handoff — there is no `--intent` or `--source` authoring flag. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
+        "Bind a reviewed handoff, decompose the catalog, and publish `decomposition.yaml` + `plan.yaml` together.\n\nRequires `--from <definition-home>` and `--wave <id>`. Copies the handoff and review envelopes under `imports/`, ingests target and source locators, pins adapters, decomposes the bound catalog, and records the canonical discovery, leads, and decomposition digests. The tree persists after every applied cut, and a failed cut is a disposition: the engine closes the domain as a leaf through the profile gate when it can, else parks that domain (`plan.author.parked`, exit 2 `plan-author-stopped`) and keeps draining independent domains.\n\nRe-entry on the same reviewed handoff resumes: a bound-not-authored home continues the open and parked domains (optionally after `emery plan correct`), a reconciled plan is a read-only no-op, and `--force` is the wholesale replace (rebinding the same reviewed handoff — a changed wave needs a new handoff and review fact, `plan-author-handoff-changed`). A different plan name over an existing plan refuses with `plan-already-exists`. Intent arrives only through the handoff — there is no `--intent` or `--source` authoring flag. Guest-only through the composed-deployment leg: the `/emery:plan` skill invokes this single verb and relays its output."
     );
     route!(
         ["plan", "refine"],
@@ -414,6 +421,7 @@ convert!(plan::AddArgs => ::change::plan::handlers::AddInput { name, depends_on,
 convert!(plan::AmendArgs => ::change::plan::handlers::AmendInput { name, proposal, depends_on, sources, add_source, remove_source, divergence, description, context, authority_override, clear_authority_override, clear_authority_overrides, allow_composition_replace } ; drop change_dir);
 convert!(plan::RemoveArgs => ::change::plan::handlers::RemoveInput { name } ; drop change_dir);
 convert!(plan::DropArgs => ::change::plan::handlers::DropInput { name, reason } ; drop change_dir);
+convert!(plan::CorrectArgs => ::change::plan::handlers::CorrectInput { domain, constraint, child, intent } ; drop change_dir);
 convert!(plan::AuthorArgs => ::change::plan::handlers::AuthorInput { name, from, wave, force } ; drop change_dir);
 convert!(plan::ArchiveArgs => ::change::plan::handlers::ArchiveInput { force, unverified } ; drop change_dir);
 convert!(journal::ShowArgs => project::journal::handlers::ShowInput { filter, limit } ; drop change_dir);

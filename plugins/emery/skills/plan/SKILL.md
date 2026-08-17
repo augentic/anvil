@@ -10,7 +10,7 @@ The CLI orchestration owns wave binding and decomposition — import the reviewe
 
 ## Invocation
 
-1. **Replace gate** — when `plan.yaml` already exists at the plan root, confirm with the AskQuestion tool that the operator wants to replace it (rewrites `plan.yaml` and `discovery.yaml` — the existing plan is rebound to the same reviewed handoff). Without an explicit affirmative, stop without running anything. On affirmative, pass `--force` in step 2. Skip this step when `plan.yaml` is absent. A changed wave needs a new handoff and review fact; `--force` will refuse it.
+1. **Replace gate** — when `plan.yaml` already exists at the plan root **and the operator asked to replace it**, confirm with the AskQuestion tool that they want the wholesale replace (rewrites `plan.yaml` and `discovery.yaml` — the existing plan is rebound to the same reviewed handoff). On affirmative, pass `--force` in step 2. `--force` is never the recover path: re-running bare `emery plan author` on an incomplete or parked plan resumes the open and parked domains, and on a reconciled plan it is a read-only no-op. Skip this step when `plan.yaml` is absent. A changed wave needs a new handoff and review fact; `--force` will refuse it.
 2. **Author**:
 
 ```bash
@@ -30,6 +30,7 @@ Authoring is a long-running orchestration — it runs bare (or with `--debug` wh
 ## Relay
 
 - Surface the CLI output verbatim, including the projected `slices[]`. This skill never runs refine or execute itself — authoring exits so the operator can review the topology before `emery plan refine`.
-- On non-zero exit, surface the structured error verbatim and stop. Never hand-edit `plan.yaml`, `change.md`, `discovery.yaml`, `leads.md`, or `decomposition.yaml` — the CLI is the single writer for plan state.
+- On `plan-author-stopped` (exit 2), authoring parked one or more domains after failed cuts — the stop card on stdout names them beside the error envelope; relay both verbatim. The resume pair is `emery plan correct` (optional, `/emery:correct`) then re-running this skill's verb bare — never `--force`.
+- On any other non-zero exit, surface the structured error verbatim and stop. Never hand-edit `plan.yaml`, `change.md`, `discovery.yaml`, `leads.md`, or `decomposition.yaml` — the CLI is the single writer for plan state.
 - When the Cursor workspace is not the change home, elicit `--change-dir` and pass it through. Detached homes have no ancestor walk: cwd (or `--change-dir`) *is* the change root.
 - Headless plan curation stays on the CLI: `emery plan add`, `emery plan amend`, `emery plan remove`, `emery plan drop`.

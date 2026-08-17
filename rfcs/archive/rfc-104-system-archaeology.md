@@ -1,6 +1,6 @@
 # RFC-104: System Archaeology and Migration Planning
 
-> Status: Implemented definition predecessor to [RFC-88](rfc-88-detached-changes.md) in the [Services Delivery Programme](platform.md). The definition loop through `system.wave.reviewed` holds.
+> Status: Implemented definition predecessor to [RFC-88](rfc-88-detached-changes.md) in the [Services Delivery Programme](../platform.md). The definition loop through `system.wave.reviewed` holds.
 >
 > Depends on implemented [RFC-87](rfc-87-working-trees.md) for content-addressed trees and private workspaces used as survey `source-input`.
 >
@@ -428,7 +428,7 @@ The baseline does not claim to update itself from code alone. Product results, o
 
 ## Implementation cuts
 
-One RFC. Three internal cuts, the same discipline [platform.md](platform.md) already requires of RFC-88. Acceptance remains the loop through `system.wave.reviewed`. Cuts control implementation risk; they are not partial public lifecycles.
+One RFC. Three internal cuts, the same discipline [platform.md](../platform.md) already requires of RFC-88. Acceptance remains the loop through `system.wave.reviewed`. Cuts control implementation risk; they are not partial public lifecycles.
 
 1. Definition home, coverage, location materialization, observed-tree provenance, and survey/extract into definition-home Evidence, including emery-adapters surface-grain retargeting and the lead-count gate.
 2. Correlation, empty-as-is persist, `system.yaml` as-is, as-is.md, and diagrams (renderer chosen in this cut).

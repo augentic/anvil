@@ -704,8 +704,9 @@ async fn clone_populates_cache() {
     assert!(dest.join("README.md").is_file(), "the restart re-materializes from the cache");
 }
 
-// A workflow sandbox whose run died during author (no plan.yaml)
-// cannot resume — it refuses naming the reset gesture.
+// A workflow sandbox whose run died before the handoff bind (no
+// plan.yaml) cannot resume — it refuses naming the reset gesture. A
+// bound stub resumes at `plan author` re-entry instead.
 #[tokio::test]
 async fn authorless_refuses() {
     let tmp = TempDir::new().expect("tempdir");
@@ -731,7 +732,7 @@ async fn authorless_refuses() {
     .await
     .expect_err("an author-incomplete sandbox refuses before mutation");
     let message = format!("{err:#}");
-    assert!(message.contains("no authored plan"), "{message}");
+    assert!(message.contains("no bound plan"), "{message}");
     assert!(message.contains("--restart"), "{message}");
     assert!(message.contains("cargo make eval"), "{message}");
     assert!(!message.contains("cargo make lab"), "{message}");

@@ -5,6 +5,7 @@
 
 mod author;
 mod converge;
+mod correct;
 mod decompose;
 mod epoch;
 mod escalate;
@@ -15,7 +16,8 @@ mod survey;
 
 pub use project::seam::Capabilities;
 
-pub use self::author::{AuthorOutcome, author, current_definition};
+pub use self::author::{AuthorOutcome, AuthorParked, AuthorResult, author, current_definition};
+pub use self::correct::{CorrectOutcome, CorrectionInput, correct};
 pub use self::execute::{ExecuteOutcome, execute};
 pub use self::gap_gate::enforce_before_build;
 pub use self::refine::{RefineOutcome, refine};

@@ -8,7 +8,7 @@ Do not put orchestration, synthesis, validation, or code-generation prose in ski
 
 | Plugin | Directory | Prefix | Role |
 | ------ | --------- | ------ | ---- |
-| Emery | `plugins/emery/` | `/emery:` | Workflow wrappers: `init`, `plan`, `refine`, `execute`, `status`, `finalize`, plus `/emery:system-*` (`system-survey`, `system-plan`, `system-review`) |
+| Emery | `plugins/emery/` | `/emery:` | Workflow wrappers: `init`, `plan`, `correct`, `refine`, `execute`, `status`, `finalize`, plus `/emery:system-*` (`system-survey`, `system-plan`, `system-review`) |
 
 Layout:
 

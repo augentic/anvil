@@ -1,10 +1,10 @@
 # RFC-88: Detached Changes
 
-> Status: Implemented foundation of the [Services Delivery Programme](platform.md)
+> Status: Implemented foundation of the [Services Delivery Programme](../platform.md)
 >
 > Owns: the detached change home; delivery-scoped binding and immutable pinning of targets, sources, and adapters from one reviewed migration wave; capability-profile-bound conflict-domain decomposition; refinement feedback into focused child leads; the deterministic buildable-leaf projection into `plan.yaml`; and per-target execution over accepted CIDs.
 >
-> Builds on [RFC-104](rfc-104-system-archaeology.md)'s reviewed system model and migration-wave handoff. [RFC-95](rfc-95-publication-sets.md) publishes the results; [RFC-100](rfc-100-distributed-execution.md) transports them between nodes.
+> Builds on [RFC-104](rfc-104-system-archaeology.md)'s reviewed system model and migration-wave handoff. [RFC-95](rfc-95-publication-sets.md) publishes the results; [RFC-100](../future/rfc-100-distributed-execution.md) transports them between nodes.
 >
 > Amends RFC-86 D1 (the in-place change home is `.emery/change/`, not all of `.emery/`) and D6 (closed-plan coverage transitively binds model-capability profiles). Amends RFC-87: location-backed sources use D2's read-only views, D4 and acceptance criterion 4 include the target repository's durable state in its tree, the tree identity is named a **CID** in plan and discovery artifacts (RFC-87's `SnapshotId` is that CID), and the interim `apply` is deleted.
 >

@@ -1,6 +1,6 @@
 # RFC-99: Streaming Execution
 
-> Status: **Parked.** Reopen Phase A only when measured authoring duration or time-to-first-refinement shows that complete-plan closure is a material engagement bottleneck. Reopen Phase B only after RFC-96 Phase B is complete and a client engagement requires unattended candidate build before final closure. Phase A depends on [RFC-96](rfc-96-concurrent-execution.md) Phase A; Phase B depends on RFC-96 Phase B (`compose` and multi-member waves). [RFC-106](rfc-106-task-graphs.md) is optional unless a candidate is too large for one `target.build`. Distribution through parked [RFC-100](rfc-100-distributed-execution.md) remains optional.
+> Status: **Parked.** Reopen Phase A only when measured authoring duration or time-to-first-refinement shows that complete-plan closure is a material engagement bottleneck. Reopen Phase B only after RFC-96 Phase B is complete and a client engagement requires unattended candidate build before final closure. Phase A depends on [RFC-96](../archive/rfc-96-concurrent-execution.md) Phase A; Phase B depends on RFC-96 Phase B (`compose` and multi-member waves). [RFC-106](rfc-106-task-graphs.md) is optional unless a candidate is too large for one `target.build`. Distribution through parked [RFC-100](rfc-100-distributed-execution.md) remains optional.
 >
 > Patch ownership: this RFC amends RFC-86 D27, RFC-88 D1 / D3 / D7 / D8, and RFC-90's wave-only build envelope after those contracts land. Those predecessor RFC texts remain unchanged.
 
@@ -16,7 +16,7 @@ Time to first refinement and first build stop being bounded by complete-tree clo
 
 ## Relationship to staged execution
 
-[RFC-91](rfc-91-refinement-stage.md) remains the complete-plan reference path:
+[RFC-91](../archive/rfc-91-refinement-stage.md) remains the complete-plan reference path:
 
 ```text
 plan author → [optional review] → plan refine → [optional review] → plan execute
@@ -234,7 +234,7 @@ The run policy may require stronger checks than the target's baseline but cannot
 - accept a blocking report;
 - treat candidate-authored tests as protected assurance.
 
-[RFC-97](rfc-97-native-verification.md) may provide host-attested profiles. Until required profiles exist, policy reports the actual model-assisted assurance and may stop rather than claim stronger evidence.
+[RFC-97](../rfc-97-native-verification.md) may provide host-attested profiles. Until required profiles exist, policy reports the actual model-assisted assurance and may stop rather than claim stronger evidence.
 
 ### Deferred commit
 

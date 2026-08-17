@@ -1,6 +1,6 @@
 # RFC-96: Concurrent Execution
 
-> Status: Implemented in the [Services Delivery Programme](platform.md). Phase A landed the scheduler and read-heavy pool; Phase B landed composition, multi-member waves, and domain convergence. Cap one remains the deterministic reference mode. The synthesis payload reduction (D9–D10) landed as its own delivery slice.
+> Status: Implemented in the [Services Delivery Programme](../platform.md). Phase A landed the scheduler and read-heavy pool; Phase B landed composition, multi-member waves, and domain convergence. Cap one remains the deterministic reference mode. The synthesis payload reduction (D9–D10) landed as its own delivery slice.
 >
 > Owns: single-node concurrent execution — phase work items and local claims, a bounded shared pool, host-injected writer identity, private-workspace composition, domain convergence, and multi-member target waves.
 >
@@ -83,7 +83,7 @@ Readiness is phase-specific:
 
 If the accepted CID moves, the build input digest changes. The stale record cannot merge; the scheduler emits a new build item and retains the old attempt as immutable audit.
 
-Ready items are ordered by target, topological layer, plan order, slice, and phase before the cap is applied. `StatusBody` gains `in-progress[]` rows containing `slice`, `phase`, and any parked-stop detail. Existing singular fields remain the canonical head of that order, preserving one clear next command. Cap-one equivalence is scoped to the landed fields: every existing singular field reproduces today's value byte-for-byte, while `in-progress[]` is the additive delta and is omitted when empty. The [CLI output reference](../docs/reference/cli-output-shapes.md) updates with the additive field.
+Ready items are ordered by target, topological layer, plan order, slice, and phase before the cap is applied. `StatusBody` gains `in-progress[]` rows containing `slice`, `phase`, and any parked-stop detail. Existing singular fields remain the canonical head of that order, preserving one clear next command. Cap-one equivalence is scoped to the landed fields: every existing singular field reproduces today's value byte-for-byte, while `in-progress[]` is the additive delta and is omitted when empty. The [CLI output reference](../../docs/reference/cli-output-shapes.md) updates with the additive field.
 
 An operation claim covers the work-item identity, concrete operation, and attempt. It prevents duplicate execution of that operation without blocking sibling operations, later phases, or work under changed inputs. Every terminal, cancelled, or retracted operation releases its claim.
 

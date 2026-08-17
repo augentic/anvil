@@ -65,7 +65,7 @@ The plan is the change's table of contents. `/emery:plan` produces it by invokin
 
 `emery plan refine` drains refinement over the closed plan and stops; `emery plan execute` advances the next eligible entry, runs the build → merge loop, and updates per-entry status. After execution drains, the operator publishes the affected repositories through normal tooling; `/emery:finalize` then archives `plan.yaml`.
 
-The matching CLI surface is **`emery plan {author, refine, execute, add, amend, remove, drop, validate, status, gaps, archive}`**. Branch publication is operator-owned outside Emery.
+The matching CLI surface is **`emery plan {author, correct, refine, execute, add, amend, remove, drop, validate, status, gaps, archive}`**. Branch publication is operator-owned outside Emery.
 
 ### The operator review seams
 

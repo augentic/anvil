@@ -6,9 +6,9 @@
 >
 > Does not own: scheduling policy, result convergence, merge semantics, workflow authority, or lifecycle.
 >
-> Depends on [RFC-96](rfc-96-concurrent-execution.md) Phase B. RFC-96 owns `(slice, phase, input-digest)` readiness, local operation claims, `compose`, and multi-member waves. This RFC distributes those identities through offers, leases, ownership generations, and stale-result rejection. The default offer is one **slice-build attempt** (the whole RFC-90 machine); per-operation offers remain available for read-heavy work (survey, extract, domain `verify`). Intra-slice task offers are [RFC-106](rfc-106-task-graphs.md) and are not required to reopen this RFC.
+> Depends on [RFC-96](../archive/rfc-96-concurrent-execution.md) Phase B. RFC-96 owns `(slice, phase, input-digest)` readiness, local operation claims, `compose`, and multi-member waves. This RFC distributes those identities through offers, leases, ownership generations, and stale-result rejection. The default offer is one **slice-build attempt** (the whole RFC-90 machine); per-operation offers remain available for read-heavy work (survey, extract, domain `verify`). Intra-slice task offers are [RFC-106](rfc-106-task-graphs.md) and are not required to reopen this RFC.
 >
-> Related: [RFC-95](rfc-95-publication-sets.md) binds publication across repositories after this RFC's distributed execution.
+> Related: [RFC-95](../archive/rfc-95-publication-sets.md) binds publication across repositories after this RFC's distributed execution.
 >
 > Runtime dependency: Omnia bindings for `wasi:documentstore`, native `wasi:keyvalue` atomics, `wasi:blobstore`, `wasi:messaging` wake-up announcements, and durable asynchronous trigger supervision. Where an interface or backend lacks a required guarantee, this RFC requires improving the general Omnia capability rather than adding an Emery-specific transport API.
 >

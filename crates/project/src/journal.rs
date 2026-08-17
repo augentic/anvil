@@ -18,8 +18,8 @@ use serde_json::Value;
 pub use self::append::{append_batch, append_for, append_for_at, append_one};
 pub use self::emit::{bracket, emit_best_effort};
 pub use self::event::{
-    AuthorityOverrideAction, ClosedPlanCoverage, DeferredMember, Event, EventKind, FactEpochRef,
-    IdentityMap, ParkReason,
+    AuthorityOverrideAction, ClosedPlanCoverage, ClosedReason, CorrectionConstraint,
+    DeferredMember, Event, EventKind, FactEpochRef, IdentityMap, ParkReason,
 };
 use crate::config::Layout;
 

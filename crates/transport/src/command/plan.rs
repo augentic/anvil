@@ -102,6 +102,30 @@ pub struct DropArgs {
     pub change_dir: ChangeDir,
 }
 
+/// Arguments for `plan correct`.
+#[derive(Debug, Args)]
+pub struct CorrectArgs {
+    /// Domain id (or leaf slice name on an authored plan). Absent
+    /// resolves the sole parked domain, refusing when none or several
+    /// are parked.
+    #[arg(long, value_name = "ID")]
+    pub domain: Option<String>,
+    /// Closed structural constraint the deterministic tail enforces:
+    /// `close-as-leaf` refuses a split answer; `split` refuses a leaf
+    /// answer and requires any `--child` ids to appear.
+    #[arg(long, value_name = "CONSTRAINT")]
+    pub constraint: Option<String>,
+    /// Child domain ids a `split` constraint requires (repeatable).
+    #[arg(long = "child", value_name = "ID")]
+    pub child: Vec<String>,
+    /// Operator intent, verbatim. The partition judgment treats it as
+    /// a hard constraint.
+    #[arg(long, value_name = "TEXT", required = true)]
+    pub intent: String,
+    #[command(flatten)]
+    pub change_dir: ChangeDir,
+}
+
 /// Arguments for `plan author`.
 #[derive(Debug, Args)]
 pub struct AuthorArgs {

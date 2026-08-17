@@ -138,6 +138,9 @@ impl<P: Anchor> Operation<P> for Amend {
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let cx = Ctx::load(context.provider)?;
+        // A bound-not-authored home may hold a partial decomposition
+        // tree; topology edits wait for `plan author` to finish.
+        project::plan::ensure_authored(cx.layout(), &Plan::load(&cx.layout().plan_path())?)?;
         if let Some(digest) = input.proposal.as_ref() {
             refuse_combo(&input)?;
             // A proposal reprojects the topology wholesale, so any

@@ -1,10 +1,10 @@
 # RFC-93: Operator Boundary
 
-> **Status:** Draft — parallel assurance track over implemented [RFC-86](rfc-86-change-facts.md) in the [Services Delivery Programme](platform.md). Startable now, but not on the product critical path; do not staff ahead of [RFC-88](rfc-88-detached-changes.md) or [RFC-92](rfc-92-model-policy.md). Host operator grants land when an engagement needs caller refusal, not as programme step one.
+> **Status:** Draft — parallel assurance track over implemented [RFC-86](../archive/rfc-86-change-facts.md) in the [Services Delivery Programme](../platform.md). Startable now, but not on the product critical path; do not staff ahead of [RFC-88](../archive/rfc-88-detached-changes.md) or [RFC-92](../rfc-92-model-policy.md). Host operator grants land when an engagement needs caller refusal, not as programme step one.
 >
 > **Owns:** the typed **actor record** carried by every fact — the closed actor class (`human | agent`), declared driver identity, and **attestation level** (`unattested | declared | attested`) — plus the deployment-owned **operator grant** that may refuse an otherwise legal CLI act before guest dispatch. Attribution answers who acted; authorization answers what that caller was allowed to request. Neither becomes lifecycle state.
 >
-> **Builds on** RFC-86's fact substrate (per-writer logs, closed event taxonomy, computed status). [RFC-86a](rfc-86a-gap-deferral.md)'s durable gate-minted disposition facts ride that substrate.
+> **Builds on** RFC-86's fact substrate (per-writer logs, closed event taxonomy, computed status). [RFC-86a](../archive/rfc-86a-gap-deferral.md)'s durable gate-minted disposition facts ride that substrate.
 >
 > **Patch ownership:** this RFC amends RFC-86's event shape after RFC-86 has landed by adding required actor and grant records to every appended fact and clarifying D23 (the writer id is a claim-ownership and log-partitioning key, never an actor identity). It adds a host-dispatch refusal before the guest sees an invocation. RFC-86 D2 (status computed, not stored), D6 (no `approve` verb, no projected `approved` rung), and the non-goal on multi-operator countersign remain unchanged.
 
@@ -174,4 +174,4 @@ Pre-RFC facts project an explicit unknown grant. They are not retroactively trea
 - **Actor-class authorization.** No `human | agent` value grants or withholds capability (D6).
 - **User identity or PII.** The identity is an opaque driver label, not a person's name, email, or account. A deployment that wants a human name is choosing to put it there.
 - **Four-eyes review.** Unchanged from RFC-86: collaboration is social review of the fact log, which this RFC makes possible rather than automates.
-- **Per-keystroke or per-model-call provenance.** The unit is the fact. Model-call accounting belongs to [RFC-92](rfc-92-model-policy.md).
+- **Per-keystroke or per-model-call provenance.** The unit is the fact. Model-call accounting belongs to [RFC-92](../rfc-92-model-policy.md).

@@ -126,7 +126,10 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
     // facts projects `materialize`, not `drained`.
     let members = publication::members(plan, layout, &events)?;
     let unconverged = unconverged_targets(plan, layout, &events)?;
-    let resolution = drain_rewrite(resolution, &members, &unconverged);
+    // A bound-not-authored home never projects `drained` or a slice
+    // dispatch: park facts and the missing reconcile fact dominate.
+    let resolution = author_override(plan, &events)
+        .unwrap_or_else(|| drain_rewrite(resolution, &members, &unconverged));
     let publication = publication_bodies(plan, &members);
     Ok(assemble(
         plan,
@@ -139,6 +142,34 @@ pub fn plan_status_body(plan: &Plan, layout: Layout<'_>) -> Result<StatusBody, E
         publication,
         in_progress,
     ))
+}
+
+/// The authoring override: when the newest of
+/// `{plan.author.parked, plan.reconcile.completed}` (for this plan) is
+/// a park, the home is parked mid-author — `stop partition-parked`.
+/// A handoff-bound stub (`definition` set, no entries, no
+/// decomposition digest) that never reconciled is
+/// `stop author-incomplete`, never `drained`.
+fn author_override(plan: &Plan, events: &[Event]) -> Option<Resolution> {
+    let mut parked = None;
+    scan_union(events, |event| match &event.kind {
+        EventKind::PlanReconcileCompleted { plan_name, .. } if plan_name == &plan.name => {
+            ControlFlow::Break(())
+        }
+        EventKind::PlanAuthorParked { domain, reason } => {
+            parked = Some(Resolution::stop_detail(
+                StopReason::PartitionParked,
+                Some(format!("domain `{domain}`: {reason}")),
+            ));
+            ControlFlow::Break(())
+        }
+        _ => ControlFlow::Continue(()),
+    });
+    if parked.is_some() {
+        return parked;
+    }
+    (plan.definition.is_some() && plan.entries.is_empty() && plan.decomposition_digest.is_none())
+        .then(|| Resolution::stop(StopReason::AuthorIncomplete))
 }
 
 /// The drained→gate rewrite: an unconverged target (RFC-96 D8)
@@ -402,7 +433,9 @@ fn current_step(resolution: &Resolution) -> Option<LoopStep> {
             | StopReason::Stuck
             | StopReason::DomainCompleteFailed
             | StopReason::PublicationWorktreeDirty
-            | StopReason::PublicationProvision => None,
+            | StopReason::PublicationProvision
+            | StopReason::AuthorIncomplete
+            | StopReason::PartitionParked => None,
         }),
     }
 }
@@ -448,6 +481,9 @@ fn resume_point(
             | StopReason::DomainCompleteFailed
             | StopReason::PublicationWorktreeDirty
             | StopReason::PublicationProvision => Some("emery plan execute".to_string()),
+            StopReason::AuthorIncomplete | StopReason::PartitionParked => {
+                Some("emery plan author".to_string())
+            }
             StopReason::SliceDropped | StopReason::Stuck => None,
             StopReason::BoundaryEscalation => {
                 stop.detail.as_ref().map(|digest| format!("emery plan amend --proposal {digest}"))

@@ -455,6 +455,59 @@ pub enum EventKind {
         /// Slice names, in the agent's `slices[]` response order.
         slice_names: Vec<SliceName>,
     },
+    /// `plan author` closed a failed-cut domain as a terminal leaf
+    /// through the deterministic fallback: the partition judgment
+    /// exhausted its repairs, the domain satisfied leaf shape, and the
+    /// synthetic leaf passed the same slice-split threshold and
+    /// boundary review a model-emitted leaf gets.
+    #[serde(rename = "domain.partition.closed", rename_all = "kebab-case")]
+    DomainPartitionClosed {
+        /// Closed decomposition node id.
+        domain: String,
+        /// Which fallback closed it.
+        reason: ClosedReason,
+        /// The blocking finding details the failed cut carried.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        findings: Vec<String>,
+    },
+    /// `plan author` parked one domain after a failed cut it could not
+    /// close as a leaf. The persisted partial `decomposition.yaml` plus
+    /// this fact are the park state — no proposal exists; the resume
+    /// path is `emery plan author` re-entry (optionally after
+    /// `emery plan correct`). Distinct from
+    /// [`Self::SliceRefinementParked`]: the refine park names a
+    /// proposal; the author park has none.
+    #[serde(rename = "plan.author.parked", rename_all = "kebab-case")]
+    PlanAuthorParked {
+        /// Parked decomposition node id.
+        domain: String,
+        /// The failed-cut finding detail.
+        reason: String,
+    },
+    /// `emery plan correct` recorded one operator correction for a
+    /// decomposition domain. Append-only; a correction is active while
+    /// the named domain is still open (bound path) or its proposal has
+    /// no `plan.amend.applied` fact (authored path) — activity is
+    /// projected, never stored.
+    #[serde(rename = "plan.correction.recorded", rename_all = "kebab-case")]
+    PlanCorrectionRecorded {
+        /// Corrected decomposition node id (or leaf slice name on an
+        /// authored plan).
+        domain: String,
+        /// Operator intent, verbatim.
+        intent: String,
+        /// Closed structural constraint the deterministic tail
+        /// enforces on the next cut of this domain.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        constraint: Option<CorrectionConstraint>,
+        /// Child domain ids a `split` constraint requires.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        children: Vec<String>,
+        /// Boundary-proposal digest on the authored path; absent on
+        /// the bound path (fact only, honored at author re-entry).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        proposal: Option<SnapshotId>,
+    },
     /// `emery plan execute` acknowledged a sticky
     /// `merge-postflight-failed` stop and is continuing the queue.
     /// Clears the plan-wide postflight debt projected by `plan status`
@@ -653,6 +706,54 @@ pub enum EventKind {
         /// `handoffs/<digest>.yaml` projection.
         handoff_digest: SnapshotId,
     },
+}
+
+/// Closed reason on [`EventKind::DomainPartitionClosed`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ClosedReason {
+    /// The failed cut was a reduction tie on a closed child.
+    NonReducingFallback,
+    /// The partition judgment exhausted its repair budget on another
+    /// failed-cut rule.
+    RepairExhausted,
+}
+
+/// Closed structural constraint on [`EventKind::PlanCorrectionRecorded`].
+///
+/// The deterministic partition tail enforces only this closed field;
+/// free-text intent is model guidance only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CorrectionConstraint {
+    /// The next cut of the domain must be a leaf.
+    CloseAsLeaf,
+    /// The next cut must be a split (optionally naming its children).
+    Split,
+}
+
+impl std::fmt::Display for CorrectionConstraint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CloseAsLeaf => write!(f, "close-as-leaf"),
+            Self::Split => write!(f, "split"),
+        }
+    }
+}
+
+impl std::str::FromStr for CorrectionConstraint {
+    type Err = Error;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        match text {
+            "close-as-leaf" => Ok(Self::CloseAsLeaf),
+            "split" => Ok(Self::Split),
+            other => Err(Error::Argument {
+                flag: "--constraint",
+                detail: format!("`{other}` is not `close-as-leaf` or `split`"),
+            }),
+        }
+    }
 }
 
 /// Closed reason on [`EventKind::SliceRefinementParked`].

@@ -27,7 +27,7 @@ set -a && source .env && set +a && cargo make eval auth --restart
 
 Live runs are always explicit, never a side effect. The documented cadence: before a release tag, and after any change to the judgment prompts (`crates/slice/prompts/`, `crates/change/prompts/`) or the generated answer schemas (`project::answers` / `slice::answers` and their goldens under `crates/project/answers/` + `crates/slice/answers/`). Composition surface: [`examples/eval/README.md`](../../examples/eval/README.md); case/grading mechanics: [`crates/probe/README.md`](../../crates/probe/README.md).
 
-Each case keeps one stable retained sandbox at `sandbox/<case>/` (composition-owned root beside the wasm example's `sandbox/wasm/`), on success and failure alike. A failed or stopped workflow run is continued — graded — by re-running `cargo make eval <case>`: a sandbox holding an authored plan resumes at `plan refine`. `--restart` is the only runner-owned reset; build sandboxes and author-incomplete workflow sandboxes refuse without it. Inspect a retained sandbox with a bound passthrough verb: `cargo make eval auth plan status`.
+Each case keeps one stable retained sandbox at `sandbox/<case>/` (composition-owned root beside the wasm example's `sandbox/wasm/`), on success and failure alike. A failed or stopped workflow run is continued — graded — by re-running `cargo make eval <case>`: a sandbox holding an authored plan resumes at `plan refine`; a bound-not-authored sandbox re-runs `plan author`, which resumes its open and parked domains. `--restart` is the only runner-owned reset; build sandboxes and unbound workflow sandboxes refuse without it. Inspect a retained sandbox with a bound passthrough verb: `cargo make eval auth plan status`.
 
 ## The WASM seam
 

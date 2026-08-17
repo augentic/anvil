@@ -1,10 +1,10 @@
 # RFC-103: Outcome Learning
 
-> Status: Draft — evidence and promotion track following [RFC-92](rfc-92-model-policy.md) usage facts and the existing blind eval harness; extended by [RFC-104](rfc-104-system-archaeology.md), [RFC-94](rfc-94-target-readiness.md), [RFC-97](rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md), and [RFC-96](rfc-96-concurrent-execution.md). Parked [RFC-99](rfc-99-streaming-execution.md) may add progressive-execution dimensions if it is reopened. Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
+> Status: Draft — evidence and promotion track following [RFC-92](../rfc-92-model-policy.md) usage facts and the existing blind eval harness; extended by [RFC-104](../archive/rfc-104-system-archaeology.md), [RFC-94](../rfc-94-target-readiness.md), [RFC-97](../rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md), and [RFC-96](../archive/rfc-96-concurrent-execution.md). Parked [RFC-99](rfc-99-streaming-execution.md) may add progressive-execution dimensions if it is reopened. Owns outcome records, cross-run diagnostic aggregation, bounded advisory observations, offline policy/prompt/model proposals, blind evaluation, and versioned promotion. It does not change lifecycle, authority, or an in-flight run.
 >
 > Patch ownership: this RFC amends RFC-88 D1 after RFC-88 lands by adding `outcome.yaml` to the detached change root and `.emery/change/outcome.yaml` to in-place mode. RFC-104 separately amends RFC-88's handoff and supplies additional outcome dimensions.
 >
-> Producers this RFC assumes: [RFC-92](rfc-92-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block; the blind eval harness supplies promotion evidence. Those two are required for the first cut to learn rather than merely archive. RFC-104 supplies definition coverage, reviewed handoff and review-event identities, system-model, migration-plan, and wave identities; [RFC-94](rfc-94-target-readiness.md) supplies per-target execution-readiness bands; [RFC-97](rfc-97-native-verification.md) supplies execution-assurance and oracle-assurance facts; and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions.
+> Producers this RFC assumes: [RFC-92](../rfc-92-model-policy.md) defines the routes its `model-route-change` proposal patches and populates the `cost` block; the blind eval harness supplies promotion evidence. Those two are required for the first cut to learn rather than merely archive. RFC-104 supplies definition coverage, reviewed handoff and review-event identities, system-model, migration-plan, and wave identities; [RFC-94](../rfc-94-target-readiness.md) supplies per-target execution-readiness bands; [RFC-97](../rfc-97-native-verification.md) supplies execution-assurance and oracle-assurance facts; and [RFC-98](rfc-98-behavioural-conservation.md) supplies conservation coverage as aggregation dimensions.
 
 ## Intent
 
@@ -224,7 +224,7 @@ Promotion creates a versioned release:
 - engine constants ship in a new Emery version;
 - run policies receive a new policy generation;
 - model routes receive a new deployment-policy generation;
-- training examples enter a versioned corpus consumed by [RFC-18](future/rfc-18-slm.md).
+- training examples enter a versioned corpus consumed by [RFC-18](rfc-18-slm.md).
 
 Future runs record the selected version. Existing runs remain pinned.
 

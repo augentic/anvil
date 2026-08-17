@@ -37,7 +37,8 @@ pub type ModelFactory = Arc<dyn Fn(&Path) -> Result<DynModel> + Send + Sync>;
 /// the retained per-case sandbox root beside it. `until` overrides a
 /// workflow case's stop rung (refused for build cases). Without
 /// `restart`, a workflow sandbox holding an authored plan resumes at
-/// `plan refine`; build and author-incomplete sandboxes refuse.
+/// `plan refine`; a bound-not-authored sandbox (no reconcile fact)
+/// re-runs `plan author`; build and unbound sandboxes refuse.
 ///
 /// # Errors
 ///
@@ -88,8 +89,8 @@ async fn execute(
             ),
             Case::Workflow(_) => ensure!(
                 sandbox::read_plan(&dir).is_ok(),
-                "sandbox {} holds no authored plan (the previous run stopped during \
-                 author); reset with `cargo make eval {id} --restart`",
+                "sandbox {} holds no bound plan (the previous run stopped before the \
+                 handoff bind); reset with `cargo make eval {id} --restart`",
                 dir.display()
             ),
         }
@@ -183,13 +184,7 @@ async fn run_workflow(
     catalog: &Catalog, telemetry: &Telemetry<DynModel>, blind: Option<&grade::Blind>, resume: bool,
 ) -> Result<()> {
     if resume {
-        // The plan is authored (the resume gate proved it); the drains
-        // downstream are the engine's own re-run contract.
-        if until == WorkflowUntil::Plan {
-            println!(
-                "eval case {id}: nothing to resume before `--until plan` — the plan is \
-                 already authored; inspect with `cargo make eval {id} plan status`"
-            );
+        if resume_author(id, case, until, root, model, catalog, telemetry).await? {
             return Ok(());
         }
     } else {
@@ -278,6 +273,49 @@ async fn run_workflow(
     }
     println!("eval case {id}: pass (sandbox retained at {})", root.display());
     Ok(())
+}
+
+/// Resume a retained workflow sandbox. Bound is not authored: only a
+/// `plan.reconcile.completed` fact proves the decomposition finished,
+/// so a bound-not-authored sandbox re-enters `plan author`, never
+/// refine. Returns `true` when the run stops at the plan stage.
+async fn resume_author(
+    id: &str, case: &Workflow, until: WorkflowUntil, root: &Path, model: &DynModel,
+    catalog: &Catalog, telemetry: &Telemetry<DynModel>,
+) -> Result<bool> {
+    let plan = sandbox::read_plan(root)?;
+    let was_authored = authored(root, &plan)?;
+    if !was_authored {
+        let definition =
+            plan.definition.as_ref().context("a bound plan records its definition identity")?;
+        let from =
+            definition.from.clone().context("a bound plan records its definition home path")?;
+        invoke(
+            root,
+            model,
+            catalog,
+            &["plan", "author", &case.change, "--from", &from, "--wave", &definition.wave_id],
+        )
+        .await?;
+    }
+    if until != WorkflowUntil::Plan {
+        return Ok(false);
+    }
+    if was_authored {
+        println!(
+            "eval case {id}: nothing to resume before `--until plan` — the plan is \
+             already authored; inspect with `cargo make eval {id} plan status`"
+        );
+    } else {
+        let plan = sandbox::read_plan(root)?;
+        telemetry::report(&telemetry.counts(), plan.entries.len());
+        println!(
+            "eval case {id}: stopped after plan author; continue with \
+             `cargo make eval {id}` (resumes at refine), or inspect with \
+             `cargo make eval {id} plan status`"
+        );
+    }
+    Ok(true)
 }
 
 async fn run_build(
@@ -491,6 +529,19 @@ async fn grade_accepted(root: &Path) -> Result<AcceptedGrading> {
 
 fn case_layout(root: &Path) -> Layout<'_> {
     if in_place(root) { Layout::new(root) } else { Layout::detached(root) }
+}
+
+/// Authored means a `plan.reconcile.completed` fact names this plan —
+/// a bound stub `plan.yaml` alone is not authored.
+fn authored(root: &Path, plan: &project::plan::Plan) -> Result<bool> {
+    let events = project::plan::collect_events(case_layout(root))?;
+    Ok(events.iter().any(|event| {
+        matches!(
+            &event.kind,
+            project::journal::EventKind::PlanReconcileCompleted { plan_name, .. }
+                if plan_name == &plan.name
+        )
+    }))
 }
 
 pub(crate) fn in_place(root: &Path) -> bool {

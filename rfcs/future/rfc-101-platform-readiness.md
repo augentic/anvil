@@ -2,11 +2,11 @@
 
 > Status: **Parked.** Reopen only after RFC-100 is activated by a real multi-node deployment or a contracted client requirement demands hosted tenancy, authenticated fleet ingress, or sealed shared audit storage. Small desktop projections such as OpenTelemetry export do not by themselves activate this RFC.
 >
-> Owns: the gap taxonomy between today's desktop-shaped deployment and a multi-tenant hosted fleet; the four storage/locality classes every host concern must land in; adapter and change-home readiness; worker capability profiles; hosted bindings for model, secret, [RFC-93](rfc-93-operator-boundary.md) operator-grant, and ingress policy; authenticated/sealed audit storage; fleet integration of [RM-30](roadmap.md#rm-30-journal-opentelemetry-projection); multi-tenancy of deployment roots; and the landing sequence that makes RFC-100's distributed contract operable without inventing a second Emery.
+> Owns: the gap taxonomy between today's desktop-shaped deployment and a multi-tenant hosted fleet; the four storage/locality classes every host concern must land in; adapter and change-home readiness; worker capability profiles; hosted bindings for model, secret, [RFC-93](rfc-93-operator-boundary.md) operator-grant, and ingress policy; authenticated/sealed audit storage; fleet integration of [RM-30](../roadmap.md#rm-30-journal-opentelemetry-projection); multi-tenancy of deployment roots; and the landing sequence that makes RFC-100's distributed contract operable without inventing a second Emery.
 >
-> Does not own: workflow lifecycle, claim/ownership/convergence semantics ([RFC-100](rfc-100-distributed-execution.md)), native verification profiles ([RFC-97](rfc-97-native-verification.md)), forge publication providers ([roadmap.md](roadmap.md) RM-17), or scheduling heuristics beyond the minimum needed for capability-scoped claims.
+> Does not own: workflow lifecycle, claim/ownership/convergence semantics ([RFC-100](rfc-100-distributed-execution.md)), native verification profiles ([RFC-97](../rfc-97-native-verification.md)), forge publication providers ([roadmap.md](../roadmap.md) RM-17), or scheduling heuristics beyond the minimum needed for capability-scoped claims.
 >
-> Depends on completed [RFC-100](rfc-100-distributed-execution.md). [RFC-97](rfc-97-native-verification.md) joins the sequence where native toolchain attestation becomes a worker capability.
+> Depends on completed [RFC-100](rfc-100-distributed-execution.md). [RFC-97](../rfc-97-native-verification.md) joins the sequence where native toolchain attestation becomes a worker capability.
 >
 > Runtime dependency: Omnia backend conformance named by RFC-100 D10 (create-only documentstore, native keyvalue compare-exchange, digest-safe blobstore namespaces, durable HTTP-trigger supervision). Where a required guarantee is missing, improve the Omnia capability rather than add an Emery-specific transport API.
 
@@ -14,7 +14,7 @@
 
 *Make the desktop the degenerate hosted deployment — same binary, same guests, same lifecycle — by retiring every `$HOME`-shaped authority that a fleet cannot share.*
 
-Emery already runs as one Omnia runtime with an embedded engine guest ([architecture.md](architecture.md)). Snapshots already speak `wasi:blobstore` locally. RFC-100 distributes facts, claims, and values without a shared filesystem. What remains is the host surface that still assumes one operator machine: adapter install under `$EMERY_HOME`, bare-name local-first resolution, a writable project preopen as the change home, process-local MCP and Cursor model credentials, homogeneous toolchains, and a single-tenant home for store / cache / snapshots / workspaces.
+Emery already runs as one Omnia runtime with an embedded engine guest ([architecture.md](../architecture.md)). Snapshots already speak `wasi:blobstore` locally. RFC-100 distributes facts, claims, and values without a shared filesystem. What remains is the host surface that still assumes one operator machine: adapter install under `$EMERY_HOME`, bare-name local-first resolution, a writable project preopen as the change home, process-local MCP and Cursor model credentials, homogeneous toolchains, and a single-tenant home for store / cache / snapshots / workspaces.
 
 This RFC does not redefine execution. It classifies every remaining host concern, decides which Omnia capability or host-policy surface owns it, and sequences the work so a hosted attachment can claim, materialize, build, verify, and resume without reading the operator's laptop.
 
@@ -68,8 +68,8 @@ flowchart TB
 
 ## Existing contracts this RFC preserves
 
-- One binary, guest-selected behaviour; deployment differences live in providers and the launcher ([architecture.md](architecture.md)).
-- Per-writer facts and projected status ([RFC-86](rfc-86-change-facts.md)); private `prepare` / `capture` / `discard` ([RFC-87](rfc-87-working-trees.md)).
+- One binary, guest-selected behaviour; deployment differences live in providers and the launcher ([architecture.md](../architecture.md)).
+- Per-writer facts and projected status ([RFC-86](../archive/rfc-86-change-facts.md)); private `prepare` / `capture` / `discard` ([RFC-87](../archive/rfc-87-working-trees.md)).
 - Claim-based placement, coordination/value split, hosted attach/resume ([RFC-100](rfc-100-distributed-execution.md)).
 - Adapters remain locally resolved on the claiming node; live workspace paths, WIT resources, and filesystem mounts never cross the wire.
 - Backend endpoints, credentials, bucket names, and tenant roots remain native host policy.
@@ -204,7 +204,7 @@ RFC-101 Phase A ──► Phase B ──► Phase C ──► Phase D ──► 
 - Push placement / central scheduler inventory (rejected by RFC-100).
 - Shared writable product trees or network filesystems as coordination.
 - Making Cursor plugins or `/emery:*` skills the hosted API.
-- Third-party adapter ecosystem operating model ([roadmap.md](roadmap.md) RM-21) — readiness here is first-party + tenant-seeded components only.
+- Third-party adapter ecosystem operating model ([roadmap.md](../roadmap.md) RM-21) — readiness here is first-party + tenant-seeded components only.
 - Changing artifact authority, slice lifecycle, or repair budgets.
 
 ## Implementation requirements
@@ -263,12 +263,12 @@ RFC-101 Phase A ──► Phase B ──► Phase C ──► Phase D ──► 
 
 | Document | Boundary |
 | -------- | -------- |
-| [platform.md](platform.md) / active RFC programme | Product, evidence, and scale semantics; this RFC makes the parked host/fleet option operable |
+| [platform.md](../platform.md) / active RFC programme | Product, evidence, and scale semantics; this RFC makes the parked host/fleet option operable |
 | [RFC-100](rfc-100-distributed-execution.md) | Owns claims, fencing, attach/resume, coordination/value split — readiness implements host bindings and conformance gates |
-| [RFC-97](rfc-97-native-verification.md) | Owns profile execution and attestations — readiness places them on capability-scoped workers and attestation value transport |
+| [RFC-97](../rfc-97-native-verification.md) | Owns profile execution and attestations — readiness places them on capability-scoped workers and attestation value transport |
 | [RFC-93](rfc-93-operator-boundary.md) | Owns actor/grant contracts and desktop enforcement — readiness binds authenticated hosted principals |
-| [architecture.md](architecture.md) | Standing Omnia boundary — readiness is how desktop→cloud stays a backend swap |
-| [roadmap.md](roadmap.md) RM-17 / RM-21 / RM-30 | Forge providers, third-party adapter ecosystem, and desktop OTel projection — triggered separately |
+| [architecture.md](../architecture.md) | Standing Omnia boundary — readiness is how desktop→cloud stays a backend swap |
+| [roadmap.md](../roadmap.md) RM-17 / RM-21 / RM-30 | Forge providers, third-party adapter ecosystem, and desktop OTel projection — triggered separately |
 
 ## Rejected alternatives
 

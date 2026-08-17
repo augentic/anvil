@@ -100,6 +100,10 @@ impl<P: Anchor> Operation<P> for Add {
         // topology until archive (RFC-95 D11).
         {
             let plan = Plan::load(&plan_path)?;
+            // A bound-not-authored home may hold a partial
+            // decomposition tree; topology edits wait for
+            // `plan author` to finish.
+            project::plan::ensure_authored(layout, &plan)?;
             let events = collect_events(layout)?;
             if publication::locked_targets(&plan, &events).contains(&entry.target) {
                 return Err(publication::locked_err(&entry.target).into());

@@ -1,10 +1,10 @@
 # RFC-90: Build Verification
 
-> Status: Implemented foundation of the [Services Delivery Programme](platform.md)
+> Status: Implemented foundation of the [Services Delivery Programme](../platform.md)
 >
 > Owns: the engine-owned build phase machine, separate `target.build` / `target.repair` / `target.verify` / `target.review` WIT operations, bounded verification and repair rounds, typed intermediate reports, and removal of repair-loop control from adapter prose.
 >
-> Builds on implemented [RFC-87](rfc-87-working-trees.md). [RFC-86a](rfc-86a-gap-deferral.md)'s build-scope exclusion rides this machine: the request's `deferred[]` reaches every phase dispatch, the build phase report's `covered[]` is gated fail-fast against it (`target-build-deferred-covered`), and no phase — verification included — may fail a build for unimplemented deferred scenarios. The observable sequential gate becomes [RFC-96](rfc-96-concurrent-execution.md)'s conflict-domain convergence loop; [RFC-106](rfc-106-task-graphs.md) later adds intra-slice workers; [RFC-100](rfc-100-distributed-execution.md) transports its phase records without redefining it. [RFC-97](rfc-97-native-verification.md) owns the deferred deterministic native-verification follow-on.
+> Builds on implemented [RFC-87](rfc-87-working-trees.md). [RFC-86a](rfc-86a-gap-deferral.md)'s build-scope exclusion rides this machine: the request's `deferred[]` reaches every phase dispatch, the build phase report's `covered[]` is gated fail-fast against it (`target-build-deferred-covered`), and no phase — verification included — may fail a build for unimplemented deferred scenarios. The observable sequential gate becomes [RFC-96](rfc-96-concurrent-execution.md)'s conflict-domain convergence loop; [RFC-106](../future/rfc-106-task-graphs.md) later adds intra-slice workers; [RFC-100](../future/rfc-100-distributed-execution.md) transports its phase records without redefining it. [RFC-97](../rfc-97-native-verification.md) owns the deferred deterministic native-verification follow-on.
 
 
 
@@ -34,7 +34,7 @@ build → verify ⇄ repair → review ⇄ repair → complete
 
 The target adapter still owns specialist behavior: generation prompts, platform-specific checks, repair instructions, and engineering-standards review. Each adapter invocation is exactly one WIT operation — `build`, `verify`, `repair`, or `review` — and returns a typed **phase report**. The engine persists the report, decides the next operation, enforces repair budgets, and assembles the final build report.
 
-That separation is also the answer to **self-evaluation bias**: an agent that implemented a change is worse at judging that change than a fresh pass with a different incentive. `build` and `repair` produce candidates; `verify` and `review` evaluate them; a returned `repair` report never selects the next operation; and the engine—not the implementer—assembles terminal success. Emery reaches that incentive split with fresh phase dispatches under a deterministic machine ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)).
+That separation is also the answer to **self-evaluation bias**: an agent that implemented a change is worse at judging that change than a fresh pass with a different incentive. `build` and `repair` produce candidates; `verify` and `review` evaluate them; a returned `repair` report never selects the next operation; and the engine—not the implementer—assembles terminal success. Emery reaches that incentive split with fresh phase dispatches under a deterministic machine ([platform.md § Design principles](../platform.md#design-principles-at-the-call-site)).
 
 Verification in this RFC remains **model-assisted**. During a `verify` call, the target's agent runs its declared commands inside the lent workspace and returns findings. Moving orchestration into the engine makes the loop bounded and observable; it does not make command selection, execution, or findings deterministic or trustworthy.
 
@@ -233,7 +233,7 @@ The adapter repository continues to own prompts, engineering standards, target c
 
 ### D8 — Deterministic native verification belongs to RFC-97
 
-Closed command profiles, native process execution, sandbox and resource policy, trusted tool-output parsing, protected-oracle classification, verification-lineage caches, execution grants, and typed toolchain unavailability are not part of this RFC. [RFC-97](rfc-97-native-verification.md) owns that follow-on.
+Closed command profiles, native process execution, sandbox and resource policy, trusted tool-output parsing, protected-oracle classification, verification-lineage caches, execution grants, and typed toolchain unavailability are not part of this RFC. [RFC-97](../rfc-97-native-verification.md) owns that follow-on.
 
 RFC-97 runs tools in the trusted native deployment below the component boundary and exposes only a custom host-verification WIT import (on the `emery:exec-mode` capability-crate shape). It does not wait on [`wasi:exec`](https://github.com/WebAssembly/WASI/issues/899) or any other standardized WASI process API. When landed, it replaces the model-assisted evidence inside `verify` while retaining this RFC's lifecycle, budgets, bounded repair-brief projection, target repair routing, and final report assembly. Its optional host mechanical-repair rung is an explicit phase-machine and write-authority amendment rather than an implicit part of `verify`.
 

@@ -33,10 +33,11 @@ keeps one stable retained sandbox at the repository-root `sandbox/<id>/`
 (composition-owned; beside the wasm example's `sandbox/wasm/`), on
 success and failure alike. A failed or stopped workflow run is continued
 — graded — by running the same command again: a sandbox holding an
-authored plan resumes at `plan refine`. `--restart` is the only
-runner-owned reset; build sandboxes and author-incomplete workflow
-sandboxes refuse without it. Inspect a retained sandbox with a bound
-passthrough verb:
+authored plan resumes at `plan refine`; a bound-not-authored sandbox
+(no reconcile fact) re-runs `plan author`, which resumes its open and
+parked domains. `--restart` is the only runner-owned reset; build
+sandboxes and unbound workflow sandboxes refuse without it. Inspect a
+retained sandbox with a bound passthrough verb:
 
 ```bash
 cargo make eval auth plan status

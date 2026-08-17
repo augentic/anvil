@@ -2,7 +2,7 @@
 
 > Status: Must-apply items are folded into [RFC-88](rfc-88-detached-changes.md). Keep this file as the consumption-patch record; do not re-apply the replacements. Recommended field-patch `plan amend` retirement stays out of scope.
 >
-> [RFC-104](rfc-104-system-archaeology.md) states the definition-side consumption contract. This file is the RFC-88-side wording so the two documents agree. It is not a new lifecycle RFC. [platform.md](platform.md) already tells RFC-88 to use internal cuts rather than extra RFCs.
+> [RFC-104](rfc-104-system-archaeology.md) states the definition-side consumption contract. This file is the RFC-88-side wording so the two documents agree. It is not a new lifecycle RFC. [platform.md](../platform.md) already tells RFC-88 to use internal cuts rather than extra RFCs.
 
 ## Why this file exists
 
@@ -118,7 +118,7 @@ Keep on RFC-104: declared definition inputs are hand-edited; the next stage vali
 
 If the next RFC-88 cut takes the retirement: delete those field-patch flags and amendment facts there, or in a one-page follow-on after the definition loop exists. RFC-104 D11 no longer deletes them. RFC-88's `plan amend --proposal` compare-and-set is a different operation and stays.
 
-[platform.md](platform.md) already tells RFC-88 to use internal cuts rather than extra lifecycle RFCs; parking this here is the same discipline in the other direction.
+[platform.md](../platform.md) already tells RFC-88 to use internal cuts rather than extra lifecycle RFCs; parking this here is the same discipline in the other direction.
 
 ## Do not take from RFC-104
 

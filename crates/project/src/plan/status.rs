@@ -58,6 +58,15 @@ pub enum LoopStep {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum StopReason {
+    /// The change home is bound (`plan.yaml` exists) but authoring
+    /// never completed — no `plan.reconcile.completed` fact and no
+    /// projected entries. Never `drained`.
+    AuthorIncomplete,
+    /// `plan author` parked one or more domains after failed cuts. The
+    /// persisted partial `decomposition.yaml` plus the park facts are
+    /// the park state; re-running `emery plan author` resumes the
+    /// open-domain queue (optionally after `emery plan correct`).
+    PartitionParked,
     /// The awaited refine phase last ended in `slice.synthesize.failed`.
     RefineFailed,
     /// Execute reached an entry without a fresh refinement manifest —
@@ -109,6 +118,15 @@ impl StopReason {
     #[must_use]
     pub const fn hint(self) -> &'static str {
         match self {
+            Self::AuthorIncomplete => {
+                "The plan is bound but authoring never completed. Re-run emery plan author — \
+                 re-entry resumes decomposition from the persisted state (never --force)."
+            }
+            Self::PartitionParked => {
+                "One or more domains parked after failed cuts. Optionally record guidance with \
+                 emery plan correct --domain <id> --intent \"…\", then re-run emery plan author — \
+                 re-entry resumes only the open and parked domains."
+            }
             Self::RefineFailed => {
                 "Fix the failure, then re-run emery plan refine — the drain resumes the \
                  missing or stale refinement. The plan entry stays in-progress."

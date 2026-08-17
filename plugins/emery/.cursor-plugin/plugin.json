@@ -1,7 +1,7 @@
 {
   "name": "emery",
   "displayName": "Emery Workflow",
-  "description": "Emery workflow skills: init, plan, refine, execute, status, finalize, system-survey, system-plan, system-review.",
+  "description": "Emery workflow skills: init, plan, correct, refine, execute, status, finalize, system-survey, system-plan, system-review.",
   "version": "0.29.0",
   "author": {
     "name": "Augentic",

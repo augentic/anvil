@@ -1,10 +1,10 @@
 # RFC-92: Model Policy
 
-> Status: Draft — model-economics track in the [Services Delivery Programme](platform.md). Startable on implemented [RFC-90](rfc-90-build-verification.md); parallel with [RFC-88](rfc-88-detached-changes.md).
+> Status: Draft — model-economics track in the [Services Delivery Programme](platform.md). Startable on implemented [RFC-90](archive/rfc-90-build-verification.md); parallel with [RFC-88](archive/rfc-88-detached-changes.md).
 >
 > Owns: closed operation keys, per-operation routes and a minimal bounded escalation table on the pinned capability profile, deployment binding of route names to providers, the model-usage fact, and cost attribution.
 >
-> Amends RFC-88 D3 with a `routes` table when that cut lands; does not wait for it. Populates [RFC-103](rfc-103-outcome-learning.md)'s `cost` and supplies the routes its `model-route-change` proposals patch. Both otherwise unchanged.
+> Amends RFC-88 D3 with a `routes` table when that cut lands; does not wait for it. Populates [RFC-103](future/rfc-103-outcome-learning.md)'s `cost` and supplies the routes its `model-route-change` proposals patch. Both otherwise unchanged.
 >
 > Evidence posture: [platform evaluation](platform.md#evidence-and-iteration-posture).
 
@@ -61,7 +61,7 @@ The closed operation-key set derives from the existing typed enums plus the engi
 | Target | `target.guidance`, `target.build`, `target.verify`, `target.repair`, `target.review`, `target.merge` |
 | Engine | `engine.topology`, `engine.propose`, `engine.decompose`, `engine.synthesize`, `engine.boundary`, `engine.readiness` |
 
-An absent key falls to `default`. The shorthand `target.review: frontier` canonicalizes to `{ start: frontier }` with no escalation. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is never consulted; a route policy is a binding, not a requirement to invoke. The set is closed per programme state, not forever: [RFC-106](rfc-106-task-graphs.md)'s `target.decompose` joins it when that RFC lands.
+An absent key falls to `default`. The shorthand `target.review: frontier` canonicalizes to `{ start: frontier }` with no escalation. A key whose operation has no model leg in a given deployment — `target.verify` under RFC-97 host verification, for instance — is never consulted; a route policy is a binding, not a requirement to invoke. The set is closed per programme state, not forever: [RFC-106](future/rfc-106-task-graphs.md)'s `target.decompose` joins it when that RFC lands.
 
 That closed key set is **model specialization by role**: survey, extract, synthesize, build, verify, and review may bind different tiers without an orchestrator-agent model ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)). A starting-route or ladder change produces a new profile digest and invalidates the epoch on the same rule as a threshold change.
 

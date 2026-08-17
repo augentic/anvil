@@ -1,6 +1,6 @@
 # RFC-95 host surface
 
-> Status: Implemented host-surface companion to [RFC-95](rfc-95-publication-sets.md) in the [Services Delivery Programme](platform.md). Not a new RFC. Implementation followed the sequencing table from cut 0.
+> Status: Implemented host-surface companion to [RFC-95](rfc-95-publication-sets.md) in the [Services Delivery Programme](../platform.md). Not a new RFC. Implementation followed the sequencing table from cut 0.
 >
 > Product policy (worktree, markers, archive observation, facts, schema) lives in [RFC-95](rfc-95-publication-sets.md). This document decides how the host talks to Git and the forge. This revision supersedes the earlier git-aware-blobstore direction: the VCS seam below retires both bespoke fetch packages as the foundation RFC-95 lands on rather than as deferred cleanup. The pre-implementation review's open items are closed as decided text below — the WIT field lists and error taxonomies, the `emery:engine` package, the dedicated staging root, and the forge token order; git history holds the full findings.
 >
@@ -178,7 +178,7 @@ The guest calls `export` from the execute loop whenever a target's last in-scope
 
 ## Prerequisite: split the published WIT
 
-The `workflow` world currently lives inside the published `emery:adapter` package, so any host-seam change drags the adapter release train (review F14). Before the seam lands: `emery:adapter` shrinks to the adapter contract alone (the `source` / `target` interfaces and worlds adapters vendor), and the engine `workflow` world moves to its own package, `emery:engine@0.1.0` — the name matches the engine-guest vocabulary already in use, no collision exists, and pre-1.0 the version starts fresh at `0.1.0`. After the split, every cut below is a host-only release shape per [docs/release.md](../docs/release.md); adapters are untouched — their operations never see fetch, export, or forge. The one-time adapter re-vendor is legal under the pre-1.0 hard-cut posture.
+The `workflow` world currently lives inside the published `emery:adapter` package, so any host-seam change drags the adapter release train (review F14). Before the seam lands: `emery:adapter` shrinks to the adapter contract alone (the `source` / `target` interfaces and worlds adapters vendor), and the engine `workflow` world moves to its own package, `emery:engine@0.1.0` — the name matches the engine-guest vocabulary already in use, no collision exists, and pre-1.0 the version starts fresh at `0.1.0`. After the split, every cut below is a host-only release shape per [docs/release.md](../../docs/release.md); adapters are untouched — their operations never see fetch, export, or forge. The one-time adapter re-vendor is legal under the pre-1.0 hard-cut posture.
 
 ## Sequencing
 

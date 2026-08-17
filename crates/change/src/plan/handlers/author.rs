@@ -45,7 +45,7 @@ impl<P: Anchor + Model + Resolver + Inventory + Profiles + Trees + Source + Work
         input: Self::Input, context: CallContext<'_, P>,
     ) -> Result<Self::Output, Self::Error> {
         let paths = context.provider.paths();
-        let outcome = orchestrate::author(
+        let result = orchestrate::author(
             context.provider,
             paths,
             jiff::Timestamp::now(),
@@ -55,7 +55,32 @@ impl<P: Anchor + Model + Resolver + Inventory + Profiles + Trees + Source + Work
             input.force,
         )
         .await?;
-        Ok(AuthorBody::from(outcome))
+        match result {
+            orchestrate::AuthorResult::Completed(outcome) => Ok(AuthorBody::from(outcome)),
+            // Typed halt: the plan status card rides stdout while the
+            // payload-free `plan-author-stopped` envelope keeps stderr
+            // (exit 2 / 422) — mirrors `plan refine`'s stop shape.
+            orchestrate::AuthorResult::Parked(parked) => {
+                let domains = parked
+                    .parked
+                    .iter()
+                    .map(|park| format!("`{}` ({})", park.domain, park.reason))
+                    .collect::<Vec<_>>()
+                    .join("; ");
+                let source = error::Error::validation_failed(
+                    "plan-author-stopped",
+                    "decomposition partitions every domain",
+                    format!(
+                        "authoring parked at {domains}; re-run emery plan author to resume \
+                             (optionally after emery plan correct)"
+                    ),
+                );
+                let layout = paths.layout();
+                let plan = project::plan::Plan::load(&layout.plan_path())?;
+                let status = project::plan::plan_status_body(&plan, layout)?;
+                Err(project::handler::Error::stopped(status, source))
+            }
+        }
     }
 }
 

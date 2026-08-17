@@ -2,7 +2,7 @@
 
 > Scope: readiness assessment of [RFC-97](rfc-97-native-verification.md) for both delivery stages — Phase A (`slice-attempt` verification on implemented RFC-90) and Phase B (`frontier-domain | complete-domain` contexts on RFC-96).
 >
-> Inputs: RFC-97 against [RFC-90](rfc-90-build-verification.md) (implemented), [RFC-87](rfc-87-working-trees.md) (implemented), [RFC-96](rfc-96-concurrent-execution.md) (active, unimplemented), [RFC-92](rfc-92-model-policy.md) (draft), [RFC-98](rfc-98-behavioural-conservation.md) (draft follow-on), [RFC-106](rfc-106-task-graphs.md) (evidence-gated), [RFC-100](rfc-100-distributed-execution.md) (parked), [platform.md](platform.md), and the current engine workspace.
+> Inputs: RFC-97 against [RFC-90](archive/rfc-90-build-verification.md) (implemented), [RFC-87](archive/rfc-87-working-trees.md) (implemented), [RFC-96](archive/rfc-96-concurrent-execution.md) (active, unimplemented), [RFC-92](rfc-92-model-policy.md) (draft), [RFC-98](future/rfc-98-behavioural-conservation.md) (draft follow-on), [RFC-106](future/rfc-106-task-graphs.md) (evidence-gated), [RFC-100](future/rfc-100-distributed-execution.md) (parked), [platform.md](platform.md), and the current engine workspace.
 >
 > Finding ids are stable (`A1…`, `B1…`, `G1…`, `M1…`). Severity: **blocker** (resolve in the RFC text before implementation starts), **major** (resolve before the affected decision is implemented), **minor** (fix opportunistically).
 

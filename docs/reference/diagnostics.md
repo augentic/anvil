@@ -38,7 +38,12 @@ Closed set rendered when `emery plan refine` halts (exit 2, `plan-refine-stopped
 
 | Code | Meaning | Recovery |
 | ---- | ------- | -------- |
-| `plan-already-exists` | `emery plan author` found an existing `plan.yaml`. | Re-run with `--force` to replace a pending plan wholesale (`/emery:plan` confirms first). |
+| `plan-already-exists` | `emery plan author` found an existing plan under a *different name* (re-entry under the same name resumes or no-ops). | Re-run with `--force` to replace a pending plan wholesale (`/emery:plan` confirms first). |
+| `plan-author-stopped` | Authoring parked one or more domains after failed cuts (exit 2); the partial tree persists and closed leaves project into `plan.entries`. | Optionally record guidance with `emery plan correct --domain <id> --intent "…"`, then re-run `emery plan author` — re-entry resumes only the open and parked domains. |
+| `plan-author-incomplete` | A topology verb (`add` / `amend` / `remove` / `gaps`) ran on a bound-not-authored change home. | Re-run `emery plan author` to finish decomposition first. |
+| `plan-correct-domain-required` / `plan-correct-domain-ambiguous` | `emery plan correct` without `--domain` needs exactly one parked domain to resolve implicitly. | Name the domain: `emery plan correct --domain <id> …`. |
+| `plan-correction-constraint` | A partition answer violated an operator correction's structural constraint (`close-as-leaf` / `split`); the judgment repairs against the finding. | Usually self-heals in repair; if the constraint is wrong, record a new correction. |
+| `plan-correction-non-reducing` | A correction-driven re-cut on an authored plan would uncover a lead or fail to reduce; the live tree is unchanged. | Restate the intent (the cut must strictly reduce and cover every lead), then re-run `emery plan correct`. |
 | `duplicate-source-key` | `--add-source` named a key the entry already binds (a slice binds at most one lead per source). | Re-size instead: `emery plan amend <entry> --sources <key>=<other-lead>`. |
 | `plan-amend-validation-failed` | A wholesale `--sources` replacement introduced an invalid binding set; the amend rolled back. | Fix the binding list (one lead per source key) and retry. |
 | `plan-remove-plan-not-replaceable` | `emery plan remove` requires a fully pending plan (every entry `pending`). | Removal is a pre-execution action only; after execution starts, drop the entry's slice with `emery plan drop`. |
