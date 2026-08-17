@@ -152,7 +152,7 @@ Package `emery:verification` is owned by a capability crate on the `wasi-exec` s
 The host import accepts only a declared profile name and an opaque candidate-workspace handle. No argv, policy, target, or protected-input selector crosses WIT. Target identity, platform, verification context, policy digest, and protected-input handles come from the engine-prebound dispatch context.
 
 ```wit
-package emery:verification;
+package emery:verification@0.1.0;
 
 interface verifier {
   /// Declared profile name + opaque candidate-workspace handle.
