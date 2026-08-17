@@ -2,23 +2,20 @@
 # Native examples
 # -------------------------------------
 
-# Native mock-catalog lab shim (command passthrough; not the shipped CLI).
-# Pair with `eval` for case runs: `cargo make lab -- --project-dir <dir> …`.
-[tasks.lab]
-command = "cargo"
-args = ["run", "-q", "-p", "emery", "--example", "eval", "--", "${@}"]
-
-# One live eval case (`cargo make eval auth --restart [--until plan]`);
-# bare `cargo make eval` lists the cases. Case data lives in
+# The one lab entry, shaped like the emery CLI plus the case runner:
+# bare `cargo make eval` lists the cases, `cargo make eval <id>` runs
+# one (an existing sandbox resumes; `--restart` reruns from fresh
+# state), any emery verb passes through (`cargo make eval <id> plan
+# status` binds the case's retained sandbox). Case data lives in
 # `eval/cases/<id>/case.toml`; the retained sandbox in
-# `eval/sandbox/<id>/`.
+# `eval/sandbox/<id>/`. The probe client owns the log presets (case
+# runs default to the debug preset, passthrough to `info`); cargo-make
+# needs `--` only when the first token is a cargo-make flag.
 [tasks.eval]
 env_files = [".env"]
 script = '''
   export CURSOR_TIMEOUT_SECS="${CURSOR_TIMEOUT_SECS:-300}"
-  # No RUST_LOG default: the probe client's flagless preset is already
-  # `info` plus its own HTTP/gRPC and OTel mutes.
-  cargo run -p emery --example eval -- eval "$@"
+  cargo run -p emery --example eval -- "$@"
 '''
 
 # -------------------------------------

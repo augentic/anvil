@@ -123,6 +123,7 @@
       "type": "string"
     },
     "version": {
+      "const": 4,
       "description": "Schema version.",
       "format": "uint32",
       "minimum": 0,

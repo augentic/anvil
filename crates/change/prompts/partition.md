@@ -11,6 +11,7 @@ Emit `kind: split` when the domain has separately acceptable delivery boundaries
 - Every child target stays inside the parent's target set.
 - A split with two or more children must strictly reduce a normalized scope measure (leads, targets, ownership paths). Unary splits are only legal as the root container or another 1-child wrapper — do not emit them as reducing partitions.
 - Sibling ownership overlap needs an explicit `depends-on` order or a fan-in child. Ambiguity blocks.
+- If no strictly reducing multi-child split exists — the leads, targets, and ownership are inseparable — emit `kind: leaf` instead of forcing a tie.
 
 ## Leaf
 
@@ -23,6 +24,10 @@ Always supply the closed five-dimension assessment (integers 0–10): `behaviour
 ## Targets
 
 Bind only a target named in the request. A target absent from the reviewed wave is a definition-revision request, not a silent substitution.
+
+## Findings
+
+A request may carry `findings[]`: validator diagnostics from a previous failed cut on this domain. Read them before answering; they name exactly which rule the last cut broke.
 
 ## Rationale
 

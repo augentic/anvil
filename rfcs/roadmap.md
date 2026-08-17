@@ -2,7 +2,7 @@
 
 > Status: Draft
 
-The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-104](rfc-104-system-archaeology.md) owns the definition home, coverage-accounted system survey, architecture model and diagrams, and migration plan; those are core product work rather than roadmap opportunities. RFC-96 is scheduled active work; RFC-99 through RFC-102 are parked; RFC-106 is evidence-gated. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
+The [Services Delivery Programme](platform.md) is the active delivery spine; [architecture.md](architecture.md) owns the runtime boundary. [RFC-104](archive/rfc-104-system-archaeology.md) owns the definition home, coverage-accounted system survey, architecture model and diagrams, and migration plan; those are core product work rather than roadmap opportunities. RFC-96 is scheduled active work; RFC-99 through RFC-102 are parked; RFC-106 is evidence-gated. This file lists smaller engagement-, evidence-, or sales-triggered opportunities that do not need lifecycle RFCs. Each starts when its trigger is observed, not merely when its prerequisites exist.
 
 ## Engagement-triggered
 
@@ -35,7 +35,7 @@ The [Services Delivery Programme](platform.md) is the active delivery spine; [ar
 - a diff of an inert amendment proposal's candidate lead and decomposition revisions against current authority, plus a retrospective view of which proposal was applied and under which RFC-93 actor/grant;
 - an exact next-action card on every refine/execute stop naming the verb, selectors, input digests, and artifact paths the caller must fix or supply.
 
-Leaf-field amendment stays on live `plan amend` until RFC-88 (or a follow-on) takes the retirement parked in [rfc-104-rfc-88-patches.md](rfc-104-rfc-88-patches.md); structural proposals stay on RFC-88's `emery plan amend --proposal`. The projections never apply work, add an “apply all” path, or become another dashboard authority. Recovery remains stop → inspect → fix inputs or apply one reviewed proposal → re-run. When an agent drives Emery these projections are the human audit surface over what it accepted, proposed, and changed, so this is assurance work rather than presentation polish.
+Leaf-field amendment stays on live `plan amend` until RFC-88 (or a follow-on) takes the retirement parked in [rfc-104-rfc-88-patches.md](archive/rfc-104-rfc-88-patches.md); structural proposals stay on RFC-88's `emery plan amend --proposal`. The projections never apply work, add an “apply all” path, or become another dashboard authority. Recovery remains stop → inspect → fix inputs or apply one reviewed proposal → re-run. When an agent drives Emery these projections are the human audit surface over what it accepted, proposed, and changed, so this is assurance work rather than presentation polish.
 
 ## Evidence-triggered
 
@@ -65,7 +65,7 @@ Leaf-field amendment stays on live `plan amend` until RFC-88 (or a follow-on) ta
 
 ### RM-25: Target runtime harness declaration
 
-**Goal:** Let a target adapter declare how the system it builds is started, driven, and observed, so [RFC-94](rfc-94-target-readiness.md) can assess `behavioural-observability` against something concrete and [RFC-98](rfc-98-behavioural-conservation.md) replay drivers can bind per target.
+**Goal:** Let a target adapter declare how the system it builds is started, driven, and observed, so [RFC-94](rfc-94-target-readiness.md) can assess `behavioural-observability` against something concrete and [RFC-98](future/rfc-98-behavioural-conservation.md) replay drivers can bind per target.
 **Trigger:** RFC-98 lands and its second replay driver needs a per-target hook rather than a deployment-wide default.
 **Likely shape:** declarative target metadata — launch command, readiness signal, drive surface, observation sink — resolved by deployment policy into a driver. Declarative only: no adapter-supplied command crosses WIT, on [RFC-97](rfc-97-native-verification.md) D3's rule.
 

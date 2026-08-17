@@ -1,12 +1,12 @@
 # RFC-106: Target Task Graphs
 
-> Status: **Evidence-gated** in the [Services Delivery Programme](platform.md). Accepted architecture; not on the default staffing plan. Implementation starts when a measured Omnia slice is too large for one RFC-90 `target.build` call (spilled build prompts, wall-clock, or failed cap-one/four economics under [RFC-96](rfc-96-concurrent-execution.md) D11).
+> Status: **Evidence-gated** in the [Services Delivery Programme](../platform.md). Accepted architecture; not on the default staffing plan. Implementation starts when a measured Omnia slice is too large for one RFC-90 `target.build` call (spilled build prompts, wall-clock, or failed cap-one/four economics under [RFC-96](../archive/rfc-96-concurrent-execution.md) D11).
 >
 > Owns: one engine-owned `decompose → validate → execute` phase inside a slice-build attempt; `target.decompose`; exclusive task write grants; protected verification inputs at task granularity; task-scoped repair routing; graph-attributable re-decomposition and `graph | escalate` answers.
 >
-> Does not own: the work-item scheduler, shared pool, `compose` kernel, domain rounds, or multi-member waves ([RFC-96](rfc-96-concurrent-execution.md)); remote placement ([RFC-100](rfc-100-distributed-execution.md)); publication ([RFC-95](rfc-95-publication-sets.md)).
+> Does not own: the work-item scheduler, shared pool, `compose` kernel, domain rounds, or multi-member waves ([RFC-96](../archive/rfc-96-concurrent-execution.md)); remote placement ([RFC-100](rfc-100-distributed-execution.md)); publication ([RFC-95](../archive/rfc-95-publication-sets.md)).
 >
-> Builds on RFC-96 Phase B. Amends RFC-90 D1, D2, D5, and D6 (logical candidate rematerialized per task operation; task context on `build` / `repair`). Extends RFC-88 D8 with envelope-escalation proposals. [RFC-18](future/rfc-18-slm.md) may later use the per-task model-selection hook; that hook stays inert here.
+> Builds on RFC-96 Phase B. Amends RFC-90 D1, D2, D5, and D6 (logical candidate rematerialized per task operation; task context on `build` / `repair`). Extends RFC-88 D8 with envelope-escalation proposals. [RFC-18](rfc-18-slm.md) may later use the per-task model-selection hook; that hook stays inert here.
 
 ## Intent
 
@@ -190,7 +190,7 @@ Exactly one task owns build-level reporting. That designation alone creates no e
 
 SDK helpers provide a deterministic singleton graph whose task owns build-level reporting, so adapters need not decompose work merely because the operation exists. An adapter may also assemble a candidate graph from deterministic target metadata — for Omnia, the Cargo workspace member graph — and let a model call validate and adjust the candidate instead of inventing one.
 
-[RFC-92](rfc-92-model-policy.md)'s closed operation-key set gains `target.decompose` when this RFC lands.
+[RFC-92](../rfc-92-model-policy.md)'s closed operation-key set gains `target.decompose` when this RFC lands.
 
 ### D3 — Every task has exclusive, enforced write ownership
 

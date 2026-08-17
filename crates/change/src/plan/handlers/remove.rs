@@ -34,6 +34,9 @@ impl<P: Anchor> Operation<P> for Remove {
         let cx = Ctx::load(context.provider)?;
         let name = input.name;
         let plan_path = require_file(&cx)?;
+        // A bound-not-authored home may hold a partial decomposition
+        // tree; topology edits wait for `plan author` to finish.
+        project::plan::ensure_authored(cx.layout(), &Plan::load(&plan_path)?)?;
         let events = collect_events(cx.layout())?;
         let layout = cx.layout();
         let body = with_state::<Plan, _, _>(layout, "plan.yaml", move |plan| {

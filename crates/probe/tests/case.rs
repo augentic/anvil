@@ -704,8 +704,11 @@ async fn clone_populates_cache() {
     assert!(dest.join("README.md").is_file(), "the restart re-materializes from the cache");
 }
 
+// A workflow sandbox whose run died before the handoff bind (no
+// plan.yaml) cannot resume — it refuses naming the reset gesture. A
+// bound stub resumes at `plan author` re-entry instead.
 #[tokio::test]
-async fn existing_sandbox_refuses() {
+async fn authorless_refuses() {
     let tmp = TempDir::new().expect("tempdir");
     let cases = tmp.path().join("cases");
     stage_case(
@@ -727,10 +730,117 @@ async fn existing_sandbox_refuses() {
         &scripted(Vec::new()),
     )
     .await
-    .expect_err("an existing sandbox refuses before mutation");
+    .expect_err("an author-incomplete sandbox refuses before mutation");
     let message = format!("{err:#}");
+    assert!(message.contains("no bound plan"), "{message}");
     assert!(message.contains("--restart"), "{message}");
-    assert!(message.contains("--change-dir"), "{message}");
+    assert!(message.contains("cargo make eval"), "{message}");
+    assert!(!message.contains("cargo make lab"), "{message}");
+}
+
+// Build cases have no resume: an existing sandbox always refuses.
+#[tokio::test]
+async fn build_sandbox_refuses() {
+    let tmp = TempDir::new().expect("tempdir");
+    let cases = tmp.path().join("cases");
+    stage_case(&cases, "prepared", "kind = \"build\"\nslice = \"demo\"\nexpect = [\"out\"]\n");
+    let sandbox = tmp.path().join("sandbox");
+    fs::create_dir_all(sandbox.join("prepared")).expect("pre-existing sandbox");
+
+    let err = case::run(
+        &cases,
+        &sandbox,
+        Some("prepared"),
+        None,
+        false,
+        &catalog(),
+        &scripted(Vec::new()),
+    )
+    .await
+    .expect_err("an existing build sandbox refuses before mutation");
+    let message = format!("{err:#}");
+    assert!(message.contains("no resume"), "{message}");
+    assert!(message.contains("--restart"), "{message}");
+    assert!(message.contains("cargo make eval"), "{message}");
+}
+
+// The greeting synthesis answer with its contributing claim re-slotted
+// onto the authored binding key (the definition mint binds `intent`).
+fn synthesis_bound_to(source: &str) -> String {
+    let mut answer: serde_json::Value =
+        serde_json::from_str(&mock::answers::greeting_synthesis()).expect("answer parses");
+    answer["model"]["requirements"][0]["claims"][0]["source"] = serde_json::json!(source);
+    serde_json::to_string(&answer).expect("answer serialises")
+}
+
+// A workflow sandbox holding an authored plan resumes without
+// `--restart`: the retained tree is never replaced, and the drains
+// pick up where the run parked.
+#[tokio::test]
+async fn workflow_sandbox_resumes() {
+    let tmp = TempDir::new().expect("tempdir");
+    let cases = tmp.path().join("cases");
+    stage_case(
+        &cases,
+        "resumed",
+        "kind = \"workflow\"\nchange = \"demo\"\nwave = \"deliver\"\ndefinition = \"definition\"\n",
+    );
+    let mut spec = mock::definition::Spec::degenerate("The greeting service.");
+    spec.targets[0].locator = "product".into();
+    spec.targets[0].adapter = "emery:mock@0.0.0".into();
+    spec.scopes[0].adapter = "emery:mock@0.0.0".into();
+    mock::definition::mint(&cases.join("resumed/definition"), &spec).expect("mint");
+
+    let sandbox = tmp.path().join("sandbox");
+    case::run(
+        &cases,
+        &sandbox,
+        Some("resumed"),
+        Some(WorkflowUntil::Plan),
+        false,
+        &catalog(),
+        &scripted(mock::answers::greeting_author()),
+    )
+    .await
+    .expect("the first run authors and stops");
+
+    let root = sandbox.join("resumed");
+    fs::write(root.join("marker.txt"), "retained\n").expect("write marker");
+
+    // Resuming to the same rung is a no-op: nothing to re-run before
+    // `--until plan`, and the tree is untouched.
+    case::run(
+        &cases,
+        &sandbox,
+        Some("resumed"),
+        Some(WorkflowUntil::Plan),
+        false,
+        &catalog(),
+        &scripted(Vec::new()),
+    )
+    .await
+    .expect("a resume stopped at plan is a no-op");
+    assert!(root.join("marker.txt").is_file(), "resume never replaces the sandbox");
+
+    // Resuming past the parked rung drives the refine drain over the
+    // retained tree (one synthesis answer for the one leaf).
+    case::run(
+        &cases,
+        &sandbox,
+        Some("resumed"),
+        Some(WorkflowUntil::Refine),
+        false,
+        &catalog(),
+        &scripted(vec![synthesis_bound_to("intent")]),
+    )
+    .await
+    .expect("a resume continues at the refine drain");
+    assert!(root.join("marker.txt").is_file(), "resume never replaces the sandbox");
+    let slices = root.join("slices");
+    assert!(
+        slices.join("greeting").join("refinement.yaml").is_file(),
+        "the resumed refine drain wrote the refinement manifest"
+    );
 }
 
 #[tokio::test]

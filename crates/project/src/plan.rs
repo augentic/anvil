@@ -34,12 +34,12 @@ pub use advance::{AdvanceBody, AdvanceReason, advance_next};
 pub use authority_override::{entry_mut, unknown_slice_err};
 pub use decomposition::{
     BoundaryReview, Child, Decomposition, FocusParent, PARTITION_VERSION, PartitionKind,
-    PartitionResponse, ReviewVerdict, VERSION as DECOMPOSITION_VERSION,
+    PartitionResponse, ReviewVerdict, VERSION as DECOMPOSITION_VERSION, closed_slices,
     retain as retain_decomposition,
 };
 pub use discovery::{Discovery, VERSION as DISCOVERY_VERSION};
 pub use doctor::{advance_gate, author_gate, detect, full_report};
-pub use execution::{collect_events, project_ladders};
+pub use execution::{collect_events, ensure_authored, project_ladders};
 pub use gaps::{
     DebtCounts, Deferral, Disposition, GapRow, GapsBody, SharedLeadRollup, plan_gaps_body,
 };

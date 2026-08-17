@@ -96,6 +96,20 @@ mod patched_constraints {
     }
 
     #[test]
+    fn version_consts() {
+        for (schema, expected) in [
+            (project::answers::partition(), project::plan::PARTITION_VERSION),
+            (project::answers::boundary_review(), project::plan::PARTITION_VERSION),
+            (project::answers::proposal(), 1),
+        ] {
+            assert_eq!(
+                schema.pointer("/properties/version/const").expect("version const"),
+                &serde_json::json!(expected)
+            );
+        }
+    }
+
+    #[test]
     fn claim_id_conditional() {
         let schema = project::answers::evidence();
         let condition = schema.pointer("/$defs/Claim/if").expect("if clause on Claim");

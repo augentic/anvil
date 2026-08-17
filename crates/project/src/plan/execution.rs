@@ -138,6 +138,40 @@ pub fn collect_events(layout: Layout<'_>) -> Result<Vec<Event>, Error> {
     Ok(events)
 }
 
+/// Refuse plan-topology verbs on a bound-not-authored change home.
+///
+/// A handoff-bound `plan.yaml` without a `plan.reconcile.completed`
+/// fact may sit over a partial decomposition tree that only
+/// `plan author` re-entry may finish.
+///
+/// # Errors
+///
+/// `plan-author-incomplete` on a bound plan with no reconcile fact;
+/// journal I/O failures.
+pub fn ensure_authored(layout: Layout<'_>, plan: &Plan) -> Result<(), Error> {
+    if plan.definition.is_none() {
+        return Ok(());
+    }
+    let events = collect_events(layout)?;
+    let authored = events.iter().any(|event| {
+        matches!(
+            &event.kind,
+            EventKind::PlanReconcileCompleted { plan_name, .. } if plan_name == &plan.name
+        )
+    });
+    if authored {
+        return Ok(());
+    }
+    Err(Error::Diag {
+        code: "plan-author-incomplete",
+        detail: format!(
+            "plan `{name}` is bound but not authored; re-run `emery plan author` to finish \
+             decomposition",
+            name = plan.name
+        ),
+    })
+}
+
 /// Project per-entry ladder labels from the fact union (RFC-86 D2).
 ///
 /// `done` comes from archive / postflight-failed facts;

@@ -13,4 +13,4 @@ pub use topology::resolve_topology;
 pub use wire::{GateProse, ProjectRef, ProposalRequest, ProposalResponse};
 
 /// Wire version stamped on both envelope kinds.
-const PROPOSAL_VERSION: u32 = 1;
+pub(crate) const PROPOSAL_VERSION: u32 = 1;

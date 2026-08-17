@@ -274,8 +274,11 @@ async fn overlap_blocks() {
     assert!(code(&err).contains("decomposition-overlap"), "{err}");
 }
 
+// A boundary review that answers unready parks that domain instead of
+// aborting: the partial tree persists, no reconcile fact is written,
+// and the typed `plan-author-stopped` halt names the domain.
 #[tokio::test]
-async fn unready_blocks() {
+async fn unready_parks() {
     let session = Session::scripted(
         "mock",
         vec![mock::answers::greeting_leaf_loud(), mock::answers::greeting_unready()],
@@ -285,9 +288,30 @@ async fn unready_blocks() {
     let mut spec = Spec::degenerate("Ship the greeting.");
     spec.targets[0].locator = target.display().to_string();
     mint(&definition, &spec).expect("mint");
-    let err = author(&session, &definition, &spec.wave).await.expect_err("unready");
+    let err = author(&session, &definition, &spec.wave).await.expect_err("parked");
+    assert!(code(&err).contains("plan-author-stopped"), "{err}");
     assert!(code(&err).contains("plan-author-unready"), "{err}");
-    assert!(!Layout::new(session.root()).decomposition_path().exists());
+
+    let layout = Layout::new(session.root());
+    assert!(layout.decomposition_path().exists(), "partial tree persists on park");
+    let plan = Plan::load(&layout.plan_path()).expect("bound stub");
+    assert!(plan.entries.is_empty(), "{:?}", plan.entries);
+    assert!(plan.decomposition_digest.is_none(), "no digest until reconcile");
+    let events = project::journal::read_union(layout).expect("events");
+    assert!(
+        events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::PlanAuthorParked { .. }
+        )),
+        "park fact recorded"
+    );
+    assert!(
+        !events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::PlanReconcileCompleted { .. }
+        )),
+        "no reconcile fact on a park"
+    );
 }
 
 #[tokio::test]
@@ -310,6 +334,419 @@ async fn budget_exhaustion_parks() {
         !layout.decomposition_path().exists(),
         "complete-tree policy: exhaustion does not publish"
     );
+}
+
+/// Root split into `auth` (app: docs + code) and `greeting` (other:
+/// intent). `auth` carries the ownership and single target the
+/// fallback leaf needs.
+fn root_two_domain_split() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "split",
+        "assessment": quiet(),
+        "children": [
+            {
+                "id": "auth",
+                "sources": [
+                    { "source": "docs", "lead": "login-flow" },
+                    { "source": "code", "lead": "login-flow" }
+                ],
+                "target": "app",
+                "ownership": ["auth/**"]
+            },
+            {
+                "id": "greeting",
+                "sources": [{ "source": "intent", "lead": "intent" }],
+                "target": "other"
+            }
+        ]
+    }))
+    .expect("root split")
+}
+
+/// `auth` splits into `login` (both leads — will tie) and `token`.
+fn auth_split() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "split",
+        "assessment": quiet(),
+        "children": [
+            {
+                "id": "login",
+                "sources": [
+                    { "source": "docs", "lead": "login-flow" },
+                    { "source": "code", "lead": "login-flow" }
+                ],
+                "target": "app",
+                "ownership": ["auth/login/**"]
+            },
+            {
+                "id": "token",
+                "sources": [{ "source": "code", "lead": "login-flow" }],
+                "target": "app",
+                "ownership": ["auth/token/**"]
+            }
+        ]
+    }))
+    .expect("auth split")
+}
+
+/// A `login` leaf close carrying `auth`'s full lead set — it ties the
+/// reduction measure against its parent on every dimension.
+fn tie_leaf() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "leaf",
+        "target": "app",
+        "slice": "login",
+        "ownership": ["auth/login/**"],
+        "acceptance": "login is one acceptance unit.",
+        "sources": [
+            { "source": "docs", "lead": "login-flow" },
+            { "source": "code", "lead": "login-flow" }
+        ],
+        "assessment": quiet()
+    }))
+    .expect("tie leaf")
+}
+
+fn recovered_response(slices: &[(&str, &str, &str, &str)]) -> String {
+    let rows: Vec<serde_json::Value> = slices
+        .iter()
+        .map(|(name, target, source, lead)| {
+            json!({
+                "name": name,
+                "target": target,
+                "sources": [{ "source": source, "lead": lead }]
+            })
+        })
+        .collect();
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "response",
+        "slices": rows,
+        "gate": { "change": "## Intent\n\nRecovered.\n\n## Scope\n\nThe surviving leaves." }
+    }))
+    .expect("response")
+}
+
+// A reduction tie on an open child defers (Decision 1); the same tie
+// on the closed child after repairs closes the PARENT as a leaf via
+// the deterministic fallback: siblings are subsumed, the tree stays,
+// the `domain.partition.closed` fact and the change.md caveat record
+// the disposition, and authoring completes with a reconcile fact.
+#[tokio::test]
+async fn non_reducing_fallback_closes_parent() {
+    let final_answer = serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "response",
+        "slices": [
+            {
+                "name": "auth",
+                "target": "app",
+                "sources": [
+                    { "source": "docs", "lead": "login-flow" },
+                    { "source": "code", "lead": "login-flow" }
+                ]
+            },
+            {
+                "name": "greeting",
+                "target": "other",
+                "sources": [{ "source": "intent", "lead": "intent" }]
+            }
+        ],
+        "gate": { "change": "## Intent\n\nRecovered.\n\n## Scope\n\nTwo leaves." }
+    }))
+    .expect("response");
+    let session = Session::scripted(
+        "mock",
+        vec![
+            root_two_domain_split(),
+            // `auth` splits fine — the tie is deferred while `login`
+            // and `token` are open (Decision 1).
+            auth_split(),
+            leaf("greeting", "intent", "intent", "other"),
+            // `login`'s close ties against `auth` on every dimension:
+            // initial answer + MAX_REPAIRS identical repairs.
+            tie_leaf(),
+            tie_leaf(),
+            tie_leaf(),
+            leaf("token", "code", "login-flow", "app"),
+            final_answer,
+        ],
+    );
+    let (definition, wave) = mint_two_target(session.root(), "Ship the greeting.");
+    let body = author(&session, &definition, &wave).await.expect("fallback close completes");
+    let mut slices = body.slices.clone();
+    slices.sort();
+    assert_eq!(slices, ["auth", "greeting"], "{:?}", body.slices);
+
+    let layout = Layout::new(session.root());
+    let tree = Decomposition::load(&layout.decomposition_path()).expect("tree");
+    tree.check().expect("complete tree");
+    assert_eq!(tree.nodes["auth"].kind, Some(project::plan::decomposition::Kind::Leaf));
+    assert!(!tree.nodes.contains_key("login"), "subsumed child pruned");
+
+    let events = project::journal::read_union(layout).expect("events");
+    assert!(
+        events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::DomainPartitionClosed {
+                domain,
+                reason: project::journal::ClosedReason::NonReducingFallback,
+                ..
+            } if domain == "auth"
+        )),
+        "closed-domain fact recorded"
+    );
+    assert!(
+        events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::PlanReconcileCompleted { .. }
+        )),
+        "authoring completed"
+    );
+    let change = std::fs::read_to_string(layout.change_brief_path()).expect("change.md");
+    assert!(change.contains("closed as a leaf after a failed cut"), "{change}");
+    session.model().assert_exhausted();
+}
+
+/// An `auth` cut that keeps overlapping without an order: repair
+/// exhaustion on a domain that cannot close as a leaf (two targets).
+fn overlapping_auth_split() -> String {
+    serde_json::to_string(&json!({
+        "version": 1,
+        "kind": "split",
+        "assessment": quiet(),
+        "children": [
+            {
+                "id": "left",
+                "sources": [{ "source": "docs", "lead": "login-flow" }],
+                "target": "app",
+                "ownership": ["."]
+            },
+            {
+                "id": "right",
+                "sources": [{ "source": "code", "lead": "login-flow" }],
+                "target": "other",
+                "ownership": ["."]
+            }
+        ]
+    }))
+    .expect("overlap split")
+}
+
+// A domain that cannot close as a leaf parks; independent domains
+// still partition, closed leaves project into `plan.yaml`, topology
+// verbs refuse `plan-author-incomplete`, status projects
+// `partition-parked`, and `plan author` re-entry (no `--force`)
+// resumes only the parked domain and completes.
+#[tokio::test]
+async fn park_then_resume() {
+    let session = Session::scripted(
+        "mock",
+        vec![
+            // Root split: `auth` spans BOTH targets, so the fallback
+            // leaf is impossible.
+            serde_json::to_string(&json!({
+                "version": 1,
+                "kind": "split",
+                "assessment": quiet(),
+                "children": [
+                    {
+                        "id": "auth",
+                        "sources": [
+                            { "source": "docs", "lead": "login-flow" },
+                            { "source": "code", "lead": "login-flow" }
+                        ],
+                        "targets": ["app", "other"],
+                        "ownership": ["auth/**"]
+                    },
+                    {
+                        "id": "greeting",
+                        "sources": [{ "source": "intent", "lead": "intent" }],
+                        "target": "app"
+                    }
+                ]
+            }))
+            .expect("root split"),
+            // `auth`'s cut keeps overlapping: initial + MAX_REPAIRS.
+            overlapping_auth_split(),
+            overlapping_auth_split(),
+            overlapping_auth_split(),
+            // The independent sibling still closes.
+            leaf("greeting", "intent", "intent", "app"),
+            // ---- resume answers ----
+            serde_json::to_string(&json!({
+                "version": 1,
+                "kind": "split",
+                "assessment": quiet(),
+                "children": [
+                    {
+                        "id": "b-login",
+                        "sources": [{ "source": "docs", "lead": "login-flow" }],
+                        "target": "app",
+                        "ownership": ["auth/login/**"]
+                    },
+                    {
+                        "id": "b-token",
+                        "sources": [{ "source": "code", "lead": "login-flow" }],
+                        "target": "other",
+                        "ownership": ["auth/token/**"]
+                    }
+                ]
+            }))
+            .expect("resume split"),
+            leaf("b-login", "docs", "login-flow", "app"),
+            leaf("b-token", "code", "login-flow", "other"),
+            recovered_response(&[
+                ("greeting", "app", "intent", "intent"),
+                ("b-login", "app", "docs", "login-flow"),
+                ("b-token", "other", "code", "login-flow"),
+            ]),
+        ],
+    );
+    let (definition, wave) = mint_two_target(session.root(), "Ship the greeting.");
+    let err = author(&session, &definition, &wave).await.expect_err("parked");
+    assert!(code(&err).contains("plan-author-stopped"), "{err}");
+    assert!(code(&err).contains("`auth`"), "the stop names the parked domain: {err}");
+
+    let layout = Layout::new(session.root());
+    let tree = Decomposition::load(&layout.decomposition_path()).expect("partial tree persists");
+    assert!(tree.nodes["auth"].kind.is_none(), "parked domain stays open");
+    assert_eq!(tree.nodes["greeting"].kind, Some(project::plan::decomposition::Kind::Leaf));
+    let plan = Plan::load(&layout.plan_path()).expect("plan");
+    let named: Vec<&str> = plan.entries.iter().map(|entry| entry.name.as_str()).collect();
+    assert_eq!(named, ["greeting"], "closed leaves project into plan.yaml");
+    assert!(plan.decomposition_digest.is_none(), "no digest until reconcile");
+    let events = project::journal::read_union(layout).expect("events");
+    assert!(
+        events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::PlanAuthorParked { domain, .. } if domain == "auth"
+        )),
+        "park fact recorded"
+    );
+
+    // Reader guards: topology verbs refuse until authoring completes.
+    let gaps_err =
+        run::<plan::handlers::Gaps, _, _>(session.provider(), plan::handlers::GapsInput::default())
+            .await
+            .expect_err("gaps refuses on a bound-not-authored home");
+    assert!(gaps_err.to_string().contains("plan-author-incomplete"), "{gaps_err}");
+
+    // Status: parked, never drained; author is the resume path.
+    let status = project::plan::plan_status_body(&plan, layout).expect("status");
+    let status_json = serde_json::to_string(&status).expect("status json");
+    assert!(status_json.contains("partition-parked"), "{status_json}");
+    assert!(!status_json.contains("\"drained\""), "{status_json}");
+
+    // Re-entry (no --force) resumes only the parked domain.
+    let body = author(&session, &definition, &wave).await.expect("resume completes");
+    let mut slices = body.slices.clone();
+    slices.sort();
+    assert_eq!(slices, ["b-login", "b-token", "greeting"], "{:?}", body.slices);
+    let tree = Decomposition::load(&layout.decomposition_path()).expect("tree");
+    tree.check().expect("complete tree");
+    let events = project::journal::read_union(layout).expect("events");
+    assert!(
+        events.iter().any(|event| matches!(
+            &event.kind,
+            project::journal::EventKind::PlanReconcileCompleted { .. }
+        )),
+        "resume reconciles"
+    );
+    session.model().assert_exhausted();
+}
+
+// A fatal judgment failure before any cut leaves a bound stub: no
+// decomposition.yaml, status `stop author-incomplete` (never
+// `drained`), and `plan author` re-entry continues the decompose
+// without `--force`.
+#[tokio::test]
+async fn bound_stub_resumes_decompose() {
+    let mut answers = vec!["garbage".to_string(), "garbage".to_string(), "garbage".to_string()];
+    answers.extend(mock::answers::greeting_author());
+    let session = Session::scripted("mock", answers);
+    let target = seed_target(session.root(), "target-app");
+    let definition = session.root().join("definition");
+    let mut spec = Spec::degenerate("Ship the greeting.");
+    spec.targets[0].locator = target.display().to_string();
+    mint(&definition, &spec).expect("mint");
+
+    author(&session, &definition, &spec.wave).await.expect_err("unparseable is fatal");
+    let layout = Layout::new(session.root());
+    let plan = Plan::load(&layout.plan_path()).expect("bound stub survives");
+    assert!(plan.entries.is_empty());
+    assert!(!layout.decomposition_path().exists(), "no cut was ever applied");
+    let status = project::plan::plan_status_body(&plan, layout).expect("status");
+    let status_json = serde_json::to_string(&status).expect("status json");
+    assert!(status_json.contains("author-incomplete"), "{status_json}");
+    assert!(!status_json.contains("\"drained\""), "{status_json}");
+
+    let body = author(&session, &definition, &spec.wave).await.expect("re-entry decomposes");
+    assert_eq!(body.slices, vec!["greeting"]);
+    session.model().assert_exhausted();
+}
+
+// A violation that first surfaces on the complete tree routes through
+// the reopen ladder: the offending parent is re-judged once with the
+// findings inlined instead of aborting. Staged by persisting a
+// complete-but-violating tree under a bound stub and resuming.
+#[tokio::test]
+async fn final_check_reopens() {
+    use project::plan::decomposition::{BoundProfile, Node, Scope, VERSION};
+    use project::profile::Profiles as _;
+
+    let mut answers = vec!["garbage".to_string(), "garbage".to_string(), "garbage".to_string()];
+    answers.extend(mock::answers::greeting_author());
+    let session = Session::scripted("mock", answers);
+    let target = seed_target(session.root(), "target-app");
+    let definition = session.root().join("definition");
+    let mut spec = Spec::degenerate("Ship the greeting.");
+    spec.targets[0].locator = target.display().to_string();
+    mint(&definition, &spec).expect("mint");
+    author(&session, &definition, &spec.wave).await.expect_err("fatal leaves a bound stub");
+
+    // Two sibling leaves tie the reduction measure and overlap in
+    // ownership without an order — invalid only as a complete tree.
+    let layout = Layout::new(session.root());
+    let plan = Plan::load(&layout.plan_path()).expect("bound stub");
+    let pin = plan.targets["app"].model_capability_profile.as_ref().expect("pin");
+    let bound = BoundProfile::capture(session.provider().profiles().pinned(pin).expect("profile"))
+        .expect("capture");
+    let scope = Scope::new("intent", "intent");
+    let mut root = Node::split(vec!["left".to_string(), "right".to_string()]);
+    root.sources = vec![scope.clone()];
+    root.targets = vec!["app".to_string()];
+    let violating_leaf = |slice: &str| {
+        let mut node = Node::leaf("app", slice);
+        node.parent = Some("root".to_string());
+        node.sources = vec![scope.clone()];
+        node.ownership = vec!["same/**".to_string()];
+        node.acceptance = Some(format!("{slice} is one acceptance unit."));
+        node
+    };
+    let tree = Decomposition {
+        version: VERSION,
+        leads_digest: plan.leads_digest.clone().expect("leads digest"),
+        profiles: std::collections::BTreeMap::from([("app".to_string(), bound)]),
+        root: "root".to_string(),
+        nodes: std::collections::BTreeMap::from([
+            ("root".to_string(), root),
+            ("left".to_string(), violating_leaf("left")),
+            ("right".to_string(), violating_leaf("right")),
+        ]),
+    };
+    tree.check().expect_err("the crafted tree violates on purpose");
+    tree.save(&layout.decomposition_path()).expect("persist crafted tree");
+
+    let body = author(&session, &definition, &spec.wave).await.expect("reopen re-judgment");
+    assert_eq!(body.slices, vec!["greeting"]);
+    let tree = Decomposition::load(&layout.decomposition_path()).expect("tree");
+    tree.check().expect("complete tree");
+    assert!(!tree.nodes.contains_key("left"), "the violating cut is pruned");
+    session.model().assert_exhausted();
 }
 
 #[tokio::test]

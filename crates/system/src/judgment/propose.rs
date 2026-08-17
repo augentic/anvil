@@ -15,7 +15,7 @@ use crate::model::{State, Status};
 use crate::scope::Scope;
 
 /// Wire version stamped on both envelopes.
-const PROPOSAL_VERSION: u32 = 1;
+pub(crate) const PROPOSAL_VERSION: u32 = 1;
 
 /// Proposal input envelope kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]

@@ -25,8 +25,20 @@ use project::seam::{Source, Trees, Workspaces};
 use project::snapshot::SnapshotId;
 use system::handoff::{self, EvidenceScopeRef, Handoff};
 
-use super::decompose;
+use super::decompose::{self, ParkedDomain};
 use crate::judgment::propose::{self, GateContext};
+
+/// How one `plan author` invocation settled.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuthorResult {
+    /// Every domain partitioned; the leaf plan is published and
+    /// `plan.reconcile.completed` is journaled.
+    Completed(AuthorOutcome),
+    /// One or more domains parked after failed cuts: the partial tree
+    /// is persisted, closed leaves are projected into `plan.yaml`, and
+    /// no reconcile fact exists. Re-running `plan author` resumes.
+    Parked(AuthorParked),
+}
 
 /// Completed authoring: bound topology, decomposition, and leaf plan.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +56,17 @@ pub struct AuthorOutcome {
     /// Bound source keys.
     pub sources: Vec<String>,
     /// Projected slice names, in tree order.
+    pub slices: Vec<String>,
+}
+
+/// A parked authoring run: park state on disk, no reconcile fact.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorParked {
+    /// Change name.
+    pub plan: String,
+    /// Parked domains, in park order.
+    pub parked: Vec<ParkedDomain>,
+    /// Closed leaves projected into `plan.yaml`, in tree order.
     pub slices: Vec<String>,
 }
 
@@ -66,7 +89,7 @@ struct Reviewed {
 pub async fn author<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, name: &str, from: &Path, wave: &str,
     force: bool,
-) -> Result<AuthorOutcome, Error>
+) -> Result<AuthorResult, Error>
 where
     P: Resolver + Inventory + Profiles + Trees + Model + Source + Workspaces,
 {
@@ -76,7 +99,16 @@ where
     let layout = paths.layout();
     let plan_path = layout.plan_path();
     let existing = load_existing(&plan_path)?;
-    refuse_overwrite(existing.as_ref(), &reviewed, force, &plan_path)?;
+    let mode = entry_mode(layout, existing.as_ref(), &reviewed, force, name, &plan_path)?;
+    match (mode, &existing) {
+        (Mode::NoOp, Some(plan)) => {
+            return Ok(AuthorResult::Completed(noop_outcome(plan)?));
+        }
+        (Mode::Resume, Some(plan)) => {
+            return resume(provider, paths, layout, now, name, plan.clone()).await;
+        }
+        _ => {}
+    }
 
     std::fs::create_dir_all(layout.change_root())?;
     copy_imports(&from, &layout, &reviewed)?;
@@ -230,14 +262,96 @@ fn matching_review(
 async fn finish<P>(
     provider: &P, paths: &ExecutionPaths, layout: Layout<'_>, now: Timestamp, name: &str,
     discovery_digest: SnapshotId, leads_digest: SnapshotId,
-) -> Result<AuthorOutcome, Error>
+) -> Result<AuthorResult, Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
 {
     let leads = Leads::load(&layout.leads_path())?;
-    let mut plan = Plan::load(&layout.plan_path())?;
-
+    let plan = Plan::load(&layout.plan_path())?;
     let decomposed = decompose::decompose(provider, paths, now, &plan, &leads).await?;
+    let publish = Publish {
+        name: name.to_string(),
+        discovery_digest,
+        leads_digest,
+        plan,
+        leads,
+        decomposed,
+    };
+    conclude(provider, layout, now, publish).await
+}
+
+/// Continue a bound-not-reconciled authoring run from the persisted
+/// tree: no re-bind, open and parked domains re-enter the queue.
+async fn resume<P>(
+    provider: &P, paths: &ExecutionPaths, layout: Layout<'_>, now: Timestamp, name: &str,
+    plan: Plan,
+) -> Result<AuthorResult, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let missing = |field: &str| Error::Diag {
+        code: "plan-author-incomplete",
+        detail: format!(
+            "bound plan is missing `{field}`; re-run `emery plan author` with `--force`"
+        ),
+    };
+    let discovery_digest =
+        plan.discovery_digest.clone().ok_or_else(|| missing("discovery-digest"))?;
+    let leads_digest = plan.leads_digest.clone().ok_or_else(|| missing("leads-digest"))?;
+    let leads = Leads::load(&layout.leads_path())?;
+    let events = journal::read_union(layout)?;
+    let parked = pending_parks(&events);
+    let decomposed = decompose::resume(provider, paths, now, &plan, &leads, &parked).await?;
+    let publish = Publish {
+        name: name.to_string(),
+        discovery_digest,
+        leads_digest,
+        plan,
+        leads,
+        decomposed,
+    };
+    conclude(provider, layout, now, publish).await
+}
+
+/// Everything `conclude` needs to publish or park one authoring run.
+struct Publish {
+    name: String,
+    discovery_digest: SnapshotId,
+    leads_digest: SnapshotId,
+    plan: Plan,
+    leads: Leads,
+    decomposed: decompose::Decomposed,
+}
+
+async fn conclude<P>(
+    provider: &P, layout: Layout<'_>, now: Timestamp, input: Publish,
+) -> Result<AuthorResult, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let Publish {
+        name,
+        discovery_digest,
+        leads_digest,
+        mut plan,
+        leads,
+        decomposed,
+    } = input;
+    if !decomposed.parked.is_empty() {
+        // Park: closed leaves project into `plan.yaml`, the digest
+        // stays unset (verify requires a retained revision), and no
+        // reconcile fact is written. Re-running `plan author` resumes.
+        let entries = project::plan::closed_slices(&decomposed.tree)?;
+        let slices: Vec<String> = entries.iter().map(|entry| entry.name.to_string()).collect();
+        plan.leads_digest = Some(decomposed.tree.leads_digest.clone());
+        plan.entries = entries;
+        plan.save(&layout.plan_path())?;
+        return Ok(AuthorResult::Parked(AuthorParked {
+            plan: name,
+            parked: decomposed.parked,
+            slices,
+        }));
+    }
     let entries = project::plan::decomposition::slices(&decomposed.tree)?;
     let slice_names: Vec<String> = entries.iter().map(|entry| entry.name.to_string()).collect();
     decomposed.tree.save(&layout.decomposition_path())?;
@@ -276,15 +390,15 @@ where
         ),
     )?;
 
-    Ok(AuthorOutcome {
-        plan: name.to_string(),
+    Ok(AuthorResult::Completed(AuthorOutcome {
+        plan: name,
         discovery_digest,
         leads_digest,
         decomposition_digest,
         targets: plan.targets.keys().cloned().collect(),
         sources: plan.sources.keys().cloned().collect(),
         slices: slice_names,
-    })
+    }))
 }
 
 fn write_change(
@@ -357,33 +471,105 @@ fn load_existing(plan_path: &Path) -> Result<Option<Plan>, Error> {
     Ok(Some(Plan::load(plan_path)?))
 }
 
-fn refuse_overwrite(
-    existing: Option<&Plan>, reviewed: &Reviewed, force: bool, plan_path: &Path,
-) -> Result<(), Error> {
+/// How `plan author` enters over an existing (or absent) `plan.yaml`.
+enum Mode {
+    /// No plan, or `--force` over a reconciled plan: full bind + decompose.
+    Fresh,
+    /// Same handoff, already reconciled, no `--force`: read-only re-entry.
+    NoOp,
+    /// Same handoff, bound but never reconciled: skip re-bind and
+    /// continue the decomposition from the persisted tree.
+    Resume,
+}
+
+fn entry_mode(
+    layout: Layout<'_>, existing: Option<&Plan>, reviewed: &Reviewed, force: bool, name: &str,
+    plan_path: &Path,
+) -> Result<Mode, Error> {
     let Some(existing) = existing else {
-        return Ok(());
+        return Ok(Mode::Fresh);
     };
-    if !force {
-        return Err(Error::Diag {
-            code: "plan-already-exists",
-            detail: format!(
-                "refusing to overwrite existing plan at {}; pass --force to replace it",
-                plan_path.display()
-            ),
-        });
-    }
     if let Some(definition) = &existing.definition
         && definition.handoff_digest != reviewed.digest
     {
         return Err(Error::Diag {
             code: "plan-author-handoff-changed",
-            detail: " --force rebinds the same reviewed handoff; a changed wave needs a new \
+            detail: "a bound plan rebinds the same reviewed handoff; a changed wave needs a new \
                      handoff and review fact"
-                .trim()
                 .into(),
         });
     }
-    Ok(())
+    if existing.name.as_str() != name {
+        if force {
+            return Ok(Mode::Fresh);
+        }
+        return Err(Error::Diag {
+            code: "plan-already-exists",
+            detail: format!(
+                "existing plan `{}` at {} does not match `{name}`; pass --force to replace it",
+                existing.name,
+                plan_path.display()
+            ),
+        });
+    }
+    if force {
+        return Ok(Mode::Fresh);
+    }
+    if reconciled(layout, existing)? {
+        return Ok(Mode::NoOp);
+    }
+    Ok(Mode::Resume)
+}
+
+/// True when a `plan.reconcile.completed` fact names this plan.
+fn reconciled(layout: Layout<'_>, plan: &Plan) -> Result<bool, Error> {
+    let events = journal::read_union(layout)?;
+    Ok(events.iter().any(|event| {
+        matches!(
+            &event.kind,
+            EventKind::PlanReconcileCompleted { plan_name, .. } if plan_name == &plan.name
+        )
+    }))
+}
+
+/// Parked domains not yet resolved: park facts appended after the
+/// latest reconcile, deduplicated in park order.
+fn pending_parks(events: &[Event]) -> Vec<String> {
+    let mut parks: Vec<String> = Vec::new();
+    for event in events {
+        match &event.kind {
+            EventKind::PlanReconcileCompleted { .. } => parks.clear(),
+            EventKind::PlanAuthorParked { domain, .. } if !parks.contains(domain) => {
+                parks.push(domain.clone());
+            }
+            _ => {}
+        }
+    }
+    parks
+}
+
+/// Read-only re-entry on a reconciled plan: project the outcome from
+/// the published plan without touching any artifact.
+fn noop_outcome(plan: &Plan) -> Result<AuthorOutcome, Error> {
+    let missing = |field: &str| Error::Diag {
+        code: "plan-author-incomplete",
+        detail: format!("reconciled plan `{}` is missing `{field}`", plan.name),
+    };
+    Ok(AuthorOutcome {
+        plan: plan.name.to_string(),
+        discovery_digest: plan
+            .discovery_digest
+            .clone()
+            .ok_or_else(|| missing("discovery-digest"))?,
+        leads_digest: plan.leads_digest.clone().ok_or_else(|| missing("leads-digest"))?,
+        decomposition_digest: plan
+            .decomposition_digest
+            .clone()
+            .ok_or_else(|| missing("decomposition-digest"))?,
+        targets: plan.targets.keys().cloned().collect(),
+        sources: plan.sources.keys().cloned().collect(),
+        slices: plan.entries.iter().map(|entry| entry.name.to_string()).collect(),
+    })
 }
 
 fn copy_imports(from: &Path, layout: &Layout<'_>, reviewed: &Reviewed) -> Result<(), Error> {

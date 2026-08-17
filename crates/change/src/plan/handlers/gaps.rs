@@ -35,6 +35,7 @@ impl<P: Anchor> Operation<P> for Gaps {
         let cx = Ctx::load(context.provider)?;
         let plan_path = require_file(&cx)?;
         let plan = Plan::load(&plan_path)?;
+        project::plan::ensure_authored(cx.layout(), &plan)?;
         let events = collect_events(cx.layout())?;
         let body = plan_gaps_body(&plan, cx.layout(), &events)?;
         Ok(body)

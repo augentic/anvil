@@ -1,14 +1,14 @@
 # RFC-98: Behavioural Conservation
 
-> Status: Draft — conservation-oracle track following [RFC-97](rfc-97-native-verification.md)
+> Status: Draft — conservation-oracle track following [RFC-97](../rfc-97-native-verification.md)
 >
 > Owns: the conservation corpus as a protected oracle, the `conserve` verification profile, replay verdicts and their normalization, declared-divergence reconciliation against the slice requirement set, per-requirement conservation coverage, and the conservation floor as an execution-policy input.
 >
-> Depends on [RFC-97](rfc-97-native-verification.md) for host execution, protected oracles, and assurance, and on the `captures` source adapter for the recorded corpus. Benefits from [RFC-94](rfc-94-target-readiness.md) `behavioural-observability`.
+> Depends on [RFC-97](../rfc-97-native-verification.md) for host execution, protected oracles, and assurance, and on the `captures` source adapter for the recorded corpus. Benefits from [RFC-94](../rfc-94-target-readiness.md) `behavioural-observability`.
 >
 > Patch ownership: this RFC extends RFC-97 D2's closed profile-name set with `conserve` and RFC-97 D4's protected-oracle contract with corpus admission. Those additions land as the RFC-98 implementation rather than reopening RFC-97's phase-machine ownership.
 >
-> Evidence posture: [platform evaluation](platform.md#evidence-and-iteration-posture).
+> Evidence posture: [platform evaluation](../platform.md#evidence-and-iteration-posture).
 
 ## Intent
 
@@ -18,7 +18,7 @@ Emery recovers a specification from a running legacy system. The `captures` sour
 
 At build time RFC-97's `test` profile over candidate-authored tests reports `execution-assurance: host-attested` but `oracle-assurance: candidate`, plus a model review. For a modernization engagement that is the wrong question answered well. "Does the new code pass the tests written alongside it" is weak evidence, because the same process produced both. The load-bearing question is whether the new system reproduces the recorded behaviour of the old one.
 
-Conservation is the stronger form of a pre-implementation validation contract for legacy work: the contract is the retained `captures` corpus, and the validators are host-driven replays under RFC-97's `conserve` profile — not fresh agents judging a milestone in chat context ([platform.md § Design principles](platform.md#design-principles-at-the-call-site)).
+Conservation is the stronger form of a pre-implementation validation contract for legacy work: the contract is the retained `captures` corpus, and the validators are host-driven replays under RFC-97's `conserve` profile — not fresh agents judging a milestone in chat context ([platform.md § Design principles](../platform.md#design-principles-at-the-call-site)).
 
 The capture corpus is the only input in the change that is neither model-authored nor model-writable: it came off the running legacy system before any slice existed. That makes it the natural protected oracle, and this RFC turns it into one.
 

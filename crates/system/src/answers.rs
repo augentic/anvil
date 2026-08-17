@@ -7,10 +7,11 @@ use serde_json::Value;
 use crate::judgment::correlate::CorrelationResponse;
 use crate::judgment::propose::ProposalResponse;
 
-/// The correlation answer schema.
+/// The correlation answer schema, with `version` pinned to the wire
+/// constant.
 #[must_use]
 pub fn correlation() -> Value {
-    project::answers::root_schema::<CorrelationResponse>(
+    let mut schema = project::answers::root_schema::<CorrelationResponse>(
         "correlation.schema.json",
         "Emery correlation answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
@@ -18,13 +19,16 @@ pub fn correlation() -> Value {
          correlation judgment: the `kind: response` envelope carrying the composed `as-is` \
          element and relationship set. The deterministic tail re-parses the answer, validates \
          the state, and closes cited claims against the persisted Evidence corpus.",
-    )
+    );
+    project::answers::set_version(&mut schema, crate::judgment::correlate::CORRELATION_VERSION);
+    schema
 }
 
-/// The initial-plan proposal answer schema.
+/// The initial-plan proposal answer schema, with `version` pinned to
+/// the wire constant.
 #[must_use]
 pub fn proposal() -> Value {
-    project::answers::root_schema::<ProposalResponse>(
+    let mut schema = project::answers::root_schema::<ProposalResponse>(
         "proposal.schema.json",
         "Emery system-plan proposal answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
@@ -34,5 +38,7 @@ pub fn proposal() -> Value {
          exactly one migration wave. The deterministic tail re-parses the answer, validates \
          every proposed state, and closes claims, evidence scopes, and decision references \
          against the live definition home.",
-    )
+    );
+    project::answers::set_version(&mut schema, crate::judgment::propose::PROPOSAL_VERSION);
+    schema
 }

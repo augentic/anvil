@@ -455,6 +455,34 @@ pub enum EventKind {
         /// Slice names, in the agent's `slices[]` response order.
         slice_names: Vec<SliceName>,
     },
+    /// `plan author` closed a failed-cut domain as a terminal leaf
+    /// through the deterministic fallback: the partition judgment
+    /// exhausted its repairs, the domain satisfied leaf shape, and the
+    /// synthetic leaf passed the same slice-split threshold and
+    /// boundary review a model-emitted leaf gets.
+    #[serde(rename = "domain.partition.closed", rename_all = "kebab-case")]
+    DomainPartitionClosed {
+        /// Closed decomposition node id.
+        domain: String,
+        /// Which fallback closed it.
+        reason: ClosedReason,
+        /// The blocking finding details the failed cut carried.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        findings: Vec<String>,
+    },
+    /// `plan author` parked one domain after a failed cut it could not
+    /// close as a leaf. The persisted partial `decomposition.yaml` plus
+    /// this fact are the park state — no proposal exists; the resume
+    /// path is `emery plan author` re-entry. Distinct from
+    /// [`Self::SliceRefinementParked`]: the refine park names a
+    /// proposal; the author park has none.
+    #[serde(rename = "plan.author.parked", rename_all = "kebab-case")]
+    PlanAuthorParked {
+        /// Parked decomposition node id.
+        domain: String,
+        /// The failed-cut finding detail.
+        reason: String,
+    },
     /// `emery plan execute` acknowledged a sticky
     /// `merge-postflight-failed` stop and is continuing the queue.
     /// Clears the plan-wide postflight debt projected by `plan status`
@@ -653,6 +681,17 @@ pub enum EventKind {
         /// `handoffs/<digest>.yaml` projection.
         handoff_digest: SnapshotId,
     },
+}
+
+/// Closed reason on [`EventKind::DomainPartitionClosed`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ClosedReason {
+    /// The failed cut was a reduction tie on a closed child.
+    NonReducingFallback,
+    /// The partition judgment exhausted its repair budget on another
+    /// failed-cut rule.
+    RepairExhausted,
 }
 
 /// Closed reason on [`EventKind::SliceRefinementParked`].

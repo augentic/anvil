@@ -8,7 +8,7 @@ Do not put orchestration, synthesis, validation, or code-generation prose in ski
 
 | Plugin | Directory | Prefix | Role |
 | ------ | --------- | ------ | ---- |
-| Emery | `plugins/emery/` | `/emery:` | Workflow wrappers: `init`, `plan`, `refine`, `execute`, `status`, `finalize`, plus `/emery:system-*` (`system-survey`, `system-plan`, `system-review`) |
+| Emery | `plugins/emery/` | `/emery:` | Workflow wrappers: `init`, `plan`, `correct`, `refine`, `execute`, `status`, `finalize`, plus `/emery:system-*` (`system-survey`, `system-plan`, `system-review`) |
 
 Layout:
 
@@ -36,7 +36,7 @@ cursor-agent --plugin-dir plugins/emery
 
 That loads `plugins/emery/` instead of the marketplace copy. Omit it to use the published marketplace plugin. Then run `/emery:init`, `/emery:plan`, and the other skills in chat as usual.
 
-Skills need a real binary on `PATH` (`cargo make lab` is the native lab shim, not this):
+Skills need a real binary on `PATH` (`cargo make eval` is the native lab shim, not this):
 
 ```bash
 cargo install --path . --locked

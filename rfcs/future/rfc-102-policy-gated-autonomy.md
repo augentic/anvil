@@ -1,6 +1,6 @@
 # RFC-102: Policy-Gated Autonomy
 
-> Status: **Parked.** Reopen only after RFC-99 Phase B, RFC-97 Phase B, RFC-103 outcome promotion, RFC-94 target execution readiness, and RFC-93 operator grants have landed **and** a client engagement requires unattended accepted-state mutation. Owns promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](rfc-95-publication-sets.md).
+> Status: **Parked.** Reopen only after RFC-99 Phase B, RFC-97 Phase B, RFC-103 outcome promotion, RFC-94 target execution readiness, and RFC-93 operator grants have landed **and** a client engagement requires unattended accepted-state mutation. Owns promoted autonomy policies, exact commit admission, bounded structural recovery, and stop conditions. Publication remains operator-owned under [RFC-95](../archive/rfc-95-publication-sets.md).
 >
 > Patch ownership: this RFC amends RFC-88 D7 / D8 after RFC-88 lands by adding policy-gated commit authorization beside closed `plan execute`; it does not revise RFC-88. It extends RFC-95's worktree-materialize gate without granting a Git commit or forge publication.
 
@@ -280,7 +280,7 @@ RFC-95 forge publication remains a separate operator act. This RFC may authorize
 - **Treat unattended invocation as blanket approval.** The policy constrains scope; exact member and commit admissions constrain artifacts and results.
 - **Auto-waive gaps.** Missing or conflicting intent is not a repairable implementation defect.
 - **Let a model choose recovery actions.** Models return typed judgments and reports; the engine owns the ladder and counters.
-- **Invent free-form fix work from validation gaps in model context.** Under this RFC the only allowed forms of “fix work invented from findings” are the engine-owned recovery ladder and standing amendments over inert, digest-bound proposals — never mid-run conversational re-plan that widens scope, resets budgets, or invents topology outside those predicates. See [platform.md § Design principles](platform.md#design-principles-at-the-call-site).
+- **Invent free-form fix work from validation gaps in model context.** Under this RFC the only allowed forms of “fix work invented from findings” are the engine-owned recovery ladder and standing amendments over inert, digest-bound proposals — never mid-run conversational re-plan that widens scope, resets budgets, or invents topology outside those predicates. See [platform.md § Design principles](../platform.md#design-principles-at-the-call-site).
 - **Apply every valid amendment automatically.** Structural validity does not imply policy authority.
 - **Use historical success as current assurance.** Every commit proves its own exact protected and host checks.
 - **Publish to the forge automatically.** Accepted local state and external publication retain separate authority and recovery domains.

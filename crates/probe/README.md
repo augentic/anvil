@@ -3,8 +3,8 @@
 The lab-only `probe` library: the typed eval case runner, deterministic
 grading, and telemetry over the native host. The composition example that
 drives it is [`examples/eval/`](../../examples/eval/README.md)
-(`cargo make eval` / `cargo make lab`). Outputs are graded by
-deterministic validators — not a model.
+(`cargo make eval`). Outputs are graded by deterministic validators — not
+a model.
 
 ## Quick start
 
@@ -18,31 +18,36 @@ or set `CURSOR_API_KEY` in `.env` at the repository root.
 
 ```bash
 cargo make eval                       # list the cases
-cargo make eval auth --restart        # run the engine's auth workflow case
-cargo make eval auth --restart --until plan   # stop after plan author
+cargo make eval auth                  # run the engine's auth workflow case
+cargo make eval auth --until plan     # stop after plan author
+cargo make eval auth --restart        # replace the sandbox, rerun from fresh state
 ```
 
 Each case keeps one stable retained sandbox at `sandbox/<case>/` (the
 composition-owned root beside the wasm example's `sandbox/wasm/`), on
-success and failure alike. `--restart` is the only runner-owned reset: it
-replaces that case's sandbox before running. An existing sandbox without
-`--restart` refuses before mutation — the runner never infers workflow
-progress from an existing tree. Continue or debug a retained sandbox
-explicitly through command passthrough:
+success and failure alike. A failed or stopped **workflow** run is
+continued by running the same command again: an existing sandbox holding
+an authored plan resumes at `plan refine` (the engine's own re-run
+contract) and still reaches the graded tail. `--restart` is the only
+runner-owned reset: it replaces that case's sandbox before running.
+Build sandboxes and author-incomplete workflow sandboxes refuse without
+`--restart` (a single build phase has no resume semantics). Inspect or
+debug a retained sandbox through command passthrough — a leading case id
+binds that case's sandbox-local stores:
 
 ```bash
-cargo make lab -- --project-dir sandbox/auth plan execute
+cargo make eval auth plan status
 ```
 
 Driver-side knobs (read by `probe::client`):
 
 | Knob                      | Effect                                                                                                          |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `--debug` / `--quiet`     | Reserved host log flags, peeled anywhere in argv before dispatch (mutually exclusive) — the same contract as the shipped `emery` binary. `--quiet` turns tracing off; `--debug` selects `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins over `RUST_LOG`. |
+| `--debug` / `--quiet`     | Reserved host log flags, peeled anywhere in argv before dispatch (mutually exclusive) — the same contract as the shipped `emery` binary. `--quiet` turns tracing off; `--debug` selects `info,omnia_cursor=debug,omnia_wasi_http=debug`. A flag wins over `RUST_LOG`; a case run without a flag or `RUST_LOG` defaults to the same debug preset, and flagless passthrough defaults to `info`. |
 | `CURSOR_MODEL=<model-id>` | Default model when a request leaves `model` unset; blank/unset lets `cursor-agent` choose. Read by `omnia_cursor::ConnectOptions`. |
 | `CURSOR_TIMEOUT_SECS=<u64>` | Per-spawn `cursor-agent` wall-clock bound (seconds), read by `omnia_cursor::ConnectOptions`. Unset → backend default 600. `cargo make eval` sets `300`. |
-| `RUST_LOG=<filter>`       | The env escape hatch when no flag is passed. Example: `info,omnia_cursor=debug`. Flagless with `RUST_LOG` unset defaults to `info`. |
-| `EVAL_LOG=<path>`         | Log-file override. When unset, a named eval case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
+| `RUST_LOG=<filter>`       | The env escape hatch when no flag is passed. Example: `info,omnia_cursor=debug`. Beats the case runner's flagless debug preset. |
+| `EVAL_LOG=<path>`         | Log-file override. When unset, a case run naming a case logs to `<sandbox>/logs/<case>/eval-<stamp>.log` (announced at startup) and passthrough commands log to console only. The file receives an ANSI-free copy of the console output under the same filter; missing parent directories are created. |
 
 Console tracing goes to stderr; stdout stays the semantic command
 output.

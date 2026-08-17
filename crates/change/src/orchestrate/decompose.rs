@@ -1,6 +1,9 @@
 //! Engine-owned decomposition: one bounded judgment per open domain.
+//! The author path persists after every apply and disposes failed cuts
+//! (close-as-leaf or park); the candidate path stays fail-fast.
 
 use std::collections::{BTreeMap, VecDeque};
+use std::sync::Mutex;
 
 use artifacts::leads::Leads;
 use error::Error;
@@ -8,11 +11,12 @@ use jiff::Timestamp;
 use omnia_guest::Model;
 use project::adapter::Resolver;
 use project::handler::ExecutionPaths;
+use project::journal::{self, ClosedReason, Event, EventKind};
 use project::name::is_kebab;
 use project::plan::Plan;
 use project::plan::decomposition::{
-    BoundProfile, Child, Decomposition, Kind, MAX_JUDGMENTS, Node, PartitionKind,
-    PartitionResponse, ReviewVerdict, Scope, VERSION,
+    BoundProfile, Child, Decomposition, Kind, MAX_JUDGMENTS, Node, PARTITION_VERSION,
+    PartitionKind, PartitionResponse, ReviewVerdict, Scope, VERSION,
 };
 use project::pool;
 use project::profile::{Gate, Profiles};
@@ -22,21 +26,44 @@ use serde_json::json;
 use crate::judgment::{partition, review};
 use crate::orchestrate::survey::{focused_leads, survey};
 
+/// One domain parked by a failed-cut disposition.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParkedDomain {
+    /// Decomposition node id.
+    pub domain: String,
+    /// The failed-cut finding detail.
+    pub reason: String,
+}
+
 /// Result of a completed decomposition loop.
 #[derive(Debug, Clone)]
 pub struct Decomposed {
-    /// Validated hierarchy.
+    /// Validated hierarchy (complete when [`Self::parked`] is empty,
+    /// partial otherwise).
     pub tree: Decomposition,
     /// Close-with-rationale and estimate-caveat lines for `change.md`.
     pub caveats: Vec<String>,
+    /// Domains parked by failed-cut dispositions, in park order.
+    /// Always empty on the candidate (`!persist`) path.
+    pub parked: Vec<ParkedDomain>,
+}
+
+/// Live loop state: the tree under construction plus the open-domain
+/// queue and the disposition ledger.
+struct State {
+    tree: Decomposition,
+    queue: VecDeque<String>,
+    caveats: Vec<String>,
+    parked: Vec<ParkedDomain>,
+    judgments: usize,
 }
 
 /// Recursively partition the bound catalog into a complete tree.
 ///
 /// # Errors
 ///
-/// Budget exhaustion, unready leaves, definition-revision stops,
-/// invalid responses after repair, and tree-validation failures.
+/// Budget exhaustion, definition-revision stops, invalid responses
+/// after repair on the candidate path, and tree-validation failures.
 pub async fn decompose<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, leads: &Leads,
 ) -> Result<Decomposed, Error>
@@ -47,6 +74,56 @@ where
     let tree = seed(plan, &catalog, provider.profiles())?;
     let queue = VecDeque::from([tree.root.clone()]);
     run(provider, paths, now, plan, &mut catalog, tree, queue, true).await
+}
+
+/// Resume authoring over a persisted partial tree: rebuild the queue
+/// from open domains (`kind` unset) plus `parked` domains named by
+/// park facts, then continue the drain.
+///
+/// # Errors
+///
+/// Load/parse failures and the same loop failures as [`decompose`].
+pub async fn resume<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, leads: &Leads,
+    parked: &[String],
+) -> Result<Decomposed, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let mut catalog = leads.clone();
+    let path = paths.layout().decomposition_path();
+    let (tree, queue) = if let Some(mut tree) = Decomposition::load_opt(&path)? {
+        let mut queue = open_domains(&tree);
+        // A final-check park names a closed node — reopen it so the
+        // resumed drain re-judges that cut.
+        for domain in parked {
+            if tree.nodes.get(domain).is_some_and(|node| node.kind.is_some()) {
+                reopen_node(&mut tree, domain, &catalog)?;
+                if !queue.contains(domain) {
+                    queue.push_back(domain.clone());
+                }
+            }
+        }
+        (tree, queue)
+    } else {
+        let tree = seed(plan, &catalog, provider.profiles())?;
+        let queue = VecDeque::from([tree.root.clone()]);
+        (tree, queue)
+    };
+    run(provider, paths, now, plan, &mut catalog, tree, queue, true).await
+}
+
+/// Open domains (no cut yet), shallowest first, id-ordered within a
+/// depth — a deterministic resume queue.
+fn open_domains(tree: &Decomposition) -> VecDeque<String> {
+    let mut open: Vec<String> = tree
+        .nodes
+        .iter()
+        .filter(|(_, node)| node.kind.is_none())
+        .map(|(id, _)| id.clone())
+        .collect();
+    open.sort_by_key(|id| (tree.depth(id).unwrap_or(usize::MAX), id.clone()));
+    open.into()
 }
 
 /// Re-decompose the nearest domain of `leaf` against `catalog` without
@@ -76,43 +153,122 @@ where
 )]
 async fn run<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
-    mut tree: Decomposition, mut queue: VecDeque<String>, persist: bool,
+    tree: Decomposition, queue: VecDeque<String>, persist: bool,
 ) -> Result<Decomposed, Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
 {
-    let mut judgments = 0_usize;
-    let mut caveats = Vec::new();
+    let mut state = State {
+        tree,
+        queue,
+        caveats: Vec::new(),
+        parked: Vec::new(),
+        judgments: 0,
+    };
+    // Final-check findings inlined into the one reopen re-judgment.
+    let mut notes: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut final_rejudged = false;
+
+    loop {
+        drain(provider, paths, now, plan, catalog, &mut state, persist, &notes).await?;
+        if !state.parked.is_empty() {
+            // A parked domain leaves the tree partial by design — the
+            // caller publishes closed leaves and stops for the operator.
+            return Ok(done(state));
+        }
+        match state.tree.check() {
+            Ok(()) => return Ok(done(state)),
+            Err(err) if !persist => return Err(err),
+            Err(err) => {
+                // With deferral a violation can first surface on the
+                // complete tree: reopen the offending parent, re-judge
+                // once with findings inlined, else park — never abort.
+                let findings = project::plan::decomposition::findings(&state.tree);
+                let offender = offending_domain(&state.tree, &findings);
+                if final_rejudged {
+                    park(paths, now, &mut state, &offender, err.to_string())?;
+                    return Ok(done(state));
+                }
+                final_rejudged = true;
+                notes.insert(
+                    offender.clone(),
+                    findings.iter().map(|item| item.impact.clone()).collect(),
+                );
+                reopen_node(&mut state.tree, &offender, catalog)?;
+                save_tree(paths, &state.tree)?;
+                state.queue.push_back(offender);
+            }
+        }
+    }
+}
+
+fn done(state: State) -> Decomposed {
+    Decomposed {
+        tree: state.tree,
+        caveats: state.caveats,
+        parked: state.parked,
+    }
+}
+
+/// The cut to redo when the complete tree fails validation: the parent
+/// of the first finding's node (the finding names the violating child
+/// or leaf), else the root.
+fn offending_domain(tree: &Decomposition, findings: &[diagnostics::Diagnostic]) -> String {
+    findings
+        .first()
+        .and_then(|item| item.slice.as_deref())
+        .and_then(|id| tree.nodes.get(id))
+        .and_then(|node| node.parent.clone())
+        .unwrap_or_else(|| tree.root.clone())
+}
+
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the round driver carries the live loop state and persist mode"
+)]
+async fn drain<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
+    state: &mut State, persist: bool, notes: &BTreeMap<String, Vec<String>>,
+) -> Result<(), Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
     let claims = pool::Claims::default();
 
     // Sibling domains own distinct subtrees, so their partition
     // judgments run concurrently in rounds (RFC-96 D5); responses join
     // and apply in queue order — never completion order.
-    while !queue.is_empty() {
-        let remaining = MAX_JUDGMENTS.saturating_sub(judgments);
+    while !state.queue.is_empty() {
+        let remaining = MAX_JUDGMENTS.saturating_sub(state.judgments);
         if remaining == 0 {
             return Err(budget_exhausted());
         }
-        let take = queue.len().min(remaining);
-        let round: Vec<String> = queue.drain(..take).collect();
-        let requests: Vec<serde_json::Value> = round
-            .iter()
-            .enumerate()
-            .map(|(offset, id)| partition_request(&tree, id, catalog, plan, judgments + offset + 1))
-            .collect::<Result<_, _>>()?;
-        judgments += round.len();
+        let take = state.queue.len().min(remaining);
+        let round: Vec<String> = state.queue.drain(..take).collect();
+        let requests = round_requests(state, catalog, plan, &round, notes)?;
+        state.judgments += round.len();
 
+        // Each job records its last parsed answer so a failed cut can
+        // still gate the deterministic close-as-leaf fallback on the
+        // answer's assessment.
+        let last_answers: Vec<Mutex<Option<PartitionResponse>>> =
+            round.iter().map(|_| Mutex::new(None)).collect();
+        let tree = &state.tree;
         let jobs: Vec<pool::Job<'_, PartitionResponse, Error>> = round
             .iter()
             .zip(&requests)
-            .map(|(id, request)| pool::Job {
+            .zip(&last_answers)
+            .map(|((id, request), slot)| pool::Job {
                 claim: pool::Claim {
                     item: id.clone(),
                     operation: "partition".to_string(),
                     attempt: 1,
                 },
                 budget: pool::budget::JUDGMENT,
-                future: Box::pin(partition::partition(provider, request, |answer| {
+                future: Box::pin(partition::partition(provider, request, move |answer| {
+                    if let Ok(mut last) = slot.lock() {
+                        *last = Some(answer.clone());
+                    }
                     check_targets(plan, answer)?;
                     let mut trial = tree.clone();
                     apply(&mut trial, id, answer)?;
@@ -122,41 +278,314 @@ where
             .collect();
         let outcomes = pool::run(pool::cap(), &claims, pool::OnFailure::Drain, jobs).await;
 
-        for (id, outcome) in round.iter().zip(outcomes) {
-            let response = settle_partition(outcome, id)?;
+        for ((id, outcome), slot) in round.iter().zip(outcomes).zip(&last_answers) {
+            // A sibling's disposition may have closed or pruned this
+            // domain (parent fallback subsumes its children).
+            if state.tree.nodes.get(id.as_str()).is_none_or(|node| node.kind.is_some()) {
+                continue;
+            }
+            let response = match settle_partition(outcome, id) {
+                Ok(response) => response,
+                Err(err) if persist => {
+                    // A never-run sibling is not a failed cut: the
+                    // domain stays open in the persisted tree — park
+                    // it so re-entry resumes it instead of aborting.
+                    if never_ran(&err) {
+                        park(paths, now, state, id, err.to_string())?;
+                        continue;
+                    }
+                    let last = slot.lock().ok().and_then(|mut slot| slot.take());
+                    dispose(provider, paths, now, plan, catalog, state, id, err, last).await?;
+                    continue;
+                }
+                Err(err) => return Err(err),
+            };
             check_targets(plan, &response)?;
+            // Join-order re-validation: siblings validated against the
+            // round-start clone, so an earlier join can invalidate this
+            // one. Not a model error — route the disposition ladder.
+            let mut trial = state.tree.clone();
+            if let Err(err) = apply(&mut trial, id, &response).and_then(|()| check_progress(&trial))
+            {
+                if persist {
+                    dispose(provider, paths, now, plan, catalog, state, id, err, Some(response))
+                        .await?;
+                    continue;
+                }
+                return Err(err);
+            }
             match response.kind {
                 PartitionKind::Split => {
                     let children: Vec<String> =
                         response.children.iter().map(|child| child.id.clone()).collect();
-                    apply(&mut tree, id, &response)?;
+                    apply(&mut state.tree, id, &response)?;
+                    if persist {
+                        save_tree(paths, &state.tree)?;
+                    }
                     for child in children {
-                        queue.push_back(child);
+                        state.queue.push_back(child);
                     }
                 }
                 PartitionKind::Leaf => {
-                    close_or_review(
-                        provider,
-                        paths,
-                        now,
-                        plan,
-                        catalog,
-                        persist,
-                        &mut tree,
-                        &mut queue,
-                        &mut caveats,
-                        &mut judgments,
-                        id,
-                        &response,
+                    match close_or_review(
+                        provider, paths, now, plan, catalog, persist, state, id, &response,
                     )
-                    .await?;
+                    .await
+                    {
+                        Ok(Settled::Closed) if persist => save_tree(paths, &state.tree)?,
+                        Ok(_) => {}
+                        Err(err)
+                            if persist && err.variant_str().as_ref() == "plan-author-unready" =>
+                        {
+                            park(paths, now, state, id, err.to_string())?;
+                        }
+                        Err(err) => return Err(err),
+                    }
                 }
             }
         }
     }
+    Ok(())
+}
 
-    tree.check()?;
-    Ok(Decomposed { tree, caveats })
+/// One partition request per round member, numbered in queue order.
+fn round_requests(
+    state: &State, catalog: &Leads, plan: &Plan, round: &[String],
+    notes: &BTreeMap<String, Vec<String>>,
+) -> Result<Vec<serde_json::Value>, Error> {
+    round
+        .iter()
+        .enumerate()
+        .map(|(offset, id)| {
+            partition_request(&state.tree, id, catalog, plan, state.judgments + offset + 1, notes)
+        })
+        .collect()
+}
+
+/// Dispose one failed cut after the repair budget (author path only):
+/// close the domain as a leaf through the profile gate when it
+/// satisfies leaf shape, else park that domain and keep draining.
+/// Fatal classes (definition revision, target escape, unparseable
+/// envelope, …) propagate unchanged.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the disposition ladder shares the drain's loop state"
+)]
+async fn dispose<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
+    state: &mut State, id: &str, err: Error, last: Option<PartitionResponse>,
+) -> Result<(), Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let Some(code) = failed_cut_code(&err) else {
+        return Err(err);
+    };
+    let reason = if code == "decomposition-non-reducing" {
+        ClosedReason::NonReducingFallback
+    } else {
+        ClosedReason::RepairExhausted
+    };
+    let detail = err.to_string();
+
+    if let Some(response) = fallback_leaf(&state.tree, id, last.as_ref()) {
+        let mut trial = state.tree.clone();
+        let fits = apply(&mut trial, id, &response).and_then(|()| check_progress(&trial)).is_ok();
+        if fits {
+            match close_or_review(provider, paths, now, plan, catalog, true, state, id, &response)
+                .await
+            {
+                Ok(Settled::Closed) => {
+                    journal::append_one(
+                        paths.layout(),
+                        &Event::new(
+                            now,
+                            EventKind::DomainPartitionClosed {
+                                domain: id.to_string(),
+                                reason,
+                                findings: vec![detail.clone()],
+                            },
+                        ),
+                    )?;
+                    state
+                        .caveats
+                        .push(format!("`{id}` closed as a leaf after a failed cut: {detail}"));
+                    save_tree(paths, &state.tree)?;
+                    return Ok(());
+                }
+                // The review widened the catalog and requeued the
+                // domain — a fresh judgment gets the new detail.
+                Ok(Settled::Requeued) => return Ok(()),
+                Err(gate) if gate.variant_str().as_ref() == "plan-author-unready" => {}
+                Err(gate) => return Err(gate),
+            }
+        }
+    }
+    if reason == ClosedReason::NonReducingFallback
+        && parent_fallback(provider, paths, now, plan, catalog, state, id, last.as_ref(), &detail)
+            .await?
+    {
+        return Ok(());
+    }
+    park(paths, now, state, id, detail)
+}
+
+/// A non-reducing tie against the parent means the parent's cut cannot
+/// reduce — the parent's whole scope is one slice. Prune the cut and
+/// close the parent as a leaf through the same profile gate. Returns
+/// `true` when the disposition settled (closed, requeued, or parked at
+/// the parent).
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the disposition ladder shares the drain's loop state"
+)]
+async fn parent_fallback<P>(
+    provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
+    state: &mut State, id: &str, last: Option<&PartitionResponse>, detail: &str,
+) -> Result<bool, Error>
+where
+    P: Model + Profiles + Resolver + Source + Workspaces,
+{
+    let Some(parent) = state.tree.nodes.get(id).and_then(|node| node.parent.clone()) else {
+        return Ok(false);
+    };
+    // Build the candidate before reopening: the closed split node still
+    // carries the ownership and sources the leaf needs.
+    let Some(response) = fallback_leaf(&state.tree, &parent, last) else {
+        return Ok(false);
+    };
+    let mut trial = state.tree.clone();
+    reopen_node(&mut trial, &parent, catalog)?;
+    let fits = apply(&mut trial, &parent, &response).and_then(|()| check_progress(&trial)).is_ok();
+    if !fits {
+        return Ok(false);
+    }
+    reopen_node(&mut state.tree, &parent, catalog)?;
+    // Subsumed children may still sit in the queue.
+    state
+        .queue
+        .retain(|queued| state.tree.nodes.get(queued).is_some_and(|node| node.kind.is_none()));
+    match close_or_review(provider, paths, now, plan, catalog, true, state, &parent, &response)
+        .await
+    {
+        Ok(Settled::Closed) => {
+            journal::append_one(
+                paths.layout(),
+                &Event::new(
+                    now,
+                    EventKind::DomainPartitionClosed {
+                        domain: parent.clone(),
+                        reason: ClosedReason::NonReducingFallback,
+                        findings: vec![detail.to_string()],
+                    },
+                ),
+            )?;
+            state.caveats.push(format!(
+                "`{parent}` closed as a leaf after a failed cut of `{id}`: {detail}"
+            ));
+            save_tree(paths, &state.tree)?;
+            Ok(true)
+        }
+        Ok(Settled::Requeued) => Ok(true),
+        Err(gate) if gate.variant_str().as_ref() == "plan-author-unready" => {
+            park(paths, now, state, &parent, detail.to_string())?;
+            Ok(true)
+        }
+        Err(gate) => Err(gate),
+    }
+}
+
+/// A partition that never produced a judgment: skipped after a
+/// sibling failure or dropped on its inactivity budget.
+fn never_ran(err: &Error) -> bool {
+    matches!(
+        err,
+        Error::Diag { code, .. }
+            if *code == "plan-author-partition-cancelled"
+                || *code == "plan-author-partition-timeout"
+    )
+}
+
+/// Closed failed-cut class: the cut is illegal but the domain is
+/// recoverable. Everything else stays fatal.
+fn failed_cut_code(err: &Error) -> Option<&str> {
+    let code: &str = match err {
+        Error::Validation { code, .. } => code.as_ref(),
+        Error::Diag { code, .. } => code,
+        _ => return None,
+    };
+    matches!(
+        code,
+        "decomposition-non-reducing"
+            | "decomposition-lead-uncovered"
+            | "decomposition-lead-dropped"
+            | "decomposition-overlap"
+    )
+    .then_some(code)
+}
+
+/// The deterministic close-as-leaf candidate: the domain's own scope
+/// as a terminal leaf. `None` when the domain cannot satisfy leaf
+/// shape (multiple targets, no ownership, a repeated source, or no
+/// parsed assessment to gate on).
+fn fallback_leaf(
+    tree: &Decomposition, id: &str, last: Option<&PartitionResponse>,
+) -> Option<PartitionResponse> {
+    let node = tree.nodes.get(id)?;
+    let assessment = last.map(|response| response.assessment)?;
+    if !is_kebab(id) || node.ownership.is_empty() {
+        return None;
+    }
+    let targets = node.target_set();
+    if targets.len() != 1 {
+        return None;
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for scope in &node.sources {
+        if !seen.insert(scope.source.as_str()) {
+            return None;
+        }
+    }
+    Some(PartitionResponse {
+        version: PARTITION_VERSION,
+        kind: PartitionKind::Leaf,
+        children: Vec::new(),
+        target: targets.into_iter().next().map(str::to_string),
+        slice: Some(id.to_string()),
+        ownership: node.ownership.clone(),
+        acceptance: Some(format!("`{id}` delivers its bound leads as one reviewable unit.")),
+        sources: node.sources.clone(),
+        depends_on: node.depends_on.clone(),
+        rationale: Some("engine fallback: closed as a leaf after a failed cut".into()),
+        assessment,
+    })
+}
+
+/// Park `id`: journal the fact and record it on the loop state. The
+/// node stays open in the persisted partial tree — no proposal exists;
+/// the resume path is `plan author` re-entry.
+fn park(
+    paths: &ExecutionPaths, now: Timestamp, state: &mut State, id: &str, reason: String,
+) -> Result<(), Error> {
+    journal::append_one(
+        paths.layout(),
+        &Event::new(
+            now,
+            EventKind::PlanAuthorParked {
+                domain: id.to_string(),
+                reason: reason.clone(),
+            },
+        ),
+    )?;
+    state.parked.push(ParkedDomain {
+        domain: id.to_string(),
+        reason,
+    });
+    save_tree(paths, &state.tree)
+}
+
+fn save_tree(paths: &ExecutionPaths, tree: &Decomposition) -> Result<(), Error> {
+    tree.save(&paths.layout().decomposition_path())
 }
 
 /// Fold one pool outcome into the decomposition error surface, in
@@ -204,12 +633,19 @@ fn reopen(tree: &mut Decomposition, leaf: &str, catalog: &Leads) -> Result<Strin
         .get(&leaf_id)
         .and_then(|node| node.parent.clone())
         .unwrap_or_else(|| tree.root.clone());
-    prune_descendants(tree, &nearest);
-    let owned = tree.node(&nearest)?.sources.clone();
+    reopen_node(tree, &nearest, catalog)?;
+    Ok(nearest)
+}
+
+/// Reset `id` to an open domain: prune its subtree, clear its cut, and
+/// re-close its sources over the catalog.
+fn reopen_node(tree: &mut Decomposition, id: &str, catalog: &Leads) -> Result<(), Error> {
+    prune_descendants(tree, id);
+    let owned = tree.node(id)?.sources.clone();
     let sources = close_sources(&owned, catalog);
-    let node = tree.nodes.get_mut(&nearest).ok_or_else(|| Error::Diag {
+    let node = tree.nodes.get_mut(id).ok_or_else(|| Error::Diag {
         code: "decomposition-node-unknown",
-        detail: format!("no decomposition node `{nearest}`"),
+        detail: format!("no decomposition node `{id}`"),
     })?;
     node.children.clear();
     node.kind = None;
@@ -217,7 +653,7 @@ fn reopen(tree: &mut Decomposition, leaf: &str, catalog: &Leads) -> Result<Strin
     node.acceptance = None;
     node.ownership.clear();
     node.sources = sources;
-    Ok(nearest)
+    Ok(())
 }
 
 fn prune_descendants(tree: &mut Decomposition, id: &str) {
@@ -254,36 +690,45 @@ fn close_sources(owned: &[Scope], catalog: &Leads) -> Vec<Scope> {
         .collect()
 }
 
+/// How [`close_or_review`] settled the leaf.
+enum Settled {
+    /// The leaf was applied to the live tree.
+    Closed,
+    /// A focus verdict widened the catalog and requeued the domain.
+    Requeued,
+}
+
 #[expect(
     clippy::too_many_arguments,
-    reason = "leaf-readiness carries the live tree, catalog, and persist mode"
+    reason = "leaf-readiness carries the live loop state and persist mode"
 )]
 async fn close_or_review<P>(
     provider: &P, paths: &ExecutionPaths, now: Timestamp, plan: &Plan, catalog: &mut Leads,
-    persist: bool, tree: &mut Decomposition, queue: &mut VecDeque<String>,
-    caveats: &mut Vec<String>, judgments: &mut usize, id: &str, response: &PartitionResponse,
-) -> Result<(), Error>
+    persist: bool, state: &mut State, id: &str, response: &PartitionResponse,
+) -> Result<Settled, Error>
 where
     P: Model + Profiles + Resolver + Source + Workspaces,
 {
-    let profile = leaf_profile(provider, plan, response, tree.node(id)?)?;
+    let profile = leaf_profile(provider, plan, response, state.tree.node(id)?)?;
     if !profile.exceeds(&response.assessment, Gate::SliceSplit)? {
-        apply(tree, id, response)?;
-        return Ok(());
+        apply(&mut state.tree, id, response)?;
+        return Ok(Settled::Closed);
     }
-    if *judgments >= MAX_JUDGMENTS {
+    if state.judgments >= MAX_JUDGMENTS {
         return Err(budget_exhausted());
     }
-    *judgments += 1;
-    let request = review_request(tree, id, response, profile, catalog)?;
+    state.judgments += 1;
+    let request = review_request(&state.tree, id, response, profile, catalog)?;
     let review = review::review(provider, &request, |answer| check_focus(catalog, answer)).await?;
     match review.verdict {
         ReviewVerdict::Close => {
-            apply(tree, id, response)?;
+            apply(&mut state.tree, id, response)?;
             if let Some(rationale) = review.rationale.or_else(|| response.rationale.clone()) {
-                caveats.push(format!("`{id}` closed above the slice-split threshold: {rationale}"));
+                state
+                    .caveats
+                    .push(format!("`{id}` closed above the slice-split threshold: {rationale}"));
             }
-            Ok(())
+            Ok(Settled::Closed)
         }
         ReviewVerdict::Focus => {
             if review.focus.is_empty() {
@@ -296,8 +741,8 @@ where
             for parent in &review.focus {
                 focus_parent(provider, paths, now, plan, catalog, persist, parent).await?;
             }
-            queue.push_front(id.to_string());
-            Ok(())
+            state.queue.push_front(id.to_string());
+            Ok(Settled::Requeued)
         }
         ReviewVerdict::Unready => Err(Error::validation_failed(
             "plan-author-unready",
@@ -374,6 +819,7 @@ fn seed(
     let mut root = Node::split(Vec::new());
     root.sources = sources;
     root.targets = targets;
+    root.kind = None;
     Ok(Decomposition {
         version: VERSION,
         leads_digest: plan.leads_digest.clone().ok_or_else(|| Error::Diag {
@@ -426,10 +872,12 @@ fn leaf_profile<'a, P: Profiles>(
     provider.profiles().pinned(pin)
 }
 
-/// Validate an in-progress cut. Open children are not yet leaves, so
-/// their `decomposition-leaf-incomplete` findings stay deferred until
-/// the domain is partitioned. Claimed leaves and every split rule
-/// still fail the repair loop.
+/// Validate an in-progress cut over **known data only**. Open children
+/// are not yet leaves and have not declared ownership, so their
+/// `decomposition-leaf-incomplete` and `decomposition-non-reducing`
+/// findings stay deferred until the domain is partitioned. Claimed
+/// leaves and every other split rule still fail the repair loop; the
+/// full rule set is enforced at `tree.check()` on the complete tree.
 fn check_progress(tree: &Decomposition) -> Result<(), Error> {
     let findings: Vec<_> = project::plan::decomposition::findings(tree)
         .into_iter()
@@ -446,13 +894,19 @@ fn check_progress(tree: &Decomposition) -> Result<(), Error> {
 }
 
 fn keep_progress(tree: &Decomposition, item: &diagnostics::Diagnostic) -> bool {
-    if item.rule_id.as_deref() != Some("decomposition-leaf-incomplete") {
-        return true;
+    let named = |id: Option<&str>| id.and_then(|id| tree.nodes.get(id));
+    match item.rule_id.as_deref() {
+        Some("decomposition-leaf-incomplete") => {
+            named(item.slice.as_deref()).is_some_and(|node| node.kind == Some(Kind::Leaf))
+        }
+        // An open child inherits the parent's full scope until it is
+        // partitioned, so a `Measure` tie against the parent is
+        // structural, not a bad split.
+        Some("decomposition-non-reducing") => {
+            named(item.slice.as_deref()).is_none_or(|node| node.kind.is_some())
+        }
+        _ => true,
     }
-    item.slice
-        .as_deref()
-        .and_then(|id| tree.nodes.get(id))
-        .is_some_and(|node| node.kind == Some(Kind::Leaf))
 }
 
 fn check_targets(plan: &Plan, response: &PartitionResponse) -> Result<(), Error> {
@@ -633,6 +1087,7 @@ fn leaf_node(
 
 fn partition_request(
     tree: &Decomposition, id: &str, catalog: &Leads, plan: &Plan, used: usize,
+    notes: &BTreeMap<String, Vec<String>>,
 ) -> Result<serde_json::Value, Error> {
     let node = tree.node(id)?;
     let leads: Vec<serde_json::Value> = catalog
@@ -649,7 +1104,7 @@ fn partition_request(
             })
         })
         .collect();
-    Ok(json!({
+    let mut request = json!({
         "domain": id,
         "depth": tree.depth(id)?,
         "sources": node.sources,
@@ -658,7 +1113,11 @@ fn partition_request(
         "leads": leads,
         "plan-targets": plan.targets.keys().collect::<Vec<_>>(),
         "judgments-remaining": MAX_JUDGMENTS.saturating_sub(used),
-    }))
+    });
+    if let Some(rows) = notes.get(id) {
+        request["findings"] = json!(rows);
+    }
+    Ok(request)
 }
 
 fn review_request(

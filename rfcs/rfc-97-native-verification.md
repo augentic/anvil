@@ -4,7 +4,7 @@
 >
 > Owns: closed host verification profiles, native execution and sandbox policy, canonical tool diagnostics, protected-oracle assurance, report comparison primitives, one explicit bounded host-mechanical-repair phase, verification-lineage caches, and per-profile telemetry.
 >
-> Phase A depends on implemented [RFC-90](rfc-90-build-verification.md) and delivers `slice-attempt` verification for the serial loop. Phase B depends on implemented [RFC-96](rfc-96-concurrent-execution.md) only and extends the same profiles to `frontier-domain | complete-domain` contexts and RFC-96 D8 protected-input closure. [RFC-100](rfc-100-distributed-execution.md) and [RFC-106](rfc-106-task-graphs.md) material is conditional and never a Phase B completion condition. No standardized WASI execution capability is on the dependency path: the verifier executes tools natively below the component boundary, and the only WIT surface is a custom host-verification capability in its own package `emery:verification` — an Emery-owned host crate on the `wasi-exec` shape, which owns `emery:exec-mode` the same way — whose native implementation enforces this RFC's working-directory, environment, stdio, cancellation, resource, and sandbox contract.
+> Phase A depends on implemented [RFC-90](archive/rfc-90-build-verification.md) and delivers `slice-attempt` verification for the serial loop. Phase B depends on implemented [RFC-96](archive/rfc-96-concurrent-execution.md) only and extends the same profiles to `frontier-domain | complete-domain` contexts and RFC-96 D8 protected-input closure. [RFC-100](future/rfc-100-distributed-execution.md) and [RFC-106](future/rfc-106-task-graphs.md) material is conditional and never a Phase B completion condition. No standardized WASI execution capability is on the dependency path: the verifier executes tools natively below the component boundary, and the only WIT surface is a custom host-verification capability in its own package `emery:verification` — an Emery-owned host crate on the `wasi-exec` shape, which owns `emery:exec-mode` the same way — whose native implementation enforces this RFC's working-directory, environment, stdio, cancellation, resource, and sandbox contract.
 >
 > Amends RFC-90 D5 / AC5 (one *logical* candidate; the verifier and D7 mechanical repair each receive a fresh RFC-87 materialization; an accepted mechanical repair advances the logical candidate). Continuation binds to the logical candidate, not a workspace id.
 >
@@ -18,7 +18,7 @@ RFC-90 uses a model to choose commands, run them, interpret their output, and re
 
 With this RFC, target adapters request standard checks such as `build` or `test`. Emery's trusted native runtime chooses the approved tools, runs them in a locked-down environment against an unchanged code snapshot, and records a stable report bound to that exact run.
 
-Protected oracles and host-attested profiles are Emery's form of a validation contract the implementer does not define: correctness criteria are digest-bound and executed outside the candidate's write set, not held in an orchestrator agent's context ([platform.md § Design principles](platform.md#design-principles-at-the-call-site); [RFC-98](rfc-98-behavioural-conservation.md) supplies the corpus oracle when the estate has no pre-existing suite).
+Protected oracles and host-attested profiles are Emery's form of a validation contract the implementer does not define: correctness criteria are digest-bound and executed outside the candidate's write set, not held in an orchestrator agent's context ([platform.md § Design principles](platform.md#design-principles-at-the-call-site); [RFC-98](future/rfc-98-behavioural-conservation.md) supplies the corpus oracle when the estate has no pre-existing suite).
 
 The adapter only relays an opaque handle to that report. The engine resolves the handle directly, confirms that every required check ran in the expected context, and then applies RFC-90's existing verification and repair policy. A missing or unavailable check fails rather than becoming a false success.
 
@@ -218,7 +218,7 @@ Optional `protected-verification-inputs[]` (`file | tree`, RFC-90 grant grammar)
 
 Enforcement is capture-time rejection: if captured touched paths intersect the protected set, the attempt fails with a typed ownership finding. This RFC does not amend RFC-87 with mount-exclusion.
 
-[RFC-98](rfc-98-behavioural-conservation.md) is the first `protected-oracles[]` producer (corpus admission). Phase A may still declare in-tree protected inputs. Absent a host policy that binds a mounted protected input or oracle into the executed command, reports stay `oracle-assurance: candidate`. A declaration alone never upgrades assurance.
+[RFC-98](future/rfc-98-behavioural-conservation.md) is the first `protected-oracles[]` producer (corpus admission). Phase A may still declare in-tree protected inputs. Absent a host policy that binds a mounted protected input or oracle into the executed command, reports stay `oracle-assurance: candidate`. A declaration alone never upgrades assurance.
 
 Phase B carries the same sets through RFC-96 member admission — those values *are* this Phase A declaration surface — and derives domain closure under RFC-96 D8. Deployment policy controls how an authorized input or oracle is mounted and consumed; it cannot introduce another identity.
 

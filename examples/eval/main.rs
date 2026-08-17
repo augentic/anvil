@@ -1,13 +1,13 @@
-//! Emery's live composition example: native command passthrough
-//! over the mock catalog by default, the live eval case runner under
-//! the `eval` subcommand. (wasm32 builds compile an empty stub so
-//! `--examples` passes.)
+//! Emery's live composition example, shaped like the `emery` CLI plus
+//! the case runner: native command passthrough over the mock catalog,
+//! the live eval case runner under `eval` or a leading case id.
+//! (wasm32 builds compile an empty stub so `--examples` passes.)
 //!
 //! The composition root owns what the shared client (`probe::client`)
 //! refuses to: the Tokio runtime, `std::env::args` collection, and
 //! the catalog, cases, and sandbox declarations. It is a development
 //! tool, never an install or release artifact. Driven by `cargo make
-//! lab` and `cargo make eval`.
+//! eval`.
 
 #[cfg(target_arch = "wasm32")]
 fn main() {}

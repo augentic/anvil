@@ -16,3 +16,14 @@ fn synthesis_golden() {
     let expected = std::fs::read_to_string(&path).expect("read golden");
     assert_eq!(actual, expected, "golden mismatch: {}", path.display());
 }
+
+/// The `version` property is pinned to the synthesis wire constant, so
+/// the model reads the literal off the schema instead of hunting for it.
+#[test]
+fn version_const() {
+    let schema = slice::answers::synthesis();
+    assert_eq!(
+        schema.pointer("/properties/version/const").expect("version const"),
+        &serde_json::json!(4)
+    );
+}

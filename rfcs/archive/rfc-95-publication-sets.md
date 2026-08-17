@@ -1,6 +1,6 @@
 # RFC-95: Publication Sets
 
-> Status: Implemented product follow-on to RFC-88 in the [Services Delivery Programme](platform.md)
+> Status: Implemented product follow-on to RFC-88 in the [Services Delivery Programme](../platform.md)
 >
 > Owns: one publication worktree per publication member, the shared branch and pull-request markers, landing order, archive-time publication observation, and the typed publication projection. Does not own the operator's Git commit, forge writes, atomic cross-repository submission, automated rollback, or parallel member preparation.
 >
@@ -109,7 +109,7 @@ There is no second lifecycle object or authored publication artifact. A single-r
 
 Publication is incremental per member, not gated on draining the whole plan. Once the final terminal projection is fixed and every in-scope entry for a target is merged, that target may receive a publication worktree; the operator then commits, publishes, and lands while other targets continue, subject to D4. Archive remains a whole-set gate.
 
-Progressive authoring, if [RFC-99](rfc-99-streaming-execution.md) later permits it, still cannot materialize until that target's complete in-scope entry set is fixed and D11's fact predicate holds. This cut does not overlap survey, refine, or build with the publication worktree. Completing one leaf never creates a worktree or a commit; each target receives exactly one publication worktree after all of its in-scope entries merge. The operator authors the Git commit and every forge write. There is no `plan materialize` / `plan commit` / `plan publish` verb.
+Progressive authoring, if [RFC-99](../future/rfc-99-streaming-execution.md) later permits it, still cannot materialize until that target's complete in-scope entry set is fixed and D11's fact predicate holds. This cut does not overlap survey, refine, or build with the publication worktree. Completing one leaf never creates a worktree or a commit; each target receives exactly one publication worktree after all of its in-scope entries merge. The operator authors the Git commit and every forge write. There is no `plan materialize` / `plan commit` / `plan publish` verb.
 
 ### D2 — Plan-backed publication records are derived
 
@@ -136,7 +136,7 @@ Leaf acyclicity is not enough: contraction can yield `target-a → target-b` and
 
 ### D5 — Emery observes publication but does not perform it
 
-Emery never authors a Git commit, pushes a branch, opens a pull request, merges one, or reverts one. Those stay operator-owned under the [CLI contract](../docs/standards/cli-contract.md).
+Emery never authors a Git commit, pushes a branch, opens a pull request, merges one, or reverts one. Those stay operator-owned under the [CLI contract](../../docs/standards/cli-contract.md).
 
 `emery plan archive` observes rather than confirming in prose. It reconstructs the members, reads their pull requests, and checks that:
 
@@ -231,7 +231,7 @@ Materialize failures are stop conditions, not hard errors: `publication-worktree
 
 Materialize is part of the drain condition: a plan does not project `drained` until every publication member carries its `plan.publication.materialized` fact, and execute reconciles pending materializations (and only those) before its drained early-return, without opening a new epoch — authorization is the fact predicate above, not fresh coverage. A plan drained under an older binary therefore re-projects as not-drained after upgrade, and re-running `emery plan execute` materializes it. After `plan.publication.materialized`, topology edits that would add, remove, or rebind that target's in-scope entries are rejected until archive.
 
-[RFC-102](rfc-102-policy-gated-autonomy.md), when reopened, may add a policy-gated alternative beside that predicate; it is not a prerequisite and grants no Git commit and no forge write. There is no `plan materialize` / `plan commit` / `plan publish` verb.
+[RFC-102](../future/rfc-102-policy-gated-autonomy.md), when reopened, may add a policy-gated alternative beside that predicate; it is not a prerequisite and grants no Git commit and no forge write. There is no `plan materialize` / `plan commit` / `plan publish` verb.
 
 The worktree prepares publication. It does not create a remote ref, pull request, merge, or revert. The operator reviews, commits, and pushes with ordinary Git. RM-17 may later automate push and pull-request create; it does not invent the worktree.
 
@@ -252,7 +252,7 @@ Archive mutation order is fixed: project → verify → journal `plan.publicatio
 - Append `plan.publication.projected` and `plan.publication.member-landed` through the existing per-writer fact logs, with D11's payload identity and match keys.
 - Add the publication-set wire type, generate `crates/project/answers/publication.schema.json` from it, and gate the golden in `crates/project/tests/answers.rs`. External records validate against that type in crate-level tests; this cut adds no publication subcommand and no `--record` flag.
 - Update the same-change prose that asserts the operator checkout is never written (AGENTS.md, `docs/standards/workflow.md`, the RFC-87/88 sentences) for D11's in-place case, patch RFC-88 D7's retained merge-verb wording and RFC-91's archive sentence, and align `docs/standards/cli-contract.md`'s finalize prose with D5's forge observation.
-- Exercise the WIT-breaking release order from [docs/release.md](../docs/release.md#three-release-shapes) across `augentic/emery` and `augentic/emery-adapters` as the in-house fixture. The first real release dogfoods the settled path; it does not gate RFC completion.
+- Exercise the WIT-breaking release order from [docs/release.md](../../docs/release.md#three-release-shapes) across `augentic/emery` and `augentic/emery-adapters` as the in-house fixture. The first real release dogfoods the settled path; it does not gate RFC completion.
 
 ## Acceptance criteria
 

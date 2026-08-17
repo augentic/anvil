@@ -4,7 +4,7 @@
 >
 > Owns: the closed target-execution-readiness dimension set, the versioned readiness profile, binding-time assessment and its record, the readiness band, execution-policy eligibility, and the remediation projection.
 >
-> Depends on [RFC-88](rfc-88-detached-changes.md) for delivery binding, pinned target CIDs, and the model-capability-profile shape this RFC mirrors. [RFC-104](rfc-104-system-archaeology.md) separately owns definition coverage, system understanding, architecture, and migration readiness. Consumed by [RFC-97](rfc-97-native-verification.md) preflight, [RFC-98](rfc-98-behavioural-conservation.md) corpus expectations, and [RFC-102](rfc-102-policy-gated-autonomy.md) admission.
+> Depends on [RFC-88](archive/rfc-88-detached-changes.md) for delivery binding, pinned target CIDs, and the model-capability-profile shape this RFC mirrors. [RFC-104](archive/rfc-104-system-archaeology.md) separately owns definition coverage, system understanding, architecture, and migration readiness. Consumed by [RFC-97](rfc-97-native-verification.md) preflight, [RFC-98](future/rfc-98-behavioural-conservation.md) corpus expectations, and [RFC-102](future/rfc-102-policy-gated-autonomy.md) admission.
 >
 > Patch ownership: this RFC amends RFC-88 D5 by adding an execution-readiness record to each `discovery.yaml` target row and RFC-88 D8 by adding its authority digest to closed-plan coverage. RFC-104 separately amends RFC-88's handoff and binding contract.
 >
@@ -68,7 +68,7 @@ One model-assisted readiness judgment may inspect the same bounded tree and crit
 
 **These dimensions are not RFC-88's.** The model-capability profile scores a *scope*: how much behavioural breadth, coupling, uncertainty, context volume, and verification surface one unit of work carries, to decide whether it splits. This profile scores a *target*: what the repository can support, to decide which policies may run against it. RFC-88 asking "how much verification surface does this work have" and this RFC asking "can a host attest any check here at all" are different questions about different subjects, which is why the dimension here is named `verification-attestability` rather than reusing the capability profile's `verification-surface`. The two profiles are resolved independently and neither reads the other.
 
-`behavioural-observability` is deliberately a first-class dimension rather than a note under testing. It is the dimension that decides whether [RFC-98](rfc-98-behavioural-conservation.md) can run at all, and on a legacy estate it is usually the lowest-scoring and the most valuable to raise.
+`behavioural-observability` is deliberately a first-class dimension rather than a note under testing. It is the dimension that decides whether [RFC-98](future/rfc-98-behavioural-conservation.md) can run at all, and on a legacy estate it is usually the lowest-scoring and the most valuable to raise.
 
 ### D3 — Criterion projection is deterministic, and floors bind independently of the weighted sum
 
@@ -115,10 +115,10 @@ RFC-104 is how an operator learns an unfamiliar estate. RFC-88 authoring may sti
 | `unready` | Authoring and refinement only | `plan execute` refuses; the plan is still a legitimate deliverable |
 | `assisted` | Reviewed policy | Supervision is required; auto-deferred gaps remain explicit debt |
 | `reviewed` | [Reviewed services workflow](platform.md#reviewed-services-workflow) | The ordinary supervised loop |
-| `progressive` | Adds the progressive specs-only policy defined by parked [RFC-99](rfc-99-streaming-execution.md) | Specification work may run ahead of review |
-| `unattended` | Adds the unattended candidate-build policy defined by parked [RFC-99](rfc-99-streaming-execution.md) | Candidate build only; the accepted CID is untouched |
+| `progressive` | Adds the progressive specs-only policy defined by parked [RFC-99](future/rfc-99-streaming-execution.md) | Specification work may run ahead of review |
+| `unattended` | Adds the unattended candidate-build policy defined by parked [RFC-99](future/rfc-99-streaming-execution.md) | Candidate build only; the accepted CID is untouched |
 
-Readiness never grants merge authority. [RFC-102](rfc-102-policy-gated-autonomy.md) policy-gated autonomy requires its own promoted policy, protected assurance, and commit admission on top of an `unattended` band; a high band is necessary and never sufficient.
+Readiness never grants merge authority. [RFC-102](future/rfc-102-policy-gated-autonomy.md) policy-gated autonomy requires its own promoted policy, protected assurance, and commit admission on top of an `unattended` band; a high band is necessary and never sufficient.
 
 A change spanning several targets takes the **lowest** band across the targets it will write to. The weakest repository in the estate sets the policy for the change, because a wave that commits across targets is only as trustworthy as its least verifiable member.
 

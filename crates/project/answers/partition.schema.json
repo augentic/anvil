@@ -211,6 +211,7 @@
       ]
     },
     "version": {
+      "const": 1,
       "description": "Schema version ([`PARTITION_VERSION`]).",
       "format": "uint32",
       "minimum": 0,

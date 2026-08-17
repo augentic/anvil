@@ -201,6 +201,7 @@
       "type": "array"
     },
     "version": {
+      "const": 1,
       "description": "Schema version.",
       "format": "uint32",
       "minimum": 0,

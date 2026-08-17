@@ -258,14 +258,14 @@ pub(super) fn validate_entry(rel: &str) -> Result<()> {
 pub(super) fn list(root: &Path) -> Result<()> {
     let ids = ids(root)?;
     ensure!(!ids.is_empty(), "no cases under {}", root.display());
-    println!("cases (run with `eval <id>`):");
+    println!("cases (run with `cargo make eval <id>`):");
     for id in ids {
         println!("  {id}");
     }
     Ok(())
 }
 
-fn ids(root: &Path) -> Result<Vec<String>> {
+pub fn ids(root: &Path) -> Result<Vec<String>> {
     let entries = fs::read_dir(root).with_context(|| format!("reading {}", root.display()))?;
     let mut ids: Vec<String> = entries
         .filter_map(std::result::Result::ok)

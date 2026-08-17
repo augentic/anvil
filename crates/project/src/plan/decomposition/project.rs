@@ -36,6 +36,42 @@ pub(super) fn from_edges(
     Ok(out)
 }
 
+/// Project only closed (`kind: leaf`) terminals — the partial
+/// projection a parked authoring run publishes. Open domains emit
+/// nothing; `depends-on` edges are filtered to the projected set.
+///
+/// # Errors
+///
+/// Node-lookup failures from the domain-dependency compiler.
+pub fn closed_slices(tree: &Decomposition) -> Result<Vec<Entry>, Error> {
+    let edges = edges(tree)?;
+    let mut out = Vec::new();
+    collect_closed(tree, &tree.root, &edges, &mut out)?;
+    let names: std::collections::BTreeSet<SliceName> =
+        out.iter().map(|entry| entry.name.clone()).collect();
+    for entry in &mut out {
+        entry.depends_on.retain(|dep| names.contains(dep));
+    }
+    Ok(out)
+}
+
+fn collect_closed(
+    tree: &Decomposition, id: &str, edges: &BTreeMap<SliceName, Vec<SliceName>>,
+    out: &mut Vec<Entry>,
+) -> Result<(), Error> {
+    let node = tree.node(id)?;
+    if node.is_leaf() {
+        if node.kind == Some(super::tree::Kind::Leaf) {
+            collect(tree, id, edges, out)?;
+        }
+        return Ok(());
+    }
+    for child in &node.children {
+        collect_closed(tree, child, edges, out)?;
+    }
+    Ok(())
+}
+
 fn collect(
     tree: &Decomposition, id: &str, edges: &BTreeMap<SliceName, Vec<SliceName>>,
     out: &mut Vec<Entry>,

@@ -15,7 +15,7 @@ pub use judgment::{
     BoundaryReview, Child, FocusParent, PARTITION_VERSION, PartitionKind, PartitionResponse,
     ReviewVerdict,
 };
-pub use project::{matches_plan, slices};
+pub use project::{closed_slices, matches_plan, slices};
 pub use tree::{
     BoundProfile, Covered, CoveredKind, Decomposition, Kind, MAX_DEPTH, MAX_JUDGMENTS, MAX_NODES,
     Node, Oracle, Scope, VERSION,

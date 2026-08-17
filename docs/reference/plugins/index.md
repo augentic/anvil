@@ -20,7 +20,7 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 
 | Plugin | Prefix | Purpose | Reference |
 | ------ | ------ | ------- | --------- |
-| **Emery** | `/emery:` | Workflow wrappers: `init`, `plan`, `refine`, `execute`, `status`, `finalize` | [Skills](../skills/index.md) |
+| **Emery** | `/emery:` | Workflow wrappers: `init`, `plan`, `correct`, `refine`, `execute`, `status`, `finalize` | [Skills](../skills/index.md) |
 
 The Omnia and Vectis target adapters are not Cursor plugins — they live under [`targets/` in the adapters repo](../targets/index.md) and contribute their `guidance`, build-loop (`build` / `verify` / `repair` / `review`), and `merge` operations to the workflow. See [Omnia target](../targets/omnia.md) and [Vectis target](../targets/vectis.md).
 

@@ -14,7 +14,7 @@ The programme supports one services promise:
 
 Modernization is the commercial wedge. A new system is the simpler evidence case: authoritative intent establishes the baseline instead of archaeology recovering one. Emery is the delivery system behind the promise, not the product strategy. The immediate goal is the smallest single-node system that can recover a bounded estate, deliver one reviewed wave, and leave living behavioural and architectural baselines.
 
-Services expertise supplies architectural and exception judgment; Emery records evidence, decisions, and consequences. Bounded single-node concurrency is in scope. Intra-slice task graphs ([RFC-106](rfc-106-task-graphs.md)), streaming, distribution, hosted fleets, and unattended merge are not prerequisites. Multi-node, fat-slice decomposition, and unattended scale activate on measured engagement pull, not architectural completeness.
+Services expertise supplies architectural and exception judgment; Emery records evidence, decisions, and consequences. Bounded single-node concurrency is in scope. Intra-slice task graphs ([RFC-106](future/rfc-106-task-graphs.md)), streaming, distribution, hosted fleets, and unattended merge are not prerequisites. Multi-node, fat-slice decomposition, and unattended scale activate on measured engagement pull, not architectural completeness.
 
 ## Active dependency map
 
@@ -40,10 +40,8 @@ flowchart TD
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
     classDef nearterm fill:#fed7aa,stroke:#c2410c,color:#7c2d12,stroke-width:3px
-    classDef later fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
     class R86,R87,R88,R90,R91,R104,R95,R96 done
     class R92,R97,R94 nearterm
-    class R98 later
 ```
 
 RFC-92 patches the model-capability profile shape owned by implemented RFC-88: routes and usage facts land on the implemented substrate and fold into the profile. The `R96 → R97` edge is Phase B only. Phase A depends on implemented RFC-90 and is not blocked on RFC-96.
@@ -52,7 +50,9 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 
 **Implemented:** RFC-86, RFC-87, RFC-88, RFC-90, RFC-91, RFC-95, RFC-96, RFC-104. Fact-based workflow over private workspaces, with an engine-owned build phase machine, a fenced specification-refinement stage, detached multi-target execution over accepted CIDs, publication worktrees with forge-verified archive over the one `emery:vcs` host seam, and the definition loop through `system.wave.reviewed`. Merge-time `apply` is deleted; `plan author --from --wave` consumes a reviewed handoff. RFC-96 adds bounded single-node concurrency: a deterministic ready-set scheduler over a bounded pool, private-workspace composition, multi-member waves, and durable domain-convergence rounds, with cap one as the deterministic reference mode.
 
-**Definition:** implemented. [RFC-104](rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
+A whole-codebase review of that implemented substrate is [architecture-review.md](architecture-review.md) (second pass: [architecture-review-addendum.md](architecture-review-addendum.md)): verdict, findings, and a subtraction-first corrective sequence. It is a review, not an RFC, and it argues for closing those cuts before staffing RFC-92 / RFC-94 / RFC-97. **A remediation programme is now the plan of record** — [remediation-plan.md](remediation-plan.md), gated by the product definition ([product.md](product.md)) and the decision gate ([decisions/](decisions/)); this programme spine is itself audited against product.md and will be re-scoped after the gate (remediation Phase 5). Feature-RFC staffing is frozen until the remediation walking skeleton is green.
+
+**Definition:** implemented. [RFC-104](archive/rfc-104-system-archaeology.md) produces the coverage-accounted inventory, evidence-linked as-is architecture, diagram projections, target and transition architecture, and a migration plan that can finish as a paid deliverable, handing one reviewed wave to RFC-88.
 
 **Delivery gap:** RFC-92 supplies model routes, usage facts, and cost attribution — the measurement that tunes RFC-96 pool sizes and budgets. RFC-96 is implemented — the drains schedule ready work items over a bounded pool, compose multi-member waves, and record domain convergence; cap one remains the deterministic reference. Intra-slice task graphs are RFC-106 and wait on a measured fat Omnia slice.
 
@@ -63,10 +63,10 @@ RFC-92 patches the model-capability profile shape owned by implemented RFC-88: r
 | ------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------- |
 | Model route and spend unrecorded                 | [RFC-92](rfc-92-model-policy.md)                                                      | Startable on the implemented substrate   |
 | Client-owned model endpoint unverified           | [RM-26](roadmap.md#rm-26-client-controlled-model-endpoint)                            | Regulated quoting gate                   |
-| Actor and admitting grant unrecoverable          | [RFC-93](rfc-93-operator-boundary.md)                                                 | Parallel assurance; not the product path |
+| Actor and admitting grant unrecoverable          | [RFC-93](future/rfc-93-operator-boundary.md)                                                 | Parallel assurance; not the product path |
 | Target loop support assessed too late            | [RFC-94](rfc-94-target-readiness.md)                                                  | Follows RFC-88 delivery binding          |
-| Recovered behaviour model-reviewed, not replayed | [RFC-97](rfc-97-native-verification.md), [RFC-98](rfc-98-behavioural-conservation.md) | After or beside product staffing         |
-| One Omnia slice too large for one `target.build` | [RFC-106](rfc-106-task-graphs.md)                                                     | Evidence-gated; not default staffing     |
+| Recovered behaviour model-reviewed, not replayed | [RFC-97](rfc-97-native-verification.md), [RFC-98](future/rfc-98-behavioural-conservation.md) | After or beside product staffing         |
+| One Omnia slice too large for one `target.build` | [RFC-106](future/rfc-106-task-graphs.md)                                                     | Evidence-gated; not default staffing     |
 
 
 None requires streaming, distribution, a hosted fleet, or autonomous merge.
@@ -88,9 +88,9 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 ### Critical path — definition then delivery
 
-- [RFC-104](rfc-104-system-archaeology.md) — implemented definition predecessor. Three internal cuts (coverage and Evidence; correlation and as-is; plan, handoff, and review); the accepted loop through `system.wave.reviewed` holds. The definition loop may finish without product execution: that is a paid archaeology or readiness outcome, not a failed attempt to produce slices.
-- [RFC-88](rfc-88-detached-changes.md) — implemented delivery contract after that reviewed handoff. Internal cuts: accepted-CID merge and deletion of interim `apply`; detached change home importing one RFC-104 wave; capability-profile-bound decomposition and refinement feedback; deterministic accepted-CID execution. Complete-tree publication stays the reference policy.
-- [RFC-95](rfc-95-publication-sets.md) — implemented publication follow-on: publication worktrees, publication identity, ordered landing, and archive verification after RFC-88 member derivation. The operator authors the Git commit and every forge write; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts when manual publication is a measured bottleneck. Host implementation is [rfc-95-host-surface.md](rfc-95-host-surface.md): the `emery:vcs` seam (`trees` / `worktree` / `forge`) with export as one host call, which retired `emery:origins` / `emery:ingest` as its first cut; no `emery:publication` / `emery:forge`, no git-aware blobstore.
+- [RFC-104](archive/rfc-104-system-archaeology.md) — implemented definition predecessor. Three internal cuts (coverage and Evidence; correlation and as-is; plan, handoff, and review); the accepted loop through `system.wave.reviewed` holds. The definition loop may finish without product execution: that is a paid archaeology or readiness outcome, not a failed attempt to produce slices.
+- [RFC-88](archive/rfc-88-detached-changes.md) — implemented delivery contract after that reviewed handoff. Internal cuts: accepted-CID merge and deletion of interim `apply`; detached change home importing one RFC-104 wave; capability-profile-bound decomposition and refinement feedback; deterministic accepted-CID execution. Complete-tree publication stays the reference policy.
+- [RFC-95](archive/rfc-95-publication-sets.md) — implemented publication follow-on: publication worktrees, publication identity, ordered landing, and archive verification after RFC-88 member derivation. The operator authors the Git commit and every forge write; [RM-17](roadmap.md#rm-17-forge-publication-providers) starts when manual publication is a measured bottleneck. Host implementation is [rfc-95-host-surface.md](archive/rfc-95-host-surface.md): the `emery:vcs` seam (`trees` / `worktree` / `forge`) with export as one host call, which retired `emery:origins` / `emery:ingest` as its first cut; no `emery:publication` / `emery:forge`, no git-aware blobstore.
 
 ### Parallel — measure and quote honestly
 
@@ -101,24 +101,24 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 
 - [RFC-94](rfc-94-target-readiness.md) — follows RFC-88 target binding. Deterministic-first execution gate: structural criteria and approved host probes produce authority; model judgment cannot grant a band; bands select named policies and never mutate mechanics in flight. Not the paid definition engagement — RFC-104 owns system understanding and migration readiness.
 - [RFC-97](rfc-97-native-verification.md) — one RFC, two phases. Phase A: host-attested `slice-attempt` verification on implemented RFC-90; may proceed beside RFC-88. Phase B: attached to RFC-96 (`frontier-domain | complete-domain`, protected-input closure).
-- [RFC-98](rfc-98-behavioural-conservation.md) — follows RFC-97 Phase A. Protected replay oracle from retained `captures`; execution assurance stays separate from oracle assurance; data-governance contract for regulated capture material.
+- [RFC-98](future/rfc-98-behavioural-conservation.md) — follows RFC-97 Phase A. Protected replay oracle from retained `captures`; execution assurance stays separate from oracle assurance; data-governance contract for regulated capture material.
 
 ### Parallel assurance — attribution and operability
 
-- [RFC-93](rfc-93-operator-boundary.md) — actor identity and, when an engagement needs it, a deployment-owned operator grant before guest dispatch. Attribution is who acted; grants are whether that caller may request an otherwise legal act. Neither is lifecycle authority; neither displaces RFC-88. Actor class is not a permission bit; a grant cannot waive an engine gate.
+- [RFC-93](future/rfc-93-operator-boundary.md) — actor identity and, when an engagement needs it, a deployment-owned operator grant before guest dispatch. Attribution is who acted; grants are whether that caller may request an otherwise legal act. Neither is lifecycle authority; neither displaces RFC-88. Actor class is not a permission bit; a grant cannot waive an engine gate.
 - [RM-24](roadmap.md#rm-24-operator-control-surface) — topology, proposals, and typed stops reviewable without in-engine conversation. Start when agent-driven or review friction actually burns time.
 
 ### Later — learn from real outcomes
 
-- [RFC-103](rfc-103-outcome-learning.md) — follows RFC-92 and the blind current-versus-candidate harness. First useful cut is outcome projection and recurrence analysis. Promotion stays offline, reviewed, versioned, and available only to future runs. RFC-94/97/98 enrich the same record as they land; they are not hard prerequisites for creating it. Private `probe` improvement is ordinary hygiene; a public evaluation asset is [RM-29](roadmap.md#rm-29-governed-model-evaluation-asset) and starts when a lighthouse sale needs published evidence.
+- [RFC-103](future/rfc-103-outcome-learning.md) — follows RFC-92 and the blind current-versus-candidate harness. First useful cut is outcome projection and recurrence analysis. Promotion stays offline, reviewed, versioned, and available only to future runs. RFC-94/97/98 enrich the same record as they land; they are not hard prerequisites for creating it. Private `probe` improvement is ordinary hygiene; a public evaluation asset is [RM-29](roadmap.md#rm-29-governed-model-evaluation-asset) and starts when a lighthouse sale needs published evidence.
 
 ### Implemented after RFC-88 — concurrent execution
 
-- [RFC-96](rfc-96-concurrent-execution.md) — implemented single-node concurrency following stable RFC-88/91: work-item scheduling, a bounded shared pool, deterministic composition, domain convergence, and multi-member waves. Landed in phase order: work-item scheduler and read-heavy pool, then `compose` and multi-member waves. Cap one is the deterministic reference; higher caps preserve equivalent ordered outcomes. RFC-92/97 telemetry tunes pools, budgets, and verification placement. RFC-97 Phase B remains attached to RFC-96 domain contexts. Intra-slice task graphs are not this RFC.
+- [RFC-96](archive/rfc-96-concurrent-execution.md) — implemented single-node concurrency following stable RFC-88/91: work-item scheduling, a bounded shared pool, deterministic composition, domain convergence, and multi-member waves. Landed in phase order: work-item scheduler and read-heavy pool, then `compose` and multi-member waves. Cap one is the deterministic reference; higher caps preserve equivalent ordered outcomes. RFC-92/97 telemetry tunes pools, budgets, and verification placement. RFC-97 Phase B remains attached to RFC-96 domain contexts. Intra-slice task graphs are not this RFC.
 
 ### Evidence-gated — fat-slice decomposition
 
-- [RFC-106](rfc-106-task-graphs.md) — `target.decompose`, task graphs, exclusive write grants, and task-scoped repair. Accepted architecture; implementation starts when RFC-96 D11 fixtures or an engagement show one Omnia slice is too large for one `target.build`. Depends on RFC-96 Phase B. Not on the default staffing plan and not on the active dependency map.
+- [RFC-106](future/rfc-106-task-graphs.md) — `target.decompose`, task graphs, exclusive write grants, and task-scoped repair. Accepted architecture; implementation starts when RFC-96 D11 fixtures or an engagement show one Omnia slice is too large for one `target.build`. Depends on RFC-96 Phase B. Not on the default staffing plan and not on the active dependency map.
 
 ## Why this sequence
 
@@ -190,10 +190,10 @@ RFC-99 through RFC-102 are preserved design options, not active dependencies or 
 
 | RFC                                                               | Reopen when                                                                                                                                                                                                                                                            |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [RFC-99 Streaming Execution](rfc-99-streaming-execution.md)       | Complete-plan authoring or refinement latency is a measured engagement bottleneck. Phase B also needs RFC-96 Phase B and a real need for unattended candidate build before final closure.                                                                            |
-| [RFC-100 Distributed Execution](rfc-100-distributed-execution.md) | One production change must execute across multiple nodes. More client work or another independent machine is not the trigger; RFC-96's one-change workload must exceed a node, or a deployment constraint must require remote placement. RFC-106 is not a prerequisite. |
-| [RFC-101 Platform Readiness](rfc-101-platform-readiness.md)       | RFC-100 is activated, or a contract needs hosted tenancy, authenticated fleet ingress, or sealed shared audit storage. Small desktop capabilities (for example a read-only OpenTelemetry projection) may ship as roadmap items without activating the fleet programme. |
-| [RFC-102 Policy-Gated Autonomy](rfc-102-policy-gated-autonomy.md) | RFC-99 Phase B, RFC-97 Phase B, RFC-103 promoted policies, RFC-94, and RFC-93 grants have landed, and a client requires unattended accepted-CID mutation. Reviewed execution and agent-driven operation do not require this RFC.                                       |
+| [RFC-99 Streaming Execution](future/rfc-99-streaming-execution.md)       | Complete-plan authoring or refinement latency is a measured engagement bottleneck. Phase B also needs RFC-96 Phase B and a real need for unattended candidate build before final closure.                                                                            |
+| [RFC-100 Distributed Execution](future/rfc-100-distributed-execution.md) | One production change must execute across multiple nodes. More client work or another independent machine is not the trigger; RFC-96's one-change workload must exceed a node, or a deployment constraint must require remote placement. RFC-106 is not a prerequisite. |
+| [RFC-101 Platform Readiness](future/rfc-101-platform-readiness.md)       | RFC-100 is activated, or a contract needs hosted tenancy, authenticated fleet ingress, or sealed shared audit storage. Small desktop capabilities (for example a read-only OpenTelemetry projection) may ship as roadmap items without activating the fleet programme. |
+| [RFC-102 Policy-Gated Autonomy](future/rfc-102-policy-gated-autonomy.md) | RFC-99 Phase B, RFC-97 Phase B, RFC-103 promoted policies, RFC-94, and RFC-93 grants have landed, and a client requires unattended accepted-CID mutation. Reviewed execution and agent-driven operation do not require this RFC.                                       |
 
 
 Parking means: no active RFC depends on the parked item; no active implementation predeclares its wire shape unless an already-active seam requires an opaque extension point; the document may receive correctness fixes but not roadmap elaboration; reopening requires the stated evidence or contracted need and an explicit programme decision.
@@ -204,7 +204,7 @@ The engine is a deterministic state machine over a fact log. The operator sits o
 
 > **An agent may plan, drive, and propose recovery; only facts and policy authorize progression and accepted-state mutation.**
 
-Lifecycle integrity is not caller authorization. [RFC-93](rfc-93-operator-boundary.md) records actor identity and may enforce a separate deployment-owned operator grant before guest dispatch. As the operator becomes an agent, read-only topology, proposal, gap, and stop projections become the human audit surface over that driver. [RM-24](roadmap.md#rm-24-operator-control-surface) is therefore assurance work, not merely ergonomics — and not a substitute for RFC-95 publication.
+Lifecycle integrity is not caller authorization. [RFC-93](future/rfc-93-operator-boundary.md) records actor identity and may enforce a separate deployment-owned operator grant before guest dispatch. As the operator becomes an agent, read-only topology, proposal, gap, and stop projections become the human audit surface over that driver. [RM-24](roadmap.md#rm-24-operator-control-surface) is therefore assurance work, not merely ergonomics — and not a substitute for RFC-95 publication.
 
 ## Design principles at the call site
 
@@ -235,7 +235,7 @@ The commercial interpretation is services-led: Emery supports Propellerhead's ac
 
 Unchanged and orthogonal:
 
-- [CLI architecture](../docs/contributing/cli-architecture.md) and `crates/launcher/`, except [RFC-104](rfc-104-system-archaeology.md)'s `system *` mount projection (`--dir` or CWD as the guest `.`; no `project.yaml` walk).
+- [CLI architecture](../docs/contributing/cli-architecture.md) and `crates/launcher/`, except [RFC-104](archive/rfc-104-system-archaeology.md)'s `system *` mount projection (`--dir` or CWD as the guest `.`; no `project.yaml` walk).
 - [Release process](../docs/release.md).
 - [RFC-18 Specialized SLM Code Generation](future/rfc-18-slm.md), an optional cost lever.
 - [RFC-46a Web Asset Materialization](future/rfc-46a-web-asset.md), content-triggered Vectis work.

@@ -55,6 +55,7 @@ tracing-subscriber = { workspace = true, optional = true }
 [dev-dependencies]
 emery-artifacts.workspace = true
 omnia-testkit.workspace = true
+serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing.workspace = true

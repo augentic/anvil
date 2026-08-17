@@ -229,13 +229,13 @@ pub fn phase_report() -> Value {
 
 /// The plan-time lead-reconciliation answer schema.
 ///
-/// Generated from [`crate::plan::ProposalResponse`], with two
+/// Generated from [`crate::plan::ProposalResponse`], with three
 /// answer-side adjustments the shared type cannot carry: `gate` is made
 /// required (optional on the persisted envelope, mandatory on the
 /// judgment answer — the collapsed `plan author` orchestration persists
-/// it into `change.md`), and `kind` is pinned to the
+/// it into `change.md`), `kind` is pinned to the
 /// `response` literal (the type's kind enum also covers the request
-/// envelope).
+/// envelope), and `version` is pinned to the wire constant.
 ///
 /// # Panics
 ///
@@ -263,6 +263,7 @@ pub fn proposal() -> Value {
         .pointer_mut("/properties/kind")
         .expect("proposal answer schema carries a kind property");
     *kind = json!({ "const": "response" });
+    set_version(&mut schema, crate::plan::propose::PROPOSAL_VERSION);
     schema
 }
 
@@ -288,32 +289,54 @@ pub fn publication() -> Value {
 /// The decomposition partition answer schema (`split | leaf`).
 ///
 /// Generated from [`crate::plan::PartitionResponse`], with `kind`
-/// pinned to the `split` / `leaf` enum the type already carries.
+/// pinned to the `split` / `leaf` enum the type already carries and
+/// `version` pinned to the wire constant.
 #[must_use]
 pub fn partition() -> Value {
-    root_schema::<crate::plan::PartitionResponse>(
+    let mut schema = root_schema::<crate::plan::PartitionResponse>(
         "partition.schema.json",
         "Emery decomposition partition answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated `split | leaf` \
          partition of one open delivery domain. The deterministic tail applies the \
          answer to a tentative tree and runs Decomposition::check.",
-    )
+    );
+    set_version(&mut schema, crate::plan::PARTITION_VERSION);
+    schema
 }
 
 /// The bounded boundary-review answer schema.
 ///
-/// Generated from [`crate::plan::BoundaryReview`].
+/// Generated from [`crate::plan::BoundaryReview`], with `version`
+/// pinned to the wire constant.
 #[must_use]
 pub fn boundary_review() -> Value {
-    root_schema::<crate::plan::BoundaryReview>(
+    let mut schema = root_schema::<crate::plan::BoundaryReview>(
         "boundary-review.schema.json",
         "Emery decomposition boundary-review answer",
         "Generated judgment-answer schema — generated from the Rust wire types by \
          project::answers; do not edit. Validates the schema-gated boundary review \
          after a provisional complexity score exceeds the slice-split threshold: \
          `close | focus | unready`.",
-    )
+    );
+    set_version(&mut schema, crate::plan::PARTITION_VERSION);
+    schema
+}
+
+/// Pin the answer envelope's `version` property to the exact wire
+/// constant, so the schema names the literal value the deterministic
+/// tail requires and the model never hunts the workspace for it.
+///
+/// # Panics
+///
+/// Panics when the schema carries no `version` property object — a
+/// compile-adjacent invariant, not a runtime input condition.
+pub fn set_version(schema: &mut Value, version: u32) {
+    let target = schema
+        .pointer_mut("/properties/version")
+        .and_then(Value::as_object_mut)
+        .expect("answer schema carries the version property");
+    target.insert("const".to_string(), json!(version));
 }
 
 // Stamp a `pattern` constraint onto the string schema at `pointer`.

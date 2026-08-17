@@ -342,15 +342,24 @@ fn child_targets(tree: &Decomposition, id: &str, node: &Node) -> BTreeSet<String
 
 fn reduction(tree: &Decomposition, id: &str, node: &Node) -> Vec<Diagnostic> {
     let parent = measure(tree, id, node);
+    // A single-child cut cannot reduce by definition — the child
+    // inherits the whole scope — so a tie is structural there; only
+    // genuine growth is a finding.
+    let single = node.children.len() == 1;
     let mut out = Vec::new();
     for child in &node.children {
         let Some(child_node) = tree.nodes.get(child) else {
             continue;
         };
-        if measure(tree, child, child_node) >= parent {
+        let measured = measure(tree, child, child_node);
+        if measured > parent || (!single && measured == parent) {
+            let relation = if measured == parent { "tied on every dimension" } else { "grew" };
             out.push(diag(
                 "decomposition-non-reducing",
-                format!("child `{child}` does not strictly reduce the scope of `{id}`"),
+                format!(
+                    "child `{child}` does not strictly reduce the scope of `{id}`: \
+                     child ({measured}) vs parent ({parent}); {relation}"
+                ),
                 Some(child.clone()),
             ));
         }
@@ -363,6 +372,25 @@ struct Measure {
     leads: usize,
     targets: usize,
     paths: usize,
+}
+
+impl std::fmt::Display for Measure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} lead{}, {} target{}, {} path{}",
+            self.leads,
+            plural(self.leads),
+            self.targets,
+            plural(self.targets),
+            self.paths,
+            plural(self.paths)
+        )
+    }
+}
+
+const fn plural(count: usize) -> &'static str {
+    if count == 1 { "" } else { "s" }
 }
 
 fn measure(tree: &Decomposition, id: &str, node: &Node) -> Measure {
