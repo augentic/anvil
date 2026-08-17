@@ -37,7 +37,7 @@ mod wire {
         }
         assert_eq!(ProfileName::Fmt.to_string(), "fmt");
         assert_eq!(ProfileName::Ci.to_string(), "ci");
-        assert!(ProfileName::from_str("unknown").is_err());
+        ProfileName::from_str("unknown").unwrap_err();
     }
 
     #[test]
@@ -51,7 +51,7 @@ mod wire {
         assert!(VerificationContextKind::SliceAttempt.accepted());
         assert!(!VerificationContextKind::FrontierDomain.accepted());
         assert!(!VerificationContextKind::CompleteDomain.accepted());
-        assert!(VerificationContextKind::from_str("slice").is_err());
+        VerificationContextKind::from_str("slice").unwrap_err();
     }
 
     #[test]
@@ -139,7 +139,7 @@ mod discriminants {
             assert_eq!(discriminant.error("detail").variant_str(), *code);
         }
         assert_eq!(Discriminant::VARIANTS.len(), EXIT_2.len() + EXIT_1.len());
-        assert!(Discriminant::from_str("verification-unknown").is_err());
+        Discriminant::from_str("verification-unknown").unwrap_err();
     }
 
     #[test]
