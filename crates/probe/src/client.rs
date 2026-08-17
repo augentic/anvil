@@ -318,10 +318,9 @@ fn init_tracing(log: Option<PathBuf>, choice: Filter) -> anyhow::Result<()> {
         }
         None => (None, None),
     };
-    // Console tracing goes to stderr: stdout stays the semantic command
-    // output, matching the shipped runtime's stream roles. The console
-    // renders compact (no span-name chain); the file copy keeps the
-    // full span context for grepping.
+    // Console tracing goes to stderr (stdout stays the semantic command
+    // output) and renders compact — no span-name chain; the file copy
+    // keeps the full span context for grepping.
     tracing_subscriber::registry()
         .with(filter)
         .with(tracing_subscriber::fmt::layer().compact().with_writer(std::io::stderr))
