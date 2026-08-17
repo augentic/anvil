@@ -676,7 +676,7 @@ Move merge verification and repair onto the engine phase protocol; pass typed bu
 
 ### Cut 6 — Then measure
 
-Only after Cuts 0–5: RFC-92 (routes and cost on a substrate that can attribute), RFC-97 Phase A (host verify on a confined seam that CI runs), and RFC-94 (admission). Re-read [rfc-97-review.md](rfc-97-review.md) before touching verify. A feature RFC that requires a new lifecycle state before these cuts is evidence the cut is incomplete.
+Only after Cuts 0–5: RFC-92 (routes and cost on a substrate that can attribute), RFC-97 Phase A (host verify on a confined seam that CI runs), and RFC-94 (admission). Re-read [rfc-97-native-verification.md](rfc-97-native-verification.md) and [rfc-97-phase-a-plan.md](rfc-97-phase-a-plan.md) before touching verify. A feature RFC that requires a new lifecycle state before these cuts is evidence the cut is incomplete.
 
 The reliability gate (T5) does not wait for this cut: the graded eval suite lands with Cut 0's CI work and gates every cut after it; Cut 6 adds the cost and latency attribution on top.
 
@@ -778,7 +778,7 @@ Until then, further RFCs are completeness, not product.
 - [CONSTITUTION.md](../CONSTITUTION.md) — standing invariants and mechanical anti-reversion enforcement
 - [platform.md](platform.md) — programme spine this review holds to account
 - [architecture.md](architecture.md) — Omnia thesis vs deployment reality (D3, D4)
-- [rfc-97-review.md](rfc-97-review.md) — do not implement native verification until Cuts 0–5 land
+- [rfc-97-native-verification.md](rfc-97-native-verification.md) / [rfc-97-phase-a-plan.md](rfc-97-phase-a-plan.md) — do not implement native verification until Cuts 0–5 land
 - [rfc-86a-gap-deferral.md](archive/rfc-86a-gap-deferral.md) — recorded auto-deferral policy (P3)
 - [rfc-104-system-archaeology.md](archive/rfc-104-system-archaeology.md) — definition loop (P1, P2, P5, P6)
 - [rfc-96-concurrent-execution.md](archive/rfc-96-concurrent-execution.md) — pool and domain rounds (S4, D8, D9)

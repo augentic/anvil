@@ -32,9 +32,10 @@ flowchart TD
     R88 --> R96[RFC-96 concurrent execution]
     R90 --> R91[RFC-91 specification refinement]
     R90 --> R92[RFC-92 model policy]
+    R90 --> R97[RFC-97 native verification]
     R91 --> R96[RFC-96 concurrent execution]
     R92 --> R103[RFC-103 outcome learning]
-    R96 --> R97[RFC-97 native verification]
+    R96 -->|Phase B| R97
     R97 --> R98[RFC-98 conservation]
 
     classDef done fill:#d1fae5,stroke:#047857,color:#064e3b,stroke-width:2px
@@ -43,7 +44,7 @@ flowchart TD
     class R92,R97,R94 nearterm
 ```
 
-RFC-92 patches the model-capability profile shape owned by implemented RFC-88: routes and usage facts land on the implemented substrate and fold into the profile.
+RFC-92 patches the model-capability profile shape owned by implemented RFC-88: routes and usage facts land on the implemented substrate and fold into the profile. The `R96 → R97` edge is Phase B only. Phase A depends on implemented RFC-90 and is not blocked on RFC-96.
 
 ## Where we are
 
@@ -99,7 +100,7 @@ Independent tracks proceed in parallel. Staff the critical path first; start par
 ### Next — target admission and trustworthy outcomes
 
 - [RFC-94](rfc-94-target-readiness.md) — follows RFC-88 target binding. Deterministic-first execution gate: structural criteria and approved host probes produce authority; model judgment cannot grant a band; bands select named policies and never mutate mechanics in flight. Not the paid definition engagement — RFC-104 owns system understanding and migration readiness.
-- [RFC-97](rfc-97-native-verification.md) — one RFC, two phases. Phase A: host-attested `slice-attempt` verification on implemented RFC-90; may proceed beside RFC-88. Phase B: attached to RFC-96 (`frontier-domain | complete-domain`, protected-input closure, distributed placement).
+- [RFC-97](rfc-97-native-verification.md) — one RFC, two phases. Phase A: host-attested `slice-attempt` verification on implemented RFC-90; may proceed beside RFC-88. Phase B: attached to RFC-96 (`frontier-domain | complete-domain`, protected-input closure).
 - [RFC-98](future/rfc-98-behavioural-conservation.md) — follows RFC-97 Phase A. Protected replay oracle from retained `captures`; execution assurance stays separate from oracle assurance; data-governance contract for regulated capture material.
 
 ### Parallel assurance — attribution and operability
