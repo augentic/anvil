@@ -43,7 +43,7 @@ Then decide 0003 (one lifecycle), 0004 (conflict gate), 0005 (detached-only) on 
 1. Rewrite [target-architecture.md](target-architecture.md) from draft v0 to v1 against the accepted ADRs. Resolve every `[ADR-NNNN]` marker; fix the module map, budgets, and the closed noun list.
 2. **Land the fitness functions** (CONSTITUTION.md table) *before* the build starts: journey-test harness (red is fine initially — it is the Phase 3 exit criterion), route budget, LOC ratchet (`scripts/ratchet.toml` baseline from today's counts), layering test, seam-copy counter, gate tripwires for ADR-0004, prose budgets, ADR-required-paths check.
 3. Specify the walking-skeleton script (target-architecture §8) as an executable test, scripted model, offline, across the component seam.
-4. Close every entry in the [capability conservation ledger](capability-conservation.md) onto a target-architecture section and Phase 3/4 acceptance test, or an accepted ADR that explicitly deletes the capability. A green walking skeleton is not parity for a deferred capability.
+4. Close every entry in the [capability conservation ledger](capability-conservation.md) onto a target-architecture section and Phase 2b/3/4 acceptance test, or an accepted ADR that explicitly deletes the capability. A green walking skeleton is not parity for a deferred capability.
 
 ## Phase 2b — Platform hardening (ADR-0002; ~4–8 weeks, may overlap Phase 3's store work)
 

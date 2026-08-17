@@ -17,12 +17,14 @@ A green walking skeleton is not, by itself, parity for capabilities deferred to 
 
 ## Classification
 
+Every entry uses exactly one of these four classes. Qualifiers such as strengthen, extend, re-home, or "initially at cap one" are notes, not additional classes.
+
 - **Preserve** — required in the replacement before the legacy implementation is deleted.
 - **Replace** — the current mechanism is deleted, but its observable guarantee remains.
 - **Deferred mandatory** — temporarily absent from the walking skeleton, but required before remediation completes.
 - **Intentionally deleted** — the capability itself is removed by an accepted ADR.
 
-An entry whose shape depends on a **proposed** ADR carries a `Conditional on` line. If that ADR resolves differently, the entry is re-shaped before any deletion relies on it.
+An entry whose shape depends on a **proposed** ADR carries a `Conditional on` line. If that ADR resolves differently, the entry is re-shaped before any deletion relies on it. Rejecting a proposed ADR reopens the corresponding entry; the proposed option is not conservation.
 
 ## CC-01 — Complete source-to-evidence fidelity
 
@@ -61,25 +63,26 @@ Survey leads are not assumed to be buildable slices. Emery has one deterministic
 - reject ambiguous ownership, non-reducing splits, cycles, and over-budget recursion;
 - project byte-stable slices and dependency edges from equivalent inputs.
 
+When an architecture projection (CC-16) or operator act names a target assignment for an imported lead, that assignment is an immutable compiler constraint. Rerouting it requires an explicit rebase, not a model answer.
+
 The implementation need not preserve `decomposition.yaml`, domain files, or the current authoring state machine. Equivalent transactional rows and a review projection are acceptable.
 
-`spec` may perform this in one operator gesture, but topology authority remains distinct from specification synthesis. Correcting topology invalidates affected specifications.
+`spec` may perform decomposition and synthesis in one operator gesture. Topology authority remains distinct from specification synthesis: correcting topology invalidates affected specifications. A mandatory operator pause between decompose and synthesize is not conserved (see Intentionally not conserved).
 
 **Acceptance evidence:**
 
-- A broad lead is focused and decomposed into multiple stable slices.
-- A multi-target case reaches at least three domain levels without losing lead coverage.
-- Identical inputs produce identical topology and ordering.
-- An invalid split publishes no partial topology.
-- Changing one domain invalidates only its affected specification closure.
-- N=1 follows the same compiler as N>1 without unnecessary ceremony.
+- Phase 3: a broad lead is focused and decomposed into multiple stable slices; identical inputs produce identical topology and ordering; an invalid split publishes no partial topology; N=1 follows the same compiler as N>1 without unnecessary ceremony; changing one domain invalidates only its affected specification closure.
+- Phase 4: a multi-target case reaches at least three domain levels without losing lead coverage.
+- A reviewed or projected target assignment cannot be changed by a decomposition answer.
 
 ## CC-03 — Reviewable and correctable topology
 
 **Classification:** Preserve  
 **Origin:** RFC-88 authoring and amendment semantics
 
-The resulting slice topology is inspectable before product mutation. Model-proposed changes remain inert until accepted by deterministic engine policy or an explicit operator act.
+The resulting slice topology is inspectable before product mutation. Inspectability does not require a separate topology command or a mandatory pause before synthesis: `status`, the review document, and `fix` may provide the review and correction gestures.
+
+Model-proposed changes remain inert until accepted by deterministic engine policy or an explicit operator act.
 
 A model cannot directly:
 
@@ -89,9 +92,7 @@ A model cannot directly:
 - mutate an accepted slice;
 - publish a partial recursive decomposition.
 
-The four-verb surface need not expose a separate topology command. `status`, the review document, and `fix` may provide the review and correction gestures.
-
-Abandoning a slice without merging remains an explicit operator act. Abandonment is generation-scoped scope authority recorded before any artifact movement; archival cleanup is never the scope transition itself (the S7 lesson).
+Abandoning a slice without merging remains an explicit operator act. Abandonment is generation-scoped scope authority recorded before any artifact movement; archival cleanup is never the scope transition itself (the S7 lesson). The four-verb surface need not expose a `drop` command — `fix` or an advanced verb may carry the act — but the capability itself is conserved.
 
 **Acceptance evidence:**
 
@@ -134,7 +135,8 @@ The artifact currently called `refinement.yaml` may be replaced. Its capability 
 
 ## CC-05 — One reviewable specification per slice
 
-**Classification:** Preserve and strengthen  
+**Classification:** Preserve  
+**Note:** strengthen — one review document is a designed property the current artifact set does not yet satisfy (P8)  
 **Origin:** Existing specification artifacts plus remediation P8
 
 Each slice has one canonical, diff-friendly review document through which a human or reviewing agent can answer whether the slice is specified correctly.
@@ -201,9 +203,12 @@ Each delivery binding retains:
 - requested locator;
 - resolved locator or revision;
 - exact CID;
+- recorded Git base revision, when the origin is Git (publication `HEAD`; never aliased to the CID);
 - exact adapter identity;
 - target assignment;
 - authorization generation.
+
+A target that declares platforms required refuses a missing or invalid platform set. The engine does not invent a fallback set.
 
 The replacement need not preserve `discovery.yaml`. Equivalent store authority is acceptable.
 
@@ -214,6 +219,8 @@ The replacement need not preserve `discovery.yaml`. Equivalent store authority i
 - Rebinding creates a new generation.
 - Running in an unrelated directory cannot silently create a change.
 - A multi-target change carries one independently verifiable binding per target.
+- A required-platforms target without a validated platform set is a typed refuse, not an inferred shell set.
+- The recorded Git base and the accepted CID remain distinct identities.
 
 ## CC-08 — Private workspace isolation
 
@@ -264,7 +271,8 @@ A successful merge:
 
 ## CC-10 — Engine-owned phase protocol
 
-**Classification:** Preserve and extend  
+**Classification:** Preserve  
+**Note:** extend — merge verification and remediation move onto the same engine-owned policy  
 **Origin:** RFC-90
 
 The engine owns operation order, repair routing, budgets, terminal success, and terminal failure.
@@ -276,13 +284,17 @@ The target performs one pass per dispatch. It cannot:
 - reset a repair budget;
 - suppress blocking findings;
 - write the terminal report;
-- claim success while a gate remains blocking.
+- claim success while a gate remains blocking;
+- write outside the declared artifact grants for that operation;
+- discover change-home or project layout (typed context is supplied; a missing stage is `InvalidRequest`, not a walk).
 
 The conserved protocol is:
 
 `build → verify ⇄ repair → review ⇄ repair`
 
 Merge verification and remediation move under the same engine-owned policy rather than remaining an adapter-private loop.
+
+Staged artifact promotion is all-or-none and transactional with the build record. Abandoned attempts are never resumed.
 
 **Acceptance evidence:**
 
@@ -292,12 +304,14 @@ Merge verification and remediation move under the same engine-owned policy rathe
 - A target cannot self-certify terminal success.
 - Merge repair follows the same one-pass and budget rules.
 - Deterministic merge validation classifies every supported document exactly once; traversal and parse failures block rather than fail open.
+- A write outside declared grants, or a missing typed context, fails closed and promotes nothing.
 - Complete phase history remains inspectable while only the latest authoritative reports gate success.
 
 ## CC-11 — Resumability from one authoritative state read
 
 **Classification:** Replace  
-**Origin:** RFC-86 computed status; architecture-review S1–S3
+**Origin:** RFC-86 computed status; architecture-review S1–S3  
+**Conditional on:** ADR-0001 (proposed) — one transactional store per change home
 
 Re-running the stopped verb is always sufficient recovery. Status and dispatch consume the same validated state snapshot and cannot disagree about the next action.
 
@@ -342,7 +356,8 @@ The initial replacement runs at cap one until crash safety is proven. Multi-writ
 
 ## CC-13 — Atomic same-target waves
 
-**Classification:** Preserve, initially exercised at cap one  
+**Classification:** Preserve  
+**Note:** initially exercised at cap one — membership and isolation bugs reproduce without concurrency  
 **Origin:** RFC-96
 
 A same-target wave is a frozen antichain over one accepted base.
@@ -358,6 +373,8 @@ Its membership:
 
 Composition accepts only same-base, non-overlapping results and is deterministic.
 
+A merge that advances a target's accepted CID stale-bases any in-flight or queued sibling built on the previous CID. That work requeues from the new base; it is never committed onto the old head. This holds at cap one for serial dependent merges, not only under concurrent admission.
+
 A failed member's successful siblings remain reusable as work items on retry (CC-12); they are never committed as a prefix of the failed wave. This deliberately resolves the addendum's acceptance criterion 19 to the no-prefix-commit branch.
 
 The current wave manifests and events are not preserved as mechanisms.
@@ -368,11 +385,12 @@ The current wave manifests and events are not preserved as mechanisms.
 - One member failure does not allow a successful prefix commit.
 - Retry preserves membership or performs an explicit whole-wave retraction.
 - Base mismatch or overlapping writes fail before candidate verification.
+- A sibling built on a now-superseded accepted CID requeues rather than committing.
 - Replaying a completed commit does not advance the CID twice.
 
 ## CC-14 — Verification of the exact composed result
 
-**Classification:** Preserve via replacement  
+**Classification:** Replace  
 **Origin:** RFC-96 domain convergence; architecture-review S4
 
 The exact candidate CID committed by a wave is the candidate that verification evaluated.
@@ -397,7 +415,8 @@ For multiple slices on one target:
 
 ## CC-15 — Coordinated multi-target publication
 
-**Classification:** Deferred mandatory for multi-target delivery  
+**Classification:** Deferred mandatory  
+**Note:** required for multi-target delivery; N=1 may complete without a publication clone  
 **Origin:** RFC-95
 
 A completed change can be published as one coordinated set derived from its in-scope targets and dependency topology.
@@ -405,12 +424,14 @@ A completed change can be published as one coordinated set derived from its in-s
 For each member:
 
 - only the final accepted CID is materialized;
-- the operator receives a normal reviewable Git worktree;
+- the operator receives a normal reviewable Git worktree whose `HEAD` is the recorded Git base (CC-07), not an RFC-87 workspace;
 - Emery does not author commits, push branches, open pull requests, merge, or revert;
 - landing order follows the contracted target dependency graph;
-- archive observes forge state and reports incomplete or out-of-order publication.
+- archive observes forge state (trailers, merged/open/closed, landing order) and reports incomplete or out-of-order publication.
 
-Publication is not execution state and does not replace private workspaces or accepted CIDs.
+Publication is not execution state and does not replace private workspaces or accepted CIDs. Operator Git is authoritative: archive does not require the landed tree to equal the accepted CID, and the CID is never aliased to a Git SHA (RFC-95 D5). Forge transport or authentication failure is a distinct typed outcome, not `unverified`. A journaled unverified-archive bypass skips only the publication observation checks.
+
+Dirty, diverged, or already-committed publication worktrees are typed stops. They are never repaired by deleting operator Git state.
 
 **Acceptance evidence:**
 
@@ -418,43 +439,52 @@ Publication is not execution state and does not replace private workspaces or ac
 - Intermediate CIDs receive no publication branch.
 - Multi-target order is derived deterministically from dependencies.
 - The operator remains the author of every Git and forge mutation.
-- Archive fails closed on forge transport errors.
+- Archive fails closed on forge transport errors without calling the set unverified.
+- An operator-amended commit can archive under the recorded D5 policy without aliasing the CID to that commit.
 - Publication failure does not erase or falsify an already accepted CID.
 - N=1 may complete without an unnecessary publication clone unless publication is requested.
 
 ## CC-16 — Coverage-accounted archaeology and architecture projection
 
-**Classification:** Preserve via re-homing  
+**Classification:** Preserve  
+**Note:** re-home the deliverable onto the one spec-mining loop; the second lifecycle is intentionally deleted once ADR-0003 is accepted  
 **Origin:** RFC-104, ADR-0003  
 **Conditional on:** ADR-0003 (proposed) — one lifecycle; if two lifecycles are kept instead, this entry is re-shaped around closing the seam findings (P2, P5, P6, P11, P12, S41–S45) rather than re-homing
 
 The mandatory second lifecycle is not conserved. Its valuable deliverable capabilities are.
 
-When architecture recovery is requested, Emery can project from the same source and Evidence corpus:
+First useful output (`spec` over declared sources) must not require hand-authored configuration. Architecture recovery is a later, requested projection over the same source and Evidence corpus. When that projection is requested, the request may name an explicit boundary; that is not a second lifecycle and not a precondition for first output.
+
+The projection can produce:
 
 - a declared system boundary;
 - explicit coverage dispositions for included, excluded, inaccessible, unsupported, and unresolved material;
 - the exact observed source identities;
 - an evidence-linked as-is architecture;
-- target and transition architectures;
-- modernization dispositions;
-- state movement, coexistence, cutover, rollback, and acceptance concerns;
-- bounded migration waves or equivalent delivery topology.
+- optional target and transition architectures;
+- optional modernization dispositions and bounded migration waves, or equivalent delivery topology.
 
-This projection must not require hand-authored configuration before first useful output.
+State movement, coexistence, cutover, rollback, and acceptance concerns appear when evidence supports them. They are not a required projection schema.
+
+Target assignments named by the projection constrain decomposition (CC-02). Revocation is an explicit rebase.
+
+A recorded decision over the projection is sufficient architectural sign-off. `system.wave.reviewed` as a second authority plane is not conserved.
 
 **Acceptance evidence:**
 
-- Every declared source or system element receives an explicit coverage disposition.
+- First `spec` over declared sources produces a reviewable specification without a definition-home preamble.
+- When architecture recovery is requested, every declared source or system element receives an explicit coverage disposition.
 - Failed sources remain visible and cannot silently count as current evidence.
 - Observed CIDs remain distinct from delivery-binding CIDs.
 - Architecture diagrams are projections, never authority.
-- An architecture-only engagement can finish with a reviewable deliverable.
+- An architecture-only engagement can finish with a reviewable deliverable and a recorded decision.
 - If delivery follows, accepted results can advance the living architecture projection without creating a second lifecycle authority.
+- A projected target assignment binds the topology compiler until an explicit rebase.
 
 ## CC-17 — Dynamic typed adapter boundary
 
-**Classification:** Preserve and harden  
+**Classification:** Preserve  
+**Note:** harden — isolation profiles and dispatch budgets are Phase 2b, not walking-skeleton evidence  
 **Origin:** Existing WIT seam, ADR-0002
 
 A source or target adapter can be added at an exact version without rebuilding the host. The same engine core remains embeddable behind a desktop CLI and a service ingress; the conserved duality is architectural embeddability, not a live web service — the mutating HTTP surface stays disabled until an ingress design exists (C3, target-architecture §7).
@@ -473,16 +503,12 @@ The conserved capability requires:
 
 **Acceptance evidence:**
 
-- CI admits and dispatches one out-of-binary exact-pin component.
-- The complete journey crosses the component seam.
-- Malicious source and target fixtures cannot access undeclared capabilities.
-- Infinite-loop, memory-growth, output-flood, and silent-pending fixtures terminate within budgets.
-- A judgment leg can read a served adapter reference under a grant scoped to its dispatch, not a global shelf.
-- Native-only integration cannot become the authoritative test path.
+- Phase 3: CI admits and dispatches one out-of-binary exact-pin component; the complete journey crosses the component seam; native-only integration cannot become the authoritative test path.
+- Phase 2b: malicious source and target fixtures cannot access undeclared capabilities; infinite-loop, memory-growth, output-flood, and silent-pending fixtures terminate within budgets; a judgment leg can read a served adapter reference under a grant scoped to its dispatch, not a global shelf.
 
 ## CC-18 — Deterministic and traceable authorization
 
-**Classification:** Preserve via replacement  
+**Classification:** Replace  
 **Origin:** RFC-86, RFC-88, RFC-91
 
 Every irreversible effect is authorized by one complete, current identity covering:
@@ -535,11 +561,15 @@ The `plan amend --proposal` surface and the removed `plan correct` verb are not 
 
 Unless a later ADR reopens them, remediation does not preserve:
 
-- the journal as lifecycle authority (ADR-0001);
+- the journal as lifecycle authority (ADR-0001, proposed);
 - the multi-writer claim protocol (architecture-review S4);
 - stored mutable progress labels;
 - a mandatory definition-home lifecycle (ADR-0003, proposed);
 - hand-authored `scope.yaml` or `coverage.yaml` before first output (ADR-0003, proposed);
+- `system.wave.reviewed` as a second authority plane — a recorded decision over the architecture projection is enough (CC-16);
+- a live lease from a change home onto a definition tree (addendum P12);
+- a mandatory operator pause between decompose and synthesize (RFC-88 rejected separate topology-approve commands; CC-03);
+- the sixteen-category handoff schema as required projection content (CC-16);
 - the in-place/detached mode distinction (ADR-0005, proposed);
 - merge-time checkout `apply` (deleted by implemented RFC-88);
 - the native shadow provider (ADR-0002, accepted);
@@ -547,6 +577,8 @@ Unless a later ADR reopens them, remediation does not preserve:
 - adapter-private retry loops (superseded by CC-10);
 - universal conflict auto-deferral (ADR-0004, proposed);
 - the `plan amend --proposal` and removed `plan correct` verbs as mechanisms (design intent conserved by CC-19);
+- orchestration inside skill or adapter bodies — the CLI owns lifecycle; skills remain ultrathin invoke-and-relay;
+- publication as a substitute for accepted CIDs, or content-equality of the landed Git tree with the accepted CID as an archive gate (RFC-95 D5; CC-15);
 - exact legacy artifact names or crate boundaries;
 - default cap-four execution before crash safety is demonstrated (CC-12).
 
@@ -554,24 +586,28 @@ Rows citing a proposed ADR are conditional on its acceptance: if the ADR resolve
 
 ## Remediation gates
 
+### Phase 2b exit (platform hardening; may overlap Phase 3)
+
+- CC-17 isolation profiles, dispatch budgets, and scoped reference grant.
+
 ### Phase 3 exit
 
 The walking skeleton must prove at least:
 
 - CC-01 source fidelity;
-- CC-02 decomposition, including one forced focused split;
+- CC-02 decomposition at the Phase 3 evidence line (one forced focused split; not the three-level multi-target case);
 - CC-03 topology review, correction, and abandonment authority;
 - CC-04 specification firewall;
 - CC-05 review document;
 - CC-06 conflict/divergence/debt behavior;
-- CC-07 detached explicit binding;
+- CC-07 detached explicit binding, including platforms-refuse and recorded Git base;
 - CC-08 private workspaces;
 - CC-09 accepted CID and baseline;
-- CC-10 phase protocol;
+- CC-10 phase protocol, including declared write grants;
 - CC-11 crash recovery;
-- CC-13 wave atomicity at cap one;
+- CC-13 wave atomicity at cap one, including stale-base requeue;
 - CC-14 exact-candidate verification;
-- CC-17 production component seam;
+- CC-17 production component seam (journey + exact-pin admission; not isolation or budgets);
 - CC-18 authorization freshness;
 - CC-19 durable correction guidance (skeleton step 5 exercises it directly).
 
@@ -579,9 +615,10 @@ The walking skeleton must prove at least:
 
 Remediation is not capability-complete until it additionally proves:
 
+- CC-02 three-level multi-target decomposition;
 - CC-12 cap-N concurrency and cap equivalence;
 - CC-15 multi-target publication;
 - CC-16 coverage-accounted architecture projection;
 - all first-party source and target adapters over the conserved seam.
 
-Legacy implementations of deferred capabilities remain quarantined until their corresponding Phase 4 evidence is green or an ADR explicitly deletes the capability.
+Legacy implementations of deferred capabilities remain quarantined until their corresponding Phase 2b/4 evidence is green or an ADR explicitly deletes the capability.
